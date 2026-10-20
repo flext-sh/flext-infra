@@ -53,7 +53,7 @@ class TestsFlextInfraGateErrorReporting:
 
         project = projects[0]
         tm.that(tuple(project.gates), eq=tuple(gates))
-        tm.that(all(not item.result.passed for item in project.gates.values()), eq=True)
+        tm.ok(all(not item.result.passed for item in project.gates.values()))
         tm.that(
             project.total_findings,
             eq=sum(len(item.issues) for item in project.gates.values()),
@@ -96,7 +96,7 @@ class TestsFlextInfraGateErrorReporting:
 
         result = u.Tests.run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(
             sorted(issue.file for issue in result.issues),
             eq=[f"{c.Infra.DEFAULT_SRC_DIR}/{name}" for name in ("one.py", "two.py")],
@@ -129,10 +129,10 @@ class TestsFlextInfraGateErrorReporting:
 
         tm.ok(result)
         project = result.value[0]
-        tm.that(project.passed, eq=False)
+        tm.fail(project.passed)
         execution = project.gates[c.Infra.FORMAT]
-        tm.that(bool(execution.issues), eq=False)
-        tm.that(bool(execution.result.errors), eq=False)
+        tm.fail(bool(execution.issues))
+        tm.fail(bool(execution.result.errors))
         tm.that(execution.raw_output, has="invalid-line-length")
         tm.that(execution.raw_receipt, none=False)
         tm.that(
@@ -176,7 +176,7 @@ class TestsFlextInfraGateErrorReporting:
         )
 
         execution = projects[0].gates[c.Infra.SECURITY]
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(execution.raw_receipt, none=False)
         tm.that(
@@ -249,9 +249,9 @@ class TestsFlextInfraGateErrorReporting:
         )
         receipt = projects[0].gates[c.Infra.SECURITY].raw_receipt
         tm.that(receipt, none=False)
-        tm.that(receipt.is_file(), eq=True)
+        tm.ok(receipt.is_file())
         tm.that(receipt, ne=blocked_receipt)
-        tm.that(blocked_receipt.is_dir(), eq=True)
+        tm.ok(blocked_receipt.is_dir())
 
     @staticmethod
     @pytest.mark.slow
@@ -287,7 +287,7 @@ class TestsFlextInfraGateErrorReporting:
 
         tm.ok(result)
         project = result.value[0]
-        tm.that(project.passed, eq=False)
+        tm.fail(project.passed)
         execution = project.gates[c.Infra.MYPY]
         tm.that(
             any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
@@ -335,7 +335,7 @@ class TestsFlextInfraGateErrorReporting:
         )
 
         tm.ok(result)
-        tm.that(result.value[0].passed, eq=False)
+        tm.fail(result.value[0].passed)
         captured = capsys.readouterr()
         tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
         receipt = result.value[0].gates[c.Infra.MARKDOWN].raw_receipt

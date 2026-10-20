@@ -156,7 +156,7 @@ class FlextInfraPytestRunnerBase(s[int]):
                 the checkout; or if ``path.is_absolute() or not path.parts or any((part
                 in {'', '.', '..'} for part in path.parts)) or any((character in raw for
                 character in '\x00\r\n\\'))``; or if ``not
-                resolved.is_relative_to(self.root.resolve())``; or if test
+                resolved.is_relative_to(self.repository_root.resolve())``; or if test
                 target file must be an existing repository file.
 
         """
@@ -170,11 +170,11 @@ class FlextInfraPytestRunnerBase(s[int]):
             ):
                 msg = f"{name} must be a normalized repository-relative path"
                 raise ValueError(msg)
-            resolved = (self.root / path).resolve()
-            if not resolved.is_relative_to(self.root.resolve()):
+            resolved = (self.repository_root / path).resolve()
+            if not resolved.is_relative_to(self.repository_root.resolve()):
                 msg = f"{name} escapes the repository"
                 raise ValueError(msg)
-        target_path = self.root / self.target
+        target_path = self.repository_root / self.target
         if (
             not (target_path.is_dir() or target_path.is_file())
             or target_path.is_symlink()
@@ -184,7 +184,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not self.testmon_db.is_absolute():
             msg = "testmon database path must be absolute"
             raise ValueError(msg)
-        if self.testmon_db.resolve().is_relative_to(self.root.resolve()):
+        if self.testmon_db.resolve().is_relative_to(self.repository_root.resolve()):
             msg = f"testmon database must be outside the checkout: {self.testmon_db}"
             raise ValueError(msg)
         return self._validate_target_file()
@@ -212,11 +212,11 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = "target_file must be a normalized repository-relative path"
             raise ValueError(msg)
-        resolved_file = (self.root / self.target_file).resolve()
-        if not resolved_file.is_relative_to(self.root.resolve()):
+        resolved_file = (self.repository_root / self.target_file).resolve()
+        if not resolved_file.is_relative_to(self.repository_root.resolve()):
             msg = "target_file escapes the repository"
             raise ValueError(msg)
-        file_path = self.root / self.target_file
+        file_path = self.repository_root / self.target_file
         if not file_path.is_file() or file_path.is_symlink():
             msg = f"test target file must be an existing file: {self.target_file}"
             raise ValueError(msg)
@@ -252,7 +252,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             The resulting ``str | None``.
 
         """
-        pyproject_path = self.root / c.PYPROJECT_FILENAME
+        pyproject_path = self.repository_root / c.PYPROJECT_FILENAME
         payload = u.Infra.pyproject_payload(pyproject_path)
         if "project" not in payload:
             return None
@@ -348,7 +348,7 @@ class FlextInfraPytestRunnerBase(s[int]):
 
         """
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
-        report_dir: Path = self.root / self.reports / run_id
+        report_dir: Path = self.repository_root / self.reports / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
         return report_dir
 

@@ -62,7 +62,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def test_success_verdict_accepts_pass() -> None:
         """successful_verdict returns True for PASS."""
-        tm.that(FlextInfraCodegenQualityGate.successful_verdict("PASS"), eq=True)
+        tm.ok(FlextInfraCodegenQualityGate.successful_verdict("PASS"))
 
     @staticmethod
     def test_success_verdict_rejects_conditional_pass() -> None:
@@ -75,7 +75,7 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def test_success_verdict_rejects_fail() -> None:
         """successful_verdict returns False for FAIL."""
-        tm.that(not FlextInfraCodegenQualityGate.successful_verdict("FAIL"), eq=True)
+        tm.ok(not FlextInfraCodegenQualityGate.successful_verdict("FAIL"))
 
     @staticmethod
     def test_real_workspace_run_returns_report(tmp_path: Path) -> None:

@@ -523,8 +523,8 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(report.key_path, eq=missing_key)
         tm.that(report.allowed_signers_path, eq=missing_trust)
         tm.that(report.public_fingerprint, eq=None)
-        tm.that(missing_key.exists(), eq=False)
-        tm.that(missing_trust.exists(), eq=False)
+        tm.fail(missing_key.exists())
+        tm.fail(missing_trust.exists())
 
     @pytest.mark.parametrize("missing", ["key", "trust"])
     def test_selected_attestation_still_requires_real_signing_material(
@@ -691,8 +691,8 @@ class TestsFlextInfraGithubGateAttestation:
         created = tm.ok(u.Infra.git_create_gate_attestation(request, context))
         reused = tm.ok(u.Infra.git_create_gate_attestation(request, context))
 
-        tm.that(created.reused, eq=False)
-        tm.that(reused.reused, eq=True)
+        tm.fail(created.reused)
+        tm.ok(reused.reused)
         tm.that(reused.tag, eq=created.tag)
         tm.that((tmp_path / "invocations.txt").read_bytes(), eq=before)
 
@@ -707,7 +707,7 @@ class TestsFlextInfraGithubGateAttestation:
         source = m.Infra.GateCommandEvidence.model_validate_json(
             request.receipt.read_bytes()
         )
-        tm.that(source.process.raw_return_code != 0, eq=True)
+        tm.ok(source.process.raw_return_code != 0)
         tm.that(source.native_outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         destination = tmp_path / c.Infra.REPORTS_DIR_NAME / "verified-proof.json"
@@ -840,7 +840,7 @@ class TestsFlextInfraGithubGateAttestation:
         command = ["make", c.Infra.VERB_CHECK, "ATTEST_PROBE_DELAY=2"]
         command_digest = f"sha256:{cli_u.Cli.sha256_content(' '.join(command))}"
         interrupted = tm.ok(cli_u.Cli.run_raw(command, cwd=tmp_path, timeout=1))
-        tm.that(interrupted.outcome.timed_out, eq=True)
+        tm.ok(interrupted.outcome.timed_out)
         updated = source.model_copy(
             update={
                 "command_digest": command_digest,

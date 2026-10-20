@@ -45,7 +45,7 @@ class TestsFlextInfraDocsSharedWrite:
         result = u.Cli.json_write(json_file, report)
 
         tm.ok(result)
-        tm.that(json_file.exists(), eq=True)
+        tm.ok(json_file.exists())
 
     @staticmethod
     def test_write_markdown_writes_exact_content(tmp_path: Path) -> None:
@@ -65,7 +65,7 @@ class TestsFlextInfraDocsSharedWrite:
         result = u.Infra.write_markdown(md_file, ["# Title", "", "", "Content"])
 
         tm.ok(result)
-        tm.that(md_file.read_text().count("\n") >= self._MIN_MARKDOWN_NEWLINES, eq=True)
+        tm.ok(md_file.read_text().count("\n") >= self._MIN_MARKDOWN_NEWLINES)
 
     @staticmethod
     def test_write_markdown_fails_for_non_directory_parent() -> None:

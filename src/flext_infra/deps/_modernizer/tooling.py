@@ -141,7 +141,7 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         result_type = r[m.Infra.ToolingRuntimeContext]
-        conformed = self._conformed_seed_tools(
+        conformed = self._conformed_seed_payload(
             request.path,
             request.topology,
             request.scaffold_project,
@@ -153,86 +153,105 @@ class FlextInfraPyprojectModernizerTooling:
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
-        tools, payload = conformed.value
-        declared_python_dirs = request.topology.declared_python_dirs
+        payload = conformed.value
         project_dir = request.path.parent
-        pyright = u.Cli.json_dumps(
-            FlextRuntime.normalize_to_json_value(tools.pyright), sort_keys=True
-        )
-        if pyright.failure:
-            return result_type.from_failure(pyright)
-        # Seed for a project whose analyzer paths were never synced yet. The
-        # manager derives from directories that EXIST, so before src/ is
-        # written it returns []. Writing that empty list made the next plan
-        # re-derive ['src', '.'], so apply never reached its fixed point.
-        # Prefer the DECLARED roots, exactly like the ensure-pyrefly phase.
-        seed_manager = FlextInfraExtraPathsManager(repository_root=self.root)
         declared_roots, derived_mypy_path = self._derived_paths(
             project_dir,
-            declared_python_dirs,
-            seed_manager,
+            request.topology.declared_python_dirs,
+            FlextInfraExtraPathsManager(repository_root=self.root),
         )
-        # Absent analyzer-path keys fall back to the DERIVED value: they are
-        # written by the analyzer-path sync, so a project that has not run it
-        # yet has them missing, and an empty default would make the NEXT plan
-        # re-derive them, so apply would never reach its fixed point.
-        validated: p.Result[m.Infra.ToolingRuntimeContext] = u.validate_value(
+        mypy = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, "mypy"))
+        if declared_roots or not mypy.get("mypy_path"):
+            mypy["mypy_path"] = list(derived_mypy_path)
+        deptry = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, "deptry"))
+        deptry["known_first_party"] = list(
+            FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                path=project_dir,
+                planned_sources=tuple(request.planned_sources),
+                repository_namespace_packages=request.topology.repository_namespace_packages,
+            ),
+        )
+        runtime = u.Cli.toml_mapping_ensure_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "flake8-type-checking"),
+        )
+        runtime["runtime-evaluated-base-classes"] = list(
+            u.Infra.runtime_evaluated_base_classes(
+                project_dir,
+                request.planned_sources,
+                config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
+                source_project=source_project,
+            ),
+        )
+        return self.tooling_context_from_payload(
+            payload,
+            project_kind=self._project_kind(
+                request.path, payload, request.topology.project_kind
+            ),
+        )
+
+    @staticmethod
+    def tooling_configuration(
+        tool_options: t.MappingKV[str, t.JsonMapping],
+    ) -> p.Result[str]:
+        """Serialize declared native tables through one ordered TOML boundary.
+
+        Returns:
+            Native TOML with recursively ordered keys and unchanged array order.
+
+        """
+        payload: t.MutableJsonMapping = {}
+        for table_path, options in sorted(tool_options.items()):
+            path = table_path.split(".")
+            parent = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, *path[:-1]))
+            parent[path[-1]] = dict(options)
+        ordered = u.Cli.json_dumps(
+            FlextRuntime.normalize_to_json_value(payload), sort_keys=True
+        )
+        if ordered.failure:
+            return r[str].from_failure(ordered)
+        return r[str].ok(
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping(
+                    u.json_mapping_adapter().validate_json(ordered.value)
+                )
+            )
+        )
+
+    @classmethod
+    def tooling_context_from_payload(
+        cls,
+        payload: t.MutableJsonMapping,
+        *,
+        project_kind: str,
+    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
+        """Project every declared table from one conformed native document.
+
+        Returns:
+            One synchronized configuration fragment and its native table views.
+
+        """
+        result_type = r[m.Infra.ToolingRuntimeContext]
+        options: dict[str, t.JsonMapping] = {}
+        for table_path in config.Infra.tooling.settings:
+            table = u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, *table_path.split("."))
+            )
+            if table is None:
+                error = ValueError(f"conformed tool table is absent: {table_path}")
+                return result_type.fail(str(error), exception=error)
+            options[table_path] = dict(table)
+        configuration = cls.tooling_configuration(options)
+        if configuration.failure:
+            return result_type.from_failure(configuration)
+        return u.validate_value(
             m.Infra.ToolingRuntimeContext,
             {
-                "project_kind": self._project_kind(
-                    request.path,
-                    payload,
-                    request.topology.project_kind,
-                ),
-                "first_party": list(tools.first_party),
-                "deptry_first_party": list(
-                    FlextInfraToolTablesPhase.deptry_first_party_namespaces(
-                        path=project_dir,
-                        planned_sources=tuple(request.planned_sources),
-                        repository_namespace_packages=(
-                            request.topology.repository_namespace_packages
-                        ),
-                    ),
-                ),
-                "mypy_path": list(
-                    derived_mypy_path
-                    if declared_roots
-                    else tools.mypy_path or derived_mypy_path
-                ),
-                "ruff_runtime_evaluated_base_classes": list(
-                    u.Infra.runtime_evaluated_base_classes(
-                        project_dir,
-                        request.planned_sources,
-                        config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
-                        source_project=source_project,
-                    )
-                ),
-                "pyrefly_search_path": list(tools.pyrefly_search_path),
-                "pyrefly_project_includes": list(tools.pyrefly_project_includes),
-                "pyrefly_project_excludes": list(
-                    u.Infra.pyrefly_project_excludes(
-                        config.Infra.tooling.tools.pyrefly.project_exclude_globs,
-                    )
-                ),
-                "pyright_configuration": u.Cli.toml_dumps(
-                    u.Cli.toml_document_from_mapping({
-                        "tool": {
-                            "pyright": dict(
-                                u.json_mapping_adapter().validate_json(pyright.value)
-                            )
-                        }
-                    })
-                ),
-                "ruff_src": list(tools.ruff_src),
-                "ruff_extend_exclude": list(tools.ruff_extend_exclude),
+                "project_kind": project_kind,
+                "configuration": configuration.value,
+                "tool_options": {key: dict(value) for key, value in options.items()},
             },
         )
-        if validated.failure:
-            return result_type.fail_op(
-                "tooling runtime context validation",
-                validated.error,
-            )
-        return result_type.ok(validated.value)
 
     def _live_dev_dependencies(self, path: Path) -> p.Result[t.StrSequence]:
         """Collect the live dev groups plus canonical dev dependencies.
@@ -270,25 +289,23 @@ class FlextInfraPyprojectModernizerTooling:
             ),
         ))
 
-    def _conformed_seed_tools(
+    def _conformed_seed_payload(
         self,
         path: Path,
         topology: m.Infra.PyprojectDeclaredTopology,
         scaffold_project: m.Infra.ScaffoldProjectSpec,
         names: t.Pair[t.NonEmptyStr, t.NonEmptyStr],
         overlays: t.Pair[t.StrSequence, t.StrSequence],
-    ) -> p.Result[t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]]:
-        """Conform a seeded document and validate its derived tool tables.
+    ) -> p.Result[t.MutableJsonMapping]:
+        """Conform a seeded native document before projecting its managed tables.
 
         Returns:
-            The resulting ``(tools, payload)`` pair of the conformed document.
+            The conformed document carrying every native tool table.
 
         """
         project_name, package_name = names
         runtime_dependency_overlay, declared_project_dependencies = overlays
-        result_type = r[
-            t.Pair[m.Infra.ToolingConformedTools, t.MappingKV[str, t.JsonValue]]
-        ]
+        result_type = r[t.MutableJsonMapping]
         declaration = u.Infra.load_repository_declaration_inputs(path.parent)
         if declaration.failure:
             return result_type.from_failure(declaration)
@@ -327,19 +344,7 @@ class FlextInfraPyprojectModernizerTooling:
         if conformed.failure:
             return result_type.from_failure(conformed)
         state, _ = conformed.value
-        payload = state.payload
-        tools_result: p.Result[m.Infra.ToolingConformedTools] = u.validate_value(
-            m.Infra.ToolingConformedTools,
-            FlextRuntime.normalize_to_json_value(
-                u.Cli.toml_mapping_child(payload, c.Infra.TOOL) or {}
-            ),
-        )
-        if tools_result.failure:
-            return result_type.fail_op(
-                f"tooling resolution for {path}",
-                tools_result.error,
-            )
-        return result_type.ok((tools_result.value, payload))
+        return result_type.ok(state.payload)
 
     @staticmethod
     def _derived_paths(

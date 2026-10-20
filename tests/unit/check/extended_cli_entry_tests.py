@@ -160,5 +160,5 @@ class TestsFlextInfraExtendedCliEntry:
             f"*/{c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}",
         )
         tm.ok(u.Infra.check_report_findings(workspace, reports_dir=report_path.parent))
-        tm.that(report_path.is_file(), eq=True)
-        tm.that((caller / relative_reports).exists(), eq=False)
+        tm.ok(report_path.is_file())
+        tm.fail((caller / relative_reports).exists())

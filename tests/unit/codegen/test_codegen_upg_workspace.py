@@ -148,7 +148,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
             (root / c.Infra.ENVIRONMENT_DIRECTORY / "pyvenv.cfg").is_file(), eq=True
         )
         for project in (member, supplier, source):
-            tm.that((project / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+            tm.fail((project / c.Infra.ENVIRONMENT_DIRECTORY).exists())
         TestsFlextInfraCodegenUpgWorkspace._assert_member_native_locks(root, member)
 
     @staticmethod
@@ -170,7 +170,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
         binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
         for manifest in inputs.spec.uv_resolution_pyprojects:
             resolution = member / manifest.parent
-            tm.that((resolution / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
+            tm.ok((resolution / c.Infra.UV_LOCK_FILENAME).is_file())
             owner = tm.ok(
                 u.Cli.capture(
                     [str(binary), "workspace", "dir", "--project", str(resolution)],
@@ -344,8 +344,8 @@ class TestsFlextInfraCodegenUpgWorkspace:
         )
         u.Tests.git_bootstrap(root, ("submodule", "deinit", "--force", "--all"))
         checkout = root / member.path
-        tm.that((checkout / c.PYPROJECT_FILENAME).exists(), eq=False)
-        tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.fail((checkout / c.PYPROJECT_FILENAME).exists())
+        tm.fail((root / c.Infra.UV_LOCK_FILENAME).exists())
         custom = root / c.Infra.MAKEFILE_CUSTOM_INCLUDE
         custom.write_text(
             custom.read_text(encoding="utf-8") + "post-upg:\n"
@@ -367,7 +367,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
             eq=True,
             msg=process.stdout + process.stderr,
         )
-        tm.that((checkout / c.PYPROJECT_FILENAME).is_file(), eq=True)
+        tm.ok((checkout / c.PYPROJECT_FILENAME).is_file())
         tm.that(
             tm.ok(
                 u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=checkout),
@@ -387,14 +387,14 @@ class TestsFlextInfraCodegenUpgWorkspace:
             (u.Infra.runtime_environment_dir(root) / "pyvenv.cfg").is_file(),
             eq=True,
         )
-        tm.that((checkout / ".venv").exists(), eq=False)
-        tm.that((checkout / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.fail((checkout / ".venv").exists())
+        tm.fail((checkout / c.Infra.UV_LOCK_FILENAME).exists())
         tm.that(process.stdout, has=f"hook-native-lock-satisfied {root}")
 
         # The running Makefile does not yet declare this new Git member. Its
         # generated successor must include it in the containing root's lock.
         added_checkout = self._added_member_checkout(root, tmp_path)
-        tm.that((added_checkout / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.fail((added_checkout / c.Infra.UV_LOCK_FILENAME).exists())
         expanded = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "upg"],
@@ -407,8 +407,8 @@ class TestsFlextInfraCodegenUpgWorkspace:
             eq=True,
             msg=expanded.stdout + expanded.stderr,
         )
-        tm.that((root / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
+        tm.ok((root / c.Infra.UV_LOCK_FILENAME).is_file())
         tm.that(expanded.stdout, has=f"hook-native-lock-satisfied {root}")
         for project in (checkout, added_checkout):
-            tm.that((project / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
-        tm.that((added_checkout / ".venv").exists(), eq=False)
+            tm.fail((project / c.Infra.UV_LOCK_FILENAME).exists())
+        tm.fail((added_checkout / ".venv").exists())

@@ -128,7 +128,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(
             FlextInfraImportNormalization.normalize_source(
                 project_root=project,
@@ -219,7 +219,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(
             FlextInfraImportNormalization.normalize_source(
                 project_root=project, file_path=module, source=normalized
@@ -312,7 +312,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     def test_generic_bound_retains_its_declared_provider(
@@ -353,7 +353,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     def test_facade_dependency_retains_its_external_provider(
@@ -401,7 +401,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     @pytest.mark.parametrize(
@@ -446,7 +446,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     @pytest.mark.parametrize("stale_root_export", [False, True])
@@ -486,7 +486,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     def test_forward_inline_import_is_hoisted(cls, tmp_path: Path) -> None:

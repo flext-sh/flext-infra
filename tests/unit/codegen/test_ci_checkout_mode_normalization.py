@@ -40,4 +40,4 @@ class TestsFlextInfraCiCheckoutModeNormalization:
             commands.index(f"{make.ci.variable}={make.ci.value} make {verb}")
             for verb in ci_verbs
         ]
-        tm.that(normalize_at < min(approval_at), eq=True)
+        tm.ok(normalize_at < min(approval_at))

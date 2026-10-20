@@ -60,7 +60,7 @@ class TestsFlextInfraImportDag:
         report: m.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
 
     def test_forward_facets_and_type_checking_reverse_edges_pass(
         self,
@@ -85,4 +85,4 @@ class TestsFlextInfraImportDag:
         report: m.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)

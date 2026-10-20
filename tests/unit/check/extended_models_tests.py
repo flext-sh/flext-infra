@@ -192,7 +192,7 @@ class TestsFlextInfraModels:
 
         tm.that(execution.finding_count, eq=1)
         tm.that(project.total_findings, eq=1)
-        tm.that(project.passed, eq=False)
+        tm.fail(project.passed)
 
     @staticmethod
     def test_passed_all_gates_pass() -> None:
@@ -203,7 +203,7 @@ class TestsFlextInfraModels:
             project="p",
             gates={"lint": exec1, "format": exec2},
         )
-        tm.that(project.passed, eq=True)
+        tm.ok(project.passed)
 
     @staticmethod
     def test_passed_one_gate_fails() -> None:
@@ -214,7 +214,7 @@ class TestsFlextInfraModels:
             project="p",
             gates={"lint": exec1, "format": exec2},
         )
-        tm.that(not project.passed, eq=True)
+        tm.ok(not project.passed)
 
     def test_error_summary_with_multiple_projects_and_gates(self) -> None:
         """Test error summary reporting across multiple projects and gates."""

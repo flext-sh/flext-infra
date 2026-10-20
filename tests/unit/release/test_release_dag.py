@@ -123,7 +123,7 @@ class TestsFlextInfraReleaseDag:
                 for entry in config.Infra.codegen.templates.entries
             }
             gitleaks = entries[c.Infra.RELEASE_GITLEAKS_CONFIG_PATH]
-            tm.that("config/build-constraints.txt" in entries, eq=False)
+            tm.fail("config/build-constraints.txt" in entries)
             tm.that(set(gitleaks.profiles), eq=set(c.Infra.MakeProfile))
             managed = {
                 item.path.as_posix(): item.policy

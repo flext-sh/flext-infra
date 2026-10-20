@@ -36,7 +36,7 @@ class TestsFlextInfraConfigLocalOverrides:
                 rejected.profiles,
                 profiles,
             )
-            tm.that(eligible, eq=False)
+            tm.fail(eligible)
             payload = make.model_dump(round_trip=True)
             payload.update(
                 verbs=(rejected,), violations_sweep_repair_verbs=(rejected.name,)
@@ -48,8 +48,8 @@ class TestsFlextInfraConfigLocalOverrides:
             operation.profiles,
             profiles,
         )
-        tm.that(eligible, eq=True)
-        tm.that("selector_free_verbs" in make.model_dump(), eq=False)
+        tm.ok(eligible)
+        tm.fail("selector_free_verbs" in make.model_dump())
 
     @staticmethod
     def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:

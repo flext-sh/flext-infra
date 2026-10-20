@@ -64,7 +64,7 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
         results = fixer.fix_workspace()
         project_names = [res.project for res in results]
-        tm.that("external-project" not in project_names, eq=True)
+        tm.ok("external-project" not in project_names)
         tm.that(project_names, has="test-proj")
 
     def test_project_without_src_returns_empty(self, tmp_path: Path) -> None:
@@ -108,4 +108,4 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.that(modified_paths, length_gte=1)
         tm.that(all(path.is_file() for path in modified_paths), where=bool)
         tm.that(any(path.name == "constants.py" for path in modified_paths), where=bool)
-        tm.that(any(path.name == "__init__.py" for path in modified_paths), eq=False)
+        tm.fail(any(path.name == "__init__.py" for path in modified_paths))

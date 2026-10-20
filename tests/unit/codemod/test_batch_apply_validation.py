@@ -228,7 +228,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         rule_ids = {item.rule_id for item in before.entries}
         tm.that(any(rule.startswith("pydantic-adapter-typeform") for rule in rule_ids))
-        tm.that("pydantic-typeform-import" in rule_ids, eq=False)
+        tm.fail("pydantic-typeform-import" in rule_ids)
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
             service = FlextInfraCodemodBatchApply(
@@ -242,7 +242,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             )
             tm.ok(service.execute())
             first = sample.read_bytes()
-            tm.that(progress.validated, eq=True)
+            tm.ok(progress.validated)
             after = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
             tm.that(len(after.entries), eq=0)
             tm.ok(service.execute())
@@ -328,11 +328,11 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 ):
                     service.execute()
                 tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-                tm.that(progress.validated, eq=False)
+                tm.fail(progress.validated)
                 return
             tm.ok(service.execute())
             first = sample.read_bytes()
-            tm.that(progress.validated, eq=True)
+            tm.ok(progress.validated)
             tm.ok(
                 u.Cli.run((
                     sys.executable,

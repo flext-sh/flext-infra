@@ -15,7 +15,7 @@ from typing import Literal
 
 import pytest
 
-from flext_infra import config, infra
+from flext_infra import config, infra, u
 from tests import c, m, p, r, t, tm, u
 
 
@@ -32,7 +32,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         self._write(package / "__init__.py", "")
         self._write(package / "_protocols" / "__init__.py", "")
-        width = config.Infra.tooling.tools.ruff.line_length
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         names = tuple(f"Owner{index}" + "X" * (width // 4) for index in range(5))
         imports: list[str] = []
         aliases: list[str] = []
@@ -127,7 +129,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         """Preserve MRO and lazy exports around the configured import budget."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         self._write(package / c.Infra.INIT_PY, "")
-        width = config.Infra.tooling.tools.ruff.line_length
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         owner = "Owner" + "X" * ((width + length_delta) // 2)
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
         self._write(package / family.directory / c.Infra.INIT_PY, "")
@@ -161,7 +165,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             f"root = Path({str(root)!r})\n"
             f"package = Path({str(package)!r})\n"
             f"facade = Path({str(facade)!r})\n"
-            "assert config.Infra.tooling.tools.ruff.line_length == "
+            "assert u.Infra.native_tool_setting(config.Infra.tooling, 'ruff', 'line-length', int) == "
             f"{width}\n"
             "from importlib import import_module\n"
             f"before = import_module({(package.name + '.utilities')!r}).u\n"
@@ -241,7 +245,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"{facade.read_text(encoding=c.DEFAULT_ENCODING)}"
             ),
         )
-        tm.that(result.stdout.endswith(consumer.stdout), eq=True)
+        tm.ok(result.stdout.endswith(consumer.stdout))
         checked = tm.ok(
             u.Cli.run_raw(
                 (
@@ -676,7 +680,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 )
             tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
         tm.that(projections[0], eq=projections[1])
-        tm.that("DepartedOwner" in projections[0], eq=False)
+        tm.fail("DepartedOwner" in projections[0])
         self._write(facade, projections[0])
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         output = tm.ok(
@@ -886,7 +890,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             if not relocated:
                 tm.that(edits, empty=True)
                 return dict(sources)
-            tm.that(len(edits) > 0, eq=True)
+            tm.ok(len(edits) > 0)
             proposed = dict(sources)
             proposed.update({edit.file_path: edit.updated_source for edit in edits})
             tm.that(
@@ -1729,7 +1733,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(output.outcome))
         tm.that(
             output.stderr,
             has="ModuleNotFoundError: No module named 'nonexistent_facade_owner'",

@@ -16,6 +16,7 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -96,7 +97,7 @@ class TestsFlextInfraTypeGates:
                         encoding="utf-8",
                     )
                     execution = gate.check(root, context)
-                    tm.that(execution.result.passed, eq=True)
+                    tm.ok(execution.result.passed)
                     tm.that(
                         [
                             line.partition("Cache Dir:")[2].strip()
@@ -105,9 +106,9 @@ class TestsFlextInfraTypeGates:
                         ],
                         eq=[str(cache)],
                     )
-                    tm.that(cache.is_dir(), eq=True)
-                    tm.that(any(path.is_file() for path in cache.rglob("*")), eq=True)
-                tm.that((root / ".mypy_cache").exists(), eq=False)
+                    tm.ok(cache.is_dir())
+                    tm.ok(any(path.is_file() for path in cache.rglob("*")))
+                tm.fail((root / ".mypy_cache").exists())
             tm.that(
                 {path.name for path in shared_root.iterdir()},
                 eq={"fixture-alpha", "fixture-beta"},
@@ -167,7 +168,7 @@ class TestsFlextInfraTypeGates:
 
         result = FlextInfraMypyGate(project).check(project, checker_context)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(
             tuple(issue.code for issue in result.issues),
             has=c.Infra.ToolOutcome.ERROR,
@@ -300,7 +301,7 @@ class TestsFlextInfraTypeGates:
 
         result = FlextInfraMypyGate(project).check(project, checker_context)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         messages = "\n".join(issue.message for issue in result.issues)
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
 
@@ -475,7 +476,7 @@ class TestsFlextInfraTypeGates:
         gate_class: type[FlextInfraGate],
     ) -> None:
         """Detected Python content, not a pass receipt, selects the type gates."""
-        tm.that(gate_class(tmp_path).selected_for(tmp_path), eq=False)
+        tm.fail(gate_class(tmp_path).selected_for(tmp_path))
         tm.that(
             gate_class(real_python_package).selected_for(real_python_package),
             eq=True,
@@ -565,3 +566,32 @@ class TestsFlextInfraTypeGates:
         )
         tm.that(markdown, lacks=f"- {FlextInfraPyrightGate.gate_id}:")
         tm.that(markdown, lacks=f"- {FlextInfraPyreflyGate.gate_id}:")
+
+
+class TestsFlextInfraOwnedPythonCoverage:
+    """Native checks include all owned roots without importing entrypoints."""
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "relative_path", ["infra/probe.py", "automation/probe.py", "entry.py"]
+    )
+    @pytest.mark.parametrize("gate_class", [FlextInfraRuffLintGate, FlextInfraMypyGate])
+    def test_nonstandard_python_targets_report_real_findings(
+        checker_context: m.Infra.GateContext,
+        relative_path: str,
+        gate_class: type[FlextInfraGate],
+    ) -> None:
+        """A clean conventional root cannot hide a defect in another owned target."""
+        project = checker_context.repository_root
+        source = project / relative_path
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("value = missing_name\n", encoding="utf-8")
+
+        result = gate_class(project).check(project, checker_context)
+
+        tm.fail(result.result.passed)
+        tm.that(
+            any(issue.file.endswith(relative_path) for issue in result.issues),
+            truth=True,
+        )

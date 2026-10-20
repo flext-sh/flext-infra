@@ -47,7 +47,7 @@ for entry in distribution.entry_points:
         )
 core = importlib.import_module("flext_core")
 assert core.r[str].ok("runtime").map(str.upper).value == "RUNTIME"
-assert core.r[str].fail("expected-runtime-failure").failure
+tm.fail(core.r[str].fail("expected-runtime-failure"))
 installed = {
     entry.metadata["Name"].lower().replace("_", "-").replace(".", "-")
     for entry in importlib.metadata.distributions()

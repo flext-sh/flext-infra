@@ -48,7 +48,9 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
 
         """
         compact = f"{indent}from {mod} import {', '.join(parts)}"
-        line_length = config.Infra.tooling.tools.ruff.line_length
+        line_length = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         if len(compact) <= line_length:
             return (compact,)
         wrapped_open = f"{indent}from {mod} import ("
@@ -87,7 +89,9 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             compact = (
                 f"{indent}from {parent_mod or '.'} import {child_name} as {export_name}"
             )
-            line_length = config.Infra.tooling.tools.ruff.line_length
+            line_length = u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
             if len(compact) <= line_length:
                 return (compact,)
             nested_indent = f"{indent}    "

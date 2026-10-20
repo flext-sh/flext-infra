@@ -38,7 +38,7 @@ class TestsFlextInfraLockfilePolicyProjection:
             ),
         )
 
-        tm.that(u.Tests.is_tracked_under(rendered, lock_filename), eq=True)
+        tm.ok(u.Tests.is_tracked_under(rendered, lock_filename))
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
@@ -64,4 +64,4 @@ class TestsFlextInfraLockfilePolicyProjection:
             ),
         )
 
-        tm.that(u.Tests.is_tracked_under(rendered, relative_path), eq=False)
+        tm.fail(u.Tests.is_tracked_under(rendered, relative_path))

@@ -29,18 +29,19 @@ class TestsFlextInfraSourceEpochRevalidation:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         cache = package / "__pycache__"
         cache.mkdir()
-        with u.Infra.facade_source_project(root) as (project, _, _):
+        with ExitStack() as lifecycle:
+            project, _, _ = lifecycle.enter_context(u.Infra.facade_source_project(root))
             resource = project.get_folder(package.relative_to(root).as_posix())
             children = {child.name for child in resource.get_children()}
-            tm.that(cache.name in children, eq=False)
+            tm.that(cache.name in children, truth=False)
             project.verify_source_states()
             cache.rmdir()
-            with pytest.raises(ValueError, match="source directory membership changed"):
-                project.verify_source_states()
             tm.that(
                 {child.name for child in resource.get_children()},
                 eq=children,
             )
+            with pytest.raises(ValueError, match="source directory membership changed"):
+                lifecycle.close()
 
     @staticmethod
     @pytest.mark.parametrize("nested_consumer", [False, True])
@@ -111,9 +112,9 @@ class TestsFlextInfraSourceEpochRevalidation:
                         if file.path == consumer / c.Infra.INIT_PY
                     )
                     consumed = {state.path for state in planned.source_states}
-                    tm.that(provider in consumed, eq=True)
-                    tm.that(base in consumed, eq=True)
-                    tm.that(unrelated in consumed, eq=False)
+                    tm.that(provider in consumed, truth=True)
+                    tm.that(base in consumed, truth=True)
+                    tm.that(unrelated in consumed, truth=False)
 
     @staticmethod
     def test_source_adoption_does_not_adopt_permission_failures(
@@ -149,7 +150,7 @@ class TestsFlextInfraSourceEpochRevalidation:
             project.source_successor(),
         ):
             raise original
-        tm.that(failure.value is original, eq=True)
+        tm.that(failure.value is original, truth=True)
 
     @staticmethod
     def test_source_adoption_rejects_invalid_topology(tmp_path: Path) -> None:
@@ -160,7 +161,7 @@ class TestsFlextInfraSourceEpochRevalidation:
         source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
         with u.Infra.facade_source_project(root) as (project, _, _):
             with project.source_consumption() as consumed:
-                tm.that(project.source_query(alias, "isfile"), eq=False)
+                tm.that(project.source_query(alias, "isfile"), truth=False)
             with project.source_successor() as successor:
                 alias.symlink_to(source)
                 try:
@@ -191,10 +192,10 @@ class TestsFlextInfraSourceEpochRevalidation:
         changed.write_text("VALUE = 3\n", encoding=c.DEFAULT_ENCODING)
         with pytest.raises(ValueError, match="atomic source changed") as failure:
             contexts.close()
-        tm.that(project.source_epoch_failure is failure.value, eq=True)
+        tm.that(project.source_epoch_failure is failure.value, truth=True)
         with project.source_successor() as successor:
             adopted = tm.ok(successor.adopt_source_consumption(valid.receipt()))
-            tm.that(adopted is valid.receipt(), eq=False)
+            tm.that(adopted is valid.receipt(), truth=False)
             tm.that(
                 successor.adopt_source_consumption(stale.receipt()).failure, eq=True
             )
@@ -205,15 +206,15 @@ class TestsFlextInfraSourceEpochRevalidation:
                 successor.adopt_source_consumption(valid.receipt().model_copy())
             with successor.source_consumption() as replayed:
                 successor.replay_source_consumption(adopted)
-                tm.that(successor.source_state(independent) is original, eq=True)
+                tm.that(successor.source_state(independent) is original, truth=True)
                 tm.that(successor.source_text(changed), eq="VALUE = 3\n")
-            tm.that(original in replayed.receipt().inputs, eq=True)
+            tm.that(original in replayed.receipt().inputs, truth=True)
             with (
                 successor.source_consumption(),
                 pytest.raises(ValueError, match="original epoch"),
             ):
                 successor.replay_source_consumption(valid.receipt())
-        tm.that(project.source_epoch_failure is failure.value, eq=True)
+        tm.that(project.source_epoch_failure is failure.value, truth=True)
         tm.that(project.source_text(changed), eq="VALUE = 1\n")
 
     @staticmethod
@@ -226,7 +227,7 @@ class TestsFlextInfraSourceEpochRevalidation:
         contexts = ExitStack()
         project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
         with project.source_consumption() as election:
-            tm.that(project.source_query(born, "isfile"), eq=False)
+            tm.that(project.source_query(born, "isfile"), truth=False)
         with project.source_consumption() as dependent:
             project.replay_source_consumption(election.receipt())
         born.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
@@ -240,7 +241,7 @@ class TestsFlextInfraSourceEpochRevalidation:
                 successor.adopt_source_consumption(dependent.receipt()).failure, eq=True
             )
             with successor.source_consumption() as expanded:
-                tm.that(successor.source_query(born, "isfile"), eq=True)
+                tm.that(successor.source_query(born, "isfile"), truth=True)
                 successor.source_text(born)
         born.write_text("VALUE = 2\n", encoding=c.DEFAULT_ENCODING)
         with successor.source_successor() as next_epoch:
@@ -305,7 +306,7 @@ class TestsFlextInfraSourceEpochRevalidation:
             sys.setprofile(previous)
         tm.that(analysis.exception, eq=None)
         rendered = b"\n".join(file.desired_content or b"" for file in analysis.files)
-        tm.that(b"After" in rendered, eq=True)
+        tm.that(b"After" in rendered, truth=True)
         tm.that(calls[left], eq=2)
         if not topology:
             tm.that(calls[right], eq=1)
@@ -315,7 +316,7 @@ class TestsFlextInfraSourceEpochRevalidation:
                 if file.path == right / c.Infra.INIT_PY
             )
             reused = next(file for file in analysis.files if file.path == first.path)
-            tm.that(reused is first, eq=True)
+            tm.that(reused is first, truth=True)
 
     @staticmethod
     def test_continuous_edits_exhaust_configured_bound(tmp_path: Path) -> None:
@@ -350,4 +351,4 @@ class TestsFlextInfraSourceEpochRevalidation:
         finally:
             sys.setprofile(previous)
         tm.that(edits, eq=config.Infra.codegen.source_replan_limit + 1)
-        tm.that(failure.value is conflicts[0], eq=True)
+        tm.that(failure.value is conflicts[0], truth=True)

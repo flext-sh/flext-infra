@@ -21,9 +21,9 @@ class TestsFlextInfraAuditorContract:
         params = m.Infra.AuditScopeParams()
         tm.that(params.check, eq="all")
         tm.that(params.docstring_min, none=True)
-        tm.that("budgets" in params.model_dump(), eq=False)
-        tm.that("strict" in params.model_dump(), eq=False)
-        tm.that("strict_mode" in FlextInfraDocAuditor.model_fields, eq=False)
+        tm.fail("budgets" in params.model_dump())
+        tm.fail("strict" in params.model_dump())
+        tm.fail("strict_mode" in FlextInfraDocAuditor.model_fields)
 
     @staticmethod
     @pytest.mark.parametrize("strict", [False, True])

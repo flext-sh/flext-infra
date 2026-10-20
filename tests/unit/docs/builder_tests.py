@@ -45,7 +45,7 @@ class TestsFlextInfraBuilder:
     @staticmethod
     def test_build_report_frozen() -> None:
         """Test BuildReport is frozen (immutable)."""
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.ok(m.Infra.DocsPhaseReport.model_config.get("frozen"))
 
     @staticmethod
     @pytest.mark.parametrize(

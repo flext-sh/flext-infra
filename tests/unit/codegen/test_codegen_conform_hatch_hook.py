@@ -153,4 +153,4 @@ class TestsFlextInfraCodegenConformHatchHook:
         )
 
         tm.that(u.Tests.codegen_file_text(second), eq=u.Tests.codegen_file_text(first))
-        tm.that(u.Infra.codegen_file_requires_effect(second), eq=False)
+        tm.fail(u.Infra.codegen_file_requires_effect(second))

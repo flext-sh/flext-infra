@@ -235,7 +235,7 @@ class TestsVerifyLanes:
             output.out + output.err,
             has=f"inconclusive unique ref: refs/heads/{branch}",
         )
-        tm.that("abandoned unique ref" in output.out + output.err, eq=False)
+        tm.fail("abandoned unique ref" in output.out + output.err)
 
     @classmethod
     def test_open_pr_allows_unique_lane_and_unintegrated_retirement_refuses(
@@ -285,7 +285,7 @@ class TestsVerifyLanes:
             apply_changes=True,
         ).execute()
         tm.fail(rejected, has="unintegrated lane")
-        tm.that(lane.is_dir(), eq=True)
+        tm.ok(lane.is_dir())
 
     @classmethod
     def test_stale_base_and_expired_receipt_fail_without_mutation(
@@ -408,7 +408,7 @@ class TestsVerifyLanes:
             apply_changes=True,
         ).execute()
         tm.fail(rejected, has="continue the existing candidate, not another lane")
-        tm.that(lane.exists(), eq=False)
+        tm.fail(lane.exists())
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
 
     @classmethod

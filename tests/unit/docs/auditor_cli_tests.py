@@ -51,8 +51,8 @@ class TestsFlextInfraAuditorCli:
             ),
             eq=True,
         )
-        tm.that((workspace / ".reports/docs/audit-report.md").exists(), eq=True)
-        tm.that((workspace / "flext-a/.reports/docs/audit-report.md").exists(), eq=True)
+        tm.ok((workspace / ".reports/docs/audit-report.md").exists())
+        tm.ok((workspace / "flext-a/.reports/docs/audit-report.md").exists())
         tm.that(
             not (workspace / "flext-b/.reports/docs/audit-report.md").exists(),
             eq=True,
@@ -81,7 +81,7 @@ class TestsFlextInfraAuditorCli:
         )
         tm.that(result, eq=1)
         captured = capsys.readouterr()
-        tm.that("Audit completed successfully" in captured.out + captured.err, eq=False)
+        tm.fail("Audit completed successfully" in captured.out + captured.err)
         tm.that(
             (workspace / ".reports/docs/audit-report.md").read_text(encoding="utf-8"),
             has="missing.md",
@@ -99,7 +99,7 @@ class TestsFlextInfraAuditorCli:
             main(["docs", "audit", "--repository-root", str(workspace), option]),
             ne=0,
         )
-        tm.that((workspace / ".reports/docs/audit-report.md").exists(), eq=False)
+        tm.fail((workspace / ".reports/docs/audit-report.md").exists())
 
     @staticmethod
     def test_auditor_cli_medium_finding_exits_nonzero(tmp_path: Path) -> None:

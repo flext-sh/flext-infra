@@ -62,9 +62,9 @@ class TestsFlextInfraLazyInitProcessing:
 
         result = service.plan_files()
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(init_path.read_bytes(), eq=original)
-        tm.that(str(init_path) in service.modified_files, eq=True)
+        tm.ok(str(init_path) in service.modified_files)
 
     @staticmethod
     def test_every_nested_level_is_lazy_formatted_and_idempotent(
@@ -132,7 +132,7 @@ class TestsFlextInfraLazyInitProcessing:
             f"{package_root.name}.services._parts.runtime.worker",
             "FlextTestsWorker",
         )
-        tm.that(worker_import in level_four_imports, eq=True)
+        tm.ok(worker_import in level_four_imports)
         tm.that(contents[-1], contains="FlextTestsWorker")
         tm.that(contents[-1], contains='"worker"')
         tm.that(contents[0], contains="FlextTestsWorker")
@@ -190,4 +190,4 @@ class TestsFlextInfraLazyInitProcessing:
         result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
-        tm.that(unit_path.exists(), eq=False)
+        tm.fail(unit_path.exists())

@@ -97,7 +97,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.projects[0].relocation_findings, eq=0)
         protocols_file = pkg / "protocols.py"
-        tm.that(protocols_file.exists(), eq=True)
+        tm.ok(protocols_file.exists())
 
         protocols_source = protocols_file.read_text(encoding="utf-8")
         tm.that(protocols_source, has="class ServiceContract(Protocol):")
@@ -133,7 +133,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.projects[0].relocation_findings, eq=0)
         tm.that(service_file.read_text(encoding="utf-8"), has="logger = ")
-        tm.that((pkg / "protocols.py").exists(), eq=True)
+        tm.ok((pkg / "protocols.py").exists())
         tm.that(
             (pkg / "protocols.py").read_text(encoding="utf-8"),
             has="class ServiceContract(Protocol):",
@@ -170,7 +170,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
         tm.that(report.projects, empty=False)
-        tm.that(report.projects[0].relocation_findings > 0, eq=True)
+        tm.ok(report.projects[0].relocation_findings > 0)
         tm.that(alias_file.read_text(encoding="utf-8"), eq=alias_source)
 
     @staticmethod
@@ -195,7 +195,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             apply=False,
         )
 
-        tm.that(report.projects[0].relocation_findings > 0, eq=True)
+        tm.ok(report.projects[0].relocation_findings > 0)
 
     @staticmethod
     def test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future(
@@ -242,11 +242,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(apply=True)
 
         rewritten_lines = target_file.read_text(encoding="utf-8").splitlines()
-        tm.that(rewritten_lines[0].startswith('"""Improved test base'), eq=True)
+        tm.ok(rewritten_lines[0].startswith('"""Improved test base'))
         future_index = rewritten_lines.index("from __future__ import annotations")
         import_index = rewritten_lines.index("from pathlib import Path")
-        tm.that(future_index > 0, eq=True)
-        tm.that(future_index < import_index, eq=True)
+        tm.ok(future_index > 0)
+        tm.ok(future_index < import_index)
 
     @staticmethod
     def test_namespace_enforcer_does_not_rewrite_indented_import_aliases(
@@ -349,7 +349,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
         receipt = (workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH).resolve()
-        tm.that(receipt.exists(), eq=True)
+        tm.ok(receipt.exists())
         published = json.loads(receipt.read_text(encoding="utf-8"))
         tm.that(published["workspace"], eq=str(workspace))
         tm.that(published["projects"], empty=False)
@@ -386,8 +386,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.fail(result, has="Namespace violations found")
         receipt = (workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH).resolve()
         published = json.loads(receipt.read_text(encoding="utf-8"))
-        tm.that(published["projects"][0]["relocation_findings"] > 0, eq=True)
-        tm.that(published["has_violations"], eq=True)
+        tm.ok(published["projects"][0]["relocation_findings"] > 0)
+        tm.ok(published["has_violations"])
 
     @staticmethod
     def test_namespace_enforcer_reports_detection_only_findings_separately(
@@ -415,9 +415,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
         tm.that(report.projects[0].relocation_findings, eq=0)
-        tm.that(report.projects[0].has_violations, eq=True)
-        tm.that(any(row.after for row in report.projects[0].rule_deltas), eq=True)
-        tm.that((pkg / "protocols.py").exists(), eq=True)
+        tm.ok(report.projects[0].has_violations)
+        tm.ok(any(row.after for row in report.projects[0].rule_deltas))
+        tm.ok((pkg / "protocols.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_apply_clears_the_pending_relocations(
@@ -442,9 +442,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         pending = enforcer.enforce(apply=False)
         applied = enforcer.enforce(apply=True)
 
-        tm.that(pending.projects[0].relocation_findings > 0, eq=True)
+        tm.ok(pending.projects[0].relocation_findings > 0)
         tm.that(applied.projects[0].relocation_findings, eq=0)
-        tm.that((pkg / "protocols.py").exists(), eq=True)
+        tm.ok((pkg / "protocols.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_invalid_declaration_fails_before_any_effect(
@@ -480,7 +480,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         with pytest.raises(TypeError, match="must be a boolean"):
             FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(apply=True)
 
-        tm.that((healthy_pkg / "protocols.py").exists(), eq=False)
+        tm.fail((healthy_pkg / "protocols.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_render_text_reports_the_totals(
@@ -550,9 +550,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             all(change == 0 for change in report.cross_rule_delta.values()), eq=True
         )
         tm.that(sum(report.after_rule_counts.values()), eq=expected.findings)
-        tm.that(any(row.after == 0 for row in report.rule_deltas), eq=True)
+        tm.ok(any(row.after == 0 for row in report.rule_deltas))
         tm.that(report.relocation_findings, eq=0)
-        tm.that(report.has_violations, eq=True)
+        tm.ok(report.has_violations)
         tm.that((pkg / "service.py").read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
@@ -601,9 +601,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that((row.before, row.after, row.introduced), eq=(0, 1, 1))
         tm.that(report.cross_rule_delta[rule_id], eq=row.after - row.before)
         tm.that(report.relocation_findings, eq=0)
-        tm.that(report.relocation_resolved > 0, eq=True)
+        tm.ok(report.relocation_resolved > 0)
         tm.that(report.relocation_introduced, eq=0)
-        tm.that(published.has_violations, eq=True)
+        tm.ok(published.has_violations)
         tm.that(FlextInfraNamespaceEnforcer.render_text(published), has=rule_id)
 
     @staticmethod
@@ -652,4 +652,4 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
                         for rule_id in counts
                     },
                 )
-            tm.that(project.relocation_resolved > 0, eq=True)
+            tm.ok(project.relocation_resolved > 0)

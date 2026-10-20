@@ -960,13 +960,13 @@ class FlextInfraGate:
         return result.value
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        """Return every first-class project-owned Python directory.
+        """Return every first-class project-owned Python target.
 
         Returns:
-            Every first-class project-owned Python directory.
+            Owned Python directories and standalone root modules.
 
         """
-        return self._dirs_with_py(project_dir, config.Infra.source_scan.roots)
+        return self._python_targets(project_dir)
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

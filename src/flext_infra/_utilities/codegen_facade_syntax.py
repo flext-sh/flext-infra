@@ -27,7 +27,10 @@ from libcst import (
 from libcst.metadata import PositionProvider
 
 from flext_infra import config, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
 class FlextInfraUtilitiesCodegenFacadeSyntax:
@@ -189,7 +192,9 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
         return module.visit(
             FlextInfraUtilitiesCodegenFacadeSyntax.WrapImports(
                 module,
-                config.Infra.tooling.tools.ruff.line_length,
+                FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                    config.Infra.tooling, "ruff", "line-length", int
+                ),
             ),
         ).code
 

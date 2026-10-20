@@ -191,7 +191,7 @@ class TestsFlextInfraCheckReportContract:
         tm.that(report.properties, none=False)
         project_result = report.properties.results[0]
         execution = project_result.gates["pyright"]
-        tm.that(project_result.passed, eq=False)
+        tm.fail(project_result.passed)
         tm.that(execution.outcome, eq=native.outcome)
         tm.that(execution.issues, eq=native.issues)
         tm.that(
@@ -299,7 +299,7 @@ class TestsFlextInfraCheckReportContract:
             ),
             ne=0,
         )
-        tm.that(reports.exists(), eq=False)
+        tm.fail(reports.exists())
 
     @staticmethod
     @pytest.mark.parametrize("parent_link", [False, True])
@@ -330,7 +330,7 @@ class TestsFlextInfraCheckReportContract:
             ),
             ne=0,
         )
-        tm.that(reports.exists(), eq=False)
+        tm.fail(reports.exists())
 
     @staticmethod
     @pytest.mark.parametrize("broken", [False, True])
@@ -381,7 +381,7 @@ class TestsFlextInfraCheckReportContract:
             ),
             ne=0,
         )
-        tm.that(reports.exists(), eq=False)
+        tm.fail(reports.exists())
 
     def test_file_selection_uses_declared_member_context(
         self,
@@ -456,4 +456,4 @@ class TestsFlextInfraCheckReportContract:
             ne=0,
         )
         tm.that(selected.read_bytes(), eq=before)
-        tm.that(reports.exists(), eq=False)
+        tm.fail(reports.exists())

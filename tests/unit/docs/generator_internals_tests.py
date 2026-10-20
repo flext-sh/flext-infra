@@ -144,7 +144,7 @@ class TestsFlextInfraDocsGeneratorInternals:
             apply=True,
         )
 
-        tm.that(result.changed, eq=True)
+        tm.ok(result.changed)
         tm.that(generated.read_text(), has="<!-- TOC START -->")
         tm.that(generated.read_text(), has="[Section](#section)")
 
@@ -167,5 +167,5 @@ class TestsFlextInfraDocsGeneratorInternals:
 
         result = u.Infra.docs_write_if_needed(generated, content, apply=True)
 
-        tm.that(result.changed, eq=True)
+        tm.ok(result.changed)
         tm.that(generated.read_text(), eq=content)

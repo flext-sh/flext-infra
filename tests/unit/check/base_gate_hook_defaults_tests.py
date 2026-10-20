@@ -262,7 +262,7 @@ class TestsFlextInfraGateHookDefaults:
             self._Probe,
             tmp_path,
         )
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(execution.raw_output, has="NATIVE")
         tm.that(execution.raw_output, has=f"PROBE\t\t{self._KEPT_VALUE}\t")
         tm.that(execution.raw_output, lacks="forced")
@@ -278,11 +278,11 @@ class TestsFlextInfraGateHookDefaults:
             self._ClassDataOverride,
             tmp_path,
         )
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(execution.raw_output, has="PROBE\t\t\t")
         tm.that(execution.raw_output, lacks=self._KEPT_VALUE)
         tm.that(execution.raw_output, lacks="forced")
-        tm.that(replaced.exists(), eq=False)
+        tm.fail(replaced.exists())
         tm.that(kept_file.read_text(encoding="utf-8"), eq="stay\n")
 
     def test_method_override_keeps_env_and_validation(self, tmp_path: Path) -> None:
@@ -296,7 +296,7 @@ class TestsFlextInfraGateHookDefaults:
             },
         ):
             execution = self._EnvOverride(project).check(project, context)
-            tm.that(execution.result.passed, eq=True)
+            tm.ok(execution.result.passed)
             tm.that(
                 execution.raw_output,
                 has=f"PROBE\t\t{self._KEPT_VALUE}\t{self._MARKER_VALUE}",

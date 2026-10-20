@@ -81,7 +81,7 @@ class TestsFlextInfraSkillValidator:
         report: m.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill"),
         )
-        tm.that(not report.passed, eq=True)
+        tm.ok(not report.passed)
         tm.that(report.summary, contains="no rules.yml")
 
     @staticmethod
@@ -115,7 +115,7 @@ class TestsFlextInfraSkillValidator:
         report: m.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill"),
         )
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)
 
     @staticmethod
     def test_validate_scalar_rules_yml_yields_empty_success(
@@ -129,7 +129,7 @@ class TestsFlextInfraSkillValidator:
         report: m.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill"),
         )
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)
         tm.that(report.violations, empty=True)
 
     @staticmethod
@@ -193,7 +193,7 @@ class TestsFlextInfraSkillValidator:
                 mode=c.Infra.OperationMode.STRICT,
             ),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.summary, has="1 violations")
 
     def test_missing_custom_script_fails_closed(self, tmp_path: Path) -> None:
@@ -247,4 +247,4 @@ class TestsFlextInfraSkillValidator:
         )
 
         # Resolved templated baseline (counts.t=0) disallows the 1 real match.
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)

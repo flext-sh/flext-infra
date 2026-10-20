@@ -69,7 +69,7 @@ class TestsFlextInfraSemanticPublication:
     def test_cold_public_cli_composes_semantic_ports_without_an_import_cycle() -> None:
         """A fresh native CLI process must finish API composition before dispatch."""
         result = tm.ok(u.Cli.run((sys.executable, "-I", "-m", "flext_infra", "--help")))
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @staticmethod
     def test_public_workspace_factory_preserves_selected_rope_root(
@@ -170,7 +170,7 @@ class TestsFlextInfraSemanticPublication:
                     ),
                 )
             )
-        tm.that(consumer in artifact.candidate.updates, eq=True)
+        tm.ok(consumer in artifact.candidate.updates)
         tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
         captured = tm.ok(u.Cli.atomic_read_binary_file_state(driver, required=True))
         hydrated = m.Infra.SemanticRenamePlan.model_validate_json(
@@ -215,7 +215,7 @@ class TestsFlextInfraSemanticPublication:
         )
         if kind == "module":
             origin, target = artifact.moves[0]
-            tm.that(origin.exists(), eq=False)
+            tm.fail(origin.exists())
             tm.that(stat.S_IMODE(target.stat().st_mode), eq=source.mode)
         for receiver in artifact.consumer_roots:
             package = next(
@@ -384,7 +384,7 @@ class TestsFlextInfraSemanticPublication:
         """Native runtime acceptance never replaces source or driver snapshots."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(tmp_path)
         candidate = artifact.candidate
-        tm.that(driver.path in {state.path for state in candidate.inputs}, eq=False)
+        tm.fail(driver.path in {state.path for state in candidate.inputs})
         tm.ok(
             FlextInfraAccessorMigrationReportMixin.validate_candidate(
                 candidate,
@@ -557,7 +557,7 @@ class TestsFlextInfraSemanticPublication:
             )
         tm.that(declaration.read_bytes(), eq=before)
         tm.that(consumer.read_bytes(), eq=changed)
-        tm.that(declaration.with_name("renamed.py").exists(), eq=False)
+        tm.fail(declaration.with_name("renamed.py").exists())
 
     @staticmethod
     def test_joint_phases_reconcile_an_unchanged_initializer_later_owned_by_lazy_init(
@@ -619,7 +619,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(output.outcome))
 
     def test_same_byte_foreign_replacement_of_unchanged_destination_is_rejected(
         self,
@@ -764,7 +764,7 @@ class TestsFlextInfraSemanticPublication:
         )
         if foreign_parent:
             tm.fail(result, has="parent chain changed")
-            tm.that(target.exists(), eq=False)
+            tm.fail(target.exists())
             tm.that(
                 foreign.read_text(encoding=c.DEFAULT_ENCODING), eq="foreign owner\n"
             )
@@ -787,7 +787,7 @@ class TestsFlextInfraSemanticPublication:
                     ),
                 ),
             )
-            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(consumer.outcome))
             tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
@@ -832,11 +832,11 @@ class TestsFlextInfraSemanticPublication:
             candidate = candidate_root / current.relative_to(mod_workspace)
             retired = candidate_root / previous.relative_to(mod_workspace)
             tm.that(candidate.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
-            tm.that(retired.exists(), eq=False)
+            tm.fail(retired.exists())
             if candidate_root != mod_workspace:
                 previews.append(candidate_root)
                 tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
-                tm.that(current.parent.exists(), eq=False)
+                tm.fail(current.parent.exists())
             consumer = tm.ok(
                 u.Cli.run(
                     (
@@ -858,7 +858,7 @@ class TestsFlextInfraSemanticPublication:
                     ),
                 ),
             )
-            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(consumer.outcome))
             return r[bool].ok(accepted)
 
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
@@ -869,12 +869,12 @@ class TestsFlextInfraSemanticPublication:
         tm.that(len(previews), eq=1)
         if accepted:
             tm.that(set(tm.ok(published)), eq={previous, current})
-            tm.that(previous.exists(), eq=False)
+            tm.fail(previous.exists())
             tm.that(current.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
         else:
             tm.fail(published, has="candidate acceptance rejected")
             tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
-            tm.that(current.parent.exists(), eq=False)
+            tm.fail(current.parent.exists())
 
     def test_preflight_and_commit_accept_the_real_published_consumer(
         self,
@@ -977,7 +977,7 @@ class TestsFlextInfraSemanticPublication:
             ),
         )
         if stage == "preflight":
-            tm.that(added.is_file(), eq=True)
+            tm.ok(added.is_file())
             for plan in plans:
                 tm.that(plan.path.read_bytes(), eq=plan.before.content)
         else:
@@ -1042,12 +1042,12 @@ class TestsFlextInfraSemanticPublication:
                 if not isinstance(params, m.Infra.RunCommand):
                     pytest.fail("Native semantic checker did not receive RunCommand")
                 commands.append(params)
-                tm.that(params.repository_root == root, eq=False)
+                tm.fail(params.repository_root == root)
                 tm.that(params.file, eq=None)
                 tm.that(params.gates, empty=True)
                 tm.that(params.projects, empty=True)
-                tm.that(params.apply, eq=False)
-                tm.that(params.check_only, eq=True)
+                tm.fail(params.apply)
+                tm.ok(params.check_only)
                 tm.that(params.ruff_args, eq=None)
                 tm.that(params.pyright_args, eq=None)
                 candidate = params.repository_root / target.relative_to(root)
@@ -1081,7 +1081,7 @@ class TestsFlextInfraSemanticPublication:
             "FlextInfraWorkspaceChecker._execute_payload",
             "FlextInfraWorkspaceChecker.run_projects",
         ):
-            tm.that(expected in calls, eq=True)
+            tm.ok(expected in calls)
         tm.that(
             calls.index("FlextInfraCodegenTransaction.consume_source_runtime")
             < calls.index("FlextInfraWorkspaceChecker.execute_candidate"),
@@ -1156,7 +1156,7 @@ class TestsFlextInfraSemanticPublication:
                     str(candidate_root / path.relative_to(mod_workspace)),
                 ))
             )
-            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=False)
+            tm.fail(u.Cli.process_succeeded(consumer.outcome))
             if raises:
                 raise failure
             return r[bool].fail(str(failure), exception=failure)
@@ -1168,7 +1168,7 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=mod_workspace,
                     options=m.Infra.SemanticPublicationOptions(validator=reject),
                 )
-            tm.that(raised.value is failure, eq=True)
+            tm.ok(raised.value is failure)
         else:
             rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
@@ -1176,7 +1176,7 @@ class TestsFlextInfraSemanticPublication:
                 options=m.Infra.SemanticPublicationOptions(validator=reject),
             )
             tm.fail(rejected, has=str(failure))
-            tm.that(rejected.exception is failure, eq=True)
+            tm.ok(rejected.exception is failure)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
@@ -1229,7 +1229,7 @@ class TestsFlextInfraSemanticPublication:
             tm.fail(result)
         else:
             tm.ok(result)
-        tm.that(initializer.read_bytes() != original, eq=True)
+        tm.ok(initializer.read_bytes() != original)
         consumer = tm.ok(
             u.Cli.run_raw(
                 (
@@ -1368,7 +1368,7 @@ class TestsFlextInfraSemanticPublication:
                     ),
                 ),
             )
-            tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(fresh.outcome))
             return r[bool].ok(value=True)
 
         tm.ok(
@@ -1436,7 +1436,7 @@ class TestsFlextInfraSemanticPublication:
                 options=candidate_options,
             )
             tm.ok(consumer)
-            tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(consumer.value.outcome))
             return (
                 r[bool].ok(value=True)
                 if accepted
@@ -1517,7 +1517,7 @@ class TestsFlextInfraSemanticPublication:
                     cwd=candidate_root,
                 ),
             )
-            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(consumer.outcome))
             if raises:
                 raise failure
             return r[bool].fail(str(failure))
@@ -1529,7 +1529,7 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=mod_workspace,
                     options=m.Infra.SemanticPublicationOptions(validator=reject),
                 )
-            tm.that(raised.value is failure, eq=True)
+            tm.ok(raised.value is failure)
         else:
             tm.fail(
                 FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -1631,7 +1631,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
     def test_generated_later_plan_rejects_authored_earlier_plan(
         self,

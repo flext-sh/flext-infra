@@ -92,7 +92,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         tm.that(diagnostic.warning_count, eq=int(finding == "warning"))
         tm.that(diagnostic.collection_skipped_count, eq=int(finding == "module-skip"))
         tm.that(diagnostic.collection_failed_count, eq=int(finding == "module-error"))
-        tm.that((events.parent / "suite-outcome.json").exists(), eq=False)
+        tm.fail((events.parent / "suite-outcome.json").exists())
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             (events.parent / "selection-outcome.json").read_text(),
         )
@@ -197,7 +197,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         )
         tm.that(diagnostics.warning_count, eq=1)
         tm.that(diagnostics.warning_lines[0], contains="stable inventory finding")
-        tm.that((context.parent / "suite-outcome.json").exists(), eq=False)
+        tm.fail((context.parent / "suite-outcome.json").exists())
 
     @staticmethod
     @pytest.mark.slow

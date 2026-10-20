@@ -35,14 +35,14 @@ class TestsFlextInfraDepsDetectorInit:
             limits="/custom/limits.toml",
         )
         tm.that(params.repository_root, eq=tmp_path.resolve())
-        tm.that(params.no_pip_check, eq=True)
-        tm.that(params.dry_run, eq=True)
+        tm.ok(params.no_pip_check)
+        tm.ok(params.dry_run)
         tm.that(params.output_format, eq="json")
         tm.that(str(params.output_path), eq=str(output_path.resolve()))
-        tm.that(params.quiet, eq=True)
-        tm.that(params.no_fail, eq=True)
-        tm.that(params.typings, eq=True)
-        tm.that(params.apply_typings, eq=True)
+        tm.ok(params.quiet)
+        tm.ok(params.no_fail)
+        tm.ok(params.typings)
+        tm.ok(params.apply_typings)
         tm.that(str(params.limits_path), eq=str(Path("/custom/limits.toml").resolve()))
 
     @staticmethod
@@ -95,4 +95,4 @@ class TestsFlextInfraDepsDetectorInit:
             ),
         )
         tm.that(projects, eq=sorted((workspace, workspace / "flext-a")))
-        tm.that(unlisted in projects, eq=False)
+        tm.fail(unlisted in projects)

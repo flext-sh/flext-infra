@@ -46,7 +46,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
                 f"--consumer-roots={tmp_path / 'absent-receiver'}",
                 "--apply",
             ])
-        tm.that(result != 0, eq=True)
+        tm.ok(result != 0)
         tm.that(
             output.getvalue(),
             has="consumer roots must be existing absolute checkout roots",
@@ -132,7 +132,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             tm.that(artifact.moves, eq=((declaration, destination),))
             tm.that(artifact.candidate.updates[declaration], eq=None)
             tm.that(artifact.candidate.updates[destination], eq=declaration.read_text())
-            tm.that(destination.exists(), eq=False)
+            tm.fail(destination.exists())
         else:
             tm.that(
                 tm.not_none(artifact.candidate.updates[declaration]),

@@ -143,7 +143,7 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
 
         tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
-        tm.that((lane / "member" / ".git").exists(), eq=False)
+        tm.fail((lane / "member" / ".git").exists())
 
     def test_symlinked_git_marker_is_rejected(self, tmp_path: Path) -> None:
         """Test symlinked git marker is rejected."""

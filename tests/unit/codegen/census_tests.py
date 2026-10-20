@@ -87,8 +87,8 @@ class TestsFlextInfraCodegenCensus:
         tm.that((fixable.module, fixable.line), eq=("src/subject.py", 1))
         tm.that((detect.module, detect.line), eq=("src/subject.py", 2))
         tm.that(fixable.message, eq="Observed fixable")
-        tm.that(fixable.fixable, eq=True)
-        tm.that(detect.fixable, eq=False)
+        tm.ok(fixable.fixable)
+        tm.fail(detect.fixable)
 
     @pytest.mark.parametrize(
         "violation",

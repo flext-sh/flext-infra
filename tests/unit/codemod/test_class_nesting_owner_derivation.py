@@ -245,7 +245,7 @@ __all__: list[str] = ["LIMIT", "write"]
         tm.that(
             len([node for node in tree.body if isinstance(node, ast.ClassDef)]), eq=1
         )
-        tm.that(all(node.name.startswith(prefix) for node in classes), eq=True)
+        tm.ok(all(node.name.startswith(prefix) for node in classes))
         root_owner = next(node for node in tree.body if isinstance(node, ast.ClassDef))
         exports = next(
             node

@@ -37,8 +37,8 @@ def _apply_custom_make_and_assert_clean(
         initial_workspace=workspace,
     )
     tm.ok(result)
-    tm.that("WARN:" in captured.readouterr().out, eq=False)
-    tm.that(Path(f"{custom}.rej").exists(), eq=False)
+    tm.fail("WARN:" in captured.readouterr().out)
+    tm.fail(Path(f"{custom}.rej").exists())
 
 
 class TestsFlextInfraCodegenMakeContracts:
@@ -68,7 +68,7 @@ class TestsFlextInfraCodegenMakeContracts:
             result.error or "",
             has="custom.mk line 1 is not a private custom handler",
         )
-        tm.that(rejection.exists(), eq=False)
+        tm.fail(rejection.exists())
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
@@ -137,7 +137,7 @@ class TestsFlextInfraCodegenMakeContracts:
         )
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(output.outcome))
         tm.that(output.stdout, has=["help", "setup", "check", "test", "fmt", "docs"])
         tm.that(output.stdout, lacks="Custom hooks (custom.mk):")
         tm.that(output.stdout, lacks="WHAT")
@@ -180,9 +180,9 @@ class TestsFlextInfraCodegenMakeContracts:
         pre_at = combined.find("HOOK_PRE")
         body_at = combined.find("HANDLER_BODY")
         post_at = combined.find("HOOK_POST")
-        tm.that(pre_at >= 0 and body_at >= 0 and post_at >= 0, eq=True)
-        tm.that(pre_at < body_at, eq=True)
-        tm.that(body_at < post_at, eq=True)
+        tm.ok(pre_at >= 0 and body_at >= 0 and post_at >= 0)
+        tm.ok(pre_at < body_at)
+        tm.ok(body_at < post_at)
 
     @staticmethod
     def test_custom_make_accepts_pre_post_verb_hooks(

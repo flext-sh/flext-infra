@@ -78,7 +78,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
 
         facts = u.Infra.codemod_project_facts(root, (self._cycle_rule(),))
 
-        tm.that(expected <= facts.import_modules.keys(), eq=True)
+        tm.ok(expected <= facts.import_modules.keys())
         tm.that(
             set(outsiders).isdisjoint(facts.import_modules),
             eq=True,
@@ -146,7 +146,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 facts=facts,
             ),
         )
-        tm.that(verdict, eq=False)
+        tm.fail(verdict)
         late = live.with_name("late.py")
         late.write_text("from demo.live import value\n", encoding="utf-8")
         with pytest.raises(ValueError, match="absent from the project import graph"):
@@ -298,7 +298,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         tm.that(target_paths, has=stub)
         tm.that(target_paths, has=root_stub)
         tm.that(target_paths, eq=discovered)
-        tm.that(set(outsiders).isdisjoint(target_paths), eq=True)
+        tm.ok(set(outsiders).isdisjoint(target_paths))
         python_targets = {
             path for path in target_paths if path.suffix == c.Infra.EXT_PYTHON
         }
@@ -402,7 +402,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             result = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(project,))
             )
-            tm.that(result.failure, eq=True)
+            tm.ok(result.failure)
             exception = result.exception
             if not isinstance(exception, PermissionError):
                 pytest.fail(
@@ -412,7 +412,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             tm.that(exception.errno, eq=errno.EACCES)
             with pytest.raises(PermissionError) as unwrap_error:
                 result.unwrap()
-            tm.that(unwrap_error.value is exception, eq=True)
+            tm.ok(unwrap_error.value is exception)
         finally:
             blocked.chmod(original_mode)
 
@@ -455,7 +455,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             FlextInfraNamespaceValidator(repository_root=project).build_report()
         )
 
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         for path in paths:
             tm.that(
                 any(

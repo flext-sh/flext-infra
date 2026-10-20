@@ -14,7 +14,7 @@ from types import MappingProxyType
 import flext_core
 import pytest
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 from flext_infra.gates import FlextInfraRuffLintGate
@@ -880,7 +880,9 @@ class TestsFlextInfraCodegenGeneration:
         Derive the long target from the configured width rather than freezing
         today's compact-versus-expanded boundary.
         """
-        module = "demo_pkg." + "owner" * config.Infra.tooling.tools.ruff.line_length
+        module = "demo_pkg." + "owner" * u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         plan = self._plan(
             "demo_pkg",
             ("FlextDemoGeneratedFacade",),

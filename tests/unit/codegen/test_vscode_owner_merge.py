@@ -145,11 +145,11 @@ class TestsFlextInfraVscodeOwnerMerge:
             )
         )
         declaration = tm.ok(u.Infra.load_repository_declaration_inputs(tmp_path))
-        tm.that(declaration.spec.read_only, eq=True)
-        tm.that(path in {state.path for state in declaration.sources}, eq=True)
+        tm.ok(declaration.spec.read_only)
+        tm.ok(path in {state.path for state in declaration.sources})
         complete = u.Infra.load_codegen_inputs(tmp_path)
-        tm.that(complete.failure, eq=True)
-        tm.that(complete.exception is not None, eq=True)
+        tm.ok(complete.failure)
+        tm.ok(complete.exception is not None)
         tm.ok(
             u.Cli.yaml_dump(
                 path,
@@ -159,8 +159,8 @@ class TestsFlextInfraVscodeOwnerMerge:
             )
         )
         invalid = u.Infra.load_repository_declaration_inputs(tmp_path)
-        tm.that(invalid.failure, eq=True)
-        tm.that(invalid.exception is not None, eq=True)
+        tm.ok(invalid.failure)
+        tm.ok(invalid.exception is not None)
 
     @staticmethod
     def test_captured_yaml_values_are_isolated_and_new_bytes_revalidated() -> None:
@@ -362,7 +362,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         settings_path = root / governed.path
         file = next(item for item in plan.files if item.path == settings_path)
         tm.that(file.tracking, eq=governed.tracking)
-        tm.that(settings_path.exists(), eq=False)
+        tm.fail(settings_path.exists())
         tm.that(
             u.Tests.codegen_file_text(file),
             eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root)),
@@ -388,12 +388,12 @@ class TestsFlextInfraVscodeOwnerMerge:
             for item in config.Infra.codegen.managed_files
             if item.owner == c.Infra.CODEGEN_OWNER_VSCODE
         )
-        tm.that(root / governed.path in first.written_files, eq=True)
+        tm.ok(root / governed.path in first.written_files)
         rendered = (root / governed.path).read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(rendered, eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root)))
         second = tm.ok(infra.codegen_generate(request))
         tm.that(second.written_files, empty=True)
-        tm.that((root / c.Infra.VENV_DIR).exists(), eq=False)
+        tm.fail((root / c.Infra.VENV_DIR).exists())
 
     @staticmethod
     def test_invalid_member_config_keeps_versioned_workspace_settings(
@@ -455,9 +455,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
         with pytest.raises(ValueError, match="settings") as raised:
             rejected.unwrap()
-        tm.that(raised.value is rejected.exception, eq=True)
+        tm.ok(raised.value is rejected.exception)
         tm.that(settings_path.read_text(encoding=c.DEFAULT_ENCODING), eq=rendered)
-        tm.that(local.is_file(), eq=True)
+        tm.ok(local.is_file())
 
     @staticmethod
     def test_editor_artifact_is_versioned() -> None:
@@ -566,7 +566,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             ),
         )
         settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
-        tm.that(settings["editor.fontLigatures"], eq=True)
+        tm.ok(settings["editor.fontLigatures"])
         tm.that(settings["workbench.colorTheme"], eq="operator-theme")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
@@ -607,7 +607,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             else:
                 tm.that(doc[key], eq=expected_value)
         for stripped in config.Infra.codegen.vscode.stripped_keys:
-            tm.that(stripped in doc, eq=False)
+            tm.fail(stripped in doc)
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(
             doc[search_paths_key],
@@ -681,9 +681,9 @@ class TestsFlextInfraVscodeOwnerMerge:
 
         tm.ok(result)
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(result.value)
-        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
-        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
-        tm.that("ruff.nativeServer" in doc, eq=False)
+        tm.fail("python.analysis.typeCheckingMode" in doc)
+        tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
+        tm.fail("ruff.nativeServer" in doc)
 
     @staticmethod
     def test_attached_member_keeps_portable_opened_folder_settings(
@@ -737,7 +737,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             doc["operator.note"],
             eq="${workspaceFolder}/.venv-is-not-the-environment",
         )
-        tm.that(str(tmp_path) in rendered, eq=False)
+        tm.fail(str(tmp_path) in rendered)
         migrated = tm.ok(
             FlextInfraCodegen.vscode_declaration_delta(
                 member,

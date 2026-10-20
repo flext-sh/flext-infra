@@ -69,17 +69,16 @@ class FlextInfraUtilitiesPyrefly:
 
     @staticmethod
     def pyrefly_project_excludes(declared_globs: t.StrSequence) -> t.StrSequence:
-        """Compose the declared Pyrefly excludes with the generated-source globs.
+        """Compose Pyrefly exclusions with the shared analysis artifact catalog.
 
-        The generated-source trees come from their single codegen artifact
-        key, so every Pyrefly projection excludes exactly the trees the other
-        analyzers exclude.
+        Every analyzer consumes the same declared file and directory patterns,
+        including foreign generated sources and ephemeral tool output.
 
         Returns:
             The sorted, deduplicated ``project-excludes`` values.
 
         """
-        return sorted({*declared_globs, *config.Infra.codegen.generated_source_globs})
+        return sorted({*declared_globs, *config.Infra.codegen.analyzer_exclude_globs})
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPyrefly"]

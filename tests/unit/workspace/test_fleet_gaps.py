@@ -176,29 +176,29 @@ class TestsFlextInfraWorkspaceFleetGaps:
         )
         member_row = next(row for row in report.repos if row.name == self.MEMBER)
         consumer_row = next(row for row in report.repos if row.name == "consumer-x")
-        tm.that(member_row.present, eq=True)
+        tm.ok(member_row.present)
         tm.that(member_row.dirty_paths, eq=("stray.txt",))
         tm.that(member_row.unmerged_branches, eq=1)
         tm.that(member_row.lint_findings, eq=None)
         tm.that(member_row.pyrefly_findings, eq=None)
         tm.that(member_row.codemod_findings, eq=7)
-        tm.that(member_row.agents_doc_present, eq=True)
-        tm.that(member_row.skills_stamp_present, eq=True)
+        tm.ok(member_row.agents_doc_present)
+        tm.ok(member_row.skills_stamp_present)
         tm.that(
             member_row.skills_stamp_distribution_version,
             eq="0.5.0",
         )
-        tm.that(member_row.beads_config_present, eq=True)
+        tm.ok(member_row.beads_config_present)
         tm.that(member_row.open_pull_requests, eq=())
-        tm.that(consumer_row.present, eq=False)
+        tm.fail(consumer_row.present)
         tm.that(consumer_row.dirty_paths, eq=())
         tm.that(consumer_row.unmerged_branches, eq=0)
         tm.that(consumer_row.lint_findings, eq=None)
         tm.that(consumer_row.pyrefly_findings, eq=None)
         tm.that(consumer_row.codemod_findings, eq=0)
-        tm.that(consumer_row.agents_doc_present, eq=False)
-        tm.that(consumer_row.skills_stamp_present, eq=False)
-        tm.that(consumer_row.beads_config_present, eq=False)
+        tm.fail(consumer_row.agents_doc_present)
+        tm.fail(consumer_row.skills_stamp_present)
+        tm.fail(consumer_row.beads_config_present)
         gh_log = tmp_path / "bin" / f"{c.Infra.GH}.log"
         tm.that(gh_log.read_text(encoding="utf-8"), has="pr list")
 
@@ -361,7 +361,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
             tm.that(native, none=False)
             native.unlink()
             tm.that(self._fleet_gaps(root, selected), ne=0)
-            tm.that((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists(), eq=False)
+            tm.fail((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists())
 
     def test_unexecuted_gates_remain_unknown_in_selected_receipt(
         self,
@@ -389,7 +389,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         (project,) = results
         tm.that(tuple(project.gates), eq=(c.Infra.LINT,))
         lint = project.gates[c.Infra.LINT]
-        tm.that(lint.result.passed, eq=False)
+        tm.fail(lint.result.passed)
         tm.that(lint.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(lint.issues, empty=False)
         native = lint.raw_receipt
@@ -434,7 +434,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         )
         with self._gh_on_path(tmp_path, "exit 0\n"):
             tm.that(self._fleet_gaps(root, selected), ne=0)
-        tm.that((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists(), eq=False)
+        tm.fail((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists())
 
     def test_file_scoped_receipt_never_claims_full_project_quality(
         self,

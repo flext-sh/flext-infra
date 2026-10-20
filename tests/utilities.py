@@ -198,7 +198,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 TypeError: If payload value is not a number.
 
             """
-            tm.that(isinstance(value, (int, float)), eq=True)
             if not isinstance(value, (int, float)):
                 msg = "payload value is not a number"
                 raise TypeError(msg)
@@ -371,7 +370,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     and file.desired_content is not None
                 )
             )
-            tm.that(paths <= {file.path for file in artifacts}, eq=True)
+            tm.that(paths <= {file.path for file in artifacts}, truth=True)
             tm.ok(
                 u.Tests.materialize_codegen_plans(
                     r[tuple[m.Infra.CodegenFilePlan, ...]].ok(artifacts),
@@ -455,7 +454,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     cwd=root,
                 ),
             )
-            tm.that((root / ".venv").exists(), eq=False)
+            tm.that((root / ".venv").exists(), truth=False)
             return root
 
         @staticmethod
@@ -500,12 +499,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             source = Path(__file__).resolve().parents[1]
             root = parent / config.Infra.name
             paths = tm.not_none(u.Infra.git_tracked_scope_paths(source))
-            tm.that(bool(paths), eq=True)
+            tm.that(bool(paths), truth=True)
             for path in paths:
                 destination = root / path.relative_to(source)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 _ = shutil.copy2(path, destination, follow_symlinks=False)
-            tm.that((root / ".venv").exists(), eq=False)
+            tm.that((root / ".venv").exists(), truth=False)
             u.Tests.initialize_git_repo(
                 root,
                 origin_url=u.Tests.repository_ref(config.Infra.name).url,

@@ -68,11 +68,18 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             compact = f"    {export_name} = {expression}"
             lines.extend(
                 (compact,)
-                if len(compact) <= config.Infra.tooling.tools.ruff.line_length
+                if len(compact)
+                <= u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff", "line-length", int
+                )
                 else (f"    {export_name} = (", f"        {expression}", "    )")
             )
         if any(
-            len(line) > config.Infra.tooling.tools.ruff.line_length for line in lines
+            len(line)
+            > u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
+            for line in lines
         ):
             message = f"Owned child static binding exceeds Ruff line length: {mod}"
             raise ValueError(message)
@@ -190,7 +197,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         local_package_root, source_project, occupied_names = context
         if (
             len(f"    from {mod} import (")
-            > config.Infra.tooling.tools.ruff.line_length
+            > u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
             and mod.rpartition(".")[0] == local_package_root
             and source_project is not None
             and all(attr for _name, attr in items)

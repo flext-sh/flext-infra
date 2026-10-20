@@ -19,7 +19,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -51,7 +51,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
             ),
             eq=True,
         )
-        tm.that(result.plan is not None, eq=True)
+        tm.ok(result.plan is not None)
         if result.plan is None:
             pytest.fail("generation did not return its actual plan")
         destinations = tuple(file.path for file in result.plan.files)
@@ -76,7 +76,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
             ),
         )
         tm.that(checked.plan, eq=None)
-        tm.that(checked.verified_publication is not None, eq=True)
+        tm.ok(checked.verified_publication is not None)
         tm.that(checked.written_files, eq=())
         tm.that(
             any(
@@ -102,8 +102,8 @@ class TestsFlextInfraCodegenConfigLifecycle:
         test_paths = tuple(
             sorted({
                 path
-                for directory in config.Infra.tooling.tools.pytest.test_paths
-                for pattern in config.Infra.tooling.tools.pytest.python_files
+                for directory in u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "testpaths", t.StrSequence)
+                for pattern in u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence)
                 for path in (root / directory).rglob(pattern)
                 if path.is_file()
             }),
@@ -405,7 +405,7 @@ print(
         )
         first = tm.ok(infra.codegen_conform(request))
         plan = tm.not_none(first.plan)
-        tm.that(bool(first.written_files), eq=True)
+        tm.ok(bool(first.written_files))
         for file in plan.files:
             tm.that(file.path.read_bytes(), eq=file.desired_content)
         context = m.Infra.GateContext(repository_root=root, reports_dir=root)
@@ -428,7 +428,7 @@ print(
                 request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
             ),
         )
-        tm.that(checked.verified_publication is not None, eq=True)
+        tm.ok(checked.verified_publication is not None)
         tm.that(checked.written_files, eq=())
         tm.that(
             tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True)),
@@ -483,7 +483,7 @@ print(
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         rejected = infra.codegen_conform(request)
-        tm.that(rejected.failure, eq=True)
+        tm.ok(rejected.failure)
         tm.that(str(rejected.error), has="TID251")
         tm.that(str(rejected.error), has="MappingProxyType")
         tm.that(
@@ -555,7 +555,7 @@ if obsolete != context.lock_path:
     refused = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
         root, repository, lock_state=foreign_lock,
     )
-    assert refused.failure
+    tm.fail(refused)
     assert "captured elected lock" in refused.error
 assert u.Cli.atomic_read_binary_file_state(
     context.lock_path, required=True,
@@ -596,7 +596,7 @@ u.Cli.atomic_write_binary_file_guarded(
 changed = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
     root, repository
 )
-assert changed.failure
+tm.fail(changed)
 assert "RECORD" in changed.error
 print("installed Git declaration: complete groups, extras and RECORD authentication")
 """

@@ -44,7 +44,7 @@ class TestsFlextInfraRealGateRunners:
             self.make_ctx(tmp_path),
         )
 
-        tm.that(not result.result.passed, eq=True)
+        tm.ok(not result.result.passed)
         tm.that(len(result.issues), gte=1)
 
     @staticmethod
@@ -65,7 +65,7 @@ class TestsFlextInfraRealGateRunners:
             ),
         )
 
-        tm.that(not result.result.passed, eq=True)
+        tm.ok(not result.result.passed)
         tm.that([issue.code for issue in result.issues], has=["line-too-long"])
 
     @pytest.mark.slow
@@ -113,7 +113,7 @@ class TestsFlextInfraRealGateRunners:
         emitted = tm.ok(u.Cli.run_raw([sys.executable, str(script)], cwd=project_dir))
 
         tm.that(len(after.issues), lt=len(before.issues))
-        tm.that(not after.result.passed, eq=True)
+        tm.ok(not after.result.passed)
         tm.that(emitted.stderr, has='{"failed": true}')
 
     @pytest.mark.slow
@@ -203,7 +203,7 @@ class TestsFlextInfraRealGateRunners:
         gate = FlextInfraRuffLintGate(tmp_path)
         check_dirs = gate.check(project_dir, self.make_ctx(tmp_path))
 
-        tm.that(check_dirs.result.passed, eq=True)
+        tm.ok(check_dirs.result.passed)
         tm.that(check_dirs.issues, empty=True)
 
     def test_ruff_format_reports_real_reformat(self, tmp_path: Path) -> None:
@@ -219,7 +219,7 @@ class TestsFlextInfraRealGateRunners:
             self.make_ctx(tmp_path),
         )
 
-        tm.that(not result.result.passed, eq=True)
+        tm.ok(not result.result.passed)
 
     @staticmethod
     def test_ruff_format_fix_stays_within_owned_source_dirs(
@@ -244,7 +244,7 @@ class TestsFlextInfraRealGateRunners:
             ),
         )
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(source.read_text(encoding="utf-8"), eq="value = [1, 2, 3]\n")
 
     @pytest.mark.requires_engine("pyright")
@@ -268,5 +268,5 @@ class TestsFlextInfraRealGateRunners:
             self.make_ctx(tmp_path),
         )
 
-        tm.that(not result.result.passed, eq=True)
+        tm.ok(not result.result.passed)
         tm.that(len(result.issues), gte=1)

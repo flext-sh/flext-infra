@@ -234,8 +234,8 @@ class TestsFlextInfraDepsExtraPathsSync:
         # not receive the project root (it enumerates roots and aborts on the
         # same file resolving under two module names).
         expected_mypy = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
-        tm.that(isinstance(expected_extra, tuple), eq=True)
-        tm.that(isinstance(expected_mypy, tuple), eq=True)
+        tm.ok(isinstance(expected_extra, tuple))
+        tm.ok(isinstance(expected_mypy, tuple))
         doc = u.Cli.toml_document()
         tool = u.Cli.toml_table()
         pyright = u.Cli.toml_table()

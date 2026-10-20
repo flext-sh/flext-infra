@@ -45,7 +45,7 @@ class TestsFlextInfraDocsFixer:
 
         tm.ok(result)
         tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
-        tm.that((workspace / ".reports/docs/fix-report.md").exists(), eq=True)
+        tm.ok((workspace / ".reports/docs/fix-report.md").exists())
 
     @staticmethod
     def test_fix_check_apply_check_converges(tmp_path: Path) -> None:
@@ -56,18 +56,18 @@ class TestsFlextInfraDocsFixer:
         check = fixer.fix(workspace, apply=False)
         tm.ok(check)
         tm.that(check.value[0].result, eq=c.Infra.ResultStatus.FAIL)
-        tm.that(check.value[0].passed, eq=False)
+        tm.fail(check.value[0].passed)
         tm.that(check.value[0].changed_files, gt=0)
 
         applied = fixer.fix(workspace, apply=True)
         tm.ok(applied)
         tm.that(applied.value[0].result, eq=c.Infra.ResultStatus.OK)
-        tm.that(applied.value[0].passed, eq=True)
+        tm.ok(applied.value[0].passed)
 
         fixed_point = fixer.fix(workspace, apply=False)
         tm.ok(fixed_point)
         tm.that(fixed_point.value[0].result, eq=c.Infra.ResultStatus.OK)
-        tm.that(fixed_point.value[0].passed, eq=True)
+        tm.ok(fixed_point.value[0].passed)
         tm.that(fixed_point.value[0].changed_files, eq=0)
 
     @staticmethod
@@ -127,9 +127,9 @@ class TestsFlextInfraDocsFixer:
 
         tm.ok(result)
         content = document.read_text(encoding="utf-8")
-        tm.that("   ```\n" in content, eq=True)
-        tm.that("````\n" in content, eq=True)
-        tm.that("   \n```\n" in content, eq=False)
+        tm.ok("   ```\n" in content)
+        tm.ok("````\n" in content)
+        tm.fail("   \n```\n" in content)
 
     @staticmethod
     def test_fix_rewrites_bare_notest_fences_for_the_mkdocs_build(
@@ -153,5 +153,5 @@ class TestsFlextInfraDocsFixer:
 
         tm.ok(result)
         content = document.read_text(encoding="utf-8")
-        tm.that("```{.python .notest}" in content, eq=True)
-        tm.that("```python notest" in content, eq=False)
+        tm.ok("```{.python .notest}" in content)
+        tm.fail("```python notest" in content)

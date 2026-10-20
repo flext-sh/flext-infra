@@ -153,7 +153,7 @@ def test_greet_command() -> None:
         command=command,
     )
     invocation = cli.invoke_app(app, args=["greet", "--name", "Ada"])
-    tm.that(invocation.success, eq=True)
+    tm.ok(invocation.success)
     tm.that(invocation.value.exit_code, eq=c.Cli.EXIT_CODE_SUCCESS)
     assert greet_handler(GreetInput(name="Ada")) == "Hello, Ada!"
 ```

@@ -31,5 +31,5 @@ class Tests{{ class_stem }}Api:
                 else config.{{ ns }}.disabled_reply
             )
             tm.that(result.message, eq=expected)
-            tm.that(service.settings is runtime, eq=True)
-        tm.that(settings.{{ ns }}.enabled != adjusted.{{ ns }}.enabled, eq=True)
+            tm.ok(service.settings is runtime)
+        tm.ok(settings.{{ ns }}.enabled != adjusted.{{ ns }}.enabled)

@@ -263,7 +263,7 @@ class TestsFlextInfraSharedHelperPromotion:
             f"print(u.{helper}().value())\n"
         )
         tm.that(self._run(root, identity), eq="shared behavior")
-        tm.that(source.exists(), eq=True)
+        tm.ok(source.exists())
 
     @pytest.mark.parametrize("test_case", [False, True])
     def test_unused_helpers_and_real_test_cases_keep_their_declared_owner(

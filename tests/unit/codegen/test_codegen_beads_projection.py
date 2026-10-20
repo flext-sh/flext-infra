@@ -102,7 +102,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             parsed["dolt"],
             eq={"disable-event-flush": beads.dolt_disable_event_flush},
         )
-        tm.that("dolt.disable-event-flush" in parsed, eq=False)
+        tm.fail("dolt.disable-event-flush" in parsed)
         # A checkout with no workspace manifest declares city participation by
         # fleet default (True): the endpoint keys mirror the inherited city and
         # `types.custom` stays generator-owned.
@@ -122,7 +122,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
         # A fresh checkout has no checkout-owned identity.toml. Conform owns
         # the portable routing marker but never mints the ledger identity.
-        tm.that("project_id" in metadata, eq=False)
+        tm.fail("project_id" in metadata)
         tm.that(set(metadata), eq={"backend", "database", "dolt_mode", "dolt_database"})
         # gc writes this marker as a sorted-key JSON object; the projection uses
         # the same order so gc's first write after adoption is byte-identical.
@@ -176,7 +176,7 @@ class TestsFlextInfraCodegenBeadsProjection:
 
         if rendered_mise is None:
             pytest.fail("conform must produce the managed .mise.toml")
-        tm.that("make" in config.Infra.codegen.toolchain.tool_versions, eq=False)
+        tm.fail("make" in config.Infra.codegen.toolchain.tool_versions)
         tm.that(rendered_mise, lacks="\nmake = ")
         tm.that(rendered_mise, lacks="conda")
         tm.that(rendered_mise, lacks="stale")
@@ -358,12 +358,12 @@ class TestsFlextInfraCodegenBeadsProjection:
 
         state = FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
 
-        tm.that(state.failure, eq=False)
-        tm.that(state.value, eq=True)
+        tm.fail(state.failure)
+        tm.ok(state.value)
 
         (route / "stranger.txt").write_text("unexpected\n", encoding="utf-8")
 
         broken = FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
 
-        tm.that(broken.failure, eq=True)
-        tm.that(broken.error is not None and "stranger.txt" in broken.error, eq=True)
+        tm.ok(broken.failure)
+        tm.ok(broken.error is not None and "stranger.txt" in broken.error)

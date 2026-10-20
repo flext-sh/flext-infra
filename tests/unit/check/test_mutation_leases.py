@@ -11,10 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.gates import FlextInfraRuffFormatGate
-from tests import tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraMutationLeases:
@@ -48,10 +47,10 @@ class TestsFlextInfraMutationLeases:
                 with pytest.raises(TimeoutError):
                     applied.result(timeout=0.2)
                 tm.that(target.read_text(encoding="utf-8"), eq=before)
-            tm.that(applied.result().result.passed, eq=True)
+            tm.ok(applied.result().result.passed)
         tm.that(target.read_text(encoding="utf-8"), ne=before)
         tm.that(target.read_text(encoding="utf-8"), has="import os")
-        tm.that(gate.check(root, context).result.passed, eq=True)
+        tm.ok(gate.check(root, context).result.passed)
 
     @staticmethod
     def test_malformed_git_marker_is_not_a_file_scope(tmp_path: Path) -> None:
@@ -60,8 +59,8 @@ class TestsFlextInfraMutationLeases:
         marker.mkdir()
         request = m.Infra.GitRepoRequest(repo_root=tmp_path)
 
-        tm.that(u.Infra.git_mutation_scope(request).failure, eq=True)
-        tm.that((tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
+        tm.ok(u.Infra.git_mutation_scope(request).failure)
+        tm.fail((tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME).exists())
 
     @staticmethod
     def test_nested_git_scope_uses_original_worktree_journal(

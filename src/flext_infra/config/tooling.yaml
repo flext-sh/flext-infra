@@ -5,6 +5,10 @@ Infra:
     # Native options are free key/value pairs, grouped by their tool table.
     # The same catalog drives modernization and every projected template.
     settings:
+      pytest.ini_options:
+      - [asyncio_default_fixture_loop_scope, function]
+      - [python_files, ["*_test.py", "*_tests.py", "test_*.py"]]
+      - [testpaths, [tests]]
       pyright:
       - [ pythonPlatform, Linux ]
       - [ pythonVersion, "3.13" ]
@@ -25,9 +29,6 @@ Infra:
       - [ typeCheckingMode, strict ]
       - [ useLibraryCodeForTypes, true ]
     tools:
-      codespell:
-        check-filenames: true
-        ignore-words-list: crate,nd
       # Non-linter tool sections are config-owned as well.
       deptry:
         optional-dependencies-dev-groups: [ dev ]
@@ -373,10 +374,6 @@ Infra:
           follow-untyped-imports: true
           justification: >-
             Analyze Rope's installed source without suppressing import-untyped; https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports
-      pydantic-mypy:
-        init_forbid_extra: true
-        init_typed: true
-        warn_required_dynamic_aliases: true
       pyright:
         path-rules:
           # Source and tracked consumer surfaces are all
@@ -594,7 +591,6 @@ Infra:
         # failures.
         max-failures: 1
         enforcement-plugin: flext_tests_enforcement
-        asyncio-default-fixture-loop-scope: function
         progress-args: [ --verbose ]
         report-args: [ -ra, --durations=25, --durations-min=0.001, --tb=short ]
         diagnostic-args: [ -rA, --durations=0, --tb=long, --showlocals ]
@@ -645,13 +641,11 @@ Infra:
         profile-process-directory: profiles
         min-version: "8.0"
         python-classes: [ "Test*" ]
-        python-files: [ "*_test.py", "*_tests.py", "test_*.py" ]
         # Collect once from the canonical test root. The former list ended in
         # `.` and therefore traversed tests, source, docs, examples, scripts,
         # generated reports, and local runtime state a second time. Executable
         # documentation and auxiliary surfaces remain covered by explicit tests
         # and their lint/Markdown gates rather than duplicate pytest discovery.
-        test-paths: [ tests ]
         # pytest applies filterwarnings last-entry-wins; the conform phase +
         # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
         # "error" to survive re-conform. Only module::/once:: sort after 'error'

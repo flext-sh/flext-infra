@@ -23,7 +23,7 @@ class TestsFlextInfraDepsDetectorModels:
     def test_pip_check_report_creation() -> None:
         """Verify pip check report creation."""
         report = m.Infra.PipCheckReport(ok=True, lines=[])
-        tm.that(report.ok, eq=True)
+        tm.ok(report.ok)
         tm.that(report.lines, empty=True)
 
     @staticmethod

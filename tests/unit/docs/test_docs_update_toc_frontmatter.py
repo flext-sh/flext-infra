@@ -20,9 +20,9 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         )
         updated, changed = u.Infra.docs_contract_update_toc(content)
         tm.that(changed, eq=1)
-        tm.that(updated.startswith("---\n"), eq=True)
-        tm.that("# Documentation" in updated, eq=False)
-        tm.that("<!-- TOC START -->" in updated, eq=True)
+        tm.ok(updated.startswith("---\n"))
+        tm.fail("# Documentation" in updated)
+        tm.ok("<!-- TOC START -->" in updated)
         tm.that(
             updated.index("# ADR-001") < updated.index("<!-- TOC START -->"),
             eq=True,
@@ -50,8 +50,8 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         )
         updated, changed = u.Infra.docs_contract_update_toc(mangled)
         tm.that(changed, eq=1)
-        tm.that(updated.startswith("---\n"), eq=True)
-        tm.that(updated.startswith("# Documentation"), eq=False)
+        tm.ok(updated.startswith("---\n"))
+        tm.fail(updated.startswith("# Documentation"))
         tm.that(updated.count("<!-- TOC START -->"), eq=1)
         tm.that(
             updated.index("# ADR-001") < updated.index("<!-- TOC START -->"),
@@ -64,5 +64,5 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         content = "<!-- AUTO-GENERATED -->\n\nStub body.\n"
         updated, changed = u.Infra.docs_contract_update_toc(content)
         tm.that(changed, eq=1)
-        tm.that(updated.startswith("# Documentation\n"), eq=True)
-        tm.that("<!-- TOC START -->" in updated, eq=True)
+        tm.ok(updated.startswith("# Documentation\n"))
+        tm.ok("<!-- TOC START -->" in updated)

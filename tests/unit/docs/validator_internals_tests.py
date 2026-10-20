@@ -23,7 +23,7 @@ class TestsFlextInfraDocsValidatorInternals:
         skill = tmp_path / "SKILL.md"
         skill.write_text("# Skill\n\nADR: documented.\n", encoding="utf-8")
 
-        tm.that(u.Infra.docs_has_adr_reference(skill), eq=True)
+        tm.ok(u.Infra.docs_has_adr_reference(skill))
 
     @staticmethod
     def test_docs_load_required_skills_reads_architecture_config(
@@ -59,8 +59,8 @@ class TestsFlextInfraDocsValidatorInternals:
         root_scope, project_scope = scopes.value
         root_result = u.Infra.docs_write_todo(root_scope, apply_mode=True)
         project_result = u.Infra.docs_write_todo(project_scope, apply_mode=True)
-        tm.that(root_result.success, eq=True)
-        tm.that(root_result.value is False, eq=True)
-        tm.that(project_result.success, eq=True)
-        tm.that(project_result.value is True, eq=True)
-        tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
+        tm.ok(root_result.success)
+        tm.ok(root_result.value is False)
+        tm.ok(project_result.success)
+        tm.ok(project_result.value is True)
+        tm.ok((workspace / "flext-a/TODOS.md").exists())

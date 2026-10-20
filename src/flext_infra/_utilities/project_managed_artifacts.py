@@ -48,8 +48,26 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         return FlextInfraUtilitiesProjectManagedArtifacts.configuration_pairs(
-            document.settings[table]
+            document.settings.get(table, {})
         )
+
+    @staticmethod
+    def native_tool_setting[TValue](
+        document: m.Infra.ToolConfigDocument,
+        table: str,
+        key: str,
+        target: type[TValue],
+    ) -> TValue:
+        """Validate one declared native option at its typed consumer boundary.
+
+        Returns:
+            The configured value validated against the consumer's type.
+
+        """
+        options = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_settings(
+            document, table
+        )
+        return u.validate_value(target, options[key]).unwrap()
 
     @classmethod
     def load_codegen_inputs(
@@ -83,6 +101,49 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return result_type.ok(
             m.Infra.CodegenInputs(
                 spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_tooling_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[m.Infra.ToolingInputs]:
+        """Elect tooling policy and capture every consulted configuration layer.
+
+        Returns:
+            The project-specific document and unchanged source snapshots.
+
+        """
+        result_type = r[m.Infra.ToolingInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename="tooling.yaml",
+            projections=projections,
+            source_project=source_project,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        section = u.validate_value(
+            m.Infra.ToolConfigDocument,
+            u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
+        )
+        if section.failure:
+            return result_type.from_failure(section)
+        verified = (
+            cls._verify_unchanged_snapshots(document.value.sources)
+            if source_project is None
+            else r[bool].ok(value=True)
+        )
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.ToolingInputs(
+                document=section.value,
                 sources=document.value.sources,
             ),
         )

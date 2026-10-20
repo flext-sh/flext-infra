@@ -66,13 +66,13 @@ class TestsFlextInfraOrphanImport:
             "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    pass\n"
         )
         orphan = cst.parse_module("from typing import TYPE_CHECKING\n")
-        tm.that(type_checking_guarded(guarded), eq=True)
-        tm.that(type_checking_guarded(orphan), eq=False)
+        tm.ok(type_checking_guarded(guarded))
+        tm.fail(type_checking_guarded(orphan))
 
     def test_unrelated_qualified_guard_does_not_retain_orphan_import(self) -> None:
         """Only typing owns the qualified guard recognized by the cleaner."""
         source = (
             "from typing import TYPE_CHECKING\nif unrelated.TYPE_CHECKING:\n    pass\n"
         )
-        tm.that(type_checking_guarded(cst.parse_module(source)), eq=False)
+        tm.fail(type_checking_guarded(cst.parse_module(source)))
         tm.that(self._render(source), lacks="from typing import TYPE_CHECKING")

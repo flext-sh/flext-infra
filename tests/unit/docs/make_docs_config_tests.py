@@ -49,8 +49,8 @@ class TestsFlextInfraMakeDocsActionsConfig:
     def test_live_config_actions_stay_on_the_registered_cli_surface() -> None:
         """The declared workspace lifecycle dispatches only existing verbs."""
         docs = config.Infra.codegen.make.docs
-        tm.that(set(docs.actions) <= c.Infra.DOCS_ACTION_IDS, eq=True)
-        tm.that(set(docs.mutable_actions) <= set(docs.actions), eq=True)
+        tm.ok(set(docs.actions) <= c.Infra.DOCS_ACTION_IDS)
+        tm.ok(set(docs.mutable_actions) <= set(docs.actions))
 
     @staticmethod
     def test_synthetic_lifecycle_validates() -> None:

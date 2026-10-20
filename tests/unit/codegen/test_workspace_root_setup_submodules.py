@@ -25,7 +25,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
     @staticmethod
     def _git_stdout(repository: Path, *args: str) -> str:
         process = tm.ok(u.Cli.run_raw([c.Infra.GIT, *args], cwd=repository))
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(process.outcome))
         return process.stdout.strip()
 
     def _git_state(self, repository: Path) -> t.Pair[str, str]:
@@ -216,7 +216,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             ),
         )
 
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(process.outcome))
         tm.that(
             (workspace / "flext-core" / "pyproject.toml").is_file(),
             eq=True,
@@ -252,9 +252,9 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
 
         process = self._run_setup(workspace, env)
 
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
-        tm.that(bool(process.stderr), eq=True)
-        tm.that((workspace / "flext-core" / ".git").exists(), eq=False)
+        tm.fail(u.Cli.process_succeeded(process.outcome))
+        tm.ok(bool(process.stderr))
+        tm.fail((workspace / "flext-core" / ".git").exists())
 
     def test_make_setup_initializes_once_then_only_validates_present_checkout(
         self,
@@ -276,15 +276,15 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
                 start : rendered.index("# End SECTION: setup environment", start)
             ]
             pytest.fail(f"{process.stdout}{process.stderr}\n{excerpt}")
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
-        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+        tm.ok(u.Cli.process_succeeded(process.outcome))
+        tm.ok((workspace / "flext-core" / "pyproject.toml").is_file())
         child = workspace / "flext-core"
         state = self._git_state(child)
         gitlink = self._git_stdout(workspace, "rev-parse", "HEAD:flext-core")
         tm.that(state, eq=("", gitlink))
 
         second = self._run_setup(workspace, env)
-        tm.that(u.Cli.process_succeeded(second.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(second.outcome))
         tm.that(self._git_state(child), eq=state)
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "-c", "conflict"], cwd=child))
         process = self._run_setup(workspace, env)
@@ -292,7 +292,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         # A present checkout on its own named change lane is validated, never
         # repaired: containment of the recorded gitlink is the boundary, so the
         # branch name is preserved untouched by a green setup.
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(process.outcome))
         tm.that(self._git_state(child), eq=("conflict", state[1]))
 
     def _prepare_clone_state(
@@ -417,7 +417,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
                 "index",
             ),
         )
-        tm.that(index.exists(), eq=False)
+        tm.fail(index.exists())
         head = self._git_stdout(checkout, "rev-parse", "HEAD")
         local_content = state in {
             "untracked",
@@ -445,8 +445,8 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
                 msg=process.stdout + process.stderr,
             )
             tm.that(self._git_stdout(checkout, "rev-parse", "HEAD"), eq=pin)
-            tm.that((checkout / "pyproject.toml").is_file(), eq=True)
-            tm.that(index.is_file(), eq=True)
+            tm.ok((checkout / "pyproject.toml").is_file())
+            tm.ok(index.is_file())
             second = self._run_setup(workspace, env)
             tm.that(
                 u.Cli.process_succeeded(second.outcome),
@@ -467,7 +467,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             tm.that(self._git_stdout(checkout, "rev-parse", "HEAD"), eq=head)
             tm.that(index.read_bytes() if index.exists() else None, eq=prior_index)
             if state == "symlink-index":
-                tm.that(index.is_symlink(), eq=True)
+                tm.ok(index.is_symlink())
                 tm.that(index.readlink(), eq=tmp_path / "foreign-index")
             elif state == "extra-ref":
                 tm.that(
@@ -514,7 +514,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.that(process.outcome.raw_return_code, eq=2)
         tm.that(process.stderr, has=str(missing_origin))
         tm.that(process.stdout + process.stderr, lacks=credential)
-        tm.that((workspace / "flext-core" / ".git").exists(), eq=False)
+        tm.fail((workspace / "flext-core" / ".git").exists())
 
     def test_setup_environment_provisions_members_before_the_environment(
         self,
@@ -550,14 +550,14 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             ),
         )
 
-        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+        tm.ok((workspace / "flext-core" / "pyproject.toml").is_file())
         gitlink = self._git_stdout(workspace, "rev-parse", "HEAD:flext-core")
         tm.that(self._git_state(workspace / "flext-core"), eq=("", gitlink))
         output = process.stdout + process.stderr
         tm.that(output, has=["+ flext==", "+ flext-core=="], msg=output)
         tm.that(output, has="No module named flext_infra", msg=output)
         tm.that(output, lacks=["uv.lock", "WARN"])
-        tm.that((workspace / "uv.lock").exists(), eq=False)
+        tm.fail((workspace / "uv.lock").exists())
         tm.that(
             (u.Infra.runtime_environment_dir(workspace) / "pyvenv.cfg").is_file(),
             eq=True,

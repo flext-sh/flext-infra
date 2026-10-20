@@ -83,7 +83,7 @@ class TestsFlextInfraReleaseHelpers:
                 tmp_path,
                 release_dir,
             )
-            tm.that(checked.result.passed, eq=True)
+            tm.ok(checked.result.passed)
             tm.that(len(checked.issues), eq=0)
 
         @staticmethod
@@ -139,7 +139,7 @@ class TestsFlextInfraReleaseHelpers:
             notes = notes_path.read_text(encoding="utf-8")
             tm.ok(result)
             widest = max(len(line) for line in notes.splitlines())
-            tm.that(widest <= c.Infra.RELEASE_NOTES_LINE_LENGTH, eq=True)
+            tm.ok(widest <= c.Infra.RELEASE_NOTES_LINE_LENGTH)
 
         @staticmethod
         def test_generate_notes_is_deterministic(tmp_path: Path) -> None:
@@ -239,15 +239,15 @@ class TestsFlextInfraReleaseHelpers:
             )
 
             tm.ok(result)
-            tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+            tm.ok((workspace / "docs" / "CHANGELOG.md").is_file())
             # The markdown gate (MD012) rejects a trailing blank line, so a
             # first changelog ends with exactly one newline.
             changelog = (workspace / "docs" / "CHANGELOG.md").read_text(
                 encoding="utf-8",
             )
-            tm.that(changelog.endswith("\n"), eq=True)
-            tm.that(changelog.endswith("\n\n"), eq=False)
-            tm.that((workspace / "docs" / "releases" / "latest.md").is_file(), eq=True)
+            tm.ok(changelog.endswith("\n"))
+            tm.fail(changelog.endswith("\n\n"))
+            tm.ok((workspace / "docs" / "releases" / "latest.md").is_file())
             tm.that(
                 (
                     workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
@@ -296,8 +296,8 @@ class TestsFlextInfraReleaseHelpers:
                 )
             )
             tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
-            tm.that(changelog.endswith("\n"), eq=True)
-            tm.that(changelog.endswith("\n\n"), eq=False)
+            tm.ok(changelog.endswith("\n"))
+            tm.fail(changelog.endswith("\n\n"))
 
         @staticmethod
         def test_update_changelog_adds_default_header(tmp_path: Path) -> None:
@@ -357,7 +357,7 @@ class TestsFlextInfraReleaseHelpers:
             )
             for artifact in record.artifacts:
                 artifact_path = Path(artifact.path)
-                tm.that(artifact_path.is_file(), eq=True)
+                tm.ok(artifact_path.is_file())
                 tm.that(len(artifact.sha256), eq=64)
                 tm.that(
                     hashlib.sha256(artifact_path.read_bytes()).hexdigest(),

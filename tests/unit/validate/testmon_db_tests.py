@@ -91,8 +91,8 @@ class TestsFlextInfraTestmonDbInspector:
                 pre_run_digest=None,
             ).execute(),
         )
-        tm.that(state.seed_needed, eq=True)
-        tm.that(state.saveable, eq=True)
+        tm.ok(state.seed_needed)
+        tm.ok(state.saveable)
         tm.that(state.reason, eq="seed_ready")
 
     @staticmethod
@@ -118,8 +118,8 @@ class TestsFlextInfraTestmonDbInspector:
                 pre_run_digest=digest,
             ).execute(),
         )
-        tm.that(state.changed, eq=False)
-        tm.that(state.saveable, eq=False)
+        tm.fail(state.changed)
+        tm.fail(state.saveable)
         tm.that(state.reason, eq="unchanged")
 
     @staticmethod

@@ -83,6 +83,6 @@ class TestsFlextInfraCodegenMakeVerbContract:
             options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
         )
         output = tm.ok(outcome)
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(output.outcome))
         tm.that(output.stderr, has="make upg records the Mise release")
         tm.that(output.stdout + output.stderr, lacks="displays this contract")

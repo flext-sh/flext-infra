@@ -44,7 +44,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         return FlextInfraTestmonDbInspector(
-            repository_root=self.root,
+            repository_root=self.repository_root,
             db_path=self.testmon_db,
             pre_run_digest=digest,
         ).execute()
@@ -72,10 +72,10 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         coverage = execution_mode == c.Infra.PytestExecutionMode.COVERAGE
-        source_root = self.root
+        source_root = self.repository_root
         if self.target_file is not None:
             target_root = u.Infra.nearest_project_root(
-                self.root, self.root / self.target_file
+                self.repository_root, self.repository_root / self.target_file
             )
             if target_root is None:
                 msg = "test target has no declared project owner"
@@ -195,7 +195,7 @@ class FlextInfraPytestRunnerExecution(
         outcome = u.Cli.run_to_file(
             command,
             selection_log,
-            cwd=self.root,
+            cwd=self.repository_root,
             options=self._selection_process_options(execution_mode=execution_mode),
         ).unwrap()
         self._record_process_outcome(
@@ -284,14 +284,18 @@ class FlextInfraPytestRunnerExecution(
             Whether the project owns zero test files by design.
 
         """
-        pytest_settings = config.Infra.tooling.tools.pytest
         # The module patterns are the pytest SSOT's own python-files: a
         # project whose suites use another declared form (``*_tests.py``)
         # still owns its tests, and a hardcoded copy of the list here would
         # answer "owns no tests" for a live suite again.
-        patterns = pytest_settings.python_files
-        for root in pytest_settings.test_paths:
-            base = self.root / root
+        patterns = u.Infra.native_tool_setting(
+            config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence
+        )
+        roots = u.Infra.native_tool_setting(
+            config.Infra.tooling, "pytest.ini_options", "testpaths", t.StrSequence
+        )
+        for root in roots:
+            base = self.repository_root / root
             if not base.is_dir():
                 continue
             for pattern in patterns:
@@ -334,7 +338,7 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         capture = u.Infra.git_begin_gate_capture(
             m.Infra.GateCaptureBeginRequest(
-                repository_root=self.root,
+                repository_root=self.repository_root,
                 gate=c.Infra.VERB_TEST,
                 command=command,
                 intent=m.Infra.GateExecutionIntent(
@@ -350,7 +354,7 @@ class FlextInfraPytestRunnerExecution(
                 ),
                 runtime_identity=self.testmon_environment(execution_mode),
             ),
-            inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
+            inputs=u.Infra.load_codegen_inputs(self.repository_root).unwrap(),
         )
         u.Cli.atomic_write_text_file(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -359,7 +363,7 @@ class FlextInfraPytestRunnerExecution(
         outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
-            cwd=self.root,
+            cwd=self.repository_root,
             options=self._selection_process_options(
                 execution_mode=execution_mode,
                 live=True,
@@ -646,7 +650,7 @@ class FlextInfraPytestRunnerExecution(
                 report_root=report_dir,
                 runtime_identity=self.testmon_environment(selection.execution_mode),
             ),
-            inputs=u.Infra.load_codegen_inputs(self.root),
+            inputs=u.Infra.load_codegen_inputs(self.repository_root),
         ).unwrap()
 
     @staticmethod

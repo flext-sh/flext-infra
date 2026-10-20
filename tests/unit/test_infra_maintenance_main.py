@@ -98,7 +98,7 @@ class TestsFlextInfraInfraMaintenanceMain:
         enforcer = self._make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=True)
         tm.ok(result, eq=0)
-        tm.that(enforcer.verbose, eq=True)
+        tm.ok(enforcer.verbose)
 
     def test_enforcer_failure_on_version_mismatch(self, tmp_path: Path) -> None:
         """Test enforcer failure on version mismatch."""
@@ -119,7 +119,7 @@ class TestsFlextInfraInfraMaintenanceMain:
         )
         enforcer = self._make_enforcer(workspace)
         enforcer.execute(check_only=True, verbose=False)
-        tm.that(enforcer.check_only, eq=True)
+        tm.ok(enforcer.check_only)
 
     def test_enforcer_verbose_flag_stored(self, tmp_path: Path) -> None:
         """Test enforcer verbose flag stored."""
@@ -129,7 +129,7 @@ class TestsFlextInfraInfraMaintenanceMain:
         )
         enforcer = self._make_enforcer(workspace)
         enforcer.execute(check_only=False, verbose=True)
-        tm.that(enforcer.verbose, eq=True)
+        tm.ok(enforcer.verbose)
 
     def test_enforcer_both_flags(self, tmp_path: Path) -> None:
         """Test enforcer both flags."""
@@ -140,8 +140,8 @@ class TestsFlextInfraInfraMaintenanceMain:
         enforcer = self._make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=True)
         tm.ok(result, eq=0)
-        tm.that(enforcer.check_only, eq=True)
-        tm.that(enforcer.verbose, eq=True)
+        tm.ok(enforcer.check_only)
+        tm.ok(enforcer.verbose)
 
     def test_enforcer_empty_workspace(self, tmp_path: Path) -> None:
         """Test enforcer empty workspace."""

@@ -48,8 +48,8 @@ class TestsFlextInfraRuntimeRoot:
         observed = FlextInfraWorkspaceDetector.resolution_context(root)
 
         if malformed_parent_git:
-            tm.that(observed.failure, eq=True)
-            tm.that(u.Infra.runtime_owner_root(root).failure, eq=True)
+            tm.ok(observed.failure)
+            tm.ok(u.Infra.runtime_owner_root(root).failure)
         else:
             context = tm.ok(observed)
             tm.that(context.project_root, eq=root.resolve())

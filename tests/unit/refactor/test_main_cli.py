@@ -797,8 +797,8 @@ class TestsFlextInfraRefactorMainCli:
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
-        tm.that(service_entry["modified"], eq=True)
-        tm.that(service_entry["success"], eq=True)
+        tm.ok(service_entry["modified"])
+        tm.ok(service_entry["success"])
         tm.that(
             list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_cleanup (unused)"],
@@ -842,8 +842,8 @@ class TestsFlextInfraRefactorMainCli:
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
         service_entry = next(item for item in entries if item["path"] == service_path)
 
-        tm.that(service_entry["modified"], eq=True)
-        tm.that(service_entry["success"], eq=True)
+        tm.ok(service_entry["modified"])
+        tm.ok(service_entry["success"])
         tm.that(
             list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_tests (unused)"],

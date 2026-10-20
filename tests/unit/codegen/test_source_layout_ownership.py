@@ -96,8 +96,8 @@ class TestsFlextInfraSourceLayoutOwnership:
         candidate = tmp_path / "candidate"
         tm.ok(FlextInfraStagedPackage.materialize_sources(plan, candidate))
 
-        tm.that(any(layout.project_root == member for layout in plan.layouts), eq=True)
-        tm.that(any(layout.project_root == root for layout in plan.layouts), eq=False)
+        tm.ok(any(layout.project_root == member for layout in plan.layouts))
+        tm.fail(any(layout.project_root == root for layout in plan.layouts))
         tm.that(
             (candidate / helper.relative_to(root)).read_text(
                 encoding=c.DEFAULT_ENCODING

@@ -79,5 +79,5 @@ class TestsFlextInfraCodegenCiCustomSteps:
         location = Path(c.Infra.CUSTOM_CI_STEPS_FILENAME)
 
         tm.that(location.parts[0], eq=".github")
-        tm.that("workflows" in location.parts, eq=False)
+        tm.fail("workflows" in location.parts)
         tm.that(location.suffix, eq=".yml")

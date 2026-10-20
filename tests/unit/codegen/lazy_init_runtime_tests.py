@@ -93,7 +93,7 @@ class TestsFlextInfraLazyInitRuntime:
                 eq={"Exported": bindings["Exported"].target},
             )
             graph, modules = u.Infra.snapshot_import_graph(workspace.rope_project)
-            tm.that(package.name in graph, eq=True)
+            tm.ok(package.name in graph)
             tm.that(modules[initializer.resolve()], eq=package.name)
         result = tm.ok(
             u.Cli.run_raw(
@@ -216,9 +216,9 @@ class TestsFlextInfraLazyInitRuntime:
             tm.that(roots, empty=True)
             for node in module.body:
                 if isinstance(node, ast.If):
-                    tm.that(isinstance(node.test, ast.Name), eq=True)
+                    tm.ok(isinstance(node.test, ast.Name))
                     tm.that(ast.unparse(node.test), eq="TYPE_CHECKING")
-                    tm.that(bool(node.orelse), eq=False)
+                    tm.fail(bool(node.orelse))
                     tm.that(
                         all(
                             isinstance(item, (ast.Import, ast.ImportFrom))
@@ -245,7 +245,7 @@ class TestsFlextInfraLazyInitRuntime:
                 ),
                 eq=True,
             )
-            tm.that(bool(u.Infra.public_export_names_source(source)), eq=True)
+            tm.ok(bool(u.Infra.public_export_names_source(source)))
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         expected_target = "c" if published_alias else "TestsFlextOwnedTestsConstants"
@@ -281,7 +281,7 @@ class TestsFlextInfraLazyInitRuntime:
                 '"c": ".constants"',
                 '"c": (".constants", "TestsFlextOwnedTestsConstants")',
             )
-            tm.that(planned_source == source, eq=False)
+            tm.fail(planned_source == source)
             tm.that(
                 "tests.c"
                 in u.Infra.runtime_evaluated_base_classes(
@@ -354,11 +354,11 @@ class TestsFlextInfraLazyInitRuntime:
         testing = next(
             plan for plan in analysis.publications if plan.context.pkg_dir == tests
         )
-        tm.that(source in {state.path for state in production.source_states}, eq=True)
+        tm.ok(source in {state.path for state in production.source_states})
         tm.that(
             conftest in {state.path for state in production.source_states}, eq=False
         )
-        tm.that(conftest in {state.path for state in testing.source_states}, eq=True)
+        tm.ok(conftest in {state.path for state in testing.source_states})
 
     @staticmethod
     def test_parent_consumes_original_receipt_of_removed_child(tmp_path: Path) -> None:
@@ -384,7 +384,7 @@ class TestsFlextInfraLazyInitRuntime:
             plan for plan in analysis.publications if plan.context.pkg_dir == package
         )
         tm.that(child_plan.action, eq=c.Infra.LazyInitAction.REMOVE)
-        tm.that("retired" in parent_plan.lazy_map, eq=False)
+        tm.fail("retired" in parent_plan.lazy_map)
         child_original = next(
             state for state in child_plan.source_states if state.path == initializer
         )
@@ -703,7 +703,7 @@ class TestsFlextInfraLazyInitRuntime:
         exports = u.Infra.public_export_names_source(
             planned[(family / c.Infra.INIT_PY).resolve()],
         )
-        tm.that("FlextStaleErrors" in exports, eq=True)
+        tm.ok("FlextStaleErrors" in exports)
         derived = u.Infra.runtime_evaluated_base_classes(repository, planned, roots)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(
@@ -1077,8 +1077,8 @@ class TestsFlextInfraLazyInitRuntime:
         try:
             sys.setprofile(observe)
             tm.ok(infra.codegen_generate(request))
-            tm.that(initializer.read_bytes() == original, eq=False)
-            tm.that((child / c.Infra.INIT_PY).is_file(), eq=True)
+            tm.fail(initializer.read_bytes() == original)
+            tm.ok((child / c.Infra.INIT_PY).is_file())
             generated = {
                 path: path.read_bytes() for path in package.rglob(c.Infra.INIT_PY)
             }
@@ -1189,7 +1189,7 @@ class TestsFlextInfraLazyInitRuntime:
             has="ImportError" if cyclic else "unavailable runtime dependency",
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(before))
-        tm.that((child / c.Infra.INIT_PY).exists(), eq=False)
+        tm.fail((child / c.Infra.INIT_PY).exists())
 
     @staticmethod
     def test_conflicted_generated_initializer_is_rebuilt_from_declarations(
@@ -1278,7 +1278,7 @@ class TestsFlextInfraLazyInitRuntime:
         exports = u.Infra.public_export_names_source(
             examples.joinpath("__init__.py").read_text(encoding=c.DEFAULT_ENCODING),
         )
-        tm.that("c" in exports, eq=True)
+        tm.ok("c" in exports)
         probe = (
             "import examples as generated\n"
             "import examples.constants as local\n"

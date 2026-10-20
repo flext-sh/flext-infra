@@ -48,9 +48,9 @@ class TestsFlextInfraDocsRenderGuidesIndex:
 
         tm.that(rendered, has="(topology-conform.md)")
         # The index never links itself.
-        tm.that("(README.md)" in rendered, eq=False)
+        tm.fail("(README.md)" in rendered)
         tm.that(rendered, lacks="(stale.md)")
-        tm.that((guides_dir / "topology-conform.md").exists(), eq=False)
+        tm.fail((guides_dir / "topology-conform.md").exists())
 
     def test_guides_index_omits_links_when_no_guide_exists(
         self,
@@ -61,5 +61,5 @@ class TestsFlextInfraDocsRenderGuidesIndex:
 
         rendered = u.Infra.docs_guides_index(self._scope(tmp_path), guide_paths=())
 
-        tm.that("(topology-conform.md)" in rendered, eq=False)
+        tm.fail("(topology-conform.md)" in rendered)
         tm.that(rendered, has="(../api-reference/README.md)")

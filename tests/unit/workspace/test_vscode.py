@@ -48,8 +48,8 @@ class TestsFlextInfraCodegenVscode:
         result = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
-        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
-        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.fail("python.analysis.typeCheckingMode" in doc)
+        tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
         declared = FlextInfraCodegenVscodeMixin.vscode_settings(
             config.Infra.codegen.vscode
         )
@@ -58,7 +58,7 @@ class TestsFlextInfraCodegenVscode:
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(doc[search_paths_key], eq=declared[search_paths_key])
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
-        tm.that("**/.retired-cache" in excludes, eq=False)
+        tm.fail("**/.retired-cache" in excludes)
         tm.that(excludes, eq=dict(config.Infra.codegen.vscode_files_exclude_map))
         tm.that(
             doc["python.languageServer"],
@@ -87,8 +87,8 @@ class TestsFlextInfraCodegenVscode:
 
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
-        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
-        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.fail("python.analysis.typeCheckingMode" in doc)
+        tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
         tm.that(
             doc["python.languageServer"],
             eq=FlextInfraCodegenVscodeMixin.vscode_settings(
@@ -190,7 +190,7 @@ class TestsFlextInfraCodegenVscode:
         tm.that(watchers, has=f"**/{file.name}")
         tm.that(watchers, lacks=f"**/{file.name}/**")
         tm.that(watchers, has=f"**/{directory.name}/**")
-        tm.that(f"**/{file.name}" in elected.analyzer_exclude_globs, eq=True)
+        tm.ok(f"**/{file.name}" in elected.analyzer_exclude_globs)
         self._write_settings(tmp_path, rendered)
         tm.that(
             tm.ok(
@@ -219,7 +219,7 @@ class TestsFlextInfraCodegenVscode:
         for language, keys in retired.items():
             preferences = u.Tests.toml_mapping(document[language])
             tm.that(preferences["editor.rulers"], eq=[88])
-            tm.that(set(keys).isdisjoint(preferences), eq=True)
+            tm.ok(set(keys).isdisjoint(preferences))
 
     @staticmethod
     def test_unfamiliar_settings_accept_recursive_json_and_preserve_array_order(

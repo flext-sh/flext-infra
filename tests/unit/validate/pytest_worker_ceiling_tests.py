@@ -87,7 +87,7 @@ class TestsFlextInfraPytestWorkerCeiling:
     def test_declared_overrides_come_from_the_typed_ssot() -> None:
         """The tooling SSOT carries validated ceilings of either form."""
         overrides = config.Infra.tooling.tools.pytest.parallel_worker_overrides
-        tm.that(len(overrides) > 0, eq=True)
+        tm.ok(len(overrides) > 0)
         for declared in overrides.values():
             tm.that(
                 (declared.workers is None) != (declared.cpu_fraction is None),

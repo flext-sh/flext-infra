@@ -41,9 +41,9 @@ class TestsFlextInfraDocsGeneratorGuides:
             state for state in guide_plan.source_states if state.path == source
         )
         tm.that(snapshot.content, eq=source.read_bytes())
-        tm.that(snapshot.parent_device is not None, eq=True)
-        tm.that(snapshot.parent_inode is not None, eq=True)
-        tm.that(destination.exists(), eq=False)
+        tm.ok(snapshot.parent_device is not None)
+        tm.ok(snapshot.parent_inode is not None)
+        tm.fail(destination.exists())
         tm.ok(
             u.Tests.materialize_codegen_plans(
                 r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans),
@@ -115,14 +115,14 @@ class TestsFlextInfraDocsGeneratorGuides:
             any(state.path == deleted.path for state in deleted.source_states),
             eq=True,
         )
-        tm.that(any(plan.path in retained for plan in plans), eq=False)
-        tm.that(deleted.path.exists(), eq=True)
+        tm.fail(any(plan.path in retained for plan in plans))
+        tm.ok(deleted.path.exists())
         tm.ok(
             u.Tests.materialize_codegen_plans(
                 r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans),
             ),
         )
-        tm.that(deleted.path.exists(), eq=False)
+        tm.fail(deleted.path.exists())
         tm.that({path: path.read_bytes() for path in retained}, eq=retained)
         index = (guides / "README.md").read_text(encoding="utf-8")
         tm.that(index, lacks="(operator.md)")
@@ -214,7 +214,7 @@ class TestsFlextInfraDocsGeneratorGuides:
             if plan.path == workspace / "flext-a/docs/guides/operator.md"
         )
         tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
-        tm.that((workspace / "flext-a/docs/guides/operator.md").exists(), eq=False)
+        tm.fail((workspace / "flext-a/docs/guides/operator.md").exists())
 
     @staticmethod
     def test_guide_parent_identity_change_rejects_prepared_bundle(
@@ -284,7 +284,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         first = u.Tests.plan_docs_bundle(generator)
         second = u.Tests.plan_docs_bundle(generator)
 
-        tm.that(any(plan.path == guide for plan in (*first, *second)), eq=False)
+        tm.fail(any(plan.path == guide for plan in (*first, *second)))
         tm.that(
             guide.read_text(encoding="utf-8"),
             eq="# Local\n\nKeep local content.\n",

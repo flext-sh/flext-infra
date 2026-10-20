@@ -614,7 +614,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     epic_lane,
                 ),
             )
-            tm.that(lane.exists(), eq=False)
+            tm.that(lane.exists(), truth=False)
             tm.that(
                 (
                     tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),

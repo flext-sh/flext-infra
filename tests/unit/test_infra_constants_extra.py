@@ -159,10 +159,10 @@ class TestsFlextInfraInfraConstantsExtra:
     @staticmethod
     def test_all_status_values_are_uppercase() -> None:
         """Test all status values are uppercase."""
-        tm.that(c.Infra.ResultStatus.PASSED.isupper(), eq=True)
-        tm.that(c.Infra.ResultStatus.FAIL.isupper(), eq=True)
-        tm.that(c.Infra.ResultStatus.OK.isupper(), eq=True)
-        tm.that(c.Infra.ResultStatus.WARN.isupper(), eq=True)
+        tm.ok(c.Infra.ResultStatus.PASSED.isupper())
+        tm.ok(c.Infra.ResultStatus.FAIL.isupper())
+        tm.ok(c.Infra.ResultStatus.OK.isupper())
+        tm.ok(c.Infra.ResultStatus.WARN.isupper())
 
     @staticmethod
     def test_all_gate_values_are_lowercase() -> None:

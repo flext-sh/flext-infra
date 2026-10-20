@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -80,23 +80,15 @@ class FlextInfraMypyGate(FlextInfraGate):
         # Empty or explicitly excluded roots are omitted because Mypy aborts
         # when they are passed positionally.
         exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
-        discovered_dirs = [
-            directory
-            for directory in self._dirs_with_py(
-                project_dir,
-                config.Infra.source_scan.roots,
+        return [
+            target
+            for target in self._python_targets(project_dir)
+            if (project_dir / target).is_file()
+            or (
+                self._has_real_module(project_dir / target)
+                and (exclude is None or not exclude.match(f"{target}/"))
             )
-            if self._has_real_module(project_dir / directory)
-            and (exclude is None or not exclude.match(f"{directory}/"))
         ]
-        root_files = [
-            path.name
-            for path in sorted(project_dir.iterdir())
-            if path.is_file() and path.suffix in {".py", ".pyi"}
-        ]
-        if discovered_dirs or root_files:
-            return [*discovered_dirs, *root_files]
-        return []
 
     @staticmethod
     def _resolve_config(project_dir: Path, ctx: m.Infra.GateContext) -> Path:

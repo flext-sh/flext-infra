@@ -106,7 +106,7 @@ class TestsMypyFleetMandatoryDefaults:
         }
         validated = m.Infra.MypyConfig.model_validate(payload)
         tm.that(validated.string_settings["enable_error_code"], eq="arg-type")
-        tm.that(validated.boolean_settings["ignore_errors"], eq=False)
+        tm.fail(validated.boolean_settings["ignore_errors"])
         tm.that(tuple(validated.plugins), eq=tuple(policy.plugins))
 
     @staticmethod

@@ -74,13 +74,13 @@ class TestsFlextInfraGitIdentitySubmodules:
         """A repository holding a gitlink is recognized as a superproject."""
         parent = self._superproject(tmp_path)
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=parent)))
-        tm.that(identity.has_submodules, eq=True)
+        tm.ok(identity.has_submodules)
 
     def test_plain_repository_reports_no_submodules(self, tmp_path: Path) -> None:
         """A repository without any gitlink reports no submodules."""
         plain = self._repo(tmp_path / "plain")
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=plain)))
-        tm.that(identity.has_submodules, eq=False)
+        tm.fail(identity.has_submodules)
 
     def test_identity_reports_origin_and_upstream_remotes(self, tmp_path: Path) -> None:
         """Remote facts come from the canonical Git config owner."""
@@ -136,7 +136,7 @@ class TestsFlextInfraGitIdentitySubmodules:
 
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=unborn))
 
-        tm.that(identity.failure, eq=True)
+        tm.ok(identity.failure)
         tm.that(identity.error or "", has="Git repository has no committed HEAD")
 
     def test_submodule_checkout_is_not_a_superproject(self, tmp_path: Path) -> None:
@@ -145,9 +145,9 @@ class TestsFlextInfraGitIdentitySubmodules:
         identity = tm.ok(
             u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=parent / "vendored")),
         )
-        tm.that(identity.has_submodules, eq=False)
-        tm.that(identity.is_submodule, eq=True)
-        tm.that(identity.is_attached_submodule, eq=True)
+        tm.fail(identity.has_submodules)
+        tm.ok(identity.is_submodule)
+        tm.ok(identity.is_attached_submodule)
 
     def test_linked_worktree_of_submodule_keeps_primary_identity(
         self,
@@ -176,9 +176,9 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.that(identity.repo_root, eq=lane.resolve())
         tm.that(identity.primary_root, eq=primary.resolve())
         tm.that(identity.superproject_root, eq=parent.resolve())
-        tm.that(identity.is_worktree, eq=True)
-        tm.that(identity.is_submodule, eq=True)
-        tm.that(identity.is_attached_submodule, eq=False)
+        tm.ok(identity.is_worktree)
+        tm.ok(identity.is_submodule)
+        tm.fail(identity.is_attached_submodule)
 
     def test_absorbed_submodule_with_git_dir_is_still_a_submodule(
         self,
@@ -228,11 +228,11 @@ class TestsFlextInfraGitIdentitySubmodules:
                 "absorb member",
             ]),
         )
-        tm.that((member / ".git").is_dir(), eq=True)
+        tm.ok((member / ".git").is_dir())
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)))
         tm.that(identity.superproject_root, eq=parent.resolve())
-        tm.that(identity.is_submodule, eq=True)
-        tm.that(identity.is_attached_submodule, eq=True)
+        tm.ok(identity.is_submodule)
+        tm.ok(identity.is_attached_submodule)
 
     def test_git_identity_ascends_from_nested_path(self, tmp_path: Path) -> None:
         """Nested file/dir paths resolve through git_open_repo parent search.

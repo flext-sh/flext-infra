@@ -140,8 +140,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         ) as binding:
             project = binding[0]
             with project.source_consumption() as scope:
-                tm.that(project.source_query(source, "isfile"), eq=False)
-                tm.that(source in project.source_children(package), eq=False)
+                tm.fail(project.source_query(source, "isfile"))
+                tm.fail(source in project.source_children(package))
                 tm.that(project.source_bytes(binary), eq=b"\xff\x00")
             states = {state.path: state for state in scope.receipt().inputs}
             tm.that(states[source], eq=original)
@@ -253,12 +253,12 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
         with u.Infra.facade_source_project(root) as (project, _, _):
             with project.source_consumption() as first:
-                tm.that(project.root.has_child("missing.py"), eq=False)
+                tm.fail(project.root.has_child("missing.py"))
             with project.source_consumption():
-                tm.that(project.root.has_child("other.py"), eq=False)
+                tm.fail(project.root.has_child("other.py"))
                 project.root.get_children()
             with project.source_consumption() as repeated:
-                tm.that(project.root.has_child("missing.py"), eq=False)
+                tm.fail(project.root.has_child("missing.py"))
             with project.source_consumption() as cached:
                 project.replay_source_consumption(first.receipt())
             for scope in (first, repeated, cached):
@@ -269,7 +269,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 tm.that(len(inventories), eq=1)
                 tm.that(inventories[0].queries, eq=(("missing.py", "exists"),))
-                tm.that(inventories[0].membership_queried, eq=False)
+                tm.fail(inventories[0].membership_queried)
 
     @staticmethod
     @pytest.mark.parametrize("absent_parent", [False, True])
@@ -283,10 +283,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         parent = package / "absent" if absent_parent else package
         with u.Infra.facade_source_project(root) as (project, _, _):
             with project.source_consumption() as first:
-                tm.that(project.source_query(parent / "first.py", "exists"), eq=False)
+                tm.fail(project.source_query(parent / "first.py", "exists"))
             with project.source_consumption() as separate:
-                tm.that(project.source_query(parent / "second.py", "isfile"), eq=False)
-                tm.that(project.source_query(parent / "first.py", "isdir"), eq=False)
+                tm.fail(project.source_query(parent / "second.py", "isfile"))
+                tm.fail(project.source_query(parent / "first.py", "isdir"))
                 if absent_parent:
                     with pytest.raises(FileNotFoundError):
                         project.source_children(parent)
@@ -294,7 +294,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     project.source_children(parent)
             with project.source_consumption() as repeated:
                 project.replay_source_consumption(first.receipt())
-                tm.that(project.source_query(parent / "first.py", "exists"), eq=False)
+                tm.fail(project.source_query(parent / "first.py", "exists"))
             for scope in (first, repeated):
                 receipts = (
                     tuple(
@@ -311,7 +311,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 tm.that(len(receipts), eq=1)
                 tm.that(receipts[0].queries, eq=(("first.py", "exists"),))
-                tm.that(receipts[0].membership_queried, eq=False)
+                tm.fail(receipts[0].membership_queried)
             aggregate = (
                 tuple(
                     item
@@ -334,7 +334,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     ("second.py", "isfile"),
                 ),
             )
-            tm.that(aggregate[0].membership_queried, eq=True)
+            tm.ok(aggregate[0].membership_queried)
             separate_receipts = (
                 separate.receipt().source_query_topology
                 if absent_parent
@@ -373,7 +373,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
             with pytest.raises(RuntimeError, match="consumer failed") as caught:
                 fail_consumer()
-            tm.that(caught.value is failure, eq=True)
+            tm.ok(caught.value is failure)
             with pytest.raises(ValueError, match="no completed receipt"):
                 scopes[0].receipt()
 
@@ -389,7 +389,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 project.source_consumption() as inner,
             ):
                 project.source_state(source)
-                tm.that(project.root.has_child("missing.py"), eq=False)
+                tm.fail(project.root.has_child("missing.py"))
             tm.that(outer.receipt().inputs, eq=inner.receipt().inputs)
             tm.that(
                 outer.receipt().source_directories,
@@ -454,9 +454,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with u.Infra.facade_source_project(root) as (project, _, _):
                 with project.source_consumption() as provider:
                     expected = project.source_state(source)
-                    tm.that(project.source_query(source, "isfile"), eq=True)
+                    tm.ok(project.source_query(source, "isfile"))
                 with project.source_consumption():
-                    tm.that(project.source_query(source, "exists"), eq=True)
+                    tm.ok(project.source_query(source, "exists"))
                 inventories = tuple(
                     item
                     for item in project.consumed_source_directories()
@@ -473,9 +473,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 with project.source_consumption():
                     project.replay_source_consumption(provider.receipt())
 
-        with pytest.raises(ValueError, match="atomic source changed") as rejected:
+        with pytest.raises(
+            ValueError, match=escape(f"atomic source changed: {source}")
+        ):
             diverge()
-        tm.that("content_changed=True" in str(rejected.value), eq=True)
 
     @staticmethod
     def test_negative_query_receipts_keep_original_absent_topology(
@@ -488,7 +489,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
             folder = project.get_folder(missing.relative_to(root).as_posix())
             with project.source_consumption() as provider:
-                tm.that(folder.has_child("provider.py"), eq=False)
+                tm.fail(folder.has_child("provider.py"))
             with project.source_consumption() as consumer:
                 project.replay_source_consumption(provider.receipt())
             witnesses = tuple(
@@ -600,7 +601,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             root, declared_files=analysis.files
         ) as binding:
             project, consumed, sources = binding
-            tm.that(any(path.is_relative_to(generated) for path in sources), eq=False)
+            tm.fail(any(path.is_relative_to(generated) for path in sources))
             planned = {
                 file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
                 for file in analysis.files

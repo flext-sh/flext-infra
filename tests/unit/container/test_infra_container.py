@@ -27,15 +27,15 @@ class TestsFlextInfraContainerInfraContainer:
     def test_container_is_process_singleton() -> None:
         """FlextContainer returns the same process-wide instance."""
         first = FlextContainer()
-        tm.that(FlextContainer() is first, eq=True)
+        tm.ok(FlextContainer() is first)
 
     @staticmethod
     def test_container_has_and_fail_on_unknown_service() -> None:
         """Unknown names are reported through ``has`` and a failed resolve."""
         container = FlextContainer()
-        tm.that(container.has("definitely-not-registered"), eq=False)
+        tm.fail(container.has("definitely-not-registered"))
         resolved = container.resolve("definitely-not-registered")
-        tm.that(resolved.failure, eq=True)
+        tm.ok(resolved.failure)
 
     @staticmethod
     def test_versioning_parse_and_bump_round_trip() -> None:
@@ -56,8 +56,8 @@ class TestsFlextInfraContainerInfraContainer:
     @staticmethod
     def test_pattern_matching_matches_declared_patterns() -> None:
         """u.Cli.matches reports hits and misses on declared patterns."""
-        tm.that(u.Cli.matches("deploy failed", "deploy", "rollback"), eq=True)
-        tm.that(u.Cli.matches("all good", "deploy", "rollback"), eq=False)
+        tm.ok(u.Cli.matches("deploy failed", "deploy", "rollback"))
+        tm.fail(u.Cli.matches("all good", "deploy", "rollback"))
 
     @staticmethod
     def test_output_methods_write_to_configured_stream() -> None:

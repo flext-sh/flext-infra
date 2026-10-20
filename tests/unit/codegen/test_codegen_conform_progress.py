@@ -60,5 +60,5 @@ class TestsFlextInfraCodegenConformProgress:
             ),
         )
         tm.that(checked.plan, eq=None)
-        tm.that(checked.verified_publication is not None, eq=True)
+        tm.ok(checked.verified_publication is not None)
         tm.that(checked.written_files, eq=())

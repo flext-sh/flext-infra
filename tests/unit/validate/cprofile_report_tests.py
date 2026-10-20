@@ -44,7 +44,7 @@ class TestsFlextInfraCProfileReport:
                 original = profiles[0].read_bytes()
             else:
                 tm.that(len(profiles), eq=2)
-                tm.that(original in (path.read_bytes() for path in profiles), eq=True)
+                tm.ok(original in (path.read_bytes() for path in profiles))
                 previous = tuple(tmp_path.glob("profile.previous-*.pstats"))
                 tm.that(len(previous), eq=1)
                 tm.that(previous[0].read_bytes(), eq=original)
@@ -90,7 +90,7 @@ class TestsFlextInfraCProfileReport:
         tm.that(profiled.stderr, has="NotADirectoryError")
         tm.that(profiled.stderr, has=str(blocked))
         if u.Cli.process_succeeded(reference.outcome):
-            tm.that(u.Cli.process_succeeded(profiled.outcome), eq=False)
+            tm.fail(u.Cli.process_succeeded(profiled.outcome))
         else:
             tm.that(
                 profiled.outcome.raw_return_code, eq=reference.outcome.raw_return_code
@@ -131,7 +131,7 @@ class TestsFlextInfraCProfileReport:
                 cwd=tmp_path,
             )
         )
-        tm.that(u.Cli.process_succeeded(reference.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(reference.outcome))
         tm.that(
             profiled.outcome.raw_return_code,
             eq=reference.outcome.raw_return_code,
@@ -139,7 +139,7 @@ class TestsFlextInfraCProfileReport:
         )
         tm.that(reference.stderr, lacks="KeyboardInterrupt")
         for executed in (reference, profiled):
-            tm.that(executed.outcome.timed_out, eq=False)
+            tm.fail(executed.outcome.timed_out)
             tm.that(executed.outcome.forwarded_signal, eq=None)
         tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
         primary_trace, secondary_trace = profiled.stderr.split(

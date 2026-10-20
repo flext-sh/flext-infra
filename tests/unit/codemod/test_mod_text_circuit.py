@@ -78,7 +78,7 @@ class TestsFlextInfraModTextGateEngine:
             ),
             eq=True,
         )
-        tm.that(isinstance(result.exception, ValueError), eq=True)
+        tm.ok(isinstance(result.exception, ValueError))
         tm.that("unsupported input" in str(result.error), truth=True)
         tm.that(
             selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "before"\n',
@@ -171,7 +171,7 @@ class TestsFlextInfraModTextGateEngine:
         result = FlextInfraModTextGateEngine.scan(root, fix=True)
         tm.fail(result)
         _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(root))
-        tm.that(any(plan.path == target for plan in analysis.files), eq=True)
+        tm.ok(any(plan.path == target for plan in analysis.files))
         tm.that(analysis.issues, empty=False)
         tm.that(target.read_text(encoding="utf-8"), eq='value = "before"\n')
         tm.that(catalogue.read_bytes(), eq=original)
@@ -199,7 +199,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         diagnostic = FlextInfraModTextGateEngine.scan(mod_workspace, fix=False)
         tm.fail(diagnostic)
-        tm.that(isinstance(diagnostic.exception, SyntaxError), eq=True)
+        tm.ok(isinstance(diagnostic.exception, SyntaxError))
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
         result = infra.mod_text(
             m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True)
@@ -210,8 +210,8 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(exception.filename, eq=str(invalid))
         tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
         _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
-        tm.that(any(plan.path == valid for plan in analysis.files), eq=True)
-        tm.that(isinstance(analysis.exception, SyntaxError), eq=True)
+        tm.ok(any(plan.path == valid for plan in analysis.files))
+        tm.ok(isinstance(analysis.exception, SyntaxError))
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
         metadata = result.error_data
         tm.that(metadata, none=False)
@@ -274,10 +274,10 @@ class TestsFlextInfraModTextGateEngine:
             tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
         finally:
             active = False
-        tm.that(armed, eq=False)
+        tm.fail(armed)
         tm.that(target.read_text(encoding="utf-8"), eq='value = "after"\n')
         if change == "remove":
-            tm.that(foreign.exists(), eq=False)
+            tm.fail(foreign.exists())
         elif change == "change":
             tm.that(foreign.read_text(encoding="utf-8"), eq='value = "independent"\n')
         else:
@@ -313,7 +313,7 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(composed[:-1], eq=provider)
         tm.that(composed[-1].rule_id, eq=local_id)
         applied = tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
-        tm.that(any(entry.rule_id == local_id for entry in applied.entries), eq=True)
+        tm.ok(any(entry.rule_id == local_id for entry in applied.entries))
         tm.that(sample.read_text(encoding="utf-8"), eq='value = "after"\n')
         fixed_point = tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=False))
         tm.that(fixed_point.actionable, eq=0)
@@ -392,7 +392,7 @@ class TestsFlextInfraModTextGateEngine:
             f'name = "{distribution}"',
             f'name = "changed-{distribution}"',
         )
-        tm.that(changed == original, eq=False)
+        tm.fail(changed == original)
         tm.ok(u.Cli.atomic_write_text_file(document, changed))
         tm.ok(infra.mod_text(request))
 
@@ -505,7 +505,7 @@ class TestsFlextInfraModTextGateEngine:
 
         rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(rejected, has="capture keyword expected")
-        tm.that(isinstance(rejected.exception, ValueError), eq=True)
+        tm.ok(isinstance(rejected.exception, ValueError))
 
         tm.that(source.read_bytes(), eq=before)
 
@@ -575,11 +575,11 @@ class TestsFlextInfraModTextGateEngine:
         rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(rejected, has=str(first))
         native = tm.not_none(rejected.exception)
-        tm.that(isinstance(native, SyntaxError), eq=True)
+        tm.ok(isinstance(native, SyntaxError))
         if isinstance(native, SyntaxError):
             tm.that(native.filename, eq=str(first))
             tm.that(native.text, has="value =")
-        tm.that(native.__traceback__ is not None, eq=True)
+        tm.ok(native.__traceback__ is not None)
 
         tm.that((first.read_bytes(), second.read_bytes()), eq=originals)
 
@@ -667,7 +667,7 @@ class TestsFlextInfraModTextGateEngine:
             virtual_plan.desired_content,
             eq=original[first].replace("before", "after").encode(c.DEFAULT_ENCODING),
         )
-        tm.that(virtual.parent.exists(), eq=False)
+        tm.fail(virtual.parent.exists())
         _report, physical = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
         tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
         for plan in physical.files:
@@ -702,7 +702,7 @@ class TestsFlextInfraModTextGateEngine:
         second.write_bytes(b"\xff")
         result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(result)
-        tm.that(isinstance(result.exception, UnicodeDecodeError), eq=True)
+        tm.ok(isinstance(result.exception, UnicodeDecodeError))
 
         tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_bytes(), eq=b"\xff")
@@ -745,8 +745,8 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(isinstance(native, SyntaxError), truth=True)
         tm.that(native.args, eq=expected.value.args)
         tm.that(native.filename, eq=expected.value.filename)
-        tm.that(native.__traceback__ is not None, eq=True)
-        tm.that(expected.value.__traceback__ is not None, eq=True)
+        tm.ok(native.__traceback__ is not None)
+        tm.ok(expected.value.__traceback__ is not None)
 
         tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_bytes(), eq=original_second)
@@ -766,7 +766,7 @@ class TestsFlextInfraModTextGateEngine:
         tm.fail(result, has="regular file")
 
         tm.that(first.read_bytes(), eq=b'value = "before"\n')
-        tm.that(second.is_symlink(), eq=True)
+        tm.ok(second.is_symlink())
         tm.that(second.read_bytes(), eq=original)
         tm.that(alias.read_bytes(), eq=original)
 
@@ -790,7 +790,7 @@ class TestsFlextInfraModTextGateEngine:
             f'name = "{distribution}"',
             f'name = "changed-{distribution}"',
         )
-        tm.that(changed_document == original_document, eq=False)
+        tm.fail(changed_document == original_document)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=mod_workspace),
         )
@@ -941,7 +941,7 @@ class TestsFlextInfraModTextGateEngine:
                     cwd=session.plan.layout.scope_root,
                 ),
             )
-            tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(consumed.outcome))
             for state in states:
                 tm.that(state.path.read_bytes(), eq=state.content)
             if raise_failure:
@@ -965,7 +965,7 @@ class TestsFlextInfraModTextGateEngine:
         if raise_failure:
             with pytest.raises(RuntimeError) as raised:
                 transaction.run_files_locked(roots, publish)
-            tm.that(raised.value is failure, eq=True)
+            tm.ok(raised.value is failure)
         else:
             result = transaction.run_files_locked(roots, publish)
             tm.fail(result, has="text publication acceptance rejected")
@@ -1031,7 +1031,7 @@ class TestsFlextInfraModTextGateEngine:
             validate_receipts=True,
         )
         tm.fail(rejected, has="expected 1 finding(s), scan produced 0")
-        tm.that(isinstance(rejected.exception, RuntimeError), eq=True)
+        tm.ok(isinstance(rejected.exception, RuntimeError))
         # The rewrite is proven by what changed, not by freezing the fixture's
         # whole text: the elected call carries the replacement and the original
         # argument list is gone.
@@ -1066,7 +1066,7 @@ class TestsFlextInfraModTextGateEngine:
             validate_receipts=True,
         )
         tm.fail(rejected, has="expected 2 finding(s), scan")
-        tm.that(isinstance(rejected.exception, RuntimeError), eq=True)
+        tm.ok(isinstance(rejected.exception, RuntimeError))
         tm.that((mod_workspace / "sample.py").read_bytes(), eq=original)
 
     @staticmethod
@@ -1089,7 +1089,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         unknown = FlextInfraModTextGateEngine.load_rules(mod_workspace)
         tm.that(unknown.failure)
-        tm.that("unsupported" in str(unknown.error), eq=True)
+        tm.ok("unsupported" in str(unknown.error))
 
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -1101,7 +1101,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         duplicate = FlextInfraModTextGateEngine.load_rules(mod_workspace)
         tm.that(duplicate.failure)
-        tm.that("duplicate text rule id" in str(duplicate.error), eq=True)
+        tm.ok("duplicate text rule id" in str(duplicate.error))
 
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -1112,7 +1112,7 @@ class TestsFlextInfraModTextGateEngine:
             ),
         )
         valid = tm.ok(FlextInfraModTextGateEngine.load_rules(mod_workspace))
-        tm.that({"first", "second"} <= {rule.rule_id for rule in valid}, eq=True)
+        tm.ok({"first", "second"} <= {rule.rule_id for rule in valid})
 
     @pytest.mark.parametrize("scope", ["include", "exclude"])
     @pytest.mark.parametrize(

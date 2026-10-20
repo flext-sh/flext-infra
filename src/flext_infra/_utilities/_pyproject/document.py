@@ -16,6 +16,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDependencyRequirements,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
 )
 from flext_infra._utilities._pyproject import (
@@ -823,7 +824,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             [
                 group
                 for group in (
-                    config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+                    FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                        config.Infra.tooling,
+                        c.Infra.DEPTRY,
+                        "optional_dependencies_dev_groups",
+                        t.StrSequence,
+                    )
                 )
                 if optional is not None and group in optional
             ],

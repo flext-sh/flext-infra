@@ -56,13 +56,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             "tools",
             tool,
         )[0]
-        version = entry["version"]
-        tm.that(
-            isinstance(version, str),
-            truth=True,
-            msg=f"mise.lock pins no {tool} version: {entry!r}",
-        )
-        return version
+        return u.type_adapter(str).validate_python(entry["version"], strict=True)
 
     @staticmethod
     def seed_locked_taplo(root: Path) -> None:

@@ -56,7 +56,6 @@ class TestsFlextInfraUtilitiesCodegenMixin:
 
         """
         ruff_cfg = config.Infra.tooling.tools.ruff
-        select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
         delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_cfg.lint.rule_owners,
             check_gates=config.Infra.codegen.make.check_gates_default,
@@ -65,24 +64,15 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 *config.Infra.codegen.make.fmt_gates,
             ),
         )
-        ignore = ", ".join(f'"{rule}"' for rule in delegated)
-        isort = ruff_cfg.lint.isort
-        src = ", ".join(f'"{root}"' for root in ruff_cfg.src)
-        # Why: without the fleet's isort settings (combine-as-imports in
-        # particular), a fixture-generated `X, X as alias` combined import —
-        # the real lazy-facade pattern flext-infra's own __init__.py uses —
-        # fails ruff's default isort split, unlike production.
-        return (
-            f"[tool.ruff]\nsrc = [{src}]\n"
-            f"preview = {str(ruff_cfg.preview).lower()}\n\n"
-            f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
-            "[tool.ruff.lint.pydocstyle]\n"
-            f'convention = "{ruff_cfg.lint.pydocstyle.convention}"\n\n'
-            "[tool.ruff.lint.isort]\n"
-            f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
-            f"force-single-line = {str(isort.force_single_line).lower()}\n"
-            f"split-on-trailing-comma = "
-            f"{str(isort.split_on_trailing_comma).lower()}\n\n"
+        options = u.Infra.native_tool_settings(config.Infra.tooling, "ruff")
+        for table in sorted(config.Infra.tooling.settings):
+            if table.startswith("ruff."):
+                target = u.Cli.toml_mapping_ensure_path(options, table.split(".")[1:])
+                target.update(u.Infra.native_tool_settings(config.Infra.tooling, table))
+        lint = u.Cli.toml_mapping_ensure_table(options, "lint")
+        lint["ignore"] = [*sorted({*delegated, *ruff_cfg.lint.ruling_disabled_rules})]
+        return u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({"tool": {"ruff": options}})
         )
 
     @staticmethod
@@ -120,7 +110,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
 
         """
         request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root, what=what)
-        return tm.ok(
+        return (
             FlextInfraCodegenConform(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
@@ -128,7 +118,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                     request=request,
                     initial_workspace=workspace,
                 ),
-            ).plan(request),
+            )
+            .plan(request)
+            .unwrap()
         )
 
     @staticmethod

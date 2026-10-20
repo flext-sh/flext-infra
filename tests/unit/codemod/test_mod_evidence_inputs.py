@@ -124,7 +124,7 @@ class TestsFlextInfraModEvidenceInputs:
         snapshot = u.Infra.codemod_binding_snapshot(mod_workspace, (state,))
         captured = {item.path for item in snapshot.states}
         tm.that(set(owners).issubset(captured))
-        tm.that(decoy in captured, eq=False)
+        tm.fail(decoy in captured)
         with infra.rope_workspace(mod_workspace) as workspace:
             statements = u.Infra.source_import_statements(
                 workspace.rope_project,
@@ -311,7 +311,7 @@ class TestsFlextInfraModEvidenceInputs:
             destination = tmp_path / f"conflicting-native-{index}"
             with pytest.raises(ValueError, match="native codemod rule IDs"):
                 u.Infra.codemod_stage_scan_ruleset(conflicting, destination)
-            tm.that(destination.exists(), eq=False)
+            tm.fail(destination.exists())
         before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         resource = rules[0].resource
         declaration = tm.ok(u.Cli.yaml_safe_load(resource))

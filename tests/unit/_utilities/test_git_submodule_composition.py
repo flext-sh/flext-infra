@@ -160,7 +160,7 @@ class TestsFlextInfraGitSubmoduleComposition:
         u.Tests.commit_git_changes(member, "advance member")
         u.Tests.git_run(parent, "add", "alpha")
         staged = u.Tests.git_capture(parent, "rev-parse", ":alpha")
-        tm.that(staged != committed, eq=True)
+        tm.ok(staged != committed)
         sources = tm.ok(u.Infra.recorded_member_sources(parent))
         tm.that(
             [(source.distribution, source.url, source.commit) for source in sources],

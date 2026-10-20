@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraRuffLintGate
 from tests import c, m, tm, u
@@ -30,7 +30,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
     def test_lint_fix_requires_the_confirmed_unsafe_channel() -> None:
         """The declared baseline cannot silently disable its repair channel."""
         ruff = config.Infra.codegen.make.ruff
-        tm.that(c.Infra.RUFF_UNSAFE_FIXES_FLAG in ruff.lint_fix, eq=True)
+        tm.ok(c.Infra.RUFF_UNSAFE_FIXES_FLAG in ruff.lint_fix)
         payload = ruff.model_dump()
         payload["lint_fix"] = tuple(
             flag for flag in ruff.lint_fix if flag != c.Infra.RUFF_UNSAFE_FIXES_FLAG
@@ -120,7 +120,12 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             f"    def {name}(self) -> "
             f"{'tuple[type, ...]' if name == '__bases__' else 'type | None'}: ...\n"
             for name in (
-                config.Infra.tooling.tools.ruff.lint.pylint.allow_dunder_method_names
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling,
+                    "ruff.lint.pylint",
+                    "allow-dunder-method-names",
+                    list[str],
+                )
             )
         )
         module.write_text(
@@ -145,7 +150,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             ),
         )
 
-        tm.that(checked.result.passed, eq=False)
+        tm.fail(checked.result.passed)
         tm.that(len(checked.issues), eq=1)
         tm.that(checked.issues[0].code, eq="bad-dunder-method-name")
         tm.that(checked.issues[0].message, has="__basse__")

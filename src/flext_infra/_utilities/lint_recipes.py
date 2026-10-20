@@ -226,7 +226,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             if (
                 not marker
                 or marker == "."
-                or len(marker) > config.Infra.tooling.tools.ruff.line_length
+                or len(marker)
+                > FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                    config.Infra.tooling, "ruff", "line-length", int
+                )
             ):
                 marker = identity.stem
             if not marker:
@@ -1086,7 +1089,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             The docstring literal with the wanted sections appended.
 
         """
-        width = config.Infra.tooling.tools.ruff.line_length
+        width = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         prefix, inner = cls._split_literal(raw)
         inner = inner.rstrip()
         appended: list[str] = []
@@ -1130,7 +1135,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         """Locate the notice paragraph span and the text that follows it.
 
         The notice paragraph starts at the line the declared notice pattern
-        (``tools.ruff.lint.copyright-notice-rgx``) matches and runs to the
+        (``settings.ruff.lint.flake8-copyright.notice-rgx``) matches and runs to the
         next blank line.
 
         Returns:
@@ -1141,7 +1146,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
 
         """
         found = re.search(
-            config.Infra.tooling.tools.ruff.lint.copyright_notice_rgx,
+            FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                config.Infra.tooling, "ruff.lint.flake8-copyright", "notice-rgx", str
+            ),
             inner,
         )
         if found is None:
@@ -1157,7 +1164,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         """Return ``source`` with its docstring notice paragraph as the last text.
 
         The notice paragraph starts at the line the declared notice pattern
-        (``tools.ruff.lint.copyright-notice-rgx``) matches and runs to the
+        (``settings.ruff.lint.flake8-copyright.notice-rgx``) matches and runs to the
         next blank line; the other paragraphs keep their order. ``path`` names
         the module in every refusal.
 

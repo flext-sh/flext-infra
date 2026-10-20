@@ -300,7 +300,7 @@ class TestsFlextInfraTransactionLease:
             waiter.start()
             # While the holder is live the contender stays blocked: it neither
             # acquires the lease nor touches the journal.
-            tm.that(granted.wait(timeout=5.0), eq=False)
+            tm.fail(granted.wait(timeout=5.0))
             tm.that(journal_path.read_bytes(), eq=journal_before)
 
             self._run_independent_transaction(independent)
@@ -327,7 +327,7 @@ class TestsFlextInfraTransactionLease:
                 )
                 waiter.close()
 
-        tm.that(journal_path.exists(), eq=False)
+        tm.fail(journal_path.exists())
         lock_after = lock_path.stat()
         tm.that(
             (lock_after.st_dev, lock_after.st_ino),
@@ -390,5 +390,5 @@ class TestsFlextInfraTransactionLease:
             match="operation failed under its lease",
         ) as failure:
             transaction.run_locked(prepare=False, operation=fail)
-        tm.that(failure.value is original, eq=True)
+        tm.ok(failure.value is original)
         tm.ok(transaction.run_locked(prepare=False, operation=self._ok_path))

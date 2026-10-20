@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
 from tests import m, t, tm, u
 
@@ -57,9 +58,20 @@ class TestsFlextInfraDepsModernizerTooling:
             "**/tests/**",
         })
 
-        tm.that(frozenset(tools.ruff.src), eq=tracked_surfaces)
         tm.that(
-            frozenset(tools.ruff.namespace_packages),
+            frozenset(
+                u.Infra.native_tool_setting(
+                    tool_config_document, "ruff", "src", list[str]
+                )
+            ),
+            eq=tracked_surfaces,
+        )
+        tm.that(
+            frozenset(
+                u.Infra.native_tool_setting(
+                    tool_config_document, "ruff", "namespace-packages", list[str]
+                )
+            ),
             eq=frozenset({"examples", "scripts", "tests"}),
         )
         tm.that(frozenset(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
@@ -68,7 +80,17 @@ class TestsFlextInfraDepsModernizerTooling:
             eq=True,
         )
         tm.that(frozenset(tools.pyrefly.path_rules.env_dirs), eq=tracked_surfaces)
-        tm.that(hidden_globs.isdisjoint(tools.pyrefly.project_exclude_globs), eq=True)
+        tm.that(
+            hidden_globs.isdisjoint(
+                u.Infra.native_tool_setting(
+                    tool_config_document,
+                    "pyrefly",
+                    "project-excludes",
+                    t.StrSequence,
+                )
+            ),
+            eq=True,
+        )
 
     def test_ruff_phase_sets_expected_state(
         self,
@@ -94,25 +116,47 @@ class TestsFlextInfraDepsModernizerTooling:
         )
 
         tm.that(payload, lacks="lint")
-        # A project without workspace declarations adds no exclusions (the
-        # empty list leaves the key absent), and Ruff keeps its own default
-        # excludes (never a replacement list).
-        tm.that(ruff, lacks="extend-exclude")
+        # Shared artifact exclusions remain declared independently of workspace
+        # topology; Ruff keeps its own native defaults alongside them.
+        tm.that(
+            ruff["extend-exclude"],
+            eq=sorted(
+                u.Infra.native_tool_setting(
+                    tool_config_document, "ruff", "extend-exclude", list[str]
+                )
+            ),
+        )
         tm.that(ruff, lacks="exclude")
-        tm.that(ruff["line-length"], eq=ruff_policy.line_length)
-        tm.that(ruff["target-version"], eq=ruff_policy.target_version)
+        tm.that(
+            ruff["line-length"],
+            eq=u.Infra.native_tool_setting(
+                tool_config_document, "ruff", "line-length", int
+            ),
+        )
+        tm.that(
+            ruff["target-version"],
+            eq=u.Infra.native_tool_setting(
+                tool_config_document, "ruff", "target-version", str
+            ),
+        )
         # The declared src list stays the SSOT; the projection filters it to
         # roots that exist (a retired tree must not name analyzer entries),
         # with roots the active plan is materializing accepted as present.
         tm.that(
             frozenset(u.Tests.toml_strings(ruff["src"])),
             eq=frozenset(
-                root for root in ruff_policy.src if (project_dir / root).is_dir()
+                root
+                for root in u.Infra.native_tool_setting(
+                    tool_config_document, "ruff", "src", list[str]
+                )
+                if (project_dir / root).is_dir()
             ),
         )
         tm.that(
             u.Tests.toml_mapping(ruff["format"])["docstring-code-format"],
-            eq=ruff_policy.format.docstring_code_format,
+            eq=u.Infra.native_tool_setting(
+                tool_config_document, "ruff.format", "docstring-code-format", bool
+            ),
         )
         lint = u.Tests.toml_mapping(ruff["lint"])
         tm.that(
@@ -121,15 +165,30 @@ class TestsFlextInfraDepsModernizerTooling:
                     u.Tests.toml_mapping(lint["pylint"])["allow-dunder-method-names"],
                 ),
             ),
-            eq=sorted(ruff_policy.lint.pylint.allow_dunder_method_names),
+            eq=sorted(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling,
+                    "ruff.lint.pylint",
+                    "allow-dunder-method-names",
+                    list[str],
+                )
+            ),
         )
         tm.that(
             list(u.Tests.toml_strings(lint["unfixable"])),
-            eq=sorted(ruff_policy.lint.unfixable),
+            eq=sorted(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "unfixable", list[str]
+                )
+            ),
         )
         tm.that(
             list(u.Tests.toml_strings(lint["extend-safe-fixes"])),
-            eq=sorted(ruff_policy.lint.extend_safe_fixes),
+            eq=sorted(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "extend-safe-fixes", list[str]
+                )
+            ),
         )
         tm.that(lint["ignore"], eq=sorted(ruff_policy.lint.rule_owners))
         tm.that(

@@ -281,8 +281,8 @@ class TestsFlextInfraDepsDetectorMain:
                 repository_root=member,
             ),
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout + outcome.stderr, has="Deptry executable not found")
-        tm.that((member / ".venv").exists(), eq=False)
+        tm.fail((member / ".venv").exists())
         tm.that((root / "pyproject.toml").read_bytes(), eq=parent_before)
         tm.that((member / "pyproject.toml").read_bytes(), eq=member_before)

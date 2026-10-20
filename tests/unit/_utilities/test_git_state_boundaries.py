@@ -143,7 +143,7 @@ class TestsFlextInfraGitStateBoundaries:
             publication=publication,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, has=f"[Errno {errno.ENAMETOOLONG}]")
         tm.that(str(destination.readlink()), eq="captured missing target")
         tm.that(scratch.read_bytes(), eq=b"unrelated scratch")
@@ -198,7 +198,7 @@ class TestsFlextInfraGitStateBoundaries:
             publication=publication,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(original.read_bytes(), eq=b"captured regular file")
         tm.that(
             tm.ok(
@@ -226,7 +226,7 @@ class TestsFlextInfraGitStateBoundaries:
         directory.symlink_to("README.md")
         for owned in (Path("shape/child.txt"), Path("shape/unknown.txt")):
             request = m.Infra.GitWorktreeStateRequest(repo_root=source, paths=(owned,))
-            tm.that(u.Infra.git_snapshot_worktree_state(request).failure, eq=True)
+            tm.ok(u.Infra.git_snapshot_worktree_state(request).failure)
         snapshot = tm.ok(
             u.Infra.git_snapshot_worktree_state(
                 m.Infra.GitWorktreeStateRequest(
@@ -257,7 +257,7 @@ class TestsFlextInfraGitStateBoundaries:
         for flag in ("assume-unchanged", "skip-worktree"):
             u.Tests.git_run(source, "update-index", f"--{flag}", "README.md")
             before = u.Tests.git_capture(source, "ls-files", "-v")
-            tm.that(u.Infra.git_snapshot_worktree_state(request).failure, eq=True)
+            tm.ok(u.Infra.git_snapshot_worktree_state(request).failure)
             tm.that(u.Tests.git_capture(source, "ls-files", "-v"), eq=before)
             u.Tests.git_run(source, "update-index", f"--no-{flag}", "README.md")
 
@@ -290,7 +290,7 @@ class TestsFlextInfraGitStateBoundaries:
         tm.ok(u.Infra.git_apply_worktree_checkpoint(checkpoint, lane))
         tm.ok(u.Infra.git_apply_worktree_checkpoint(checkpoint, lane))
 
-        tm.that(tm.ok(u.Infra.git_verify_worktree_state(snapshot, lane)), eq=True)
+        tm.ok(tm.ok(u.Infra.git_verify_worktree_state(snapshot, lane)))
         tm.that(
             (lane / "shape/child.bin").read_bytes(),
             eq=(path / "child.bin").read_bytes(),
@@ -392,8 +392,8 @@ class TestsFlextInfraGitStateBoundaries:
             "rev-list",
             child_checkpoint.checkpoint_ref,
         ).splitlines()
-        tm.that(indexed in reachable, eq=True)
-        tm.that(snapshot.head_entries[0].oid in reachable, eq=True)
+        tm.ok(indexed in reachable)
+        tm.ok(snapshot.head_entries[0].oid in reachable)
 
     @staticmethod
     def test_remote_drift_refuses_source_cleanup(tmp_path: Path) -> None:
@@ -433,7 +433,7 @@ class TestsFlextInfraGitStateBoundaries:
             publication=publication,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that((source / "README.md").read_text(), eq="owned change\n")
         other = tmp_path / "other.git"
         u.Tests.git_run(source, "init", "--bare", str(other))

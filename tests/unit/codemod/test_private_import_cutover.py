@@ -70,7 +70,7 @@ class TestsFlextInfraPrivateImportCutover(
                 cwd=root,
             ),
         )
-        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(executed.outcome))
         tm.that(executed.stderr, eq="")
 
     def test_earlier_semantic_move_retires_stale_preflight_import(

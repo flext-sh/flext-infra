@@ -139,7 +139,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     def test_leaf_object_routes_through_lazy_package(cls, tmp_path: Path) -> None:
@@ -216,7 +216,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
     @pytest.mark.parametrize("base_binding", ["module", "direct", "alias", "generic"])

@@ -78,7 +78,7 @@ class TestsFlextInfraWorktreeBinding:
             / inputs.spec.make.uv_resolution.editable_directory
             / c.Infra.UV_LOCK_FILENAME,
         )
-        tm.that(selected.lock_path == default.lock_path, eq=False)
+        tm.fail(selected.lock_path == default.lock_path)
         artifact = next(
             item
             for item in inputs.spec.managed_file_specs
@@ -250,7 +250,7 @@ class TestsFlextInfraWorktreeBinding:
             python=self._python(consumer),
         )
 
-        tm.that(planned.failure, eq=True)
+        tm.ok(planned.failure)
         tm.that(planned.error or "", has="workspace")
 
     def test_a_consumer_without_flext_dependencies_rejects_empty_binding(
@@ -274,7 +274,7 @@ class TestsFlextInfraWorktreeBinding:
             python=self._python(consumer),
         )
 
-        tm.that(planned.failure, eq=True)
+        tm.ok(planned.failure)
         tm.that(planned.error or "", has="no active declared dependency")
 
     def test_binding_rejects_foreign_interpreter(self, tmp_path: Path) -> None:
@@ -284,7 +284,7 @@ class TestsFlextInfraWorktreeBinding:
             consumer_root=consumer,
             python=Path(sys.executable),
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error or "", has="must belong to the consumer")
 
     def test_consumer_markers_match_the_actual_interpreter(
@@ -337,7 +337,7 @@ class TestsFlextInfraWorktreeBinding:
                 options=m.Cli.ProcessOptions(env={ci.variable: ci.value}),
             ),
         )
-        tm.that(result.outcome.raw_return_code != 0, eq=True)
+        tm.ok(result.outcome.raw_return_code != 0)
         tm.that(
             f"{result.stdout}{result.stderr}",
             has=f"prohibited with {ci.variable}={ci.value}",

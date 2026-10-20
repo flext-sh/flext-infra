@@ -43,8 +43,8 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         tm.that(first.resolution_markers, eq=())
         tm.that(len(first.optional_dependencies), eq=0)
         tm.that(len(first.dev_dependencies), eq=0)
-        tm.that(first.optional_dependencies is second.optional_dependencies, eq=False)
-        tm.that(first.dev_dependencies is second.dev_dependencies, eq=False)
+        tm.fail(first.optional_dependencies is second.optional_dependencies)
+        tm.fail(first.dev_dependencies is second.dev_dependencies)
         tm.that(
             m.Infra.LockedPackage.model_validate_json(
                 first.model_dump_json(by_alias=True),
@@ -79,7 +79,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         }"""
         package = m.Infra.LockedPackage.model_validate_json(payload)
         tm.that(package.dependencies[0].version, eq="2.0")
-        tm.that(package.dependencies[0].source is not None, eq=True)
+        tm.ok(package.dependencies[0].source is not None)
         tm.that(package.dependencies[0].extra, eq=("feature",))
         tm.that(package.dependencies[0].marker, eq="python_version >= '3.13'")
         tm.that(package.optional_dependencies["feature"][0].name, eq="audit-optional")
@@ -129,7 +129,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         payload = tm.ok(u.Cli.toml_read_json(lock))
         inventory = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         name = c.Tests.CONSUMER_MODULES[0]
-        tm.that(any(item.name == name for item in inventory.package), eq=True)
+        tm.ok(any(item.name == name for item in inventory.package))
         u.Cli.toml_sync_value(
             document,
             "package",
@@ -228,7 +228,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         lock = self._selected_lock(duplicate_project)
         before = lock.read_bytes()
         legacy = duplicate_project / c.Infra.UV_LOCK_FILENAME
-        tm.that(legacy != lock, eq=True)
+        tm.ok(legacy != lock)
         legacy.write_text("package = []\n", encoding="utf-8")
 
         tm.ok(FlextInfraWorkspaceLockCompleteness.validate(duplicate_project))
@@ -256,7 +256,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             encoding="utf-8",
         )
         payload = tm.ok(u.Cli.toml_read_json(lock))
-        tm.that(isinstance(payload["package"], list), eq=True)
+        tm.ok(isinstance(payload["package"], list))
 
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
 

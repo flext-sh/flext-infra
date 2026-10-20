@@ -37,7 +37,7 @@ class TestsFlextInfraProtocolAliasLexicalScope:
             )
             tm.that(declaration.name.id, eq="StrSequence")
             annotation = declaration.value
-            tm.that(isinstance(annotation, ast.Subscript), eq=True)
+            tm.ok(isinstance(annotation, ast.Subscript))
             if not isinstance(annotation, ast.Subscript):
                 msg = "the fixture declares a parameterized alias"
                 raise TypeError(msg)

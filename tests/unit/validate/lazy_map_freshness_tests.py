@@ -44,7 +44,7 @@ class TestsFlextInfraLazyMapFreshness:
         """Test empty workspace yields passing report."""
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)
         tm.that(report.violations, length=0)
 
     @staticmethod
@@ -89,6 +89,6 @@ class TestsFlextInfraLazyMapFreshness:
 
         report: m.Infra.ValidationReport = tm.ok(v.build_report(repository_root))
 
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.summary, has="stale")
         tm.that(len(tuple(report.violations)), gte=1)

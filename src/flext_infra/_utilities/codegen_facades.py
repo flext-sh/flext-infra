@@ -40,6 +40,7 @@ from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesIterationDirectory,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
@@ -2150,7 +2151,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         )
         if (
             any(base.lineno != namespace.lineno for base in namespace.bases)
-            or header_length > config.Infra.tooling.tools.ruff.line_length
+            or header_length
+            > FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
         ):
             wrapped: list[t.Infra.CstArgument] = []
             for index, arg in enumerate(arguments):

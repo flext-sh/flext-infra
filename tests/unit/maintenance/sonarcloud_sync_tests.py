@@ -214,7 +214,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
                 inherited=inherited,
             ),
         )
-        tm.that(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, extra), eq=False)
+        tm.fail(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, extra))
 
     @pytest.mark.parametrize("count", [1, 3])
     def test_repeated_config_entries_fail_and_server_duplicates_require_a_write(
@@ -235,7 +235,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         current = m.Infra.SonarcloudSettingsValues.model_validate_json(
             self._server_payload(self._pairs(spec) * 2),
         )
-        tm.that(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, current), eq=False)
+        tm.fail(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, current))
 
     def test_absent_token_skips_green_before_any_effect(
         self,

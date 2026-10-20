@@ -304,6 +304,7 @@ class FlextInfraPyprojectModernizerDocument:
         *,
         canonical_dev: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
+        tool_config: m.Infra.ToolConfigDocument | None = None,
     ) -> t.StrSequence:
         """Run every managed phase, in order, over one parsed payload.
 
@@ -334,7 +335,11 @@ class FlextInfraPyprojectModernizerDocument:
                 topology.declared_python_dirs_are_complete
             ),
         )
-        tooling = config.Infra.tooling
+        tooling = (
+            u.Infra.load_tooling_inputs(path.parent).unwrap().document
+            if tool_config is None
+            else tool_config
+        )
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:
             managed_artifacts = u.Infra.load_project_managed_artifacts(

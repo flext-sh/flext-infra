@@ -118,4 +118,4 @@ class TestsSemanticExecutionRoles:
         execution = m.Cli.PythonScriptExecution(
             module="role_probe.entrypoint", role="isolated-stdlib"
         )
-        tm.that({"-I", "-S"} <= set(execution.python_flags), eq=True)
+        tm.ok({"-I", "-S"} <= set(execution.python_flags))

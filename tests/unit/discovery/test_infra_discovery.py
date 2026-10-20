@@ -92,13 +92,13 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(len(projects), eq=2)
         tm.that(projects[0].name, eq="project1")
         tm.that(projects[1].name, eq="project2")
-        tm.that(projects[0].has_tests, eq=True)
-        tm.that(projects[0].has_src, eq=True)
-        tm.that(projects[1].has_src, eq=False)
-        tm.that(projects[1].has_tests, eq=False)
+        tm.ok(projects[0].has_tests)
+        tm.ok(projects[0].has_src)
+        tm.fail(projects[1].has_src)
+        tm.fail(projects[1].has_tests)
         tm.that(projects[0].make_profile, eq=c.Infra.MakeProfile.STANDALONE)
-        tm.that(projects[0].declared_subproject, eq=True)
-        tm.that(projects[1].declared_subproject, eq=True)
+        tm.ok(projects[0].declared_subproject)
+        tm.ok(projects[1].declared_subproject)
 
     @staticmethod
     def test_discover_projects_empty_workspace(
@@ -137,7 +137,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.ok(result)
         files = result.value
         tm.that(len(files), eq=3)
-        tm.that(all(f.name == "pyproject.toml" for f in files), eq=True)
+        tm.ok(all(f.name == "pyproject.toml" for f in files))
 
     @staticmethod
     def test_find_all_pyproject_files_with_skip_dirs(

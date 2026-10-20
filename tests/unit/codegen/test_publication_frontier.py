@@ -96,8 +96,8 @@ if valid_payload:
     tm.that(tm.ok(validated).repo_root, eq=root)
 else:
     tm.fail(published)
-    tm.that(isinstance(published.exception, m.ValidationError), eq=True)
-    tm.that(published.exception is validated.exception, eq=True)
+    tm.ok(isinstance(published.exception, m.ValidationError))
+    tm.ok(published.exception is validated.exception)
     tm.that(published.error, eq=validated.error)
 tm.that(
     tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
@@ -146,7 +146,7 @@ bundle = tm.ok(
         )
     )
 )
-tm.that(guide in {state.path for state in bundle.source_states}, eq=True)
+tm.ok(guide in {state.path for state in bundle.source_states})
 tm.ok(generator.publish_batch(bundle, publication_receipts=receipts))
 tm.that(
     any(
@@ -203,7 +203,7 @@ else:
         """Shared presets retain causal evidence and reject unauthorized state."""
         cause = ValueError("native publication failure")
         receipt = m.Infra.CodegenPhaseOutcome(exception=cause, error=str(cause))
-        tm.that(receipt.exception is cause, eq=True)
+        tm.ok(receipt.exception is cause)
         tm.that(
             m.Infra.CodegenPhaseOutcome.model_validate_json(
                 receipt.model_dump_json()
@@ -293,7 +293,7 @@ composed = owner.publish_operation_receipt(
     ),
 )
 if external_drift:
-    tm.that(composed.failure, eq=True)
+    tm.ok(composed.failure)
     tm.that(composed.error or "", has="differs from preceding output")
 else:
     tm.ok(composed)

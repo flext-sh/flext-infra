@@ -87,7 +87,7 @@ class TestsFlextInfraNestingCutoverOutput:
                 continue
             if line.startswith(" " * (depth + 1)):
                 continue
-            tm.that(line.startswith(" " * depth) or not line.startswith(" "), eq=True)
+            tm.ok(line.startswith(" " * depth) or not line.startswith(" "))
             break
 
     def test_emitted_source_passes_the_whitespace_and_docstring_gates(

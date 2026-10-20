@@ -37,7 +37,7 @@ class TestsFlextInfraDocsMain:
             ),
             eq=True,
         )
-        tm.that((workspace / ".reports/docs/validate-report.md").exists(), eq=True)
+        tm.ok((workspace / ".reports/docs/validate-report.md").exists())
         tm.that(
             (workspace / "flext-a/.reports/docs/validate-report.md").exists(),
             eq=True,

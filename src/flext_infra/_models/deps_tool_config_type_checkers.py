@@ -16,7 +16,7 @@ from flext_infra import c, t
 class FlextInfraModelsDepsToolConfigTypeCheckers:
     """Type checker configuration models."""
 
-    class PyrightConfig(m.ArbitraryTypesModel):
+    class PyrightConfig(m.FlexibleModel):
         """Pyright strict settings loaded from YAML."""
 
         class DiagnosticPathOverride(m.ContractModel):
@@ -69,7 +69,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = ""
 
-        class PathRulesConfig(m.ArbitraryTypesModel):
+        class PathRulesConfig(m.FlexibleModel):
             """Path resolution rules loaded from YAML."""
 
             source_dir: Annotated[
@@ -115,14 +115,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     alias="root-typings-paths",
                     description="Typings paths used in workspace settings.",
                 ),
-            ]
+            ] = ()
             project_typings_paths: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
                     description="Typings paths used in declared_repository configs.",
                 ),
-            ]
+            ] = ()
             ignored_diagnostic_globs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -132,7 +132,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                         "search paths but must not emit diagnostics."
                     ),
                 ),
-            ]
+            ] = ()
             diagnostic_path_overrides: Annotated[
                 t.VariadicTuple[
                     FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride
@@ -180,7 +180,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             ),
         ]
 
-    class PyreflyConfig(m.ArbitraryTypesModel):
+    class PyreflyConfig(m.FlexibleModel):
         """Pyrefly strict settings loaded from YAML."""
 
         findings_exit_codes: Annotated[
@@ -191,7 +191,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             ),
         ] = ()
 
-        class PathRulesConfig(m.ArbitraryTypesModel):
+        class PathRulesConfig(m.FlexibleModel):
             """Path resolution rules loaded from YAML."""
 
             source_dir: Annotated[
@@ -214,14 +214,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     alias="root-typings-paths",
                     description="Typings paths used in workspace settings.",
                 ),
-            ]
+            ] = ()
             project_typings_paths: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
                     description="Typings paths used in declared_repository configs.",
                 ),
-            ]
+            ] = ()
             env_dirs: Annotated[
                 t.StrSequence,
                 m.Field(

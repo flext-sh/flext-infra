@@ -210,8 +210,10 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("termination_signal", [signal.SIGKILL, signal.SIGTERM])
     def test_interrupted_profile_preserves_the_child_process_failure(
         cached_runner_project: Path,
+        termination_signal: int,
     ) -> None:
         """A killed real child keeps its signal instead of a missing-profile error."""
         cache = config.Infra.codegen.make.testmon_cache
@@ -220,13 +222,13 @@ class TestsFlextInfraPytestProfile:
             "import os\n"
             "import signal\n"
             "def test_runtime():\n"
-            "    os.kill(os.getpid(), signal.SIGKILL)\n",
+            f"    os.kill(os.getpid(), {termination_signal:d})\n",
             encoding=c.DEFAULT_ENCODING,
         )
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=target
         ).model_copy(update={"profile_enabled": True})
-        tm.that(tm.ok(runner.execute()), eq=-signal.SIGKILL)
+        tm.that(tm.ok(runner.execute()), eq=-termination_signal)
         reports = cached_runner_project / runner.reports
         contexts = tuple(reports.glob("*/run-context.json"))
         tm.that(len(contexts), eq=1)
@@ -234,12 +236,33 @@ class TestsFlextInfraPytestProfile:
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             (directory / "suite-outcome.json").read_text(encoding=c.DEFAULT_ENCODING)
         )
-        tm.that(outcome.raw_return_code, eq=-signal.SIGKILL)
-        tm.that(outcome.timed_out, eq=False)
+        tm.that(outcome.raw_return_code, eq=-termination_signal)
+        tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, eq=None)
         profile = directory / config.Infra.tooling.tools.pytest.profile_suite_filename
-        tm.that(profile.exists(), eq=False)
-        tm.that((directory / "run-accounting.json").exists(), eq=False)
+        tm.that(profile.exists(), eq=termination_signal == signal.SIGTERM)
+        tm.fail((directory / "run-accounting.json").exists())
+        if termination_signal == signal.SIGTERM:
+            receipt = profile.with_suffix(".pstats.json")
+            recorded = m.Infra.PytestRunContext.model_validate_json(
+                receipt.read_text(encoding=c.DEFAULT_ENCODING)
+            )
+            tm.that(
+                recorded.profile_sha256, eq=u.Cli.sha256_bytes(profile.read_bytes())
+            )
+            output = directory / "interrupted-profile.txt"
+            tm.that(
+                tm.ok(
+                    FlextInfraCProfileReport(
+                        repository_root=cached_runner_project,
+                        profile=profile,
+                        run_receipt=receipt,
+                        output=output,
+                    ).execute()
+                ),
+                eq=True,
+            )
+            tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has="test_runtime")
 
     @staticmethod
     @pytest.mark.slow
@@ -302,7 +325,9 @@ class TestsFlextInfraPytestProfile:
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
-                            c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
+                            c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(
+                                runner.repository_root
+                            ),
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
@@ -313,8 +338,8 @@ class TestsFlextInfraPytestProfile:
             ),
         )
         tm.that(result.outcome.raw_return_code, eq=(-signal.SIGKILL) % 256)
-        tm.that(result.outcome.timed_out, eq=False)
-        tm.that(output.is_file(), eq=True)
+        tm.fail(result.outcome.timed_out)
+        tm.ok(output.is_file())
         tm.that(
             bool(pstats.Stats(str(output)).get_stats_profile().func_profiles),
             eq=True,
@@ -324,7 +349,7 @@ class TestsFlextInfraPytestProfile:
                 result.stderr, has=[f"raw_return_code={-signal.SIGKILL}", "Traceback"]
             )
         if publication_error == "context":
-            tm.that(output.with_suffix(".pstats.json").exists(), eq=False)
+            tm.fail(output.with_suffix(".pstats.json").exists())
         processes = output.parent / policy.profile_process_directory
         tm.that(
             len(tuple(processes.glob("*.pstats.json"))),
@@ -366,14 +391,14 @@ class TestsFlextInfraPytestProfile:
             contexts[0].read_text(encoding="utf-8"),
         )
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(context.deadline_monotonic is not None, eq=True)
+        tm.ok(context.deadline_monotonic is not None)
         command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")
         tm.that(command, has=str(target))
         tm.that(command, lacks="test_unselected.py")
-        tm.that(runner.testmon_db.is_file(), eq=True)
+        tm.ok(runner.testmon_db.is_file())
         stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
-        tm.that(FlextInfraPytestRunner.__name__ in stats, eq=True)
-        tm.that("FlextInfraPytestProfile" in stats, eq=True)
+        tm.ok(FlextInfraPytestRunner.__name__ in stats)
+        tm.ok("FlextInfraPytestProfile" in stats)
         processes = (
             output.parent / config.Infra.tooling.tools.pytest.profile_process_directory
         )
@@ -466,7 +491,7 @@ class TestsFlextInfraPytestProfile:
             pytest.fail("profile did not bind its run directory")
         processes = directory / policy.profile_process_directory
         profiles = list(processes.glob("*.pstats"))
-        tm.that(len(profiles) >= 2, eq=True)
+        tm.ok(len(profiles) >= 2)
         for child in profiles:
             functions = pstats.Stats(str(child)).get_stats_profile().func_profiles
             startup_functions = tuple(
@@ -497,7 +522,7 @@ class TestsFlextInfraPytestProfile:
             tm.that(text, has=str(child))
         child = profiles[0]
         child.write_bytes(child.read_bytes() + b"changed")
-        tm.that(report.execute().failure, eq=True)
+        tm.ok(report.execute().failure)
 
     @staticmethod
     @pytest.mark.slow
@@ -703,9 +728,9 @@ class TestsFlextInfraPytestProfile:
         )
 
         tm.that(exit_code, eq=0)
-        tm.that(testmon_db.is_file(), eq=True)
-        tm.that(testmon_db.is_relative_to(cached_runner_project), eq=False)
-        tm.that((cached_runner_project / cache.database_filename).exists(), eq=False)
+        tm.ok(testmon_db.is_file())
+        tm.fail(testmon_db.is_relative_to(cached_runner_project))
+        tm.fail((cached_runner_project / cache.database_filename).exists())
         reports_root = cached_runner_project / cache.reports_directory
         latest_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
         profile = reports_root / latest_name / "testmon-selection.pstats"
@@ -734,7 +759,7 @@ class TestsFlextInfraPytestProfile:
                 "exit=0",
             ],
         )
-        tm.that((reports_root / latest_name / "junit.xml").is_file(), eq=True)
+        tm.ok((reports_root / latest_name / "junit.xml").is_file())
         # The testmon verb owns no coverage plugin (testmon 2.x refuses branch
         # coverage through the cov plugin), so its command carries --no-cov and
         # the coverage artifact belongs to the coverage verb alone.
@@ -750,14 +775,14 @@ class TestsFlextInfraPytestProfile:
         tm.that(command, has=c.Infra.PYTEST_SELECTED_COLLECTION_OPTION)
         tm.that(command, has="--no-cov")
         tm.that(command, has="--testmon --testmon-noselect")
-        tm.that((reports_root / latest_name / "coverage.xml").is_file(), eq=False)
+        tm.fail((reports_root / latest_name / "coverage.xml").is_file())
         # A cold run has no database to inspect before pytest; its only cache
         # receipt is the post-run seed decision.
-        tm.that((reports_root / latest_name / "cache-before.json").exists(), eq=False)
+        tm.fail((reports_root / latest_name / "cache-before.json").exists())
         seeded = m.Infra.TestmonCacheState.model_validate_json(
             tm.ok(
                 u.Cli.files_read_text(reports_root / latest_name / "cache-after.json"),
             ),
         )
-        tm.that(seeded.seed_needed, eq=True)
-        tm.that(seeded.saveable, eq=True)
+        tm.ok(seeded.seed_needed)
+        tm.ok(seeded.saveable)

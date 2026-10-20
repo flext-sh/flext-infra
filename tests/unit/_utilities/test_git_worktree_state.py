@@ -85,8 +85,8 @@ class TestsFlextInfraGitWorktreeState:
             tm.that(copied.stat().st_mode, eq=path.stat().st_mode)
         tm.that((lane / "link").readlink(), eq=(source / "link").readlink())
         tm.that((lane / "directory-link").readlink(), eq=Path())
-        tm.that((lane / deleted.name).exists(), eq=False)
-        tm.that((lane / added.name).exists(), eq=False)
+        tm.fail((lane / deleted.name).exists())
+        tm.fail((lane / added.name).exists())
 
     def test_exclusions_are_literal_subtrees(self, tmp_path: Path) -> None:
         source = u.Tests.git_repository(tmp_path)
@@ -110,7 +110,7 @@ class TestsFlextInfraGitWorktreeState:
         )
 
         tm.that((lane / "[private]/tracked.txt").read_text(), eq="base\n")
-        tm.that((lane / "[private]/untracked.txt").exists(), eq=False)
+        tm.fail((lane / "[private]/untracked.txt").exists())
         tm.that((lane / "public.txt").read_text(), eq="public\n")
 
     def test_dirty_destination_is_rejected_before_any_effect(
@@ -125,10 +125,10 @@ class TestsFlextInfraGitWorktreeState:
 
         result = u.Infra.git_copy_worktree_state(source, lane)
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(u.Tests.git_capture(lane, "status", "--porcelain=v1"), eq=before)
         tm.that((lane / "owned.txt").read_text(), eq="destination\n")
-        tm.that((lane / "new.txt").exists(), eq=False)
+        tm.fail((lane / "new.txt").exists())
 
     @staticmethod
     def test_other_repository_is_rejected(tmp_path: Path) -> None:
@@ -138,8 +138,8 @@ class TestsFlextInfraGitWorktreeState:
 
         result = u.Infra.git_copy_worktree_state(source, destination)
 
-        tm.that(result.failure, eq=True)
-        tm.that((destination / "new.txt").exists(), eq=False)
+        tm.ok(result.failure)
+        tm.fail((destination / "new.txt").exists())
 
     def test_ignored_destination_collision_is_rejected(self, tmp_path: Path) -> None:
         source = u.Tests.git_repository(tmp_path)
@@ -153,5 +153,5 @@ class TestsFlextInfraGitWorktreeState:
 
         result = u.Infra.git_copy_worktree_state(source, lane)
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that((lane / "hidden.txt").read_text(), eq="destination\n")

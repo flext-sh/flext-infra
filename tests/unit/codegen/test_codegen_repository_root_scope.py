@@ -75,7 +75,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         rendered = u.Tests.codegen_file_text(first)
         pyright = u.Tests.toml_table_at(rendered, "tool", "pyright")
         includes = frozenset(u.Tests.toml_strings(pyright["include"]))
-        tm.that(frozenset(roots).issubset(includes), eq=True)
+        tm.ok(frozenset(roots).issubset(includes))
         tm.that(
             frozenset(
                 str(u.Tests.toml_mapping(env)["root"])
@@ -91,7 +91,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             item for item in second_plan.files if item.path.name == c.PYPROJECT_FILENAME
         )
         tm.that(second.desired_content, eq=first.desired_content)
-        tm.that(u.Infra.codegen_file_requires_effect(second), eq=False)
+        tm.fail(u.Infra.codegen_file_requires_effect(second))
 
     @staticmethod
     @pytest.mark.slow
@@ -318,8 +318,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             rendered,
             has="PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra",
         )
-        tm.that(rendered.endswith("\n"), eq=True)
-        tm.that(rendered.endswith("\n\n"), eq=False)
+        tm.ok(rendered.endswith("\n"))
+        tm.fail(rendered.endswith("\n\n"))
 
     def test_repository_root_gate_verbs_evaluate_only_the_root(
         self,
@@ -339,7 +339,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
                     options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
                 ),
             )
-            tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(execution.outcome))
             output = execution.stdout + execution.stderr
             tm.that(output, has=local_body)
             tm.that(output, lacks="--verb")
@@ -354,7 +354,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
                 options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
             ),
         )
-        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(execution.outcome))
         tm.that(
             execution.stdout + execution.stderr,
             has=f"{c.Infra.CLI_GROUP_WORKSPACE} propagate",
@@ -449,8 +449,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         # C19: the upgraded Mise is relocked and installed before the
         # resolution renders; the 5kqsx double resolution keeps the upgraded
         # generator's lock before the render and the final relock after it.
-        tm.that(tool_lock < rendered, eq=True)
-        tm.that(upgrade_lock < rendered < final_lock < lock_check, eq=True)
+        tm.ok(tool_lock < rendered)
+        tm.ok(upgrade_lock < rendered < final_lock < lock_check)
         tm.that(execution.stdout + execution.stderr, has="_upg_activated")
 
     @staticmethod
@@ -512,7 +512,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             ),
         )
 
-        tm.that(u.Cli.process_succeeded(execution.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(execution.outcome))
         tm.that(execution.stderr, has="gen is not a fixed point")
 
     def test_upg_names_no_private_target_after_gen_publishes(

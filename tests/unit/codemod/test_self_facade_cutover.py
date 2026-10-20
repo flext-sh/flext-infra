@@ -609,5 +609,5 @@ class TestsFlextInfraSelfFacadeCutover:
                 sources=sources,
             )
         tm.fail(result, has=expected)
-        tm.that(isinstance(result.exception, ValueError), eq=True)
+        tm.ok(isinstance(result.exception, ValueError))
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)

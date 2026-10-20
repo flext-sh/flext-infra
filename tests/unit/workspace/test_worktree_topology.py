@@ -62,7 +62,7 @@ class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
         updated_head = tm.ok(
             u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane)),
         ).oid
-        tm.that(updated_head == base, eq=False)
+        tm.fail(updated_head == base)
         parents = tm.ok(
             u.Cli.capture(
                 [c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"],
@@ -93,4 +93,4 @@ class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
 
         container = epic / c.Infra.WORKTREES_DIRNAME
         tm.that(child, eq=container / "child-one")
-        tm.that(container.exists(), eq=False)
+        tm.fail(container.exists())

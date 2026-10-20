@@ -213,7 +213,7 @@ class TestsFlextInfraRefactorViolationsSweep(
             )
             future = next(row for row in rows if row.rule_id == "absent-future")
             tm.that(future.resolved, eq=1)
-            tm.that(future.semantic_correspondence_proven, eq=True)
+            tm.ok(future.semantic_correspondence_proven)
         else:
             with pytest.raises(
                 ValueError, match=r"identity continuity|unexplained removal"
@@ -244,8 +244,8 @@ class TestsFlextInfraRefactorViolationsSweep(
             for stage in report.stages
             if stage.audit_before is not None
         )
-        tm.that(snapshot.ast_report is not None, eq=True)
-        tm.that(snapshot.text_report is not None, eq=True)
+        tm.ok(snapshot.ast_report is not None)
+        tm.ok(snapshot.text_report is not None)
         tm.that(snapshot.observation_errors, empty=False)
         tm.that("\n".join(snapshot.observation_errors), has="invalid")
         tm.that(snapshot.lint, none=False)
@@ -256,7 +256,7 @@ class TestsFlextInfraRefactorViolationsSweep(
         )
         tm.that(receipt.errors, eq=())
         tm.that(receipt.output, none=False)
-        tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(receipt.output.outcome))
         tm.that(snapshot.ast_report, none=False)
         tm.that(
             any(
@@ -342,12 +342,12 @@ class TestsFlextInfraRefactorViolationsSweep(
                 0,
             ),
         )
-        tm.that(absence.semantic_correspondence_proven, eq=True)
+        tm.ok(absence.semantic_correspondence_proven)
         calls = rows["violating-call"]
         tm.that(
             (calls.before, calls.after, calls.introduced), eq=(copies, copies, copies)
         )
-        tm.that(calls.semantic_correspondence_proven, eq=False)
+        tm.fail(calls.semantic_correspondence_proven)
         tm.that(rows["violating-declaration"].introduced, eq=copies)
         tm.that(rows["module-with-declaration"].introduced, eq=1)
         tm.that(
@@ -498,4 +498,4 @@ class TestsFlextInfraRefactorViolationsSweep(
                         == (row.repository, row.rule_id)
                     ),
                 )
-        tm.that(delta.semantic_correspondence_proven, eq=False)
+        tm.fail(delta.semantic_correspondence_proven)

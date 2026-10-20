@@ -56,7 +56,7 @@ class TestsFlextInfraWorkspaceManifest:
 
         result = u.Infra.load_workspace_manifest(tmp_path)
         if not valid:
-            tm.that(result.failure, eq=True)
+            tm.ok(result.failure)
             return
         loaded = tm.ok(result)[0]
         tm.that(loaded.candidate_bootstrap_targets[0].path, eq=Path(target_path))
@@ -81,9 +81,9 @@ class TestsFlextInfraWorkspaceManifest:
         manifest = u.Infra.workspace_manifest_path(tmp_path)
         manifest.parent.mkdir(parents=True)
         manifest.write_text(payload, encoding=c.DEFAULT_ENCODING)
-        tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
+        tm.ok(u.Infra.load_workspace_manifest(tmp_path).failure)
         tm.that(u.Infra.repository_nonparticipant_paths(tmp_path), empty=True)
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
+        tm.fail(u.Infra.fleet_umbrella(tmp_path))
         tm.that(
             u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
             eq=config.Infra.source_scan.roots,
@@ -105,7 +105,7 @@ class TestsFlextInfraWorkspaceManifest:
         tmp_path: Path,
     ) -> None:
         """Absence of the manifest is the ordinary case for a project."""
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
+        tm.fail(u.Infra.fleet_umbrella(tmp_path))
 
     @staticmethod
     def test_a_standalone_manifest_does_not_make_an_umbrella(
@@ -115,7 +115,7 @@ class TestsFlextInfraWorkspaceManifest:
         written = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
 
         tm.that(written, eq=u.Infra.workspace_manifest_path(tmp_path))
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
+        tm.fail(u.Infra.fleet_umbrella(tmp_path))
 
     @staticmethod
     @pytest.mark.parametrize("declared", [False, True])
@@ -145,8 +145,8 @@ class TestsFlextInfraWorkspaceManifest:
         """
         written = u.Tests.write_project_beads_config(tmp_path, _PROBE)
 
-        tm.that(written.is_file(), eq=True)
-        tm.that(u.Infra.fleet_umbrella(tmp_path), eq=False)
+        tm.ok(written.is_file())
+        tm.fail(u.Infra.fleet_umbrella(tmp_path))
 
     @staticmethod
     @pytest.mark.parametrize("scan_dirs", [None, [""]])
@@ -173,7 +173,7 @@ class TestsFlextInfraWorkspaceManifest:
         )
         loaded = u.Infra.load_codegen_inputs(tmp_path)
         tm.fail(loaded, has="project_scan_dirs")
-        tm.that(isinstance(loaded.exception, c.ValidationError), eq=True)
+        tm.ok(isinstance(loaded.exception, c.ValidationError))
         with pytest.raises(RuntimeError, match="project_scan_dirs") as raised:
             u.Infra.load_refactor_config(tmp_path)
-        tm.that(isinstance(raised.value.__cause__, c.ValidationError), eq=True)
+        tm.ok(isinstance(raised.value.__cause__, c.ValidationError))

@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, p, t
+from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
 from flext_infra.gates import (
     FlextInfraMarkdownGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
 )
-from tests import tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,7 +49,7 @@ class TestsFlextInfraGateAcceptance:
             gate.check_files((source,), project, context),
             gate.fix(project, context),
         ):
-            tm.that(execution.result.passed, eq=False)
+            tm.fail(execution.result.passed)
             tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
             tm.that(
                 [issue.code for issue in execution.issues], has=f"{c.Infra.FORMAT}-exec"
@@ -134,8 +134,8 @@ class TestsFlextInfraGateAcceptance:
         tm.that(boundary.project_dir, eq=tmp_path)
         tm.that(boundary.started, eq=params.started)
         tm.that(tuple(boundary.issues), eq=params.issues)
-        tm.that(params.issues[0] is issue, eq=True)
-        tm.that(issue.locations[0] is location, eq=True)
+        tm.ok(params.issues[0] is issue)
+        tm.ok(issue.locations[0] is location)
         tm.that(boundary.issues[0].locations[0].end_line, eq=location.end_line)
         tm.that(
             boundary.issues[0].related_locations[0].model_dump(mode="json"),
@@ -150,7 +150,7 @@ class TestsFlextInfraGateAcceptance:
             issues=params.issues,
             outcome=params.outcome,
         )
-        tm.that(execution.issues[0] is issue, eq=True)
+        tm.ok(execution.issues[0] is issue)
         restored_execution = m.Infra.GateExecution.model_validate_json(
             execution.model_dump_json(exclude_computed_fields=True),
         )
@@ -212,7 +212,7 @@ class TestsFlextInfraGateAcceptance:
             eq=c.Infra.ToolOutcome.ERROR if broken else c.Infra.ToolOutcome.CLEAN,
         )
         tm.that(bool(execution.issues), eq=broken)
-        tm.that(execution.raw_output.strip() != "", eq=True)
+        tm.ok(execution.raw_output.strip() != "")
         tm.that(
             source.read_text(encoding="utf-8"),
             eq="def broken(:\n" if broken else "value = 1\n",
@@ -241,19 +241,19 @@ class TestsFlextInfraGateAcceptance:
         )
         tm.that(len(results), eq=1)
         verdict = results[0]
-        tm.that(verdict.passed, eq=False)
+        tm.fail(verdict.passed)
         tm.that(
             tuple(verdict.gates),
             eq=requested[:1] if fail_fast else requested,
         )
         for execution in verdict.gates.values():
-            tm.that(execution.result.passed, eq=False)
-            tm.that(execution.finding_count > 0, eq=True)
+            tm.fail(execution.result.passed)
+            tm.ok(execution.finding_count > 0)
             receipt = execution.raw_receipt
-            tm.that(receipt is not None, eq=True)
+            tm.ok(receipt is not None)
             if receipt is None:
                 pytest.fail("Every executed gate must retain its native receipt")
-            tm.that(receipt.read_text(encoding="utf-8").strip() != "", eq=True)
+            tm.ok(receipt.read_text(encoding="utf-8").strip() != "")
 
     @staticmethod
     @pytest.mark.parametrize("residual", [False, True])
@@ -279,7 +279,7 @@ class TestsFlextInfraGateAcceptance:
         before = gate.check(project, context)
         execution = gate.fix(project, context)
         after = gate.check(project, context)
-        tm.that(before.result.passed, eq=False)
+        tm.fail(before.result.passed)
         tm.that(execution.result.passed, eq=not residual)
         tm.that(execution.issues, eq=after.issues)
         tm.that(execution.finding_count > 0, eq=residual)
@@ -288,7 +288,7 @@ class TestsFlextInfraGateAcceptance:
             eq=c.Infra.ToolOutcome.FINDINGS if residual else c.Infra.ToolOutcome.CLEAN,
         )
         tm.that(source.read_text(encoding="utf-8"), lacks="import os")
-        tm.that(execution.raw_output.strip() != "", eq=True)
+        tm.ok(execution.raw_output.strip() != "")
 
     @staticmethod
     def test_native_fix_does_not_reject_already_fixed_diagnostics(
@@ -306,17 +306,19 @@ class TestsFlextInfraGateAcceptance:
             ruff_args=("--select", "F401", "--exit-non-zero-on-fix"),
         )
         execution = gate.fix(project, context)
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(execution.issues, empty=True)
         tm.that(source.read_text(encoding="utf-8"), lacks="import os")
-        tm.that(gate.check(project, context).result.passed, eq=True)
+        tm.ok(gate.check(project, context).result.passed)
 
     @staticmethod
     def test_native_fix_rejects_unrepairable_recipe_residue(tmp_path: Path) -> None:
         """An unsplittable identifier retains its native diagnostic, never a waiver."""
         project = u.Tests.mk_project(tmp_path, "recipe-residue", with_src=True)
-        limit = config.Infra.tooling.tools.ruff.line_length
+        limit = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         source = project / "src" / "sample.py"
         content = f"value_{'x' * (limit * 2)} = 1\n"
         source.write_text(content, encoding="utf-8")
@@ -333,7 +335,7 @@ class TestsFlextInfraGateAcceptance:
         )
         gate = FlextInfraRuffLintGate(tmp_path)
         execution = gate.fix(project, context)
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(
             execution.outcome,
             eq=c.Infra.ToolOutcome.FINDINGS,
@@ -342,7 +344,7 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.issues, eq=gate.check(project, context).issues)
         tm.that([issue.code for issue in execution.issues], has=rule)
         tm.that(source.read_text(encoding="utf-8"), eq=content)
-        tm.that(execution.raw_output.strip() != "", eq=True)
+        tm.ok(execution.raw_output.strip() != "")
 
     @staticmethod
     @pytest.mark.parametrize("residual", [False, True])
@@ -412,7 +414,7 @@ class TestsFlextInfraGateAcceptance:
             execution.issues,
             eq=gate.check_files((selected,), project, context).issues,
         )
-        tm.that(gate.check(project, context).result.passed, eq=False)
+        tm.fail(gate.check(project, context).result.passed)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -438,4 +440,4 @@ class TestsFlextInfraGateAcceptance:
         )
         tm.that(len(results), eq=1)
         tm.that(results[0].gates, empty=True)
-        tm.that(results[0].passed, eq=False)
+        tm.fail(results[0].passed)

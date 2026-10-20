@@ -33,15 +33,15 @@ class TestsFlextInfraPytestRunnerCoverage:
         tm.that(exit_code, eq=0)
         latest_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
         coverage = reports_root / latest_name / "coverage.xml"
-        tm.that(coverage.is_file(), eq=True)
-        tm.that(coverage.stat().st_size > 0, eq=True)
+        tm.ok(coverage.is_file())
+        tm.ok(coverage.stat().st_size > 0)
         summary_text = u.Tests.PytestRunner.summary(reports_root)
         tm.that(summary_text, has=["executed=1", "failed=0", "exit=0"])
         command = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "command.txt"),
         )
         tm.that(command, has="--cov")
-        tm.that("--testmon" in command, eq=False)
+        tm.fail("--testmon" in command)
         inventory_command = runner.build_selection_command(
             report_log=reports_root / latest_name / "testmon-inventory.events.jsonl",
             manifest_path=reports_root / latest_name / "testmon-inventory.json",
@@ -56,7 +56,7 @@ class TestsFlextInfraPytestRunnerCoverage:
             (reports_root / latest_name / "testmon-inventory.json").is_file(),
             eq=True,
         )
-        tm.that(runner.testmon_db.exists(), eq=False)
+        tm.fail(runner.testmon_db.exists())
 
     @staticmethod
     @pytest.mark.slow
@@ -81,15 +81,15 @@ class TestsFlextInfraPytestRunnerCoverage:
             tm.ok(u.Cli.files_read_text(report_dir / "suite-outcome.json")),
         )
         tm.that(outcome.raw_return_code, eq=exit_code)
-        tm.that(outcome.timed_out, eq=False)
+        tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, none=True)
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             tm.ok(u.Cli.files_read_text(report_dir / "run-accounting.json")),
         )
         tm.that(accounting.executed_count, eq=accounting.reported_count)
-        tm.that(accounting.executed_count > 0, eq=True)
+        tm.ok(accounting.executed_count > 0)
         tm.that(accounting.inventory_count, none=True)
-        tm.that((report_dir / "coverage.xml").exists(), eq=False)
+        tm.fail((report_dir / "coverage.xml").exists())
         # failed-tests.txt names each failed case; errors.txt keeps its trace.
         tm.that(
             tm.ok(u.Cli.files_read_text(report_dir / "failed-tests.txt")),
@@ -103,4 +103,4 @@ class TestsFlextInfraPytestRunnerCoverage:
             u.Tests.PytestRunner.summary(reports_root),
             has=["failed=1", "accounting_complete=True", f"exit={exit_code}"],
         )
-        tm.that(runner.testmon_db.exists(), eq=False)
+        tm.fail(runner.testmon_db.exists())

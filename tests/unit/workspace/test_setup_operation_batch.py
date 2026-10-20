@@ -78,12 +78,12 @@ class TestsFlextInfraSetupOperationBatch:
         invalid = first / c.Infra.CONFIG_SPEC[0]
         invalid.write_text("[tools\n", encoding=c.DEFAULT_ENCODING)
 
-        tm.that(self._validate(root, c.Infra.CodegenConformScope.ALL) != 0, eq=True)
+        tm.ok(self._validate(root, c.Infra.CodegenConformScope.ALL) != 0)
 
         report = self._report(root, "mise-artifacts")
         tm.that(report.scope, eq=(root, first, second))
         tm.that(tuple(row.root for row in report.receipts), eq=report.scope)
-        tm.that(all(row.executed for row in report.receipts), eq=True)
+        tm.ok(all(row.executed for row in report.receipts))
         tm.that(
             tuple(row.outcome for row in report.receipts),
             eq=(
@@ -158,9 +158,9 @@ class TestsFlextInfraSetupOperationBatch:
         report = self._report(root, "mise-artifacts")
         tm.that(report.scope, eq=(root, first, second))
         inactive = report.receipts[1]
-        tm.that(inactive.executed, eq=False)
+        tm.fail(inactive.executed)
         tm.that(inactive.outcome, eq=None)
-        tm.that(bool(inactive.applicability), eq=True)
+        tm.ok(bool(inactive.applicability))
 
     def test_required_missing_member_is_an_unexecuted_native_error(
         self,
@@ -174,16 +174,16 @@ class TestsFlextInfraSetupOperationBatch:
             (first.name, second.name, missing.name),
         )
 
-        tm.that(self._validate(root, c.Infra.CodegenConformScope.ALL) != 0, eq=True)
+        tm.ok(self._validate(root, c.Infra.CodegenConformScope.ALL) != 0)
 
         report = self._report(root, "mise-artifacts")
         tm.that(report.scope, eq=(root, first, second, missing))
         unavailable = report.receipts[-1]
         tm.that(unavailable.root, eq=missing)
-        tm.that(unavailable.executed, eq=False)
+        tm.fail(unavailable.executed)
         tm.that(unavailable.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(unavailable.issues[0].file, eq=str(missing))
-        tm.that(missing.exists(), eq=False)
+        tm.fail(missing.exists())
 
     def test_read_only_member_policy_prevents_environment_effects(
         self,
@@ -219,11 +219,11 @@ class TestsFlextInfraSetupOperationBatch:
         report = self._report(root, "sync-environment")
         tm.that(report.scope, eq=(root, first, second))
         inactive = report.receipts[1]
-        tm.that(inactive.executed, eq=False)
+        tm.fail(inactive.executed)
         tm.that(inactive.outcome, eq=None)
-        tm.that(bool(inactive.applicability), eq=True)
-        tm.that((first / c.Infra.ENVRC_FILENAME).exists(), eq=False)
-        tm.that((second / c.Infra.ENVRC_FILENAME).is_file(), eq=True)
+        tm.ok(bool(inactive.applicability))
+        tm.fail((first / c.Infra.ENVRC_FILENAME).exists())
+        tm.ok((second / c.Infra.ENVRC_FILENAME).is_file())
 
     def test_environment_batch_preserves_invalid_destination_and_publishes_other_roots(
         self,
@@ -241,14 +241,14 @@ class TestsFlextInfraSetupOperationBatch:
             scope=c.Infra.CodegenConformScope.ALL,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         report = self._report(root, "sync-environment")
         tm.that(report.scope, eq=(root, first, second))
-        tm.that(all(row.executed for row in report.receipts), eq=True)
+        tm.ok(all(row.executed for row in report.receipts))
         tm.that(report.receipts[1].outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(blocked.is_dir(), eq=True)
+        tm.ok(blocked.is_dir())
         for index in (0, 2):
             row = report.receipts[index]
             tm.that(row.outcome, eq=c.Infra.ToolOutcome.CLEAN)
             tm.that(row.files, eq=(row.root / c.Infra.ENVRC_FILENAME,))
-            tm.that(row.files[0].is_file(), eq=True)
+            tm.ok(row.files[0].is_file())

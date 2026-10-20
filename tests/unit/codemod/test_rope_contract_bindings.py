@@ -529,7 +529,7 @@ class TestsFlextInfraRopeContractBindings:
             "evidence = type(Payload().values) is dict\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=True)
+        tm.ok(runpy.run_path(str(path))["evidence"])
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
@@ -539,7 +539,7 @@ class TestsFlextInfraRopeContractBindings:
                 )
             )
         tm.that(edits, empty=True)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=True)
+        tm.ok(runpy.run_path(str(path))["evidence"])
 
     @staticmethod
     @pytest.mark.parametrize(

@@ -81,7 +81,7 @@ class TestsFlextInfraDocsMainEntry:
             ]),
             eq=0,
         )
-        tm.that((workspace / output_dir / "audit-report.md").exists(), eq=True)
+        tm.ok((workspace / output_dir / "audit-report.md").exists())
         tm.that(
             (workspace / "flext-a" / output_dir / "audit-report.md").exists(),
             eq=True,
@@ -120,7 +120,7 @@ class TestsFlextInfraDocsMainEntry:
             ]),
             eq=2,
         )
-        tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=False)
+        tm.fail((workspace / ".reports/docs/generate-report.md").exists())
         tm.that(
             (workspace / "flext-a/.reports/docs/generate-report.md").exists(),
             eq=False,
@@ -142,4 +142,4 @@ class TestsFlextInfraDocsMainEntry:
             main(["docs", "build", "--repository-root", str(build_workspace)]),
             eq=0,
         )
-        tm.that((build_workspace / ".reports/docs/build-report.md").exists(), eq=True)
+        tm.ok((build_workspace / ".reports/docs/build-report.md").exists())

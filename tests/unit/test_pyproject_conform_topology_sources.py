@@ -65,7 +65,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             options=u.Infra.PyprojectConformOptions(flext_line=line),
         )
         if not source_matches:
-            tm.that(generated.failure, eq=True)
+            tm.ok(generated.failure)
             tm.that(generated.error or "", has="candidate dependency Git URL differs")
             return
         rendered = tm.ok(generated)
@@ -194,7 +194,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
 
         loaded = u.Infra.load_codegen_inputs(root)
 
-        tm.that(loaded.failure, eq=True)
+        tm.ok(loaded.failure)
         tm.that(loaded.error or "", has="must be unique")
 
     def test_member_request_preserves_explicit_source_over_receiver_line(
@@ -255,7 +255,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
         )
         document = u.Cli.toml_parse_text(rendered)
-        tm.that(document is not None, eq=True)
+        tm.ok(document is not None)
         if document is None:
             pytest.fail("composition did not produce valid TOML")
         lines = tm.ok(u.Infra.document_requirement_lines(document))
@@ -264,7 +264,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             for line in lines
             if u.Infra.dep_name(line) == u.Infra.dep_name(member.distribution)
         )
-        tm.that(bool(selected), eq=True)
+        tm.ok(bool(selected))
         for line in selected:
             tm.that(
                 tm.ok(u.Infra.declared_git_source(line)),
@@ -295,7 +295,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             uv_resolution=self._toolchain_resolution(),
             options=u.Infra.PyprojectConformOptions(repository_root=tmp_path),
         )
-        tm.that(rendered.failure, eq=True)
+        tm.ok(rendered.failure)
         tm.that(
             rendered.error,
             has="member provisioning requires captured authenticated declarations",
@@ -338,8 +338,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
-        tm.that("sources" in uv, eq=False)
-        tm.that("override-dependencies" in uv, eq=False)
+        tm.fail("sources" in uv)
+        tm.fail("override-dependencies" in uv)
         repeated = tm.ok(
             u.Infra.pyproject_conform(
                 rendered,
@@ -401,10 +401,10 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
-        tm.that("sources" in uv, eq=False)
+        tm.fail("sources" in uv)
         groups = u.Tests.toml_mapping(parsed.get("dependency-groups"))
-        tm.that("workspace" not in groups, eq=True)
-        tm.that("workspace" not in uv, eq=True)
+        tm.ok("workspace" not in groups)
+        tm.ok("workspace" not in uv)
         tm.that(
             set(u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")),
             eq={self._inline_requirement(ref) for ref in workspace.subprojects},
@@ -523,8 +523,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
             set(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
             eq={"build>=1"},
         )
-        tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
-        tm.that({"idna>=3", runtime_requirement}.issubset(dev), eq=True)
+        tm.ok({"pytest>=8", "hypothesis>=6"}.issubset(dev))
+        tm.ok({"idna>=3", runtime_requirement}.issubset(dev))
         tm.that(
             f"{provider.distribution}[feature] @ "
             f"git+{provider.url}@{u.Tests.integration().branch}" in dev,
@@ -539,8 +539,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
             uv.get("constraint-dependencies"),
             eq=list(self._toolchain_resolution().constraint_dependencies) or None,
         )
-        tm.that("override-dependencies" in uv, eq=False)
-        tm.that("sources" in uv, eq=False)
+        tm.fail("override-dependencies" in uv)
+        tm.fail("sources" in uv)
         tm.that(
             tm.ok(
                 u.Infra.pyproject_conform(
@@ -604,15 +604,15 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
         )
         dev = set(u.Tests.toml_strings_at(second, "dependency-groups", "dev"))
-        tm.that(custom_member in dev, eq=True)
-        tm.that(custom_bound in dev, eq=True)
-        tm.that("hypothesis>=6" in dev, eq=False)
-        tm.that(self._inline_requirement(consumer) in dev, eq=True)
+        tm.ok(custom_member in dev)
+        tm.ok(custom_bound in dev)
+        tm.fail("hypothesis>=6" in dev)
+        tm.ok(self._inline_requirement(consumer) in dev)
         tm.that(
             u.Tests.toml_strings_at(second, "dependency-groups", "codegen"),
             eq=("build>=1",),
         )
-        tm.that("sources" in u.Tests.toml_table_at(second, "tool", "uv"), eq=False)
+        tm.fail("sources" in u.Tests.toml_table_at(second, "tool", "uv"))
         tm.that(
             tm.ok(
                 u.Infra.pyproject_conform(
@@ -877,7 +877,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
                 flext_line=u.Tests.integration(),
             ),
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     def test_candidate_commit_is_project_specific_and_reaches_fixed_point(self) -> None:
         """An explicit candidate changes only its declared distribution."""
@@ -967,7 +967,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
                 flext_line=u.Tests.integration(),
             ),
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error or "", contains="candidate dependency Git URL differs")
 
     def test_candidate_cannot_invent_a_missing_dependency_origin(self) -> None:
@@ -996,7 +996,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
                 flext_line=u.Tests.integration(),
             ),
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error or "", contains="no declared Git provenance")
 
     def test_candidate_must_be_a_declared_requirement(self) -> None:
@@ -1022,7 +1022,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
                 flext_line=u.Tests.integration(),
             ),
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error or "", contains="not declared requirements: flext-cli")
 
     def test_removing_candidate_removes_global_override(self) -> None:
@@ -1247,7 +1247,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
 
         tm.that(group, eq=(self._inline_requirement(core),))
-        tm.that(not uv_sources, eq=True)
+        tm.ok(not uv_sources)
 
     def test_member_requirement_with_a_foreign_url_fails_provenance(self) -> None:
         """A member dependency cannot point at a URL its manifest does not own."""

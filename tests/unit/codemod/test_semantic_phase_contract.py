@@ -378,7 +378,7 @@ class TestsFlextInfraSemanticPhaseContract:
             composed = tm.ok(
                 FlextInfraCodemodSemanticApply.plan(root, report, workspace, inventory)
             )
-            tm.that(provider in {edit.file_path for edit in composed}, eq=True)
+            tm.ok(provider in {edit.file_path for edit in composed})
             tm.that(
                 api in {edit.file_path for edit in composed if edit.retire_file},
                 eq=False,
@@ -392,12 +392,12 @@ class TestsFlextInfraSemanticPhaseContract:
                     workspace_factory=infra.rope_workspace,
                 )
             )
-        tm.that(legacy.exists(), eq=False)
+        tm.fail(legacy.exists())
         tm.that(
             "def compose_logging" in api.read_text(encoding=c.DEFAULT_ENCODING),
             eq=False,
         )
-        tm.that(legacy_name in api.read_text(encoding=c.DEFAULT_ENCODING), eq=False)
+        tm.fail(legacy_name in api.read_text(encoding=c.DEFAULT_ENCODING))
         if service_init.exists():
             tm.that(
                 legacy_name in service_init.read_text(encoding=c.DEFAULT_ENCODING),
@@ -417,11 +417,11 @@ class TestsFlextInfraSemanticPhaseContract:
                     workspace_factory=infra.rope_workspace,
                 )
             )
-        tm.that(changed_again, eq=False)
+        tm.fail(changed_again)
         TestsFlextInfraSemanticPhaseContract._verify_logging_consumer(
             root, namespace, owner
         )
-        tm.that(legacy.exists(), eq=False)
+        tm.fail(legacy.exists())
 
     @staticmethod
     def _verify_logging_consumer(root: Path, namespace: str, owner: str) -> None:
@@ -551,7 +551,7 @@ class TestsFlextInfraSemanticPhaseContract:
     def test_local_utility_binding_preserves_global_cli_runtime(tmp_path: Path) -> None:
         """Reusing a sufficient local core import must not replace global CLI u."""
         tm.that(tm.ok(u.Cli.env_read("FIELD", {"FIELD": "value"})), eq="value")
-        tm.that(hasattr(u, "Cli"), eq=False)
+        tm.fail(hasattr(u, "Cli"))
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "consumer.py"
         unaffected = (
@@ -945,7 +945,7 @@ class TestsFlextInfraSemanticPhaseContract:
                 tm.that(updated, has="from consumer_context import u")
                 tm.that(updated, has="u.json_dict_adapter()")
                 tm.that(updated, has="u.json_list_adapter()")
-                tm.that("from flext_cli import u" in updated, eq=False)
+                tm.fail("from flext_cli import u" in updated)
                 tm.that(
                     tm.ok(
                         u.Infra.plan_semantic_cutover(
@@ -976,7 +976,7 @@ class TestsFlextInfraSemanticPhaseContract:
                 raise RuntimeError(msg)
             loaded_package = importlib.util.module_from_spec(package_spec)
             consumer = importlib.util.module_from_spec(consumer_spec)
-            tm.that(contextual.name in sys.modules, eq=False)
+            tm.fail(contextual.name in sys.modules)
             sys.modules[contextual.name] = loaded_package
             try:
                 package_spec.loader.exec_module(loaded_package)
@@ -1186,7 +1186,7 @@ class TestsFlextInfraSemanticPhaseContract:
             tm.that(updated, has="downstream = c.PRIMITIVES_TYPES")
             tm.that(updated, has=shadowed)
             tm.that(updated.count(f"from {package.name} import c"), eq=1)
-            tm.that(upstream_import in updated, eq=False)
+            tm.fail(upstream_import in updated)
             remaining = u.Infra.plan_semantic_cutover(
                 phase,
                 rope_workspace=rope,

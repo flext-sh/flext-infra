@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import c, config, m, u
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import tm
+from tests import t, tm
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
@@ -48,7 +48,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                             "ini_options": {
                                 "pythonpath": [c.Infra.DEFAULT_SRC_DIR],
                                 c.Infra.PYTHON_FILES: list(
-                                    pytest_settings.python_files,
+                                    u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence),
                                 ),
                                 "markers": list(pytest_settings.standard_markers),
                             },
@@ -117,7 +117,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
         )
-        tm.that(plan.owns_no_tests, eq=False)
+        tm.fail(plan.owns_no_tests)
 
     def test_held_testmon_database_lease_refuses_a_concurrent_run(
         self,
@@ -167,7 +167,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
         )
-        tm.that(plan.owns_no_tests, eq=True)
+        tm.ok(plan.owns_no_tests)
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             self._read(summary.parent / "run-accounting.json"),
         )
@@ -195,7 +195,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
         )
-        tm.that(plan.owns_no_tests, eq=True)
+        tm.ok(plan.owns_no_tests)
 
     @pytest.mark.slow
     def test_full_run_keeps_native_status_for_zero_test_project(
@@ -227,7 +227,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._read(report_dir / "suite-outcome.json"),
         )
         tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
-        tm.that((report_dir / "run-accounting.json").exists(), eq=False)
+        tm.fail((report_dir / "run-accounting.json").exists())
 
     @pytest.mark.slow
     def test_slow_only_declared_file_executes_its_slow_items(
@@ -259,7 +259,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
         )
-        tm.that(plan.owns_no_tests, eq=False)
+        tm.fail(plan.owns_no_tests)
 
     @pytest.mark.slow
     def test_target_file_collection_failure_stays_red(

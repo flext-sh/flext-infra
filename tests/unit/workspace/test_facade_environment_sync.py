@@ -130,9 +130,9 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
         tm.ok(result)
         envrc = (workspace / ".envrc").read_text(encoding="utf-8")
-        tm.that("strict_env" in envrc, eq=True)
-        tm.that('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc, eq=True)
-        tm.that((workspace / ".mise.toml").exists(), eq=False)
+        tm.ok("strict_env" in envrc)
+        tm.ok('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc)
+        tm.fail((workspace / ".mise.toml").exists())
 
     @pytest.mark.parametrize("allow_direnv", [False, True])
     def test_sync_preserves_custom_envrc_without_force(
@@ -172,7 +172,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
 
         tm.fail(result, has="symlinked environment")
-        tm.that(envrc.is_symlink(), eq=True)
+        tm.ok(envrc.is_symlink())
         tm.that(external.read_text(encoding="utf-8"), eq="PATH_add foreign\n")
 
     def test_sync_force_converts_custom_envrc_to_generated(
@@ -192,8 +192,8 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
         tm.ok(result)
         content = custom.read_text(encoding="utf-8")
-        tm.that("strict_env" in content, eq=True)
-        tm.that("PATH_add bin" in content, eq=False)
+        tm.ok("strict_env" in content)
+        tm.fail("PATH_add bin" in content)
         tm.that(
             any(
                 marker in content for marker in c.Infra.WORKSPACE_ENV_GENERATED_MARKERS
@@ -233,4 +233,4 @@ class TestsFlextInfraFacadeEnvironmentSync:
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace),
         )
         tm.ok(result)
-        tm.that((workspace / ".envrc").exists(), eq=False)
+        tm.fail((workspace / ".envrc").exists())

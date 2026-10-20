@@ -81,7 +81,7 @@ class TestsFlextInfraDepsModernizerUnmanagedSubmodules:
             (workspace / "member" / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             has='build-backend = "hatchling.build"',
         )
-        tm.that((workspace / "vendored" / c.PYPROJECT_FILENAME).exists(), eq=False)
+        tm.fail((workspace / "vendored" / c.PYPROJECT_FILENAME).exists())
 
     def test_modernize_fails_for_governed_member_without_pyproject(
         self,

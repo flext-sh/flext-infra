@@ -74,7 +74,7 @@ class TestsFlextInfraCodegenScaffolder:
         tm.that(len(result.files_created), eq=5)
         pkg = project / "src" / "test_project"
         for mod, _suffix, _base, _description in c.Infra.SRC_MODULES:
-            tm.that((pkg / mod).exists(), eq=True)
+            tm.ok((pkg / mod).exists())
 
     def test_creates_only_missing_modules(self, tmp_path: Path) -> None:
         """Test creates only missing modules."""
@@ -99,7 +99,7 @@ class TestsFlextInfraCodegenScaffolder:
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(len(tests_created), eq=5)
         for mod, _suffix, _base, _description in c.Infra.TESTS_MODULES:
-            tm.that((tests_dir / mod).exists(), eq=True)
+            tm.ok((tests_dir / mod).exists())
         constants_source = (tests_dir / "constants.py").read_text(encoding="utf-8")
         tm.that(constants_source, has="from flext_tests import FlextTestsConstants")
         tm.that(constants_source, has="from test_project import c")

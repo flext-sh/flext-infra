@@ -66,8 +66,8 @@ class TestsFlextInfraDocsGenerator:
 
         tm.ok(result)
         mkdocs = (workspace / "mkdocs.yml").read_text(encoding="utf-8")
-        tm.that("site_name: workspace\n" in mkdocs, eq=True)
-        tm.that("site_name: workspace Documentation" in mkdocs, eq=False)
+        tm.ok("site_name: workspace\n" in mkdocs)
+        tm.fail("site_name: workspace Documentation" in mkdocs)
 
     @staticmethod
     def test_bundle_plans_root_and_selected_project_artifacts(
@@ -82,9 +82,9 @@ class TestsFlextInfraDocsGenerator:
         plans = u.Tests.plan_docs_bundle(generator)
 
         paths = {plan.path for plan in plans}
-        tm.that(workspace / "docs/projects/generated/catalog.md" in paths, eq=True)
-        tm.that(workspace / "flext-a/README.md" in paths, eq=True)
-        tm.that(all(plan.owner == "docs" for plan in plans), eq=True)
+        tm.ok(workspace / "docs/projects/generated/catalog.md" in paths)
+        tm.ok(workspace / "flext-a/README.md" in paths)
+        tm.ok(all(plan.owner == "docs" for plan in plans))
 
     @staticmethod
     def _seed_runtime_package(
@@ -145,7 +145,7 @@ class TestsFlextInfraDocsGenerator:
             has=f"::: {package.name}\n",
         )
         modules = generated / "modules"
-        tm.that((modules / "index.md").exists(), eq=True)
+        tm.ok((modules / "index.md").exists())
         tm.that(
             {path.relative_to(modules).as_posix() for path in modules.rglob("*.md")},
             eq={"index.md", *(f"{module.replace('.', '/')}.md" for module in declared)},
@@ -174,14 +174,14 @@ class TestsFlextInfraDocsGenerator:
         stale.write_text("# Stale generated page\n", encoding="utf-8")
 
         _ = u.Tests.publish_docs_bundle(generator)
-        tm.that(stale.exists(), eq=False)
+        tm.fail(stale.exists())
         for path, content in preserved.items():
             tm.that(path.read_bytes(), eq=content)
 
         fixed_point = generator.generate(request)
 
         tm.ok(fixed_point)
-        tm.that(all(report.changed_files == 0 for report in fixed_point.value), eq=True)
+        tm.ok(all(report.changed_files == 0 for report in fixed_point.value))
 
         bundle = u.Tests.prepare_docs_bundle(generator)
         # Mutate an authenticated source selected by the bundle itself.
@@ -211,10 +211,10 @@ class TestsFlextInfraDocsGenerator:
 
         _ = u.Tests.publish_docs_bundle(generator)
         catalog = workspace / "docs/projects/generated/catalog.md"
-        tm.that(catalog.exists(), eq=True)
+        tm.ok(catalog.exists())
 
         _ = u.Tests.publish_docs_bundle(generator)
-        tm.that(catalog.exists(), eq=True)
+        tm.ok(catalog.exists())
 
         for relative_path in (
             "docs/README.md",
@@ -225,7 +225,7 @@ class TestsFlextInfraDocsGenerator:
             (workspace / relative_path).unlink()
         validation = FlextInfraDocValidator().validate_workspace(request)
         tm.ok(validation)
-        tm.that(all(report.result == "OK" for report in validation.value), eq=True)
+        tm.ok(all(report.result == "OK" for report in validation.value))
 
     @staticmethod
     def test_generated_collection_rules_pointer_stays_within_consumer_limit(
@@ -282,7 +282,7 @@ class TestsFlextInfraDocsGenerator:
         plans = u.Tests.publish_docs_bundle(generator)
         tm.that(plans, empty=False)
         tm.that(len({plan.path for plan in plans}), eq=len(plans))
-        tm.that(curated in {plan.path for plan in plans}, eq=False)
+        tm.fail(curated in {plan.path for plan in plans})
 
         result = generator.generate(request)
         tm.ok(result)
@@ -290,11 +290,11 @@ class TestsFlextInfraDocsGenerator:
             (workspace / "docs/api-reference/generated/public-api.md").is_file(),
             eq=True,
         )
-        tm.that((workspace / "docs/projects/generated/catalog.md").exists(), eq=False)
+        tm.fail((workspace / "docs/projects/generated/catalog.md").exists())
         tm.that([report.scope for report in result.value], eq=["flext-infra-fixture"])
         for report in result.value:
             tm.that(report.changed_files, eq=0)
-            tm.that(report.passed, eq=True)
+            tm.ok(report.passed)
 
         tm.that(curated.read_bytes(), eq=curated_content)
         tm.that(
@@ -393,9 +393,9 @@ class TestsFlextInfraDocsGenerator:
             for path in package.glob("*.py")
             if not path.stem.startswith("_")
         }
-        tm.that(set(public) <= {name.removesuffix(".md") for name in expected}, eq=True)
+        tm.ok(set(public) <= {name.removesuffix(".md") for name in expected})
         tm.that(generated, eq=expected)
-        tm.that("_internal.md" in generated, eq=False)
+        tm.fail("_internal.md" in generated)
 
     @staticmethod
     def test_generated_markdown_starts_with_level_one_heading(
@@ -604,7 +604,7 @@ class TestsFlextInfraDocsGenerator:
         stale.write_text("stale\n", encoding="utf-8")
 
         stale_plans = u.Tests.plan_docs_bundle(generator)
-        tm.that(stale.exists(), eq=True)
+        tm.ok(stale.exists())
         tm.that(
             any(
                 plan.path == stale and u.Infra.codegen_file_requires_effect(plan)
@@ -616,7 +616,7 @@ class TestsFlextInfraDocsGenerator:
             r[tuple[m.Infra.CodegenFilePlan, ...]].ok(stale_plans),
         )
         tm.ok(published)
-        tm.that(stale.exists(), eq=False)
+        tm.fail(stale.exists())
 
         fixed_point = u.Tests.plan_docs_bundle(generator)
         tm.that(
@@ -627,7 +627,7 @@ class TestsFlextInfraDocsGenerator:
     @staticmethod
     def test_generated_file_model_is_frozen() -> None:
         """Keep generated-file report models immutable."""
-        tm.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
+        tm.ok(m.Infra.GeneratedFile.model_config.get("frozen"))
 
     @staticmethod
     def test_generate_report_tracks_written_files() -> None:

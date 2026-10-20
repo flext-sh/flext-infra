@@ -56,10 +56,10 @@ assert module.Consumer.cache == ('populated',)
 assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
 module.Consumer.mode = 'changed'
 assert module.Consumer.execute() == 'changed'
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 module.Consumer.mode = 'original'
 module.Consumer.prime = {decorator}(module.replacement)
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 """,
             python_paths=(str(root),),
             cwd=real_python_package,
@@ -97,7 +97,7 @@ assert any(item.kind == 'alias' for item in before.bindings)
 assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
 module.Payload.value = 'modified'
 assert module.execute() == ('modified', 'modified', 'modified')
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 """,
             python_paths=(str(root),),
             cwd=real_python_package,
@@ -137,7 +137,7 @@ function = module.execute.__wrapped__
 code = function.__code__
 function.__code__ = code.replace(
     co_filename=str(staged_root / Path(code.co_filename).relative_to(original_root)))
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 mapping = ((staged_root, original_root),)
 assert native.compare(
     before, native.capture(selection, paths=mapping).unwrap()
@@ -146,7 +146,7 @@ function.__code__ = function.__code__.replace(co_consts=tuple(
     'modified' if value == 'original' else value for value in code.co_consts))
 module.execute.cache_clear()
 assert module.bound() == 'modified'
-assert native.compare(before, native.capture(selection, paths=mapping).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection, paths=mapping).unwrap()))
 """,
             python_paths=(str(root),),
             cwd=real_python_package,
@@ -181,7 +181,7 @@ before = native.capture(selection).unwrap()
 assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
 module.optional = 'available'
 assert module.execute() == 'available'
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 del module.optional
 assert native.compare(before, native.capture(selection).unwrap()).unwrap() is True
 """,
@@ -220,7 +220,7 @@ assert native.compare(deep, native.capture(large).unwrap()).unwrap() is True
 changed = 'modified'
 for _ in range({depth * 2}): changed = (changed,)
 module.Large.value = changed
-assert native.compare(deep, native.capture(large).unwrap()).failure
+tm.fail(native.compare(deep, native.capture(large).unwrap()))
 """,
             python_paths=(str(root),),
             cwd=real_python_package,
@@ -266,7 +266,7 @@ for parent, child in reversed(tuple(zip(chain[:-1], chain[1:], strict=True))):
     changed = parent.replace(co_consts=tuple(
         changed if item is child else item for item in parent.co_consts))
 module.factory.__code__ = changed
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 """,
             python_paths=(str(root),),
             cwd=real_python_package,

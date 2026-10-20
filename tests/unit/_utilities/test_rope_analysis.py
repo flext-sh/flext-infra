@@ -298,7 +298,7 @@ class TestsFlextInfraRopeAnalysis:
         tm.that(len(nodes), eq=len(list(ast.walk(source_tree))))
         parents = u.Infra.ast_parent_map(tree)
         child = u.Infra.ensure_ast_node(source_tree.body[0])
-        tm.that(u.Infra.module_level_node(child, parents), eq=True)
+        tm.ok(u.Infra.module_level_node(child, parents))
         # The rejection names the offending runtime type; its prose is not a contract.
         with pytest.raises(TypeError, match=r"\bobject\b"):
             u.Infra.ensure_ast_node(object())

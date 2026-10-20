@@ -156,7 +156,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
 
         reference = workspace.subprojects[0]
         tm.that(reference.path, eq=Path("apps/member"))
-        tm.that(reference.editable, eq=True)
+        tm.ok(reference.editable)
         tm.that(reference.examples_module, eq=declared.examples_module)
         tm.that(reference.extra_verbs, eq=(verb,))
         tm.that(reference.script_dispatch, eq=dispatch)
@@ -176,7 +176,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         )
 
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(parent)
-        tm.that(workspace.failure, eq=True)
+        tm.ok(workspace.failure)
         tm.that(str(workspace.error), has="workspace manifest model validation")
 
     def test_submodule_self_load_accepts_an_independent_ledger(
@@ -218,6 +218,6 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
 
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(member)
 
-        tm.that(workspace.failure, eq=True)
+        tm.ok(workspace.failure)
         tm.that(str(workspace.error), has="member Beads routing identity differs")
         tm.that(str(workspace.error), has="rogue-workspace")

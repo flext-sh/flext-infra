@@ -90,7 +90,9 @@ class TestsFlextInfraDepsModernizerPyright:
         pyright = u.Tests.toml_mapping(tools["pyright"])
         tm.that(pyright, lacks="venv")
         tm.that(pyright, lacks="venvPath")
-        for key, value in u.Infra.native_tool_settings(tool_config_document, c.Infra.PYRIGHT).items():
+        for key, value in u.Infra.native_tool_settings(
+            tool_config_document, c.Infra.PYRIGHT
+        ).items():
             tm.that(pyright[key], eq=value)
 
     @staticmethod
@@ -273,7 +275,7 @@ class TestsFlextInfraDepsModernizerPyright:
             <= discovered_files,
             eq=True,
         )
-        tm.that("flext-core/tests" in discovered_files, eq=True)
+        tm.ok("flext-core/tests" in discovered_files)
         environments = {
             environment["root"]: environment
             for item in u.Tests.toml_list(pyright["executionEnvironments"])
@@ -345,14 +347,14 @@ class TestsFlextInfraDepsModernizerPyright:
             ):
                 src_env = environment
                 break
-        tm.that(src_env is not None, eq=True)
+        tm.ok(src_env is not None)
         if src_env is None:
             return
         extra_paths = u.Tests.toml_strings(
             u.Cli.toml_unwrap_item(src_env.get("extraPaths", ())),
         )
-        tm.that("flext-core/src" in extra_paths, eq=True)
-        tm.that("flext-api/src" in extra_paths, eq=True)
+        tm.ok("flext-core/src" in extra_paths)
+        tm.ok("flext-api/src" in extra_paths)
 
     def test_declared_repository_config_sets_expected_execution_environments(
         self,
@@ -728,7 +730,7 @@ class TestsFlextInfraDepsModernizerPyright:
             declared,
             workspace_excluded_top_dirs=excluded_top_dirs,
         )
-        tm.that(set(root_modules) <= set(targets), eq=True)
+        tm.ok(set(root_modules) <= set(targets))
         tm.that(sorted(u.Tests.toml_strings(pyright["include"])), eq=sorted(targets))
         tm.that(
             sorted(

@@ -31,7 +31,7 @@ class TestsFlextInfraGitStateCheckpoint:
     @staticmethod
     def _blob_text(root: Path, revision: str) -> str:
         execution = tm.ok(u.Cli.run_raw(["git", "show", revision], cwd=root))
-        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(execution.outcome))
         return execution.stdout
 
     @staticmethod
@@ -151,7 +151,7 @@ class TestsFlextInfraGitStateCheckpoint:
             "refs/captures/test/changed",
         )
 
-        tm.that(changed.failure, eq=True)
+        tm.ok(changed.failure)
         snapshot = tm.ok(
             u.Infra.git_snapshot_worktree_state(
                 m.Infra.GitWorktreeStateRequest(
@@ -164,7 +164,7 @@ class TestsFlextInfraGitStateCheckpoint:
             snapshot,
             checkpoint.checkpoint_ref,
         )
-        tm.that(conflict.failure, eq=True)
+        tm.ok(conflict.failure)
         tm.that(
             u.Tests.git_capture(
                 source,
@@ -196,10 +196,10 @@ class TestsFlextInfraGitStateCheckpoint:
             publication=publication,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(u.Tests.git_capture(source, "status", "--porcelain=v1"), eq=before)
         tm.that((source / "README.md").read_text(), eq="new concurrent change\n")
-        tm.that((source / "added.txt").exists(), eq=True)
+        tm.ok((source / "added.txt").exists())
 
     def test_publish_retains_both_layers_on_remote(self, tmp_path: Path) -> None:
         checkpoint = self._capture(tmp_path)
@@ -246,7 +246,7 @@ class TestsFlextInfraGitStateCheckpoint:
                 paths=(Path("pending.txt"),),
             ),
         )
-        tm.that(rejected.failure, eq=True)
+        tm.ok(rejected.failure)
 
     @staticmethod
     def _diverge_remote(checkpoint: m.Infra.GitWorktreeStateCheckpoint) -> str:
@@ -306,7 +306,7 @@ class TestsFlextInfraGitStateCheckpoint:
             "checkpoint-remote",
         )
 
-        tm.that(republished.failure, eq=True)
+        tm.ok(republished.failure)
         tm.that(
             self._remote_advertisement(checkpoint),
             eq=f"{divergent}\t{checkpoint.checkpoint_ref}",
@@ -326,4 +326,4 @@ class TestsFlextInfraGitStateCheckpoint:
             publication,
         )
 
-        tm.that(verified.failure, eq=True)
+        tm.ok(verified.failure)

@@ -79,7 +79,7 @@ class TestsFlextInfraCodegenLazyInit:
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_tests_dir_is_scanned(self, governed_project: Path) -> None:
             """Scan test packages in check mode."""
@@ -89,7 +89,7 @@ class TestsFlextInfraCodegenLazyInit:
             )
             generator = FlextInfraCodegenLazyInit(repository_root=governed_project)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_tests_init_files_are_processed(self, tmp_path: Path) -> None:
             """Regenerate discovered test package initializers."""
@@ -116,7 +116,7 @@ class TestsFlextInfraCodegenLazyInit:
                 '__all__: list[str] = ["DeepFixture"]\n',
             )
             tm.that(u.Tests.run_lazy_init(tmp_path), eq=0)
-            tm.that(nested_init.exists(), eq=True)
+            tm.ok(nested_init.exists())
 
     class TestsCheckOnlyMode:
         """check_only=True reports without writing."""
@@ -129,7 +129,7 @@ class TestsFlextInfraCodegenLazyInit:
             )
             original_content = tests_init.read_text(encoding="utf-8")
             generator = FlextInfraCodegenLazyInit(repository_root=governed_project)
-            tm.that(generator.plan_files().success, eq=True)
+            tm.ok(generator.plan_files().success)
             tm.that(tests_init.read_text(encoding="utf-8"), eq=original_content)
 
     class TestsExcludedDirectories:
@@ -144,7 +144,7 @@ class TestsFlextInfraCodegenLazyInit:
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_venv_dir_excluded(self, tmp_path: Path) -> None:
             """Exclude virtual-environment test packages from discovery."""
@@ -155,7 +155,7 @@ class TestsFlextInfraCodegenLazyInit:
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_nested_site_packages_dir_excluded(self, tmp_path: Path) -> None:
             """Exclude nested site-packages directories from discovery."""
@@ -172,7 +172,7 @@ class TestsFlextInfraCodegenLazyInit:
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_runtime_scratch_dir_excluded_from_plans(self, tmp_path: Path) -> None:
             """Exclude ephemeral runtime packages declared by the artifact SSOT."""
@@ -251,10 +251,10 @@ class TestsFlextInfraCodegenLazyInit:
 
             tm.ok(result)
             planned = {plan.path for plan in result.value.files}
-            tm.that(owned_inits <= planned, eq=True)
+            tm.ok(owned_inits <= planned)
             inputs = {state.path for state in result.value.inputs}
-            tm.that(planned.isdisjoint(foreign_paths), eq=True)
-            tm.that(inputs.isdisjoint(foreign_paths), eq=True)
+            tm.ok(planned.isdisjoint(foreign_paths))
+            tm.ok(inputs.isdisjoint(foreign_paths))
 
     class TestsEdgeCases:
         """Edge cases for directory scanning."""
@@ -263,7 +263,7 @@ class TestsFlextInfraCodegenLazyInit:
         def test_empty_workspace_returns_zero(tmp_path: Path) -> None:
             """Return zero changes for an empty workspace."""
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            tm.that(generator.plan_files().success, eq=True)
+            tm.ok(generator.plan_files().success)
             tm.that(u.Tests.run_lazy_init(tmp_path), eq=0)
 
         def test_tests_dir_without_init_py_is_skipped(self, tmp_path: Path) -> None:
@@ -274,14 +274,14 @@ class TestsFlextInfraCodegenLazyInit:
             (tests_dir / "conftest.py").write_text("# conftest", encoding="utf-8")
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_no_tests_dir_at_all(self, tmp_path: Path) -> None:
             """Process source packages when no tests directory exists."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.that(result.success, eq=True)
+            tm.ok(result.success)
 
         def test_plan_files_returns_flext_result(self, tmp_path: Path) -> None:
             """Expose planning status through the public result contract.
@@ -292,7 +292,7 @@ class TestsFlextInfraCodegenLazyInit:
             """
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            tm.that(generator.execute().failure, eq=True)
+            tm.ok(generator.execute().failure)
             planned = tm.ok(generator.plan_files())
             tm.that(
                 all(plan.path.name == c.Infra.INIT_PY for plan in planned.files),
@@ -360,7 +360,7 @@ class TestsFlextInfraCodegenLazyInit:
             tm.that(u.Tests.run_lazy_init(governed_project), eq=0)
 
             initializer = (tree / c.Infra.INIT_PY).read_text(encoding="utf-8")
-            tm.that(initializer.startswith(c.Infra.AUTOGEN_HEADERS), eq=True)
+            tm.ok(initializer.startswith(c.Infra.AUTOGEN_HEADERS))
             tm.that(initializer, lacks="wire_pb2")
             replanned = tm.ok(
                 FlextInfraCodegenLazyInit(
@@ -386,4 +386,4 @@ class TestsFlextInfraCodegenLazyInit:
 
             tm.that(u.Tests.run_lazy_init(governed_project), eq=0)
 
-            tm.that((tree / c.Infra.INIT_PY).exists(), eq=False)
+            tm.fail((tree / c.Infra.INIT_PY).exists())

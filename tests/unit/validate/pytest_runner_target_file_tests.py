@@ -51,7 +51,7 @@ class TestsFlextInfraPytestTargetFile:
         make = config.Infra.codegen.make
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
         relative = Path(make.testmon_cache.target_directory) / (
-            config.Infra.tooling.tools.pytest.python_files[0].replace("*", probe)
+            u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence)[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"
         source, expected = TestsFlextInfraPytestTargetFile._probe_source(
@@ -208,7 +208,7 @@ class TestsFlextInfraPytestTargetFile:
                 target_file=Path("tests/missing_declared_case.py"),
             )
         except ValueError as exc:
-            tm.that("existing file" in str(exc), eq=True)
+            tm.ok("existing file" in str(exc))
             outcome = "value-error"
         tm.that(outcome, eq="value-error")
 

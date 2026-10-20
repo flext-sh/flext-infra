@@ -40,7 +40,7 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
         )
         tm.that(len(locked_uv), eq=1)
         version = locked_uv[0]["version"]
-        tm.that(isinstance(version, str), eq=True)
+        tm.ok(isinstance(version, str))
         (root / config.Infra.codegen.make.custom_handler_policy.filename).write_text(
             ".PHONY: post-status\n"
             'post-status:\n\t@test "$$APPLICATION_STATE" = "$(PROJECT_ROOT)"\n'
@@ -190,7 +190,7 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
             eq=expected_make_status,
         )
         tm.that(result.outcome.raw_return_code, eq=expected_make_status)
-        tm.that(result.outcome.timed_out, eq=False)
+        tm.fail(result.outcome.timed_out)
         tm.that(result.outcome.forwarded_signal, eq=None)
         for relative, original in preserved.items():
             tm.that((root / relative).read_bytes(), eq=original)

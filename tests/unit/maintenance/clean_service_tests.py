@@ -32,5 +32,5 @@ class TestsFlextInfraCleanService:
             apply_changes=True,
         ).execute()
 
-        tm.that(result.success, eq=True)
-        tm.that(broken.is_symlink(), eq=False)
+        tm.ok(result.success)
+        tm.fail(broken.is_symlink())

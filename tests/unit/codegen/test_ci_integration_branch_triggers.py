@@ -161,9 +161,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
         tm.that(expected, empty=False)
         tm.that(contract.destinations, eq=expected)
-        tm.that(contract.pyproject, eq=False)
-        tm.that(contract.tooling, eq=False)
-        tm.that(contract.custom, eq=False)
+        tm.fail(contract.pyproject)
+        tm.fail(contract.tooling)
+        tm.fail(contract.custom)
 
     @staticmethod
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
@@ -251,7 +251,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(upload["if"], eq="${{ always() }}")
         inputs = u.Cli.json_as_mapping(upload["with"])
         tm.that(inputs["if-no-files-found"], eq="error")
-        tm.that(inputs["include-hidden-files"], eq=True)
+        tm.ok(inputs["include-hidden-files"])
         paths = str(inputs["path"]).splitlines()
         for filename in (
             "suite-outcome.json",
@@ -287,7 +287,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             c.Infra.GATE_CAPTURE_RESULT_FILENAME,
             "command.txt",
         ):
-            tm.that(any(path.endswith(private_name) for path in paths), eq=False)
+            tm.fail(any(path.endswith(private_name) for path in paths))
         publication = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         tm.that(
             paths,
@@ -298,7 +298,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 f"{c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY.as_posix()}/*.json",
             ],
         )
-        tm.that(any(path.endswith(".log") for path in paths), eq=False)
+        tm.fail(any(path.endswith(".log") for path in paths))
         tm.that(rendered, lacks=["continue-on-error"])
 
     @staticmethod
@@ -321,9 +321,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(isinstance(prefixes_text, str), truth=True)
         prefixes = prefixes_text.splitlines()
         tm.that(len(prefixes), eq=2)
-        tm.that(primary_key.startswith(prefixes[0]), eq=True)
-        tm.that(prefixes[0].startswith(prefixes[1]), eq=True)
-        tm.that(prefixes[0] != prefixes[1], eq=True)
+        tm.ok(primary_key.startswith(prefixes[0]))
+        tm.ok(prefixes[0].startswith(prefixes[1]))
+        tm.ok(prefixes[0] != prefixes[1])
         tm.that(prefixes[1], has=spec.python_version)
         tm.that(
             primary_key,
@@ -478,7 +478,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                     ),
                 ),
             )
-            tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(outcome.outcome))
             receipts.append(output.read_text(encoding="utf-8"))
         namespaces = tuple(
             next(line for line in receipt.splitlines() if line.startswith("namespace="))
@@ -493,7 +493,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             for receipt in receipts
         )
         tm.that(namespaces[0], eq=namespaces[1])
-        tm.that(namespaces[1] != namespaces[2], eq=True)
+        tm.ok(namespaces[1] != namespaces[2])
         tm.that(len(set(seeds)), eq=1)
         tm.that(len(set(receipts)), eq=len(receipts))
 

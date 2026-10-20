@@ -83,5 +83,5 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             file_path=file_path,
             source=source,
         )
-        tm.that(normalized is not None, eq=True)
+        tm.ok(normalized is not None)
         return normalized or ""

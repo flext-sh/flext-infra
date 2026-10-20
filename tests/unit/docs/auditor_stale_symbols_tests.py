@@ -194,7 +194,7 @@ class TestsFlextInfraAuditorStaleSymbols:
         exports = contract["exports"]
         tm.that(exports, is_=list)
         tm.that(exports, has="LiveSymbol")
-        tm.that(bool(exports), eq=True)
+        tm.ok(bool(exports))
 
     def test_public_contract_resolves_imported_lazy_public_exports(
         self,

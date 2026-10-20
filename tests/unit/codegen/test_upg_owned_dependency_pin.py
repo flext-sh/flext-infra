@@ -116,7 +116,7 @@ class TestsFlextInfraUpgOwnedDependencyPin:
             ("dependency-groups", "codegen"),
         ):
             for requirement in u.Tests.toml_strings_at(rendered, section, key):
-                tm.that(requirement.endswith(f".git@{self.LINE}"), eq=True)
+                tm.ok(requirement.endswith(f".git@{self.LINE}"))
         tm.that(rendered, lacks=self.COMMIT)
         tm.that(rendered, lacks="override-dependencies")
         tm.that(tm.ok(self._conform(rendered)), eq=rendered)

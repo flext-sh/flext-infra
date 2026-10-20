@@ -132,7 +132,7 @@ class TestsFlextInfraMiseToolchainProof:
                 timeout=c.Infra.TIMEOUT_SHORT,
             )
         )
-        tm.that(u.Cli.process_succeeded(installation.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(installation.outcome))
         tm.that(installation.stderr, eq="")
         binary = tm.ok(u.Infra.managed_mise_binary(entry.name, root))
         tm.that(
@@ -356,5 +356,5 @@ class TestsFlextInfraMiseToolchainProof:
             if plan.desired_content is None
         }
 
-        tm.that(retired >= {".prettierrc", ".prettierignore"}, eq=True)
+        tm.ok(retired >= {".prettierrc", ".prettierignore"})
         tm.that(preserved & {".prettierrc", ".prettierignore"}, eq=set[str]())

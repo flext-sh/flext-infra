@@ -152,4 +152,4 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             if path in scaffold_content:
                 tm.that(path.read_bytes(), eq=scaffold_content[path])
             else:
-                tm.that(path.exists(), eq=False)
+                tm.fail(path.exists())

@@ -119,6 +119,7 @@ class FlextInfraMarkdownCodeSources:
                 # distributions, never governed source.
                 continue
             tree = ast.parse(py_path.read_text(c.DEFAULT_ENCODING))
+            example_index = 0
             for node in ast.walk(tree):
                 # Only these carry docstrings; ast.walk also yields expression
                 # nodes and ast.get_docstring raises TypeError on those.
@@ -132,17 +133,18 @@ class FlextInfraMarkdownCodeSources:
                     continue
                 body_start = node.body[0].lineno
                 relative_posix = py_path.relative_to(project_dir).as_posix()
-                for index, example in enumerate(parser.get_examples(docstring)):
+                for example in parser.get_examples(docstring):
                     source_text = example.source
                     compile(source_text, str(py_path), "exec")
                     collected.append((
                         FlextInfraMarkdownCodeSources.source_name(
                             relative_posix,
-                            index,
+                            example_index,
                         ),
                         source_text,
                         (relative_posix, body_start + example.lineno),
                     ))
+                    example_index += 1
         return tuple(collected)
 
 

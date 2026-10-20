@@ -68,7 +68,7 @@ class TestsFlextInfraDeferredSelfReferenceNormalizer:
         )
         normalized = u.Infra.normalize_deferred_self_references(source)
         tm.that(normalized, has="class Child(Base):")
-        tm.that("class Child(Models.Base):" not in normalized, eq=True)
+        tm.ok("class Child(Models.Base):" not in normalized)
 
     @staticmethod
     def test_public_normalizer_rejects_ambiguous_owners_and_model_rebuild() -> None:

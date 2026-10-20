@@ -164,7 +164,7 @@ class TestsFlextInfraPytestCollectionManifest:
             cached_runner_project,
             target_file=source.relative_to(cached_runner_project),
         )
-        tm.that(runner.execute().unwrap() != 0, eq=True)
+        tm.ok(runner.execute().unwrap() != 0)
         latest = (
             (cached_runner_project / runner.reports / "latest.txt").read_text().strip()
         )
@@ -183,7 +183,7 @@ class TestsFlextInfraPytestCollectionManifest:
             attempt.first_exception_traceback,
             contains="original first-attempt failure",
         )
-        tm.that(bool(receipt.violations), eq=True)
+        tm.ok(bool(receipt.violations))
         source.write_text("```python\nassert 1 == 1\n```\n", encoding="utf-8")
         warm = u.Tests.PytestRunner.runner_for(
             cached_runner_project,
@@ -202,7 +202,7 @@ class TestsFlextInfraPytestCollectionManifest:
             ).read_text(),
         )
         tm.that(receipt.violations, eq=())
-        tm.that(receipt.cache_hit, eq=False)
+        tm.fail(receipt.cache_hit)
         (attempt,) = receipt.diagnostics.markdown_attempts
         tm.that(attempt.attempts, eq=1)
         tm.that(attempt.first_exception_type, eq=None)

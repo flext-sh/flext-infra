@@ -57,7 +57,7 @@ class TestsFlextInfraLazyInitProjectionManifest:
         two = FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
             files=composed,
         )
-        tm.that(one.failure, eq=False)
+        tm.fail(one.failure)
         tm.that(one.value, eq=two.value)
         manifest = one.value[0]
         tm.that(manifest.path, eq=tmp_path / ".agents" / "projections.lock.json")
@@ -76,7 +76,7 @@ class TestsFlextInfraLazyInitProjectionManifest:
         tm.that(first_entry.get("sha256"), eq=hashlib.sha256(b"alpha").hexdigest())
         tm.that(first_entry.get("bytes"), eq=5)
         tm.that(manifest.desired_content, none=False)
-        tm.that(manifest.desired_content.endswith(b"\n"), eq=True)
+        tm.ok(manifest.desired_content.endswith(b"\n"))
 
     @staticmethod
     def test_manifest_excludes_itself_and_non_projected_plans(
@@ -93,7 +93,7 @@ class TestsFlextInfraLazyInitProjectionManifest:
         result = FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
             files=(projected, engine, existing),
         )
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         tm.that(len(result.value), eq=1)
         tm.that(result.value[0].desired_content, none=False)
         parsed = u.Tests.json_payload(
@@ -112,7 +112,7 @@ class TestsFlextInfraLazyInitProjectionManifest:
         result = FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
             files=(engine,),
         )
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         tm.that(result.value, eq=())
 
     @staticmethod
@@ -127,7 +127,7 @@ class TestsFlextInfraLazyInitProjectionManifest:
         result = FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
             files=composed,
         )
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         tm.that(len(result.value), eq=2)
         roots = sorted(plan.project for plan in result.value)
         tm.that(roots, eq=sorted([tmp_path, other]))

@@ -135,6 +135,6 @@ class TestsFlextInfraScanner:
         f.chmod(0o000)
         try:
             result = self._scanner().scan(tmp_path, pattern="hello", includes=["*.txt"])
-            tm.that(result.failure, eq=True)
+            tm.ok(result.failure)
         finally:
             f.chmod(0o644)

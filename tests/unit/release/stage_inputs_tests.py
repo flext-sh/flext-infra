@@ -61,7 +61,7 @@ class TestsFlextInfraReleaseStageInputs:
         mirrored = FlextInfraReleaseProjectMixin.mirror_release_inputs(project, stage)
 
         tm.ok(mirrored)
-        tm.that((stage / "dist").exists(), eq=False)
+        tm.fail((stage / "dist").exists())
 
     @staticmethod
     def test_non_regular_dist_entry_fails_loud(tmp_path: Path) -> None:

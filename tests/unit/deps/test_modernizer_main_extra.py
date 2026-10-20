@@ -123,7 +123,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             skip_check=True,
         )
         tm.that(modernizer.run(), eq=0)
-        tm.that((modernizer_workspace / "uv.lock").exists(), eq=False)
+        tm.fail((modernizer_workspace / "uv.lock").exists())
 
     @staticmethod
     def test_run_rewrite_constraints_keeps_attached_submodule_manifest(
@@ -172,7 +172,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         ).run()
 
         tm.that(exit_code, eq=0)
-        tm.that((modernizer_workspace / "flext-core" / "uv.lock").exists(), eq=False)
+        tm.fail((modernizer_workspace / "flext-core" / "uv.lock").exists())
         tm.that(
             (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             has='"requests>=2.0"',

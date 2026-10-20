@@ -330,7 +330,7 @@ class TestsFlextInfraBatchReplacements:
         entries = tuple(entry for entry in applied.entries if entry.rule_id == rule_id)
         tm.that(len(entries), eq=2)
         tm.that({entry.source_owner for entry in entries}, eq={"authored", "generator"})
-        tm.that(all(entry.actionable for entry in entries), eq=True)
+        tm.ok(all(entry.actionable for entry in entries))
         tm.that(
             all(
                 entry.classification is c.Infra.ModScanFindingClass.ACTIONABLE
@@ -384,7 +384,7 @@ class TestsFlextInfraBatchReplacements:
         )
         tm.that(len(blocking), eq=1)
         tm.that(blocking[0].source_owner, eq="generator")
-        tm.that(blocking[0].actionable, eq=True)
+        tm.ok(blocking[0].actionable)
         tm.that(blocking[0].classification, eq=c.Infra.ModScanFindingClass.ACTIONABLE)
         tm.that(
             generated.read_bytes(), eq=sources["generated"].encode(c.DEFAULT_ENCODING)

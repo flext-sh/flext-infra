@@ -93,14 +93,14 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
         tm.that(beads.workspace, eq="lane-workspace")
         tm.that(beads.database, eq="lane-database")
         tm.that(beads.issue_prefix, eq="lane-prefix")
-        tm.that(all(item.path.is_relative_to(lane) for item in plan.files), eq=True)
+        tm.ok(all(item.path.is_relative_to(lane) for item in plan.files))
         tm.that(
             tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)
-        tm.that((lane / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
-        tm.that((primary / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
+        tm.fail((lane / c.Infra.MAKEFILE_FILENAME).exists())
+        tm.fail((primary / c.Infra.MAKEFILE_FILENAME).exists())
         tm.that(
             u.Tests.WorktreeFixture.repository_snapshot(primary),
             eq=primary_snapshot,
@@ -213,7 +213,7 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
             ),
         )
 
-        tm.that(bool(applied.written_files), eq=True)
+        tm.ok(bool(applied.written_files))
         for path, content in protected_bytes.items():
             tm.that(path.read_bytes(), eq=content)
         tm.that(
@@ -228,9 +228,9 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
         # the retired cross-project symlink is never recreated.
         for project_name in project_names:
             route = root / project_name / ".beads"
-            tm.that(route.is_dir(), eq=True)
-            tm.that(route.is_symlink(), eq=False)
-            tm.that((route / "config.yaml").is_file(), eq=True)
+            tm.ok(route.is_dir())
+            tm.fail(route.is_symlink())
+            tm.ok((route / "config.yaml").is_file())
 
     @staticmethod
     def test_declared_subproject_cannot_escape_through_a_linked_path(

@@ -10,10 +10,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, t
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import tm, u
+from flext_infra.gates import FlextInfraPyrightGate
+from tests import m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

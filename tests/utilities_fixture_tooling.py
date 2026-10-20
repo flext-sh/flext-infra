@@ -110,7 +110,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     project_root,
                 )
             )
-            tm.that(runner.parallel_worker_budget(policy) > 1, eq=True)
+            tm.that(runner.parallel_worker_budget(policy) > 1, truth=True)
 
         @staticmethod
         def profile_parent(
@@ -274,7 +274,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         # share, and its SQLite metastore then fails with "database is locked".
         config_source = f"[mypy]\ncache_dir = {root / '.mypy_cache'}\n" + "".join(
             f"{key} = {value}\n"
-            for key, value in config.Infra.tooling.tools.mypy.boolean_settings.items()
+            for key, value in u.Infra.native_tool_settings(
+                config.Infra.tooling, "mypy"
+            ).items()
+            if isinstance(value, bool)
         )
         if plugin_body:
             plugin = root / "workload.py"

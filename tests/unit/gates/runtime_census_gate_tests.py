@@ -215,7 +215,7 @@ class TestRuntimeCensusSelection:
         result = FlextInfraRuntimeCensusGate(repository_root=tmp_path).check(
             tmp_path, context
         )
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(
             " | ".join(result.result.errors),
             has="sealed runtime census report is required",
@@ -230,7 +230,7 @@ class TestRuntimeCensusSelection:
         )
         gate = FlextInfraRuntimeCensusGate(repository_root=tmp_path)
         result = gate.check(tmp_path, context).result
-        tm.that(result.passed, eq=False)
+        tm.fail(result.passed)
         tm.that(" | ".join(result.errors), has="no projects")
 
 
@@ -247,7 +247,7 @@ class TestsRuntimeCensusBlocking:
                 repository_root=broken_export_project,
             ).build_report(),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         violations = "\n".join(report.violations)
         tm.that(violations, has="fixturecensusbroken: Traceback")
         tm.that(violations, has="AttributeError: missing fixture adapter")
@@ -282,8 +282,8 @@ class TestsRuntimeCensusBlocking:
             .check(broken_export_project, context)
             .result
         )
-        tm.that(result.passed, eq=False)
-        tm.that(len(result.errors) > 0, eq=True)
+        tm.fail(result.passed)
+        tm.ok(len(result.errors) > 0)
         tm.that("\n".join(result.errors), has="missing fixture adapter")
         tm.that("\n".join(result.errors), has="fixture lazy export failed")
 
@@ -308,11 +308,11 @@ class TestsRuntimeCensusBlocking:
                 repository_root=genuine_project,
             ).build_report(),
         )
-        tm.that(mixed.passed, eq=False)
+        tm.fail(mixed.passed)
         tm.that("\n".join(mixed.violations), has="[ENFORCE-079]")
         tm.that("\n".join(mixed.violations), has="[class_prefix]")
         tm.that("\n".join(mixed.violations), lacks="[smell_function_parameters]")
-        tm.that(len(mixed.violations) > len(genuine.violations), eq=True)
+        tm.ok(len(mixed.violations) > len(genuine.violations))
         tm.that(
             mixed.summary,
             eq=f"runtime census found {len(mixed.violations)} violation(s)",
@@ -323,7 +323,7 @@ class TestsRuntimeCensusBlocking:
         )
         gate = FlextInfraRuntimeCensusGate(repository_root=mixed_project)
         result = gate.check(mixed_project, context).result
-        tm.that(result.passed, eq=False)
+        tm.fail(result.passed)
         tm.that("\n".join(result.errors), has="[ENFORCE-079]")
         tm.that("\n".join(result.errors), has="[class_prefix]")
 
@@ -339,7 +339,7 @@ class TestsRuntimeCensusBlocking:
             ).build_report(),
         )
         output = capsys.readouterr().out
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations, length=1)
         tm.that("\n".join(report.violations), has="[ENFORCE-079]")
         tm.that(report.summary, eq="runtime census found 1 violation(s)")

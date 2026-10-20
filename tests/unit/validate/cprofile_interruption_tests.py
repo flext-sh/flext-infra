@@ -69,7 +69,7 @@ class TestsFlextInfraCProfileInterruption:
             else 0,
             msg=terminated.stderr,
         )
-        tm.that(terminated.outcome.timed_out, eq=False)
+        tm.fail(terminated.outcome.timed_out)
         checkpoints = tuple(tmp_path.glob("profile-*.checkpoint.pstats"))
         previous = tuple(tmp_path.glob("profile.previous-*.checkpoint.pstats"))
         tm.that(len(checkpoints), eq=1)
@@ -107,5 +107,5 @@ class TestsFlextInfraCProfileInterruption:
             )
             tm.that(len(completed), eq=1)
             tm.that(len(final_previous), eq=1)
-            tm.that(completed[0].samefile(output), eq=True)
-            tm.that(final_previous[0].samefile(checkpoints[0]), eq=True)
+            tm.ok(completed[0].samefile(output))
+            tm.ok(final_previous[0].samefile(checkpoints[0]))

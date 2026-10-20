@@ -35,15 +35,15 @@ class TestsFlextInfraCiToolCacheReuse:
         tm.that(restore.get("uses"), eq=f"{cache.repository}/restore@{cache.version}")
         tm.that(save.get("uses"), eq=f"{cache.repository}/save@{cache.version}")
         # A failing gate must still warm the next run.
-        tm.that("always()" in str(save.get("if")), eq=True)
+        tm.ok("always()" in str(save.get("if")))
         restore_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
         save_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
         restore_paths = str(restore_with["path"]).split()
         for directory in config.Infra.codegen.make.clean.cache_dirs:
-            tm.that(directory in restore_paths, eq=True)
+            tm.ok(directory in restore_paths)
         tm.that(save_with["key"], eq=restore_with["key"])
         # One path list for both steps; Mise shims never travel through the
         # cache (a restored shim names an earlier run's Mise binary, which Mise
         # refuses as unmanaged and warns once per tool).
         tm.that(str(save_with["path"]).split(), eq=restore_paths)
-        tm.that("!~/.local/share/mise/shims" in restore_paths, eq=True)
+        tm.ok("!~/.local/share/mise/shims" in restore_paths)

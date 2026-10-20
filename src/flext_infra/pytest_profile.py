@@ -82,7 +82,7 @@ class FlextInfraPytestProfile:
             profile_enabled=True,
         )
         if not self.output.resolve().is_relative_to(
-            (runner.root / runner.reports.parent).resolve(),
+            (runner.repository_root / runner.reports.parent).resolve(),
         ):
             msg = "parent profile must stay under the repository reports directory"
             raise ValueError(msg)
@@ -95,7 +95,7 @@ class FlextInfraPytestProfile:
         # runner executes in this process and names its report directory with
         # this pid, so a concurrent run under the shared reports root (another
         # pid) and a receipt that predates this run are both excluded.
-        reports_root = runner.root / runner.reports
+        reports_root = runner.repository_root / runner.reports
         preexisting = frozenset(reports_root.glob("*/run-context.json"))
 
         outcome: int | None = None

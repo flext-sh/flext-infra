@@ -82,7 +82,7 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         """The codegen catalog declares the custom surface private-only."""
         policy = config.Infra.codegen.make.custom_handler_policy
 
-        tm.that(policy.allow_public_targets, eq=False)
+        tm.fail(policy.allow_public_targets)
 
     def test_no_custom_surface_redefines_a_public_verb(self) -> None:
         """No custom.mk on disk overrides a generated public verb recipe."""

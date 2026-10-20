@@ -10,11 +10,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_core import e
 
-from flext_infra import c, config, m, p
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenPyprojectConform:
@@ -308,8 +307,8 @@ class TestsFlextInfraCodegenPyprojectConform:
                 cwd=parent,
             ),
         )
-        tm.that((root / "uv.lock").exists(), eq=False)
-        tm.that((parent / "uv.lock").exists(), eq=False)
+        tm.fail((root / "uv.lock").exists())
+        tm.fail((parent / "uv.lock").exists())
 
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_global_constraints_apply_without_direct_runtime_requirements(
@@ -422,7 +421,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
         )
         project = u.Tests.toml_table_at(first, "project")
-        tm.that("version" in project, eq=False)
+        tm.fail("version" in project)
         tm.that(project["dynamic"], eq=["version"])
         second = tm.ok(
             u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
@@ -490,32 +489,54 @@ class TestsFlextInfraCodegenPyprojectConform:
     @pytest.mark.parametrize(
         ("table_path", "key", "expected"),
         [
-            (("ruff", "lint"), "select", config.Infra.tooling.tools.ruff.lint.select),
+            (
+                ("ruff", "lint"),
+                "select",
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "select", list[str]
+                ),
+            ),
             (
                 ("ruff", "lint"),
                 "extend-safe-fixes",
-                config.Infra.tooling.tools.ruff.lint.extend_safe_fixes,
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "extend-safe-fixes", list[str]
+                ),
             ),
             (
                 ("ruff", "lint"),
                 "unfixable",
-                config.Infra.tooling.tools.ruff.lint.unfixable,
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "unfixable", list[str]
+                ),
             ),
             (
                 ("coverage", "report"),
                 "exclude_also",
-                config.Infra.tooling.tools.coverage.exclude_also,
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "coverage.report", "exclude_also", list[str]
+                ),
             ),
-            (("coverage", "run"), "omit", config.Infra.tooling.tools.coverage.omit),
+            (
+                ("coverage", "run"),
+                "omit",
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "coverage.run", "omit", list[str]
+                ),
+            ),
             (
                 ("pytest", "ini_options"),
                 "addopts",
-                config.Infra.tooling.tools.pytest.standard_addopts,
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "pytest.ini_options", "addopts", list[str]
+                ),
             ),
             (
                 ("pytest", "ini_options"),
                 "markers",
-                config.Infra.tooling.tools.pytest.standard_markers,
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "pytest.ini_options", "markers", list[str]
+                ),
             ),
         ],
     )
@@ -552,7 +573,9 @@ class TestsFlextInfraCodegenPyprojectConform:
         declare_optional: bool,
     ) -> None:
         """PEP 735 groups never create references to absent PEP 621 extras."""
-        policy = config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+        policy = u.Infra.native_tool_setting(
+            config.Infra.tooling, "deptry", "optional_dependencies_dev_groups", list[str]
+        )
         optional: t.JsonDict = {
             group: ["requests"] for group in policy if declare_optional
         }
@@ -712,7 +735,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 f"{name} @ git+{dependency_source.base_url}/{name}.git"
                 f"@{dependency_source.branch}"
             )
-            tm.that(expected in dev, eq=True)
+            tm.ok(expected in dev)
             tm.that(name in sources, eq=is_root)
             if is_root:
                 member = next(
@@ -853,7 +876,7 @@ constraint-dependencies = ["uv>=0"]
 
         uv_config = u.Tests.toml_table_at(conformed, "tool", "uv")
         tm.that(uv_config["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that("constraint-dependencies" not in uv_config, eq=True)
+        tm.ok("constraint-dependencies" not in uv_config)
 
     def test_standalone_rejects_non_https_manifest_provenance(self) -> None:
         """Test standalone rejects non https manifest provenance."""
@@ -927,16 +950,16 @@ python-interpreter-path = "../.venv/bin/python"
         # uv resolves every version published up to now, and a removed
         # declaration exterminates the keys everywhere (flext-gzfd2 class), so
         # pre-existing projections carrying the old cap converge to no keys.
-        tm.that("exclude-newer" not in uv, eq=True)
-        tm.that("exclude-newer-package" not in uv, eq=True)
-        tm.that("required-version" not in uv, eq=True)
+        tm.ok("exclude-newer" not in uv)
+        tm.ok("exclude-newer-package" not in uv)
+        tm.ok("required-version" not in uv)
         tm.that(
             "python-interpreter-path"
             not in u.Tests.toml_table_at(first, "tool", "pyrefly"),
             eq=True,
         )
         dev_group = u.Tests.toml_strings_at(first, "dependency-groups", "dev")
-        tm.that("custom-tool>=1" in dev_group, eq=True)
+        tm.ok("custom-tool>=1" in dev_group)
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.
@@ -952,7 +975,7 @@ python-interpreter-path = "../.venv/bin/python"
         # in scope without re-encoding either.
         rendered_names = {u.Infra.dep_name(requirement) for requirement in dev_group}
         for requirement in required_dev:
-            tm.that(u.Infra.dep_name(requirement) in rendered_names, eq=True)
+            tm.ok(u.Infra.dep_name(requirement) in rendered_names)
         tm.that(
             u.Tests.toml_strings_at(first, "project", "dependencies")[0],
             eq=(
@@ -997,9 +1020,9 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
             ),
         )
         dev_group = u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
-        tm.that("rumdl>=0.2.45" in dev_group, eq=True)
-        tm.that("rumdl>=0.2.46" not in dev_group, eq=True)
-        tm.that("custom-tool>=1" in dev_group, eq=True)
+        tm.ok("rumdl>=0.2.45" in dev_group)
+        tm.ok("rumdl>=0.2.46" not in dev_group)
+        tm.ok("custom-tool>=1" in dev_group)
 
     def test_conform_retires_dependency_edge_suppression(self) -> None:
         """Conformance preserves real declared edges and removes retired suppression."""
@@ -1023,9 +1046,9 @@ exclude-dependencies = [{exclusion}]
             ),
         )
         uv = u.Tests.toml_table_at(conformed, "tool", "uv")
-        tm.that("exclude-dependencies" not in uv, eq=True)
+        tm.ok("exclude-dependencies" not in uv)
         project = u.Tests.toml_table_at(conformed, "project")
-        tm.that(dependency in u.Tests.toml_strings(project["dependencies"]), eq=True)
+        tm.ok(dependency in u.Tests.toml_strings(project["dependencies"]))
 
     @staticmethod
     def test_workspace_root_keeps_dependency_resolution_unsuppressed(
@@ -1038,7 +1061,7 @@ exclude-dependencies = [{exclusion}]
             members=("fixture-member",),
         )
         uv = u.Tests.toml_table_at(rendered, "tool", "uv")
-        tm.that("exclude-dependencies" not in uv, eq=True)
+        tm.ok("exclude-dependencies" not in uv)
 
     @staticmethod
     def test_scaffold_omits_diagnostic_suppression_catalogs(tmp_path: Path) -> None:
@@ -1074,16 +1097,22 @@ exclude-dependencies = [{exclusion}]
         first = u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME, what=surface)
         mypy = u.Tests.toml_table_at(first, "tool", "mypy")
         policy = config.Infra.tooling.tools.mypy
-        tm.that(
-            tuple(u.Tests.toml_strings(mypy["plugins"])),
-            eq=tuple(policy.plugins),
-        )
-        tm.that(mypy, lacks="disable_error_code")
-        for key, value in {**policy.boolean_settings, **policy.string_settings}.items():
+        if policy.ruling_disable_error_codes:
+            tm.that(
+                mypy["disable_error_code"],
+                eq=list(policy.ruling_disable_error_codes),
+            )
+        else:
+            tm.that(mypy, lacks="disable_error_code")
+        for key, value in u.Infra.native_tool_settings(
+            config.Infra.tooling, "mypy"
+        ).items():
             tm.that(mypy[key], eq=value)
         tm.that(
             u.Tests.toml_table_at(first, "tool", "pydantic-mypy"),
-            eq=config.Infra.tooling.tools.pydantic_mypy.model_dump(),
+            eq=u.Infra.native_tool_settings(
+                config.Infra.tooling, "pydantic-mypy"
+            ),
         )
         tm.that(
             u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME, what=surface),
@@ -1105,10 +1134,11 @@ exclude-dependencies = [{exclusion}]
             members=members,
             what=surface,
         )
-        policy = config.Infra.tooling.tools.pyrefly
         tm.that(
             u.Tests.toml_table_at(first, "tool", "pyrefly", "errors"),
-            eq=dict.fromkeys(policy.strict_errors, "error"),
+            eq=u.Infra.native_tool_settings(
+                config.Infra.tooling, "pyrefly.errors"
+            ),
         )
         tm.that(
             u.Tests.scaffold_text(
@@ -1121,12 +1151,21 @@ exclude-dependencies = [{exclusion}]
         )
 
     @staticmethod
-    def test_pyrefly_policy_rejects_duplicate_diagnostic_declarations() -> None:
-        """Ambiguous SSOT input fails before the TOML template can emit it."""
-        payload = config.Infra.tooling.tools.pyrefly.model_dump(by_alias=True)
-        payload["strict-errors"] = ("bad-argument-count", "bad-argument-count")
-        with pytest.raises(e.PydanticValidationError, match="duplicate diagnostic"):
-            m.Infra.PyreflyConfig.model_validate(payload)
+    def test_pyrefly_diagnostic_pairs_elect_the_last_declared_value() -> None:
+        """A later layer replaces a diagnostic through the common registry."""
+        registry = dict(config.Infra.tooling.settings)
+        registry["pyrefly.errors"] = (
+            ("bad-argument-count", "warn"),
+            ("bad-argument-count", "error"),
+        )
+        validated = m.Infra.ToolConfigDocument.model_validate({
+            **config.Infra.tooling.model_dump(by_alias=True),
+            "settings": registry,
+        })
+        tm.that(
+            u.Infra.native_tool_settings(validated, "pyrefly.errors"),
+            eq={"bad-argument-count": "error"},
+        )
 
     @staticmethod
     @pytest.mark.parametrize("selection", ["reordered", "subset", "empty"])
@@ -1134,18 +1173,21 @@ exclude-dependencies = [{exclusion}]
         selection: str,
     ) -> None:
         """Validation does not freeze the selected diagnostic set or its order."""
-        policy = config.Infra.tooling.tools.pyrefly
-        errors = tuple(policy.strict_errors)
+        policy = config.Infra.tooling
+        errors = tuple(policy.settings["pyrefly.errors"])
         if selection == "reordered":
             selected = tuple(reversed(errors))
         elif selection == "subset":
             selected = errors[::2]
         else:
             selected = ()
-        payload = policy.model_dump(by_alias=True)
-        payload["strict-errors"] = selected
-        validated = m.Infra.PyreflyConfig.model_validate(payload)
-        tm.that(tuple(validated.strict_errors), eq=selected)
+        registry = dict(policy.settings)
+        registry["pyrefly.errors"] = selected
+        validated = m.Infra.ToolConfigDocument.model_validate({
+            **policy.model_dump(by_alias=True),
+            "settings": registry,
+        })
+        tm.that(tuple(validated.settings["pyrefly.errors"]), eq=selected)
 
     @staticmethod
     def _assert_unmanaged_tool_tables_survive(
@@ -1262,9 +1304,9 @@ skips = ["B101"]
             eq=canonical_dependencies,
         )
         dev = u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
-        tm.that("custom-audit>=1" in dev, eq=True)
-        tm.that("rumdl>=0.2.45" in dev, eq=True)
-        tm.that("rumdl>=0.2.40" not in dev, eq=True)
+        tm.ok("custom-audit>=1" in dev)
+        tm.ok("rumdl>=0.2.45" in dev)
+        tm.ok("rumdl>=0.2.40" not in dev)
         tm.that(
             tuple(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
             eq=(
@@ -1274,5 +1316,5 @@ skips = ["B101"]
                 ),
             ),
         )
-        tm.that("flext-dev" in u.Tests.toml_mapping(project["scripts"]), eq=True)
+        tm.ok("flext-dev" in u.Tests.toml_mapping(project["scripts"]))
         self._assert_unmanaged_tool_tables_survive(live, rendered, document)

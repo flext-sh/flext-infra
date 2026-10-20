@@ -33,7 +33,7 @@ class TestsFlextInfraGitFixtureIsolation:
         with tm.scope(env=poisoned_environment):
             u.Tests.initialize_git_repo(target)
 
-        tm.that((target / ".git").is_dir(), eq=True)
+        tm.ok((target / ".git").is_dir())
         resolved = tm.ok(
             u.Cli.capture(
                 ["git", "rev-parse", "--show-toplevel"],

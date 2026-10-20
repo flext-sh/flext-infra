@@ -14,13 +14,13 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen import (
+    FlextInfraCodegenConform,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+from tests.unit.codegen import TestsFlextInfraConformSupport
 
 
 def _write_candidate_targets(
@@ -171,8 +171,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         for relative in tm.ok(
             u.Infra.load_codegen_inputs(independent)
         ).spec.uv_resolution_pyprojects:
-            tm.that(independent / relative in planned_paths, eq=True)
-            tm.that(independent / relative in reported_paths, eq=True)
+            tm.ok(independent / relative in planned_paths)
+            tm.ok(independent / relative in reported_paths)
 
     @staticmethod
     @pytest.mark.slow
@@ -243,12 +243,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ).plan(request),
         )
 
-        tm.that(bool(plan.issues), eq=True)
+        tm.ok(bool(plan.issues))
         report = m.Infra.CodegenPlanningReport.model_validate_json(
             (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
         )
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
-        tm.that(bool(failed_outcome.error or failed_outcome.issues), eq=True)
+        tm.ok(bool(failed_outcome.error or failed_outcome.issues))
         if failure == "root-source":
             tm.that(failed_outcome.error, has="live pyproject is not valid TOML")
         elif failure == "root-view":
@@ -264,7 +264,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         planned_paths = {file.path for file in plan.files}
         for relative in inputs.spec.uv_resolution_pyprojects:
-            tm.that(failed / relative in planned_paths, eq=False)
+            tm.fail(failed / relative in planned_paths)
         if failure == "member-package":
             tm.that(
                 next(item for item in report.outcomes if item.root == root).error,
@@ -344,7 +344,11 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 "lint",
                 "extend-select",
             ),
-            eq=tuple(config.Infra.tooling.tools.ruff.lint.extend_select),
+            eq=tuple(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "extend-select", list[str]
+                )
+            ),
         )
         tm.that(
             u.Tests.toml_table_at(
@@ -428,7 +432,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             )
 
         tm.ok(transaction.run_files_locked(roots, publish))
-        tm.that(bool(receipts), eq=True)
+        tm.ok(bool(receipts))
         if foreign_change:
             destination.write_text(
                 "foreign publication mutation\n",
@@ -461,9 +465,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         views = tuple(
             candidate / relative for relative in inputs.spec.uv_resolution_pyprojects
         )
-        tm.that(bool(views), eq=True)
+        tm.ok(bool(views))
         for view in views:
-            tm.that(view.parent.exists(), eq=False)
+            tm.fail(view.parent.exists())
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 candidate / c.PYPROJECT_FILENAME,
@@ -476,9 +480,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 check_only=True,
             ),
         )
-        tm.that(check.failure, eq=True)
+        tm.ok(check.failure)
         for view in views:
-            tm.that(view.parent.exists(), eq=False)
+            tm.fail(view.parent.exists())
         tm.that(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(
@@ -495,8 +499,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             for view in views
         )
         for view, state in zip(views, committed, strict=True):
-            tm.that(view.parent.is_dir(), eq=True)
-            tm.that(view.parent.is_symlink(), eq=False)
+            tm.ok(view.parent.is_dir())
+            tm.fail(view.parent.is_symlink())
             tm.that(
                 u.Cli.toml_mapping_from_text((state.content or b"").decode("utf-8"))
                 is not None,
@@ -538,7 +542,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         result = infra.bootstrap_candidate(
             m.Infra.CandidateBootstrapCommand(repository_root=source),
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(sentinel.read_text(encoding="utf-8"), eq="foreign content\n")
         tm.that(
             tm.ok(
@@ -641,7 +645,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             m.Infra.CandidateBootstrapCommand(repository_root=project_root),
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, has="candidate bootstrap targets are not declared")
 
     @staticmethod
@@ -671,7 +675,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             m.Infra.CandidateBootstrapCommand(repository_root=source),
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, has="duplicate worktrees")
         tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=before)
 
@@ -683,9 +687,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         """Dynamic initializer destinations retain source and converge."""
         source, first, _ = self._campaign(tmp_path)
         package_name = u.Infra.project_package_name(first)
-        tm.that(bool(package_name), eq=True)
+        tm.ok(bool(package_name))
         package = first / "src" / package_name
-        tm.that(package.is_dir(), eq=True)
+        tm.ok(package.is_dir())
         module = package / "domain.py"
         exported = "BootstrapCase"
         module.write_text(
@@ -782,7 +786,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             m.Infra.CandidateBootstrapCommand(repository_root=source),
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, has="requires one declared surface")
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(makefile, required=True)),
@@ -905,7 +909,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             m.Infra.CandidateBootstrapCommand(repository_root=source, check_only=True),
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(first_makefile, required=True)),
             eq=before,
@@ -952,7 +956,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tmp_path,
             c.Infra.CodegenConformSurface.PYPROJECT,
         )
-        tm.that(u.Infra.workspace_manifest_path(source).exists(), eq=False)
+        tm.fail(u.Infra.workspace_manifest_path(source).exists())
         projection = candidate / c.PYPROJECT_FILENAME
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
@@ -1004,7 +1008,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         after = TestsFlextInfraConformSupport.project_tree(candidate)
         for relative in inputs.spec.uv_resolution_pyprojects:
             view = candidate / relative
-            tm.that(view.is_file(), eq=True)
+            tm.ok(view.is_file())
             tm.that(dict(after), has=relative.as_posix())
             tm.that(
                 u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
@@ -1072,7 +1076,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         after = TestsFlextInfraConformSupport.project_tree(candidate)
         for relative in resolution:
             view = candidate / relative
-            tm.that(view.is_file(), eq=True)
+            tm.ok(view.is_file())
             tm.that(
                 u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
                 is not None,

@@ -41,7 +41,7 @@ class TestsFlextInfraCustomMakeSurfaceIsSingle:
         scaffolded = {
             entry.destination for entry in config.Infra.codegen.templates.entries
         }
-        tm.that("custom.mk" in scaffolded, eq=True)
+        tm.ok("custom.mk" in scaffolded)
 
     @staticmethod
     def test_no_template_emits_a_second_custom_surface() -> None:

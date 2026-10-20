@@ -176,31 +176,31 @@ class TestsFlextInfraCodegenManifestlessExisting:
             sum(file.path == root / "pyproject.toml" for file in initial_plan.files),
             eq=1,
         )
-        tm.that(u.Infra.codegen_file_requires_effect(plans["pyproject.toml"]), eq=False)
+        tm.fail(u.Infra.codegen_file_requires_effect(plans["pyproject.toml"]))
 
         # Why: .env.example carries no managed_files entry, so it is never
         # planned for an existing (manifestless) checkout.
-        tm.that(".env.example" in plans, eq=False)
-        tm.that((root / ".env.example").exists(), eq=False)
+        tm.fail(".env.example" in plans)
+        tm.fail((root / ".env.example").exists())
         # Why: LICENSE and README.md are not managed_files entries — conform
         # never plans them, so the preserved bytes are proven by direct read.
         for relative, content in preserved.items():
-            tm.that(relative in plans, eq=False)
+            tm.fail(relative in plans)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         # Why: the real PEP 621-derived ProjectSpec (authors + upstream) now
         # resolves the tooling context correctly on the first pass, so these
         # managed files already converge after one apply — the fabricated
         # synthetic spec previously left them requiring a second pass.
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=False)
+            tm.fail(u.Infra.codegen_file_requires_effect(plans[required]))
 
         tm.ok(infra.codegen_conform(request))
-        tm.that((root / ".env.example").exists(), eq=False)
+        tm.fail((root / ".env.example").exists())
         for relative, content in preserved.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
-        tm.that((root / "README.md").is_file(), eq=True)
+        tm.ok((root / "README.md").is_file())
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that((root / required).is_file(), eq=True)
+            tm.ok((root / required).is_file())
         fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
         )

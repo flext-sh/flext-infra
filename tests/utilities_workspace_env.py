@@ -104,7 +104,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
                 ),
             )
         code = probe.outcome.raw_return_code
-        tm.that(code in {0, 1}, eq=True)
+        tm.that(code in {0, 1}, truth=True)
         return code == 1
 
 

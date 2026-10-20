@@ -99,7 +99,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         gate = FlextInfraBanditGate(tmp_path)
-        tm.that(gate.selected_for(project_dir), eq=True)
+        tm.ok(gate.selected_for(project_dir))
         context = u.Tests.create_gate_context(tmp_path)
         result = (
             gate.check_files((module,), project_dir, context)
@@ -107,7 +107,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             else gate.check(project_dir, context)
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that({issue.code for issue in result.issues}, eq={"B101", "B404", "B603"})
 
     @staticmethod
@@ -120,7 +120,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
         result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.issues, length=1)
         tm.that(result.issues[0].file, has=source.name)
@@ -157,7 +157,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             strict=True,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     @staticmethod
     def test_bandit_report_accepts_explicit_clean_native_arrays() -> None:
@@ -169,7 +169,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             strict=True,
         )
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         report = result.unwrap()
         tm.that(report.results, empty=True)
         tm.that(report.errors, empty=True)
@@ -185,10 +185,10 @@ class TestsFlextInfraBanditAndMarkdownGates:
         """
         project_dir = u.Tests.mk_project(tmp_path, "p1")
 
-        tm.that(FlextInfraBanditGate(tmp_path).selected_for(project_dir), eq=False)
+        tm.fail(FlextInfraBanditGate(tmp_path).selected_for(project_dir))
         result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(" | ".join(result.result.errors), has="no check targets were collected")
 
     @staticmethod
@@ -206,9 +206,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
-        tm.that(result.raw_output.startswith("{"), eq=True)
+        tm.ok(result.raw_output.startswith("{"))
         tm.that(result.raw_output, lacks="Working...")
 
     @staticmethod
@@ -279,7 +279,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-empty")
         gate = FlextInfraMarkdownGate(tmp_path)
 
-        tm.that(gate.selected_for(project_dir), eq=False)
+        tm.fail(gate.selected_for(project_dir))
         tm.that(
             gate.check(project_dir, u.Tests.gate_context(tmp_path)).result.passed,
             eq=False,
@@ -291,8 +291,8 @@ class TestsFlextInfraBanditAndMarkdownGates:
         bare = u.Tests.mk_project(tmp_path, "bandit-bare")
         packaged = u.Tests.mk_project(tmp_path, "bandit-packaged", with_src=True)
 
-        tm.that(FlextInfraBanditGate(tmp_path).selected_for(bare), eq=False)
-        tm.that(FlextInfraBanditGate(tmp_path).selected_for(packaged), eq=True)
+        tm.fail(FlextInfraBanditGate(tmp_path).selected_for(bare))
+        tm.ok(FlextInfraBanditGate(tmp_path).selected_for(packaged))
 
     def test_markdown_applies_only_the_local_config(self, tmp_path: Path) -> None:
         """A standalone project's gate never crosses its repository boundary."""
@@ -393,7 +393,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
                 u.Tests.gate_context(tmp_path),
             )
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
 
     @staticmethod
@@ -416,7 +416,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             u.Tests.gate_context(tmp_path),
         )
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
 
     @staticmethod
@@ -442,7 +442,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             u.Tests.gate_context(tmp_path),
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].file, eq="invalid/README.md")
 
@@ -464,8 +464,8 @@ class TestsFlextInfraBanditAndMarkdownGates:
         target.unlink()
         second = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
-        tm.that(first.result.passed, eq=True)
-        tm.that(second.result.passed, eq=False)
+        tm.ok(first.result.passed)
+        tm.fail(second.result.passed)
         tm.that(second.issues[0].code, eq="MD057")
 
     @staticmethod
@@ -490,7 +490,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
         result = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq="# Title\n")
         _ = u.Tests.check_gate_asserting(
             FlextInfraMarkdownGate,

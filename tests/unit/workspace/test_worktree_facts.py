@@ -94,13 +94,13 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
         tm.that(len(facts), eq=1)
         tm.that(facts[0].stale_days, gt=query.activity_window_days)
         tm.that(facts[0].deps_bytes, eq=8)
-        tm.that(facts[0].retire_candidate, eq=True)
+        tm.ok(facts[0].retire_candidate)
         tm.that(facts[0].branch, eq="feature/old")
         tm.that([action.kind for action in actions], eq=["contents-remove"])
         tm.that(actions[0].owner, eq="worktrees")
         tm.that(actions[0].path, eq=stale / ".venv")
         tm.that(actions[0].reclaim_bytes, eq=8)
-        tm.that(all("src.py" not in str(action.path) for action in actions), eq=True)
+        tm.ok(all("src.py" not in str(action.path) for action in actions))
 
     def test_fresh_worktree_plans_nothing(self, tmp_path: Path) -> None:
         """A fresh worktree is a fact without any planned action."""
@@ -113,7 +113,7 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
         facts, actions = u.Infra.collect_worktree_facts(self._query(repo))
 
         tm.that(actions, eq=())
-        tm.that(facts[0].retire_candidate, eq=False)
+        tm.fail(facts[0].retire_candidate)
 
     def test_same_worktree_registered_twice_is_deduped(self, tmp_path: Path) -> None:
         """One physical worktree yields one fact across repositories."""
@@ -200,6 +200,6 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
 
         tm.that(len(report.facts), eq=1)
         tm.that(plan, none=False)
-        tm.that(plan.apply, eq=False)
+        tm.fail(plan.apply)
         tm.that(plan.total_reclaim_bytes, eq=8)
         tm.that(len(plan.actions), eq=1)

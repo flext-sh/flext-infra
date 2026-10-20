@@ -46,13 +46,13 @@ class TestsFlextInfraTransactionStaging:
             p.Infra.CodegenParticipantPolicy
         ].ok(policy)
 
-        tm.that(isinstance(result.value, p.Infra.CodegenParticipantPolicy), eq=True)
+        tm.ok(isinstance(result.value, p.Infra.CodegenParticipantPolicy))
         tm.that(
             isinstance(result.value.roots[0], p.Infra.CodegenParticipantRoot),
             eq=True,
         )
         tm.that(result.value.scope_root, eq=native.target)
-        tm.that(result.value.roots[0] is native, eq=True)
+        tm.ok(result.value.roots[0] is native)
 
     @staticmethod
     def test_capability_roots_bind_through_the_file_participant_contract(
@@ -108,7 +108,7 @@ class TestsFlextInfraTransactionStaging:
 
         tm.fail(result, has=str(missing / c.PYPROJECT_FILENAME))
         tm.that(receiver.read_bytes(), eq=before)
-        tm.that((missing / c.PYPROJECT_FILENAME).exists(), eq=False)
+        tm.fail((missing / c.PYPROJECT_FILENAME).exists())
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -209,7 +209,7 @@ class TestsFlextInfraTransactionStaging:
             eq=provider_before,
         )
         if not manifest_present:
-            tm.that((participant / c.PYPROJECT_FILENAME).exists(), eq=False)
+            tm.fail((participant / c.PYPROJECT_FILENAME).exists())
 
     @staticmethod
     @pytest.mark.parametrize("consumer_root", ["tests", "examples", "scripts", "."])
@@ -324,7 +324,7 @@ class TestsFlextInfraTransactionStaging:
         if missing:
             tm.fail(outcome, has="missing_candidate_dependency")
         else:
-            tm.that(tm.ok(outcome), eq=True)
+            tm.ok(tm.ok(outcome))
         for before in originals:
             tm.that(
                 tm.ok(u.Cli.atomic_read_binary_file_state(before.path, required=True)),
@@ -452,7 +452,7 @@ class TestsFlextInfraTransactionStaging:
             elif mutation == "added":
                 (package / "shared.py").write_text("VALUE = 3\n")
             else:
-                tm.that(candidates[target].is_relative_to(view_root), eq=True)
+                tm.ok(candidates[target].is_relative_to(view_root))
                 candidates[target].write_text("VALUE = 3\n")
             return True
 
@@ -525,7 +525,7 @@ class TestsFlextInfraTransactionStaging:
             str(refused.error),
             has=f"observed_sha256={u.Cli.sha256_bytes(changed)}",
         )
-        tm.that(isinstance(refused.exception, ValueError), eq=True)
+        tm.ok(isinstance(refused.exception, ValueError))
         tm.that(original.read_bytes(), eq=changed)
 
     @staticmethod
@@ -559,7 +559,7 @@ class TestsFlextInfraTransactionStaging:
             retained = next(
                 state for state in plan.inputs if state.path == original.path
             )
-            tm.that(retained is original, eq=True)
+            tm.ok(retained is original)
         helper.write_text("VALUE = 3\n")
 
         tm.fail(
@@ -693,7 +693,7 @@ class TestsFlextInfraTransactionStaging:
                 nonlocal calls
                 calls += 1
                 tm.that(project, eq=root)
-                tm.that(runtime_report.passed, eq=True)
+                tm.ok(runtime_report.passed)
                 tm.that(candidate.inputs, eq=originals)
                 consumed = tm.ok(
                     u.Cli.run_raw(
@@ -709,7 +709,7 @@ class TestsFlextInfraTransactionStaging:
                         cwd=view,
                     )
                 )
-                tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+                tm.ok(u.Cli.process_succeeded(consumed.outcome))
                 changed.write_bytes(b"invalid source [\n")
                 return r[bool].ok(value=True)
 
@@ -730,10 +730,10 @@ class TestsFlextInfraTransactionStaging:
                     else "generation authenticated state changed"
                 ),
             )
-            tm.that(isinstance(refused.exception, ValueError), eq=True)
+            tm.ok(isinstance(refused.exception, ValueError))
             tm.that(calls, eq=0 if timing == "before" else 1)
-            tm.that(receipt.inputs is originals, eq=True)
-            tm.that(prepared[0].prepared_sources is receipt, eq=True)
+            tm.ok(receipt.inputs is originals)
+            tm.ok(prepared[0].prepared_sources is receipt)
             tm.that(changed.read_bytes(), eq=b"invalid source [\n")
             if mutation != "target":
                 tm.that(target.read_bytes(), eq=before.content)
@@ -807,7 +807,7 @@ class TestsFlextInfraTransactionStaging:
         ) -> p.Result[bool]:
             nonlocal calls
             calls += 1
-            tm.that(runtime_report.passed, eq=True)
+            tm.ok(runtime_report.passed)
             tm.that(project, eq=root)
             tm.ok(FlextInfraStagedPackage.source_inputs_current(candidate))
             destination = view / target.relative_to(root)
@@ -840,7 +840,7 @@ class TestsFlextInfraTransactionStaging:
                 tm.that(str(refused.error), has="Plain [class_prefix]")
             elif rejection == "failure":
                 tm.fail(refused, has=str(original))
-                tm.that(refused.exception is original, eq=True)
+                tm.ok(refused.exception is original)
                 tm.that(refused.error_code, eq="native-consumer")
             elif rejection == "candidate":
                 tm.fail(
@@ -950,8 +950,8 @@ class TestsFlextInfraTransactionStaging:
                 ),
                 eq=originals,
             )
-            tm.that(observed.journal_path.exists(), eq=False)
-            tm.that((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
+            tm.fail(observed.journal_path.exists())
+            tm.fail((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists())
 
     @staticmethod
     @pytest.mark.parametrize("state", ["staging", "prepared", "committed"])
@@ -1002,9 +1002,9 @@ class TestsFlextInfraTransactionStaging:
         tm.ok(owner.run_files_locked(roots, record))
         observed = tm.ok(owner.inspect_journal())
         tm.that(observed.journal_state, eq=state)
-        tm.that(bool(observed.pending_roots), eq=True)
-        tm.that(bool(observed.pending_directories), eq=True)
-        tm.that(bool(observed.pending_staging), eq=True)
+        tm.ok(bool(observed.pending_roots))
+        tm.ok(bool(observed.pending_directories))
+        tm.ok(bool(observed.pending_staging))
         tm.that(bool(observed.pending_destinations), eq=state != "staging")
         policy = tm.ok(owner.participant_policy())
         expected = observed.model_copy(
@@ -1021,7 +1021,7 @@ class TestsFlextInfraTransactionStaging:
             tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
             eq=target_state,
         )
-        tm.that((root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).exists(), eq=False)
+        tm.fail((root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).exists())
 
     @staticmethod
     def test_footprint_authorization_observes_the_serialized_current_journal(
@@ -1129,7 +1129,7 @@ class TestsFlextInfraTransactionStaging:
                     cwd=candidate_root,
                 ),
             )
-            tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(consumed.outcome))
             original = tm.ok(
                 u.Cli.atomic_read_binary_file_state(target, required=True),
             )
@@ -1265,9 +1265,9 @@ class TestsFlextInfraTransactionStaging:
             tm.ok(u.Cli.atomic_read_binary_file_state(marker, required=True)),
             eq=marker_before,
         )
-        tm.that((root / "unauthorized.txt").exists(), eq=False)
-        tm.that((foreign / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
-        tm.that((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
+        tm.fail((root / "unauthorized.txt").exists())
+        tm.fail((foreign / c.Infra.TRANSACTION_STATE_DIRNAME).exists())
+        tm.fail((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists())
 
     @staticmethod
     def test_effect_free_inspection_preserves_corrupt_journal(tmp_path: Path) -> None:
@@ -1278,7 +1278,7 @@ class TestsFlextInfraTransactionStaging:
         )
         absent = tm.ok(owner.inspect_journal())
         tm.that(absent.journal_state, eq="absent")
-        tm.that(absent.journal_path.exists(), eq=False)
+        tm.fail(absent.journal_path.exists())
         tm.ok(
             u.Cli.atomic_write_binary_file_guarded(
                 absent.snapshot,
@@ -1302,7 +1302,7 @@ class TestsFlextInfraTransactionStaging:
             ),
             eq=corrupted,
         )
-        tm.that((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
+        tm.fail((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists())
 
     @staticmethod
     def test_injected_root_authorization_permits_owned_recovery(
@@ -1330,7 +1330,7 @@ class TestsFlextInfraTransactionStaging:
                 operation=lambda _scope: r[bool].ok(value=True),
             ),
         )
-        tm.that(session.plan.layout.journal_path.exists(), eq=False)
+        tm.fail(session.plan.layout.journal_path.exists())
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1385,7 +1385,7 @@ class TestsFlextInfraTransactionStaging:
             )
 
         tm.ok(owner.run_files_locked(roots, publish))
-        tm.that(target.exists(), eq=False)
+        tm.fail(target.exists())
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1594,7 +1594,7 @@ class TestsFlextInfraTransactionStaging:
         prepared = tm.ok(owner.run_files_locked(roots, interrupted))
         transaction_root = prepared.plan.layout.file_participants[0].transaction_root
         tm.that(transaction_root, none=False)
-        tm.that(transaction_root.exists(), eq=True)
+        tm.ok(transaction_root.exists())
         if relocated:
             previous_root = root
             root = root.with_name("relocated-repository")
@@ -1626,7 +1626,7 @@ class TestsFlextInfraTransactionStaging:
                 ),
             )
         tm.ok(owner.run_files_locked(roots, r[Path].ok))
-        tm.that(transaction_root.exists(), eq=False)
+        tm.fail(transaction_root.exists())
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
             eq=original,
@@ -1676,7 +1676,7 @@ class TestsFlextInfraTransactionStaging:
             tm.ok(u.Cli.atomic_read_binary_file_state(staging_path, required=True)),
             eq=before,
         )
-        tm.that(target.exists(), eq=False)
+        tm.fail(target.exists())
 
     @staticmethod
     @pytest.mark.parametrize("index", [0, 1])

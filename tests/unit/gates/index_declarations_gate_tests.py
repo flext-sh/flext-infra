@@ -99,7 +99,7 @@ class TestsFlextInfraIndexDeclarationsGate:
     ) -> None:
         """Test consistent repository passes."""
         result = gate_result()
-        tm.that(result.passed, eq=True)
+        tm.ok(result.passed)
         tm.that(len(result.errors), eq=0)
 
     @staticmethod
@@ -108,7 +108,7 @@ class TestsFlextInfraIndexDeclarationsGate:
     ) -> None:
         """Test undeclared gitlink fails naming the path."""
         result = gate_result(orphan_gitlink=True)
-        tm.that(result.passed, eq=False)
+        tm.fail(result.passed)
         tm.that(len(result.errors), eq=1)
         tm.that(result.errors[0], has="nested")
         tm.that(result.errors[0], has=".gitmodules")
@@ -121,5 +121,5 @@ class TestsFlextInfraIndexDeclarationsGate:
         # be reported: the gate judges the declaration, never the mode.
         """Test declared gitlink passes."""
         result = gate_result(orphan_gitlink=True, declare_gitlink=True)
-        tm.that(result.passed, eq=True)
+        tm.ok(result.passed)
         tm.that(len(result.errors), eq=0)

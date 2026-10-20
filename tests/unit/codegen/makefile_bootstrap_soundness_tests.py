@@ -91,10 +91,10 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             recipe,
             has='$(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"',
         )
-        tm.that(recipe.index("config ls --json") < recipe.index(sync), eq=True)
+        tm.ok(recipe.index("config ls --json") < recipe.index(sync))
         tm.that("$(UV) lock --check" in recipe, eq=supplier)
         if supplier:
-            tm.that(recipe.index("$(UV) lock --check") < recipe.index(sync), eq=True)
+            tm.ok(recipe.index("$(UV) lock --check") < recipe.index(sync))
         for verb in ("fmt", "fix"):
             body = rendered.split(
                 f"_builtin_{verb}_all: _builtin_require_environment\n", 1
@@ -109,7 +109,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             conform = body.index(
                 'codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check'
             )
-            tm.that(body.index("--apply") < capture < conform, eq=True)
+            tm.ok(body.index("--apply") < capture < conform)
             tm.that(body[capture:conform], has='--gates "$$gates"')
             tm.that(body[capture:], lacks="--apply")
 
@@ -190,8 +190,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 else "Editable resolution manifest is missing"
             ),
         )
-        tm.that(marker.exists(), eq=False)
-        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.fail(marker.exists())
+        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
         tm.that(
             tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
             eq=before,
@@ -409,7 +409,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             ),
             eq=locks,
         )
-        tm.that(environment.is_symlink(), eq=True)
+        tm.ok(environment.is_symlink())
         tm.that(tuple(foreign.iterdir()), eq=())
         reader = tm.ok(
             u.Cli.capture(
@@ -417,7 +417,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 options=m.Cli.ProcessOptions(env=native_env),
             ),
         )
-        tm.that(Path(reader).is_relative_to(isolation), eq=True)
+        tm.ok(Path(reader).is_relative_to(isolation))
 
     @pytest.mark.parametrize(
         "entry",
@@ -515,9 +515,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             has=f"physical-runtime-environment={environment}\n",
         )
         tm.that(process.stdout, has=f"physical-runtime-resolution={resolution}\n")
-        tm.that(environment.exists(), eq=False)
-        tm.that((caller / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
-        tm.that((caller / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.fail(environment.exists())
+        tm.fail((caller / c.Infra.ENVIRONMENT_DIRECTORY).exists())
+        tm.fail((caller / c.Infra.UV_LOCK_FILENAME).exists())
 
     @staticmethod
     def _provisioned_native_venv(
@@ -632,10 +632,10 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
         )
         self._provisioned_native_venv(binary, environment, native_options)
-        tm.that(environment.is_symlink(), eq=False)
-        tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+        tm.fail(environment.is_symlink())
+        tm.ok((environment / "pyvenv.cfg").is_file())
         member_environment = member / c.Infra.ENVIRONMENT_DIRECTORY
-        tm.that(member_environment.exists(), eq=False)
+        tm.fail(member_environment.exists())
         project = root if invocation == "root" else member
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             "$(info elected-root=$(RUNTIME_ROOT))\n"
@@ -681,7 +681,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         tm.that(context.resolution_root, eq=resolution)
         tm.that(context.standalone, eq=hosted)
-        tm.that(member_environment.exists(), eq=False)
+        tm.fail(member_environment.exists())
 
     def test_python_project_without_python_ancestor_owns_its_runtime(
         self,
@@ -734,8 +734,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             eq=True,
             msg=provisioned.stdout + provisioned.stderr,
         )
-        tm.that(environment.is_symlink(), eq=False)
-        tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+        tm.fail(environment.is_symlink())
+        tm.ok((environment / "pyvenv.cfg").is_file())
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             ".PHONY: post-help\npost-help:\n"
             "\t@printf 'independent-root=%s\\n' '$(RUNTIME_ROOT)'\n"
@@ -762,7 +762,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             container / c.Infra.MISE_LOCK_FILENAME,
             container / c.Infra.ENVIRONMENT_DIRECTORY,
         ):
-            tm.that(path.exists(), eq=False)
+            tm.fail(path.exists())
 
     def test_dangling_git_marker_rejects_ancestor_discovery(
         self,
@@ -823,17 +823,17 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 ),
             ),
         )
-        tm.that(native_error.outcome.raw_return_code != 0, eq=True)
-        tm.that(bool(native_error.stderr.strip()), eq=True)
+        tm.ok(native_error.outcome.raw_return_code != 0)
+        tm.ok(bool(native_error.stderr.strip()))
         process = tm.ok(u.Tests.run_isolated_make(["help"], cwd=project))
-        tm.that(process.outcome.raw_return_code != 0, eq=True)
+        tm.ok(process.outcome.raw_return_code != 0)
         tm.that(process.stderr, has=native_error.stderr.strip())
         tm.that(process.stdout, lacks="nested-help-executed")
         context = FlextInfraWorkspaceDetector.resolution_context(project)
-        tm.that(context.failure, eq=True)
-        tm.that(marker.is_symlink(), eq=True)
-        tm.that(marker.exists(), eq=False)
-        tm.that((project / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.ok(context.failure)
+        tm.ok(marker.is_symlink())
+        tm.fail(marker.exists())
+        tm.fail((project / c.Infra.ENVIRONMENT_DIRECTORY).exists())
 
     @pytest.mark.parametrize("associated_clone", [False, True])
     @staticmethod
@@ -938,10 +938,10 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             eq=True,
             msg=created.stdout + created.stderr,
         )
-        tm.that(environment.is_symlink(), eq=False)
-        tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+        tm.fail(environment.is_symlink())
+        tm.ok((environment / "pyvenv.cfg").is_file())
         member_environment = member / c.Infra.ENVIRONMENT_DIRECTORY
-        tm.that(member_environment.exists(), eq=False)
+        tm.fail(member_environment.exists())
         (member / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             ".PHONY: post-help\npost-help:\n"
             "\t@printf 'native-runtime-root=%s\\n' '$(RUNTIME_ROOT)'\n"
@@ -965,7 +965,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             process.stdout,
             has=f"native-runtime-environment={environment.resolve()}\n",
         )
-        tm.that(member_environment.exists(), eq=False)
+        tm.fail(member_environment.exists())
         tm.that(
             (parent_lock.read_bytes(), member_lock.read_bytes()),
             eq=locks_before,
@@ -998,7 +998,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             '[env]\nNATIVE_SCOPE_HOST_SENTINEL = "fixture-owned-global"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        tm.that((project / ".mise" / "config.toml").exists(), eq=False)
+        tm.fail((project / ".mise" / "config.toml").exists())
         config_report = tmp_path / "mise-config-files.json"
         lock_report = tmp_path / "mise-project-locks.json"
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
@@ -1052,8 +1052,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             tm.that(path, is_=str)
             if isinstance(path, str):
                 native_paths.add(Path(path).resolve())
-        tm.that(project / c.Infra.MISE_TOML_FILENAME in native_paths, eq=True)
-        tm.that(global_config in native_paths, eq=False)
+        tm.ok(project / c.Infra.MISE_TOML_FILENAME in native_paths)
+        tm.fail(global_config in native_paths)
         project_locks: set[Path] = set()
         # Mise's official SidecarListing reports default project-scope lock targets
         # without resolving tools, installing packages or changing the lock.
@@ -1155,7 +1155,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(set(project.rglob("*")), eq=paths)
         for path, content in contents.items():
             tm.that(path.read_bytes(), eq=content)
-        tm.that(environment.is_symlink(), eq=True)
+        tm.ok(environment.is_symlink())
         tm.that(foreign.exists(), eq=not broken)
         if not broken:
             tm.that(tuple(foreign.iterdir()), eq=(foreign / "owner.txt",))

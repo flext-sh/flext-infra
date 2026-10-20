@@ -40,7 +40,7 @@ class TestsFlextInfraRootMakefileSingleOwner:
         templates_root = Path(flext_infra.__file__).resolve().parent / "templates"
         dedicated = templates_root / "workspace_makefile.mk.j2"
 
-        tm.that(dedicated.exists(), eq=False)
+        tm.fail(dedicated.exists())
 
     @staticmethod
     def test_generic_template_carries_the_single_custom_include() -> None:

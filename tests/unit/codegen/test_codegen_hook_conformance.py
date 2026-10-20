@@ -332,7 +332,7 @@ class TestsFlextInfraCodegenHookConformance:
         )
 
         retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
-        tm.that(hook_config in retired, eq=False)
+        tm.fail(hook_config in retired)
 
     @staticmethod
     def test_standalone_retires_workspace_only_generated_projection(
@@ -352,4 +352,4 @@ class TestsFlextInfraCodegenHookConformance:
         )
 
         retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
-        tm.that(target in retired, eq=True)
+        tm.ok(target in retired)

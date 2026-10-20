@@ -1217,13 +1217,20 @@ Unrestricted snapshot requests retain the complete closure, including inactive
 import suites. Both scan and check use the same typed admissions and
 authenticated snapshots.
 
-Lazy-init planners reuse sealed class-ancestry receipts only within the same
-source epoch, keyed by the declaring resource and native scope position. Replaying
-the receipt attributes the original provider and base-class dependencies to each
-consumer; native semantic objects remain consumer-local. Builtin classes have no
-source scope and are traversed without a source-receipt cache key. A newly built
-package decision is not propagated as sealed evidence before its consumption
-receipt has been issued.
+Lazy-init planners keep native semantic objects and ancestry-receipt caches local
+to each publication consumer. The authenticated structural index can be shared
+with its original selection receipt, but an observation scope alone does not
+isolate native caches. Cross-consumer ancestry reuse requires an independently
+captured complete dependency closure: sealing a scope after native resolution has
+already warmed does not recover its earlier provider or negative-query reads.
+Builtin classes have no source scope and are traversed without a source-receipt
+cache key. A newly built package decision is not propagated as sealed evidence
+before its consumption receipt has been issued.
+
+Within one package decision, module export policies receive the already elected
+package layout. An authenticated empty export inventory terminates that module's
+export planning before policy resolution; it does not synthesize aliases or omit
+the original source observation that proved the inventory empty.
 
 Native source-folder enumeration excludes runtime cache artifacts already
 classified outside the source epoch. Otherwise an authenticated directory listing

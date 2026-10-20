@@ -53,7 +53,7 @@ class TestsFlextInfraRunProjects:
         )
 
         tm.fail(result, has=str(tmp_path / "nonexistent" / c.PYPROJECT_FILENAME))
-        tm.that((tmp_path / "reports" / "p1").exists(), eq=False)
+        tm.fail((tmp_path / "reports" / "p1").exists())
 
     @staticmethod
     def test_empty_project_selection_fails_loudly(tmp_path: Path) -> None:
@@ -91,7 +91,7 @@ class TestsFlextInfraRunProjects:
         receipt = result.value[0].gates["lint"].raw_receipt
         tm.that(receipt, none=False)
         tm.that(receipt.parent.name, eq="p1")
-        tm.that((receipt.parent.parent / report_name).exists(), eq=True)
+        tm.ok((receipt.parent.parent / report_name).exists())
         tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")
 
     @staticmethod
@@ -134,7 +134,7 @@ class TestsFlextInfraRunProjects:
 
         tm.ok(result)
         tm.that(len(result.value), eq=2)
-        tm.that(result.value[0].total_findings > 0, eq=True)
+        tm.ok(result.value[0].total_findings > 0)
         tm.that(result.value[1].total_findings, eq=0)
 
     @staticmethod

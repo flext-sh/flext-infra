@@ -42,9 +42,9 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_artifact_names_are_unique(codegen: m.Infra.CodegenConfigSpec) -> None:
         """Reject ambiguous projection keys at the typed owner."""
         names = tuple(artifact.name for artifact in codegen.artifacts)
-        tm.that(bool(names), eq=True)
+        tm.ok(bool(names))
         tm.that(len(names), eq=len(set(names)))
-        tm.that(all(names), eq=True)
+        tm.ok(all(names))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -101,7 +101,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             *manifests,
             *(path.with_name(c.Infra.UV_LOCK_FILENAME) for path in manifests),
         ):
-            tm.that(u.Tests.is_tracked_under(rendered, path.as_posix()), eq=True)
+            tm.ok(u.Tests.is_tracked_under(rendered, path.as_posix()))
 
     @staticmethod
     def test_vscode_maps_are_exact_projections(
@@ -297,14 +297,14 @@ class TestsFlextInfraCodegenArtifactSsot:
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
-        tm.that(bool(pre_commit), eq=True)
-        tm.that(bool(pre_push), eq=True)
+        tm.ok(bool(pre_commit))
+        tm.ok(bool(pre_push))
         commit_verbs = {step.verb for step in pre_commit}
         push_verbs = {step.verb for step in pre_push}
-        tm.that(bool(commit_verbs & push_verbs), eq=True)
-        tm.that(commit_verbs < push_verbs, eq=True)
-        tm.that(c.Infra.VERB_TEST in commit_verbs, eq=True)
-        tm.that("test" in push_verbs, eq=True)
+        tm.ok(bool(commit_verbs & push_verbs))
+        tm.ok(commit_verbs < push_verbs)
+        tm.ok(c.Infra.VERB_TEST in commit_verbs)
+        tm.ok("test" in push_verbs)
         shared_steps = tuple(
             step
             for step in workflow
@@ -317,12 +317,12 @@ class TestsFlextInfraCodegenArtifactSsot:
         # step legitimately carries it. What the partition must prove is that
         # each hook owns work the other does not, and that both reach the same
         # validation verb.
-        tm.that(bool(shared_steps), eq=True)
+        tm.ok(bool(shared_steps))
         tm.that(
             {step.verb for step in shared_steps}.issubset(commit_verbs & push_verbs),
             eq=True,
         )
-        tm.that(bool(push_verbs - commit_verbs), eq=True)
+        tm.ok(bool(push_verbs - commit_verbs))
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}),
             eq=True,
