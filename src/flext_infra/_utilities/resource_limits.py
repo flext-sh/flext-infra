@@ -149,6 +149,10 @@ class FlextInfraUtilitiesResourceLimits:
                 interpreter,
                 str(Path(__file__).with_name("_mypy_profile.py")),
                 str(invocation.profile_output.resolve()),
+                "--timing-stats",
+                str(invocation.profile_output.with_suffix(".timing.txt").resolve()),
+                "--line-checking-stats",
+                str(invocation.profile_output.with_suffix(".lines.txt").resolve()),
                 *FlextInfraUtilitiesResourceLimits.mypy_arguments(invocation),
             )
         return (

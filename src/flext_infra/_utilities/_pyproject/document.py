@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
@@ -901,7 +902,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         payload = u.Cli.toml_mapping_from_text(source)
         if payload is None:
             return r[str].fail("invalid documentation pyproject TOML")
-        validated = u.validate_value(u.PyprojectDocument, payload)
+        validated = r[u.PyprojectDocument].create_from_callable(
+            partial(u.PyprojectDocument.model_validate, payload)
+        )
         if validated.failure:
             return r[str].from_failure(validated)
         document = u.Cli.toml_parse_text(source)
@@ -913,9 +916,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if projected == before:
             return r[str].ok(source)
         desired = u.Cli.toml_mapping_from_text(projected)
-        if desired is None:
-            return r[str].fail("invalid projected documentation metadata")
-        checked = u.validate_value(u.PyprojectDocument, desired)
+        checked = r[u.PyprojectDocument].create_from_callable(
+            partial(u.PyprojectDocument.model_validate, desired)
+        )
         if checked.failure:
             return r[str].from_failure(checked)
         return r[str].ok(projected)
@@ -935,7 +938,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return
         if docs is None:
             docs = u.Cli.toml_ensure_path(document, (c.Infra.TOOL, "flext", "docs"))
-        if docs.get("documentation_language") == language:
+        if u.Cli.toml_value(docs, "documentation_language") == language:
             return
         docs["documentation_language"] = language
 

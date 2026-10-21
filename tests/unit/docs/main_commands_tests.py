@@ -69,6 +69,7 @@ class TestsFlextInfraDocsMainCommands:
         else:
             report = u.Infra.docs_run_mkdocs(scope)
             tm.ok(report.passed)
+            tm.ok(report.strict)
             html = Path(report.site_dir) / "index.html"
             tm.that(
                 html.read_text(encoding=c.DEFAULT_ENCODING), has="Public build proof"

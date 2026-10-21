@@ -11,6 +11,8 @@
 # happens to be called ``TypeAdapter`` keeps its own contract. The rewrite is only
 # emitted where ``u`` is bound from a public FLEXT package; the companion rule
 # rewire-type-adapter-construction-missing-u-import reports the other modules.
+# Layer-zero settings/config owners use native Pydantic directly. Only the bare
+# native branch has that exclusion; facade type aliases remain non-callable.
 # The now-unused pydantic import is removed by Ruff F401.
 id: rewire-type-adapter-construction
 language: python
@@ -32,6 +34,10 @@ rule:
                   regex: "^(?:m|t)$"
         - all:
             - pattern: TypeAdapter($$$ARGS)
+            - has:
+                field: function
+                pattern: $NATIVE
+                regex: "^TypeAdapter$"
             - inside:
                 kind: module
                 stopBy: end
@@ -49,6 +55,10 @@ message: >-
   Construct adapters with u.type_adapter(...). m.TypeAdapter[T] and
   t.TypeAdapter[T] are annotation types, not constructors, and a bare pydantic
   import bypasses the facade boundary.
+metadata:
+  context:
+    NATIVE:
+      not: layer-zero-file
 ---
 # Detection-only companion: the same construction in a module that does not bind
 # `u`. A blind fix would emit an undefined name; bind the facade first.
@@ -72,6 +82,10 @@ rule:
                   regex: "^(?:m|t)$"
         - all:
             - pattern: TypeAdapter($$$ARGS)
+            - has:
+                field: function
+                pattern: $NATIVE
+                regex: "^TypeAdapter$"
             - inside:
                 kind: module
                 stopBy: end
@@ -88,3 +102,7 @@ rule:
 message: >-
   Adapter construction must become u.type_adapter(...), but this module does
   not bind the utilities facade `u`. Add the facade import first.
+metadata:
+  context:
+    NATIVE:
+      not: layer-zero-file

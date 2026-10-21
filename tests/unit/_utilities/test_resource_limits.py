@@ -109,6 +109,14 @@ class TestsFlextInfraUtilitiesResourceLimits:
             eq=True,
         )
         tm.that(result.value.stderr, has=f"Parsing {project.targets[0]}")
+        tm.that(
+            profile.with_suffix(".timing.txt").read_text(encoding=c.DEFAULT_ENCODING),
+            has="checked ",
+        )
+        tm.that(
+            profile.with_suffix(".lines.txt").read_text(encoding=c.DEFAULT_ENCODING),
+            has="checked:",
+        )
         # Profiling retains the same warm-cache behavior as the production gate.
         repeated = u.Cli.run_raw(
             u.Infra.mypy_limited_command(invocation),

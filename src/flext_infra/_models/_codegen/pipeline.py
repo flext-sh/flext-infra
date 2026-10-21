@@ -392,7 +392,9 @@ class FlextInfraModelsCodegenPipelineModels:
         ) = m.Field(
             default=None,
             exclude=True,
-            description="Authenticated complete source output, absent before validation",
+            description=(
+                "Authenticated complete source output, absent before validation"
+            ),
         )
         repository_root: Path = m.Field(
             default=Path(),

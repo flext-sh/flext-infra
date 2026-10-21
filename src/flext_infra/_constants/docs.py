@@ -24,6 +24,7 @@ class FlextInfraConstantsDocs:
         VERSION = ("Version", "Versão")
         PROJECT_CLASS = ("Project class", "Classe do projeto")
         PACKAGE = ("Package", "Pacote")
+        PACKAGE_DOCSTRING = ("{package_name} package.", "Pacote {package_name}.")
         DESCRIPTION = ("Description", "Descrição")
         UNKNOWN = ("unknown", "desconhecida")
         NOT_DECLARED = ("_not declared_", "_não declarado_")

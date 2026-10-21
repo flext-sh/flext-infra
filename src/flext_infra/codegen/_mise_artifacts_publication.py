@@ -98,8 +98,10 @@ class FlextInfraMisePublication:
             and plan.path.name == c.Infra.INIT_PY
             and u.Infra.codegen_initializer_is_authored(before.content)
         ):
-            u.Cli.info(
-                f"ownership=authored disposition=retained target={plan.path}",
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: ownership=authored "
+                f"disposition=retained target={plan.path}\n",
+                error=True,
             )
             return r[bool].ok(value=False)
         staged_publication = cls._staged_publication(
@@ -515,7 +517,8 @@ class FlextInfraMisePublication:
         )
         for index, publication in enumerate(ordered, start=1):
             u.Cli.emit_raw(
-                f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
+                f"  publish [{index}/{len(publications)}] {publication.before.path}\n",
+                error=True,
             )
             blocking, blocked_by = FlextInfraMisePublication._prerequisite_issue(
                 publication,
@@ -534,9 +537,10 @@ class FlextInfraMisePublication:
             )
             if FlextInfraMisePublication._authored_retention(publication, observed):
                 retained.append(publication.before.path)
-                u.Cli.info(
-                    "ownership=authored disposition=retained "
-                    f"target={publication.before.path}",
+                u.Cli.emit_raw(
+                    f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: ownership=authored "
+                    f"disposition=retained target={publication.before.path}\n",
+                    error=True,
                 )
                 continue
             changed = (

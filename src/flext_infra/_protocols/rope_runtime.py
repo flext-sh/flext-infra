@@ -299,8 +299,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeSemanticModule(Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
-
         def get_module(
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...

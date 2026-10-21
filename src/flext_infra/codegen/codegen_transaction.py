@@ -633,9 +633,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                                 "unregistered generation staging blocks readiness: "
                                 f"{residue[0]}",
                             )
-                        u.Cli.info(
+                        u.Cli.emit_raw(
+                            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: "
                             "stage=file-transaction-readiness "
-                            "journal=absent residue=0 leased=true",
+                            "journal=absent residue=0 leased=true\n",
+                            error=True,
                         )
                     return self._run_locked_operation(
                         identity.value,

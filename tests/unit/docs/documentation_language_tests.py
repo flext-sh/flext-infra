@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -224,9 +223,11 @@ class TestsFlextInfraDocumentationLanguage:
         config_dir = project / "config"
         config_dir.mkdir(exist_ok=True)
         (config_dir / "codegen.yaml").write_text(
-            json.dumps({
-                "Infra": {"codegen": {"repository": {"project": declaration}}}
-            }),
+            tm.ok(
+                u.Cli.json_dumps({
+                    "Infra": {"codegen": {"repository": {"project": declaration}}}
+                })
+            ),
             encoding=c.DEFAULT_ENCODING,
         )
         guide = project / "docs/guides/disaster-recovery.md"

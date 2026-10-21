@@ -33,6 +33,10 @@ snapshots:
       style: primary
       start: 44
       end: 60
+    - source: TypeAdapter
+      style: secondary
+      start: 44
+      end: 55
     - source: from pydantic import TypeAdapter
       style: secondary
       start: 0

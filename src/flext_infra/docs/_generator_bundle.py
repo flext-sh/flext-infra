@@ -36,17 +36,18 @@ type _DocsScopeCaptures = t.Triple[
     t.VariadicTuple[m.Cli.AtomicFileState],
     t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
 ]
-type _DocsPresentationInputs = t.Pair[
-    m.Infra.CodegenBootstrapSource | None,
-    t.VariadicTuple[m.Infra.CodegenFilePlan],
-]
-type _DocsRenderedInventory = t.Pair[
-    list[_DocsScopeArtifacts], t.VariadicTuple[m.Infra.CodegenFilePlan]
-]
 
 
 class FlextInfraDocGeneratorBundleMixin:
     """Freeze one render and every authenticated input before planning."""
+
+    type _DocsPresentationInputs = t.Pair[
+        m.Infra.CodegenBootstrapSource | None,
+        t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ]
+    type _DocsRenderedInventory = t.Pair[
+        list[_DocsScopeArtifacts], t.VariadicTuple[m.Infra.CodegenFilePlan]
+    ]
 
     @staticmethod
     def _presentation_metadata(
@@ -68,7 +69,8 @@ class FlextInfraDocGeneratorBundleMixin:
             if declaration.failure:
                 return result_type.from_failure(declaration)
             source = u.Cli.atomic_read_binary_file_state(
-                root / c.PYPROJECT_FILENAME, required=False
+                root / c.PYPROJECT_FILENAME,
+                required=declaration.value.spec.project is not None,
             )
             if source.failure:
                 return result_type.from_failure(source)
@@ -392,7 +394,7 @@ class FlextInfraDocGeneratorBundleMixin:
         request: m.Infra.DocsGenerateRequest,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
-    ) -> p.Result[_DocsRenderedInventory]:
+    ) -> p.Result[FlextInfraDocGeneratorBundleMixin._DocsRenderedInventory]:
         """Resolve the docs scopes, their governance source and artifacts.
 
         Args:
@@ -409,7 +411,7 @@ class FlextInfraDocGeneratorBundleMixin:
             request.output_dir,
             default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         )
-        result_type = r[_DocsRenderedInventory]
+        result_type = r[FlextInfraDocGeneratorBundleMixin._DocsRenderedInventory]
         scopes = cls._validated_scopes(repository_root, request, output_dir)
         if scopes.failure:
             return result_type.from_failure(scopes)
@@ -462,9 +464,11 @@ class FlextInfraDocGeneratorBundleMixin:
         source_paths = u.Infra.docs_source_paths(repository_root, tuple(selected_roots))
         if source_paths.failure:
             return result_type.from_failure(source_paths)
-        u.Cli.info(
-            f"docs: discovered {len(source_paths.value)} source paths in "
-            f"{perf_counter() - started_at:.2f}s",
+        u.Cli.emit_raw(
+            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: docs: discovered "
+            f"{len(source_paths.value)} source paths in "
+            f"{perf_counter() - started_at:.2f}s\n",
+            error=True,
         )
         source_roots = u.Infra.docs_repository_roots(
             repository_root, tuple(selected_roots)
@@ -474,9 +478,11 @@ class FlextInfraDocGeneratorBundleMixin:
         sources = cls._captured_source_states(source_paths.value, source_roots.value)
         if sources.failure:
             return result_type.from_failure(sources)
-        u.Cli.info(
-            f"docs: authenticated {len(sources.value)} source paths in "
-            f"{perf_counter() - started_at:.2f}s",
+        u.Cli.emit_raw(
+            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: docs: authenticated "
+            f"{len(sources.value)} source paths in "
+            f"{perf_counter() - started_at:.2f}s\n",
+            error=True,
         )
         return result_type.ok((repository_root, selected_roots, sources.value))
 
@@ -577,7 +583,10 @@ class FlextInfraDocGeneratorBundleMixin:
         ],
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
-        presentation: _DocsPresentationInputs = (None, ()),
+        presentation: FlextInfraDocGeneratorBundleMixin._DocsPresentationInputs = (
+            None,
+            (),
+        ),
     ) -> p.Result[list[_DocsScopeArtifacts]]:
         """Render one docs artifact set per selected scope.
 
@@ -619,19 +628,27 @@ class FlextInfraDocGeneratorBundleMixin:
             if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 rendered.append((scope, ()))
                 continue
-            artifacts = u.Infra.docs_scope_artifacts(
-                scope,
-                repository_root=repository_root,
-                aggregate_scopes=aggregate,
-                source_states=source_states,
-                source_directories=source_directories,
-            )
+            try:
+                artifacts = u.Infra.docs_scope_artifacts(
+                    scope,
+                    repository_root=repository_root,
+                    aggregate_scopes=aggregate,
+                    source_states=source_states,
+                    source_directories=source_directories,
+                )
+            except SyntaxError as exc:
+                return r[list[_DocsScopeArtifacts]].fail(
+                    f"cannot render documentation source for {scope.name}: {exc}",
+                    exception=exc,
+                )
             if artifacts.failure:
                 return r[list[_DocsScopeArtifacts]].from_failure(artifacts)
             rendered.append((scope, artifacts.value))
-            u.Cli.info(
-                f"docs: rendered {scope.name} artifacts={len(artifacts.value)} "
-                f"elapsed={perf_counter() - scope_started_at:.2f}s",
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: docs: rendered "
+                f"{scope.name} artifacts={len(artifacts.value)} "
+                f"elapsed={perf_counter() - scope_started_at:.2f}s\n",
+                error=True,
             )
         return r[list[_DocsScopeArtifacts]].ok(rendered)
 

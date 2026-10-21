@@ -828,8 +828,10 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         persisted = self._write_journal(layout, extended.value, expected=expected)
         if persisted.failure:
             return result_type.from_failure(persisted)
-        u.Cli.info(
-            f"phase={phase} staging-intentions={len(writes)} durable-before-write",
+        u.Cli.emit_raw(
+            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: phase={phase} "
+            f"staging-intentions={len(writes)} durable-before-write\n",
+            error=True,
         )
         return result_type.ok((extended.value, persisted.value))
 

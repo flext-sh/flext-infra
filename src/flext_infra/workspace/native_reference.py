@@ -853,8 +853,7 @@ class FlextInfraWorkspaceNativeReference:
         member: Literal["__name__", "__qualname__"],
         obj: t.Infra.NativeType,
         owner: t.Infra.NativeType,
-    ) -> str:
-        del member, obj, owner
+    ) -> str: ...
 
     @staticmethod
     @overload
@@ -862,8 +861,7 @@ class FlextInfraWorkspaceNativeReference:
         member: Literal["__bases__"],
         obj: t.Infra.NativeType,
         owner: t.Infra.NativeType,
-    ) -> t.VariadicTuple[t.Infra.NativeType]:
-        del member, obj, owner
+    ) -> t.VariadicTuple[t.Infra.NativeType]: ...
 
     @staticmethod
     @overload
@@ -871,8 +869,7 @@ class FlextInfraWorkspaceNativeReference:
         member: str,
         obj: t.Infra.NativeType,
         owner: t.Infra.NativeType,
-    ) -> p.AttributeProbe | None:
-        del member, obj, owner
+    ) -> p.AttributeProbe | None: ...
 
     @staticmethod
     def _type_attr(

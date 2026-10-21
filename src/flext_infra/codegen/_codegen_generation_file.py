@@ -83,9 +83,15 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
                     for line in imports
                     if line != "if TYPE_CHECKING:"
                 )
+                _, language = cls._project_documentation_language(
+                    plan, source_project=source_project
+                )
                 docstring = cls._format_root_package_docstring(
                     current_pkg,
-                    u.Infra.copyright_notice(plan.context.pkg_dir),
+                    u.Infra.copyright_notice(
+                        plan.context.pkg_dir, source_project=source_project
+                    ),
+                    language,
                 )
                 exports = cls._format_exports_tuple(plan.exports)
                 return (

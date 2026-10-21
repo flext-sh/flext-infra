@@ -9,7 +9,9 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, infra, m
+from flext_core import FlextRuntime
+
+from flext_infra import c, infra, m, u
 from flext_infra.docs import (
     FlextInfraDocAuditor,
     FlextInfraDocBuilder,
@@ -54,6 +56,11 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                 help_text="Generate project docs through the publication transaction",
                 model_cls=m.Infra.DocsGenerateRequest,
                 handler=FlextInfraDocGenerator.execute_request,
+                success_formatter=lambda reports: (
+                    u.Cli.json_dumps(
+                        FlextRuntime.normalize_to_json_value(reports)
+                    ).value
+                ),
                 success_message="Generated documentation committed and verified",
             ),
             m.Cli.ResultCommandRoute(

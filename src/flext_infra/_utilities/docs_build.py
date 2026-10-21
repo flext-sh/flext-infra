@@ -121,6 +121,7 @@ class FlextInfraUtilitiesDocsBuild:
             reason=f"build succeeded ({settings.name})",
             site_dir=site_dir.as_posix(),
             passed=True,
+            strict=True,
         )
 
     @staticmethod

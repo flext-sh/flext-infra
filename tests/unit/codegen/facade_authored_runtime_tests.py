@@ -1046,6 +1046,17 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with u.Infra.facade_source_project(
                 root, source_states=originals, declared_files=tuple(plans.values())
             ) as binding:
+                plans.update(
+                    (file.path, file)
+                    for file in tm.ok(
+                        u.Tests.create_lazy_init_service(root).plan_files(
+                            source_project=binding[0]
+                        )
+                    ).files
+                )
+            with u.Infra.facade_source_project(
+                root, source_states=originals, declared_files=tuple(plans.values())
+            ) as binding:
                 tm.that(
                     u.Infra.render_utility_facade(
                         package, project=binding[0], sources=binding[2]

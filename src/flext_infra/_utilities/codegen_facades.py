@@ -1619,29 +1619,29 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     )
                 continue
             path = Path(provider.real_path).resolve()
-            if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
-                roots[1].resolve()
-            ):
-                retired.add(ast.unparse(base))
-                continue
             if (
-                projection_is_autogen
-                and path.parent == roots[1].resolve()
-                and path.name != c.Infra.INIT_PY
-                and FlextInfraUtilitiesRopeRuntime.py_class(binding.get_object())
-            ):
-                if binding.get_object().get_name() in (
-                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        contents[path]
-                    )
-                ):
-                    continue
-                if any(
+                all((
+                    projection_is_autogen,
+                    path.parent == roots[1].resolve(),
+                    path.name != c.Infra.INIT_PY,
+                    FlextInfraUtilitiesRopeRuntime.py_class(binding.get_object()),
+                ))
+                and any(
                     isinstance(node, ast.ClassDef)
                     and node.name == binding.get_object().get_name()
                     for node in ast.parse(contents[path], filename=str(path)).body
-                ):
-                    retired.add(ast.unparse(base))
+                )
+                and binding.get_object().get_name()
+                not in (
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        contents[path]
+                    )
+                )
+            ) or (
+                path.is_relative_to(roots[0].resolve())
+                and not path.is_relative_to(roots[1].resolve())
+            ):
+                retired.add(ast.unparse(base))
         return frozenset(retired)
 
     @staticmethod

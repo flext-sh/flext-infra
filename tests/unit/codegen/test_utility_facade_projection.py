@@ -15,7 +15,7 @@ from typing import Literal
 
 import pytest
 
-from flext_infra import config, infra, u
+from flext_infra import config, infra
 from tests import c, m, p, r, t, tm, u
 
 

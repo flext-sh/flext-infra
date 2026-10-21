@@ -240,9 +240,11 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                     for _name, value in item.operational
                 ),
             }
-            u.Cli.info(
-                "native authority "
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: native authority "
                 + " ".join(f"{name}={size}" for name, size in metrics.items())
+                + "\n",
+                error=True,
             )
         physical_scope = FlextInfraMiseArtifactsFiles.physical_directory_identity(
             plan.layout.scope_root
@@ -619,9 +621,11 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
 
         """
         content = journal.model_dump_json().encode(c.DEFAULT_ENCODING)
-        u.Cli.info(
-            f"codegen journal state={journal.state} bytes={len(content)} "
-            f"entries={len(journal.entries)} intents={len(journal.staging_intents)}"
+        u.Cli.emit_raw(
+            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: codegen journal state={journal.state} "
+            f"bytes={len(content)} entries={len(journal.entries)} "
+            f"intents={len(journal.staging_intents)}\n",
+            error=True,
         )
         if expected.path != layout.journal_path:
             return r[m.Cli.AtomicFileState].fail(
@@ -677,10 +681,12 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         validated = m.Infra.CodegenTransactionJournal.model_validate_json(
             journal_snapshot.content,
         )
-        u.Cli.info(
-            f"codegen journal read path={layout.journal_path} "
+        u.Cli.emit_raw(
+            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: codegen journal read "
+            f"path={layout.journal_path} "
             f"bytes={len(journal_snapshot.content)} "
-            f"transaction_id={validated.transaction_id} state={validated.state}"
+            f"transaction_id={validated.transaction_id} state={validated.state}\n",
+            error=True,
         )
         relocated = cls._relocate_journal(layout, validated)
         if relocated.failure:
