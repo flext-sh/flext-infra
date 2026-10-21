@@ -480,6 +480,11 @@ class FlextInfraModelsWorkspace:
     class WorkspaceRuntimeContext(m.ContractModel):
         """Physical runtime ownership and its selected native resolution input."""
 
+        editable_supplier_root: Path | None = m.Field(
+            default=None,
+            description="Validated external supplier elected for this physical runtime",
+        )
+
         project_root: Annotated[
             Path, m.Field(description="Submitted Git worktree root")
         ]

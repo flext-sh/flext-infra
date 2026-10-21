@@ -888,11 +888,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for directory in (
                     self.make.uv_resolution.local_directory,
                     self.make.uv_resolution.standalone_directory,
-                    *(
-                        (self.make.uv_resolution.editable_directory,)
-                        if self.make.uv_resolution.editable_supplier_root is not None
-                        else ()
-                    ),
+                    self.make.uv_resolution.editable_directory,
                 )
             )
 

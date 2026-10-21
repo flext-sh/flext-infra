@@ -23,6 +23,7 @@ from git import GitCommandError
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
+    FlextInfraUtilitiesGitWorktreeIO,
 )
 from flext_infra._utilities._git.attestation_evidence import (
     FlextInfraUtilitiesGitAttestationEvidenceMixin,
@@ -566,7 +567,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if source.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(source)
         with FlextInfraUtilitiesGitWorktreeIO.git_stdin(source.value) as stream:
-            anchor = repo.git.hash_object("-w", "--stdin", istream=stream)
+            anchor = repo.git.hash_object("--stdin", istream=stream)
         predicate = m.Infra.GateAttestationPredicate(
             anchor_oid=anchor,
             signer=request.signer,
@@ -576,9 +577,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             covered_gates=request.gates,
             commands=(evidence,),
         )
-        return cls._attestation_predicate_from_value(
-            repo_root, predicate, context
-        ).map(lambda _: predicate)
+        return cls._attestation_predicate_from_value(repo_root, predicate, context).map(
+            lambda _: predicate
+        )
 
     @classmethod
     def _toolchain_digest(
@@ -656,6 +657,34 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
 
     @classmethod
+    def _create_gate_tag(
+        cls,
+        repo_root: Path,
+        tag: str,
+        predicate: m.Infra.GateAttestationPredicate,
+        serialized: str,
+    ) -> p.Result[str]:
+        source = cls._report_bytes(repo_root, predicate.receipt)
+        if source.failure:
+            return r[str].from_failure(source)
+        repo = cls._repo(repo_root)
+        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(source.value) as stream:
+            stored = repo.git.hash_object("-w", "--stdin", istream=stream)
+        if stored != predicate.anchor_oid:
+            return r[str].fail(
+                "stored receipt blob differs from the validated original"
+            )
+        repo.git.tag(
+            "--sign",
+            "--annotate",
+            "--message",
+            serialized,
+            tag,
+            predicate.anchor_oid,
+        )
+        return r[str].ok(tag)
+
+    @classmethod
     def _publish_gate_tag(
         cls,
         request: m.Infra.GateAttestationVerifyRequest,
@@ -670,14 +699,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         try:
             reused = tag in {item.name for item in repo.tags}
             if not reused:
-                repo.git.tag(
-                    "--sign",
-                    "--annotate",
-                    "--message",
-                    serialized,
-                    tag,
-                    predicate.anchor_oid,
-                )
+                created = cls._create_gate_tag(repo_root, tag, predicate, serialized)
+                if created.failure:
+                    return r[m.Infra.GateAttestationReport].from_failure(created)
         except (GitCommandError, OSError, ValueError) as exc:
             return r[m.Infra.GateAttestationReport].fail(str(exc), exception=exc)
         verified = cls._verified_gate_predicate(

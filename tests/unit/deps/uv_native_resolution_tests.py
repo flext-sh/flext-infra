@@ -225,16 +225,16 @@ class TestsFlextInfraUvNativeResolution:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("invalid", ["relative-supplier", "same-directory"])
+    @pytest.mark.parametrize("invalid", ["supplier-in-config", "same-directory"])
     def test_editable_resolution_policy_rejects_ambiguous_paths(invalid: str) -> None:
         """Invalid opt-ins cannot silently select a default graph."""
         policy = config.Infra.codegen.make.uv_resolution
         payload = policy.model_dump()
-        if invalid == "relative-supplier":
+        if invalid == "supplier-in-config":
             payload["editable_supplier_root"] = Path("relative")
         else:
             payload["editable_directory"] = policy.local_directory
-        with pytest.raises(ValueError, match=r"absolute path|distinct directories"):
+        with pytest.raises(ValueError, match=r"Extra inputs|distinct directories"):
             m.Infra.MakeUvResolutionSpec.model_validate(payload)
 
     @staticmethod

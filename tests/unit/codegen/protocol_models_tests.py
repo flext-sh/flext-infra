@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from importlib.metadata import distribution
 from importlib.util import find_spec
 from pathlib import Path
@@ -257,32 +257,8 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
     ):
         (package / filename).write_text(content, encoding=c.DEFAULT_ENCODING)
     u.Tests.copy_tracked_mise_seeds(root)
-    local_path = root / c.CONFIG_DIR_NAME / "codegen.local.yaml"
-    supplier_declaration: t.JsonDict = {
-        "Infra": {
-            "codegen": {
-                "make": {
-                    "uv_resolution": {
-                        "editable_supplier_root": supplier_root.as_posix(),
-                    }
-                }
-            }
-        },
-    }
-    if local_path.exists():
-        local = tm.ok(u.Cli.yaml_roundtrip_load_map(local_path))
-        u.Cli.yaml_overlay_preserving_order(local, supplier_declaration)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                local_path, tm.ok(u.Cli.yaml_roundtrip_dump_text(local))
-            )
-        )
-    else:
-        tm.ok(u.Cli.yaml_dump(local_path, supplier_declaration))
     tm.that(
-        tm.ok(
-            u.Infra.load_codegen_inputs(root)
-        ).spec.make.uv_resolution.editable_supplier_root,
+        settings.Infra.editable_supplier_root,
         eq=supplier_root,
     )
     u.Tests.run_lazy_init(root)
@@ -374,7 +350,16 @@ def _install_member_runtime(
     private_env = {"GITHUB_TOKEN": github_token}
     for verb in ("upg", "setup"):
         provisioned = tm.ok(
-            u.Tests.run_isolated_make([verb], cwd=root, private_env=private_env)
+            u.Tests.run_isolated_make(
+                [verb],
+                cwd=root,
+                env={
+                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(
+                        supplier_root
+                    )
+                },
+                private_env=private_env,
+            )
         )
         tm.that(
             u.Cli.process_succeeded(provisioned.outcome),
@@ -444,13 +429,17 @@ def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None
 
 
 @pytest.fixture
-def member_root(session_runtime: p.Tests.SessionRuntime) -> Iterator[t.DirectoryPath]:
+def member_root(
+    session_runtime: p.Tests.SessionRuntime,
+    editable_supplier: Callable[[Path | None], None],
+) -> Iterator[t.DirectoryPath]:
     """Lease this project's own installed runtime at its stable source path.
 
     Yields:
         The isolated project with its original source and physical environment.
 
     """
+    editable_supplier(_verify_supplier_sources()[0])
     with session_runtime.lease(_provision_member) as root:
         yield root
 

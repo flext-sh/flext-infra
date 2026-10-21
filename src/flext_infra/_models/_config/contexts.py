@@ -23,6 +23,7 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsRepository,
     FlextInfraConfigModelsScaffold,
 )
+from flext_infra._models.settings import FlextInfraSettingsModels
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -30,6 +31,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
     class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
+
+        editable_supplier_environment: str = m.Field(
+            default=FlextInfraSettingsModels.InfraSettings.EDITABLE_SUPPLIER_ENVIRONMENT,
+            description="Typed settings environment alias, never a host path",
+        )
 
         infra_cli: Annotated[
             t.NonEmptyStr,

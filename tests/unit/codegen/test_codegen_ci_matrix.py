@@ -342,7 +342,9 @@ class TestsFlextInfraCodegenCiMatrix:
         report = tm.ok(outcome)
         tm.that(report.dirty, eq=True)
         tm.that(report.porcelain, has="untracked.txt")
-        tm.that((repository / "untracked.txt").read_text(encoding="utf-8"), eq="dirty\n")
+        tm.that(
+            (repository / "untracked.txt").read_text(encoding="utf-8"), eq="dirty\n"
+        )
 
     @staticmethod
     def test_rendered_workflow_shell_commands_parse(

@@ -24,6 +24,31 @@
 
 ## Runtime is the authority
 
+External editable suppliers are a runtime setting, not frozen project policy.
+`FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT` supplies an absolute workspace root
+to the typed `settings.Infra.editable_supplier_root` boundary. Leave it unset for
+ordinary local resolution. There is no sibling-directory or home-directory
+fallback. The supplier workspace itself retains its own local resolution; an
+external consumer owns its own physical `.venv` and generated editable resolver
+view. Hosted execution still selects the standalone view.
+
+Export the setting in the invoking shell before the public `make setup`,
+`make gen`, and `make upg` lifecycle. Do not put the host choice in project YAML,
+application settings, generated Makefiles, or secret environment files. Generated
+dispatchers retain the environment contract, never the selected host path.
+Shared defaults own ordinary FLEXT dependency declarations; a project's codegen
+input retains only its identity and genuine dependency/tool deltas. Live editable
+source selection does not require clean, committed, or stationary worktrees.
+Generation publishes resolver manifests; only `make upg` writes their UV locks.
+Before installation, an isolated UV bootstrap consumes the supplier's native
+local resolver lock and live editable sources, never its `.venv`. It refreshes
+the consumer resolver through the existing metadata generator before consuming
+any previously selected supplier paths. Editable setup delegates reconciliation
+to public `make upg`, the exclusive lock writer, and then installs and verifies
+the selected lock. A missing supplier or its bootstrap lock fails before
+installation; it never falls back to Git. Run these lifecycle verbs sequentially for one
+physical runtime, without suspending unrelated authored work.
+
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
 callable, or module and its intended name. `consumer_roots` is an optional JSON
@@ -1550,6 +1575,9 @@ Tracked and untracked WIP, unknown Git identity, missing origin and HEAD/tree mo
 are not acceptance failures. Observations retain `true` or `null` rather than pretending
 to be clean. Unrelated changes do not invalidate the run; relevant inputs require
 affected-scope revalidation, not a globally frozen tree. No receipt certifies all WIP.
+Signature verification authenticates the named execution history. Reuse by a new
+operation still requires that operation's consumed-source and native-context checks;
+the signed receipt is not a substitute for affected-input revalidation.
 Configuration or runtime drift still prevents receipt publication. The native pytest runner captures its
 candidate immediately before the original suite process and publishes original receipts
 after accounting and diagnostics are written. It retains its existing deadline and

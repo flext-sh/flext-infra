@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -46,31 +47,20 @@ class TestsFlextInfraWorktreeBinding:
     @staticmethod
     def test_local_supplier_opt_in_selects_an_isolated_resolution(
         tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
     ) -> None:
         """Local configuration elects a dev lock, never another environment."""
         consumer = TestsFlextInfraWorktreeBinding._consumer(tmp_path)
         supplier = TestsFlextInfraWorktreeBinding._flext_workspace(tmp_path)
         default = tm.ok(FlextInfraWorkspaceDetector.resolution_context(consumer))
-        configuration = consumer / "config"
-        configuration.mkdir(exist_ok=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                configuration / "codegen.local.yaml",
-                {
-                    "Infra": {
-                        "codegen": {
-                            "make": {
-                                "uv_resolution": {
-                                    "editable_supplier_root": supplier.as_posix(),
-                                }
-                            }
-                        }
-                    },
-                },
-            )
-        )
+        editable_supplier(supplier)
         inputs = tm.ok(u.Infra.load_codegen_inputs(consumer))
         selected = tm.ok(FlextInfraWorkspaceDetector.resolution_context(consumer))
+        tm.that(selected.editable_supplier_root, eq=supplier.resolve())
+        supplier_runtime = tm.ok(
+            FlextInfraWorkspaceDetector.resolution_context(supplier)
+        )
+        tm.that(supplier_runtime.editable_supplier_root, eq=None)
         tm.that(selected.environment_path, eq=default.environment_path)
         tm.that(
             selected.lock_path,

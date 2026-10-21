@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
     @staticmethod
     def test_editable_upg_refreshes_member_locks_without_bumping_runtime_tools(
         tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
     ) -> None:
         """The public editable upgrade resolves member locks, not member installs."""
         root, _ = u.Tests.render_make_environment(
@@ -57,22 +59,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
             relative_path=source.relative_to(supplier).as_posix(),
         )
         u.Tests.git_run(supplier, "submodule", "absorbgitdirs")
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / "codegen.local.yaml",
-                {
-                    "Infra": {
-                        "codegen": {
-                            "make": {
-                                "uv_resolution": {
-                                    "editable_supplier_root": supplier.as_posix(),
-                                },
-                            },
-                        },
-                    },
-                },
-            )
-        )
+        editable_supplier(supplier)
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         for surface in (
             c.Infra.CodegenConformSurface.PYPROJECT,

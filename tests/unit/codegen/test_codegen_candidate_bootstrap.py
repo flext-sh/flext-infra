@@ -960,9 +960,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         projection = candidate / c.PYPROJECT_FILENAME
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
-        roots = TestsFlextInfraCodegenCandidateBootstrap._write_runtime_probe(
-            candidate,
-        )
+        environment = u.Infra.runtime_environment_dir(candidate)
+        tm.fail(environment.exists())
         original = tm.ok(u.Infra.pyproject_regeneration_source(original))
         corrupt = (
             original
@@ -1023,18 +1022,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 tuple(item for item in after if item[0] not in destinations),
             ),
         )
-        tm.that(
-            u.Infra.runtime_evaluated_base_classes(candidate, {}, roots),
-            eq=tuple(
-                sorted({
-                    *roots,
-                    *(
-                        f"bootstrap_probe.models.BootstrapProbe{index}"
-                        for index in range(len(roots))
-                    ),
-                })
-            ),
-        )
+        tm.fail(environment.exists())
         tm.ok(infra.bootstrap_candidate(command))
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True)),

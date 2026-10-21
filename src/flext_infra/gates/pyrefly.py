@@ -158,6 +158,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     code=diag.name,
                     message=diag.description,
                     severity=diag.severity,
+                    locations=(),
+                    related_locations=(),
                 )
                 for diag in validated.value.errors
             ),

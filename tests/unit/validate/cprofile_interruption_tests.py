@@ -23,12 +23,13 @@ class TestsFlextInfraCProfileInterruption:
     """Exercise publication and continuation through real Python processes."""
 
     @staticmethod
-    def test_sigterm_cleanup_preserves_replaced_staging_identity(tmp_path: Path) -> None:
+    def test_sigterm_cleanup_preserves_replaced_staging_identity(
+        tmp_path: Path,
+    ) -> None:
         """A native handler failure stays primary and cleanup never deletes a new inode."""
         output = tmp_path / "profile.pstats"
         script = (
-            c.Infra.PYTEST_PROFILE_BOOTSTRAP
-            + "import os, signal\n"
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal\n"
             "output = Path(sys.argv[1])\n"
             "sum(range(3))\n"
             "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"

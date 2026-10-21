@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, r, settings, t, u
 from flext_infra.base import FlextInfraServiceBase
 from flext_infra.workspace import FlextInfraWorkspaceGovernanceMixin
 
@@ -63,11 +63,6 @@ class FlextInfraWorkspaceDetector(
             if runtime.failure:
                 return result_type.from_failure(runtime)
             runtime_root = runtime.value
-        if runtime_root != project_root and policy.editable_supplier_root is not None:
-            return result_type.fail(
-                "configure editable_supplier_root at the physical runtime root, "
-                "not an attached member"
-            )
         return cls._uv_runtime_context(
             project_root,
             runtime_root,
@@ -92,11 +87,20 @@ class FlextInfraWorkspaceDetector(
         if inputs.failure:
             return result_type.from_failure(inputs)
         policy = inputs.value.spec.make.uv_resolution
+        supplier_root = settings.Infra.editable_supplier_root
+        if standalone or supplier_root == runtime_root.resolve():
+            supplier_root = None
+        if supplier_root is not None:
+            if not supplier_root.is_dir():
+                return result_type.fail(
+                    f"editable supplier root is not an existing directory: {supplier_root}"
+                )
+            supplier_root = supplier_root.resolve()
         directory = (
             policy.standalone_directory
             if standalone
             else policy.editable_directory
-            if policy.editable_supplier_root is not None
+            if supplier_root is not None
             else policy.local_directory
         )
         resolution_root = runtime_root / directory
@@ -106,6 +110,7 @@ class FlextInfraWorkspaceDetector(
             )
         return result_type.ok(
             m.Infra.WorkspaceRuntimeContext(
+                editable_supplier_root=supplier_root,
                 project_root=project_root,
                 runtime_root=runtime_root,
                 resolution_root=resolution_root,

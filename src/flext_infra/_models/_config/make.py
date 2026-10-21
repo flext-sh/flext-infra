@@ -101,14 +101,6 @@ class FlextInfraConfigModelsMake(
                 description="Runtime-root-relative opt-in supplier resolution directory"
             ),
         ]
-        editable_supplier_root: Annotated[
-            Path | None,
-            m.Field(
-                description=(
-                    "Explicit external workspace supplying local editable dependencies"
-                )
-            ),
-        ] = None
         hosted_variable: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actual hosted runner environment key"),
@@ -153,12 +145,6 @@ class FlextInfraConfigModelsMake(
                     raise ValueError(msg)
             if len(set(directories)) != len(directories):
                 msg = "UV resolution views must use distinct directories"
-                raise ValueError(msg)
-            if (
-                self.editable_supplier_root is not None
-                and not self.editable_supplier_root.is_absolute()
-            ):
-                msg = "editable supplier root must be an absolute path"
                 raise ValueError(msg)
             return self
 

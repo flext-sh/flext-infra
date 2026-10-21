@@ -574,18 +574,25 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         tree_sha: Annotated[
             str | None,
-            m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed start commit tree"),
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$", description="Observed start commit tree"
+            ),
         ]
         dirty: Annotated[bool | None, m.Field(description="Observed start WIP state")]
-        after_repository: Annotated[str | None, m.Field(description="Observed end origin")]
+        after_repository: Annotated[
+            str | None, m.Field(description="Observed end origin")
+        ]
         after_commit_sha: Annotated[
-            str | None, m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed end HEAD")
+            str | None,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed end HEAD"),
         ]
         after_tree_sha: Annotated[
             str | None,
             m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed end commit tree"),
         ]
-        after_dirty: Annotated[bool | None, m.Field(description="Observed end WIP state")]
+        after_dirty: Annotated[
+            bool | None, m.Field(description="Observed end WIP state")
+        ]
 
     class GateCaptureBeginRequest(m.ContractModel):
         """Original producer operation and runtime before candidate inspection."""
@@ -701,7 +708,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ] = c.Infra.GateAttestationSchema.V3
         anchor_oid: Annotated[
             str,
-            m.Field(pattern=r"^[a-f0-9]{40}$", description="Original receipt's Git blob"),
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$", description="Original receipt's Git blob"
+            ),
         ]
         signer: Annotated[
             t.NonEmptyStr,
@@ -829,7 +838,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 pattern=r"^sha256:[a-f0-9]{64}$", description="Required recorded policy"
             ),
         ]
-        receipt: Annotated[Path, m.Field(description="Exact original workspace receipt")]
+        receipt: Annotated[
+            Path, m.Field(description="Exact original workspace receipt")
+        ]
         output: Annotated[
             str | None,
             m.Field(description="Optional path receiving the verified predicate JSON"),
@@ -846,7 +857,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Verified or newly created signed gate attestation."""
 
         tag: Annotated[t.NonEmptyStr, m.Field(description="Full attestation tag")]
-        anchor_oid: Annotated[t.NonEmptyStr, m.Field(description="Original receipt blob")]
+        anchor_oid: Annotated[
+            t.NonEmptyStr, m.Field(description="Original receipt blob")
+        ]
         signer: Annotated[
             t.NonEmptyStr,
             m.Field(description="Verified signer principal"),

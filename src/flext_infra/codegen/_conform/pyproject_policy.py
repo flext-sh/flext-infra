@@ -49,7 +49,10 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         if projects.failure:
             return result_type.from_failure(projects)
         suppliers: list[m.Infra.UvResolutionProject] = []
-        supplier_root = inputs.spec.make.uv_resolution.editable_supplier_root
+        runtime = FlextInfraWorkspaceDetector.resolution_context(root)
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        supplier_root = runtime.value.editable_supplier_root
         if supplier_root is not None:
             requirements = u.Infra.document_requirement_lines(
                 projects.value[0].document
@@ -236,12 +239,15 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         local_members = tuple(item for item in members if item.role == "member")
         root = owner.directory
         files: list[m.Infra.CodegenFilePlan] = []
+        runtime = FlextInfraWorkspaceDetector.resolution_context(root)
+        if runtime.failure:
+            return result_type.from_failure(runtime)
         views = (
             (policy.local_directory, local_members),
             (policy.standalone_directory, ()),
             *(
                 ((policy.editable_directory, tuple(members)),)
-                if policy.editable_supplier_root is not None
+                if runtime.value.editable_supplier_root is not None
                 else ()
             ),
         )

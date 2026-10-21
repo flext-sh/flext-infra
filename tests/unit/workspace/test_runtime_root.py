@@ -389,7 +389,8 @@ class TestsFlextInfraRuntimeRoot:
         )
 
     @pytest.mark.parametrize(
-        "invalid", ["", "malformed", "duplicate", "cycle", "foreign"],
+        "invalid",
+        ["", "malformed", "duplicate", "cycle", "foreign"],
     )
     def test_workspace_order_uses_owned_projected_manifest(
         self,
@@ -398,7 +399,7 @@ class TestsFlextInfraRuntimeRoot:
     ) -> None:
         """A projected birth supplies bytes without inventing a physical manifest."""
         provider = u.Tests.repository_ref("fixture-provider", path=Path("provider"))
-        consumer = u.Tests.repository_ref("fixture-consumer", path=Path("."))
+        consumer = u.Tests.repository_ref("fixture-consumer", path=Path())
         provider_root = tmp_path / provider.path
         provider_root.mkdir()
         (provider_root / c.PYPROJECT_FILENAME).write_text(

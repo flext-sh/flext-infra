@@ -14,8 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from flext_infra.validate import FlextInfraCProfileReport, FlextInfraPytestRunner
+from flext_infra import config, validate
 from tests import c, m, t, tm, u
 
 
@@ -31,8 +30,7 @@ class TestsFlextInfraPytestProfile:
         """A real synchronous signal delegates without another staging or snapshot."""
         output = tmp_path / "current.pstats"
         script = (
-            c.Infra.PYTEST_PROFILE_BOOTSTRAP
-            + "import os, pstats, signal\n"
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, pstats, signal\n"
             "output = Path(sys.argv[1])\n"
             "sum(range(10))\n"
             "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
@@ -41,7 +39,8 @@ class TestsFlextInfraPytestProfile:
             "stages = []\n"
             "snapshots = []\n"
             "def observe(frame, name, argument):\n"
-            "    if name == 'c_call' and getattr(argument, '__name__', '') == 'getstats':\n"
+            "    if (name == 'c_call'\n"
+            "            and getattr(argument, '__name__', '') == 'getstats'):\n"
             "        snapshots.append(name)\n"
             "def native(signum, frame):\n"
             "    print('native-handler', flush=True)\n"
@@ -55,7 +54,8 @@ class TestsFlextInfraPytestProfile:
                 if handler != "default"
                 else ""
             )
-            + "clock.FlextInfraPytestClock.register_signal_checkpoint(profile, output)\n"
+            + "clock.FlextInfraPytestClock.register_signal_checkpoint(\n"
+            "    profile, output)\n"
             "def interrupt(name, arguments):\n"
             "    if name == 'tempfile.mkstemp':\n"
             "        stages.append(name)\n"
@@ -78,9 +78,7 @@ class TestsFlextInfraPytestProfile:
             "assert not tuple(output.parent.glob('.current.pstats.*.tmp'))\n"
         )
         result = tm.ok(
-            u.Cli.run_raw(
-                (sys.executable, "-c", script, str(output)), cwd=tmp_path
-            )
+            u.Cli.run_raw((sys.executable, "-c", script, str(output)), cwd=tmp_path)
         )
         tm.that(
             result.outcome.raw_return_code,
@@ -133,11 +131,10 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     def test_startup_transfers_finalization_to_launcher(tmp_path: Path) -> None:
-        """Startup and launcher share one profiler and publish only the elected output."""
+        """Startup and launcher share one profiler and publish the elected output."""
         output = tmp_path / "suite.pstats"
         script = (
-            c.Infra.PYTEST_PROFILE_BOOTSTRAP
-            + "import atexit, os, pstats\n"
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import atexit, os, pstats\n"
             "stages = []\n"
             "def observe(name, arguments):\n"
             "    if name == 'tempfile.mkstemp':\n"
@@ -148,8 +145,10 @@ class TestsFlextInfraPytestProfile:
             "    assert pstats.Stats(sys.argv[0]).get_stats_profile().func_profiles\n"
             "    print('single-finalization', flush=True)\n"
             "atexit.register(finished)\n"
-            "os.environ[child.FlextInfraPytestProfileChild.CHILD_ROOT_ENV] = sys.argv[2]\n"
-            "child.FlextInfraPytestProfileChild.startup(sys.argv[2] + '/sitecustomize.py')\n"
+            "os.environ[child.FlextInfraPytestProfileChild.CHILD_ROOT_ENV] = (\n"
+            "    sys.argv[2])\n"
+            "child.FlextInfraPytestProfileChild.startup(\n"
+            "    sys.argv[2] + '/sitecustomize.py')\n"
             "assert child.FlextInfraPytestProfileChild.bootstrap()[1] is profile\n"
             "sys.argv = [sys.argv[1], sys.argv[1], '--version']\n"
             + c.Infra.PYTEST_PROFILE_LAUNCHER
@@ -171,9 +170,9 @@ class TestsFlextInfraPytestProfile:
     ) -> None:
         """A failed final artifact cannot hide a native failure or accept success."""
         script = (
-            c.Infra.PYTEST_PROFILE_BOOTSTRAP
-            + "def fail_pytest(name, arguments):\n"
-            "    if name == 'exec' and arguments[0].co_filename.endswith('/pytest/__main__.py'):\n"
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "def fail_pytest(name, arguments):\n"
+            "    if (name == 'exec'\n"
+            "            and arguments[0].co_filename.endswith('/pytest/__main__.py')):\n"
             + (
                 "        raise RuntimeError('original pytest failure')\n"
                 if cause == "exception"
@@ -184,7 +183,12 @@ class TestsFlextInfraPytestProfile:
         )
         result = tm.ok(
             u.Cli.run_raw(
-                (sys.executable, "-c", script, str(tmp_path / "missing" / "suite.pstats")),
+                (
+                    sys.executable,
+                    "-c",
+                    script,
+                    str(tmp_path / "missing" / "suite.pstats"),
+                ),
                 cwd=tmp_path,
             )
         )
@@ -388,7 +392,7 @@ class TestsFlextInfraPytestProfile:
             output = directory / "interrupted-profile.txt"
             tm.that(
                 tm.ok(
-                    FlextInfraCProfileReport(
+                    validate.FlextInfraCProfileReport(
                         repository_root=cached_runner_project,
                         profile=profile,
                         run_receipt=receipt,
@@ -479,7 +483,7 @@ class TestsFlextInfraPytestProfile:
         receipt = output.with_suffix(".pstats.json")
         context = m.Infra.PytestRunContext.model_validate_json(receipt.read_bytes())
         tm.that(context.profile_sha256, eq=u.Cli.sha256_bytes(output.read_bytes()))
-        tm.ok(pstats.Stats(str(output)).get_stats_profile().func_profiles)
+        tm.that(pstats.Stats(str(output)).get_stats_profile().func_profiles, truth=True)
         contexts = tuple(
             (cached_runner_project / runner.reports).glob("*/run-context.json")
         )
@@ -496,7 +500,7 @@ class TestsFlextInfraPytestProfile:
             with pytest.raises(ProcessLookupError):
                 os.kill(int(child_pid.read_text(encoding=c.DEFAULT_ENCODING)), 0)
             tm.ok(
-                FlextInfraCProfileReport(
+                validate.FlextInfraCProfileReport(
                     repository_root=cached_runner_project,
                     profile=output,
                     run_receipt=receipt,
@@ -645,7 +649,7 @@ class TestsFlextInfraPytestProfile:
         tm.that(command, lacks="test_unselected.py")
         tm.ok(runner.testmon_db.is_file())
         stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
-        tm.ok(FlextInfraPytestRunner.__name__ in stats)
+        tm.ok(validate.FlextInfraPytestRunner.__name__ in stats)
         tm.ok("FlextInfraPytestProfile" in stats)
         processes = (
             output.parent / config.Infra.tooling.tools.pytest.profile_process_directory
@@ -756,7 +760,7 @@ class TestsFlextInfraPytestProfile:
                 any("_pytest" in function.file_name for function in functions.values()),
                 eq=True,
             )
-        report = FlextInfraCProfileReport(
+        report = validate.FlextInfraCProfileReport(
             repository_root=cached_runner_project,
             profile=output,
             output=output.with_suffix(".txt"),
@@ -899,9 +903,10 @@ class TestsFlextInfraPytestProfile:
         # The class body runs on import, unlike its methods: this proves the
         # public runner was first imported while the parent profiler was active.
         tm.that(
-            FlextInfraPytestRunner.__name__ in parent_stats.func_profiles, truth=True
+            validate.FlextInfraPytestRunner.__name__ in parent_stats.func_profiles,
+            truth=True,
         )
-        report = FlextInfraCProfileReport(
+        report = validate.FlextInfraCProfileReport(
             repository_root=project,
             profile=parent_profile,
             output=parent_profile.with_suffix(".txt"),
@@ -923,7 +928,8 @@ class TestsFlextInfraPytestProfile:
         # The profiled incremental operation is bounded, so its receipt names
         # a deadline.
         deadline = receipt.deadline_monotonic
-        tm.that(deadline, none=False)
+        if deadline is None:
+            pytest.fail("bounded selection receipt did not record its deadline")
         receipt_path.write_text(
             receipt.model_copy(
                 update={"deadline_monotonic": deadline + 1},

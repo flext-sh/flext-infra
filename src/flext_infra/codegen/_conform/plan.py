@@ -853,7 +853,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 outcome = type(self).plan_repository_task(
                     task.model_copy(update={"provider_plans": tuple(staged.values())})
                 )
-                if self.state.planning_exception is None and outcome.exception is not None:
+                if (
+                    self.state.planning_exception is None
+                    and outcome.exception is not None
+                ):
                     self.state.planning_exception = outcome.exception
                 if not outcome.failed:
                     staged.update((file.path, file) for file in outcome.files)
@@ -921,12 +924,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                             edges.append(
                                 frozenset(
                                     name
-                                    for name in u.Infra.project_dependency_names_from_payload(payload)
+                                    for name in u.Infra.project_dependency_names_from_payload(
+                                        payload
+                                    )
                                     if name in names
                                 ),
                             )
                         if edges[0] != edges[1]:
-                            msg = "root dependency graph changed after metadata planning"
+                            msg = (
+                                "root dependency graph changed after metadata planning"
+                            )
                             raise ValueError(msg)
                 except (OSError, ValueError, TypeError, RuntimeError) as exc:
                     if self.state.planning_exception is None:

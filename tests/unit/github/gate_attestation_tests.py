@@ -98,8 +98,7 @@ class TestsFlextInfraGithubGateAttestation:
         u.Tests.WorktreeFixture.write_python_project(root, "fixture")
         source = root / c.Infra.DEFAULT_SRC_DIR
         (source / "consumer.py").write_text("import os\n", encoding="utf-8")
-        # The attested toolchain digest reads the resolver inputs the runtime
-        # context elects from the uv resolution policy; commit them there.
+        # Resolver inputs remain untracked: execution proof binds their live bytes.
         context = TestsFlextInfraGithubGateAttestation._context(root)
         context.resolution_root.mkdir(parents=True, exist_ok=True)
         context.pyproject_path.write_bytes((root / "pyproject.toml").read_bytes())
@@ -113,8 +112,6 @@ class TestsFlextInfraGithubGateAttestation:
                         "pyproject.toml",
                         "tracked.txt",
                         c.Infra.DEFAULT_SRC_DIR,
-                        context.pyproject_path.relative_to(root).as_posix(),
-                        context.lock_path.relative_to(root).as_posix(),
                     ),
                 ),
             ),
@@ -621,7 +618,9 @@ class TestsFlextInfraGithubGateAttestation:
         )
         context = self._context(tmp_path)
         context.resolution_root.mkdir(parents=True, exist_ok=True)
-        context.pyproject_path.write_bytes((tmp_path / c.PYPROJECT_FILENAME).read_bytes())
+        context.pyproject_path.write_bytes(
+            (tmp_path / c.PYPROJECT_FILENAME).read_bytes()
+        )
         context.lock_path.write_text("version = 1\n", encoding=c.DEFAULT_ENCODING)
         captured = tm.ok(
             u.Infra.git_capture_gate(
@@ -653,6 +652,7 @@ class TestsFlextInfraGithubGateAttestation:
             ("user.signingkey", str(signer / "signing_key")),
         ):
             u.Tests.git_bootstrap(tmp_path, ("config", key, value))
+        tm.ok(u.Infra.git_signing_identity(m.Infra.GitRepoRequest(repo_root=tmp_path)))
         request = m.Infra.GateAttestationCreateRequest(
             workspace=str(tmp_path),
             signer="attester@example.test",
@@ -664,7 +664,9 @@ class TestsFlextInfraGithubGateAttestation:
             policy_digest=evidence.policy_digest,
         )
         created = tm.ok(u.Infra.git_create_gate_attestation(request, context))
-        verified = tm.ok(self._verify(tmp_path, allowed, request.receipt, evidence.gate))
+        verified = tm.ok(
+            self._verify(tmp_path, allowed, request.receipt, evidence.gate)
+        )
         tm.that(verified.anchor_oid, eq=created.anchor_oid)
         tm.that(self._rev_parse(tmp_path, f"{created.tag}^{{}}"), eq=created.anchor_oid)
         tm.fail(u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=tmp_path)))
@@ -791,7 +793,9 @@ class TestsFlextInfraGithubGateAttestation:
         allowed = signed_repository_factory(tmp_path)
         if not has_origin:
             u.Tests.git_bootstrap(tmp_path, ("remote", "remove", c.Infra.GIT_ORIGIN))
-        (tmp_path / "tracked.txt").write_text("working copy\n", encoding=c.DEFAULT_ENCODING)
+        (tmp_path / "tracked.txt").write_text(
+            "working copy\n", encoding=c.DEFAULT_ENCODING
+        )
         (tmp_path / "untracked.txt").write_text("shared\n", encoding=c.DEFAULT_ENCODING)
         request = self._request(tmp_path)
         source = m.Infra.GateCommandEvidence.model_validate_json(
@@ -887,9 +891,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         (tmp_path / source.reports[0].path).unlink()
 
-        tm.fail(
-            self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK)
-        )
+        tm.fail(self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK))
 
     def test_untrusted_signing_key_cannot_verify_an_existing_stage(
         self,
@@ -913,9 +915,7 @@ class TestsFlextInfraGithubGateAttestation:
             encoding="utf-8",
         )
 
-        tm.fail(
-            self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK)
-        )
+        tm.fail(self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK))
 
     def test_real_make_timeout_cannot_borrow_an_earlier_complete_report(
         self,
@@ -965,11 +965,7 @@ class TestsFlextInfraGithubGateAttestation:
         """Test gate attestation normalizes network remote git suffix."""
         allowed_signers = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        tm.ok(
-            u.Infra.git_create_gate_attestation(
-                request, self._context(tmp_path)
-            )
-        )
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         remote = tm.ok(
             u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path)),
         ).text
@@ -996,9 +992,7 @@ class TestsFlextInfraGithubGateAttestation:
         allowed_signers = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         created = tm.ok(
-            u.Infra.git_create_gate_attestation(
-                request, self._context(tmp_path)
-            )
+            u.Infra.git_create_gate_attestation(request, self._context(tmp_path))
         )
         selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
         unrelated = tmp_path / "another-lane.txt"
@@ -1035,15 +1029,11 @@ class TestsFlextInfraGithubGateAttestation:
         """Test gate attestation rejects incomplete coverage."""
         allowed_signers = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        tm.ok(
-            u.Infra.git_create_gate_attestation(
-                request, self._context(tmp_path)
-            )
-        )
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
         verified = self._verify(
             tmp_path,
-                allowed_signers,
+            allowed_signers,
             request.receipt,
             c.Infra.VERB_TEST,
         )

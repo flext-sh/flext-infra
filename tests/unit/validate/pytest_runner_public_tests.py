@@ -39,7 +39,9 @@ class TestsFlextInfraPytestRunner:
             u.Tests.git_bootstrap(
                 root,
                 (
-                    "remote", "add", c.Infra.GIT_ORIGIN,
+                    "remote",
+                    "add",
+                    c.Infra.GIT_ORIGIN,
                     "https://github.example/flext/suite.git",
                 ),
             )
@@ -71,18 +73,26 @@ class TestsFlextInfraPytestRunner:
         ).oid
         unrelated = root / "unrelated.txt"
         unrelated.write_text("another lane\n", encoding=c.DEFAULT_ENCODING)
-        tm.ok(u.Infra.git_add_paths(m.Infra.GitPathsRequest(
-            repo_root=root, paths=(unrelated.name,)
-        )))
-        tm.ok(u.Infra.git_commit(m.Infra.GitCommitRequest(
-            repo_root=root, message="test: independent fixture revision"
-        )))
+        tm.ok(
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(repo_root=root, paths=(unrelated.name,))
+            )
+        )
+        tm.ok(
+            u.Infra.git_commit(
+                m.Infra.GitCommitRequest(
+                    repo_root=root, message="test: independent fixture revision"
+                )
+            )
+        )
         advanced_head = tm.ok(
             u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=root))
         ).oid
         u.Tests.git_bootstrap(root, ("update-ref", "HEAD", original_head))
         tracked.write_text("pending\n", encoding=c.DEFAULT_ENCODING)
-        (root / "shared-untracked.txt").write_text("pending\n", encoding=c.DEFAULT_ENCODING)
+        (root / "shared-untracked.txt").write_text(
+            "pending\n", encoding=c.DEFAULT_ENCODING
+        )
         runner = u.Tests.PytestRunner.runner_for(root)
         (root / runner.target / "test_shared_worktree.py").write_text(
             "import subprocess\nfrom pathlib import Path\n\n"

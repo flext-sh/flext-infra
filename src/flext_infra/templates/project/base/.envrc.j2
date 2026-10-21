@@ -103,8 +103,10 @@ fi
 if [[ -f "${PROJECT_ROOT}/pyproject.toml" && -d "${VENV_DIR}" ]]; then
   if [[ "{{ '${' ~ uv_resolution.hosted_variable ~ ':-}' }}" == "{{ uv_resolution.hosted_value }}" ]]; then
     export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.standalone_directory }}"
+  elif [[ -n "{{ '${' ~ editable_supplier_environment ~ ':-}' }}" && "$(realpath "{{ '${' ~ editable_supplier_environment ~ '}' }}")" != "${RUNTIME_ROOT}" ]]; then
+    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.editable_directory }}"
   else
-    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.editable_directory if uv_resolution.editable_supplier_root is not none else uv_resolution.local_directory }}"
+    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.local_directory }}"
   fi
   export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
   export VIRTUAL_ENV="${VENV_DIR}"

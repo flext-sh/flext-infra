@@ -94,9 +94,11 @@ class FlextInfraPytestProfileChild:
             and sys.orig_argv[entry_index - 1 : entry_index + 1] == ["-m", "cProfile"]
         )
         if not native_profile:
-            cls._startup_retire = clock.FlextInfraPytestClock.register_signal_checkpoint(
-                profile,
-                profile_output,
+            cls._startup_retire = (
+                clock.FlextInfraPytestClock.register_signal_checkpoint(
+                    profile,
+                    profile_output,
+                )
             )
             atexit.register(
                 clock.FlextInfraPytestClock.publish_profile,
@@ -170,7 +172,9 @@ class FlextInfraPytestProfileChild:
                     raise
                 primary.add_note(
                     "profile publication failed:\n"
-                    + "".join(traceback.format_exception(publication_failure, chain=False))
+                    + "".join(
+                        traceback.format_exception(publication_failure, chain=False)
+                    )
                 )
                 if isinstance(primary, SystemExit):
                     try:

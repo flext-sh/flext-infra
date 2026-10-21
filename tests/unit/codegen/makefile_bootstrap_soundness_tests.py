@@ -9,12 +9,13 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from shlex import quote
 
 import pytest
 
-from flext_infra import config
+from flext_infra import config, settings
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
 from tests.unit.codegen.test_mise_pin_bootstrap import (
@@ -31,33 +32,19 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     def test_install_recipe_survives_template_conditionals(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
+        editable_supplier: Callable[[Path | None], None],
         *,
         supplier: bool,
     ) -> None:
         """Public help parses both branches without truncating provisioning."""
         root, _ = u.Tests.render_make_environment(tmp_path, profile)
         if supplier:
-            tm.ok(
-                u.Cli.yaml_dump(
-                    root / "config" / "codegen.local.yaml",
-                    {
-                        "Infra": {
-                            "codegen": {
-                                "make": {
-                                    "uv_resolution": {
-                                        "editable_supplier_root": (
-                                            tmp_path / "supplier"
-                                        ).as_posix(),
-                                    }
-                                }
-                            }
-                        }
-                    },
-                )
-            )
+            supplier_root = tmp_path / "supplier"
+            supplier_root.mkdir()
+            editable_supplier(supplier_root)
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         policy = inputs.spec.make.uv_resolution
-        tm.that(policy.editable_supplier_root is not None, eq=supplier)
+        tm.that(settings.Infra.editable_supplier_root is not None, eq=supplier)
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         rendered = u.Tests.conform_makefile_text(root, workspace)
         tm.ok(u.Cli.atomic_write_text_file(root / c.Infra.MAKEFILE_FILENAME, rendered))
@@ -70,6 +57,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 ["help", "OPTIONS=Y"],
                 cwd=root,
                 env={
+                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: (
+                        str(settings.Infra.editable_supplier_root) if supplier else ""
+                    ),
                     policy.hosted_variable: "",
                     inputs.spec.make.ci.variable: inputs.spec.make.ci.local_value,
                 },
@@ -92,9 +82,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             has='$(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"',
         )
         tm.ok(recipe.index("config ls --json") < recipe.index(sync))
-        tm.that("$(UV) lock --check" in recipe, eq=supplier)
-        if supplier:
-            tm.ok(recipe.index("$(UV) lock --check") < recipe.index(sync))
+        tm.that(recipe, has="$(UV) lock --check")
+        tm.ok(recipe.index("$(UV) lock --check") < recipe.index(sync))
+        tm.that(rendered, lacks=str(tmp_path / "supplier"))
         for verb in ("fmt", "fix"):
             body = rendered.split(
                 f"_builtin_{verb}_all: _builtin_require_environment\n", 1
@@ -116,7 +106,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     @staticmethod
     @pytest.mark.parametrize("scenario", ["hosted", "missing-manifest"])
     def test_editable_upgrade_preflight_preserves_hooks_and_locks(
-        tmp_path: Path, scenario: str
+        tmp_path: Path,
+        scenario: str,
+        editable_supplier: Callable[[Path | None], None],
     ) -> None:
         """A selected dev supplier never changes hosted provisioning policy."""
         root, _ = u.Tests.render_make_environment(
@@ -125,24 +117,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             bootstrap=True,
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / "codegen.local.yaml",
-                {
-                    "Infra": {
-                        "codegen": {
-                            "make": {
-                                "uv_resolution": {
-                                    "editable_supplier_root": (
-                                        tmp_path / "supplier"
-                                    ).as_posix(),
-                                }
-                            }
-                        }
-                    },
-                },
-            )
-        )
+        supplier_root = tmp_path / "supplier"
+        supplier_root.mkdir()
+        editable_supplier(supplier_root)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / c.Infra.MAKEFILE_FILENAME,
@@ -175,9 +152,12 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 ["upg"],
                 cwd=root,
                 env={
+                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(
+                        supplier_root
+                    ),
                     policy.hosted_variable: policy.hosted_value
                     if scenario == "hosted"
-                    else ""
+                    else "",
                 },
             )
         )
@@ -185,9 +165,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(
             process.stderr,
             has=(
-                "Editable supplier reconciliation is local only"
+                "Resolution and member propagation are forbidden in hosted CI"
                 if scenario == "hosted"
-                else "Editable resolution manifest is missing"
+                else "selected supplier has no native bootstrap lock"
             ),
         )
         tm.fail(marker.exists())
@@ -198,10 +178,11 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
 
     @staticmethod
-    def test_member_local_supplier_cannot_upgrade_the_workspace_defaults(
+    def test_member_supplier_uses_the_physical_workspace_resolution(
         tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
     ) -> None:
-        """A member-local opt-in fails instead of delegating an unrelated upgrade."""
+        """The process setting selects only the physical owner's dev lock."""
         root, member, _, _ = (
             TestsFlextInfraMakefileBootstrapSoundness._reader_workspace_checkout(
                 tmp_path,
@@ -209,24 +190,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             )
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
-        tm.ok(
-            u.Cli.yaml_dump(
-                member / "config" / "codegen.local.yaml",
-                {
-                    "Infra": {
-                        "codegen": {
-                            "make": {
-                                "uv_resolution": {
-                                    "editable_supplier_root": (
-                                        tmp_path / "supplier"
-                                    ).as_posix(),
-                                }
-                            }
-                        }
-                    },
-                },
-            )
-        )
+        supplier_root = tmp_path / "supplier"
+        supplier_root.mkdir()
+        editable_supplier(supplier_root)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 member / c.Infra.MAKEFILE_FILENAME,
@@ -249,11 +215,16 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             u.Tests.run_isolated_make(
                 ["upg"],
                 cwd=member,
-                env={policy.hosted_variable: ""},
+                env={
+                    policy.hosted_variable: "",
+                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(
+                        supplier_root
+                    ),
+                },
             )
         )
         tm.that(process.outcome.raw_return_code, eq=2)
-        tm.that(process.stderr, has="physical runtime root, not an attached member")
+        tm.that(process.stderr, has="selected supplier has no native bootstrap lock")
         tm.that(
             tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
             eq=before,

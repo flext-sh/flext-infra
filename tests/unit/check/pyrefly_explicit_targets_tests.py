@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, u
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+from flext_infra import c, config, gates, m, u
 from tests import tm
 
 if TYPE_CHECKING:
@@ -63,7 +62,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
             u.Infra.pyrefly_target_args(project, targets, selected_files=()),
             eq=(*targets, c.Infra.PYREFLY_PROJECT_EXCLUDES_FLAG, "**/excluded/**"),
         )
-        gate = FlextInfraPyreflyGate(project)
+        gate = gates.FlextInfraPyreflyGate(project)
         valid = gate.check_files((selected,), project, context)
         tm.that(valid.result.passed, eq=True, msg=str(valid.issues))
         selected.write_text('value: int = "incorrect"\n', encoding="utf-8")
@@ -115,7 +114,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
         reports = project / ".reports"
         reports.mkdir()
         context = m.Infra.GateContext(repository_root=project, reports_dir=reports)
-        gate = FlextInfraPyreflyGate(project)
+        gate = gates.FlextInfraPyreflyGate(project)
 
         excluded = gate.check(project, context)
 

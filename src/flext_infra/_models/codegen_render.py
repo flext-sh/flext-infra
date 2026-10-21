@@ -21,6 +21,7 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsProvider,
     FlextInfraConfigModelsRender,
 )
+from flext_infra._models.settings import FlextInfraSettingsModels
 
 
 class FlextInfraModelsCodegenRender:
@@ -304,6 +305,11 @@ class FlextInfraModelsCodegenRender:
 
     class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
+
+        editable_supplier_environment: str = m.Field(
+            default=FlextInfraSettingsModels.InfraSettings.EDITABLE_SUPPLIER_ENVIRONMENT,
+            description="Typed settings environment alias, never a host path",
+        )
 
         toolchain: Annotated[
             FlextInfraConfigModelsContract.ToolchainSpec,

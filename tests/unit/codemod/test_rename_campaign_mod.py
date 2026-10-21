@@ -47,7 +47,7 @@ class TestsFlextInfraRenameCampaignMod:
         (mod_workspace / "sample.py").write_text(
             '"""Document campaign_token without changing the runtime payload."""\n'
             "\nfrom __future__ import annotations\n"
-            '\nclass ModWorkspaceSample:\n'
+            "\nclass ModWorkspaceSample:\n"
             '    PAYLOAD: str = "campaign_token"\n\n'
             '__all__ = ["ModWorkspaceSample"]\n',
             encoding="utf-8",
@@ -82,8 +82,10 @@ class TestsFlextInfraRenameCampaignMod:
                 (
                     sys.executable,
                     "-c",
-                    "from sample import ModWorkspaceSample; "
-                    "print(ModWorkspaceSample.PAYLOAD)",
+                    (
+                        "from sample import ModWorkspaceSample; "
+                        "print(ModWorkspaceSample.PAYLOAD)"
+                    ),
                 ),
                 cwd=mod_workspace,
             ),
@@ -162,8 +164,10 @@ class TestsFlextInfraRenameCampaignMod:
                 (
                     sys.executable,
                     "-c",
-                    "from sample import ModWorkspaceSample; "
-                    "print(ModWorkspaceSample.values())",
+                    (
+                        "from sample import ModWorkspaceSample; "
+                        "print(ModWorkspaceSample.values())"
+                    ),
                 ),
                 cwd=mod_workspace,
             ),

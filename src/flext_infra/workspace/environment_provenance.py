@@ -543,10 +543,10 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             The authenticated supplier count or the first provenance failure.
 
         """
-        inputs = u.Infra.load_codegen_inputs(consumer_root)
-        if inputs.failure:
-            return r[int].from_failure(inputs)
-        supplier_root = inputs.value.spec.make.uv_resolution.editable_supplier_root
+        runtime = FlextInfraWorkspaceDetector.resolution_context(consumer_root)
+        if runtime.failure:
+            return r[int].from_failure(runtime)
+        supplier_root = runtime.value.editable_supplier_root
         if supplier_root is None:
             return r[int].ok(0)
         return cls._validate_supplier_projects(
