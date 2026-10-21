@@ -126,6 +126,7 @@ class FlextInfraRopeQueryMixin:
             del file_path, export_options
 
         _resource_cache: MutableMapping[str, t.Infra.RopeFile | None]
+        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
         _module_object_cache: MutableMapping[
             t.Triple[str, bool, bool],
             t.VariadicTuple[m.Infra.Object],
@@ -326,17 +327,23 @@ class FlextInfraRopeQueryMixin:
         """
         resolved_file = file_path.resolve()
         cache_key = (str(resolved_file), include_local_scopes, include_references)
-        cached = self._module_object_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        objects = u.Infra.objects(
-            self,
-            resolved_file,
-            include_local_scopes=include_local_scopes,
-            include_references=include_references,
-        )
-        self._module_object_cache[cache_key] = objects
-        return objects
+        with u.Infra.cached_source_query(
+            self.rope_project,
+            self._module_object_cache,
+            cache_key,
+            self._query_receipts,
+            f"objects:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._module_object_cache[cache_key]
+            objects = u.Infra.objects(
+                self,
+                resolved_file,
+                include_local_scopes=include_local_scopes,
+                include_references=include_references,
+            )
+            self._module_object_cache[cache_key] = objects
+            return objects
 
 
 __all__: list[str] = ["FlextInfraRopeQueryMixin"]

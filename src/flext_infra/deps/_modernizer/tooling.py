@@ -159,7 +159,12 @@ class FlextInfraPyprojectModernizerTooling:
         if derive_runtime:
             runtime = u.Cli.toml_mapping_ensure_path(
                 payload,
-                (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "flake8-type-checking"),
+                (
+                    c.Infra.TOOL,
+                    c.Infra.RUFF,
+                    c.Infra.LINT_SECTION,
+                    "flake8-type-checking",
+                ),
             )
             runtime["runtime-evaluated-base-classes"] = list(
                 u.Infra.runtime_evaluated_base_classes(

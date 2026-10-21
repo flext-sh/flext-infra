@@ -217,10 +217,14 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         try:
             verified = u.Cli.atomic_verify_binary_file_states(states)
             if verified.failure:
+                if verified.exception is not None:
+                    raise verified.exception
                 return r[bool].from_failure(verified)
             return u.Cli.atomic_verify_directory_queries(
                 directories, topology, observations=observations
             )
+        except OSError:
+            raise
         except runtime_errors as exc:
             return r[bool].fail(str(exc), exception=exc)
 
@@ -280,7 +284,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             The conflict-partitioned analysis receipt.
 
         """
-        if project.source_epoch_failure is not cause:
+        if isinstance(cause, OSError) or project.source_epoch_failure is not cause:
             raise cause
         scopes: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
             *analysis.files,

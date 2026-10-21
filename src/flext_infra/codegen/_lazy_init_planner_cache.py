@@ -23,6 +23,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _source_exports_cache: MutableMapping[str, frozenset[str]]
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
         _module_file_by_name: MutableMapping[str, Path]
+        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         def build_plan(
             self,
@@ -45,15 +46,21 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             All export names for a package (init + source plans).
 
         """
-        cached = self._package_exports_cache.get(package_name)
-        if cached is not None:
-            return cached
-        exports = frozenset((
-            *self._package_init_exports(package_name),
-            *self._source_export_names_for_package(package_name),
-        ))
-        self._package_exports_cache[package_name] = exports
-        return exports
+        with u.Infra.cached_source_query(
+            self.rope_workspace.rope_project,
+            self._package_exports_cache,
+            package_name,
+            self._query_receipts,
+            f"package:{package_name}",
+        ) as cached:
+            if cached:
+                return self._package_exports_cache[package_name]
+            exports = frozenset((
+                *self._package_init_exports(package_name),
+                *self._source_export_names_for_package(package_name),
+            ))
+            self._package_exports_cache[package_name] = exports
+            return exports
 
     def _package_init_exports(self, package_name: str) -> frozenset[str]:
         """Return names exported from the package __init__.py.

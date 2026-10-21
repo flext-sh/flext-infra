@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, t
 
@@ -42,11 +42,31 @@ class FlextInfraSettingsModels:
             validation_alias="FLEXT_REPOSITORY_ROOT",
             description="Explicit repository root for dependency orchestration.",
         )
+        github_actions: Literal["true", "false"] | None = m.Field(
+            default=None,
+            validation_alias="GITHUB_ACTIONS",
+            description="Actual hosted-runner signal used before host-path election.",
+        )
         editable_supplier_root: Path | None = m.Field(
             default=None,
             validation_alias=EDITABLE_SUPPLIER_ENVIRONMENT,
             description="External live workspace supplying editable dependencies.",
         )
+
+        @m.field_validator("editable_supplier_root", mode="before")
+        @classmethod
+        def _elect_editable_supplier_root(
+            cls, value: str | Path | None, info: m.ValidationInfo
+        ) -> str | Path | None:
+            """Ignore a host supplier before path parsing on the hosted runner.
+
+            Returns:
+                The local input unchanged, or no supplier for hosted execution.
+
+            """
+            if info.data is not None and info.data.get("github_actions") == "true":
+                return None
+            return value
 
         @m.field_validator("editable_supplier_root")
         @classmethod

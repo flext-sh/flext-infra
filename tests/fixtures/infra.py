@@ -28,7 +28,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def editable_supplier() -> Iterator[Callable[[Path | None], None]]:
-    """Select a real typed supplier setting and restore it after the scenario."""
+    """Select a real typed supplier setting and restore it after the scenario.
+
+    Yields:
+        The selector for the scenario's editable supplier root.
+
+    """
     name = type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT
     previous = os.environ.get(name)
 
@@ -54,13 +59,17 @@ def native_cprofile(tmp_path: Path) -> Path:
     """
     profile = tmp_path / c.Infra.REPORTS_DIR_NAME / "fixture.pstats"
     profile.parent.mkdir(parents=True, exist_ok=True)
+    workload = tmp_path / "profile_workload.py"
+    workload.write_text("sum(range(3))\n", encoding=c.DEFAULT_ENCODING)
     tm.ok(
         u.Cli.run_checked(
             (
                 sys.executable,
-                "-c",
-                ("import cProfile, sys\ncProfile.run('sum(range(3))', sys.argv[1])\n"),
+                "-m",
+                "cProfile",
+                "-o",
                 str(profile),
+                str(workload),
             ),
             cwd=tmp_path,
         )

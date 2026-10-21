@@ -1676,6 +1676,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 self._validate_generation_stage,
                 plans=analysis.files,
                 workspace=request.root,
+                runtime_root=(
+                    u.Infra.runtime_environment_dir(self.state.repository_root).parent
+                    if self.state.initial_workspace is not None
+                    else None
+                ),
             ),
         )
         return inputs.flat_map(
@@ -1699,6 +1704,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         workspace: Path,
+        runtime_root: Path | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Compose existing Mise and Pyproject consumers over exact staged subsets.
 
@@ -1735,6 +1741,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             publications,
             plans=plans,
             workspace=workspace,
+            runtime_root=runtime_root,
         )
 
     def _publish_docs_batches(

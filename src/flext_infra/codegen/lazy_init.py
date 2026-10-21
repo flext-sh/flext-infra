@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
 from time import perf_counter
@@ -68,7 +68,7 @@ class FlextInfraCodegenLazyInit(
     project_scope_roots: Annotated[
         t.VariadicTuple[Path] | None,
         m.Field(
-            ...,
+            default=...,
             description=(
                 "Repository roots selected by conformance; None plans every "
                 "package of the workspace"
@@ -233,46 +233,110 @@ class FlextInfraCodegenLazyInit(
         runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         for attempt in range(config.Infra.codegen.source_replan_limit + 1):
             planned: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
+            enclosing: m.Infra.CodegenPhaseAnalysis | None = None
+            consumption: p.Infra.RopeSourceConsumption | None = None
+
+            def capture_enclosing(
+                _: p.Infra.RopeProject, receipt: m.Infra.CodegenPhaseAnalysis
+            ) -> None:
+                nonlocal enclosing
+                enclosing = receipt
+
             predecessor = project
             context = (
                 self._source_binding(
-                    self.repository_root.resolve(), source_project, import_roots
+                    self.repository_root.resolve(),
+                    source_project,
+                    import_roots,
+                    source_conflict=capture_enclosing,
                 )
                 if predecessor is None
                 else predecessor.source_successor()
             )
             try:
-                with context as project:
+                with context as project, project.source_consumption() as consumption:
                     self._adopt_cached_sources(project)
                     planned = self._plan_attempt(roots, source_project=project)
-                    if source_project is not None:
-                        project.verify_source_states()
-                    return planned
+                if source_project is not None:
+                    project.verify_source_states()
+                return planned
             except runtime_errors as exc:
-                if (
-                    planned is None
-                    or planned.failure
-                    or project is None
-                    or project.source_epoch_failure is not exc
-                ):
-                    raise
-                # Classification proves that the failing global observations
-                # belong to genuine scoped decisions, not arbitrary IO errors.
-                classified = self.classify_source_conflict(planned.value, project, exc)
-                if first_conflict is None:
-                    first_conflict = exc
-                if source_project is not None or planned.value.exception is not None:
-                    return r[m.Infra.CodegenPhaseAnalysis].ok(classified)
-                if attempt == config.Infra.codegen.source_replan_limit:
-                    if first_conflict is exc:
-                        raise
-                    raise first_conflict from exc
+                decision = self._resolve_source_conflict(
+                    planned=planned,
+                    project=project,
+                    exc=exc,
+                    enclosing=enclosing,
+                    consumption=consumption,
+                    source_project=source_project,
+                    first_conflict=first_conflict,
+                    attempt=attempt,
+                )
+                if decision[0] is not None:
+                    return decision[0]
+                first_conflict = decision[1]
+                self._source_plans.clear()
+                self._source_receipts.clear()
+                self._source_indexes.clear()
                 u.Cli.info(
                     f"lazy-init: source epoch changed; successor={attempt + 1} "
-                    f"retaining independently valid decisions; cause={exc}"
+                    f"rebuilding the elected phase from current sources; cause={exc}"
                 )
         msg = "lazy-init source convergence exhausted without its original failure"
         raise RuntimeError(msg)
+
+    def _resolve_source_conflict(
+        self,
+        *,
+        planned: p.Result[m.Infra.CodegenPhaseAnalysis] | None,
+        project: p.Infra.RopeProject | None,
+        exc: BaseException,
+        enclosing: m.Infra.CodegenPhaseAnalysis | None,
+        consumption: p.Infra.RopeSourceConsumption | None,
+        source_project: p.Infra.RopeProject | None,
+        first_conflict: BaseException | None,
+        attempt: int,
+    ) -> tuple[p.Result[m.Infra.CodegenPhaseAnalysis] | None, BaseException | None]:
+        """Classify one authenticated source conflict and decide retry versus terminal."""
+        if (
+            planned is None
+            or planned.failure
+            or project is None
+            or project.source_epoch_failure is not exc
+        ):
+            raise exc
+        receipts = tuple(
+            receipt
+            for receipt in (
+                enclosing,
+                consumption.receipt() if consumption is not None else None,
+            )
+            if receipt is not None
+        )
+        analysis = planned.value.model_copy(
+            update={
+                "failed_targets": (
+                    *planned.value.failed_targets,
+                    *(
+                        (self.repository_root.resolve(), receipt)
+                        for receipt in receipts
+                    ),
+                )
+            }
+        )
+        classified = self.classify_source_conflict(analysis, project, exc)
+        first_conflict = exc if first_conflict is None else first_conflict
+        if source_project is not None or planned.value.exception is not None:
+            return r[m.Infra.CodegenPhaseAnalysis].ok(classified), first_conflict
+        if attempt == config.Infra.codegen.source_replan_limit:
+            if first_conflict is not exc:
+                first_conflict.add_note(f"Final classified source conflict: {exc}")
+            return (
+                r[m.Infra.CodegenPhaseAnalysis].ok(
+                    classified.model_copy(update={"exception": first_conflict})
+                ),
+                first_conflict,
+            )
+        return None, first_conflict
 
     def _adopt_cached_sources(self, project: p.Infra.RopeProject) -> None:
         """Adopt only predecessor-issued evidence and retain valid cache identities."""
@@ -346,12 +410,22 @@ class FlextInfraCodegenLazyInit(
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
             tuple(
                 item
-                for dependency in (*composed, *publications)
+                for dependency in composed
+                for item in dependency.source_directories
+            )
+            + tuple(
+                item
+                for dependency in publications
                 for item in dependency.source_directories
             ),
             tuple(
                 item
-                for dependency in (*composed, *publications)
+                for dependency in composed
+                for item in dependency.source_query_topology
+            )
+            + tuple(
+                item
+                for dependency in publications
                 for item in dependency.source_query_topology
             ),
         )
@@ -362,7 +436,12 @@ class FlextInfraCodegenLazyInit(
                 inputs=m.Infra.CodemodBindingSnapshot(
                     states=tuple(
                         state
-                        for dependency in (*composed, *publications)
+                        for dependency in composed
+                        for state in dependency.source_states
+                    )
+                    + tuple(
+                        state
+                        for dependency in publications
                         for state in dependency.source_states
                     ),
                 ).states,
@@ -394,6 +473,11 @@ class FlextInfraCodegenLazyInit(
         root: Path,
         source_project: p.Infra.RopeProject | None,
         project_roots: t.VariadicTuple[Path],
+        *,
+        source_conflict: Callable[
+            [p.Infra.RopeProject, m.Infra.CodegenPhaseAnalysis], None
+        ]
+        | None = None,
     ) -> Generator[p.Infra.RopeProject]:
         """Bind the shared original authority without replacing an injected epoch.
 
@@ -418,6 +502,7 @@ class FlextInfraCodegenLazyInit(
             with u.Infra.facade_source_project(
                 root,
                 project_roots=scoped_project_roots,
+                source_conflict=source_conflict,
             ) as binding:
                 yield binding[0]
             return

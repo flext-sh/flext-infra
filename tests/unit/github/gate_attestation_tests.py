@@ -425,12 +425,31 @@ class TestsFlextInfraGithubGateAttestation:
             configuration.read_text(encoding="utf-8") + "\n[broken\n",
             encoding="utf-8",
         )
+        native = tm.ok(
+            cli_u.Cli.run_raw(
+                (
+                    "git",
+                    "config",
+                    "get",
+                    "--null",
+                    "--show-origin",
+                    "--show-scope",
+                    c.Infra.GIT_SIGNING_CONFIGURATION_KEYS[0],
+                ),
+                cwd=tmp_path,
+            )
+        )
+        process = m.Cli.ProcessOutcome.model_validate(
+            native.outcome,
+            from_attributes=True,
+        )
+        tm.that(cli_u.Cli.process_succeeded(process), truth=False)
+        tm.that(native.stderr, empty=False)
         failed = u.Infra.git_signing_identity(
             m.Infra.GitRepoRequest(repo_root=tmp_path)
         )
         tm.fail(failed)
-        tm.that(failed.error, none=False)
-        tm.that("bad config" in failed.error, truth=True)
+        tm.that(failed.error, eq=native.stderr)
 
     def test_signing_identity_rejects_unsupported_native_format(
         self,
@@ -644,6 +663,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(evidence.process, eq=captured.process)
         tm.that(captured.issues, empty=True)
         signer = tmp_path.with_name(tmp_path.name + "-signer")
+        signer.mkdir()
         allowed = signed_repository_factory(signer)
         for key, value in (
             ("user.name", "Workspace Signer"),
@@ -747,8 +767,9 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test signed gate attestation round trip is local."""
         allowed_signers = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
         created = u.Infra.git_create_gate_attestation(
-            self._request(tmp_path),
+            request,
             self._context(tmp_path),
         )
 

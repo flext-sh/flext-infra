@@ -260,6 +260,18 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             raise RuntimeError(msg)
         return result.value
 
+    def load_typing_generation_policy(self) -> m.Infra.TypingGenerationPolicy:
+        """Read the producer's sole dependency-limits policy as a typed contract.
+
+        Returns:
+            The validated generation policy.
+
+        """
+        limits = u.Cli.json_as_mapping(
+            self.load_dependency_limits()[c.Infra.TYPING_LIBRARIES]
+        )
+        return m.Infra.TypingGenerationPolicy.model_validate(limits["generation"])
+
     @staticmethod
     def module_to_types_package(
         module_name: str,

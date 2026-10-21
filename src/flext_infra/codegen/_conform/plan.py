@@ -1265,6 +1265,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             planned = (
                 r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
                 if task.initial_workspace is not None
+                and task.initial_workspace.project is not None
                 and repository.name == task.workspace.repository.name
                 else planner._planned_lazy_init_files(repository_root)
             )
@@ -1292,6 +1293,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             inputs,
             scaffold=(
                 task.initial_workspace is not None
+                and task.initial_workspace.project is not None
                 and repository.name == task.workspace.repository.name
             ),
         )

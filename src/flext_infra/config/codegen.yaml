@@ -874,7 +874,7 @@ Infra:
     artifacts:
     - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
     - { name: __pyrefly_virtual__, analysis_exclude: true }
-    # Governance content (.agents/.claude) and direnv runtime state stay
+    # Governance content (.agents/.claude/.codex) and direnv runtime state stay
     # visible to the editor and watcher; source_scan keeps its dotdir skip.
     - { name: .agents, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .beads, source_scan_ignore: true }
@@ -888,6 +888,7 @@ Infra:
     - { name: .cache, source_scan_ignore: true, analysis_exclude: true }
     # Agent worktrees are duplicate repositories, never production input.
     - { name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
+    - { name: .codex, gitignore: false, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     # .direnv keeps the source-scan skip (order-sensitive, after .claude).
     - { name: .direnv, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .dolt }

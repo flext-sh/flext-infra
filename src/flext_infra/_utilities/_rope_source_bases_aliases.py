@@ -10,6 +10,10 @@ import ast
 import importlib.util
 from pathlib import Path
 
+from flext_core import build_lazy_import_map
+from flext_core import u as core_u
+from typing_extensions import TypeForm
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities._semantic_cutover.family_type_references import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -218,6 +222,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         cls,
         expression: str,
         module: p.Infra.RopeParsedModule,
+        ancestors: frozenset[t.Pair[str, int]] = frozenset(),
     ) -> str:
         """Read one declared alias map without executing its source expressions.
 
@@ -232,7 +237,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         node = ast.parse(expression, mode="eval").body
         scope = module.get_scope()
-        visited: set[t.Pair[str, int]] = set()
+        visited = set(ancestors)
         while True:
             if isinstance(node, ast.Dict):
                 literal = ast.get_source_segment(expression, node)
@@ -241,8 +246,19 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                     raise ValueError(message)
                 return literal
             if isinstance(node, ast.Call):
+                if cls._native_alias_callable(
+                    node.func,
+                    scope,
+                    ("flext_core", "flext_core.lazy"),
+                    "build_lazy_import_map",
+                ):
+                    return cls._built_alias_mapping_source(
+                        node, expression, module, frozenset(visited)
+                    )
                 if (
-                    not cls._immutable_alias_wrapper(node.func, scope)
+                    not cls._native_alias_callable(
+                        node.func, scope, ("types",), "MappingProxyType"
+                    )
                     or len(node.args) != 1
                     or node.keywords
                 ):
@@ -280,14 +296,16 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             scope = provider.get_scope()
 
     @staticmethod
-    def _immutable_alias_wrapper(
+    def _native_alias_callable(
         expression: ast.expr,
         scope: p.Infra.RopeScope,
+        expected_modules: t.StrSequence,
+        expected_attribute: str,
     ) -> bool:
-        """Prove the standard wrapper from native import metadata alone.
+        """Prove a declared SDK callable from native import metadata alone.
 
         Returns:
-            Whether this expression is the declared MappingProxyType import.
+            Whether the expression is the elected absolute native import.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -309,9 +327,67 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         else:
             return False
         return (
-            module.module_name == "types"
+            module.module_name in expected_modules
             and module.level == 0
-            and attribute == "MappingProxyType"
+            and attribute == expected_attribute
+        )
+
+    @classmethod
+    def _built_alias_mapping_source(
+        cls,
+        call: ast.Call,
+        source: str,
+        module: p.Infra.RopeParsedModule,
+        ancestors: frozenset[t.Pair[str, int]],
+    ) -> str:
+        """Compile literal SDK builder arguments through the native map owner.
+
+        Returns:
+            The canonical flat mapping literal produced by the SDK.
+
+        Raises:
+            ValueError: If arguments are ambiguous, dynamic or unsupported.
+        """
+        arguments = {keyword.arg: keyword.value for keyword in call.keywords}
+        if (
+            len(call.args) > 1
+            or len(arguments) != len(call.keywords)
+            or set(arguments) - {"module_groups", "alias_groups", "sort_keys"}
+            or (call.args and "module_groups" in arguments)
+        ):
+            message = "Lazy builder requires its declared literal arguments"
+            raise ValueError(message)
+        if call.args:
+            arguments["module_groups"] = call.args[0]
+        modules: t.MappingKV[str, t.StrSequence] = {}
+        aliases: t.MappingKV[str, t.SequenceOf[t.StrPair]] = {}
+        for name in ("module_groups", "alias_groups"):
+            argument = arguments.get(name)
+            if argument is None or (
+                isinstance(argument, ast.Constant) and argument.value is None
+            ):
+                continue
+            expression = ast.get_source_segment(source, argument)
+            if expression is None:
+                message = "Lazy builder mapping has no native source span"
+                raise ValueError(message)
+            literal = ast.literal_eval(
+                cls._declared_alias_mapping_source(expression, module, ancestors)
+            )
+            if name == "module_groups":
+                modules = core_u.type_adapter(
+                    TypeForm(t.MappingKV[str, t.StrSequence])
+                ).validate_python(literal, strict=True)
+            else:
+                aliases = core_u.type_adapter(
+                    TypeForm(t.MappingKV[str, t.SequenceOf[t.StrPair]])
+                ).validate_python(literal, strict=True)
+        sort = arguments.get("sort_keys", ast.Constant(value=True))
+        if not isinstance(sort, ast.Constant) or not isinstance(sort.value, bool):
+            message = "Lazy builder ordering requires a literal boolean"
+            raise ValueError(message)
+        return repr(
+            build_lazy_import_map(modules, alias_groups=aliases, sort_keys=sort.value)
         )
 
     @staticmethod

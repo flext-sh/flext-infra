@@ -42,6 +42,41 @@ class TestsFlextInfraRopeSnapshot:
             })
 
     @staticmethod
+    def test_governance_projection_alias_is_not_a_python_source(tmp_path: Path) -> None:
+        """Agent projections never become source inputs through provider aliases."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = tmp_path / "provider"
+        provider.mkdir()
+        (provider / "external.py").write_text("value = 1\n", encoding="utf-8")
+        skills = root / ".codex" / "skills"
+        skills.mkdir(parents=True)
+        (skills / "provider-helper").symlink_to(provider, target_is_directory=True)
+
+        with u.Infra.facade_source_project(root) as (project, _receipts, _sources):
+            paths = tuple(
+                Path(resource.real_path) for resource in project.get_python_files()
+            )
+            tm.that(package / "__init__.py" in paths, eq=True)
+            tm.that(
+                any(path.is_relative_to(root / ".codex") for path in paths), eq=False
+            )
+
+    @staticmethod
+    def test_python_source_alias_remains_rejected(tmp_path: Path) -> None:
+        """Ignoring governance projections never admits aliases in project code."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = tmp_path / "provider"
+        provider.mkdir()
+        (provider / "external.py").write_text("value = 1\n", encoding="utf-8")
+        (package / "provider_alias").symlink_to(provider, target_is_directory=True)
+
+        with (
+            pytest.raises(OSError, match="physical alias"),
+            u.Infra.facade_source_project(root) as (project, _receipts, _sources),
+        ):
+            tuple(project.get_python_files())
+
+    @staticmethod
     def test_source_queries_use_the_closed_snapshot(tmp_path: Path) -> None:
         """Snapshot membership follows captured inputs, never later disk state."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -380,6 +415,55 @@ tm.that(source.exists(), eq=False)
                 tm.that(resource.read(), eq=sources[conftest.resolve()])
             finally:
                 snapshot.close()
+
+    @staticmethod
+    def test_snapshot_admits_proposal_for_captured_absence(tmp_path: Path) -> None:
+        """A descriptor-proven absence admits only its proposed virtual source."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / "__init__.py"
+        source = package / "proposed.py"
+        states = tuple(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(path, required=path == initializer)
+            )
+            for path in (initializer, source)
+        )
+        epoch = u.Infra.codemod_source_epoch(
+            m.Infra.CodemodBindingSnapshot(states=states)
+        )
+        content = "value = 1\n"
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            snapshot = u.Infra.snapshot_project(
+                rope.rope_project, {source: content}, captured=epoch
+            )
+            try:
+                resource = u.Infra.require_file_resource(
+                    snapshot.get_resource(source.relative_to(root).as_posix()), source
+                )
+                tm.that(resource.read(), eq=content)
+                tm.that(source.exists(), eq=False)
+                tm.ok(u.Cli.atomic_verify_binary_file_states(states))
+            finally:
+                snapshot.close()
+
+    @staticmethod
+    def test_snapshot_rejects_uncaptured_absent_proposal(tmp_path: Path) -> None:
+        """No live path or absence is silently added to an authenticated epoch."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / "__init__.py"
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
+        epoch = u.Infra.codemod_source_epoch(
+            m.Infra.CodemodBindingSnapshot(states=(state,))
+        )
+        with (
+            FlextInfraRopeWorkspace.open_workspace(root) as rope,
+            pytest.raises(ValueError, match="outside its input inventory"),
+        ):
+            u.Infra.snapshot_project(
+                rope.rope_project,
+                {package / "uncaptured.py": "value = 1\n"},
+                captured=epoch,
+            )
 
     @staticmethod
     def test_snapshot_rejects_sources_outside_the_project(tmp_path: Path) -> None:

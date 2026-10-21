@@ -44,6 +44,26 @@ class TestsFlextInfraLazyInitRuntime:
                 ),
                 "lazy_imports=_LAZY_IMPORTS",
             ),
+            (
+                (
+                    "_LAZY_IMPORTS = MappingProxyType(build_lazy_import_map(\n"
+                    "    MappingProxyType({}),\n"
+                    "    alias_groups=MappingProxyType({\n"
+                    '        ".provider": (("Exported", "Declared"),),\n'
+                    "    }), sort_keys=False))\n"
+                ),
+                "_LAZY_IMPORTS",
+            ),
+            (
+                (
+                    "_LAZY_IMPORTS = MappingProxyType(build_lazy_import_map(\n"
+                    '    MappingProxyType({".provider": ("Exported",)}),\n'
+                    "    alias_groups=MappingProxyType({\n"
+                    '        ".provider": (("Exported", "Declared"),),\n'
+                    "    })))\n"
+                ),
+                "_LAZY_IMPORTS",
+            ),
         ],
     )
     def test_native_alias_inventory_matches_the_runtime_initializer(
@@ -53,7 +73,7 @@ class TestsFlextInfraLazyInitRuntime:
         repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = (
             "from types import MappingProxyType\n"
-            "from flext_core import install_lazy_exports\n"
+            "from flext_core import build_lazy_import_map, install_lazy_exports\n"
             + declarations
             + '__all__ = ("Exported",)\n'
             + "__getattr__ = install_lazy_exports(\n"
@@ -109,15 +129,31 @@ class TestsFlextInfraLazyInitRuntime:
                         "assert Exported.marker is True\n"
                     ),
                 ),
-                cwd=repository,
-                options=m.Cli.ProcessOptions(
-                    env={
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
-                    }
-                ),
+                cwd=package.parent,
             )
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+
+    @staticmethod
+    def test_native_builder_cycle_is_rejected_without_execution(tmp_path: Path) -> None:
+        """SDK builder arguments retain the declaration-cycle proof."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = (
+            "from types import MappingProxyType\n"
+            "from flext_core import build_lazy_import_map, install_lazy_exports\n"
+            "_GROUPS = MappingProxyType(build_lazy_import_map(_GROUPS))\n"
+            '__all__ = ("Exported",)\n'
+            "install_lazy_exports(__name__, globals(), _GROUPS, public_exports=__all__)\n"
+        )
+        initializer = package / c.Infra.INIT_PY
+        tm.ok(u.Cli.atomic_write_text_file(initializer, source))
+        with (
+            infra.rope_workspace(repository) as workspace,
+            pytest.raises(ValueError, match="Cyclic lazy alias mapping declaration"),
+        ):
+            u.Infra.lazy_export_bindings(
+                package.name, initializer, source, project=workspace.rope_project
+            )
 
     @staticmethod
     @pytest.mark.parametrize(

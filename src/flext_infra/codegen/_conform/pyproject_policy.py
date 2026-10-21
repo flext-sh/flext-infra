@@ -54,13 +54,14 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             return result_type.from_failure(runtime)
         supplier_root = runtime.value.editable_supplier_root
         if supplier_root is not None:
-            requirements = u.Infra.document_requirement_lines(
-                projects.value[0].document
-            )
-            if requirements.failure:
-                return result_type.from_failure(requirements)
+            requirements: list[str] = []
+            for project in projects.value:
+                declared = u.Infra.document_requirement_lines(project.document)
+                if declared.failure:
+                    return result_type.from_failure(declared)
+                requirements.extend(declared.value)
             collected = self._collected_supplier_projects(
-                root, supplier_root, sources, requirements=requirements.value
+                root, supplier_root, sources, requirements=requirements
             )
             if collected.failure:
                 return result_type.from_failure(collected)
@@ -103,13 +104,13 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             for requirement in requirements
             if (name := u.Infra.dep_name(requirement)) is not None
         }
-        targets = tuple(
+        available = {
             distribution
             for repository in (workspace.value.repository, *workspace.value.subprojects)
             if repository.package
             and (distribution := u.Infra.dep_name(repository.distribution)) is not None
-            and distribution in declared
-        )
+        }
+        targets = tuple(sorted(available & declared))
         if not targets:
             return result_type.fail(
                 f"editable supplier selects no declared dependency: {supplier_root}"
@@ -124,17 +125,33 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         if captured.failure:
             return result_type.from_failure(captured)
         sources.append(captured.value)
-        return cls._collected_resolution_projects(
-            supplier_root,
-            workspace.value,
-            (),
-            sources,
-            selected_names=targets,
-        ).map(
-            lambda projects: [
-                item.model_copy(update={"role": "supplier"}) for item in projects
-            ]
-        )
+        projects: list[m.Infra.UvResolutionProject] = []
+        selected: set[str] = set()
+        while targets:
+            collected = cls._collected_resolution_projects(
+                supplier_root,
+                workspace.value,
+                (),
+                sources,
+                selected_names=targets,
+            )
+            if collected.failure:
+                return result_type.from_failure(collected)
+            projects.extend(collected.value)
+            selected.update(targets)
+            expanded = u.Infra.resolution_supplier_requirements(requirements, projects)
+            if expanded.failure:
+                return result_type.from_failure(expanded)
+            declared = {
+                name
+                for requirement in expanded.value
+                if (name := u.Infra.dep_name(requirement)) is not None
+            }
+            targets = tuple(sorted((available & declared) - selected))
+        return result_type.ok([
+            item.model_copy(update={"role": "supplier"})
+            for item in sorted(projects, key=lambda item: item.repository.distribution)
+        ])
 
     @staticmethod
     def _collected_resolution_projects(
@@ -375,6 +392,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
+        typing_policy: m.Infra.TypingGenerationPolicy,
         member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
     ) -> p.Result[str]:
         """Conform one pyproject source.
@@ -430,6 +448,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 flext_line=flext_line.value,
                 repository_root=target.root,
                 member_declarations=member_declarations,
+                typing_policy=typing_policy,
             ),
         )
 

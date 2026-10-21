@@ -71,6 +71,8 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         if not FlextInfraUtilitiesRopeRuntime.source_module(module):
             message = "Rope export facts require an authenticated source module"
             raise TypeError(message)
+        if rope_project.authenticated_sources:
+            rope_project.source_bytes(Path(resource.real_path))
         digest = u.Cli.sha256_bytes(module.source_code.encode(c.DEFAULT_ENCODING))
         return (rope_project.root.real_path, resource.path, digest)
 

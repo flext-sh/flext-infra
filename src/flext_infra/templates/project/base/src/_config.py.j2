@@ -12,7 +12,10 @@
 {%- set config_class_declaration = config_class_line if config_class_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "class " ~ class_stem ~ "Config(\n    " ~ config_base_class ~ "\n):" -%}
 {%- set namespace_field_line = "    " ~ ns ~ ": Annotated[" -%}
 {%- set namespace_field = namespace_field_line if namespace_field_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "    " ~ ns ~ ": Annotated[" -%}
-"""{{ class_stem }}Config — frozen config singleton for {{ package_name }} (ADR-005 §7).
+"""Frozen config singleton (ADR-005 §7).
+
+Class: ``{{ class_stem }}Config``.
+Package: ``{{ package_name }}``.
 
 Business rules live in ``config/*.yaml`` under the ``{{ ns }}:`` key.
 The shared config declaration validates the ``config.{{ ns }}`` namespace.
@@ -42,12 +45,18 @@ from {{ package_name }}._models.config import (
 {{ namespace_field }}
         {{ class_stem }}ConfigModels.ConfigNamespace,
         m.Field(
-            description="Open namespace exposing ``config/*.yaml`` under ``{{ ns }}``."
+            description=(
+                "Open namespace exposing ``config/*.yaml`` under "
+                "``{{ ns }}``."
+            )
         ),
     ]
 
 
 config = {{ class_stem }}Config.fetch_global()
-"""Pre-instantiated frozen config singleton — ``from {{ package_name }} import config``."""
+"""Pre-instantiated frozen config singleton.
+
+Import: ``from {{ package_name }} import config``.
+"""
 
 __all__: list[str] = ["{{ class_stem }}Config", "config"]

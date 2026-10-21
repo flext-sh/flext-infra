@@ -186,6 +186,34 @@ snapshots:
   ? |
     class FlextFooApi:
         pass
+    api = FlextFooApi.model_validate({})
+  : labels:
+    - source: api = FlextFooApi.model_validate({})
+      style: primary
+      start: 28
+      end: 64
+    - source: |
+        class FlextFooApi:
+            pass
+        api = FlextFooApi.model_validate({})
+      style: secondary
+      start: 0
+      end: 65
+    - source: api
+      style: secondary
+      start: 28
+      end: 31
+    - source: FlextFooApi.model_validate({})
+      style: secondary
+      start: 34
+      end: 64
+    - source: api = FlextFooApi.model_validate({})
+      style: secondary
+      start: 28
+      end: 64
+  ? |
+    class FlextFooApi:
+        pass
     api: FlextFooApi = FlextFooApi.fetch_logger()
   : labels:
     - source: 'api: FlextFooApi = FlextFooApi.fetch_logger()'
@@ -242,6 +270,34 @@ snapshots:
   ? |
     class FlextFooApi:
         pass
+    api: FlextFooApi = FlextFooOther.model_validate({})
+  : labels:
+    - source: 'api: FlextFooApi = FlextFooOther.model_validate({})'
+      style: primary
+      start: 28
+      end: 79
+    - source: |
+        class FlextFooApi:
+            pass
+        api: FlextFooApi = FlextFooOther.model_validate({})
+      style: secondary
+      start: 0
+      end: 80
+    - source: api
+      style: secondary
+      start: 28
+      end: 31
+    - source: FlextFooOther.model_validate({})
+      style: secondary
+      start: 47
+      end: 79
+    - source: 'api: FlextFooApi = FlextFooOther.model_validate({})'
+      style: secondary
+      start: 28
+      end: 79
+  ? |
+    class FlextFooApi:
+        pass
     api: FlextFooOther = FlextFooApi.fetch_global()
   : labels:
     - source: 'api: FlextFooOther = FlextFooApi.fetch_global()'
@@ -267,6 +323,34 @@ snapshots:
       style: secondary
       start: 28
       end: 75
+  ? |
+    class FlextFooApi:
+        pass
+    api: FlextFooOther = FlextFooApi.model_validate({})
+  : labels:
+    - source: 'api: FlextFooOther = FlextFooApi.model_validate({})'
+      style: primary
+      start: 28
+      end: 79
+    - source: |
+        class FlextFooApi:
+            pass
+        api: FlextFooOther = FlextFooApi.model_validate({})
+      style: secondary
+      start: 0
+      end: 80
+    - source: api
+      style: secondary
+      start: 28
+      end: 31
+    - source: FlextFooApi.model_validate({})
+      style: secondary
+      start: 49
+      end: 79
+    - source: 'api: FlextFooOther = FlextFooApi.model_validate({})'
+      style: secondary
+      start: 28
+      end: 79
   ? |
     def helper() -> int:
         return 1

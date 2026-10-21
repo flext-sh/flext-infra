@@ -252,7 +252,7 @@ class FlextInfraCodemodSemanticApply:
         return {
             path: source
             for scope in candidate.workspaces or (candidate.workspace,)
-            for path, source in FlextInfraUtilitiesCodegenFacades._facade_original_sources(
+            for path, source in FlextInfraUtilitiesCodegenFacades.facade_original_sources(
                 scope, states
             ).items()
         }

@@ -31,7 +31,6 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -69,6 +68,9 @@ class FlextInfraCodegenLazyInitPlanner(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
     _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
+        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
+    )
+    _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
     _ancestry_receipts: MutableMapping[
@@ -122,7 +124,7 @@ class FlextInfraCodegenLazyInitPlanner(
             package_key = str(pkg_dir.resolve())
             plan = self._source_plan_cache.get(package_key)
             if plan is None:
-                plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
+                plan, receipt = self._package_plan(pkg_dir, dir_exports=dir_exports)
             else:
                 receipt = self.source_receipt(pkg_dir)
                 self.rope_workspace.rope_project.replay_source_consumption(receipt)
@@ -160,44 +162,30 @@ class FlextInfraCodegenLazyInitPlanner(
             )
         return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
 
-    def _isolated_plan(
+    def _package_plan(
         self,
         pkg_dir: Path,
         *,
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> t.Pair[m.Infra.LazyInitPlan, m.Infra.CodegenPhaseAnalysis]:
-        """Resolve one artifact with fresh native and planner caches in the same epoch.
+        """Resolve one artifact in the repository's existing workspace and planner.
 
-        Reuse the structural index with its original selection receipt, while
-        keeping native semantic caches local to the publication.
+        Cache hits replay query receipts into this artifact's own consumption
+        scope instead of inheriting an unrelated package's read union.
 
         Returns:
-            The isolated plan bound to its original consumption receipt.
+            The package plan bound to its original consumption receipt.
 
         """
         project = self.rope_workspace.rope_project
-        workspace_index = self.rope_workspace.workspace_index
+        _ = self.rope_workspace.workspace_index
         index_receipt = self.rope_workspace.source_index_receipt
         with (
             project.source_consumption() as consumption,
-            project.source_consumer() as consumer,
-            consumer.frozen_layout(),
-            FlextInfraRopeWorkspace.open_workspace(
-                self.rope_workspace.repository_root,
-                rope_repository_root=self.rope_workspace.rope_repository_root,
-                source_project=consumer,
-                workspace_index=workspace_index,
-                index_receipt=index_receipt,
-            ) as workspace,
+            project.frozen_layout(),
         ):
-            planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
-            planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
-            planner.ancestry_receipts.update(self._ancestry_receipts)
-            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
-            self._collision_count += planner.collision_count
-            self._source_plan_cache.update(planner.source_plans)
-            self._plan_receipts.update(planner.source_receipts)
-            self._ancestry_receipts.update(planner.ancestry_receipts)
+            project.replay_source_consumption(index_receipt)
+            plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
         receipt = consumption.receipt()
         return plan.model_copy(
             update={
@@ -209,7 +197,7 @@ class FlextInfraCodegenLazyInitPlanner(
 
     @property
     def collision_count(self) -> int:
-        """The export collisions observed by this isolated planner."""
+        """The export collisions observed by this repository planner."""
         return self._collision_count
 
     @property

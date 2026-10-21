@@ -670,9 +670,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         """Accumulate original receipts for one native consumer, not a set delta."""
 
         def __init__(self) -> None:
-            self._states: list[tuple[m.Cli.AtomicFileState, ...]] = []
-            self._directories: list[tuple[m.Cli.AtomicDirectoryInventory, ...]] = []
-            self._topology: list[tuple[m.Cli.AtomicDirectoryChainPlan, ...]] = []
+            self._states: t.MutableMappingKV[int, m.Cli.AtomicFileState] = {}
+            self._directories: t.MutableMappingKV[
+                int, m.Cli.AtomicDirectoryInventory
+            ] = {}
+            self._topology: t.MutableMappingKV[int, m.Cli.AtomicDirectoryChainPlan] = {}
             self._receipt: m.Infra.CodegenPhaseAnalysis | None = None
 
         def record(
@@ -683,10 +685,9 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         ) -> None:
             """Merge exact observations while retaining their original identities.
 
-            Each event appends its observations; the cross-event union merges
-            once at seal so one consumer's cost stays linear in its events.
-            Appends are amortized O(1): a consumer issues tens of thousands of
-            events, and rebuilding a tuple per event copies its whole prefix.
+            Repeated references retain one original witness, not another copy.
+            Distinct observations remain distinct and reach native conflict
+            validation even when they concern the same path.
 
             Raises:
                 ValueError: If the receipt is already sealed.
@@ -695,9 +696,46 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             if self._receipt is not None:
                 msg = "Rope source consumption is already sealed"
                 raise ValueError(msg)
-            self._states.append(states)
-            self._directories.append(directories)
-            self._topology.append(topology)
+            self._states.update((id(state), state) for state in states)
+            self._directories.update((id(item), item) for item in directories)
+            self._topology.update((id(item), item) for item in topology)
+
+        def _directory_observations(
+            self,
+        ) -> tuple[m.Cli.AtomicDirectoryInventory, ...]:
+            """Union selectors only over the exact same original native tree.
+
+            Returns:
+                Observations retaining every distinct root and child inventory.
+
+            """
+            elected: t.MutableMappingKV[
+                t.Pair[int, int], m.Cli.AtomicDirectoryInventory
+            ] = {}
+            queries: t.MutableMappingKV[
+                t.Pair[int, int],
+                set[t.Pair[str, Literal["exists", "isfile", "isdir"]]],
+            ] = {}
+            membership: set[t.Pair[int, int]] = set()
+            for inventory in self._directories.values():
+                key = (id(inventory.root), id(inventory.entries))
+                if key not in elected:
+                    elected[key] = inventory
+                    queries[key] = set()
+                for name, predicate in inventory.queries:
+                    _ = u.Cli.atomic_directory_query_value(inventory, name, predicate)
+                queries[key].update(inventory.queries)
+                if inventory.membership_queried:
+                    membership.add(key)
+            return tuple(
+                inventory.model_copy(
+                    update={
+                        "queries": tuple(sorted(queries[key])),
+                        "membership_queried": key in membership,
+                    }
+                )
+                for key, inventory in elected.items()
+            )
 
         def seal(self) -> m.Infra.CodegenPhaseAnalysis:
             """Freeze the receipt only after the consumer has left its scope.
@@ -707,14 +745,14 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-                tuple(chain.from_iterable(self._directories)),
-                tuple(chain.from_iterable(self._topology)),
+                self._directory_observations(),
+                tuple(self._topology.values()),
             )
             self._receipt = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=(),
                 inputs=m.Infra.CodemodBindingSnapshot(
-                    states=tuple(chain.from_iterable(self._states)),
+                    states=tuple(self._states.values()),
                 ).states,
                 source_directories=directories,
                 source_query_topology=topology,
@@ -1060,14 +1098,16 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 evidence = m.Infra.CodegenPhaseAnalysis(
                     phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                     files=(),
-                    inputs=(
-                        *plan.source_states,
-                        *(
-                            (plan.before,)
-                            if isinstance(plan.before, m.Cli.AtomicFileState)
-                            else ()
+                    inputs=m.Infra.CodemodBindingSnapshot(
+                        states=(
+                            *plan.source_states,
+                            *(
+                                (plan.before,)
+                                if isinstance(plan.before, m.Cli.AtomicFileState)
+                                else ()
+                            ),
                         ),
-                    ),
+                    ).states,
                     source_directories=plan.source_directories,
                     source_query_topology=(
                         *plan.source_query_topology,
@@ -1648,9 +1688,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                         state = m.Cli.AtomicFileState(path=source)
                     else:
                         state = require_value(
-                            u.Cli.atomic_read_binary_file_state(
-                                source, required=required
-                            ),
+                            u.Cli.atomic_read_binary_file_state(source, required=False),
                         )
                     self._originals[source] = state
                 if not self._capturing:

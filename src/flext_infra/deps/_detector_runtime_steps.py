@@ -10,6 +10,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, settings, t, u
+from flext_infra.codegen import FlextInfraCodegenFileLeases
+from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
 
 class FlextInfraDependencyDetectorRuntimeSteps:
@@ -102,6 +104,23 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         project_name = project_path.name
         if not params.quiet:
             detector.log.info("deps_deptry_running", project=project_name)
+        if params.apply:
+            with FlextInfraCodegenFileLeases.mutation_lease(project_path):
+                scan = u.Infra.capture_deptry_scan(
+                    project_path,
+                    venv_bin,
+                    config_path=project_path / c.PYPROJECT_FILENAME,
+                    json_output_path=project_path
+                    / f".deptry-report-{u.generate_id()}.json",
+                ).unwrap()
+                if scan.report.root:
+                    inputs = FlextInfraRuntimeDependencyCollector(
+                        python=u.Infra.runtime_python(params.repository_root),
+                        development_only=(),
+                    )(project_path, scan).unwrap()
+                    plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+                    u.Infra.publish_runtime_dependency_plan(plan).unwrap()
+                u.Cli.atomic_delete_binary_file_guarded(scan.report_state).unwrap()
         deptry_result = deps_service.run_deptry(project_path, venv_bin)
         if deptry_result.failure:
             return r[bool].from_failure(deptry_result)

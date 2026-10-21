@@ -49,6 +49,11 @@ the selected lock. A missing supplier or its bootstrap lock fails before
 installation; it never falls back to Git. Run these lifecycle verbs sequentially for one
 physical runtime, without suspending unrelated authored work.
 
+An executable consumer interpreter does not establish native lock provenance.
+Editable bootstrap projects the resolver inputs first; `make upg` then resolves
+and installs that lock before dependency and typing detection reads it. This
+ordering also applies when an interrupted bootstrap left a partial `.venv`.
+
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
 callable, or module and its intended name. `consumer_roots` is an optional JSON
@@ -285,6 +290,15 @@ The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
 `make gen`, `make check`, `make test`, and `make build`. Its physical environment
 belongs to the generated repository.
+
+First generation authenticates the staged scaffold through the explicitly declared
+executor repository's provisioned physical runtime. The executor owns generation
+tools before the destination exists; this does not provision, link, or lend its
+environment to the generated checkout. The destination's own runtime is provisioned
+after generation by its `make setup`. Existing-project conformance continues to
+authenticate each consumer through that consumer's native runtime owner. Both
+paths require a physical environment and retain interpreter, directory-identity,
+and sealed-source authentication.
 
 ## Environment activation
 
@@ -759,6 +773,21 @@ The generation directory and distribution prefix come from the dependency limits
 policy. Generated packages record implementation provenance and a content-derived
 version, and expose an entry point so subsequent runs refresh them.
 
+Conformance admits a generated-local typing dependency before internal Git
+classification only after validating its declared UV path against that same
+producer policy. The physical package and every stub must remain inside the
+owning repository and policy directory. The generated header, distribution and
+directory identity, unique stub entry point, exact implementation requirement,
+wheel package and producer-snapshot version must agree. The snapshot digest is
+producer provenance, not a demand to rehash or discard later authored SDK stub
+augmentations. Missing or forged metadata,
+identity mismatches and symlink escapes fail closed. This authenticated typed
+provenance travels through requirement normalization and template rendering;
+neither a reserved prefix nor an arbitrary local first-party source grants an
+exemption. UV source synchronization and native resolution retain the validated
+local source. Genuine internal Git requirements still require their declared URL
+and retain their extras, markers, bounds and refs.
+
 The detector declares these requirements without resolving or installing them.
 Make then regenerates the owning runtime manifest, reconciles native locks,
 installs the environment and verifies its provenance. Dependency findings remain
@@ -1026,6 +1055,19 @@ publication report, and the final error verdict retains the original causal exce
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
+
+Interrupted no-clobber staging can leave the atomic writer's temporary name and
+its intended staging leaf linked to one inode. Physical equivalence, matching
+bytes and a producer-shaped filename do not prove who created that temporary.
+The journal's private-directory identity grants no blanket disposition authority
+over unregistered residents. Recovery must preserve and refuse a linked temporary
+unless exact producer attribution was persisted before publication; the original
+staging-intention contract records no such temporary name or inode receipt.
+Existing retention of published destinations does not authorize ignoring foreign
+transaction residents. Ordinary cleanup inventory still rejects hard-linked
+files. The normal writer defers catchable termination signals across link,
+ownership bookkeeping and temporary unlink; this prevents that catchable-signal
+window but is not a crash-recovery ownership receipt.
 
 An exception-only repository outcome is a failed plan even when it has no diagnostic
 message yet. Planning progress and persisted evidence must agree on that failure;
@@ -1351,6 +1393,24 @@ a generated file. No directory-name exemption list selects this behavior.
 Shared input snapshots document the planner's inputs; later source edits do not
 invalidate an entire generation. Directed validation checks the actual generated
 targets rather than comparing every source with an earlier workspace snapshot.
+Conform retains the native failed source owner and its issued consumption scope.
+Only the owner's exact epoch exception can enter bounded source rederivation;
+native successor/adoption and conflict classification must prove changed inputs.
+One typed organizer serves managed rendering and independent protocol/source
+composition, sharing its bound across nested consumers. It checks both raised
+exceptions and original exception objects transported through result composition.
+Independent file plans keep their original receipts. Stale declared overlays are
+never admitted into a successor: their upstream lazy producer is rederived before
+protocols, facades, exports and tooling consume a fresh binding. IO, alias and
+unknown failures remain failures. At its configured bound, lazy initializer
+planning returns the native-classified independent plans with affected-target
+issues and the first original exception; later conflicts remain recorded in the
+issues and exception notes. Conform can publish only those independently proven
+effects through the existing journal, then reports the unresolved errors with a
+nonzero public outcome. Exhaustion never blesses affected plans or turns the
+analysis receipt into a successful generation.
+Changed external member dependencies are source inputs, not exclusions: affected
+provider roots are rederived while independently proven provider plans remain.
 
 Repository generation plans treat malformed source as a failed input. The
 planning report at `.reports/codegen-plan.json` records each selected repository's

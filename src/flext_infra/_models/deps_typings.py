@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 
@@ -78,6 +78,41 @@ class FlextInfraModelsDepsTypings:
         build: Annotated[
             FlextInfraConfigModelsScaffold.ScaffoldBuildSpec,
             m.Field(description="Canonical build policy passed by reference."),
+        ]
+
+    class GeneratedTypingPackage(m.ImmutableValueModel):
+        """Authenticated producer-owned local distribution provenance."""
+
+        kind: Literal["generated-local"] = m.Field(
+            default="generated-local",
+            description="Producer-authenticated local dependency source kind",
+        )
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical generated distribution name."),
+        ]
+        path: Annotated[
+            Path,
+            m.Field(description="Authenticated local package directory."),
+        ]
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Implementation import module published by the stubs."),
+        ]
+        implementation: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact requirement for the installed implementation."),
+        ]
+        version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Producer version bound to the generated stub digest."),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                description="Original metadata and stub input states authenticated."
+            ),
         ]
 
 

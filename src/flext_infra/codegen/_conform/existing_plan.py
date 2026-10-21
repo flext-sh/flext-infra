@@ -13,7 +13,7 @@ from functools import partial
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenProtocolModels,
@@ -170,6 +170,207 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         contract: m.Infra.CodegenConformSurfaceContract,
         identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Plan managed outputs through the shared source epoch organizer.
+
+        Returns:
+            Fully verified managed repository plans.
+
+        """
+        return self._plan_source_epoch(
+            target,
+            partial(
+                self._plan_existing_managed_epoch,
+                target,
+                workspace,
+                codegen,
+                contract,
+                identity,
+            ),
+        )
+
+    def _plan_source_epoch[PlanT](
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        operation: Callable[[], p.Result[PlanT]],
+    ) -> p.Result[PlanT]:
+        """Share one bounded organizer across nested and independent source routes.
+
+        Returns:
+            The selected source consumer's fully verified result.
+
+        """
+        if self.state.source_epoch_active:
+            return operation()
+        self.state.source_epoch_active = True
+        try:
+            return self._rederive_source_epochs(target, operation)
+        finally:
+            self.state.source_epoch_active = False
+
+    def _rederive_source_epochs[PlanT](
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        operation: Callable[[], p.Result[PlanT]],
+    ) -> p.Result[PlanT]:
+        """Rederive a changed source composition without accepting stale overlays.
+
+        Returns:
+            A fully verified repository plan, never a partial conflict partition.
+
+        Raises:
+            BaseException: The first original failure when bounded adoption fails.
+
+        """
+        first_conflict: BaseException | None = None
+        replan_limit = config.Infra.codegen.source_replan_limit
+        refresh_roots: set[Path] = set()
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
+        for attempt in range(replan_limit + 1):
+            attempt_exception = self.state.planning_exception
+            attempt_issues = len(self.state.planning_issues)
+            self.state.source_epoch_project = None
+            self.state.source_epoch_receipt = None
+            try:
+                if attempt:
+                    providers = {
+                        plan.path: plan
+                        for plan in self.state.provider_plans or ()
+                        if plan.project not in refresh_roots
+                    }
+                    for root in sorted(refresh_roots):
+                        refreshed = self._planned_lazy_init_files(root)
+                        if refreshed.failure:
+                            if first_conflict is not None:
+                                raise first_conflict from refreshed.exception
+                            return r[PlanT].from_failure(refreshed)
+                        providers.update((plan.path, plan) for plan in refreshed.value)
+                    self.state.provider_plans = tuple(providers.values())
+                planned = operation()
+                if planned.failure and planned.exception is not None:
+                    # Result composition transports the same native exception;
+                    # both error channels must reach the identity check below.
+                    raise planned.exception
+                if planned.failure and first_conflict is not None:
+                    raise first_conflict from planned.exception
+                return planned
+            except runtime_errors as exc:
+                project = self.state.source_epoch_project
+                receipt = self.state.source_epoch_receipt
+                if (
+                    project is None
+                    or receipt is None
+                    or project.source_epoch_failure is not exc
+                ):
+                    if first_conflict is not None and first_conflict is not exc:
+                        raise first_conflict from exc
+                    raise
+                if first_conflict is None:
+                    first_conflict = exc
+                try:
+                    if not self._source_epoch_changed(project, receipt, exc):
+                        raise exc
+                    classified = FlextInfraCodegenLazyInit.classify_source_conflict(
+                        receipt.model_copy(
+                            update={
+                                "files": self.state.completed_source_plans or (),
+                                "failed_targets": ((target.root, receipt),),
+                            }
+                        ),
+                        project,
+                        exc,
+                    )
+                except runtime_errors as failure:
+                    if first_conflict is failure:
+                        raise
+                    raise first_conflict from failure
+                self.state.completed_source_plans = classified.files
+                accepted = {plan.path for plan in classified.files}
+                refresh_roots = {
+                    target.root,
+                    *(
+                        plan.project
+                        for plan in self.state.provider_plans or ()
+                        if plan.path not in accepted
+                    ),
+                }
+                if (
+                    self.state.planning_exception is not attempt_exception
+                    and self.state.planning_exception is not exc
+                    and self.state.planning_exception is not None
+                ):
+                    raise self.state.planning_exception from exc
+                if attempt == replan_limit:
+                    if first_conflict is exc:
+                        raise
+                    raise first_conflict from exc
+                # Reports from an unverified epoch are rederived with its sources;
+                # earlier scopes and the original native failure remain intact.
+                self.state.planning_exception = attempt_exception
+                del self.state.planning_issues[attempt_issues:]
+                u.Cli.info(
+                    f"conform: source epoch changed repository={target.repository.name} "
+                    f"successor={attempt + 1}; retaining independent output evidence; "
+                    f"cause={exc}"
+                )
+        message = "conform source succession has no terminal outcome"
+        raise RuntimeError(message)
+
+    def _source_epoch_conflict(
+        self,
+        project: p.Infra.RopeProject,
+        receipt: m.Infra.CodegenPhaseAnalysis,
+    ) -> None:
+        """Retain the native failed owner and its actually issued source scope."""
+        if self.state.source_epoch_project is None:
+            self.state.source_epoch_project = project
+            self.state.source_epoch_receipt = receipt
+
+    @staticmethod
+    def _source_epoch_changed(
+        project: p.Infra.RopeProject,
+        receipt: m.Infra.CodegenPhaseAnalysis,
+        cause: BaseException,
+    ) -> bool:
+        """Prove physical drift through native succession, not an IO classifier.
+
+        Returns:
+            Whether the native owner rejects the original overlay or receipt.
+
+        Raises:
+            BaseException: An original failure caused by IO or unknown evidence.
+
+        """
+        if not isinstance(cause, ValueError):
+            return False
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
+        try:
+            with project.source_successor() as successor:
+                return successor.adopt_source_consumption(receipt).failure
+        except runtime_errors as exc:
+            if exc is cause:
+                # The native overlay guard has proved a dependency mismatch.
+                return True
+            raise cause from exc
+
+    def _remember_source_plans(
+        self, plans: t.SequenceOf[m.Infra.CodegenFilePlan]
+    ) -> None:
+        """Retain completed decisions until their enclosing source scope verifies."""
+        self.state.completed_source_plans = tuple(
+            {
+                plan.path: plan
+                for plan in (*(self.state.completed_source_plans or ()), *plans)
+            }.values()
+        )
+
+    def _plan_existing_managed_epoch(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan the managed templates (and custom content) for an existing tree.
 
         Returns:
@@ -224,6 +425,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             root,
             source_states=sources.value[3],
             declared_files=sources.value[0],
+            source_conflict=self._source_epoch_conflict,
         ) as binding:
             if contract.custom:
                 import_graph, _modules = u.Infra.snapshot_import_graph(binding[0])
@@ -287,6 +489,37 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             t.VariadicTuple[m.Cli.AtomicFileState],
         ]
     ]:
+        """Organize independent protocol/source planning with the managed route.
+
+        Returns:
+            Verified projections, custom files, initializers and source inputs.
+
+        """
+        return self._plan_source_epoch(
+            target,
+            partial(
+                self._existing_managed_sources_epoch,
+                target,
+                codegen,
+                contract,
+                project,
+            ),
+        )
+
+    def _existing_managed_sources_epoch(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        codegen: m.Infra.CodegenConfigSpec,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        project: p.Infra.ProjectSpec,
+    ) -> p.Result[
+        tuple[
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
         """Compose custom declarations and exports in their captured source epochs.
 
         Returns:
@@ -336,7 +569,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             }.values()
         )
         with u.Infra.facade_source_project(
-            root, source_states=lazy_result.value[1], declared_files=cohort
+            root,
+            source_states=lazy_result.value[1],
+            declared_files=cohort,
+            source_conflict=self._source_epoch_conflict,
         ) as binding:
             custom_result = (
                 self._plan_existing_custom(
@@ -362,11 +598,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ))
             if custom_inputs.failure:
                 return result_type.from_failure(custom_inputs)
+            self._remember_source_plans((*cohort, *custom_result.value))
         projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
         with u.Infra.facade_source_project(
             root,
             source_states=custom_inputs.value,
             declared_files=tuple(projected_files.values()),
+            source_conflict=self._source_epoch_conflict,
         ) as projected:
             exports = FlextInfraCodegenLazyInit(
                 repository_root=root, project_scope_roots=(root,)
@@ -387,6 +625,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ))
             if projected_inputs.failure:
                 return result_type.from_failure(projected_inputs)
+            self._remember_source_plans(exports.value.files)
         projected_files.update((plan.path, plan) for plan in exports.value.files)
         initializers = tuple(
             {
@@ -429,7 +668,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ]
         ]
         with u.Infra.facade_source_project(
-            root, source_states=initial[1], declared_files=tuple(initial[0])
+            root,
+            source_states=initial[1],
+            declared_files=tuple(initial[0]),
+            source_conflict=self._source_epoch_conflict,
         ) as binding:
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
@@ -479,6 +721,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                             }
                         )
                     )
+            self._remember_source_plans((*initial[0], *protocols))
         return result_type.ok((tuple(protocols), rendered.value[1]))
 
     @staticmethod
@@ -546,7 +789,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 ):
                     continue
                 with u.Infra.facade_source_project(
-                    root, source_states=inputs, declared_files=tuple(staged.values())
+                    root,
+                    source_states=inputs,
+                    declared_files=tuple(staged.values()),
+                    source_conflict=self._source_epoch_conflict,
                 ) as binding:
                     files = self._protocol_projection_pass(root, operation, binding)
                     if files.failure:
@@ -567,6 +813,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         return result_type.from_failure(captured_inputs)
                     inputs = captured_inputs.value
                     pass_produced_new_files = new_files
+                    self._remember_source_plans(tuple(staged.values()))
             if not transfer:
                 continue
             transferred = self._protocol_transfer_plans(
@@ -607,7 +854,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ]
         ]
         with u.Infra.facade_source_project(
-            root, source_states=initial[1], declared_files=tuple(initial[0])
+            root,
+            source_states=initial[1],
+            declared_files=tuple(initial[0]),
+            source_conflict=self._source_epoch_conflict,
         ) as binding:
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
@@ -647,6 +897,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         }
                     )
                 )
+            self._remember_source_plans((*initial[0], *plans))
             return FlextInfraCodegenPreconditions.unique_states((
                 *initial[1],
                 *states,
@@ -1430,6 +1681,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
         )
         if rendered.failure:
+            u.Cli.error(
+                f"artifact render failed: {entry.destination}: {rendered.error}"
+            )
             return result_type.from_failure(rendered)
         composed = self.compose_project_artifact(
             root,
@@ -1439,6 +1693,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             source_states=rendered.value.source_states,
         )
         if composed.failure:
+            u.Cli.error(
+                f"artifact composition failed: {entry.destination}: {composed.error}"
+            )
             return result_type.from_failure(composed)
         rendered_content = composed.value.rendered
         if entry.destination == c.PYPROJECT_FILENAME:
@@ -1543,6 +1800,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         root,
                         source_states=inputs,
                         declared_files=tuple(staged.values()),
+                        source_conflict=self._source_epoch_conflict,
                     ) as current:
                         projected = self._captured_facade_plan(
                             root, package_dir, family, current
@@ -1558,6 +1816,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                                 t.SequenceOf[m.Infra.CodegenFilePlan]
                             ].from_failure(captured)
                         inputs = captured.value
+                        self._remember_source_plans(tuple(staged.values()))
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     def _captured_facade_plan(

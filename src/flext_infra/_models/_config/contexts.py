@@ -392,6 +392,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Development policy composed for the target's kind"),
         ]
+        generated_typing_distributions: t.StrSequence = m.Field(
+            default=(),
+            description="Authenticated locally generated typing distributions",
+        )
         tooling: Annotated[
             FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),

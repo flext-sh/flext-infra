@@ -295,9 +295,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "0",
             "--no-cov",
         )
-        if self.collection_command_prefix:
+        if self.profile_enabled or self.collection_command_prefix:
             return (
-                *self.collection_command_prefix,
+                *(
+                    self.collection_command_prefix
+                    or (sys.executable, "-c", c.Infra.PYTEST_PROFILE_LAUNCHER)
+                ),
                 str(manifest_path.with_suffix(".pstats")),
                 *pytest_arguments,
             )

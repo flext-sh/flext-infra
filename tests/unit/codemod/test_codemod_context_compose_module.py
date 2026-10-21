@@ -18,6 +18,78 @@ class TestsFlextInfraCodemodContextComposeModule:
     """Only ``<package>.<leaf>`` canonical compose modules are sanctioned."""
 
     @staticmethod
+    @pytest.mark.parametrize("changed", ["export", "directory"])
+    def test_class_stem_pass_preserves_verdicts_and_rejects_namespace_drift(
+        mod_workspace: Path, changed: str
+    ) -> None:
+        """Repeated stem admissions retain export and membership authentication."""
+        layout = tm.not_none(u.Infra.layout(mod_workspace))
+        export = layout.package_dir / "stem_probe.py"
+        export.write_text('__all__ = ["probe"]\n', encoding="utf-8")
+        rule = next(
+            rule
+            for rule in tm.ok(u.Infra.codemod_rule_plan(mod_workspace)).rules
+            if rule.id == "require-project-class-stem"
+        )
+        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
+        epoch = u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=()))
+        cases = (
+            ("source.py", f"{layout.class_stem}Source", False),
+            ("examples/source.py", f"{layout.class_stem}Scenario", False),
+            ("tests/source.py", f"Tests{layout.class_stem}Source", False),
+            ("tests/bare.py", f"{layout.class_stem}Bare", True),
+            ("foreign.py", "Foreign", True),
+        )
+        for relative, name, _expected in cases:
+            path = mod_workspace / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"class {name}: pass\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="source"):
+            with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
+                project,
+                sources,
+            ):
+                for _repeat in range(2):
+                    for relative, name, expected in cases:
+                        tm.that(
+                            u.Infra.codemod_context_admits(
+                                m.Infra.CodemodAdmission(
+                                    root=mod_workspace,
+                                    rule=rule,
+                                    file_path=Path(relative),
+                                    captures={"NAME": {"text": name}},
+                                    facts=facts,
+                                    snapshot=epoch.snapshot,
+                                ),
+                                project=project,
+                                sources=sources,
+                            ),
+                            eq=expected,
+                        )
+                target = (
+                    export
+                    if changed == "export"
+                    else layout.package_dir / "new_stem_probe.py"
+                )
+                target.write_text("__all__ = [missing]\n", encoding="utf-8")
+        with (
+            pytest.raises(ValueError, match="invalid __all__"),
+            u.Infra.codemod_binding_project(mod_workspace, epoch) as (project, sources),
+        ):
+            u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=Path(cases[0][0]),
+                    captures={"NAME": {"text": cases[0][1]}},
+                    facts=facts,
+                    snapshot=epoch.snapshot,
+                ),
+                project=project,
+                sources=sources,
+            )
+
+    @staticmethod
     def _declare_compose_module(root: Path, package: str, leaf: str) -> None:
         """Create one canonical compose module file in the fixture package."""
         module_root = root / c.Infra.DEFAULT_SRC_DIR / package

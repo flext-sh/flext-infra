@@ -155,11 +155,17 @@ class FlextInfraCandidateBootstrapService:
         )
         if sources.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            tuple(directory for file in files for directory in file.source_directories),
+            tuple(chain for file in files for chain in file.source_query_topology),
+        )
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
                 files=tuple(files),
                 inputs=sources.value,
+                source_directories=directories,
+                source_query_topology=topology,
             ),
         )
 

@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, deps, m, u
 from flext_infra.gates import FlextInfraGate
 from flext_infra.refactor import FlextInfraImportNormalization
 
@@ -62,6 +63,34 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         del ctx
         return self._existing_check_dirs(project_dir) or ["."]
 
+    @staticmethod
+    def _authorial_targets(project_dir: Path, targets: t.StrSequence) -> t.StrSequence:
+        """Select authored sources without treating verified SDK stubs as our work.
+
+        Returns:
+            Original targets or exact authored files beside authenticated SDK stubs.
+
+        """
+        if not (project_dir / c.PYPROJECT_FILENAME).is_file():
+            return targets
+        producer = deps.FlextInfraDependencyDetectionService
+        external = producer.authenticated_typing_sources(
+            project_dir, producer().load_typing_generation_policy()
+        )
+        if not external:
+            return targets
+        selected = tuple((project_dir / target).resolve() for target in targets)
+        return tuple(
+            str(path.relative_to(project_dir))
+            for path in u.Infra.discover_python_files(
+                project_dir, workspace_excluded_top_dirs=frozenset()
+            )
+            if path not in external
+            and any(
+                path == target or path.is_relative_to(target) for target in selected
+            )
+        )
+
     @override
     def _build_check_command(
         self,
@@ -74,11 +103,17 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         Returns:
             The Ruff lint invocation in check mode.
 
+        Raises:
+            ValueError: If the selected authorial scope has no source files.
+
         """
-        del project_dir
+        targets = self._authorial_targets(project_dir, check_dirs)
+        if not targets:
+            msg = "Ruff authorial scope contains no source files"
+            raise ValueError(msg)
         return self._lint_command(
             ctx,
-            check_dirs,
+            targets,
             config.Infra.codegen.make.ruff.lint_check,
         )
 
@@ -94,12 +129,168 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         Returns:
             The resulting ``t.StrSequence``.
 
+        Raises:
+            ValueError: If the selected authorial scope has no source files.
+
         """
-        del project_dir
-        return self._lint_command(ctx, targets, config.Infra.codegen.make.ruff.lint_fix)
+        authored = self._authorial_targets(project_dir, targets)
+        if not authored:
+            msg = "Ruff authorial scope contains no source files"
+            raise ValueError(msg)
+        return self._lint_command(
+            ctx, authored, config.Infra.codegen.make.ruff.lint_fix
+        )
+
+    @override
+    def _execute_check_command(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        check_dirs: t.StrSequence,
+        started: float,
+    ) -> m.Infra.GateExecution:
+        executions = []
+        for scope, targets in self._lint_scopes(project_dir, ctx, check_dirs):
+            execution = super()._execute_check_command(
+                project_dir, scope, targets, started
+            )
+            if execution.outcome is c.Infra.ToolOutcome.ERROR:
+                return execution
+            executions.append(execution)
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=all(item.result.passed for item in executions),
+            issues=tuple(issue for item in executions for issue in item.issues),
+            raw_output="\n".join(item.raw_output for item in executions),
+            started=started,
+        )
+
+    def _lint_scopes(
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+    ) -> tuple[tuple[m.Infra.GateContext, t.StrSequence], ...]:
+        """Ask native Ruff for effective rules, then elect their proven source scope.
+
+        No diagnostic is filtered: each native invocation checks every applicable
+        rule. External signature names/imports are not local implementation choices.
+
+        Returns:
+            Native invocations retaining all rules except proven inapplicability.
+
+        """
+        if not (project_dir / c.PYPROJECT_FILENAME).is_file():
+            return ((ctx, targets),)
+        producer = deps.FlextInfraDependencyDetectionService
+        contracts = producer.typing_contract_rules(
+            project_dir, producer().load_typing_generation_policy()
+        )
+        if not contracts:
+            return ((ctx, targets),)
+        source_args: list[str] = []
+        arguments = iter(ctx.ruff_args)
+        for argument in arguments:
+            if argument in {"--select", "--extend-select"}:
+                next(arguments)
+            elif not argument.startswith(("--select=", "--extend-select=")):
+                source_args.append(argument)
+        groups: dict[tuple[str, ...], list[str]] = {}
+        for target in self._authorial_targets(project_dir, targets):
+            path = (project_dir / target).resolve()
+            inapplicable = contracts.get(path)
+            if not inapplicable:
+                groups.setdefault((), []).append(target)
+                continue
+            flags = self._contract_rule_args(project_dir, ctx, target, inapplicable)
+            groups.setdefault(flags, []).append(target)
+            u.Cli.info(
+                f"lint: upstream contract {target}; implementation-only rules: "
+                + ", ".join(sorted(inapplicable))
+            )
+        return tuple(
+            (
+                ctx.model_copy(
+                    update={
+                        "ruff_args": (
+                            *(source_args if flags else ctx.ruff_args),
+                            *flags,
+                        ),
+                        "selected_files": tuple(
+                            project_dir / target for target in members
+                        ),
+                    }
+                ),
+                tuple(members),
+            )
+            for flags, members in groups.items()
+        )
+
+    def _contract_rule_args(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        target: str,
+        inapplicable: frozenset[str],
+    ) -> tuple[str, ...]:
+        """Materialize effective native rules before electing source applicability.
+
+        Returns:
+            Explicit native selection without project per-file suppressions.
+
+        Raises:
+            RuntimeError: If Ruff cannot expose a nonempty effective rule selection.
+
+        """
+        clean_scope = ("--config", "lint.per-file-ignores={}")
+        observed = self._run(
+            (
+                *self._lint_command(
+                    ctx, (target,), config.Infra.codegen.make.ruff.lint_check
+                ),
+                *clean_scope,
+                "--show-settings",
+            ),
+            project_dir,
+        )
+        _, marker, settings = observed.stdout.partition("linter.rules.enabled = [\n")
+        rules, closed, _ = settings.partition("\n]")
+        if not u.Cli.process_succeeded(observed.outcome) or not marker or not closed:
+            msg = (
+                f"Ruff effective rule scope is unavailable: {target}: {observed.stderr}"
+            )
+            raise RuntimeError(msg)
+        applicable = tuple(
+            name
+            for line in rules.splitlines()
+            if line.strip()
+            and (name := line.strip().removesuffix(",").split(" (", maxsplit=1)[0])
+            not in inapplicable
+        )
+        if not applicable:
+            msg = f"Ruff effective rule scope is empty: {target}"
+            raise RuntimeError(msg)
+        return (*clean_scope, "--select", ",".join(applicable))
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+        started = time.monotonic()
+        executions = []
+        for scope, _ in self._lint_scopes(
+            project_dir, ctx, self._get_fix_targets(project_dir, ctx)
+        ):
+            execution = self._fix_sources(project_dir, scope)
+            if execution.outcome is c.Infra.ToolOutcome.ERROR:
+                return execution
+            executions.append(execution)
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=all(item.result.passed for item in executions),
+            issues=tuple(issue for item in executions for issue in item.issues),
+            raw_output="\n".join(item.raw_output for item in executions),
+            started=started,
+        )
+
+    def _fix_sources(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateExecution:
         """Apply Ruff's own fixes, then the declared recipe of each finding left.
 
         The recipe phases are tooling data (``fix-recipe-phases``) applied in

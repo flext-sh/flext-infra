@@ -684,7 +684,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         self,
         tmp_path: Path,
     ) -> None:
-        """Dynamic initializer destinations retain source and converge."""
+        """Dynamic destinations retain source and unchanged native publications."""
         source, first, _ = self._campaign(tmp_path)
         package_name = u.Infra.project_package_name(first)
         tm.ok(bool(package_name))
@@ -708,6 +708,17 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         authored_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(authored, required=True),
         )
+        stable = package / "stable"
+        stable.mkdir()
+        stable_initializer = stable / c.Infra.INIT_PY
+        stable_initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (stable / "domain.py").write_text(
+            "class StableCase: pass\n__all__ = ['StableCase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         _write_candidate_targets(
             source,
             (
@@ -729,6 +740,23 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ne=f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n".encode(
                 c.DEFAULT_ENCODING
             ),
+        )
+        stable_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(stable_initializer, required=True),
+        )
+        initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(infra.bootstrap_candidate(command))
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(stable_initializer, required=True)
+            ),
+            eq=stable_before,
+        )
+        generated = tm.ok(
+            u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
         observed = tm.ok(
             u.Cli.capture(

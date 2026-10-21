@@ -7,12 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
-from flext_infra.deps import FlextInfraEnsurePackagingPhase
+from flext_infra.deps import (
+    FlextInfraDependencyDetectionService,
+    FlextInfraEnsurePackagingPhase,
+)
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -421,9 +425,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             kind=repository.kind,
             declared=declared_dev,
         )
-        development_dependencies = u.validate_value(
-            t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
-            composed_dev,
+        development_dependencies = r[
+            t.VariadicTuple[t.NonEmptyStr]
+        ].create_from_callable(
+            partial(t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python, composed_dev),
         )
         if development_dependencies.failure:
             return result_type.from_failure(development_dependencies)
@@ -437,6 +442,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
         planned_data_files: t.StrSequence = (),
+        scaffold_sources: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
 
@@ -508,6 +514,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 project_dependencies=project_dependencies,
                 development_dependencies=tuple(development_dependencies),
+                generated_typing_distributions=self._generated_typing_distributions(
+                    repository_root
+                ),
                 tooling=tooling,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads=workspace.beads,
@@ -547,9 +556,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 upstream=project.upstream,
                 # Scaffolded facades extend the class each upstream letter names
                 # in the __all__ that declares it, never the letter itself.
-                upstream_facades=u.Infra.facade_classes(
-                    project.upstream,
-                    source_root=repository_root,
+                upstream_facades=(
+                    u.Infra.facade_classes(
+                        project.upstream,
+                        source_root=repository_root,
+                    )
+                    if scaffold_sources
+                    else {}
                 ),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
@@ -587,8 +600,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
-        and development extras; a scaffold render falls back to the project
-        declaration's runtime overlay without declared extras.
+        and development extras. The repository overlay extends those runtime
+        requirements for existing projects as well as new scaffolds.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
@@ -608,25 +621,55 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 return result_type.from_failure(metadata)
             payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
             groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
-            runtime = u.validate_value(
-                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
-                metadata.value.project.dependencies,
+            runtime = r[t.VariadicTuple[t.NonEmptyStr]].create_from_callable(
+                partial(
+                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
+                    metadata.value.project.dependencies,
+                ),
             )
             if runtime.failure:
                 return result_type.from_failure(runtime)
-            declared_dev = u.validate_value(
-                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
-                (
-                    *t.Infra.STR_SEQ_ADAPTER.validate_python(
-                        groups.get(c.Infra.DEV, ()),
+            declared_dev = r[t.VariadicTuple[t.NonEmptyStr]].create_from_callable(
+                partial(
+                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
+                    (
+                        *t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            groups.get(c.Infra.DEV, ()),
+                        ),
+                        *u.Infra.canonical_dev_dependencies_from_payload(payload),
                     ),
-                    *u.Infra.canonical_dev_dependencies_from_payload(payload),
                 ),
             )
             if declared_dev.failure:
                 return result_type.from_failure(declared_dev)
-            return result_type.ok((runtime.value, declared_dev.value))
+            return result_type.ok((
+                tuple(
+                    dict.fromkeys((
+                        *runtime.value,
+                        *project.runtime_dependency_overlay,
+                    ))
+                ),
+                declared_dev.value,
+            ))
         return result_type.ok((project.runtime_dependency_overlay, ()))
+
+    @staticmethod
+    def _generated_typing_distributions(repository_root: Path) -> t.StrSequence:
+        """Authenticate local typing sources before template Git-floor rendering.
+
+        Returns:
+            Validated producer identities, empty only for a new scaffold.
+
+        """
+        declaration = repository_root / c.PYPROJECT_FILENAME
+        if not declaration.is_file():
+            return ()
+        generated = u.Infra.generated_typing_packages(
+            u.Cli.toml_read_document(declaration).unwrap(),
+            root=repository_root,
+            policy=FlextInfraDependencyDetectionService().load_typing_generation_policy(),
+        ).unwrap()
+        return tuple(item.distribution for item in generated)
 
     def _validated_render_project(
         self,

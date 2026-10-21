@@ -390,6 +390,11 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             if captured is None
             else dict(captured.contents)
         )
+        captured_paths = (
+            frozenset(state.path for state in captured.snapshot.states)
+            if captured is not None
+            else frozenset()
+        )
         root = Path(project.root.real_path).resolve()
         declared: t.MutableMappingKV[Path, str] = {}
         for plan in declared_files:
@@ -408,13 +413,15 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
                 raise ValueError(msg)
             if resolved not in inventory:
                 if captured is not None:
-                    msg = f"Rope proposed source is outside its input inventory: {path}"
-                    raise ValueError(msg)
-                inventory[resolved] = cls._snapshot_resource_source(
-                    project,
-                    root,
-                    resolved,
-                )
+                    if resolved not in captured_paths:
+                        msg = f"Rope proposed source is outside its input inventory: {path}"
+                        raise ValueError(msg)
+                else:
+                    inventory[resolved] = cls._snapshot_resource_source(
+                        project,
+                        root,
+                        resolved,
+                    )
             if resolved not in contents or inventory[resolved] != source:
                 contents[resolved] = source.encode("utf-8")
             inventory[resolved] = source

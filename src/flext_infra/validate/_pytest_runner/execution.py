@@ -82,7 +82,7 @@ class FlextInfraPytestRunnerExecution(
                 msg = "test target has no declared project owner"
                 raise ValueError(msg)
             source_root = target_root
-        overrides: dict[str, str] = {}
+        overrides: t.MutableStrMapping = {}
         if not self.ci_context:
             inherited_path = u.Cli.process_env().get(
                 c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
@@ -189,7 +189,7 @@ class FlextInfraPytestRunnerExecution(
             complete=complete,
             execution_mode=execution_mode,
         )
-        if self.collection_command_prefix:
+        if self.profile_enabled or self.collection_command_prefix:
             sys.stdout.write(
                 f"pytest {artifact} profile: {manifest_path.with_suffix('.pstats')}\n",
             )
@@ -231,7 +231,7 @@ class FlextInfraPytestRunnerExecution(
             detail = log_text.strip()
             msg = f"testmon selection failed ({outcome.raw_return_code}): {detail}"
             raise RuntimeError(msg)
-        if self.collection_command_prefix:
+        if self.profile_enabled or self.collection_command_prefix:
             self._bind_child_profile(report_dir, manifest_path.with_suffix(".pstats"))
         if not owns_no_tests:
             self._collection_diagnostics(report_log)

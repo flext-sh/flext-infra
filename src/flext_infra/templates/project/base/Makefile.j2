@@ -579,7 +579,8 @@ EDITABLE_RESOLUTION_RECIPE = set -eu; \
 	supplier_resolution="$$supplier/{{ make.uv_resolution.local_directory }}"; \
 	if [ ! -f "$$supplier_resolution/uv.lock" ]; then printf 'ERROR: selected supplier has no native bootstrap lock: %s\n' "$$supplier_resolution" >&2; exit 2; fi; \
 	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT $(UV) run --isolated --frozen --all-groups --project "$$supplier_resolution" --python "$$desired_python" -m flext_infra codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
+	bootstrap_infra() { env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT $(UV) run --isolated --frozen --all-groups --project "$$supplier_resolution" --python "$$desired_python" -m flext_infra "$$@"; }; \
+	bootstrap_infra codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	trap 'if [ -n "$${FLEXT_SETUP_CREDENTIAL_STORE:-}" ]; then rm -f "$$FLEXT_SETUP_CREDENTIAL_STORE"; fi' EXIT; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
@@ -1374,7 +1375,7 @@ export FLEXT_NEW_{{ argument }} := $(value {{ argument }})
 {% endfor %}
 
 _builtin-project-new: _builtin_require_interpreter
-	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
+	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply-changes{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
 {% endfor %}
 
 _builtin_gen_all: _builtin_require_interpreter

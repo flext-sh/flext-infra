@@ -10,6 +10,7 @@ import os
 import pstats
 import signal
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -233,6 +234,7 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
+    @pytest.mark.slow
     @pytest.mark.parametrize("interruption", ["signal", "timeout"])
     def test_native_termination_keeps_a_readable_profile_checkpoint(
         tmp_path: Path,
@@ -249,29 +251,48 @@ class TestsFlextInfraPytestProfile:
         probe.write_text(
             "import os\nimport signal\nimport time\n"
             "def interrupt_import():\n"
+            "    print('profile-checkpoint-ready', flush=True)\n"
             f"    {action}\n"
             "interrupt_import()\n",
             encoding=c.DEFAULT_ENCODING,
         )
         output = tmp_path / "terminated.pstats"
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    c.Infra.PYTEST_PROFILE_LAUNCHER,
-                    str(output),
-                    "-p",
-                    probe.stem,
-                    "--collect-only",
-                ),
-                cwd=tmp_path,
-                timeout=deadline,
-            ),
+        command = (
+            sys.executable,
+            "-c",
+            c.Infra.PYTEST_PROFILE_LAUNCHER,
+            str(output),
+            "-p",
+            probe.stem,
+            "--collect-only",
         )
-        tm.that(result.outcome.raw_return_code, eq=-signal.SIGTERM)
-        tm.that(result.outcome.timed_out, eq=interruption == "timeout")
-        tm.that(result.outcome.forwarded_signal, eq=None)
+        if interruption == "timeout":
+            process = tm.ok(u.Cli.process_start(command, cwd=tmp_path))
+            try:
+                ready = tm.ok(
+                    process.stdout_read_until(
+                        b"profile-checkpoint-ready\n",
+                        timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds,
+                    )
+                )
+                tm.that(
+                    ready.decode(c.DEFAULT_ENCODING), has="profile-checkpoint-ready"
+                )
+                expired = process.wait(timeout=deadline)
+                tm.fail(expired)
+                tm.that(expired.error, has=f"timeout {deadline}s")
+                tm.ok(process.terminate())
+                tm.that(tm.ok(process.wait(timeout=deadline)), eq=-signal.SIGTERM)
+            finally:
+                if process.poll() is None:
+                    tm.ok(process.kill())
+                    tm.ok(process.wait(timeout=deadline))
+        else:
+            result = tm.ok(u.Cli.run_raw(command, cwd=tmp_path, timeout=deadline))
+            tm.that(result.outcome.raw_return_code, eq=-signal.SIGTERM)
+            tm.fail(result.outcome.timed_out)
+            tm.that(result.outcome.forwarded_signal, eq=None)
+            tm.that(result.stdout, has="profile-checkpoint-ready")
         measured = pstats.Stats(str(output)).get_stats_profile().func_profiles
         tm.that(
             any(Path(function.file_name) == probe for function in measured.values()),
@@ -282,6 +303,7 @@ class TestsFlextInfraPytestProfile:
     @pytest.mark.slow
     def test_native_profiler_owns_workload_after_startup_handoff(
         cached_runner_project: Path,
+        record_property: Callable[[str, str], None],
     ) -> None:
         """Native cProfile and automatic startup publish distinct real segments."""
         cache = config.Infra.codegen.make.testmon_cache
@@ -346,6 +368,51 @@ class TestsFlextInfraPytestProfile:
             "workload" in pstats.Stats(str(native)).get_stats_profile().func_profiles,
             eq=True,
         )
+        report = output.with_suffix(".txt")
+        tm.ok(
+            validate.FlextInfraCProfileReport(
+                repository_root=cached_runner_project,
+                profile=output,
+                output=report,
+                sort=policy.profile_sort,
+                limit=policy.profile_limit,
+                run_receipt=output.with_suffix(".pstats.json"),
+            ).execute()
+        )
+        measured = pstats.Stats(str(output)).get_stats_profile()
+        context = m.Infra.PytestRunContext.model_validate_json(
+            output.with_suffix(".pstats.json").read_bytes()
+        )
+        directory = tm.not_none(context.report_directory)
+        lifecycle: list[tuple[str, float, tuple[tuple[str, float], ...]]] = []
+        for artifact in (output, *sorted(directory.glob("*.pstats"))):
+            segment = pstats.Stats(str(artifact)).get_stats_profile()
+            lifecycle.append((
+                artifact.name,
+                round(segment.total_tt, 3),
+                tuple(
+                    (name, round(function.cumtime, 3))
+                    for name, function in sorted(
+                        segment.func_profiles.items(),
+                        key=lambda item: item[1].cumtime,
+                        reverse=True,
+                    )[:3]
+                ),
+            ))
+        record_property("profile_lifecycle", repr(lifecycle))
+        hotspots = tuple(
+            (name, function.ncalls, round(function.cumtime, 3))
+            for name, function in measured.func_profiles.items()
+            if name
+            in {
+                "_config_testmon_digest",
+                "snapshot_config_sources",
+                "_validated_config_roots",
+                "__class_getitem__",
+                "create_generic_submodel",
+            }
+        )
+        record_property("parent_profile_hotspots", repr(hotspots))
 
     @staticmethod
     @pytest.mark.slow
@@ -444,8 +511,8 @@ class TestsFlextInfraPytestProfile:
             + "os.environ['PROFILE_PARENT_PID'] = str(os.getpid())\n"
             "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
             "def interrupt(event, arguments):\n"
-            "    if event == 'os.rename' and "
-            "str(arguments[1]).endswith('/command.txt'):\n"
+            "    if event in {'os.rename', 'os.link'} and "
+            "Path(arguments[1]).name == 'command.txt':\n"
             "        os.kill(os.getpid(), signal.SIGTERM)\n"
             + ("sys.addaudithook(interrupt)\n" if phase == "between_children" else "")
             + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
@@ -454,7 +521,7 @@ class TestsFlextInfraPytestProfile:
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(output)),
                 cwd=cached_runner_project,
-                timeout=policy.slow_timeout_seconds,
+                timeout=policy.run_timeout_seconds,
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
@@ -551,8 +618,8 @@ class TestsFlextInfraPytestProfile:
             + c.Infra.PYTEST_PROFILE_BOOTSTRAP
             + "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
             "def close_diagnostic(event, arguments):\n"
-            "    if event == 'os.rename' and str(arguments[1]) == "
-            f"{str(output.with_suffix('.pstats.json'))!r}:\n"
+            "    if event in {'os.rename', 'os.link'} and Path(arguments[1]).name == "
+            f"{output.with_suffix('.pstats.json').name!r}:\n"
             "        sys.stderr.close()\n"
             + (
                 "sys.addaudithook(close_diagnostic)\n"
@@ -570,7 +637,7 @@ class TestsFlextInfraPytestProfile:
                     str(output),
                 ),
                 cwd=cached_runner_project,
-                timeout=policy.slow_timeout_seconds,
+                timeout=policy.run_timeout_seconds,
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={

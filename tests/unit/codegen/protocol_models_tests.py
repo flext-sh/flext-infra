@@ -1251,6 +1251,92 @@ def test_operational_port_model_annotations_use_the_projected_contract(
     )
 
 
+def test_staged_publication_survives_same_family_contract_routing(
+    member_root: t.DirectoryPath,
+) -> None:
+    """Routing reads proposed exports without making generated barrels editable."""
+    package = member_root / "src" / MEMBER
+    (package / "_models/domain.py").write_text(
+        "from flext_core import m\n"
+        "class Packet(m.FrozenModel):\n"
+        '    payload: str = m.Field(description="Delivered payload.")\n'
+        "class DemoMemberModels(m):\n"
+        "    class Delivery:\n"
+        "        Packet = Packet\n"
+        "m = DemoMemberModels\n"
+        "__all__ = ['DemoMemberModels', 'm']\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "_protocols/manual_ports.py").write_text(
+        "from typing import Protocol\n"
+        "from demo_member import m\n"
+        "class ManualPort(Protocol):\n"
+        "    def deliver(self, value: m.Delivery.Packet) -> m.Delivery.Packet: ...\n"
+        "__all__ = ['ManualPort']\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "protocols.py").write_text(
+        "from flext_core import p\n"
+        "from demo_member._protocols.manual_ports import ManualPort\n"
+        "class DemoMemberProtocols(p):\n"
+        "    class Delivery:\n"
+        "        ManualPort = ManualPort\n"
+        "p = DemoMemberProtocols\n"
+        "__all__ = ['DemoMemberProtocols', 'p']\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "consumer.py").write_text(
+        "from demo_member import p\n"
+        "def deliver(value: p.Delivery.Packet) -> str:\n"
+        "    return value.payload\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        "from flext_infra import c, m, u\n"
+        "from flext_infra.codegen import FlextInfraCodegenConform\n"
+        "package = root / 'src/demo_member'\n"
+        "before = {path: path.read_bytes() for path in package.rglob('*.py')}\n"
+        "request = m.Infra.CodegenConformRequest(root=root)\n"
+        "plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))\n"
+        "if plan.exception is not None:\n"
+        "    raise plan.exception\n"
+        "assert not plan.issues, plan.issues\n"
+        "assert {path: path.read_bytes() for path in package.rglob('*.py')} == before\n"
+        "projected = {file.path: file.desired_content.decode(c.DEFAULT_ENCODING)\n"
+        "    for file in plan.files if file.desired_content is not None\n"
+        "    and file.path.suffix == '.py'}\n"
+        "receiver = next(file for file in plan.files\n"
+        "    if file.path.parent == package / '_protocols'\n"
+        "    and file.desired_content is not None\n"
+        "    and projected[file.path].startswith(c.Infra.AUTOGEN_HEADERS)\n"
+        "    and b'class Packet(' in file.desired_content)\n"
+        "assert receiver.before.content is None and not receiver.path.exists()\n"
+        "initializer = next(file for file in plan.files\n"
+        "    if file.path == package / '_protocols/__init__.py')\n"
+        "assert initializer.before.content == before[initializer.path]\n"
+        "owners = u.Infra.public_export_names_source(projected[receiver.path])\n"
+        "exports = u.Infra.import_lazy_exports(root, 'demo_member._protocols',\n"
+        "    sources=projected)\n"
+        "assert exports is not None\n"
+        "assert any(exports.get(owner) == 'demo_member._protocols.' + receiver.path.stem\n"
+        "    for owner in owners)\n"
+        "receipt = tm.not_none(tm.ok(service.execute()).publication_receipt)\n"
+        "assert receipt.completed and receiver.path in receipt.written_files\n"
+        "assert not tm.ok(service.execute()).written_files\n",
+        consumer="from demo_member import consumer, m, p\n"
+        "from demo_member._protocols import ManualPort\n"
+        "assert p.Delivery.ManualPort is ManualPort\n"
+        "hints = get_type_hints(ManualPort.deliver)\n"
+        'assert hints["value"] is p.Delivery.Packet\n'
+        'assert hints["return"] is p.Delivery.Packet\n'
+        'value = m.Delivery.Packet(payload="delivered")\n'
+        "assert isinstance(value, p.Delivery.Packet)\n"
+        'assert get_type_hints(consumer.deliver)["value"] is p.Delivery.Packet\n'
+        'assert consumer.deliver(value) == "delivered"\n',
+    )
+
+
 def test_distinct_same_named_models_cannot_silently_collapse_a_union(
     member_root: t.DirectoryPath,
 ) -> None:

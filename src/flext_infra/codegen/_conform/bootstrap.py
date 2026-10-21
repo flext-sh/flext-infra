@@ -211,11 +211,13 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
+                # Metadata must bootstrap before the consumer's imports exist.
+                # Complete generation owns source-derived analyzer settings.
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     templates=False,
-                    tooling=True,
+                    tooling=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.EDITOR:

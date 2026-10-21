@@ -23,8 +23,11 @@ class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
+    @pytest.mark.parametrize("partial_runtime", [False, True])
     def test_editable_cold_setup_bootstraps_its_own_lock(
-        tmp_path: Path, editable_supplier: Callable[[Path | None], None]
+        tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
+        partial_runtime: bool,
     ) -> None:
         """First opt-in provisions an owned runtime without installed Infra."""
         credential = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
@@ -47,6 +50,16 @@ class TestsFlextInfraCodegenMakeUpgrade:
         resolution = root / policy.editable_directory
         tm.fail(environment.exists())
         tm.fail((resolution / c.PYPROJECT_FILENAME).exists())
+        if partial_runtime:
+            binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+            created = tm.ok(
+                u.Cli.run_raw(
+                    [str(binary), "venv", str(environment), "--python", sys.executable],
+                    cwd=root,
+                )
+            )
+            tm.that(created.outcome.raw_return_code, eq=0, msg=created.stderr)
+        tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["setup"],

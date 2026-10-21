@@ -6,24 +6,29 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from hashlib import sha256
-from importlib.metadata import distribution, entry_points, packages_distributions
-from importlib.util import find_spec
+import ast
+from importlib.machinery import PathFinder
+from importlib.util import resolve_name
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from textwrap import wrap
 from typing import TYPE_CHECKING
 
 import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, GatherImportsVisitor
 from libcst.helpers import get_full_name_for_node
+from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 from flext_infra import c, config, m, r, settings, t, u
 from flext_infra.gates import FlextInfraRuffFormatGate
+from flext_infra.workspace.flext_binding import FlextInfraBindingService
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from flext_infra import p
 
 
@@ -43,22 +48,36 @@ class FlextInfraDependencyTypingPackages:
             Source directories declared for Make's native resolution and install.
 
         """
+        document = u.Cli.toml_read_document(
+            repository_root / c.PYPROJECT_FILENAME
+        ).unwrap()
+        declared = u.Infra.generated_typing_packages(
+            document, root=repository_root, policy=policy, for_generation=True
+        ).unwrap()
+        environment = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=repository_root,
+            python=u.Infra.runtime_python(repository_root),
+            packages=(),
+        ).unwrap()
+        installed = u.installed_distributions(
+            path=tuple(str(path) for path in environment.metadata_paths)
+        )
         roots = {
             name.split(".", maxsplit=1)[0]
             for name in (
                 *modules,
+                *(item.module for item in declared),
                 *(
                     item.value
-                    for item in entry_points(
-                        group=c.Infra.TYPING_STUB_ENTRY_POINT_GROUP,
-                    )
+                    for package in installed
+                    for item in package.entry_points
+                    if item.group == c.Infra.TYPING_STUB_ENTRY_POINT_GROUP
                 ),
             )
         }
         if not roots:
             return r[t.VariadicTuple[Path]].ok(())
         u.Cli.info(f"typings: generating {len(roots)} external package(s)")
-        providers = packages_distributions()
         destination = repository_root / policy.directory
         with u.Infra.codegen_transaction_lease(destination / "packages"):
             packages = tuple(
@@ -66,7 +85,14 @@ class FlextInfraDependencyTypingPackages:
                     repository_root,
                     module,
                     policy,
-                    providers.get(module, ()),
+                    tuple(
+                        package.metadata["Name"]
+                        for package in installed
+                        if any(
+                            path.parts[0] in {module, f"{module}.py"}
+                            for path in package.files or ()
+                        )
+                    ),
                 )
                 for module in sorted(roots)
             )
@@ -89,6 +115,254 @@ class FlextInfraDependencyTypingPackages:
             if installed.failure:
                 return r[t.VariadicTuple[Path]].from_failure(installed)
         return r[t.VariadicTuple[Path]].ok(packages)
+
+    @staticmethod
+    def authenticated_typing_sources(
+        root: Path, policy: m.Infra.TypingGenerationPolicy
+    ) -> frozenset[Path]:
+        """Classify exact producer snapshots, never a directory or name prefix.
+
+        Returns:
+            Third-party stub files whose declared identity and digest authenticate.
+
+        """
+        document = u.Cli.toml_read_document(root / c.PYPROJECT_FILENAME).unwrap()
+        packages = u.Infra.generated_typing_packages(
+            document, root=root, policy=policy
+        ).unwrap()
+        return frozenset(
+            state.path
+            for package in packages
+            for state in package.inputs
+            if state.path.suffix == ".pyi"
+        )
+
+    @staticmethod
+    def typing_contract_rules(
+        root: Path, policy: m.Infra.TypingGenerationPolicy
+    ) -> t.MappingKV[Path, frozenset[str]]:
+        """Elect implementation-only rules from actual upstream declaration identity.
+
+        Returns:
+            Inapplicable implementation rules for authenticated external contracts.
+
+        """
+        document = u.Cli.toml_read_document(root / c.PYPROJECT_FILENAME).unwrap()
+        packages = u.Infra.generated_typing_packages(
+            document, root=root, policy=policy
+        ).unwrap()
+        if not packages:
+            return {}
+        environment = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=root, python=u.Infra.runtime_python(root), packages=()
+        ).unwrap()
+        banned = u.Cli.toml_table_path(
+            document, ("tool", "ruff", "lint", "flake8-tidy-imports", "banned-api")
+        )
+        contracts: dict[Path, frozenset[str]] = {}
+        for package in packages:
+            source, is_package = (
+                FlextInfraDependencyTypingPackages._typing_implementation_source(
+                    package, environment
+                )
+            )
+            for state in package.inputs:
+                if state.path.suffix != ".pyi":
+                    continue
+                relative = state.path.relative_to(
+                    package.path / f"{package.module}-stubs"
+                )
+                authored = root / policy.directory / package.module / relative
+                implementation = (
+                    source.parent / relative.with_suffix(".py")
+                    if is_package
+                    else source
+                )
+                if not authored.is_file() or not implementation.is_file():
+                    continue
+                rules = FlextInfraDependencyTypingPackages._typing_source_rules(
+                    authored,
+                    implementation,
+                    state,
+                    ".".join((package.module, *relative.parent.parts)),
+                    tuple(banned) if banned is not None else (),
+                )
+                if rules:
+                    contracts[authored.resolve()] = rules
+        return contracts
+
+    @staticmethod
+    def _typing_implementation_source(
+        package: m.Infra.GeneratedTypingPackageIdentity,
+        environment: m.Infra.PythonEnvironmentObservation,
+    ) -> tuple[Path, bool]:
+        """Resolve the exact declared implementation without executing its code.
+
+        Returns:
+            Implementation source path and whether it represents a package.
+
+        Raises:
+            ValueError: If the implementation version or source cannot authenticate.
+
+        """
+        requirement = Requirement(package.implementation)
+        installed = u.installed_distributions(
+            name=requirement.name,
+            path=tuple(str(path) for path in environment.metadata_paths),
+        )
+        if len(installed) != 1 or installed[0].version not in requirement.specifier:
+            msg = f"typing contract implementation differs: {package.implementation}"
+            raise ValueError(msg)
+        spec = PathFinder.find_spec(
+            package.module, tuple(str(path) for path in environment.import_paths)
+        )
+        if spec is None or spec.origin is None:
+            msg = f"typing contract implementation has no source: {package.module}"
+            raise ValueError(msg)
+        return Path(spec.origin), spec.submodule_search_locations is not None
+
+    @staticmethod
+    def _typing_source_rules(
+        authored: Path,
+        implementation: Path,
+        state: m.Cli.AtomicFileState,
+        namespace: str,
+        banned: t.StrSequence,
+    ) -> frozenset[str]:
+        """Prove which local implementation choices are instead upstream identities.
+
+        Returns:
+            Only rules whose complete affected declaration set is upstream-owned.
+
+        Raises:
+            ValueError: If authored declarations diverge from the producer snapshot.
+
+        """
+        native = ast.parse(implementation.read_text(encoding=c.DEFAULT_ENCODING))
+        declared = ast.parse(authored.read_text(encoding=c.DEFAULT_ENCODING))
+        if state.content is None:
+            msg = f"typing contract snapshot is missing: {state.path}"
+            raise ValueError(msg)
+        snapshot = ast.parse(state.content)
+        if not FlextInfraDependencyTypingPackages._typing_declarations_match(
+            declared.body, snapshot.body
+        ) or not FlextInfraDependencyTypingPackages._typing_imports(
+            declared, namespace
+        ) <= FlextInfraDependencyTypingPackages._typing_imports(snapshot, namespace):
+            msg = (
+                "typing contract declaration differs from producer snapshot: "
+                f"{authored}"
+            )
+            raise ValueError(msg)
+        upstream = FlextInfraDependencyTypingPackages._typing_imports(native, namespace)
+        imports = FlextInfraDependencyTypingPackages._typing_imports(
+            declared, namespace
+        )
+        private = frozenset(
+            item
+            for item in imports
+            if any(part.startswith("_") for part in item.split("."))
+        )
+        restricted = frozenset(
+            item
+            for item in imports
+            if any(item == name or item.startswith(name + ".") for name in banned)
+        )
+        rules: set[str] = set()
+        if private and private <= upstream:
+            rules.add("import-private-name")
+        if restricted and restricted <= upstream:
+            rules.add("banned-api")
+        exceptions = {
+            node.name
+            for node in ast.walk(declared)
+            if isinstance(node, ast.ClassDef)
+            and not node.name.endswith("Error")
+            and any(
+                ast.unparse(base).endswith(("Exception", "Error"))
+                for base in node.bases
+            )
+        }
+        if exceptions and exceptions <= {
+            node.name for node in ast.walk(native) if isinstance(node, ast.ClassDef)
+        }:
+            rules.add("error-suffix-on-exception-name")
+        return frozenset(rules)
+
+    @staticmethod
+    def _typing_declarations_match(
+        declared: t.SequenceOf[ast.stmt], snapshot: t.SequenceOf[ast.stmt]
+    ) -> bool:
+        """Check authored declarations survive publication, allowing native members.
+
+        Returns:
+            Whether every declaration and class header is present unchanged.
+
+        """
+        for node in declared:
+            if isinstance(node, ast.Import | ast.ImportFrom):
+                continue
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and (node.value.value is Ellipsis or isinstance(node.value.value, str))
+            ):
+                continue
+            if isinstance(node, ast.ClassDef):
+                candidates = (
+                    item
+                    for item in snapshot
+                    if isinstance(item, ast.ClassDef) and item.name == node.name
+                )
+                if not any(
+                    tuple(
+                        ast.dump(part)
+                        for part in (
+                            *node.bases,
+                            *node.keywords,
+                            *node.decorator_list,
+                            *node.type_params,
+                        )
+                    )
+                    == tuple(
+                        ast.dump(part)
+                        for part in (
+                            *item.bases,
+                            *item.keywords,
+                            *item.decorator_list,
+                            *item.type_params,
+                        )
+                    )
+                    and FlextInfraDependencyTypingPackages._typing_declarations_match(
+                        node.body, item.body
+                    )
+                    for item in candidates
+                ):
+                    return False
+            elif not any(ast.dump(node) == ast.dump(item) for item in snapshot):
+                return False
+        return True
+
+    @staticmethod
+    def _typing_imports(tree: ast.Module, namespace: str) -> frozenset[str]:
+        """Resolve declared import identities without importing the implementation.
+
+        Returns:
+            Absolute module or symbol names, independent of aliases and relativity.
+
+        """
+        names: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                module = (
+                    resolve_name("." * node.level + (node.module or ""), namespace)
+                    if node.level
+                    else node.module or ""
+                )
+                names.update(f"{module}.{alias.name}" for alias in node.names)
+        return frozenset(names)
 
     @classmethod
     def generate_typing_package(
@@ -115,8 +389,43 @@ class FlextInfraDependencyTypingPackages:
         ):
             msg = f"typing generation requires one external distribution: {module}"
             raise ValueError(msg)
-        implementation = distribution(providers[0])
-        spec = find_spec(module)
+        environment = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=root,
+            python=u.Infra.runtime_python(root),
+            packages=(),
+        ).unwrap()
+        implementations = u.installed_distributions(
+            name=providers[0],
+            path=tuple(str(path) for path in environment.metadata_paths),
+        )
+        if len(implementations) != 1:
+            msg = f"typing generation requires one installed distribution: {module}"
+            raise ValueError(msg)
+        implementation = implementations[0]
+        attribution = (
+            f"# Derived from {implementation.metadata['Name']}"
+            f"=={implementation.version}\n"
+        )
+        for field in ("Author", "Author-email", "License", "License-Expression"):
+            if value := implementation.metadata.get(field):
+                attribution += "".join(
+                    f"# Upstream {field}: {line}\n" for line in value.splitlines()
+                )
+        for license_file in implementation.metadata.get_all("License-File") or ():
+            license_text = implementation.read_text(
+                str(Path("licenses") / license_file)
+                if Version(implementation.metadata["Metadata-Version"])
+                >= Version("2.4")
+                else license_file
+            )
+            if license_text is None:
+                msg = f"upstream license file is missing: {license_file}"
+                raise FileNotFoundError(msg)
+            attribution += f"# Upstream License-File: {license_file}\n"
+            attribution += "".join(f"# {line}\n" for line in license_text.splitlines())
+        spec = PathFinder.find_spec(
+            module, tuple(str(path) for path in environment.import_paths)
+        )
         if spec is None or spec.origin is None:
             msg = f"typing implementation has no source origin: {module}"
             raise ValueError(msg)
@@ -127,9 +436,8 @@ class FlextInfraDependencyTypingPackages:
         u.Cli.info(f"typings: Pyright generation for {module}")
         with TemporaryDirectory(dir=root, prefix=".typing-package-") as scratch:
             native = Path(scratch) / "native"
-            native_config = Path(scratch) / "pyrightconfig.json"
             u.Cli.json_write(
-                native_config,
+                Path(scratch) / "pyrightconfig.json",
                 {
                     "stubPath": str(native),
                     "extraPaths": [
@@ -145,7 +453,7 @@ class FlextInfraDependencyTypingPackages:
                 [
                     c.Infra.PYRIGHT,
                     "--project",
-                    str(native_config),
+                    str(Path(scratch) / "pyrightconfig.json"),
                     "--pythonpath",
                     str(u.Infra.runtime_python(root)),
                     "--warnings",
@@ -158,26 +466,27 @@ class FlextInfraDependencyTypingPackages:
             cls.normalize_typing_sources(root, module, policy, native)
             files = {
                 Path(stub_package) / path.relative_to(native / module): (
-                    c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING)
+                    cls._typing_source_header(
+                        source.parent
+                        / path.relative_to(native / module).with_suffix(".py"),
+                        attribution,
+                        path,
+                    )
                     + path.read_bytes()
                 )
                 for path in sorted((native / module).rglob("*.pyi"))
             }
             if (single := native / f"{module}.pyi").is_file():
                 files[Path(stub_package) / c.Infra.INIT_PYI] = (
-                    c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING)
+                    cls._typing_source_header(source, attribution, single)
                     + single.read_bytes()
                 )
             if not files:
                 msg_0 = f"Pyright generated no stubs for {module}"
                 raise FileNotFoundError(msg_0)
-            digest = sha256()
-            for relative, content in files.items():
-                digest.update(relative.as_posix().encode(c.DEFAULT_ENCODING))
-                digest.update(content)
             context = m.Infra.TypingPackageRenderContext(
                 distribution=name,
-                version=f"{Version(implementation.version).public}+{digest.hexdigest()}",
+                version=u.Infra.generated_typing_version(implementation.version, files),
                 module=module,
                 runtime_requirement=(
                     f"{implementation.metadata['Name']}=={implementation.version}"
@@ -185,30 +494,78 @@ class FlextInfraDependencyTypingPackages:
                 python_required=config.Infra.codegen.toolchain.python_required_version,
                 build=config.Infra.codegen.scaffold.build,
             )
-            template = (
-                Path(__file__).resolve().parent.parent
-                / "templates"
-                / c.Infra.TEMPLATE_TYPING_PACKAGE
-            )
             files[Path(c.PYPROJECT_FILENAME)] = (
                 c.Infra.TYPING_STUB_HEADER
-                + u.Cli.template_render(template, context).unwrap()
+                + u.Cli.template_render(
+                    Path(__file__).resolve().parent.parent
+                    / "templates"
+                    / c.Infra.TEMPLATE_TYPING_PACKAGE,
+                    context,
+                ).unwrap()
             ).encode(c.DEFAULT_ENCODING)
-            for relative, content in files.items():
-                cls._publish_typing_source(package_root / relative, content)
-            for obsolete in sorted((package_root / stub_package).rglob("*.pyi")):
-                if obsolete.relative_to(package_root) not in files:
-                    before = u.Cli.atomic_read_binary_file_state(
-                        obsolete,
-                        required=True,
-                    ).unwrap()
-                    if before.content is None or not before.content.startswith(
-                        c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING),
-                    ):
-                        msg = f"typing generation does not own {obsolete}"
-                        raise ValueError(msg)
-                    u.Cli.atomic_delete_binary_file_guarded(before).unwrap()
+            cls._publish_typing_package(package_root, stub_package, files)
         return package_root
+
+    @classmethod
+    def _publish_typing_package(
+        cls, package_root: Path, stub_package: str, files: Mapping[Path, bytes]
+    ) -> None:
+        """Validate ownership of the whole candidate before publishing any bytes.
+
+        Raises:
+            ValueError: If any target or obsolete stub is not producer-owned.
+
+        """
+        obsolete = tuple(
+            path
+            for path in sorted((package_root / stub_package).rglob("*.pyi"))
+            if path.relative_to(package_root) not in files
+        )
+        removals = tuple(
+            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            for path in obsolete
+        )
+        for path in (*obsolete, *(package_root / name for name in files)):
+            content = u.Cli.atomic_read_binary_file_state(path).unwrap().content
+            if content is not None and not content.startswith(
+                c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING),
+            ):
+                msg = f"typing generation does not own {path}"
+                raise ValueError(msg)
+        for relative, content in files.items():
+            cls._publish_typing_source(package_root / relative, content)
+        for before in removals:
+            u.Cli.atomic_delete_binary_file_guarded(before).unwrap()
+
+    @staticmethod
+    def _typing_source_header(
+        source: Path, attribution: str, declarations: Path
+    ) -> bytes:
+        """Preserve each implementation's literal leading notices, without invention.
+
+        Returns:
+            Producer marker, upstream metadata/license and original source comments.
+
+        """
+        authored = cst.parse_module(declarations.read_text(encoding=c.DEFAULT_ENCODING))
+        header = c.Infra.TYPING_STUB_HEADER + "".join(
+            authored.code_for_node(line) for line in authored.header
+        )
+        header += (
+            "\n".join(
+                part
+                for line in attribution.splitlines()
+                for part in (wrap(line.rstrip(), subsequent_indent="# ") or ["#"])
+            )
+            + "\n"
+        )
+        if source.is_file():
+            header += f"# Upstream source: {source.name}\n"
+            for line in source.read_text(encoding=c.DEFAULT_ENCODING).splitlines():
+                if line and not line.startswith("#"):
+                    break
+                header += line.rstrip() + "\n"
+        return header.encode(c.DEFAULT_ENCODING)
 
     @classmethod
     def normalize_typing_sources(
@@ -228,6 +585,19 @@ class FlextInfraDependencyTypingPackages:
         single = native / f"{module}.pyi"
         if single.is_file():
             staged = (*staged, single)
+        authored_root = root / policy.directory / module
+        staged = tuple(
+            sorted(
+                set(staged)
+                | {
+                    single
+                    if single.is_file()
+                    and path.relative_to(authored_root) == Path(c.Infra.INIT_PYI)
+                    else native / module / path.relative_to(authored_root)
+                    for path in authored_root.rglob("*.pyi")
+                }
+            )
+        )
         for path in staged:
             relative = (
                 Path(c.Infra.INIT_PYI)
@@ -242,14 +612,23 @@ class FlextInfraDependencyTypingPackages:
                 msg = f"typing declarations must be authored: {declared}"
                 raise ValueError(msg)
             authored = cst.parse_module(content)
+            if not path.is_file():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding=c.DEFAULT_ENCODING)
+                continue
             imports = GatherImportsVisitor(
                 CodemodContext(
                     full_package_name=".".join((module, *relative.parent.parts)),
                 )
             )
-            authored.visit(imports)
+            generated = cst.parse_module(path.read_text(encoding=c.DEFAULT_ENCODING))
+            generated.visit(imports)
+            declared_imports = GatherImportsVisitor(imports.context)
+            authored.visit(declared_imports)
             context = CodemodContext()
-            for item in imports.symbol_mapping.values():
+            for name, item in imports.symbol_mapping.items():
+                if name in declared_imports.symbol_mapping:
+                    continue
                 AddImportsVisitor.add_needed_import(
                     context,
                     item.module_name,
@@ -257,8 +636,7 @@ class FlextInfraDependencyTypingPackages:
                     item.alias,
                     item.relative,
                 )
-            generated = cst.parse_module(path.read_text(encoding=c.DEFAULT_ENCODING))
-            merged = generated.with_changes(
+            merged = authored.with_changes(
                 body=cls._merge_typing_declarations(generated.body, authored.body)
             )
             path.write_text(
@@ -282,13 +660,13 @@ class FlextInfraDependencyTypingPackages:
             TypeError: If an overlay changes the kind of an existing declaration.
 
         """
-        body = list(native)
+        body = list(declared)
         positions = {
             name: index
             for index, statement in enumerate(body)
             if (name := cls._typing_declaration_name(statement)) is not None
         }
-        for statement in declared:
+        for statement in native:
             name = cls._typing_declaration_name(statement)
             if name is None:
                 continue
@@ -299,7 +677,23 @@ class FlextInfraDependencyTypingPackages:
             previous = body[positions[name]]
             if isinstance(previous, cst.ClassDef):
                 if isinstance(statement, cst.SimpleStatementLine):
-                    # A class-object annotation does not replace its native class.
+                    continue
+                if (
+                    isinstance(statement, cst.ClassDef)
+                    and isinstance(statement.body, cst.SimpleStatementSuite)
+                    and len(statement.body.body) == 1
+                    and isinstance(statement.body.body[0], cst.Expr)
+                    and isinstance(statement.body.body[0].value, cst.Ellipsis)
+                ):
+                    continue
+                if (
+                    isinstance(statement, cst.ClassDef)
+                    and isinstance(previous.body, cst.SimpleStatementSuite)
+                    and len(previous.body.body) == 1
+                    and isinstance(previous.body.body[0], cst.Expr)
+                    and isinstance(previous.body.body[0].value, cst.Ellipsis)
+                ):
+                    body[positions[name]] = previous.with_changes(body=statement.body)
                     continue
                 if (
                     not isinstance(statement, cst.ClassDef)
@@ -311,12 +705,11 @@ class FlextInfraDependencyTypingPackages:
                 body[positions[name]] = previous.with_changes(
                     body=previous.body.with_changes(
                         body=cls._merge_typing_declarations(
-                            previous.body.body, statement.body.body
+                            statement.body.body, previous.body.body
                         )
                     )
                 )
                 continue
-            body[positions[name]] = statement
         return tuple(body)
 
     @staticmethod
@@ -333,6 +726,8 @@ class FlextInfraDependencyTypingPackages:
             item = statement.body[0]
             if isinstance(item, cst.AnnAssign):
                 return get_full_name_for_node(item.target)
+            if isinstance(item, cst.TypeAlias):
+                return item.name.value
             if isinstance(item, cst.Assign) and len(item.targets) == 1:
                 return get_full_name_for_node(item.targets[0].target)
         return None

@@ -661,7 +661,6 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                 ):
                     msg = f"staged model identity changed during projection: {route}"
                     raise ValueError(msg)
-                receiver = f"_projected_model_{len(annotation_rules)}"
                 annotation_rules.append(
                     cls._annotation_rule(target, model_identity, len(annotation_rules))
                 )
@@ -670,7 +669,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                 )
                 if previous is not None:
                     transfer = cls._authored_transfer(
-                        (previous, model, receiver), route, package, target, len(rules)
+                        (previous, model), route, package, target, len(rules)
                     )
                     if transfer is not None:
                         rules.append(transfer)
@@ -691,7 +690,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
         goal = f"{receiver}.{member}"
         return m.Infra.RopeContractRule(
             id=f"project-model-annotation-{index}",
-            pattern=f"${receiver}",
+            pattern="${receiver}",
             goal=goal,
             arguments={"receiver": f"name={identity}"},
             imports={receiver: f"from {module} import {wrapper} as {receiver}"},
@@ -702,7 +701,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
     @classmethod
     def _authored_transfer(
         cls,
-        bindings: t.Triple[p.Infra.RopePyName, p.Infra.RopePyName, str],
+        bindings: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
         route: str,
         package: Path,
         target: t.Quad[str, str, str, str],
@@ -714,7 +713,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             The ownership transfer, or no transfer for an externally owned binding.
 
         """
-        previous, model, receiver = bindings
+        previous, model = bindings
         owner = cls._authored_owner(previous, model, route, package)
         if owner is None:
             return None
@@ -723,7 +722,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
         goal = f"{alias}.{target[2]}"
         return m.Infra.RopeContractRule(
             id=f"project-model-port-{index}",
-            pattern=f"${receiver}",
+            pattern="${receiver}",
             goal=goal,
             arguments={"receiver": f"name={identity}"},
             imports={alias: f"from {target[0]} import {target[1]} as {alias}"},

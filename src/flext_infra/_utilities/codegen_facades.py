@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import sys
 from collections.abc import Callable, Generator, MutableMapping
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, nullcontext
 from pathlib import Path
 from typing import Literal, override
 
@@ -67,6 +67,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
         planned_sources: t.MappingKV[Path, str | None] | None = None,
         project_roots: t.VariadicTuple[Path] = (),
+        source_conflict: Callable[
+            [p.Infra.RopeProject, m.Infra.CodegenPhaseAnalysis], None
+        ]
+        | None = None,
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -145,7 +149,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
         # republished site-packages/flext_cli/utilities.py otherwise).
-        original_sources = FlextInfraUtilitiesCodegenFacades._facade_original_sources(
+        original_sources = FlextInfraUtilitiesCodegenFacades.facade_original_sources(
             root, source_states
         )
         sources = {
@@ -215,7 +219,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     declared_files=declared_files,
                 )
             ) as project,
-            project.frozen_layout(),
         ):
 
             def consumed() -> t.Triple[
@@ -231,16 +234,39 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
 
             completed = False
+            runtime_errors: tuple[type[Exception], ...] = (
+                OSError,
+                *c.EXC_BROAD_RUNTIME,
+            )
             try:
-                yield (
-                    FlextInfraUtilitiesCodegenFacades._require_source_project(project),
-                    consumed,
-                    sources,
-                )
+                with (
+                    (
+                        project.source_consumption()
+                        if source_conflict is not None
+                        else nullcontext()
+                    ) as consumption,
+                    project.frozen_layout(),
+                ):
+                    yield (
+                        FlextInfraUtilitiesCodegenFacades._require_source_project(
+                            project
+                        ),
+                        consumed,
+                        sources,
+                    )
                 completed = True
             finally:
                 if completed:
-                    project.verify_source_states()
+                    try:
+                        project.verify_source_states()
+                    except runtime_errors as exc:
+                        if (
+                            source_conflict is not None
+                            and consumption is not None
+                            and project.source_epoch_failure is exc
+                        ):
+                            source_conflict(project, consumption.receipt())
+                        raise
 
     @staticmethod
     def _require_source_project(value: p.AttributeProbe) -> p.Infra.RopeProject:
@@ -259,7 +285,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         return value
 
     @staticmethod
-    def _facade_original_sources(
+    def facade_original_sources(
         root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> t.MappingKV[Path, str]:

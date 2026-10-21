@@ -24,6 +24,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         _source_exports_cache: MutableMapping[str, frozenset[str]]
         _parent_package_cache: MutableMapping[str, t.StrSequence]
+        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         def _module_file(self, module_path: str) -> Path | None:
             del module_path
@@ -121,28 +122,34 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
 
         """
         cache_key = f"letter-imports:{pkg_dir.resolve()}"
-        cached = self._parent_package_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
-        resource = self.rope_workspace.resource(constants_path)
-        if resource is None:
-            self._parent_package_cache[cache_key] = ()
-            return ()
-        imports = u.Infra.resolve_declared_module_imports(
+        with u.Infra.cached_source_query(
             self.rope_workspace.rope_project,
-            resource,
-        )
-        parents: list[str] = []
-        for name in sorted(imports):
-            if name not in c.Infra.ALIAS_NAMES:
-                continue
-            package_name = self._package_name_from_target(imports[name])
-            if package_name and package_name not in parents:
-                parents.append(package_name)
-        resolved = tuple(parents)
-        self._parent_package_cache[cache_key] = resolved
-        return resolved
+            self._parent_package_cache,
+            cache_key,
+            self._query_receipts,
+            f"parents:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._parent_package_cache[cache_key]
+            constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
+            resource = self.rope_workspace.resource(constants_path)
+            if resource is None:
+                self._parent_package_cache[cache_key] = ()
+                return ()
+            imports = u.Infra.resolve_declared_module_imports(
+                self.rope_workspace.rope_project,
+                resource,
+            )
+            parents: list[str] = []
+            for name in sorted(imports):
+                if name not in c.Infra.ALIAS_NAMES:
+                    continue
+                package_name = self._package_name_from_target(imports[name])
+                if package_name and package_name not in parents:
+                    parents.append(package_name)
+            resolved = tuple(parents)
+            self._parent_package_cache[cache_key] = resolved
+            return resolved
 
     def _declared_parent_package(self, target: str) -> str:
         """Return the package a class base declares as facade parent.
@@ -295,9 +302,26 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
 
         """
         cache_key = f"declared:{package_name}"
-        cached = self._source_exports_cache.get(cache_key)
-        if cached is not None:
-            return cached
+        with u.Infra.cached_source_query(
+            self.rope_workspace.rope_project,
+            self._source_exports_cache,
+            cache_key,
+            self._query_receipts,
+            f"source:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._source_exports_cache[cache_key]
+            return self._declared_alias_query(package_name, cache_key)
+
+    def _declared_alias_query(
+        self, package_name: str, cache_key: str
+    ) -> frozenset[str]:
+        """Read declaration names while the caller owns their cache receipt.
+
+        Returns:
+            The declared class aliases for this package.
+
+        """
         # A parent outside the scan scope is read from the one package the
         # active environment declares (R32), so a standalone plan and a
         # workspace plan elect the same owner.
