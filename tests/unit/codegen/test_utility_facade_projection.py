@@ -139,8 +139,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         owner = "Owner" + "X" * ((width + length_delta) // 2)
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
         self._write(package / family.directory / c.Infra.INIT_PY, "")
-        prefix = f"from {package.name}.{family.directory}.owner_ import ("
-        module = "owner_" + "x" * max(0, width - len(prefix))
+        module = "owner_" + "x" * max(
+            0, width - len(f"from {package.name}.{family.directory}.owner_ import (")
+        )
         self._write(
             package / family.directory / f"{module}.py",
             f'class {owner}:\n    """Canonical behavior owner."""\n'
@@ -149,7 +150,6 @@ class TestsFlextInfraUtilityFacadeProjection:
             "        return cls.marker\n"
             f'__all__ = ["{owner}"]\n',
         )
-        binding = f"({owner})" if parenthesized else owner
         barrel_name = f"{package.name}.{family.directory}"
         owner_module = f"{barrel_name}.{module}"
         facade = package / c.Infra.UTILITIES_PY
@@ -158,7 +158,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             '"""Public utility facade.\n\n'
             "Copyright (c) 2026 FLEXT Team. All rights reserved.\n"
             'SPDX-License-Identifier: MIT\n"""\n\n'
-            f"from {package.name}.{family.directory}.{module} import {binding}\n\n\n"
+            f"from {package.name}.{family.directory}.{module} import "
+            f"{f'({owner})' if parenthesized else owner}\n\n\n"
             f'class Utilities({owner}):\n    """Compose the canonical owner."""\n\n\n'
             'u = Utilities\n\n__all__ = ["Utilities", "u"]\n',
         )
@@ -197,7 +198,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             f"leaf.get_attributes()[{owner!r}].get_object(), eq=True)\n"
             "for path in (initializer, package / "
             f"{family.directory!r} / '__init__.py', facade):\n"
-            "    state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))\n"
+            "    state = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
+            "        path, required=True))\n"
             "    tm.that(max(map(len, state.content.decode().splitlines())), "
             f"lte={width})\n"
             "print(repr(expected))\n"
