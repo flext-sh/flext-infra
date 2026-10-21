@@ -6,11 +6,54 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from tests import t, u
+from pathlib import Path
+
+import flext_core
+
+from tests import m, t, tm, u
 
 
 class TestsNativeReferenceEpoch:
     """Native container traversal preserves source and declaration change guards."""
+
+    @staticmethod
+    def test_sdk_source_epoch_preserves_original_bytes(
+        mod_workspace: t.DirectoryPath,
+    ) -> None:
+        """The real SDK capture retains raw bytes through its separate text view."""
+        source = Path(tm.not_none(flext_core.__file__)).with_name("_settings.py")
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        content = tm.not_none(original.content)
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (original,),
+            projects=(
+                m.Infra.CodemodBindingProject(
+                    root=mod_workspace, source_paths=(), modules=("flext_core",)
+                ),
+            ),
+        )
+        retained = next(state for state in snapshot.states if state.path == source)
+        epoch = u.Infra.codemod_source_epoch(snapshot)
+        tm.that(retained is original, truth=True)
+        tm.that(retained.content is content, truth=True)
+        tm.that(epoch.contents[source] is content, truth=True)
+        tm.that(epoch.sources[source].encode("utf-8"), eq=content)
+        with u.Infra.codemod_binding_project(mod_workspace, epoch):
+            tm.ok(
+                u.Cli.atomic_verify_binary_file_states(
+                    snapshot.states, nonsecret_source_paths=(source,)
+                )
+            )
+        observed = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        tm.that(observed, eq=original)
+        for label, body in (("captured", content), ("observed", observed.content)):
+            payload = tm.not_none(body)
+            _ = u.fetch_logger(__name__).info(
+                f"SDK source byte witness: path={source}; stage={label}; "
+                f"type={type(payload).__name__}; length={len(payload)}; "
+                f"sha256={u.Cli.sha256_bytes(payload)}"
+            )
 
     @staticmethod
     def test_nested_native_operands_retain_distinct_source_owners(

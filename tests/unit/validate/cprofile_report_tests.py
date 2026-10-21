@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import signal
 import sys
 from pathlib import Path
 
@@ -17,6 +18,89 @@ from tests import c, m, tm, u
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
+
+    @staticmethod
+    @pytest.mark.parametrize("suite_state", ["absent", "published", "stale"])
+    def test_interrupted_suite_reports_native_outcome_before_artifacts(
+        tmp_path: Path,
+        native_cprofile: Path,
+        capsys: pytest.CaptureFixture[str],
+        suite_state: str,
+    ) -> None:
+        """Missing snapshots stay incomplete; present snapshots still require identity."""
+        directory = tmp_path / c.Infra.REPORTS_DIR_NAME / "interrupted"
+        directory.mkdir(parents=True)
+        policy = config.Infra.tooling.tools.pytest
+        profile = native_cprofile
+        selection = directory / c.Infra.PYTEST_SELECTION_PROFILE_FILENAME
+        selection.write_bytes(profile.read_bytes())
+        context = m.Infra.PytestRunContext(
+            execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
+            testmon_db=tmp_path / "testmon",
+            testmon_lease_acquired=True,
+            deadline_monotonic=None,
+            report_directory=directory,
+        )
+        (directory / "run-context.json").write_text(
+            context.model_dump_json(), encoding=c.DEFAULT_ENCODING
+        )
+        receipt = context.model_copy(
+            update={"profile_sha256": u.Cli.sha256_bytes(profile.read_bytes())}
+        )
+        for artifact in (profile, selection):
+            artifact.with_suffix(".pstats.json").write_text(
+                receipt.model_dump_json(), encoding=c.DEFAULT_ENCODING
+            )
+        plan = m.Infra.PytestSelectionPlan(
+            manifest_path=selection.with_suffix(".json"),
+            node_ids=("tests/test_workload.py::test_workload",),
+            whole_target=True,
+            inventory_collected=False,
+        )
+        (directory / "selection-plan.json").write_text(
+            plan.model_dump_json(), encoding=c.DEFAULT_ENCODING
+        )
+        terminated = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
+                ),
+                cwd=tmp_path,
+            )
+        )
+        tm.that(terminated.outcome.raw_return_code, eq=-signal.SIGTERM)
+        (directory / "suite-outcome.json").write_text(
+            terminated.outcome.model_dump_json(), encoding=c.DEFAULT_ENCODING
+        )
+        suite = directory / policy.profile_suite_filename
+        if suite_state != "absent":
+            suite.write_bytes(profile.read_bytes())
+            suite.with_suffix(".pstats.json").write_text(
+                (
+                    receipt.model_copy(update={"profile_sha256": "0" * 64})
+                    if suite_state == "stale"
+                    else receipt
+                ).model_dump_json(),
+                encoding=c.DEFAULT_ENCODING,
+            )
+        output = directory / "profile.txt"
+        result = validate.FlextInfraCProfileReport(
+            repository_root=tmp_path,
+            profile=profile,
+            output=output,
+            sort=policy.profile_sort,
+            limit=policy.profile_limit,
+            run_receipt=profile.with_suffix(".pstats.json"),
+        ).execute()
+        tm.that(capsys.readouterr().err, has=f"raw_return_code={-signal.SIGTERM}")
+        if suite_state == "stale":
+            tm.fail(result)
+            tm.that(result.error, has="stale or mismatched")
+        else:
+            tm.ok(result)
+            tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has=str(selection))
 
     @staticmethod
     @pytest.mark.parametrize("execution_artifact", [False, True])

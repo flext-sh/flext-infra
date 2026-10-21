@@ -13,9 +13,7 @@ from typing import Literal
 
 import pytest
 
-from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenGeneration
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra import codegen, config, workspace
 from tests import c, m, p, tm, u
 
 
@@ -550,14 +548,14 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         )
         if len(f"    from {namespace}.{provider.stem} import (") > width:
             with pytest.raises(ValueError, match="Absolute import owner"):
-                FlextInfraCodegenGeneration.generate_type_checking(
+                codegen.FlextInfraCodegenGeneration.generate_type_checking(
                     groups,
                     include_flext_types=False,
                     local_package_root=namespace,
                 )
             tm.fail((child / c.Infra.INIT_PY).exists())
             return
-        imports = FlextInfraCodegenGeneration.generate_type_checking(
+        imports = codegen.FlextInfraCodegenGeneration.generate_type_checking(
             groups,
             include_flext_types=False,
             local_package_root=namespace,
@@ -823,14 +821,12 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         u.Tests.write_standalone_workspace_manifest(root, root.name)
         model = u.Infra.facade_families()["m"]
         utility = u.Infra.facade_families()["u"]
-        marker = c.Infra.AUTOGEN_HEADER + "\n"
         facade = package / f"{model.module}.py"
         barrel = package / model.directory / c.Infra.INIT_PY
         utility_facade = package / f"{utility.module}.py"
-        initializer = package / c.Infra.INIT_PY
         sources = {
             barrel: (
-                marker + "from .base import ProviderBase\n"
+                f"{c.Infra.AUTOGEN_HEADER}\nfrom .base import ProviderBase\n"
                 "from .departed import DepartedOwner\n"
                 "__all__ = ['ProviderBase', 'DepartedOwner']\n"
             ),
@@ -842,7 +838,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 "class DepartedOwner:\n    departed = 'retained'\n__all__ = []\n"
             ),
             facade: (
-                marker + f"from {package.name}.{model.directory} "
+                f"{c.Infra.AUTOGEN_HEADER}\n"
+                f"from {package.name}.{model.directory} "
                 "import ProviderBase, DepartedOwner\n"
                 "class ProviderModels(ProviderBase, DepartedOwner):\n    pass\n"
                 "m = ProviderModels\n__all__ = ['ProviderModels', 'm']\n"
@@ -876,21 +873,29 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         tm.fail(facade in {file.path for file in incoming})
         originals = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            for path in (initializer, *sources, tooling, root / c.PYPROJECT_FILENAME)
+            for path in (
+                package / c.Infra.INIT_PY,
+                *sources,
+                tooling,
+                root / c.PYPROJECT_FILENAME,
+            )
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        workspace = tm.ok(
-            FlextInfraWorkspaceDetector.load_workspace_spec(root, inputs=inputs)
+        spec = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+                root, inputs=inputs
+            )
         )
-        target = tm.ok(
-            FlextInfraWorkspaceDetector.conform_target(root, workspace, inputs=inputs)
-        )
-        outcome = FlextInfraCodegenConform.plan_repository_task(
+        outcome = codegen.FlextInfraCodegenConform.plan_repository_task(
             m.Infra.CodegenRepositoryPlanTask(
                 root=root,
-                workspace=workspace,
-                current_target=target,
-                repository=workspace.repository,
+                workspace=spec,
+                current_target=tm.ok(
+                    workspace.FlextInfraWorkspaceDetector.conform_target(
+                        root, spec, inputs=inputs
+                    )
+                ),
+                repository=spec.repository,
                 surface=c.Infra.CodegenConformSurface.ALL,
                 selected_inputs=inputs,
                 provider_plans=incoming,
@@ -907,7 +912,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             tm.that(set(projected), has=facade)
             tm.that(set(projected), has=barrel)
             tm.that(set(projected), has=utility_facade)
-            tm.that(set(projected), has=initializer)
+            tm.that(set(projected), has=package / c.Infra.INIT_PY)
             tm.that(
                 projected[facade].before,
                 eq=next(state for state in originals if state.path == facade),
@@ -916,13 +921,12 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with u.Infra.facade_source_project(
                 root, source_states=originals, declared_files=outcome.files
             ) as binding:
-                rendered = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[2]
-                    )
-                )
                 tm.that(
-                    rendered.encode(c.DEFAULT_ENCODING),
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[2]
+                        )
+                    ).encode(c.DEFAULT_ENCODING),
                     eq=projected[utility_facade].desired_content,
                 )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
@@ -943,19 +947,16 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             project_name="provider_project",
             package_name="provider_package",
         )
-        model = u.Infra.facade_families()["m"]
-        utility = u.Infra.facade_families()["u"]
-        marker = c.Infra.AUTOGEN_HEADER + "\n"
-        model_facade = provider / f"{model.module}.py"
-        model_barrel = provider / model.directory / c.Infra.INIT_PY
-        consumer_base = "m" if declared else "m.DepartedOwner"
-        consumer_facade = package / f"{utility.module}.py"
+        families = u.Infra.facade_families()
+        model_facade = provider / f"{families['m'].module}.py"
+        model_barrel = provider / families["m"].directory / c.Infra.INIT_PY
+        consumer_facade = package / f"{families['u'].module}.py"
         sources = {
             provider / c.Infra.INIT_PY: (
-                f"from .{model.module} import m\n__all__ = ['m']\n"
+                f"from .{families['m'].module} import m\n__all__ = ['m']\n"
             ),
             model_barrel: (
-                marker + "from .base import ProviderBase\n"
+                f"{c.Infra.AUTOGEN_HEADER}\nfrom .base import ProviderBase\n"
                 "from .departed import DepartedOwner\n"
                 "__all__ = ['ProviderBase', 'DepartedOwner']\n"
             ),
@@ -968,16 +969,18 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 "class DepartedOwner:\n    departed = 'retained'\n__all__ = []\n"
             ),
             model_facade: (
-                marker + f"from {provider.name}.{model.directory} "
+                f"{c.Infra.AUTOGEN_HEADER}\n"
+                f"from {provider.name}.{families['m'].directory} "
                 "import ProviderBase, DepartedOwner\n"
                 "class ProviderModels(ProviderBase, DepartedOwner):\n    pass\n"
                 "m = ProviderModels\n__all__ = ['ProviderModels', 'm']\n"
             ),
             package / c.Infra.INIT_PY: "",
-            package / utility.directory / c.Infra.INIT_PY: "",
-            package / utility.directory / "owner.py": (
+            package / families["u"].directory / c.Infra.INIT_PY: "",
+            package / families["u"].directory / "owner.py": (
                 f"from {provider.name} import m\n"
-                f"class ConsumerOwner({consumer_base}):\n    pass\n"
+                f"class ConsumerOwner({'m' if declared else 'm.DepartedOwner'}):\n"
+                "    pass\n"
                 "__all__ = ['ConsumerOwner']\n"
             ),
             consumer_facade: (
@@ -993,36 +996,41 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             for path in sources
         )
         by_path = {state.path: state for state in originals}
-        service = u.Tests.create_lazy_init_service(provider_root)
-        exports = tm.ok(service.plan_files())
-        plans = {file.path: file for file in exports.files}
-        with ExitStack() as stack:
-            stack.enter_context(tm.scope(python_paths=(str(provider.parent),)))
-            if not declared:
-                stack.enter_context(
-                    pytest.raises(
-                        ValueError,
-                        match=(
-                            r"^Missing inherited class member: "
-                            r".*:ProviderModels:\d+\.DepartedOwner$"
-                        ),
-                    )
-                )
+        plans = {
+            file.path: file
+            for file in tm.ok(
+                u.Tests.create_lazy_init_service(provider_root).plan_files()
+            ).files
+        }
+        with (
+            tm.scope(python_paths=(str(provider.parent),)),
+            nullcontext()
+            if declared
+            else pytest.raises(
+                ValueError,
+                match=(
+                    r"^Missing inherited class member: "
+                    r".*:ProviderModels:\d+\.DepartedOwner$"
+                ),
+            ),
+        ):
             with u.Infra.facade_source_project(
                 provider_root,
                 source_states=originals,
                 declared_files=tuple(plans.values()),
             ) as binding:
-                rendered = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        provider, family="m", project=binding[0], sources=binding[2]
-                    )
-                )
                 plans[model_facade] = m.Infra.CodegenFilePlan(
                     project=provider_root,
                     path=model_facade,
                     before=by_path[model_facade],
-                    desired_content=rendered.encode(c.DEFAULT_ENCODING),
+                    desired_content=tm.not_none(
+                        u.Infra.render_utility_facade(
+                            provider,
+                            family="m",
+                            project=binding[0],
+                            sources=binding[2],
+                        )
+                    ).encode(c.DEFAULT_ENCODING),
                     desired_mode=tm.not_none(by_path[model_facade].mode),
                     source_states=binding[1]()[0],
                 )
@@ -1097,9 +1105,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         native_consumer(
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(candidate)!r})\n"
-            f"from {package.name}.{utility.module} import u\n"
+            f"from {package.name}.{families['u'].module} import u\n"
             f"from {provider.name} import m\n"
-            f"from {provider.name}.{model.directory}.departed import DepartedOwner\n"
+            f"from {provider.name}.{families['m'].directory}.departed "
+            "import DepartedOwner\n"
             "tm.that(u.marker, eq=m.marker)\n"
             "tm.fail(hasattr(m, 'departed'))\n"
             "tm.that(DepartedOwner.departed, eq='retained')\n",

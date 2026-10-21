@@ -66,6 +66,7 @@ class FlextInfraModHandlers:
                 or (str(root),),
                 apply=request.apply and not request.check and not request.dry_run_mode,
                 bindings=declared.bindings,
+                rename_definitions=declared.rename_definitions,
                 text_globs=declared.text_globs,
                 python_documentation=declared.python_documentation,
                 exclude_globs=declared.exclude_globs,

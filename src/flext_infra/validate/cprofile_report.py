@@ -10,6 +10,7 @@ import io
 import os
 import pstats
 import re
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
@@ -107,6 +108,25 @@ class FlextInfraCProfileReport(s[bool]):
             raise ValueError(msg)
         policy = config.Infra.tooling.tools.pytest
         suite = directory / policy.profile_suite_filename
+        suite_required = True
+        suite_outcome = directory / "suite-outcome.json"
+        if suite_outcome.is_file():
+            outcome = m.Cli.ProcessOutcome.model_validate_json(
+                suite_outcome.read_text(encoding="utf-8"),
+            )
+            if (
+                outcome.timed_out
+                or outcome.forwarded_signal is not None
+                or outcome.raw_return_code < 0
+            ):
+                sys.stderr.write(
+                    "profiled suite interrupted: "
+                    f"raw_return_code={outcome.raw_return_code} "
+                    f"timed_out={outcome.timed_out} "
+                    f"forwarded_signal={outcome.forwarded_signal}; "
+                    f"receipt={suite_outcome}\n"
+                )
+                suite_required = False
         plan_path = directory / "selection-plan.json"
         if parent.testmon_lease_acquired is False:
             if any(entry != context_path for entry in directory.iterdir()):
@@ -129,7 +149,11 @@ class FlextInfraCProfileReport(s[bool]):
                         if plan.inventory_collected
                         else ()
                     ),
-                    *((suite,) if plan.node_ids or suite.is_file() else ()),
+                    *(
+                        (suite,)
+                        if (plan.node_ids and suite_required) or suite.is_file()
+                        else ()
+                    ),
                     *sorted(
                         (directory / policy.profile_process_directory).glob("*.pstats")
                     ),

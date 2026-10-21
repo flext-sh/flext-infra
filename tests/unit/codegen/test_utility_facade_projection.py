@@ -1233,8 +1233,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         }
         for path, source in sources.items():
             self._write(path, source)
-        rendered = u.Infra.render_utility_facade(package)
-        tm.that(rendered, none=False)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
         self._write(facade, rendered)
         sources[facade] = rendered
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -1247,8 +1246,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             )
         for path, source in proposed.items():
             self._write(path, source)
-        rendered = u.Infra.render_utility_facade(package)
-        tm.that(rendered, none=False)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         tm.that(u.Infra.render_utility_facade(package), eq=rendered)
@@ -1328,8 +1326,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         for path, source in sources.items():
             self._write(path, source)
-        rendered = u.Infra.render_utility_facade(package)
-        tm.that(rendered, none=False)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         tm.that(u.Infra.render_utility_facade(package), eq=rendered)
@@ -1680,8 +1677,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "u = Facade\n__all__ = ['Facade', 'u']\n"
         )
         self._write(facade, original)
-        rendered = u.Infra.render_utility_facade(package)
-        tm.that(rendered, none=False)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
         tm.that(facade.read_text(), eq=original)
         self._write(facade, rendered)
         tm.ok(
@@ -2238,9 +2234,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         family = u.Infra.facade_family_declared_by(facade.name)
         service.target_module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        updated = u.Infra.render_utility_facade(package, family="p")
-
-        tm.that(updated, none=False)
+        updated = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
         self._write(facade, updated)
         tm.that(u.Infra.render_utility_facade(package, family="p"), eq=updated)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -2512,8 +2506,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "m.Sample.ToolchainPayload()\n"
             "completed = True\n",
         )
-        rendered = u.Infra.render_utility_facade(package, family="m")
-        tm.that(rendered, none=False)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         entrypoint = root / "consume.py"

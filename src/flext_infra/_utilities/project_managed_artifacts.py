@@ -18,7 +18,9 @@ from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
-from flext_infra._utilities import FlextInfraUtilitiesGit
+from flext_infra._utilities._git.semantic_index import (
+    FlextInfraUtilitiesGitSemanticIndexMixin,
+)
 from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
@@ -789,7 +791,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         resolved = project_dir.expanduser().resolve()
-        blobs = FlextInfraUtilitiesGit.git_committed_directory_blobs(
+        blobs = FlextInfraUtilitiesGitSemanticIndexMixin.git_committed_directory_blobs(
             resolved,
             c.CONFIG_DIR_NAME,
         )

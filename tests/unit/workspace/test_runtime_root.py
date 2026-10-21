@@ -387,3 +387,61 @@ class TestsFlextInfraRuntimeRoot:
             ordered,
             eq=(provider.distribution, consumer.distribution),
         )
+
+    @pytest.mark.parametrize(
+        "invalid", ["", "malformed", "duplicate", "cycle", "foreign"],
+    )
+    def test_workspace_order_uses_owned_projected_manifest(
+        self,
+        tmp_path: Path,
+        invalid: str,
+    ) -> None:
+        """A projected birth supplies bytes without inventing a physical manifest."""
+        provider = u.Tests.repository_ref("fixture-provider", path=Path("provider"))
+        consumer = u.Tests.repository_ref("fixture-consumer", path=Path("."))
+        provider_root = tmp_path / provider.path
+        provider_root.mkdir()
+        (provider_root / c.PYPROJECT_FILENAME).write_text(
+            "[project]\n"
+            f'name = "{provider.distribution}"\n'
+            f"dependencies = {[consumer.distribution] if invalid == 'cycle' else []!r}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        path = tmp_path / c.PYPROJECT_FILENAME
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+        plan = m.Infra.CodegenFilePlan(
+            project=tmp_path.parent if invalid == "foreign" else tmp_path,
+            path=path,
+            before=before,
+            desired_content=(
+                b"[project"
+                if invalid == "malformed"
+                else (
+                    "[project]\n"
+                    f'name = "{consumer.distribution}"\n'
+                    f"dependencies = {[provider.distribution]!r}\n"
+                ).encode(c.DEFAULT_ENCODING)
+            ),
+            desired_mode=0o644,
+        )
+        with pytest.raises(ValueError):
+            u.Infra.workspace_dependency_order(tmp_path, (consumer, provider))
+        if invalid:
+            with pytest.raises(ValueError):
+                u.Infra.workspace_dependency_order(
+                    tmp_path,
+                    (consumer, provider),
+                    planned_manifests=(
+                        (plan, plan) if invalid == "duplicate" else (plan,)
+                    ),
+                )
+        else:
+            tm.that(
+                u.Infra.workspace_dependency_order(
+                    tmp_path,
+                    (consumer, provider),
+                    planned_manifests=(plan,),
+                ),
+                eq=(provider.distribution, consumer.distribution),
+            )
+        tm.ok(not path.exists())

@@ -571,7 +571,7 @@ class FlextInfraCodegenLazyInitPlanner(
         visited.add(id(owner))
         with project.source_consumption() as consumption:
             if resource is not None:
-                project.source_state(Path(resource.real_path))
+                project.source_bytes(Path(resource.real_path))
             for base in owner.get_superclasses():
                 self._consume_class_bases(base, visited)
         if key is not None:

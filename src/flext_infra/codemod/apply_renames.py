@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Callable
 from contextlib import closing
+from difflib import unified_diff
 from os.path import commonpath
 from pathlib import Path
 
@@ -20,6 +21,19 @@ from flext_infra.transformers import FlextInfraSemanticPublication
 
 class FlextInfraApplyRenames:
     """Plan against authenticated bytes and commit only after a real post-scan."""
+
+    @staticmethod
+    def _identifier_campaign(
+        params: m.Infra.ApplyRenamesInput,
+        pairs: t.SequenceOf[t.Pair[str, str]],
+    ) -> bool:
+        """Whether this campaign changes only semantic identifier declarations."""
+        return (
+            params.rename_definitions
+            and not params.python_documentation
+            and not params.text_globs
+            and all(old.isidentifier() for old, _new in pairs)
+        )
 
     @staticmethod
     def _consumer_roots(params: m.Infra.ApplyRenamesInput) -> t.VariadicTuple[Path]:
@@ -199,6 +213,13 @@ class FlextInfraApplyRenames:
             for path, source in sources.items()
             if path.suffix == c.Infra.EXT_PYTHON
         }
+        candidates = (
+            FlextInfraRenameSources.symbol_paths(
+                python, frozenset(old for old, _new in pairs)
+            )
+            if cls._identifier_campaign(params, pairs)
+            else frozenset(python)
+        )
         root = Path(commonpath(roots))
         plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] = []
         occurrences = 0
@@ -206,9 +227,16 @@ class FlextInfraApplyRenames:
             Path, t.MutableSequenceOf[p.Infra.SourceRewrite]
         ] = {}
         guards: list[Callable[[], None]] = []
-        dependencies = list(inventory.values())
+        dependencies: list[m.Cli.AtomicFileState] = (
+            [] if cls._identifier_campaign(params, pairs) else list(inventory.values())
+        )
 
         def campaign(consumer: Path) -> None:
+            selected = cls._elected_python_paths(
+                {path: python[path] for path in candidates}, consumer, roots
+            )
+            if not selected:
+                return
             with (
                 u.Infra.open_project(
                     root,
@@ -218,9 +246,7 @@ class FlextInfraApplyRenames:
                 closing(cls._consumer_project(live, inventory)) as project,
                 project.frozen_layout(),
             ):
-                selected = cls._elected_python_paths(
-                    python, consumer, roots
-                ) | cls._definition_resource_paths(params, pairs, project)
+                selected |= cls._definition_resource_paths(params, pairs, project)
                 changes = FlextInfraRenameSymbols.plan(
                     project,
                     python,
@@ -255,6 +281,24 @@ class FlextInfraApplyRenames:
                 occurrences += edits
 
         def guard() -> p.Result[bool]:
+            if cls._identifier_campaign(params, pairs):
+                current = cls._decoded_sources(
+                    FlextInfraRenameSources.inventory(roots, params)
+                )
+                current_python = {
+                    path: source
+                    for path, source in current.items()
+                    if path.suffix == c.Infra.EXT_PYTHON
+                }
+                if (
+                    FlextInfraRenameSources.symbol_paths(
+                        current_python, frozenset(old for old, _new in pairs)
+                    )
+                    != candidates
+                ):
+                    return r[bool].fail(
+                        "rename identifier election changed after planning"
+                    )
             return cls._verify_sources(guards)
 
         return tuple(plans), occurrences, guard
@@ -403,7 +447,15 @@ class FlextInfraApplyRenames:
             changes=(),
         )
         publication = FlextInfraSemanticPublication.publish_semantic_file_plans(
-            (*plans, driver_plan),
+            (
+                *(
+                    plan
+                    for plan in plans
+                    if plan.desired_content is not None
+                    or not cls._identifier_campaign(params, pairs)
+                ),
+                driver_plan,
+            ),
             repository_root=Path(commonpath(roots)),
             options=m.Infra.SemanticPublicationOptions(
                 validator=verify,
@@ -465,6 +517,25 @@ class FlextInfraApplyRenames:
                 return r[m.Infra.ApplyRenamesReport].from_failure(publication)
             changed, pending = publication.value
         report = m.Infra.ApplyRenamesReport(
+            preview_diff="".join(
+                "".join(
+                    unified_diff(
+                        plan.before.content.decode(c.DEFAULT_ENCODING).splitlines(
+                            keepends=True
+                        ),
+                        plan.desired_content.decode(c.DEFAULT_ENCODING).splitlines(
+                            keepends=True
+                        ),
+                        fromfile=str(plan.path),
+                        tofile=str(plan.path),
+                    )
+                )
+                for plan in plans
+                if not params.apply
+                and plan.before.content is not None
+                and plan.desired_content is not None
+                and plan.before.content != plan.desired_content
+            ),
             label=csv_path.stem,
             files_scanned=len(plans),
             occurrences=pending,

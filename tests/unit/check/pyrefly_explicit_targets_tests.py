@@ -1,4 +1,4 @@
-"""Pyrefly explicit targets keep the project's configured excludes.
+"""Pyrefly distinguishes admitted literal files from discovered targets.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from tests import tm
 
@@ -19,7 +19,73 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraPyreflyExplicitTargets:
-    """A root module never pulls an excluded generated tree into Pyrefly."""
+    """Literal files retain native scope; discovery retains artifact exclusions."""
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_literal_excluded_stub_preserves_native_scope_and_config(
+        real_python_package: Path,
+    ) -> None:
+        """A selected excluded stub is checked without admitting its sibling."""
+        project = real_python_package
+        pyproject = project / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + '\n[tool.pyrefly]\nproject-excludes = ["**/excluded/**"]\n',
+            encoding="utf-8",
+        )
+        tree = project / "excluded"
+        tree.mkdir()
+        selected = tree / "contract.pyi"
+        selected.write_text("value: int = 1\n", encoding="utf-8")
+        (tree / "sibling.pyi").write_text("def :\n", encoding="utf-8")
+        (project / "pyrefly.toml").write_text(
+            'project-excludes = ["**/*"]\npython-version = "invalid"\n',
+            encoding="utf-8",
+        )
+        reports = project / ".reports"
+        reports.mkdir()
+        context = m.Infra.GateContext(
+            repository_root=project,
+            reports_dir=reports,
+            selected_files=(selected,),
+        )
+        targets = (str(selected.relative_to(project)),)
+        tm.that(
+            u.Infra.pyrefly_target_args(
+                project,
+                targets,
+                selected_files=context.selected_files,
+            ),
+            eq=targets,
+        )
+        tm.that(
+            u.Infra.pyrefly_target_args(project, targets, selected_files=()),
+            eq=(*targets, c.Infra.PYREFLY_PROJECT_EXCLUDES_FLAG, "**/excluded/**"),
+        )
+        gate = FlextInfraPyreflyGate(project)
+        valid = gate.check_files((selected,), project, context)
+        tm.that(valid.result.passed, eq=True, msg=str(valid.issues))
+        selected.write_text('value: int = "incorrect"\n', encoding="utf-8")
+        invalid = gate.check_files((selected,), project, context)
+        tm.fail(invalid.result.passed)
+        tm.that(invalid.issues, empty=False)
+        tm.that(
+            all(
+                issue.file.endswith(selected.name) and issue.line > 0
+                for issue in invalid.issues
+            ),
+            eq=True,
+            msg=str(invalid.issues),
+        )
+        discovery = m.Infra.GateContext(repository_root=project, reports_dir=reports)
+        empty = gate.check_files((selected,), project, discovery)
+        tm.fail(empty.result.passed)
+        tm.that(empty.issues, empty=False)
+        tm.that(
+            "\n".join(issue.message for issue in empty.issues),
+            has="No Python files matched",
+        )
 
     @staticmethod
     @pytest.mark.slow

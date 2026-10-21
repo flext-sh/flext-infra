@@ -757,6 +757,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 )
                 for task in tasks
             )
+            if self.state.planning_exception is None:
+                self.state.planning_exception = next(
+                    (
+                        item.exception
+                        for item in lazy_outcomes
+                        if item.exception is not None
+                    ),
+                    None,
+                )
             providers = tuple(
                 file
                 for outcome in lazy_outcomes
@@ -770,15 +779,82 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             }
             planned: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
             staged = {file.path: file for file in providers}
-            for distribution in u.Infra.workspace_dependency_order(
-                tasks[0].root, tuple(task.repository for task in tasks)
-            ):
+            manifests: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+            try:
+                for task in ready.values():
+                    if not (
+                        task.initial_workspace is not None
+                        and task.repository.name == task.workspace.repository.name
+                        and contract.pyproject
+                        and (
+                            contract.destinations is None
+                            or c.PYPROJECT_FILENAME in contract.destinations
+                        )
+                    ):
+                        continue
+                    metadata = type(self).plan_repository_task(
+                        task.model_copy(
+                            update={
+                                "surface": c.Infra.CodegenConformSurface.PYPROJECT,
+                                "provider_plans": tuple(staged.values()),
+                            },
+                        ),
+                    )
+                    if metadata.failed:
+                        if self.state.planning_exception is None:
+                            self.state.planning_exception = metadata.exception
+                        return tuple(
+                            outcome
+                            if outcome.failed
+                            else metadata.model_copy(
+                                update={
+                                    "repository": outcome.repository,
+                                    "files": (),
+                                    "environment": None,
+                                },
+                            )
+                            for outcome in lazy_outcomes
+                        )
+                    project = (task.root / task.repository.path).resolve()
+                    manifests = tuple(
+                        file
+                        for file in metadata.files
+                        if file.project.resolve() == project
+                        and file.path.resolve() == project / c.PYPROJECT_FILENAME
+                        and file.desired_content is not None
+                    )
+                    if len(manifests) != 1:
+                        msg = "root metadata requires exactly one owned pyproject plan"
+                        raise ValueError(msg)
+                order = u.Infra.workspace_dependency_order(
+                    tasks[0].root,
+                    tuple(task.repository for task in tasks),
+                    planned_manifests=manifests,
+                )
+            except (OSError, ValueError, TypeError) as exc:
+                if self.state.planning_exception is None:
+                    self.state.planning_exception = exc
+                return tuple(
+                    outcome
+                    if outcome.failed
+                    else m.Infra.CodegenRepositoryPlanOutcome(
+                        repository=outcome.repository,
+                        error=str(exc),
+                        error_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
+                        error_traceback=traceback.format_exc(),
+                        exception=exc,
+                    )
+                    for outcome in lazy_outcomes
+                )
+            for distribution in order:
                 task = ready.get(distribution)
                 if task is None:
                     continue
                 outcome = type(self).plan_repository_task(
                     task.model_copy(update={"provider_plans": tuple(staged.values())})
                 )
+                if self.state.planning_exception is None and outcome.exception is not None:
+                    self.state.planning_exception = outcome.exception
                 if not outcome.failed:
                     staged.update((file.path, file) for file in outcome.files)
                 else:
@@ -798,6 +874,78 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                         staged.update((file.path, file) for file in outcome.files)
                         outcome = outcome.model_copy(update={"files": ()})
                 planned[outcome.repository] = outcome
+            if manifests:
+                try:
+                    for manifest in manifests:
+                        FlextInfraMiseArtifactsVerification.plans_current(
+                            (manifest,),
+                        ).unwrap()
+                        FlextInfraMiseArtifactsVerification.states_current(
+                            manifest.source_states,
+                        ).unwrap()
+                        u.Cli.atomic_verify_directory_queries(
+                            manifest.source_directories,
+                            manifest.source_query_topology,
+                        ).unwrap()
+                        final = planned[
+                            next(
+                                task.repository.name
+                                for task in tasks
+                                if (task.root / task.repository.path).resolve()
+                                == manifest.project.resolve()
+                            )
+                        ]
+                        if final.failed:
+                            continue
+                        selected = tuple(
+                            file for file in final.files if file.path == manifest.path
+                        )
+                        if len(selected) != 1 or selected[0].desired_content is None:
+                            msg = "final root metadata has no single pyproject payload"
+                            raise ValueError(msg)
+                        edges: list[frozenset[str]] = []
+                        names = {
+                            u.Infra.dep_name(task.repository.distribution)
+                            for task in tasks
+                        }
+                        for file in (manifest, selected[0]):
+                            if file.desired_content is None:
+                                msg = "root dependency manifest has no payload"
+                                raise ValueError(msg)
+                            payload = u.Cli.toml_mapping_from_text(
+                                file.desired_content.decode(c.DEFAULT_ENCODING),
+                            )
+                            if payload is None:
+                                msg = "invalid root dependency manifest"
+                                raise ValueError(msg)
+                            edges.append(
+                                frozenset(
+                                    name
+                                    for name in u.Infra.project_dependency_names_from_payload(payload)
+                                    if name in names
+                                ),
+                            )
+                        if edges[0] != edges[1]:
+                            msg = "root dependency graph changed after metadata planning"
+                            raise ValueError(msg)
+                except (OSError, ValueError, TypeError, RuntimeError) as exc:
+                    if self.state.planning_exception is None:
+                        self.state.planning_exception = exc
+                    for name, outcome in tuple(planned.items()):
+                        if not outcome.failed:
+                            planned[name] = outcome.model_copy(
+                                update={
+                                    "files": (),
+                                    "environment": None,
+                                    "error": str(exc),
+                                    "error_type": (
+                                        f"{type(exc).__module__}."
+                                        f"{type(exc).__qualname__}"
+                                    ),
+                                    "error_traceback": traceback.format_exc(),
+                                    "exception": exc,
+                                },
+                            )
             outcomes = tuple(
                 outcome if outcome.failed else planned[outcome.repository]
                 for outcome in lazy_outcomes

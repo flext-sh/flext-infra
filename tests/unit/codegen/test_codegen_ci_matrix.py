@@ -328,10 +328,10 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.ok(steps_index < setup_index)
 
     @staticmethod
-    def test_verify_clean_rejects_dirty_git_tree(
+    def test_verify_clean_accepts_dirty_git_tree(
         tmp_path: Path,
     ) -> None:
-        """The public cleanliness owner rejects a real untracked file."""
+        """The public status owner accepts and preserves a real untracked file."""
         repository = tmp_path / "dirty-repository"
         repository.mkdir()
         u.Tests.initialize_git_repo(repository)
@@ -339,8 +339,10 @@ class TestsFlextInfraCodegenCiMatrix:
         outcome = FlextInfraGitService.verify_clean(
             m.Infra.GitStatusRequest(repo_root=repository),
         )
-        tm.ok(outcome.failure)
-        tm.that(outcome.error, has="untracked.txt")
+        report = tm.ok(outcome)
+        tm.that(report.dirty, eq=True)
+        tm.that(report.porcelain, has="untracked.txt")
+        tm.that((repository / "untracked.txt").read_text(encoding="utf-8"), eq="dirty\n")
 
     @staticmethod
     def test_rendered_workflow_shell_commands_parse(

@@ -6,16 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
 from flext_infra import config, m
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests import p, tm, u
 
 
 class TestsFlextInfraRopeSnapshot:
@@ -233,6 +230,57 @@ class TestsFlextInfraRopeSnapshot:
 
         with pytest.raises(ValueError, match="atomic source changed"):
             plan_changed_source()
+
+    @staticmethod
+    def test_native_lazy_ancestry_consumes_unpublished_declared_source(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Proposed classes retain physical absence without admitting missing inputs."""
+        native_consumer(
+            r"""sys.path.insert(0, sys.argv[1])
+import pytest
+from tests import c, m, tm, u
+root, package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
+layout = tm.not_none(u.Infra.layout(root))
+source = package / "provider.py"
+name = f"{layout.class_stem}Projected"
+proposed = (
+    f"class {name}Base: pass\n"
+    f"class {name}({name}Base): pass\n"
+    f"__all__ = [{name!r}, '{name}Base']\n"
+).encode(c.DEFAULT_ENCODING)
+original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=False))
+tm.that(original.content, eq=None)
+declaration = m.Infra.CodegenFilePlan(
+    project=root, path=source, before=original,
+    desired_content=proposed, desired_mode=c.Infra.CONFIG_SPEC[1])
+service = u.Tests.create_lazy_init_service(root)
+with u.Infra.facade_source_project(
+    root, source_states=(original,), declared_files=(declaration,)
+) as (project, receipts, _):
+    for _ in range(2):
+        analysis = tm.ok(service.plan_files(source_project=project))
+        initializer = next(
+            plan for plan in analysis.files
+            if plan.path == package / c.Infra.INIT_PY)
+        tm.that(tm.not_none(initializer.desired_content).decode(
+            c.DEFAULT_ENCODING), has=name)
+        tm.that(tuple(state for state in receipts()[0]
+                      if state.path == source), eq=(original,))
+        tm.that(tuple(state for state in initializer.source_states
+                      if state.path == source), eq=(original,))
+        tm.that(project.source_bytes(source), eq=proposed)
+        with pytest.raises(FileNotFoundError, match="required source is absent"):
+            project.source_state(source)
+        with pytest.raises(FileNotFoundError):
+            project.source_bytes(package / "unplanned.py")
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+tm.that(source.exists(), eq=False)
+""",
+            str(Path(__file__).resolve().parents[2]),
+            str(tmp_path),
+        )
 
     @staticmethod
     def test_module_lookup_uses_declared_source_roots(tmp_path: Path) -> None:

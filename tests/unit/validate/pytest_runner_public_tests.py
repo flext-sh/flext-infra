@@ -20,8 +20,11 @@ class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @staticmethod
+    @pytest.mark.parametrize("has_origin", [False, True])
     def test_original_suite_receipt_binds_public_process_and_accounting(
         cached_runner_project: Path,
+        *,
+        has_origin: bool,
     ) -> None:
         """A real suite produces its own public proof input without another run."""
         root = cached_runner_project
@@ -32,21 +35,26 @@ class TestsFlextInfraPytestRunner:
             ("commit.gpgsign", "false"),
         ):
             u.Tests.git_bootstrap(root, ("config", key, value))
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "remote",
-                "add",
-                c.Infra.GIT_ORIGIN,
-                "https://github.example/flext/suite.git",
-            ),
-        )
+        if has_origin:
+            u.Tests.git_bootstrap(
+                root,
+                (
+                    "remote", "add", c.Infra.GIT_ORIGIN,
+                    "https://github.example/flext/suite.git",
+                ),
+            )
+        tracked = root / "shared-tracked.txt"
+        tracked.write_text("initial\n", encoding=c.DEFAULT_ENCODING)
         cache = config.Infra.codegen.make.testmon_cache
         tm.ok(
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
                     repo_root=root,
-                    paths=(c.PYPROJECT_FILENAME, cache.target_directory.as_posix()),
+                    paths=(
+                        c.PYPROJECT_FILENAME,
+                        cache.target_directory.as_posix(),
+                        tracked.name,
+                    ),
                 )
             )
         )
@@ -58,7 +66,33 @@ class TestsFlextInfraPytestRunner:
                 )
             )
         )
+        original_head = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=root))
+        ).oid
+        unrelated = root / "unrelated.txt"
+        unrelated.write_text("another lane\n", encoding=c.DEFAULT_ENCODING)
+        tm.ok(u.Infra.git_add_paths(m.Infra.GitPathsRequest(
+            repo_root=root, paths=(unrelated.name,)
+        )))
+        tm.ok(u.Infra.git_commit(m.Infra.GitCommitRequest(
+            repo_root=root, message="test: independent fixture revision"
+        )))
+        advanced_head = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=root))
+        ).oid
+        u.Tests.git_bootstrap(root, ("update-ref", "HEAD", original_head))
+        tracked.write_text("pending\n", encoding=c.DEFAULT_ENCODING)
+        (root / "shared-untracked.txt").write_text("pending\n", encoding=c.DEFAULT_ENCODING)
         runner = u.Tests.PytestRunner.runner_for(root)
+        (root / runner.target / "test_shared_worktree.py").write_text(
+            "import subprocess\nfrom pathlib import Path\n\n"
+            "def test_shared_worktree() -> None:\n"
+            f"    root = Path({str(root)!r})\n"
+            f"    (root / {tracked.name!r}).write_text('during\\n', encoding='utf-8')\n"
+            "    (root / 'shared-untracked.txt').write_text('during\\n', encoding='utf-8')\n"
+            f"    subprocess.run(['git', '-C', str(root), 'update-ref', 'HEAD', {advanced_head!r}], check=True)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         tm.that(tm.ok(runner.execute()), eq=0)
         receipts = tuple(
             (root / runner.reports).rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME),
@@ -68,7 +102,14 @@ class TestsFlextInfraPytestRunner:
             receipts[0].read_bytes(),
         )
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
-        tm.that(evidence.commit_sha, eq=identity.head_oid)
+        tm.that(evidence.scope, eq="workspace")
+        tm.that(evidence.commit_sha, eq=original_head)
+        tm.that(evidence.after_commit_sha, eq=advanced_head)
+        tm.that(identity.head_oid, eq=advanced_head)
+        tm.that(evidence.dirty, eq=True)
+        tm.that(evidence.after_dirty, eq=True)
+        tm.that(evidence.repository is not None, eq=has_origin)
+        tm.that(tracked.read_text(encoding=c.DEFAULT_ENCODING), eq="during\n")
         tm.that(evidence.gate, eq=c.Infra.VERB_TEST)
         tm.that(evidence.intent.requested_gates, eq=())
         tm.that(evidence.intent.test_selection, none=False)

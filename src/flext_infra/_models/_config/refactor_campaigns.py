@@ -22,6 +22,10 @@ class FlextInfraConfigModelsRefactorCampaigns:
     class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 
+        rename_definitions: Annotated[
+            bool,
+            m.Field(description="Atomically rename owned declarations and references"),
+        ] = False
         csv: Annotated[
             t.NonEmptyStr,
             m.Field(

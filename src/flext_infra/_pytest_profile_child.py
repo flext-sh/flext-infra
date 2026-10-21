@@ -18,6 +18,8 @@ import cProfile
 import os
 import runpy
 import sys
+import traceback
+from collections.abc import Callable
 from importlib.machinery import PathFinder
 from importlib.util import find_spec, module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -31,6 +33,7 @@ class FlextInfraPytestProfileChild:
     CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest_clock"
     CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
     PROCESS_DIRECTORY_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
+    _startup_retire: ClassVar[Callable[[], None] | None] = None
 
     @classmethod
     def load_clock(cls) -> ModuleType:
@@ -91,7 +94,7 @@ class FlextInfraPytestProfileChild:
             and sys.orig_argv[entry_index - 1 : entry_index + 1] == ["-m", "cProfile"]
         )
         if not native_profile:
-            clock.FlextInfraPytestClock.register_signal_checkpoint(
+            cls._startup_retire = clock.FlextInfraPytestClock.register_signal_checkpoint(
                 profile,
                 profile_output,
             )
@@ -126,7 +129,11 @@ class FlextInfraPytestProfileChild:
         """
         clock, profile = cls.bootstrap()
         output = Path(sys.argv.pop(1))
-        clock.FlextInfraPytestClock.register_signal_checkpoint(profile, output)
+        if cls._startup_retire is not None:
+            atexit.unregister(clock.FlextInfraPytestClock.publish_profile)
+            cls._startup_retire()
+            cls._startup_retire = None
+        retire = clock.FlextInfraPytestClock.register_signal_checkpoint(profile, output)
         try:
             directory = os.environ.get(cls.PROCESS_DIRECTORY_ENV)
             if directory is not None:
@@ -152,7 +159,28 @@ class FlextInfraPytestProfileChild:
                 )
             runpy.run_module("pytest", run_name="__main__", alter_sys=True)
         finally:
-            clock.FlextInfraPytestClock.publish_profile(profile, output)
+            primary = sys.exception()
+            try:
+                clock.FlextInfraPytestClock.publish_profile(profile, output)
+            except BaseException as publication_failure:
+                if primary is None or (
+                    isinstance(primary, SystemExit)
+                    and (primary.code is None or primary.code == 0)
+                ):
+                    raise
+                primary.add_note(
+                    "profile publication failed:\n"
+                    + "".join(traceback.format_exception(publication_failure, chain=False))
+                )
+                if isinstance(primary, SystemExit):
+                    try:
+                        traceback.print_exception(publication_failure, chain=False)
+                    except (OSError, ValueError) as diagnostic_failure:
+                        primary.add_note(
+                            f"profile failure diagnostic failed: {diagnostic_failure}"
+                        )
+            finally:
+                retire()
 
     @classmethod
     def bootstrap_stub(cls) -> str:
@@ -212,9 +240,11 @@ class FlextInfraPytestProfileChild:
             f"spec = spec_from_file_location({__name__!r}, child_path)\n"
             "if spec is None or spec.loader is None:\n"
             f"    raise ImportError({__name__!r})\n"
-            "child = module_from_spec(spec)\n"
-            "sys.modules[spec.name] = child\n"
-            "spec.loader.exec_module(child)\n"
+            "child = sys.modules.get(spec.name)\n"
+            "if child is None:\n"
+            "    child = module_from_spec(spec)\n"
+            "    sys.modules[spec.name] = child\n"
+            "    spec.loader.exec_module(child)\n"
             f"{call}\n"
         )
 

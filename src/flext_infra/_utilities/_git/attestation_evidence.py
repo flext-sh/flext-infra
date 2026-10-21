@@ -20,7 +20,8 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin:
     def _original_gate_evidence(
         cls,
         repo_root: Path,
-        request: m.Infra.GateAttestationCreateRequest,
+        request: m.Infra.GateAttestationCreateRequest
+        | m.Infra.GateAttestationVerifyRequest,
     ) -> p.Result[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
         result_type = r[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
         path = (

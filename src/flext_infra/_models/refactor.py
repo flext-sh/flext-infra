@@ -927,6 +927,10 @@ class FlextInfraModelsRefactor(
     class ApplyRenamesReport(FlextInfraModelsBase.FrozenArbitrary):
         """Summary of one CSV-driven rename pass."""
 
+        preview_diff: Annotated[
+            str,
+            m.Field(description="Unified diff from authenticated planned source bytes"),
+        ] = ""
         label: Annotated[t.NonEmptyStr, m.Field(description="Rename-list label")]
         files_scanned: Annotated[
             t.NonNegativeInt,

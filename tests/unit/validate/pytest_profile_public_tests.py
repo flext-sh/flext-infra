@@ -23,6 +23,75 @@ class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
 
     @staticmethod
+    @pytest.mark.parametrize("handler", ["default", "raise", "return"])
+    @pytest.mark.parametrize("event", ["tempfile.mkstemp", "marshal.dumps"])
+    def test_sigterm_during_publication_never_reenters_snapshot(
+        tmp_path: Path, handler: str, event: str
+    ) -> None:
+        """A real synchronous signal delegates without another staging or snapshot."""
+        output = tmp_path / "current.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP
+            + "import os, pstats, signal\n"
+            "output = Path(sys.argv[1])\n"
+            "sum(range(10))\n"
+            "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "before = output.read_bytes()\n"
+            "profile.enable()\n"
+            "stages = []\n"
+            "snapshots = []\n"
+            "def observe(frame, name, argument):\n"
+            "    if name == 'c_call' and getattr(argument, '__name__', '') == 'getstats':\n"
+            "        snapshots.append(name)\n"
+            "def native(signum, frame):\n"
+            "    print('native-handler', flush=True)\n"
+            + (
+                "    raise RuntimeError('first native signal failure')\n"
+                if handler == "raise"
+                else "    return\n"
+            )
+            + (
+                "signal.signal(signal.SIGTERM, native)\n"
+                if handler != "default"
+                else ""
+            )
+            + "clock.FlextInfraPytestClock.register_signal_checkpoint(profile, output)\n"
+            "def interrupt(name, arguments):\n"
+            "    if name == 'tempfile.mkstemp':\n"
+            "        stages.append(name)\n"
+            f"    if name == {event!r}:\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            "sys.addaudithook(interrupt)\n"
+            "sys.setprofile(observe)\n"
+            "try:\n"
+            "    clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "except RuntimeError as failure:\n"
+            "    assert str(failure) == 'first native signal failure'\n"
+            "    assert output.read_bytes() == before\n"
+            "else:\n"
+            "    assert pstats.Stats(str(output)).get_stats_profile().func_profiles\n"
+            "finally:\n"
+            "    sys.setprofile(None)\n"
+            "assert len(stages) == 1, stages\n"
+            "assert len(snapshots) == "
+            f"{int(event == 'marshal.dumps' or handler == 'return')}, snapshots\n"
+            "assert not tuple(output.parent.glob('.current.pstats.*.tmp'))\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output)), cwd=tmp_path
+            )
+        )
+        tm.that(
+            result.outcome.raw_return_code,
+            eq=-signal.SIGTERM if handler == "default" else 0,
+            msg=result.stdout + result.stderr,
+        )
+        tm.fail(result.outcome.timed_out)
+        if handler != "default":
+            tm.that(result.stdout.count("native-handler"), eq=1)
+
+    @staticmethod
     def test_interrupted_publication_preserves_the_previous_readable_profile(
         tmp_path: Path,
     ) -> None:
@@ -61,6 +130,70 @@ class TestsFlextInfraPytestProfile:
             eq=True,
             msg=result.stdout + result.stderr,
         )
+
+    @staticmethod
+    def test_startup_transfers_finalization_to_launcher(tmp_path: Path) -> None:
+        """Startup and launcher share one profiler and publish only the elected output."""
+        output = tmp_path / "suite.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP
+            + "import atexit, os, pstats\n"
+            "stages = []\n"
+            "def observe(name, arguments):\n"
+            "    if name == 'tempfile.mkstemp':\n"
+            "        stages.append(arguments[0])\n"
+            "sys.addaudithook(observe)\n"
+            "def finished():\n"
+            "    assert len(stages) == 1, stages\n"
+            "    assert pstats.Stats(sys.argv[0]).get_stats_profile().func_profiles\n"
+            "    print('single-finalization', flush=True)\n"
+            "atexit.register(finished)\n"
+            "os.environ[child.FlextInfraPytestProfileChild.CHILD_ROOT_ENV] = sys.argv[2]\n"
+            "child.FlextInfraPytestProfileChild.startup(sys.argv[2] + '/sitecustomize.py')\n"
+            "assert child.FlextInfraPytestProfileChild.bootstrap()[1] is profile\n"
+            "sys.argv = [sys.argv[1], sys.argv[1], '--version']\n"
+            + c.Infra.PYTEST_PROFILE_LAUNCHER
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output), str(tmp_path)),
+                cwd=tmp_path,
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(result.outcome), msg=result.stderr)
+        tm.that(result.stdout, has="single-finalization")
+        tm.that(tuple(tmp_path.glob("*.pstats")), eq=(output,))
+
+    @staticmethod
+    @pytest.mark.parametrize("cause", ["exception", "exit", "success"])
+    def test_launcher_publication_failure_preserves_first_cause(
+        tmp_path: Path, cause: str
+    ) -> None:
+        """A failed final artifact cannot hide a native failure or accept success."""
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP
+            + "def fail_pytest(name, arguments):\n"
+            "    if name == 'exec' and arguments[0].co_filename.endswith('/pytest/__main__.py'):\n"
+            + (
+                "        raise RuntimeError('original pytest failure')\n"
+                if cause == "exception"
+                else f"        raise SystemExit({7 if cause == 'exit' else 0})\n"
+            )
+            + "sys.addaudithook(fail_pytest)\n"
+            + c.Infra.PYTEST_PROFILE_LAUNCHER
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(tmp_path / "missing" / "suite.pstats")),
+                cwd=tmp_path,
+            )
+        )
+        tm.that(result.outcome.raw_return_code, eq=7 if cause == "exit" else 1)
+        tm.fail(result.outcome.timed_out)
+        tm.that(result.stderr, has="FileNotFoundError")
+        if cause == "exception":
+            tm.that(result.stderr, has="RuntimeError: original pytest failure")
+            tm.that(result.stderr, has="profile publication failed")
 
     @staticmethod
     def test_immutable_profile_is_linked_before_public_replacement(

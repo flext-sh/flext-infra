@@ -2194,21 +2194,21 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         self,
         tmp_path: Path,
     ) -> None:
-        """Installation provenance and Git cleanliness retain separate verdicts."""
+        """Installation provenance accepts and preserves independent Git work."""
         workspace = self._locked_workspace(tmp_path)
         member = workspace / "sample-member"
         unrelated = member / "independent-note.txt"
         tm.ok(u.Cli.atomic_write_text_file(unrelated, "independent change\n"))
         manifest = tm.ok(u.Infra.load_workspace_manifest(workspace))[0]
         tm.ok(self._locked_verdict(workspace), eq=len(manifest.members))
-        tm.that(
-            tm.fail(
-                FlextInfraGitService.verify_clean(
-                    m.Infra.GitStatusRequest(repo_root=member),
-                ),
+        report = tm.ok(
+            FlextInfraGitService.verify_clean(
+                m.Infra.GitStatusRequest(repo_root=member),
             ),
-            has=unrelated.name,
         )
+        tm.that(report.dirty, eq=True)
+        tm.that(report.porcelain, has=unrelated.name)
+        tm.that(unrelated.read_text(encoding="utf-8"), eq="independent change\n")
 
     @pytest.mark.parametrize(
         ("defect", "diagnostic"),

@@ -1522,10 +1522,15 @@ complete execution. Uploading reports does not change the native command status 
 authorize cache publication from an incomplete run.
 
 The SSH gate-attestation owner consumes an original producer receipt and verifies its
-candidate, context, policy and report digests before signing. It does not invoke Make.
-Schema v2 addresses each immutable proof by repository, commit, effective runtime/policy
-context and stage. Repeated publication verifies the existing signed object and its
-original artifacts before reusing it. Signed public facts retain the actual process
+workspace execution context, policy and report digests before signing. It does not invoke Make.
+Schema v3 addresses each immutable proof by original receipt digest, effective
+runtime/policy context and stage. The signed Git tag anchors the exact original receipt
+blob, never a commit or tree. An unborn repository needs no commit to store proof.
+Unlike v2, the signed command retains workspace scope, runtime identity and nullable
+before/after Git observations; the JSON shapes are not interchangeable.
+Repeated publication compares the canonical signed fields, not process-local model
+state, and verifies the existing object and original artifacts before reusing it.
+Signed public facts retain the actual process
 outcome, portable operation intent and diagnostic classification. The original public
 receipt binds the exact argv digest; command bytes and the working directory remain in
 private execution checkpoints, outside the CI artifact allowlist.
@@ -1538,9 +1543,14 @@ digests remain failures. The complete-execution policy may admit finished findin
 preserving their nonzero status; the clean-quality policy rejects them. Bare `make check`
 uses the existing workspace capture route to execute the original checker once. It
 preserves that producer's native process outcome and owns an exclusive report base,
-then writes an immutable receipt only when the candidate and original reports remain
-eligible. Dirty, changed or unversioned candidates still execute and retain a capture
-result without claiming reusable evidence. The native pytest runner captures its
+then writes an immutable receipt when the original reports and execution context remain
+valid. Dirty, changed or unversioned workspaces still execute and can retain original
+execution receipts with observational Git metadata, never commit-validation proof.
+Tracked and untracked WIP, unknown Git identity, missing origin and HEAD/tree movement
+are not acceptance failures. Observations retain `true` or `null` rather than pretending
+to be clean. Unrelated changes do not invalidate the run; relevant inputs require
+affected-scope revalidation, not a globally frozen tree. No receipt certifies all WIP.
+Configuration or runtime drift still prevents receipt publication. The native pytest runner captures its
 candidate immediately before the original suite process and publishes original receipts
 after accounting and diagnostics are written. It retains its existing deadline and
 testmon execution. Both producers share the same capture and report-binding owner.
@@ -1558,6 +1568,12 @@ portable operation intent and actual runtime. Tests also bind their existing nat
 `testmon_environment` identity. Completion reloads the same target loader and rejects
 configuration or runtime drift while preserving the original process outcome. Config
 payloads and machine paths are not exported with these fingerprints.
+Signed verification selects the original receipt explicitly and checks the tag's blob
+bytes against it. Neither current HEAD nor a caller-supplied commit selects the proof.
+Missing origin does not
+select a remote effect or prevent local capture, signing or verification. Toolchain
+verification reads the elected live resolver inputs and effective configuration,
+including uncommitted values; membership in a Git commit is not required.
 
 `make status` also reads the selected repository's native Git signing configuration
 through the existing workspace CLI. The report names the declared signing format,
