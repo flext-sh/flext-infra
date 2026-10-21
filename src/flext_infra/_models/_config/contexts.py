@@ -260,8 +260,17 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ""
 
-    class ProjectRenderContext(MakeRenderContext):
+    class ProjectRenderContext(FlextInfraConfigModelsContract.ConfigContract):
         """Complete typed input consumed by project scaffold templates."""
+
+        dist: t.NonEmptyStr = m.Field(description="Project distribution identity")
+        make_profile: c.Infra.MakeProfile = m.Field(
+            description="Selected repository Make profile"
+        )
+        uv_link_mode: t.NonEmptyStr = m.Field(description="Declared UV link mode")
+        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext = m.Field(
+            description="Resolved tooling document required by project metadata"
+        )
 
         # This render field is the exact
         # projection of ProjectSpec; templates must not infer or default a hook.

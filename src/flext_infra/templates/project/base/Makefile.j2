@@ -908,10 +908,12 @@ endif
 # Local setup provisions declared gitlinks. CI consumes the committed lock
 # without initializing member checkouts.
 _builtin_setup_environment: $(if $(filter {{ make.uv_resolution.hosted_value }},$({{ make.uv_resolution.hosted_variable }})),,_builtin_setup_submodules)
-	+@if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
+	+@set -eu; \
+	if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(RUNTIME_ROOT)/Makefile" setup; \
 	else \
 		if [ -n "$(EDITABLE_SUPPLIER_ACTIVE)" ]; then \
+			printf 'setup: selected live supplier requires native view reconciliation; delegating lock writes to make upg\n'; \
 			$(SELF_MAKE) upg; \
 		fi; \
 		$(SETUP_ENVIRONMENT_RECIPE); \

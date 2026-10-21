@@ -172,7 +172,8 @@ class TestsFlextInfraPytestProfile:
         script = (
             c.Infra.PYTEST_PROFILE_BOOTSTRAP + "def fail_pytest(name, arguments):\n"
             "    if (name == 'exec'\n"
-            "            and arguments[0].co_filename.endswith('/pytest/__main__.py')):\n"
+            "            and arguments[0].co_filename.endswith(\n"
+            "                '/pytest/__main__.py')):\n"
             + (
                 "        raise RuntimeError('original pytest failure')\n"
                 if cause == "exception"

@@ -125,6 +125,7 @@ class FlextInfraPyprojectModernizerTooling:
         request: m.Infra.ToolingContextRequest,
         *,
         source_project: p.Infra.RopeProject | None = None,
+        derive_runtime: bool = True,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from the seed conformed to one topology.
 
@@ -155,18 +156,19 @@ class FlextInfraPyprojectModernizerTooling:
                 repository_namespace_packages=request.topology.repository_namespace_packages,
             ),
         )
-        runtime = u.Cli.toml_mapping_ensure_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "flake8-type-checking"),
-        )
-        runtime["runtime-evaluated-base-classes"] = list(
-            u.Infra.runtime_evaluated_base_classes(
-                project_dir,
-                request.planned_sources,
-                tool_config.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
-                source_project=source_project,
-            ),
-        )
+        if derive_runtime:
+            runtime = u.Cli.toml_mapping_ensure_path(
+                payload,
+                (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "flake8-type-checking"),
+            )
+            runtime["runtime-evaluated-base-classes"] = list(
+                u.Infra.runtime_evaluated_base_classes(
+                    project_dir,
+                    request.planned_sources,
+                    tool_config.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
+                    source_project=source_project,
+                ),
+            )
         return self.tooling_context_from_payload(
             payload,
             project_kind=self._project_kind(

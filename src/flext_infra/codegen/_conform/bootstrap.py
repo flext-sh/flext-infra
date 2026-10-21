@@ -215,7 +215,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     templates=False,
-                    tooling=False,
+                    tooling=True,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.EDITOR:

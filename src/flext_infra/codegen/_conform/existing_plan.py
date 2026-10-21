@@ -188,6 +188,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 f"elapsed={time.monotonic() - managed_started:.2f}s",
             )
         if managed_artifacts.failure or not (contract.tooling or contract.custom):
+            tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
+            if managed_artifacts.success and contract.pyproject:
+                tooling_context = FlextInfraPyprojectModernizer(
+                    repository_root=root,
+                    skip_check=True,
+                    managed_artifacts=managed_artifacts.value.resolution,
+                ).resolve_tooling_context(
+                    self._existing_tooling_request(target, identity, codegen, ()),
+                    derive_runtime=False,
+                )
+                if tooling_context.failure:
+                    return result_type.from_failure(tooling_context)
+                tooling_runtime = tooling_context.value
             return (
                 result_type.from_failure(managed_artifacts)
                 if managed_artifacts.failure
@@ -196,7 +209,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         target=target,
                         workspace=workspace,
                         codegen=codegen,
-                        tooling_runtime=None,
+                        tooling_runtime=tooling_runtime,
                         managed_artifacts=managed_artifacts.value,
                     ),
                     contract=contract,
@@ -225,7 +238,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 and not self.state.planning_issues
             ):
                 self.state.completed_source_plans = sources.value[0]
-            tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
+            tooling_runtime = None
             if contract.tooling:
                 tooling_context = self._existing_tooling_context(
                     self._existing_tooling_request(

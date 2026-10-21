@@ -460,10 +460,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectRenderContext].from_failure(dependencies)
         project_dependencies, development_dependencies = dependencies.value
         profile = target.make_profile
-        make_context = self.make_render_context(render_inputs)
-        if make_context.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        tooling = make_context.value.tooling_runtime.document
+        tooling_runtime = render_inputs.tooling_runtime
+        if tooling_runtime is None:
+            return r[m.Infra.ProjectRenderContext].fail(
+                "Project rendering requires resolved tooling context",
+            )
+        tooling = tooling_runtime.document
         if tooling is None:
             return r[m.Infra.ProjectRenderContext].fail(
                 "Project rendering requires the elected tooling document",
@@ -487,10 +489,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 docs_audit=workspace.docs_audit,
-                **make_context.value.model_dump(
-                    by_alias=True,
-                    exclude_computed_fields=True,
-                ),
+                dist=repository.distribution,
+                make_profile=profile,
+                uv_link_mode=self.link_mode(repository, codegen.toolchain),
+                tooling_runtime=tooling_runtime,
                 scaffold=codegen.scaffold,
                 gitignore_sections=u.Infra.gitignore_sections(
                     codegen,
