@@ -690,7 +690,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
         goal = f"{receiver}.{member}"
         return m.Infra.RopeContractRule(
             id=f"project-model-annotation-{index}",
-            pattern="${receiver}",
+            pattern=f"${receiver}",
             goal=goal,
             arguments={"receiver": f"name={identity}"},
             imports={receiver: f"from {module} import {wrapper} as {receiver}"},

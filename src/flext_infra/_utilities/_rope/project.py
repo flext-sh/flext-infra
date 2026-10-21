@@ -10,7 +10,6 @@ import sys
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
-from itertools import chain
 from os import PathLike
 from os.path import normpath, realpath
 from pathlib import Path

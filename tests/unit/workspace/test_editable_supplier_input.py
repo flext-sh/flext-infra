@@ -30,8 +30,10 @@ class TestsFlextInfraEditableSupplierInput:
                     sys.executable,
                     "-I",
                     "-c",
-                    "from flext_infra import settings; "
-                    "print(settings.Infra.editable_supplier_root is None)",
+                    (
+                        "from flext_infra import settings; "
+                        "print(settings.Infra.editable_supplier_root is None)"
+                    ),
                 ],
                 cwd=tmp_path,
                 options=m.Cli.ProcessOptions(

@@ -268,7 +268,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     first_conflict = exc
                 try:
                     if not self._source_epoch_changed(project, receipt, exc):
-                        raise exc
+                        raise
                     classified = FlextInfraCodegenLazyInit.classify_source_conflict(
                         receipt.model_copy(
                             update={

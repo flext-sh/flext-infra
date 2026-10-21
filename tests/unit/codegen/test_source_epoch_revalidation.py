@@ -223,18 +223,20 @@ class TestsFlextInfraSourceEpochRevalidation:
             before=original,
             source_states=(original,),
         )
-        with u.Infra.facade_source_project(
-            root,
-            source_states=(original,),
-            declared_files=(declaration,),
-        ) as (project, _, _):
-            with project.source_successor() as successor:
-                with successor.source_consumption() as consumed:
-                    tm.that(successor.source_text(source), eq=desired)
-                witnesses = tuple(
-                    state for state in consumed.receipt().inputs if state.path == source
-                )
-                tm.that(witnesses, eq=(original,))
+        with (
+            u.Infra.facade_source_project(
+                root,
+                source_states=(original,),
+                declared_files=(declaration,),
+            ) as (project, _, _),
+            project.source_successor() as successor,
+        ):
+            with successor.source_consumption() as consumed:
+                tm.that(successor.source_text(source), eq=desired)
+            witnesses = tuple(
+                state for state in consumed.receipt().inputs if state.path == source
+            )
+            tm.that(witnesses, eq=(original,))
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE = 1\n")
 
     @staticmethod
@@ -430,7 +432,9 @@ class TestsFlextInfraSourceEpochRevalidation:
             tm.that(failure.value is analysis.exception, truth=True)
 
     @staticmethod
-    def test_planner_does_not_retry_unreadable_repository_metadata(tmp_path: Path) -> None:
+    def test_planner_does_not_retry_unreadable_repository_metadata(
+        tmp_path: Path,
+    ) -> None:
         """A failed metadata observation escapes with its native cause, without retry."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / "pyproject.toml"
@@ -507,7 +511,9 @@ class TestsFlextInfraSourceEpochRevalidation:
             return
         tm.that(analysis.exception, eq=None)
         tm.that(
-            any(b"Published" in (file.desired_content or b"") for file in analysis.files),
+            any(
+                b"Published" in (file.desired_content or b"") for file in analysis.files
+            ),
             eq=True,
         )
 
@@ -552,11 +558,16 @@ class TestsFlextInfraSourceEpochRevalidation:
         tm.that(analysis.exception is conflicts[0], truth=True)
         tm.that(bool(analysis.issues), truth=True)
         tm.that(
-            any(issue.file == str(package / c.Infra.INIT_PY) for issue in analysis.issues),
+            any(
+                issue.file == str(package / c.Infra.INIT_PY)
+                for issue in analysis.issues
+            ),
             truth=True,
         )
         retained = next(
-            file for file in analysis.files if file.path == independent / c.Infra.INIT_PY
+            file
+            for file in analysis.files
+            if file.path == independent / c.Infra.INIT_PY
         )
         tm.that(b"Independent" in (retained.desired_content or b""), truth=True)
         tm.that(

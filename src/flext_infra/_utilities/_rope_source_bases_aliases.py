@@ -10,8 +10,7 @@ import ast
 import importlib.util
 from pathlib import Path
 
-from flext_core import build_lazy_import_map
-from flext_core import u as core_u
+from flext_core import build_lazy_import_map, u as core_u
 from typing_extensions import TypeForm
 
 from flext_infra import c, m, p, t
@@ -347,6 +346,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
         Raises:
             ValueError: If arguments are ambiguous, dynamic or unsupported.
+
         """
         arguments = {keyword.arg: keyword.value for keyword in call.keywords}
         if (
