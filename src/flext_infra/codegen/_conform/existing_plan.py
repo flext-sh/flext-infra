@@ -534,14 +534,21 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
+        root = target.root
         if (
             contract.destinations is not None
             and contract.destinations <= self._pyproject_destinations(codegen)
         ):
-            # Metadata-only ownership does not select Python projection plans.
-            return result_type.ok(((), (), (), ()))
-        root = target.root
-        lazy_result = self._existing_lazy_sources(root)
+            # Metadata-only planning keeps managed projections and authenticated
+            # source capture, but does not elect Python lazy initializers.
+            lazy_result = r[
+                t.Pair[
+                    t.SequenceOf[m.Infra.CodegenFilePlan],
+                    t.VariadicTuple[m.Cli.AtomicFileState],
+                ]
+            ].ok(((), ()))
+        else:
+            lazy_result = self._existing_lazy_sources(root)
         providers = self.state.provider_plans
         if providers is not None:
             lazy_result = lazy_result.map(
