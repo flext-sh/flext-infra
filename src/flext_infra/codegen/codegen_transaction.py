@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
     FlextInfraMiseArtifactsFiles,
@@ -69,7 +69,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         ) or (workspace.resolve(),)
         participants = set(scopes)
         for scope in scopes:
-            elected = FlextInfraStagedPackage._workspace_layouts(scope)
+            elected = FlextInfraStagedPackage.workspace_layouts(scope)
             if elected.failure:
                 return r[T].from_failure(elected)
             participants.update(
@@ -101,34 +101,17 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             options.runtime_check,
         )
 
-        def capture(scope_root: Path) -> p.Result[T]:
-            planned = FlextInfraStagedPackage.plan_sources(
-                workspace, updates, options=source_options
-            )
-            if planned.failure:
-                return r[T].from_failure(planned)
-            plan = planned.value
-            if frozenset(plan.roots) != frozenset(participants):
-                return r[T].fail("source preview participants changed before capture")
-            return self._locked_source_preview(
-                scope_root,
-                plan,
-                roots,
-                validator,
-                runtime,
-            )
-
         def operation(scope_root: Path) -> p.Result[T]:
-            for identity in identities:
-                observed = u.Cli.atomic_plan_directory_chain(identity.target)
-                if observed.failure:
-                    return r[T].from_failure(observed)
-                if observed.value != identity:
-                    return r[T].fail(
-                        f"source preview participant changed before capture: {identity.target}"
-                    )
             return self._source_controlplane_operation(
-                roots, lambda: capture(scope_root)
+                roots,
+                lambda: FlextInfraStagedPackage.plan_sources(
+                    workspace, updates, options=source_options
+                ).flat_map(
+                    lambda plan: self._locked_source_preview(
+                        scope_root, plan, roots, validator, runtime
+                    )
+                ),
+                identities,
             )
 
         return self.run_files_locked(roots, operation)
@@ -154,6 +137,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             A result wrapping the validation outcome or the first failure.
 
         """
+        if frozenset(plan.roots) != frozenset(roots.values()):
+            return r[T].fail("source preview participants changed before capture")
         source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
         if source_barrier.failure:
             return r[T].from_failure(source_barrier)
@@ -379,8 +364,24 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 and (path not in plan.updates or plan.updates[path] is not None)
             })
         )
+        census_packages = tuple(
+            layout.package_name
+            for layout in layouts
+            if layout.project_root == project_root
+        )
+        census_modules = tuple(
+            name
+            for name in modules
+            if any(
+                name == package or name.startswith(package + ".")
+                for package in census_packages
+            )
+            and not frozenset(config.Infra.codegen.source_scan_ignored).intersection(
+                name.split(".")
+            )
+        )
         code = (
-            "import ast, importlib, importlib.util, sys\n"
+            "import ast, importlib, importlib.util, inspect, sys\n"
             "from importlib.machinery import PathFinder\n"
             "from graphlib import TopologicalSorter\n"
             "from pathlib import Path\n"
@@ -419,15 +420,20 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             "    spec.loader.exec_module(sys.modules[spec.name])\n"
             f"for name in {modules!r}:\n"
             "    importlib.import_module(name)\n"
-            "from flext_infra import m\n"
-            "from flext_infra.validate import FlextInfraRuntimeCensusValidator\n"
             + (
-                "validator = FlextInfraRuntimeCensusValidator.for_project("
-                f"Path({str(view_root / project_root.relative_to(plan.workspace))!r})).unwrap()\n"
-                "report = validator.build_report().unwrap()\n"
+                "from flext_core import m, u\n"
+                "reports = []\n"
+                f"for name in {census_modules!r}:\n"
+                "    module = importlib.import_module(name)\n"
+                "    for _, klass in inspect.getmembers(module, inspect.isclass):\n"
+                "        if klass.__module__ == name:\n"
+                "            reports.append(u.check(klass))\n"
+                "report = m.Report(\n"
+                "    violations=tuple(v for r in reports for v in r.violations),\n"
+                "    deferred=tuple(d for r in reports for d in r.deferred),\n"
+                ")\n"
                 if project_root is not None
-                else "report = m.Infra.ValidationReport(passed=True, "
-                "violations=(), summary='sealed runtime imports authenticated')\n"
+                else ""
             )
             + "origins = {name: Path(source) / name for name, source in bindings}\n"
             "for name, module in tuple(sys.modules.items()):\n"
@@ -447,7 +453,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             "after = environment.stat()\n"
             "if environment.is_symlink() or (after.st_dev, after.st_ino) != expected:\n"
             "    raise RuntimeError('candidate physical runtime identity changed')\n"
-            "print(report.model_dump_json())\n"
+            + (
+                "print(report.model_dump_json(round_trip=True))\n"
+                if project_root is not None
+                else ""
+            )
         )
         output = u.Cli.run_raw(
             [str(interpreter), "-I", "-B", "-W", "error", "-"],
@@ -460,13 +470,38 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         )
         if output.failure:
             return r[m.Infra.ValidationReport].from_failure(output)
-        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+        if (
+            not u.Cli.process_succeeded(output.value.outcome)
+            or output.value.stderr
+            or (project_root is None and output.value.stdout)
+        ):
             return r[m.Infra.ValidationReport].fail(
                 f"candidate runtime consumer failed: {output.value.outcome}:\n"
                 f"{output.value.stdout}{output.value.stderr}",
             )
+        violations: tuple[str, ...] = ()
+        summary = "sealed runtime imports authenticated"
+        if project_root is not None:
+            report = m.Report.model_validate_json(output.value.stdout)
+            violations = tuple(
+                f"{violation.file_path + ':' if violation.file_path else ''}"
+                f"{str(violation.line_number) + ':' if violation.line_number else ''}"
+                f"{violation.qualname}"
+                f"{' [' + violation.rule_id + ']' if violation.rule_id else ''}: "
+                f"{violation.message}"
+                for violation in report.violations
+            )
+            summary = (
+                f"runtime census found {len(violations)} violation(s)"
+                if violations
+                else "runtime census passed"
+            )
         return r[m.Infra.ValidationReport].ok(
-            m.Infra.ValidationReport.model_validate_json(output.value.stdout)
+            m.Infra.ValidationReport(
+                passed=not violations,
+                violations=violations,
+                summary=summary,
+            )
         )
 
     @staticmethod

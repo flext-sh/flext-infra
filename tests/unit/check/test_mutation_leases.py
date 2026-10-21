@@ -21,6 +21,27 @@ class TestsFlextInfraMutationLeases:
 
     @staticmethod
     @pytest.mark.parametrize("git_owned", [False, True])
+    def test_source_epoch_contains_stable_native_lease_identity(
+        tmp_path: Path,
+        *,
+        git_owned: bool,
+    ) -> None:
+        """Prepare the owned lock before capture without hiding other members."""
+        root = u.Tests.git_repository(tmp_path) if git_owned else tmp_path
+        control = root / c.Infra.TRANSACTION_STATE_DIRNAME
+        journal = control / c.Infra.JOURNAL_NAME
+        lock = journal.with_name(f"{journal.name}.lock")
+        tm.ok(FlextInfraCodegenFileLeases.prepare_source_controlplanes((root,)))
+        before = tm.ok(u.Cli.atomic_inventory_physical_directory(control))
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(lock, required=True))
+        tm.ok(FlextInfraCodegenFileLeases.prepare_source_controlplanes((root,)))
+        tm.that(tm.ok(u.Cli.atomic_inventory_physical_directory(control)), eq=before)
+        tm.that(tm.ok(u.Cli.atomic_read_binary_file_state(lock)), eq=state)
+        (control / "other-owner").write_text("retained", encoding=c.DEFAULT_ENCODING)
+        tm.that(tm.ok(u.Cli.atomic_inventory_physical_directory(control)), ne=before)
+
+    @staticmethod
+    @pytest.mark.parametrize("git_owned", [False, True])
     def test_format_waits_for_scope_writer_and_does_not_apply_lint(
         tmp_path: Path,
         *,

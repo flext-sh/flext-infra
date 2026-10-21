@@ -387,6 +387,13 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Original cohort plans available to native source reads",
         )
+        completed_source_plans: (
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Authenticated complete source output, absent before validation",
+        )
         repository_root: Path = m.Field(
             default=Path(),
             exclude=True,

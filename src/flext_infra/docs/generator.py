@@ -196,10 +196,16 @@ class FlextInfraDocGenerator(
                 scope,
                 root_scope=root_scope,
             )
+            metadata_paths = tuple(
+                plan.path
+                for plan in bundle.metadata_files
+                if plan.project == scope.path and not collocated
+            )
+            all_paths = (*paths, *metadata_paths)
             report = m.Infra.DocsPhaseReport(
                 phase="generate",
                 scope=scope.name,
-                changed_files=len(changed),
+                changed_files=sum(path in written for path in all_paths),
                 generated=len(changed),
                 applied=True,
                 source="code-docstring-ssot",
@@ -209,11 +215,13 @@ class FlextInfraDocGenerator(
                         path=str(path),
                         written=path in written,
                     )
-                    for path in paths
+                    for path in all_paths
                 ),
                 result=c.Infra.ResultStatus.OK,
                 reason=(
-                    "aggregate-root-owner" if collocated else f"changes:{len(changed)}"
+                    "aggregate-root-owner"
+                    if collocated
+                    else f"changes:{sum(path in written for path in all_paths)}"
                 ),
                 passed=True,
             )
@@ -337,10 +345,15 @@ class FlextInfraDocGenerator(
         if planned.failure:
             return r[tuple[_DocsScopePlan, ...]].from_failure(planned)
         scope_plans: list[_DocsScopePlan] = []
+        metadata = {plan.project: plan for plan in bundle.metadata_files}
         offset = 0
         for scoped in bundle.scopes:
             size = len(scoped.artifacts)
-            scope_plans.append((scoped.scope, planned.value[offset : offset + size]))
+            files = planned.value[offset : offset + size]
+            projection = metadata.pop(scoped.scope.path, None)
+            if projection is not None:
+                files = (*files, projection)
+            scope_plans.append((scoped.scope, files))
             offset += size
         return r[tuple[_DocsScopePlan, ...]].ok(tuple(scope_plans))
 

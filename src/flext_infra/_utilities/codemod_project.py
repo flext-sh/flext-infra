@@ -33,6 +33,7 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodRules,
@@ -46,6 +47,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -431,6 +433,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         predicates = {
+            c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
             c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
             c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
             c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
@@ -443,6 +446,7 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.LATER_LAYER,
             c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
             c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
+            c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION,
         }
         selected = tuple(
             rule
@@ -467,6 +471,21 @@ class FlextInfraUtilitiesCodemodProject(
                     c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
                 }
             ),
+        )
+        modules = tuple(
+            dict.fromkeys((
+                *modules,
+                *(
+                    module
+                    for rule in selected
+                    for condition in rule.context
+                    if (
+                        condition.predicate
+                        is c.Infra.CodemodContextPredicate.MEMBER_RELOCATION
+                    )
+                    for module in (condition.arg[0], condition.arg[3])
+                ),
+            ))
         )
         return frozenset(rule.id for rule in selected), modules
 
@@ -525,6 +544,7 @@ class FlextInfraUtilitiesCodemodProject(
                 continue
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
                 c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
@@ -612,6 +632,9 @@ class FlextInfraUtilitiesCodemodProject(
         ):
             return cls._layer_zero_context(admission, source, project, sources)
         messages = {
+            c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION: (
+                f"{admission.rule.id}: static publication requires its native epoch"
+            ),
             c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION: (
                 f"{admission.rule.id}: execution context requires its "
                 "original native epoch"
@@ -631,7 +654,259 @@ class FlextInfraUtilitiesCodemodProject(
             raise ValueError(messages[condition.predicate])
         if condition.predicate is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION:
             return cls._isolated_execution_holds(project, condition, source, sources)
+        if (
+            condition.predicate
+            is c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION
+        ):
+            return cls._canonical_static_publication(
+                admission, condition, source, project, sources
+            )
         return source in cls.implementation_owner_modules(project, condition, sources)
+
+    @classmethod
+    def _static_publication_module(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        source: Path,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Infra.RopePyModule:
+        """Resolve a source module only in its original authenticated project epoch.
+
+        Returns:
+            The original native source module, without reopening a live substitute.
+
+        Raises:
+            ValueError: The capture, source graph, and original snapshot disagree.
+
+        """
+        snapshot = admission.snapshot
+        if (
+            snapshot is None
+            or Path(project.root.real_path).resolve() != admission.root.resolve()
+        ):
+            msg = "static publication requires its original snapshot and project"
+            raise ValueError(msg)
+        content = sources[source]
+        original = next((row for row in snapshot.states if row.path == source), None)
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            project.get_resource(
+                source.relative_to(admission.root.resolve()).as_posix()
+            ),
+            source,
+        )
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        if (
+            original is None
+            or original.content != content.encode("utf-8")
+            or module.source_code != content
+        ):
+            msg = f"static publication differs from its original native epoch: {source}"
+            raise ValueError(msg)
+        return module
+
+    @classmethod
+    def _canonical_static_publication(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+    ) -> bool:
+        """Prove a generated root's static alias agrees with its native publisher.
+
+        Returns:
+            Whether the captured import is the canonical static publication.
+
+        Raises:
+            ValueError: The required provider capture is missing.
+
+        """
+        module = cls._static_publication_module(admission, source, project, sources)
+        content = module.source_code
+        capture = m.Infra.AstGrepCapture.model_validate(
+            admission.captures[condition.variable]
+        )
+        span = cls._validated_capture_span(source, capture, content.encode("utf-8"))
+        if condition.of is None:
+            msg = "static publication requires its provider capture"
+            raise ValueError(msg)
+        provider = cls._captured_text(
+            admission.rule, condition.of, admission.captures, source
+        )
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(
+            admission.root, rope_project=project
+        )
+        if (
+            layout is None
+            or source != layout.init_path
+            or FlextInfraUtilitiesCodegenFilePlan.codegen_initializer_is_authored(
+                content.encode("utf-8")
+            )
+            or provider.rpartition(".")[0] != layout.package_name
+            or capture.text
+            not in (
+                FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                    content
+                )
+            )
+        ):
+            return False
+        routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+            layout.package_name, source, content, project=project, pymodule=module
+        )
+        route = routes.get(capture.text)
+        if route is None or (
+            route.target != provider or route.attributes != (capture.text,)
+        ):
+            return False
+        declared_resource = project.find_module(provider)
+        if declared_resource is None:
+            return False
+        provider_path = FlextInfraUtilitiesRopeCore.resource_file_path(
+            project, declared_resource
+        )
+        if (
+            provider_path is None
+            or provider_path.parent != layout.package_dir
+            or provider_path.suffix != c.Infra.EXT_PYTHON
+            or provider_path not in sources
+        ):
+            return False
+        cls._static_publication_module(admission, provider_path, project, sources)
+        policy = FlextInfraUtilitiesCodegenNamespace.publication_policy(
+            provider_path,
+            rope_project=project,
+            project_layout=layout,
+            current_pkg=layout.package_name,
+        )
+        if (
+            policy.expected_alias != capture.text
+            or not policy.include_in_lazy_init
+            or not policy.export_symbols
+        ):
+            return False
+        scope = module.get_scope()
+        return (
+            cls._static_publication_native_import(
+                project, module, (provider, capture.text), (span[1], span[2])
+            )
+            and cls.stable_binding_chain(
+                (project, module, scope), capture.text, len(content), sources
+            )
+            and cls._binding_symbols_match(
+                cls.resolve_declared_binding(
+                    project,
+                    layout.package_name,
+                    capture.text,
+                    admission.root.resolve(),
+                    sources,
+                ),
+                FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    scope, capture.text
+                ),
+            )
+        )
+
+    @classmethod
+    def _static_publication_native_import(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        imported: t.StrPair,
+        span: t.Pair[int, int],
+    ) -> bool:
+        """Require the real module guard and installer, not same-spelled locals.
+
+        Returns:
+            Whether a static import and the sole native installer share this root.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        content = module.source_code
+        start, end = span
+        rows = FlextInfraUtilitiesRopeStructure.logical_statements(content)
+        imports = tuple(
+            row
+            for row in rows
+            if (
+                row.start_offset <= start < end <= row.end_offset
+                and row.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+                and row.category == c.Infra.StatementCategory.FROM_IMPORT
+                and row.type_checking_guarded
+            )
+        )
+        if len(imports) != 1:
+            return False
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            return False
+        scope = module.get_scope()
+        expected_guard = runtime.qualified_name(
+            project, "TYPE_CHECKING", module_name="typing"
+        )
+        expected_installer = runtime.qualified_name(
+            project, "install_lazy_exports", module_name=c.Infra.LAZY_BOOTSTRAP_MODULE
+        )
+        guards = tuple(
+            node
+            for node in tree.body
+            if isinstance(node, ast.If)
+            and any(
+                isinstance(statement, ast.ImportFrom)
+                and statement.lineno == imports[0].line
+                and statement.module == imported[0]
+                and statement.level == 0
+                and any(
+                    alias.name == imported[1] and alias.asname in {None, imported[1]}
+                    for alias in statement.names
+                )
+                for statement in node.body
+            )
+        )
+        if len(guards) != 1:
+            return False
+        guard = guards[0].test
+        if isinstance(guard, ast.Compare) and (
+            len(guard.ops) == len(guard.comparators) == 1
+            and isinstance(guard.ops[0], ast.Is)
+            and isinstance(guard.comparators[0], ast.Constant)
+            and guard.comparators[0].value is True
+        ):
+            guard = guard.left
+        if not isinstance(guard, ast.Name) or not (
+            cls._binding_symbols_match(
+                expected_guard, runtime.resolve_symbol(scope, guard)
+            )
+            and cls.single_reaching_binding(
+                module,
+                scope,
+                guard.id,
+                len(content),
+            )
+        ):
+            return False
+        installers = tuple(
+            call
+            for node in tree.body
+            if isinstance(node, ast.Expr | ast.Assign | ast.AnnAssign)
+            for call in (
+                node.value.value
+                if isinstance(node.value, ast.Subscript)
+                else node.value,
+            )
+            if isinstance(call, ast.Call)
+            and cls._binding_symbols_match(
+                expected_installer, runtime.resolve_symbol(scope, call.func)
+            )
+        )
+        return len(installers) == 1 and cls.single_reaching_binding(
+            module,
+            scope,
+            ast.unparse(installers[0].func).split(".")[0],
+            len(content),
+        )
 
     @staticmethod
     def _layer_zero_context(

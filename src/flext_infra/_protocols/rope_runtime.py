@@ -284,6 +284,18 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
+    class RopeModuleScope(RopeScope, Protocol):
+        """Lexical lookup owned by the global scope of a parsed source module."""
+
+        def get_inner_scope_for_line(
+            self, lineno: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
+        def get_inner_scope_for_offset(
+            self, offset: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
+    @runtime_checkable
     class RopeSemanticModule(Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 
@@ -325,7 +337,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeModuleScope: ...
 
     @runtime_checkable
     class RopePyModule(RopeParsedModule, Protocol):

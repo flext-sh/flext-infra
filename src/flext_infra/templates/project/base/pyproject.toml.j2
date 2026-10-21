@@ -101,6 +101,8 @@ Repository = "{{ repository }}"
 
 [tool.flext.docs]
 package_name = {{ package_name | tojson }}
+{% if documentation_language != "en" %}documentation_language = {{ documentation_language | tojson }}
+{% endif %}
 
 {% if make_profile == "workspace" and project_declaration_resource %}
 

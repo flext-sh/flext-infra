@@ -125,6 +125,8 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     def docs_scope_from_sources(
         scope: m.Infra.DocScope,
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
+        *,
+        metadata_projection: m.Infra.CodegenFilePlan | None = None,
     ) -> m.Infra.DocScope:
         """Derive scope metadata and package identity from the captured inventory.
 
@@ -140,6 +142,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         state = FlextInfraUtilitiesDocsScope.project_state(
             scope.path,
             source_states=source_states,
+            metadata_projection=metadata_projection,
         )
         if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):
             msg = f"docs scope is disabled in captured metadata: {scope.path}"
@@ -148,6 +151,11 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             update={
                 "name": state.project_name,
                 "package_name": state.package_name,
+                "documentation_language": (
+                    FlextInfraUtilitiesDocsScope.docs_documentation_language(
+                        state.docs_meta
+                    )
+                ),
                 "project_class": (
                     FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                         state.project_name,

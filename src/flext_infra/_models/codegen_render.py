@@ -488,6 +488,49 @@ class FlextInfraModelsCodegenRender:
         mkdocstrings_paths_block: str = m.Field(
             description="Rendered mkdocstrings source paths.",
         )
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
+
+        @m.computed_field
+        @property
+        def documentation_label(self) -> str:
+            """The project documentation title label."""
+            return c.Infra.DocumentationText.DOCUMENTATION.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def site_description(self) -> str:
+            """The root site presentation description."""
+            return c.Infra.DocumentationText.ROOT_SITE_DESCRIPTION.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def project_site_description(self) -> str:
+            """The project site description prefix."""
+            return c.Infra.DocumentationText.PROJECT_SITE_DESCRIPTION.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def dark_mode_label(self) -> str:
+            """The Material palette action for dark mode."""
+            return c.Infra.DocumentationText.DARK_MODE.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def light_mode_label(self) -> str:
+            """The Material palette action for light mode."""
+            return c.Infra.DocumentationText.LIGHT_MODE.localized(
+                self.documentation_language
+            )
 
     class MkdocsProjectRenderContext(MkdocsRenderContext):
         """Validated MkDocs context with a project edit scope."""

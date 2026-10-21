@@ -265,6 +265,17 @@ class TestsFlextInfraRefactorImportNormalization(
         destination: str,
     ) -> None:
         """Normalize, generate and consume the same declaration without an old ABI."""
+        u.Tests.run_native_callable(
+            cls.scenario_declared_destination, tmp_path, destination
+        )
+
+    @classmethod
+    def scenario_declared_destination(
+        cls,
+        tmp_path: Path,
+        destination: str,
+    ) -> None:
+        """Exercise publication in the real native runner without pytest hooks."""
         project, package = u.Tests.create_lazy_init_workspace(tmp_path)
         cls._lazy_init(package, {"FlextTestProjectService": ".services.runner"})
         services = package / "services"

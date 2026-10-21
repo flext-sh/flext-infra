@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 if TYPE_CHECKING:
@@ -15,6 +16,259 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsDocs:
     """Docs infrastructure constants."""
+
+    class DocumentationText(Enum):
+        """Finite presentation messages, English baseline and Brazilian Portuguese."""
+
+        DOCUMENTATION = ("Documentation", "Documentação")
+        VERSION = ("Version", "Versão")
+        PROJECT_CLASS = ("Project class", "Classe do projeto")
+        PACKAGE = ("Package", "Pacote")
+        DESCRIPTION = ("Description", "Descrição")
+        UNKNOWN = ("unknown", "desconhecida")
+        NOT_DECLARED = ("_not declared_", "_não declarado_")
+        NONE = ("_none_", "_nenhum_")
+        MORE = ("more", "a mais")
+        COLLECTION_RULES = ("Collection Rules", "Regras da coleção")
+        COLLECTION_BODY = (
+            (
+                "Read [`/flext/AGENTS.md`]({agents_link}) and this project's "
+                "`AGENTS.md` for the current authority chain, execution "
+                "boundaries and required validation."
+            ),
+            (
+                "Leia [`/flext/AGENTS.md`]({agents_link}) e o `AGENTS.md` deste "
+                "projeto para conhecer a cadeia de autoridade atual, os limites "
+                "de execução e a validação exigida."
+            ),
+        )
+        QUALITY_GATES = ("Quality Gates", "Verificações de qualidade")
+        QUALITY_BODY = (
+            (
+                "Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
+                "`docs`) execute their declared operations directly."
+            ),
+            (
+                "Os verbos canônicos do `make` (`gen`, `check`, `test`, `fmt`, "
+                "`docs`) executam diretamente as operações declaradas."
+            ),
+        )
+        QUALITY_LINK = (
+            (
+                "See [`/flext/AGENTS.md`]({agents_link}) for the build, test, "
+                "and Python quality gates."
+            ),
+            (
+                "Consulte [`/flext/AGENTS.md`]({agents_link}) para as verificações "
+                "de compilação, testes e qualidade de Python."
+            ),
+        )
+        GOVERNANCE = ("Governance Pointer", "Referências de governança")
+        ENGINEERING_LAW = ("Engineering law", "Regras de engenharia")
+        GOVERNANCE_ADRS = ("Governance + ADRs", "Governança e ADRs")
+        SKILLS_INDEX = ("Skills index", "Índice de habilidades")
+        ONBOARDING = ("Onboarding", "Integração inicial")
+        PORTAL_BODY = (
+            (
+                "This project portal is generated from `pyproject.toml`, "
+                "package exports, and real docstrings."
+            ),
+            (
+                "Este portal do projeto é gerado a partir de `pyproject.toml`, "
+                "das exportações do pacote e das docstrings reais."
+            ),
+        )
+        START_HERE = ("Start Here", "Comece aqui")
+        GUIDES = ("Guides", "Guias")
+        API_REFERENCE = ("API Reference", "Referência da API")
+        GENERATED_OVERVIEW = ("Generated API Overview", "Visão geral gerada da API")
+        GENERATED_MODULE_INDEX = ("Generated Module Index", "Índice gerado de módulos")
+        PUBLIC_SURFACE_SUMMARY = (
+            "Public Surface Summary",
+            "Resumo da interface pública",
+        )
+        README_METADATA = (
+            (
+                "**Version**: `{version}` | **Python**: see `pyproject.toml` "
+                "`requires-python` | **Project class**: `{project_class}`"
+            ),
+            (
+                "**Versão**: `{version}` | **Python**: consulte `requires-python` "
+                "em `pyproject.toml` | **Classe do projeto**: `{project_class}`"
+            ),
+        )
+        ALPHA_NOTE = (
+            (
+                "> **Alpha (0.12.0).** This package is alpha quality. Every "
+                "package in the workspace must be re-checked and re-validated "
+                "at 0.12.0 before any promotion beyond alpha; treat interfaces "
+                "as unstable."
+            ),
+            (
+                "> **Alfa (0.12.0).** Este pacote está em estágio alfa. Cada "
+                "pacote do workspace deve ser verificado e validado novamente "
+                "na versão 0.12.0 antes de qualquer promoção além de alfa; "
+                "considere as interfaces instáveis."
+            ),
+        )
+        PURPOSE = ("Purpose", "Finalidade")
+        MODULE_MAP = ("Module Map", "Mapa de módulos")
+        OPERATION_FLOW = ("Operation Flow", "Fluxo de operação")
+        PUBLIC_SURFACE_LINK = (
+            (
+                "- Public surface: see [`docs/index.md`](docs/index.md) and "
+                "[`docs/api-reference/README.md`](docs/api-reference/README.md)."
+            ),
+            (
+                "- Interface pública: consulte [`docs/index.md`](docs/index.md) e "
+                "[`docs/api-reference/README.md`](docs/api-reference/README.md)."
+            ),
+        )
+        GENERATED_MODULE_LINK = (
+            (
+                "- Generated module overview: "
+                "[`docs/api-reference/generated/overview.md`]"
+                "(docs/api-reference/generated/overview.md)."
+            ),
+            (
+                "- Visão geral gerada dos módulos: "
+                "[`docs/api-reference/generated/overview.md`]"
+                "(docs/api-reference/generated/overview.md)."
+            ),
+        )
+        SETTINGS_PREFIX = (
+            (
+                "- Settings env prefix: see project `pyproject.toml` "
+                "`[tool.flext]` and `FlextSettings` ConfigDict."
+            ),
+            (
+                "- Prefixo das variáveis de ambiente: consulte `[tool.flext]` no "
+                "`pyproject.toml` do projeto e o ConfigDict de `FlextSettings`."
+            ),
+        )
+        INTEGRATION_POINTS = ("Integration Points", "Pontos de integração")
+        PARENT_CHAIN = (
+            (
+                "- Parent FLEXT chain: read this project's `pyproject.toml` "
+                "`dependencies` array filtered by `flext-*`. The FLEXT cascade "
+                "is encoded in the inheritance lists of the facade classes "
+                "listed under Module Map above."
+            ),
+            (
+                "- Cadeia de dependências FLEXT: leia a lista `dependencies` do "
+                "`pyproject.toml` deste projeto, filtrando por `flext-*`. A cascata "
+                "FLEXT está codificada nas listas de herança das classes de "
+                "fachada relacionadas no Mapa de módulos acima."
+            ),
+        )
+        PUBLIC_EXTENSIONS = (
+            "- Public extensions exposed by this project: {facades}.",
+            "- Extensões públicas expostas por este projeto: {facades}.",
+        )
+        LIBRARY_BOUNDARIES = (
+            (
+                "- Library abstraction boundaries: see the project `AGENTS.md` "
+                "and the referenced parent architecture rules."
+            ),
+            (
+                "- Limites de abstração da biblioteca: consulte o `AGENTS.md` do "
+                "projeto e as regras de arquitetura do proprietário referenciadas "
+                "nele."
+            ),
+        )
+        FULL_PORTAL = (
+            "- Full project portal: [`docs/index.md`](docs/index.md).",
+            "- Portal completo do projeto: [`docs/index.md`](docs/index.md).",
+        )
+        GUIDES_BODY = (
+            (
+                "Curated operational guides live here. Keep API behavior in "
+                "generated reference pages sourced from code and docstrings."
+            ),
+            (
+                "Os guias operacionais mantidos ficam aqui. Mantenha o "
+                "comportamento da API nas páginas de referência geradas a partir "
+                "do código e das docstrings."
+            ),
+        )
+        BACK_TO_DOCS = ("Back to project docs", "Voltar à documentação do projeto")
+        API_BODY = (
+            "This section is generated from public exports and real docstrings.",
+            (
+                "Esta seção é gerada a partir das exportações públicas e das "
+                "docstrings reais."
+            ),
+        )
+        SOURCE_OF_TRUTH = ("Source of Truth", "Fonte de verdade")
+        METADATA = ("metadata", "metadados")
+        EXPORTS = ("exports", "exportações")
+        MODULE_DOCSTRINGS = ("Module docstrings", "Docstrings dos módulos")
+        CLASS_DOCSTRINGS = (
+            "Class and function docstrings",
+            "Docstrings das classes e funções",
+        )
+        GENERATED_PAGES = ("Generated Pages", "Páginas geradas")
+        OVERVIEW = ("Overview", "Visão geral")
+        PUBLIC_API = ("Public API", "API pública")
+        MODULE_INDEX = ("Module Index", "Índice de módulos")
+        SURFACE_SUMMARY = ("Surface Summary", "Resumo da interface")
+        PRIMARY_FACADES = ("Primary facades", "Fachadas principais")
+        GENERATED_MODULE_PAGES = (
+            "Generated module pages",
+            "Páginas de módulos geradas",
+        )
+        BACK_LINK = (
+            "Back to [project docs](../index.md).",
+            "Voltar à [documentação do projeto](../index.md).",
+        )
+        API_OVERVIEW = ("API Overview", "Visão geral da API")
+        DOC_SUMMARY = ("Doc summary", "Resumo da documentação")
+        CLASSIFIERS = ("Classifiers", "Classificadores")
+        KEYWORDS = ("Keywords", "Palavras-chave")
+        MAIN_FACADES = ("Main facades", "Fachadas principais")
+        ALIAS_EXPORTS = ("Alias exports", "Exportações de aliases")
+        PUBLIC_SYMBOL_EXPORTS = (
+            "Public symbol exports",
+            "Exportações de símbolos públicos",
+        )
+        MODULE_SHORTCUTS = (
+            "Exported module shortcuts",
+            "Atalhos de módulos exportados",
+        )
+        NEXT_PAGES = ("Next Pages", "Próximas páginas")
+        MODULES_BODY = (
+            "These pages are generated from public modules and their docstrings.",
+            (
+                "Estas páginas são geradas a partir dos módulos públicos e de "
+                "suas docstrings."
+            ),
+        )
+        NO_MODULES = (
+            "_No public modules discovered._",
+            "_Nenhum módulo público encontrado._",
+        )
+        DARK_MODE = ("Switch to dark mode", "Alternar para o modo escuro")
+        LIGHT_MODE = ("Switch to light mode", "Alternar para o modo claro")
+        ROOT_SITE_DESCRIPTION = (
+            "Workspace documentation generated from code and curated root docs",
+            (
+                "Documentação do workspace gerada a partir do código e da "
+                "documentação mantida na raiz"
+            ),
+        )
+        PROJECT_SITE_DESCRIPTION = (
+            "Generated documentation for",
+            "Documentação gerada de",
+        )
+
+        def localized(self, language: t.Infra.DocumentationLanguage) -> str:
+            """Return one message in the supported presentation language.
+
+            Returns:
+                The selected immutable message.
+
+            """
+            return self.value[1 if language == "pt-BR" else 0]
 
     DEFAULT_DOCS_OUTPUT_DIR: ClassVar[str] = ".reports/docs"
     # Registered docs CLI action names; make.docs.actions must stay inside this

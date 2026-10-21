@@ -76,6 +76,26 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     sequence.pop(0)
         return tuple(result)
 
+    @classmethod
+    def source_member_relocation(
+        cls,
+        project: p.Infra.RopeProject,
+        receiver: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+        canonical: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+        member: str,
+    ) -> bool:
+        """Prove canonical source ancestry and absence of a retired member.
+
+        Unknown bases and inconsistent C3 orders propagate their native failure.
+
+        Returns:
+            Whether every source ancestor leaves the member undeclared.
+
+        """
+        return cls._RuntimeBaseResolver(project, {}, (), None).member_relocation_origin(
+            receiver, canonical, member
+        )
+
     class _RuntimeBaseResolver:
         """Resolve owned classes in C3 order and external classes through Rope.
 
@@ -86,6 +106,41 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         the ordered bases. Missing references and invalid inheritance fail
         loudly.
         """
+
+        def member_relocation_origin(
+            self,
+            receiver: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+            canonical: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+            member: str,
+        ) -> bool:
+            """Prove both source lineages and refuse every existing old member.
+
+            Returns:
+                Whether both origins and the retired member absence are known.
+
+            """
+            self._object_id = self._external_reference("builtins", ("object",))
+            lineage = self._linearize(self._external_identity(receiver[0].get_object()))
+            if self._external_identity(canonical[0].get_object()) not in lineage:
+                return False
+            # Identical model objects need no reconstruction of their source MRO.
+            if receiver[1].get_object() is not canonical[1].get_object() and (
+                self._external_identity(canonical[1].get_object())
+                not in self._linearize(
+                    self._external_identity(receiver[1].get_object())
+                )
+            ):
+                return False
+            for ancestor in lineage:
+                if ancestor in self._definitions:
+                    if member in self._definitions[ancestor].members:
+                        return False
+                elif ancestor in self._external:
+                    if member in self._external[ancestor].get_attributes():
+                        return False
+                else:
+                    return False
+            return True
 
         def source_member_binding(self, qualified: str) -> p.Infra.RopePyName:
             """Read a member from the first native declaration in the source MRO.
@@ -104,11 +159,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     binding = self._external[ancestor].get_attributes().get(member)
                 else:
                     module_name, _class_name, line = ancestor.rsplit(":", 2)
-                    declared = self._project.get_module(module_name)
-                    module_scope = declared.get_scope()
-                    if module_scope is None or (
-                        scope := module_scope.get_inner_scope_for_line(int(line))
-                    ).get_start() != int(line):
+                    declaration_line = int(line)
+                    declared = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+                        self._project.get_module(module_name)
+                    )
+                    scope = declared.get_scope().get_inner_scope_for_line(
+                        declaration_line
+                    )
+                    if scope.get_start() != declaration_line:
                         msg = (
                             "native class scope does not identify source owner: "
                             f"{ancestor}"
@@ -877,17 +935,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             """
-            try:
-                module = self._project.get_module(target)
-            except Exception as exc:
-                try:
-                    importlib.import_module(target)
-                except ImportError:
-                    raise exc
-                # Rope cannot resolve stdlib/builtin modules that are not
-                # present in the project's source tree.  Fall back to a
-                # synthetic identity so generation does not abort.
-                return ".".join((target, *attributes))
+            module = self._project.get_module(target)
             resource = self._project.find_module(target)
             if resource is not None and not isinstance(
                 module,

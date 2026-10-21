@@ -42,6 +42,29 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 {{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
 {{ local_check_body() }}
 {%- endmacro -%}
+{%- macro docs_recipe(executor="$(PROJECT_FLEXT_INFRA)", profiled=false) -%}
+{{ "\t" }}@set -eu; \
+{%- if profiled %}
+	mkdir -p "$(PROFILE_REPORTS_DIR)"; \
+	profile_dir="$$(mktemp -d "$(PROFILE_REPORTS_DIR)/docs.XXXXXX")"; \
+	printf '%s\n' incomplete > "$$profile_dir/status"; \
+	printf '%s\n' $(DOCS_ACTIONS) > "$$profile_dir/actions"; \
+	printf '%s\n' "$$profile_dir" > "$(PROFILE_REPORTS_DIR)/docs.latest"; \
+	printf 'docs profile run=%s\n' "$$profile_dir"; \
+{%- endif %}
+	for action in $(DOCS_ACTIONS); do \
+		mode=; \
+		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=--apply ;; esac; \
+{%- if profiled %}
+		printf '%s\n' started > "$$profile_dir/$$action.status"; \
+{%- endif %}
+		{{ executor }} docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" $$mode --projects .; \
+{%- if profiled %}
+		printf '%s\n' complete > "$$profile_dir/$$action.status"; \
+{%- endif %}
+	done{% if profiled %}; \
+	printf '%s\n' complete > "$$profile_dir/status"{% endif %}
+{%- endmacro -%}
 {#- A local workspace run carries a mutating verb to every governed member
     after the root settles itself: flext-infra runs each member's own verb
     serially in runtime dependency order. CI
@@ -1259,17 +1282,32 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-# `docs` is a docs-only lifecycle (generate, fix,
-# fmt, validate, audit); the actions render from make.docs.actions and never
+# `docs` is a docs-only lifecycle; the actions render from make.docs.actions and never
 # depend on the workspace-wide codegen conform — docs actions render their
 # own outputs from the live configuration and sources.
 _builtin_docs_all:
+{{ docs_recipe() }}
+
+# The same lifecycle and guarded effects, with one retained profile per phase.
+# Unique run directories and explicit completion markers exclude stale evidence.
+_builtin-profile-docs: _builtin_require_environment
+{{ docs_recipe('$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry "$$profile_dir/$$action.pstats"', profiled=true) }}
+
+_builtin-profile-docs-report: _builtin_require_environment
 	@set -eu; \
-	for action in $(DOCS_ACTIONS); do \
-		mode=; \
-		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=--apply ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" $$mode --projects .; \
-	done
+	cd "$(PROJECT_ROOT)"; \
+	IFS= read -r profile_dir < "$(PROFILE_REPORTS_DIR)/docs.latest"; \
+	IFS= read -r status < "$$profile_dir/status"; \
+	printf 'docs profile run=%s status=%s\n' "$$profile_dir" "$$status"; \
+	while IFS= read -r action; do \
+		if [ ! -f "$$profile_dir/$$action.status" ]; then \
+			printf 'docs phase=%s status=not-reached\n' "$$action"; \
+			continue; \
+		fi; \
+		IFS= read -r status < "$$profile_dir/$$action.status"; \
+		printf 'docs phase=%s status=%s\n' "$$action" "$$status"; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry "$$profile_dir/$$action.pstats"; \
+	done < "$$profile_dir/actions"
 
 _builtin_clean_generated:
 {% if make.clean.cache_dirs %}

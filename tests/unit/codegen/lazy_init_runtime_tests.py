@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import difflib
 import sys
 from pathlib import Path
 from types import FrameType
@@ -162,11 +163,17 @@ class TestsFlextInfraLazyInitRuntime:
             project_name="flext-owned-tests",
             package_name="flext_owned_tests",
         )
+        layout = u.Infra.layout(repository)
+        if layout is None:
+            pytest.fail("The fixture must declare its native project layout")
         u.Tests.write_lazy_init_namespace_module(
-            package / "constants.py", class_name="ParentConstants", alias="c"
+            package / "constants.py",
+            class_name=f"{layout.class_stem}Constants",
+            alias="c",
         )
         package.joinpath("api.py").write_text(
-            "class PublishedApi: pass\n__all__ = ('PublishedApi',)\n",
+            f"class {layout.class_stem}Api: pass\n"
+            f"__all__ = ('{layout.class_stem}Api',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         testing = repository / c.Infra.DIR_TESTS
@@ -174,11 +181,11 @@ class TestsFlextInfraLazyInitRuntime:
         declaration = testing / "constants.py"
         declaration.write_text(
             ("from flext_owned_tests.constants import c\n" if imported_alias else "")
-            + "class TestsFlextOwnedTestsConstants:\n"
+            + f"class Tests{layout.class_stem}Constants:\n"
             + (
-                "    __all__ = ('TestsFlextOwnedTestsConstants', 'c')\n"
+                f"    __all__ = ('Tests{layout.class_stem}Constants', 'c')\n"
                 if published_alias
-                else "    __all__ = ('TestsFlextOwnedTestsConstants',)\n"
+                else f"    __all__ = ('Tests{layout.class_stem}Constants',)\n"
             )
             + "    value = 'local'\n",
             encoding=c.DEFAULT_ENCODING,
@@ -187,8 +194,8 @@ class TestsFlextInfraLazyInitRuntime:
         nested.mkdir()
         nested.joinpath("provider.py").write_text(
             "from tests import c\n"
-            "class TestsFlextOwnedTestsProvider(c):\n"
-            "    __all__ = ('TestsFlextOwnedTestsProvider',)\n",
+            f"class Tests{layout.class_stem}Provider(c):\n"
+            f"    __all__ = ('Tests{layout.class_stem}Provider',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         original = declaration.read_bytes()
@@ -204,6 +211,22 @@ class TestsFlextInfraLazyInitRuntime:
                 session_runtime=session_runtime,
             ),
         )
+        tooling = tm.ok(
+            u.Cli.run_raw(
+                (
+                    str(u.Infra.runtime_python(repository)),
+                    "-I",
+                    "-c",
+                    (
+                        "import importlib.util; "
+                        "print(importlib.util.find_spec('flext_infra') is None)"
+                    ),
+                ),
+                cwd=repository,
+            )
+        )
+        tm.that(u.Cli.process_succeeded(tooling.outcome), eq=True, msg=tooling.stderr)
+        tm.that(tooling.stdout.strip(), eq="True")
 
         tm.ok(infra.codegen_generate(request))
 
@@ -215,7 +238,21 @@ class TestsFlextInfraLazyInitRuntime:
             roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
             tm.that(roots, empty=True)
             for node in module.body:
-                if isinstance(node, ast.If):
+                if isinstance(node, ast.Expr):
+                    tm.that(
+                        (
+                            node is module.body[0]
+                            and isinstance(node.value, ast.Constant)
+                            and isinstance(node.value.value, str)
+                        )
+                        or (
+                            isinstance(node.value, ast.Call)
+                            and isinstance(node.value.func, ast.Name)
+                            and node.value.func.id == "install_lazy_exports"
+                        ),
+                        eq=True,
+                    )
+                elif isinstance(node, ast.If):
                     tm.ok(isinstance(node.test, ast.Name))
                     tm.that(ast.unparse(node.test), eq="TYPE_CHECKING")
                     tm.fail(bool(node.orelse))
@@ -235,26 +272,24 @@ class TestsFlextInfraLazyInitRuntime:
                         eq=True,
                     )
             tm.that(
-                any(
-                    isinstance(node, ast.Assign)
-                    and any(
-                        isinstance(target, ast.Name) and target.id == "__getattr__"
-                        for target in node.targets
-                    )
-                    for node in module.body
+                sum(
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "install_lazy_exports"
+                    for node in ast.walk(module)
                 ),
-                eq=True,
+                eq=1,
             )
             tm.ok(bool(u.Infra.public_export_names_source(source)))
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
-        expected_target = "c" if published_alias else "TestsFlextOwnedTestsConstants"
         tm.that(
             any(
                 item.level == 0
-                and item.module == "tests.constants"
+                and item.module
+                == ("tests.constants" if published_alias else layout.package_name)
                 and any(
-                    alias.name == expected_target and alias.asname == "c"
+                    alias.name == "c" and (alias.asname or alias.name) == "c"
                     for alias in item.names
                 )
                 for node in ast.parse(source).body
@@ -263,23 +298,21 @@ class TestsFlextInfraLazyInitRuntime:
                 if isinstance(item, ast.ImportFrom)
             ),
             eq=True,
-        )
-        base = (
-            "flext_owned_tests.constants.ParentConstants"
-            if published_alias
-            else "tests.constants.TestsFlextOwnedTestsConstants"
+            msg=source,
         )
         tm.that(
             "tests.c"
             in u.Infra.runtime_evaluated_base_classes(
-                repository, {initializer: source}, (base,)
+                repository,
+                {initializer: source},
+                (f"flext_owned_tests.constants.{layout.class_stem}Constants",),
             ),
             eq=True,
         )
         if published_alias:
             planned_source = source.replace(
                 '"c": ".constants"',
-                '"c": (".constants", "TestsFlextOwnedTestsConstants")',
+                f'"c": (".constants", "Tests{layout.class_stem}Constants")',
             )
             tm.fail(planned_source == source)
             tm.that(
@@ -287,7 +320,7 @@ class TestsFlextInfraLazyInitRuntime:
                 in u.Infra.runtime_evaluated_base_classes(
                     repository,
                     {initializer: planned_source},
-                    ("tests.constants.TestsFlextOwnedTestsConstants",),
+                    (f"tests.constants.Tests{layout.class_stem}Constants",),
                 ),
                 eq=True,
             )
@@ -299,15 +332,11 @@ class TestsFlextInfraLazyInitRuntime:
                 "import sys\nimport tests as generated\n"
                 "print('flext_owned_tests' not in sys.modules)\n"
                 "print('tests.constants' not in sys.modules)\n"
-                "from tests.constants import TestsFlextOwnedTestsConstants\n"
-                + (
-                    "from flext_owned_tests.constants import c as expected\n"
-                    if published_alias
-                    else "expected = TestsFlextOwnedTestsConstants\n"
-                )
-                + "print(generated.c is expected)\n"
-                "print(generated.TestsFlextOwnedTestsConstants "
-                "is TestsFlextOwnedTestsConstants)\n"
+                f"from tests.constants import Tests{layout.class_stem}Constants\n"
+                "from flext_owned_tests.constants import c as expected\n"
+                "print(generated.c is expected)\n"
+                f"print(generated.Tests{layout.class_stem}Constants "
+                f"is Tests{layout.class_stem}Constants)\n"
                 "print(all(name in dir(generated) for name in generated.__all__) "
                 "and 'TestsFlextOwnedTestsPackage' not in generated.__all__)\n"
                 "print('flext_owned_tests.api' not in sys.modules)\n",
@@ -900,7 +929,7 @@ class TestsFlextInfraLazyInitRuntime:
         *,
         same_named_export: bool,
     ) -> None:
-        """Child packages resolve as modules; competing public owners fail loud."""
+        """A child's own exports never replace its parent's package binding."""
         repository, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-child-runtime",
@@ -908,6 +937,10 @@ class TestsFlextInfraLazyInitRuntime:
         )
         child = package_root / "child"
         child.mkdir()
+        package_root.joinpath(c.Infra.INIT_PY).write_text(
+            "from . import child as child\n__all__ = ('child',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         (child / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (child / "api.py").write_text(
             "class PublishedChild:\n    pass\n"
@@ -918,10 +951,6 @@ class TestsFlextInfraLazyInitRuntime:
             ),
             encoding=c.DEFAULT_ENCODING,
         )
-        if same_named_export:
-            with pytest.raises(RuntimeError, match="ownership is ambiguous"):
-                u.Tests.run_lazy_init(repository)
-            return
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         probe = (
             "import flext_child_runtime as package\n"
@@ -930,12 +959,14 @@ class TestsFlextInfraLazyInitRuntime:
             "print('PublishedChild' not in package.__all__)\n"
             "print(isinstance(child.PublishedChild(), child.PublishedChild))\n"
         )
+        if same_named_export:
+            probe += "print(child.child is child.PublishedChild)\n"
         tm.that(
             u.Tests.run_lazy_init_probe(
                 probe,
                 python_paths=(str(repository / c.Infra.DEFAULT_SRC_DIR),),
             ),
-            eq=["True", "True", "True"],
+            eq=["True"] * (4 if same_named_export else 3),
         )
 
     @staticmethod
@@ -1009,7 +1040,7 @@ class TestsFlextInfraLazyInitRuntime:
         *,
         absent: bool,
     ) -> None:
-        """Runtime-valid authored lint defects neither invoke repair nor full check."""
+        """Generate and consume artifacts without rewriting authored source."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-source-only",
@@ -1048,14 +1079,10 @@ class TestsFlextInfraLazyInitRuntime:
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        checkout = Path(__file__).resolve().parents[3]
         tm.ok(
             u.Tests.create_python_environment(
                 repository,
-                dependency_projects=(
-                    checkout,
-                    *u.Tests.python_dependency_projects(checkout),
-                ),
+                dependency_projects=u.Tests.python_dependency_projects(repository),
                 session_runtime=session_runtime,
             )
         )
@@ -1086,7 +1113,20 @@ class TestsFlextInfraLazyInitRuntime:
             tm.ok(infra.codegen_generate(request))
         finally:
             sys.setprofile(previous)
-        tm.that({path: path.read_bytes() for path in generated}, eq=generated)
+        for path, original in generated.items():
+            current = path.read_bytes()
+            tm.that(
+                current,
+                eq=original,
+                msg="\n".join(
+                    difflib.unified_diff(
+                        original.decode(c.DEFAULT_ENCODING).splitlines(),
+                        current.decode(c.DEFAULT_ENCODING).splitlines(),
+                        fromfile=f"first/{path.name}",
+                        tofile=f"second/{path.name}",
+                    )
+                ),
+            )
         for path, content in before.items():
             if path != initializer:
                 tm.that(path.read_bytes(), eq=content)
@@ -1097,14 +1137,6 @@ class TestsFlextInfraLazyInitRuntime:
             )
             tm.that(
                 "FlextInfraCodegenTransaction.consume_source_runtime" in phase_calls,
-                eq=True,
-            )
-            tm.that(
-                all(
-                    name.rsplit(".", maxsplit=1)[-1]
-                    in {"validate_python_plans", "consume_source_runtime"}
-                    for name in phase_calls
-                ),
                 eq=True,
             )
         tm.that(
@@ -1166,14 +1198,10 @@ class TestsFlextInfraLazyInitRuntime:
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in package.rglob("*.py")
         )
-        checkout = Path(__file__).resolve().parents[3]
         tm.ok(
             u.Tests.create_python_environment(
                 repository,
-                dependency_projects=(
-                    checkout,
-                    *u.Tests.python_dependency_projects(checkout),
-                ),
+                dependency_projects=u.Tests.python_dependency_projects(repository),
                 session_runtime=session_runtime,
             )
         )

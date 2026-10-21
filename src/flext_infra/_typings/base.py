@@ -35,6 +35,9 @@ from jinja2.environment import (
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
+    type DocumentationLanguage = t.DocumentationLanguage
+    "Supported project-local documentation presentation languages."
+
     type Path = pathlib.Path
     "Unconstrained native filesystem path, independent of existence and kind."
 

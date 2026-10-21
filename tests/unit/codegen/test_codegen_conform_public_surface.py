@@ -814,8 +814,19 @@ class TestsFlextInfraCodegenConformPublicSurface:
     def test_unchanged_pyproject_apply_uses_the_authenticated_noop_path(
         infra_git_repo: Path,
     ) -> None:
-        """A second public apply keeps an unchanged declaration and succeeds."""
+        """Metadata ignores unselected ambiguous exports and reaches a no-op."""
         root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        package = root / "src" / "flext_infra"
+        for name in ("first", "second"):
+            (package / f"{name}.py").write_text(
+                "class Shared: pass\n__all__ = ['Shared']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        python_inputs = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in sorted(package.iterdir())
+        )
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         request = u.Tests.conform_request(
             root,
@@ -827,6 +838,11 @@ class TestsFlextInfraCodegenConformPublicSurface:
         before = (root / c.PYPROJECT_FILENAME).read_bytes()
         tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
         tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(python_inputs))
+        tm.that(
+            set(package.iterdir()),
+            eq={state.path for state in python_inputs},
+        )
 
     # Integration-scale: the seed applies the complete surface on a real git
     # repository (plan, publication and its fixed-point re-plan; a pyproject

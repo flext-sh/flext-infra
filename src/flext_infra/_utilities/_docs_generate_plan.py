@@ -128,7 +128,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                         }
                     )
                 )
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
+            *plans,
+            *bundle.metadata_files,
+        ))
 
     @staticmethod
     def _prune_generated_tree_artifacts(

@@ -173,6 +173,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             ),
             project_class=project.project_class,
             package_name=project.package_name,
+            documentation_language=FlextInfraUtilitiesDocsScope.docs_documentation_language(
+                FlextInfraUtilitiesDocsScope.project_state(resolved).docs_meta
+            ),
             repository_root_override=repository_root,
         )
 
@@ -197,6 +200,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         )
         return m.Infra.DocScope(
             name=project_name,
+            documentation_language=FlextInfraUtilitiesDocsScope.docs_documentation_language(
+                docs_meta
+            ),
             path=project_root,
             report_dir=FlextInfraUtilitiesDocsScopeSelectionMixin._report_directory(
                 project_root,

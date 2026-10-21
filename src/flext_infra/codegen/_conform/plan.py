@@ -743,7 +743,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         contract = self.surface_contract(surface, codegen=inputs.spec)
         providers: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
-        if contract.complete_governed:
+        if contract.complete_governed and tasks:
             # Rope-bound planning runs one global in-process loop over every
             # repository so the shared workspace Rope session (and its one
             # structural index) serves the whole cohort. The forkserver fleet
@@ -763,15 +763,41 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 if not outcome.failed
                 for file in outcome.files
             )
-            ready = tuple(
-                task.model_copy(update={"provider_plans": providers})
+            ready = {
+                task.repository.distribution: task
                 for task, outcome in zip(tasks, lazy_outcomes, strict=True)
                 if not outcome.failed
-            )
-            planned = {
-                outcome.repository: outcome
-                for outcome in (type(self).plan_repository_task(task) for task in ready)
             }
+            planned: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+            staged = {file.path: file for file in providers}
+            for distribution in u.Infra.workspace_dependency_order(
+                tasks[0].root, tuple(task.repository for task in tasks)
+            ):
+                task = ready.get(distribution)
+                if task is None:
+                    continue
+                outcome = type(self).plan_repository_task(
+                    task.model_copy(update={"provider_plans": tuple(staged.values())})
+                )
+                if not outcome.failed:
+                    staged.update((file.path, file) for file in outcome.files)
+                else:
+                    project_root = (task.root / task.repository.path).resolve()
+                    staged = {
+                        path: file
+                        for path, file in staged.items()
+                        if file.project != project_root
+                    }
+                    providers = tuple(
+                        file for file in providers if file.project != project_root
+                    )
+                    if outcome.error:
+                        # Only authenticated complete source output survives an
+                        # unrelated managed failure, never incoming lazy inputs.
+                        providers = (*providers, *outcome.files)
+                        staged.update((file.path, file) for file in outcome.files)
+                        outcome = outcome.model_copy(update={"files": ()})
+                planned[outcome.repository] = outcome
             outcomes = tuple(
                 outcome if outcome.failed else planned[outcome.repository]
                 for outcome in lazy_outcomes
@@ -1117,8 +1143,18 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if planned.failure:
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=repository.name,
+                files=tuple(
+                    file
+                    for file in planner.state.completed_source_plans or ()
+                    if file.project == repository_root
+                ),
                 error=planned.error or f"planning failed: {repository.name}",
-                exception=planned.exception,
+                exception=(
+                    planned.exception
+                    if planner.state.planning_exception is None
+                    else planner.state.planning_exception
+                ),
+                issues=tuple(planner.state.planning_issues),
                 elapsed=time.monotonic() - started,
             )
         governed_plans, retired_plans = planned.value

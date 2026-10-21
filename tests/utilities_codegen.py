@@ -334,6 +334,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 f'license = "{project.license}"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n\n'
+                "[tool.hatch.build.targets.wheel]\n"
+                f'packages = ["{c.Infra.DEFAULT_SRC_DIR}/{package_name}"]\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_policy_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,

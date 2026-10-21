@@ -807,6 +807,15 @@ global policy for a distribution. The same elected policy reaches package metada
 and every native resolution view; no repository-specific resolver branch is needed.
 Unconfigured conflicting direct and transitive sources remain native UV failures.
 
+Dependency-family provenance validates sources per normalized distribution and
+marker, separately from the shared provider identity. Different distributions may
+declare different explicit Git refs. Documentation governance resolves its ref from
+the exact declared Infra distribution, never Core, requirement order, an installed
+package or the consumer's local branch. Conflicting sources for one distribution
+and marker, competing family providers, and ambiguous Infra marker variants fail
+loudly. Captured documentation inputs and governance-provider authentication remain
+required before publication.
+
 Runtime requirements are calculated from the target's import use through the native
 dependency analysis. Generation consumes the target's authenticated PEP 621
 projection; neither a project-name catalog nor an upstream dependency profile may

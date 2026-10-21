@@ -189,8 +189,10 @@ metadata:
     MODULE:
       is: facade-package
     NAME:
-      is: runtime-alias
-      of: MODULE
+      - is: runtime-alias
+        of: MODULE
+      - not: canonical-static-publication
+        of: MODULE
 rule:
   kind: dotted_name
   pattern: $NAME

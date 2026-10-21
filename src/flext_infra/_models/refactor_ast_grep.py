@@ -73,6 +73,15 @@ class FlextInfraModelsRefactorGrep:
                 ValueError: If the native predicate lacks its module/producer pair.
 
             """
+            if (
+                self.predicate
+                is c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION
+                and (self.of is None or self.arg or self.as_)
+            ):
+                msg = (
+                    "canonical-static-publication requires of and accepts no arg or as"
+                )
+                raise ValueError(msg)
             if self.predicate in {
                 c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
                 c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
@@ -84,6 +93,25 @@ class FlextInfraModelsRefactorGrep:
                 )
             ):
                 msg = f"{self.predicate} requires one module and native producer"
+                raise ValueError(msg)
+            if (
+                self.predicate is c.Infra.CodemodContextPredicate.MEMBER_RELOCATION
+                and any((
+                    self.of is None,
+                    len(self.arg) != c.Infra.MEMBER_RELOCATION_CONTEXT_ARG_COUNT,
+                    bool(self.as_),
+                    not self.holds,
+                    any(
+                        not all(part.isidentifier() for part in value.split("."))
+                        for value in self.arg
+                    ),
+                ))
+            ):
+                msg = (
+                    "member-relocation requires of and five qualified operands: "
+                    "receiver module, receiver, emitted expression, "
+                    "target module, target"
+                )
                 raise ValueError(msg)
             return self
 

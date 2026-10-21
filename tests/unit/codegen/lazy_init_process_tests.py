@@ -70,7 +70,7 @@ class TestsFlextInfraLazyInitProcessing:
     def test_regeneration_follows_renamed_module_without_renaming_class(
         tmp_path: Path,
     ) -> None:
-        """A moved declaration keeps its class identity and gains its real import path."""
+        """A moved declaration keeps its class and gains its real import path."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         utilities = package_root / "_utilities"
         utilities.mkdir()
@@ -189,7 +189,7 @@ class TestsFlextInfraLazyInitProcessing:
     def test_manual_private_initializer_exports_survive_adoption(
         tmp_path: Path,
     ) -> None:
-        """Adopt the private facade while retaining its declared public export."""
+        """Retain the authored private facade and its public runtime export."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         private_dir = package_root / "_facade"
         private_dir.mkdir()
@@ -204,17 +204,25 @@ class TestsFlextInfraLazyInitProcessing:
             '__all__ = ["FlextTestsRuntime"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        authored = init_path.read_bytes()
         result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
-        generated = init_path.read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that(generated, has='__all__: tuple[str, ...] = ("FlextTestsRuntime",)')
+        tm.that(init_path.read_bytes(), eq=authored)
         tm.that(
-            generated,
-            has=f"from {package_root.name}._facade.runtime import FlextTestsRuntime",
+            u.Tests.run_lazy_init_probe(
+                f"from {package_root.name}._facade import "
+                "FlextTestsRuntime as exported\n"
+                f"from {package_root.name}._facade.runtime import "
+                "FlextTestsRuntime as declared\n"
+                "print(exported is declared)\n",
+                python_paths=(str(package_root.parent),),
+                cwd=repository_root,
+            ),
+            eq=["True"],
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        tm.that(init_path.read_text(encoding=c.DEFAULT_ENCODING), eq=generated)
+        tm.that(init_path.read_bytes(), eq=authored)
 
     @staticmethod
     def test_apply_removes_obsolete_generated_sidecars(tmp_path: Path) -> None:

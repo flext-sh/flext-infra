@@ -845,6 +845,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         if namespace_scope.failure:
             return r[bool].from_failure(namespace_scope)
+        cls._sync_project_documentation(source, workspace.project)
         sources_result = cls._sync_uv_sources(
             source,
             resolution=uv_resolution,
@@ -873,6 +874,70 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
+
+    @staticmethod
+    def _sync_project_documentation(
+        document: t.Cli.TomlDocument,
+        project: m.Infra.ProjectSpec | None,
+    ) -> None:
+        """Resolve the sole project declaration through the owned leaf policy."""
+        FlextInfraUtilitiesPyprojectDocument._sync_documentation_language(
+            document,
+            project.documentation_language if project is not None else "en",
+        )
+
+    @classmethod
+    def project_documentation_metadata(
+        cls,
+        source: str,
+        project: m.Infra.ProjectSpec | None,
+    ) -> p.Result[str]:
+        """Project only documentation metadata without conformance planning.
+
+        Returns:
+            Strictly validated metadata, retaining exact unchanged source bytes.
+
+        """
+        payload = u.Cli.toml_mapping_from_text(source)
+        if payload is None:
+            return r[str].fail("invalid documentation pyproject TOML")
+        validated = u.validate_value(u.PyprojectDocument, payload)
+        if validated.failure:
+            return r[str].from_failure(validated)
+        document = u.Cli.toml_parse_text(source)
+        if document is None:
+            return r[str].fail("invalid documentation pyproject document")
+        before = u.Cli.toml_dumps(document)
+        cls._sync_project_documentation(document, project)
+        projected = u.Cli.toml_dumps(document)
+        if projected == before:
+            return r[str].ok(source)
+        desired = u.Cli.toml_mapping_from_text(projected)
+        if desired is None:
+            return r[str].fail("invalid projected documentation metadata")
+        checked = u.validate_value(u.PyprojectDocument, desired)
+        if checked.failure:
+            return r[str].from_failure(checked)
+        return r[str].ok(projected)
+
+    @staticmethod
+    def _sync_documentation_language(
+        document: t.Cli.TomlDocument,
+        language: t.Infra.DocumentationLanguage,
+    ) -> None:
+        """Project one owned leaf without taking over CUSTOM documentation policy."""
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        flext = u.Cli.toml_table_child(tool, "flext") if tool is not None else None
+        docs = u.Cli.toml_table_child(flext, "docs") if flext is not None else None
+        if language == "en":
+            if docs is not None:
+                u.Cli.toml_remove_key_if_present(docs, "documentation_language")
+            return
+        if docs is None:
+            docs = u.Cli.toml_ensure_path(document, (c.Infra.TOOL, "flext", "docs"))
+        if docs.get("documentation_language") == language:
+            return
+        docs["documentation_language"] = language
 
     @staticmethod
     def _sync_namespace_scope(

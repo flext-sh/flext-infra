@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 
@@ -123,6 +125,20 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._read(summary.parent / "selection-plan.json"),
         )
         tm.fail(plan.owns_no_tests)
+        tm.that(
+            tm.ok(self._runner(project_root, tmp_path).execute()),
+            eq=pytest.ExitCode.OK.value,
+        )
+        summary = self._latest_summary(project_root / cache.reports_directory)
+        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+            self._read(summary.parent / "run-accounting.json"),
+        )
+        tm.that(accounting.executed_count, eq=0)
+        tm.that(accounting.inventory_count, eq=1)
+        tm.that(accounting.deselected_count, eq=accounting.inventory_count)
+        tm.ok(accounting.cache_restored)
+        tm.fail(accounting.owns_no_tests)
+        tm.that(self._read(summary), has=["outcome=cache_hit\n", "exit=0\n"])
 
     def test_held_testmon_database_lease_refuses_a_concurrent_run(
         self,
@@ -157,6 +173,113 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.fail(runner.testmon_db.exists())
 
+    def test_held_latest_pointer_lease_preserves_context_and_deadline(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Pointer contention expires without losing diagnostics or the old pointer."""
+        project = self._zero_test_project(tmp_path)
+        runner = self._runner(
+            project,
+            tmp_path,
+            elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,
+        )
+        reports = project / runner.reports
+        reports.mkdir(parents=True)
+        latest = reports / "latest.txt"
+        tm.ok(u.Cli.atomic_write_text_file(latest, "previous-run\n"))
+        lock = latest.with_name(f"{latest.name}.lock")
+        with u.Infra.codegen_transaction_lease(latest):
+            before = lock.stat()
+            with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
+                runner.execute()
+            tm.that(failure.value.lock_file, eq=str(lock))
+            receipts = tuple(reports.glob("*/run-context.json"))
+            tm.that(len(receipts), eq=1)
+            context = m.Infra.PytestRunContext.model_validate_json(
+                receipts[0].read_bytes(),
+            )
+            tm.that(context.testmon_db, eq=runner.testmon_db)
+            tm.that(context.testmon_lease_acquired, eq=False)
+            tm.that(context.report_directory, eq=receipts[0].parent)
+            tm.that(context.deadline_monotonic, none=False)
+            tm.that(self._read(latest), eq="previous-run\n")
+            tm.that(
+                tuple(path.name for path in receipts[0].parent.iterdir()),
+                eq=("run-context.json",),
+            )
+        with u.Infra.codegen_transaction_lease(latest, wait_seconds=0.0):
+            after = lock.stat()
+            tm.that(
+                (after.st_dev, after.st_ino),
+                eq=(before.st_dev, before.st_ino),
+            )
+        tm.fail(runner.testmon_db.exists())
+
+    def test_concurrent_context_publication_precedes_shared_cache_timeout(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Contenders publish unique contexts and one valid pointer before cache wait."""
+        project = self._zero_test_project(tmp_path)
+        policy = config.Infra.tooling.tools.pytest
+        runners = tuple(
+            self._runner(
+                project,
+                tmp_path,
+                elapsed_seconds=(
+                    policy.run_timeout_seconds - policy.termination_grace_seconds
+                ),
+            )
+            for _ in range(2)
+        )
+        reports = project / runners[0].reports
+        latest = reports / "latest.txt"
+        cache_lock = runners[0].testmon_db.with_name(
+            f"{runners[0].testmon_db.name}.lock",
+        )
+        pointer_lock = latest.with_name(f"{latest.name}.lock")
+        with u.Infra.codegen_transaction_lease(latest):
+            pointer_before = pointer_lock.stat()
+        start = Barrier(len(runners))
+
+        def contend(runner: FlextInfraPytestRunner) -> None:
+            start.wait(timeout=policy.run_timeout_seconds)
+            with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
+                runner.execute()
+            tm.that(failure.value.lock_file, eq=str(cache_lock))
+
+        with u.Infra.codegen_transaction_lease(runners[0].testmon_db):
+            cache_before = cache_lock.stat()
+            with ThreadPoolExecutor(max_workers=len(runners)) as executor:
+                tuple(executor.map(contend, runners))
+        receipts = tuple(reports.glob("*/run-context.json"))
+        tm.that(len(receipts), eq=len(runners))
+        contexts = tuple(
+            m.Infra.PytestRunContext.model_validate_json(path.read_bytes())
+            for path in receipts
+        )
+        tm.that(
+            {context.testmon_db for context in contexts},
+            eq={runners[0].testmon_db},
+        )
+        tm.that({context.testmon_lease_acquired for context in contexts}, eq={False})
+        tm.that(
+            {context.report_directory for context in contexts},
+            eq={path.parent for path in receipts},
+        )
+        tm.ok(self._read(latest).strip() in {path.parent.name for path in receipts})
+        for lock, before in (
+            (pointer_lock, pointer_before),
+            (cache_lock, cache_before),
+        ):
+            after = lock.stat()
+            tm.that(
+                (after.st_dev, after.st_ino),
+                eq=(before.st_dev, before.st_ino),
+            )
+        tm.fail(runners[0].testmon_db.exists())
+
     @pytest.mark.slow
     def test_empty_slow_scope_remains_red_with_accounting(
         self,
@@ -187,6 +310,11 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._read(summary.parent / "run-accounting.json"),
         )
         tm.that(accounting.executed_count, eq=0)
+        suite = m.Cli.ProcessOutcome.model_validate_json(
+            self._read(summary.parent / "suite-outcome.json"),
+        )
+        tm.that(suite.raw_return_code, eq=outcome)
+        tm.that(self._read(summary), has=["outcome=failed\n", f"exit={outcome}\n"])
 
     @pytest.mark.slow
     def test_incremental_run_publishes_receipt_for_zero_test_project(
@@ -203,6 +331,12 @@ class TestsFlextInfraPytestRunnerZeroTest:
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
         summary = self._latest_summary(reports_root)
+        context = m.Infra.PytestRunContext.model_validate_json(
+            self._read(summary.parent / "run-context.json"),
+        )
+        tm.that(context.testmon_lease_acquired, eq=True)
+        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(self._read(reports_root / "latest.txt"), eq=f"{summary.parent.name}\n")
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             self._read(summary.parent / "run-accounting.json"),
         )
@@ -217,14 +351,9 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """The unbounded full operation never normalizes an empty suite.
-
-        It runs no testmon selection, so no zero-test receipt exists: pytest's
-        native no-tests status is the result, with the run context naming the
-        unbounded full operation.
-        """
+        """Full execution preserves an empty incremental prerequisite's native status."""
         project = self._zero_test_project(tmp_path)
-        runner = self._runner(project, tmp_path)
+        runner = self._runner(project, tmp_path).model_copy(update={"unbounded": True})
 
         outcome = tm.ok(runner.execute_full())
 
@@ -235,14 +364,24 @@ class TestsFlextInfraPytestRunnerZeroTest:
         context = m.Infra.PytestRunContext.model_validate_json(
             self._read(report_dir / "run-context.json"),
         )
-        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(context.testmon_db, none=True)
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.INCREMENTAL)
+        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(context.testmon_lease_acquired, eq=True)
         tm.that(context.deadline_monotonic, none=True)
+        tm.that(len(tuple(reports_root.glob("*/run-context.json"))), eq=1)
         suite = m.Cli.ProcessOutcome.model_validate_json(
             self._read(report_dir / "suite-outcome.json"),
         )
         tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
-        tm.fail((report_dir / "run-accounting.json").exists())
+        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+            self._read(report_dir / "run-accounting.json"),
+        )
+        tm.ok(accounting.owns_no_tests)
+        tm.that(accounting.executed_count, eq=0)
+        tm.that(
+            self._read(report_dir / "summary.txt"),
+            has=["outcome=failed\n", f"exit={outcome}\n"],
+        )
 
     @pytest.mark.slow
     def test_slow_only_declared_file_executes_its_slow_items(

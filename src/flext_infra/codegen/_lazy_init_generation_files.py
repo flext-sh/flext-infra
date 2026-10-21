@@ -39,6 +39,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             plan: m.Infra.LazyInitPlan,
         ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
             del plan
+            raise NotImplementedError(type(self).__qualname__)
 
     @staticmethod
     def _snapshot_paths(
@@ -502,7 +503,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             c.Infra.LazyInitAction.RETAIN,
         }:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
-        if plan.action is c.Infra.LazyInitAction.REMOVE:
+        if plan.action == c.Infra.LazyInitAction.REMOVE:
             init_plan = self._file_plan(
                 project=project,
                 before=init_before,

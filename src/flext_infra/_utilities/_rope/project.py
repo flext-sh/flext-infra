@@ -1686,7 +1686,17 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
-            require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
+            states = self.states()
+            require_value(
+                u.Cli.atomic_verify_binary_file_states(
+                    states,
+                    nonsecret_source_paths=tuple(
+                        Path(state.path)
+                        for state in states
+                        if Path(state.path).suffix in {".py", ".pyi"}
+                    ),
+                )
+            )
             require_value(
                 u.Cli.atomic_verify_directory_queries(
                     self.receipt_directories(), self.receipt_topology()

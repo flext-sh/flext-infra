@@ -534,31 +534,21 @@ class FlextInfraPytestRunnerExecution(
             not accounting_complete,
             not markdown_complete,
         ))
-        accepted_cache_hit = cache_hit and not rejected
-        # A file's empty phase retains pytest's native status so Make can
-        # distinguish it from execution and reject an aggregate zero-run.
-        accepted_zero_tests = accounting.owns_no_tests and not rejected
+        accepted_cache_hit = cache_hit and not rejected and not accounting.owns_no_tests
         selected_count = (
             None
             if accounting.inventory_count is None
             else accounting.inventory_count - accounting.deselected_count
         )
         final_exit = (
-            int(pytest.ExitCode.NO_TESTS_COLLECTED)
-            if accepted_zero_tests and self.target_file is not None
-            else 0
-            if accepted_cache_hit or accepted_zero_tests
-            else raw_return_code or int(rejected)
+            0
+            if accepted_cache_hit
+            else raw_return_code or int(rejected or accounting.owns_no_tests)
         )
         # A graceful stop at the suite stop instant publishes the executed
         # prefix and remains red: the unexecuted remainder is the next run's
         # testmon selection.
-        # A graceful stop at the suite stop instant publishes the executed
-        # prefix and remains red: the unexecuted remainder is the next run's
-        # testmon selection.
-        if accepted_zero_tests and self.target_file is not None:
-            result = "not_executed"
-        elif final_exit and (
+        if final_exit and (
             selected_count is not None
             and accounting.executed_count < selected_count
             and not (diagnostics.failed_count or diagnostics.error_count)
@@ -719,10 +709,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         incremental_exit = self.execute().unwrap()
-        if incremental_exit not in {
-            pytest.ExitCode.OK,
-            pytest.ExitCode.NO_TESTS_COLLECTED,
-        }:
+        if incremental_exit != pytest.ExitCode.OK:
             return r.ok(incremental_exit)
         return self._execute_testmon(complete=True)
 
@@ -923,6 +910,7 @@ class FlextInfraPytestRunnerExecution(
             and outcome.forwarded_signal is None
             and not selection
             and cache_restored
+            and not selection_plan.owns_no_tests
         )
         # A zero-test project (empty suite by declared design) completes its
         # lifecycle with pytest's NO_TESTS_COLLECTED: the run must reach the

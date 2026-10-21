@@ -751,6 +751,10 @@ Infra:
         description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
       - name: profile-test-report
         description: Render the parent pytest profile and the aggregated child profiles from that run.
+      - name: profile-docs
+        description: Profile the complete configured mutating documentation lifecycle and retain reached phase profiles on native failure.
+      - name: profile-docs-report
+        description: Render only the latest documentation profiling run, including explicit lifecycle and phase completion states.
       - name: profile-environment
         description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
       - name: profile-environment-report
@@ -1447,7 +1451,9 @@ Infra:
       # own output and is recoverable. tool.flext.docs is deliberately
       # absent: the template seeds it with package_name at project creation
       # only, and afterwards it stays CUSTOM — keys such as site_title are
-      # owned by the live repository and survive every gen.
+      # owned by the live repository and survive every gen. The sole exception
+      # is documentation_language: _sync_documentation_language projects it
+      # from repository.project and removes the leaf for the English default.
       - tool.flext.namespace
       preserve_project_keys:
       - name

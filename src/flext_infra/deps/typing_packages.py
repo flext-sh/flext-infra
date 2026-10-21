@@ -13,10 +13,15 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
+import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor, GatherImportsVisitor
+from libcst.helpers import get_full_name_for_node
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 from flext_infra import c, config, m, r, settings, t, u
+from flext_infra.gates import FlextInfraRuffFormatGate
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -57,7 +62,7 @@ class FlextInfraDependencyTypingPackages:
         destination = repository_root / policy.directory
         with u.Infra.codegen_transaction_lease(destination / "packages"):
             packages = tuple(
-                cls._generate_typing_package(
+                cls.generate_typing_package(
                     repository_root,
                     module,
                     policy,
@@ -86,7 +91,7 @@ class FlextInfraDependencyTypingPackages:
         return r[t.VariadicTuple[Path]].ok(packages)
 
     @classmethod
-    def _generate_typing_package(
+    def generate_typing_package(
         cls,
         root: Path,
         module: str,
@@ -150,6 +155,7 @@ class FlextInfraDependencyTypingPackages:
                 cwd=root,
                 timeout=c.Infra.TIMEOUT_MEDIUM,
             ).unwrap()
+            cls.normalize_typing_sources(root, module, policy, native)
             files = {
                 Path(stub_package) / path.relative_to(native / module): (
                     c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING)
@@ -203,6 +209,133 @@ class FlextInfraDependencyTypingPackages:
                         raise ValueError(msg)
                     u.Cli.atomic_delete_binary_file_guarded(before).unwrap()
         return package_root
+
+    @classmethod
+    def normalize_typing_sources(
+        cls,
+        root: Path,
+        module: str,
+        policy: m.Infra.TypingGenerationPolicy,
+        native: Path,
+    ) -> None:
+        """Normalize native stubs with the consumer's explicit declarations.
+
+        Raises:
+            ValueError: If an overlay is generated rather than authored source.
+
+        """
+        staged = tuple(sorted((native / module).rglob("*.pyi")))
+        single = native / f"{module}.pyi"
+        if single.is_file():
+            staged = (*staged, single)
+        for path in staged:
+            relative = (
+                Path(c.Infra.INIT_PYI)
+                if path == single
+                else path.relative_to(native / module)
+            )
+            declared = root / policy.directory / module / relative
+            if not declared.is_file():
+                continue
+            content = declared.read_text(encoding=c.DEFAULT_ENCODING)
+            if content.startswith(c.Infra.TYPING_STUB_HEADER):
+                msg = f"typing declarations must be authored: {declared}"
+                raise ValueError(msg)
+            authored = cst.parse_module(content)
+            imports = GatherImportsVisitor(
+                CodemodContext(
+                    full_package_name=".".join((module, *relative.parent.parts)),
+                )
+            )
+            authored.visit(imports)
+            context = CodemodContext()
+            for item in imports.symbol_mapping.values():
+                AddImportsVisitor.add_needed_import(
+                    context,
+                    item.module_name,
+                    item.obj_name,
+                    item.alias,
+                    item.relative,
+                )
+            generated = cst.parse_module(path.read_text(encoding=c.DEFAULT_ENCODING))
+            merged = generated.with_changes(
+                body=cls._merge_typing_declarations(generated.body, authored.body)
+            )
+            path.write_text(
+                AddImportsVisitor(context).transform_module(merged).code,
+                encoding=c.DEFAULT_ENCODING,
+            )
+        FlextInfraRuffFormatGate.format_files(root, staged).unwrap()
+
+    @classmethod
+    def _merge_typing_declarations(
+        cls,
+        native: t.SequenceOf[t.Infra.CstStatement],
+        declared: t.SequenceOf[t.Infra.CstStatement],
+    ) -> t.VariadicTuple[t.Infra.CstStatement]:
+        """Apply explicit signatures and fields without dropping native SDK members.
+
+        Returns:
+            Declarations with their authored import closure and native members retained.
+
+        Raises:
+            TypeError: If an overlay changes the kind of an existing declaration.
+
+        """
+        body = list(native)
+        positions = {
+            name: index
+            for index, statement in enumerate(body)
+            if (name := cls._typing_declaration_name(statement)) is not None
+        }
+        for statement in declared:
+            name = cls._typing_declaration_name(statement)
+            if name is None:
+                continue
+            if name not in positions:
+                positions[name] = len(body)
+                body.append(statement)
+                continue
+            previous = body[positions[name]]
+            if isinstance(previous, cst.ClassDef):
+                if isinstance(statement, cst.SimpleStatementLine):
+                    # A class-object annotation does not replace its native class.
+                    continue
+                if (
+                    not isinstance(statement, cst.ClassDef)
+                    or not isinstance(previous.body, cst.IndentedBlock)
+                    or not isinstance(statement.body, cst.IndentedBlock)
+                ):
+                    msg = f"typing declaration changes native class: {name}"
+                    raise TypeError(msg)
+                body[positions[name]] = previous.with_changes(
+                    body=previous.body.with_changes(
+                        body=cls._merge_typing_declarations(
+                            previous.body.body, statement.body.body
+                        )
+                    )
+                )
+                continue
+            body[positions[name]] = statement
+        return tuple(body)
+
+    @staticmethod
+    def _typing_declaration_name(statement: t.Infra.CstStatement) -> str | None:
+        """Identify only explicit stub declarations, never infer an SDK type.
+
+        Returns:
+            The declaration's local name, or no name for imports and controls.
+
+        """
+        if isinstance(statement, cst.FunctionDef | cst.ClassDef):
+            return statement.name.value
+        if isinstance(statement, cst.SimpleStatementLine) and len(statement.body) == 1:
+            item = statement.body[0]
+            if isinstance(item, cst.AnnAssign):
+                return get_full_name_for_node(item.target)
+            if isinstance(item, cst.Assign) and len(item.targets) == 1:
+                return get_full_name_for_node(item.targets[0].target)
+        return None
 
     @staticmethod
     def _publish_typing_source(path: Path, content: bytes) -> None:

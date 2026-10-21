@@ -579,6 +579,19 @@ class TestsFlextInfraGitFacet:
         tm.that(u.Infra.git_source_scope_paths(scope), eq=(created,))
         tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
 
+        u.Tests.git_run(repository, "add", "--", "src/created.py")
+        captured = tm.ok(u.Cli.atomic_read_binary_file_state(created, required=True))
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[created])
+        created.unlink()
+
+        tm.fail(u.Cli.atomic_verify_binary_file_states((captured,)))
+        tm.that(u.Infra.git_source_scope_paths(scope), eq=())
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+        tm.that(
+            u.Tests.git_capture(repository, "ls-files", "--", "src/created.py").strip(),
+            eq="src/created.py",
+        )
+
     @staticmethod
     def test_invalid_nested_git_marker_matches_native_tracked_scope(
         tmp_path: Path,

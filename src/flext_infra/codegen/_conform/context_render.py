@@ -556,6 +556,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 cli_module=project.cli_module,
                 runtime_dependency_overlay=project.runtime_dependency_overlay,
                 description=project.description,
+                documentation_language=project.documentation_language,
                 version=version.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,

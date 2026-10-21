@@ -145,12 +145,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
         # republished site-packages/flext_cli/utilities.py otherwise).
+        original_sources = FlextInfraUtilitiesCodegenFacades._facade_original_sources(
+            root, source_states
+        )
         sources = {
             **{
                 path: source
-                for path, source in FlextInfraUtilitiesCodegenFacades._facade_original_sources(
-                    root, source_states
-                ).items()
+                for path, source in original_sources.items()
                 if path not in retired
             },
             **{
@@ -261,7 +262,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     def _facade_original_sources(
         root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> dict[Path, str]:
+    ) -> t.MappingKV[Path, str]:
         """Select root-owned Python sources while retaining all inputs as receipts.
 
         Returns:
@@ -1540,13 +1541,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facade: t.Pair[Path, ast.ClassDef],
         declared_names: set[str],
     ) -> frozenset[str]:
-        """Retire own bases whose source no longer belongs to this family.
+        """Retire own bases whose source no longer publishes in this family.
 
-        Upstream inheritance and source-proven current family providers remain.
+        Authored inheritance and source-proven current family providers remain.
         Unknown bindings fail instead of being classified by their spelling.
 
         Returns:
-            Existing base expressions whose providers moved out of the family.
+            Existing base expressions whose providers left the family publication.
 
         Raises:
             ValueError: If an existing base has no resolved source identity.
@@ -1619,9 +1620,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 continue
             path = Path(provider.real_path).resolve()
             if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
-                roots[1].resolve(),
+                roots[1].resolve()
             ):
                 retired.add(ast.unparse(base))
+                continue
+            if (
+                projection_is_autogen
+                and path.parent == roots[1].resolve()
+                and path.name != c.Infra.INIT_PY
+                and FlextInfraUtilitiesRopeRuntime.py_class(binding.get_object())
+            ):
+                if binding.get_object().get_name() in (
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        contents[path]
+                    )
+                ):
+                    continue
+                if any(
+                    isinstance(node, ast.ClassDef)
+                    and node.name == binding.get_object().get_name()
+                    for node in ast.parse(contents[path], filename=str(path)).body
+                ):
+                    retired.add(ast.unparse(base))
         return frozenset(retired)
 
     @staticmethod

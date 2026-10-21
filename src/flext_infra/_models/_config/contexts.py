@@ -512,6 +512,9 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Project description"),
         ]
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         python_required_version: Annotated[

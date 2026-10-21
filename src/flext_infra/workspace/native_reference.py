@@ -1115,7 +1115,7 @@ class FlextInfraWorkspaceNativeReference:
         """
         # The 21fcf255 walker links reduced arguments to the existing code proof.
         pending: list[t.Pair[str, p.AttributeProbe | None]] = [(binding, value)]
-        seen: set[int] = set()
+        seen: dict[int, p.AttributeProbe] = {}
         result: list[
             t.Triple[str, p.AttributeProbe, Literal["execution", "storage_type"]]
         ] = []
@@ -1123,7 +1123,7 @@ class FlextInfraWorkspaceNativeReference:
             name, item = pending.pop()
             if item is None or id(item) in seen:
                 continue
-            seen.add(id(item))
+            seen[id(item)] = item
             children = cls._native_container_operands(name, item)
             if children is not None:
                 pending.extend(children)
@@ -4579,9 +4579,25 @@ class FlextInfraWorkspaceNativeReference:
         if observed.sources != reference.sources:
             extra = sorted(set(observed.sources).difference(reference.sources))
             missing = sorted(set(reference.sources).difference(observed.sources))
+            witnesses = tuple(
+                (
+                    label,
+                    source,
+                    tuple(
+                        (item.binding, item.kind, item.supplier, item.qualname)
+                        for item in snapshot.bindings
+                        if f"{item.supplier}::{item.qualname}" == source[0]
+                    ),
+                )
+                for label, snapshot, sources in (
+                    ("observed", observed, extra),
+                    ("reference", reference, missing),
+                )
+                for source in sources
+            )
             return r[bool].fail(
                 "native reference source epoch differs: "
-                f"extra={extra[:1]} missing={missing[:1]}"
+                f"extra={extra} missing={missing}; witnesses={witnesses}"
             )
         return r[bool].ok(value=True)
 
