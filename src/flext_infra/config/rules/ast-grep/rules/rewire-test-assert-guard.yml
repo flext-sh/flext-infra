@@ -12,7 +12,17 @@ files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
 rule:
-  pattern: "assert $COND, $MSG"
+  all:
+    - pattern: "assert $COND, $MSG"
+    # Only a narrowing guard keeps the native block; a non-None name narrows
+    # through tm.not_none and any other condition is a tm.that observation.
+    - has:
+        any:
+          - pattern: "$VALUE is None"
+          - pattern: "$VALUE is not None"
+          - pattern: "isinstance($VALUE, $TYPE)"
+    - not:
+        regex: "^assert [A-Za-z_][A-Za-z0-9_]* is not None,"
 fix: |-
   if not ($COND):
       raise AssertionError($MSG)
@@ -39,6 +49,8 @@ rule:
           - pattern: "$VALUE is None"
           - pattern: "$VALUE is not None"
           - pattern: "isinstance($VALUE, $TYPE)"
+    - not:
+        regex: "^assert [A-Za-z_][A-Za-z0-9_]* is not None$"
 fix: |-
   if not ($COND):
       raise AssertionError

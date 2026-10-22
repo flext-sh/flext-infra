@@ -1,0 +1,14 @@
+id: rewire-test-assert-not-none-message
+valid:
+  - assert value is not None, "A value is required"
+  - |
+    from tests import tm
+    assert self.value is not None, "A value is required"
+invalid:
+  - |
+    from tests import tm
+    assert value is not None, "A value is required"
+  - |
+    from tests import tm
+    if not (value is not None):
+        raise AssertionError(report)
