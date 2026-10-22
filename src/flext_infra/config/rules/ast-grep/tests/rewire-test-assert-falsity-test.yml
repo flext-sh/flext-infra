@@ -1,0 +1,19 @@
+id: rewire-test-assert-falsity
+valid:
+  - assert not path.exists()
+  - |
+    from tests import tm
+    assert path.exists()
+  - |
+    from tests import tm
+    assert not path.exists(), "present"
+  - |
+    from tests import tm
+    assert not isinstance(value, Entry)
+invalid:
+  - |
+    from tests import tm
+    assert not path.exists()
+  - |
+    from tests import tm
+    assert not any(item.dirty for item in items)

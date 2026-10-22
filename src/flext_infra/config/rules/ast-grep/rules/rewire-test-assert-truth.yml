@@ -1,0 +1,82 @@
+# Every non-narrowing raw assert is a native truth observation: the subject
+# expression is kept verbatim, so evaluation order, chained comparisons and
+# operand types are unchanged. Narrowing guards stay with
+# rewire-test-assert-guard.yml / rewire-test-assert-not-none.yml so type
+# checkers keep the narrowing an assert gave them.
+id: rewire-test-assert-truth
+language: Python
+severity: error
+metadata:
+  context:
+    COND:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $COND"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: not_operator
+          nthChild: 1
+    - not:
+        has:
+          stopBy: end
+          any:
+            - pattern: "$VALUE is None"
+            - pattern: "$VALUE is not None"
+            - pattern: "isinstance($VALUE, $TYPE)"
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($COND, truth=True)
+message: Observe the asserted truth through the tm matcher facade.
+---
+id: rewire-test-assert-falsity
+language: Python
+severity: error
+metadata:
+  context:
+    COND:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert not $COND"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          stopBy: end
+          any:
+            - pattern: "$VALUE is None"
+            - pattern: "$VALUE is not None"
+            - pattern: "isinstance($VALUE, $TYPE)"
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($COND, truth=False)
+message: Observe the asserted falsity through the tm matcher facade.
