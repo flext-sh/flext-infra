@@ -9,13 +9,13 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
+class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     """Deps infrastructure constants."""
 
     # NOTE: Hardcoded base path constants removed.

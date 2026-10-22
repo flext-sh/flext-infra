@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from flext_infra import c, config
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import tm, u
 
 
@@ -31,7 +30,7 @@ class TestsFlextInfraLockfilePolicyProjection:
     ) -> None:
         """Git itself decides that the rendered ignore file keeps the lock tracked."""
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=profile,
                 project_name="fixture-project",
@@ -57,7 +56,7 @@ class TestsFlextInfraLockfilePolicyProjection:
     ) -> None:
         """Track native dependency graphs without tracking local installation state."""
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=profile,
                 project_name="fixture-project",

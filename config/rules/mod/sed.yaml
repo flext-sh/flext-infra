@@ -268,8 +268,9 @@ rules:
   - id: duplicate-cure-model-owner-ast-import
     description: Bind the native AST contract in the census declaration owner.
     include: [src/flext_infra/_models/census.py]
-    find: '(?m)(?<!import ast\n)^(from collections\.abc import MutableSet)$'
-    replace: 'import ast\n\g<1>'
+    # Fires only with the declarations rule below, whose payload uses ``ast``.
+    find: '(?ms)\A(?!.*^    class DuplicateDefinition\()(.*?)(?<!import ast\n)^(from collections\.abc import MutableSet)$'
+    replace: '\g<1>import ast\n\g<2>'
   - id: duplicate-cure-model-owner-declarations
     description: Declare frozen duplicate cure payloads beside the existing census contracts.
     include: [src/flext_infra/_models/census.py]
@@ -459,7 +460,10 @@ rules:
   - id: config-vocabulary-use-constants-owner
     description: Configuration vocabulary belongs to the bootstrap-safe constants family.
     distributions: [flext-infra]
-    exclude: [src/flext_infra/_models/_config/vocabulary.py]
+    exclude:
+      - src/flext_infra/_models/_config/vocabulary.py
+      - src/flext_infra/_models/__init__.py
+      - src/flext_infra/_models/_config/__init__.py
     find: '\bflext_infra\._models\._config\.vocabulary\b'
     replace: flext_infra._constants.config
   - id: codemod-use-cli-yaml-stream-owner
@@ -482,7 +486,12 @@ rules:
   - id: config-vocabulary-use-constants-class
     description: Share one configuration vocabulary through the constants owner.
     distributions: [flext-infra]
-    exclude: [src/flext_infra/_models/_config/vocabulary.py]
+    # Generated initializers re-export whatever the source declares; the
+    # generator, not this rule, removes the vocabulary export after cutover.
+    exclude:
+      - src/flext_infra/_models/_config/vocabulary.py
+      - src/flext_infra/_models/__init__.py
+      - src/flext_infra/_models/_config/__init__.py
     find: '\bFlextInfraConfigVocabulary\b'
     replace: FlextInfraConstantsConfig
   - id: conform-consume-validated-request-enums
@@ -520,6 +529,12 @@ rules:
     include: [src/flext_infra/codegen/codegen_preconditions.py]
     find: '\bclass FlextInfraCodegenPreconditions\(FlextInfraUtilitiesCodegenFilePlan\):'
     replace: 'class FlextInfraCodegenPreconditions:'
+  - id: conform-retire-gitignore-forwarder-consumers
+    description: Gitignore rendering has one owner, u.Infra.render_project_gitignore; the conform forwarder had test consumers only.
+    distributions: [flext-infra]
+    include: [tests/*.py, tests/**/*.py]
+    find: '\bFlextInfraCodegenConform\.render_project_gitignore\('
+    replace: 'u.Infra.render_project_gitignore('
   - id: consume-private-utilities-through-facade
     description: Modules outside the private utility tree reach composed utilities through u.Infra (ENFORCE-068).
     distributions: [flext-infra]

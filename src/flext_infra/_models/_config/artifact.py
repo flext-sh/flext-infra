@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -31,7 +32,6 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsScaffold,
     FlextInfraConfigModelsTemplates,
     FlextInfraConfigModelsWorkspace,
-    FlextInfraConfigVocabulary,
 )
 from flext_infra._models._git import FlextInfraModelsGitWorktreeState
 
@@ -1393,7 +1393,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(description="Repository this task plans"),
         ]
         surface: Annotated[
-            FlextInfraConfigVocabulary.CodegenConformSurface,
+            FlextInfraConstantsConfig.CodegenConformSurface,
             m.Field(
                 description="Requested surface resolved against each target policy"
             ),

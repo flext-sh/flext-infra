@@ -115,7 +115,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The checked or atomically published initializer plan.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
@@ -204,7 +204,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
         """
         roots, scope_root = scope
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         planned = self._plan_single_surface(request)
         if planned.failure:

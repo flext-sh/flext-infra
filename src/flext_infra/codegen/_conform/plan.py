@@ -113,7 +113,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             root,
             targets.value,
             selected,
-            c.Infra.CodegenConformSurface(request.what),
+            request.what,
             inputs,
         )
         if gathered.failure:
@@ -1601,7 +1601,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]``.
 
         """
-        scope = c.Infra.CodegenConformScope(request.scope)
+        scope = request.scope
         selected: t.VariadicTuple[m.Infra.RepositoryRef]
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)

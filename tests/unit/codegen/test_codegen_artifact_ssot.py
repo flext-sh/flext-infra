@@ -98,7 +98,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             for path in manifests:
                 tm.that(contract.destinations, has=path.as_posix())
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 declared,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name="fixture-project",
@@ -183,7 +183,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             },
         )
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 declared,
                 profile=profile,
                 project_name="fixture-project",
@@ -242,7 +242,7 @@ class TestsFlextInfraCodegenArtifactSsot:
     ) -> None:
         """Track portable governance and exclude machine-owned provider settings."""
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 codegen,
                 profile=profile,
                 project_name="fixture-project",

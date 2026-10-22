@@ -333,7 +333,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.state.request or m.Infra.CodegenConformRequest(
             root=self.state.repository_root,
         )
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
@@ -357,13 +357,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         if (
-            c.Infra.CodegenConformMode(request.mode)
+            request.mode
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return None
         if not (
             self.surface_contract(
-                c.Infra.CodegenConformSurface(request.what),
+                request.what,
                 codegen=spec,
             ).complete_governed
             or request.declaration_kind is not None
@@ -387,12 +387,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
-        surface = c.Infra.CodegenConformSurface(request.what)
+        surface = request.what
         if surface in c.Infra.FILE_ONLY_SURFACES:
             return self._execute_lazy_init(request)
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+        if request.mode is c.Infra.CodegenConformMode.APPLY:
             if surface in c.Infra.PARTIAL_PLAN_SURFACES:
                 return self.execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
@@ -415,7 +415,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         targets = u.Infra.repository_operation_targets(
             request.root,
-            c.Infra.CodegenConformScope(request.scope),
+            request.scope,
         )
         if targets.failure:
             return r[bool].from_failure(targets)
@@ -620,7 +620,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         if request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
             return r[p.Infra.CodegenResult].fail(
@@ -637,7 +637,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if planned.failure:
             return r[p.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
-        surface = c.Infra.CodegenConformSurface(request.what)
+        surface = request.what
         if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
             return r[p.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
@@ -731,7 +731,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         scope_root, roots = publication_scope
-        surface = c.Infra.CodegenConformSurface(request.what)
+        surface = request.what
         expected = self._bootstrap_expected_surface(request, plan, surface)
         if expected.failure:
             return r[t.VariadicTuple[Path]].from_failure(expected)
@@ -1030,7 +1030,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         configured = self._managed_policy(request)
         if configured.failure:
@@ -1838,7 +1838,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         if (
-            c.Infra.CodegenConformMode(request.mode)
+            request.mode
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return r[bool].ok(value=False)

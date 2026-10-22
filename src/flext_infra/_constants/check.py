@@ -11,14 +11,14 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
+class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     """Check infrastructure constants."""
 
     AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
@@ -35,11 +35,11 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
 
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
-            FlextInfraConfigVocabulary.GateKind,
+            FlextInfraConstantsConfig.GateKind,
             t.MappingKV[str, t.Quad[str, str, bool, bool]],
         ]
     ] = MappingProxyType({
-        FlextInfraConfigVocabulary.GateKind.EXTERNAL: MappingProxyType({
+        FlextInfraConstantsConfig.GateKind.EXTERNAL: MappingProxyType({
             "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True, True),
             "format": (
                 "Ruff Formatter",
@@ -58,12 +58,12 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
                 False,
             ),
         }),
-        FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER: MappingProxyType({
+        FlextInfraConstantsConfig.GateKind.TYPE_CHECKER: MappingProxyType({
             "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly", False, True),
             "mypy": ("Mypy", "https://mypy.readthedocs.io/", False, True),
             "pyright": ("Pyright", "https://github.com/microsoft/pyright", False, True),
         }),
-        FlextInfraConfigVocabulary.GateKind.INFRA: MappingProxyType({
+        FlextInfraConstantsConfig.GateKind.INFRA: MappingProxyType({
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
@@ -122,13 +122,13 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     ``make fix`` repair policy, and whether the checker accepts one
     declared file via the file-gate verbs.
     """
-    GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConfigVocabulary.GateKind]] = (
+    GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConstantsConfig.GateKind]] = (
         MappingProxyType({
             gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
         })
     )
     TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
-        GATE_TOOLS_BY_KIND[FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER],
+        GATE_TOOLS_BY_KIND[FlextInfraConstantsConfig.GateKind.TYPE_CHECKER],
     )
     SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         gate: (tool[0], tool[1])

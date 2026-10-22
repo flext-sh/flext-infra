@@ -78,7 +78,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             ]
         ]
         if (
-            c.Infra.CodegenConformMode(request.mode)
+            request.mode
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return result_type.ok(((None, None), False))

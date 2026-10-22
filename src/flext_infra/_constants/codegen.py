@@ -20,7 +20,7 @@ from flext_infra._constants import (
     FlextInfraConstantsCodegenRenderNames,
     FlextInfraConstantsWorkspace,
 )
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -34,41 +34,41 @@ class FlextInfraConstantsCodegen(
     """Namespace for all codegen-related constants."""
 
     FILE_ONLY_SURFACES: ClassVar[
-        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+        frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.LAZY_INIT,
-        FlextInfraConfigVocabulary.CodegenConformSurface.FACADES,
+        FlextInfraConstantsConfig.CodegenConformSurface.LAZY_INIT,
+        FlextInfraConstantsConfig.CodegenConformSurface.FACADES,
     ))
     "Surfaces planned for one exact module destination, never repository fans."
 
     SELF_SCOPE_SURFACES: ClassVar[
-        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+        frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
-        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+        FlextInfraConstantsConfig.CodegenConformSurface.ENVRC,
+        FlextInfraConstantsConfig.CodegenConformSurface.MISE_CONFIG,
     ))
     "Surfaces restricted to the self repository scope."
 
     DECLARED_TARGET_SURFACES: ClassVar[
-        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+        frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = SELF_SCOPE_SURFACES | frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
-        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
-        FlextInfraConfigVocabulary.CodegenConformSurface.EDITOR,
+        FlextInfraConstantsConfig.CodegenConformSurface.MAKEFILE,
+        FlextInfraConstantsConfig.CodegenConformSurface.PYPROJECT,
+        FlextInfraConstantsConfig.CodegenConformSurface.EDITOR,
     ))
     "Self-owned configuration is planned against the declared repository target."
 
     ALLOW_UNPROVISIONED_SURFACES: ClassVar[
-        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+        frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = DECLARED_TARGET_SURFACES | frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+        FlextInfraConstantsConfig.CodegenConformSurface.DOCS_CONFIG,
     ))
     "Declared configuration and docs can be rendered before member provisioning."
 
     PARTIAL_PLAN_SURFACES: ClassVar[
-        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+        frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = ALLOW_UNPROVISIONED_SURFACES | frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.WORKFLOWS,
+        FlextInfraConstantsConfig.CodegenConformSurface.WORKFLOWS,
     ))
     "Partial rendering also includes provisioned workflow bindings."
 

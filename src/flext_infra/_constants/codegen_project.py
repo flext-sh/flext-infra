@@ -21,13 +21,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_infra._constants import FlextInfraConstantsSharedInfra
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
+class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"

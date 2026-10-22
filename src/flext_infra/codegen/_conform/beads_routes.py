@@ -9,11 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r
-from flext_infra.codegen._conform import FlextInfraCodegenConformGitignore
+from flext_infra.codegen._conform import FlextInfraCodegenConformBootstrap
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
-class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformGitignore):
+class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformBootstrap):
     """Beads ledger route reconciliation for composed repositories."""
 
     def conform_workspace_beads_routes(

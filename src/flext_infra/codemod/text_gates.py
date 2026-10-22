@@ -1080,9 +1080,9 @@ class FlextInfraModTextGateEngine:
             plans = cls._without_conflicting_plans(
                 plans, conflicting_dependencies, issues
             )
-            inputs = {
-                state.path: state for plan in plans for state in plan.source_states
-            }
+        # Publication depends only on the planned rewrites; unmatched scanned
+        # sources are never written, so they are not batch inputs.
+        inputs = {state.path: state for plan in plans for state in plan.source_states}
         report = m.Infra.ModTextReport(
             findings=len(entries),
             actionable=actionable,
