@@ -828,7 +828,21 @@ _setup_lifecycle:
 # right after setup; `make upg` cures them and never depends on setup.
 .PHONY: _setup_activated
 # Audit owns the final pin, completeness and runtime verdicts after provisioning.
+# Locally, setup installs the declared Git hook stages with prek (tracker memory
+# operator-ruling-20261022-ruff-format-fix-mandatory): prek follows Git's
+# effective hooks path, and a repository holding the Beads boundary then
+# re-inserts its marked section ahead of prek's exec so both run. CI installs
+# none; a missing prek or bd fails loud.
 _setup_activated:
+{% if make.pre_commit or make.pre_push %}
+	@set -eu; \
+	case "$(strip $({{ make.ci.variable }}))" in \
+		{{ make.ci.value }}) ;; \
+		*) \
+			prek --cd "$(PROJECT_ROOT)" install --force{% if make.pre_commit %} --hook-type pre-commit{% endif %}{% if make.pre_push %} --hook-type pre-push{% endif %}; \
+			if [ -d "$(PROJECT_ROOT)/.beads" ]; then bd --directory "$(PROJECT_ROOT)" hooks install --beads; fi ;; \
+	esac
+{% endif %}
 	@set -eu; \
 	case "$(strip $({{ make.ci.variable }})): $(CUSTOM_DECLARED_TARGETS) " in \
 		{{ make.ci.value }}:*) ;; \
