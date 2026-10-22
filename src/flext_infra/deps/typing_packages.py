@@ -107,7 +107,7 @@ class FlextInfraDependencyTypingPackages:
                     "--frozen",
                     "--no-workspace",
                     "--",
-                    *(str(path) for path in packages),
+                    *(str(path.relative_to(repository_root)) for path in packages),
                 ],
                 cwd=repository_root,
                 timeout=c.Infra.TIMEOUT_MEDIUM,
@@ -159,7 +159,7 @@ class FlextInfraDependencyTypingPackages:
         banned = u.Cli.toml_table_path(
             document, ("tool", "ruff", "lint", "flake8-tidy-imports", "banned-api")
         )
-        contracts: dict[Path, frozenset[str]] = {}
+        contracts: t.MutableMappingKV[Path, frozenset[str]] = {}
         for package in packages:
             source, is_package = (
                 FlextInfraDependencyTypingPackages._typing_implementation_source(
@@ -185,7 +185,7 @@ class FlextInfraDependencyTypingPackages:
                     implementation,
                     state,
                     ".".join((package.module, *relative.parent.parts)),
-                    tuple(banned) if banned is not None else (),
+                    tuple(str(name) for name in banned or ()),
                 )
                 if rules:
                     contracts[authored.resolve()] = rules
@@ -193,7 +193,7 @@ class FlextInfraDependencyTypingPackages:
 
     @staticmethod
     def _typing_implementation_source(
-        package: m.Infra.GeneratedTypingPackageIdentity,
+        package: m.Infra.GeneratedTypingPackage,
         environment: m.Infra.PythonEnvironmentObservation,
     ) -> tuple[Path, bool]:
         """Resolve the exact declared implementation without executing its code.
@@ -526,6 +526,7 @@ class FlextInfraDependencyTypingPackages:
             for path in obsolete
         )
         for path in (*obsolete, *(package_root / name for name in files)):
+            u.Cli.ensure_dir(path.parent).unwrap()
             content = u.Cli.atomic_read_binary_file_state(path).unwrap().content
             if content is not None and not content.startswith(
                 c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING),

@@ -110,8 +110,10 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                     project_path,
                     venv_bin,
                     config_path=project_path / c.PYPROJECT_FILENAME,
-                    json_output_path=project_path
-                    / f".deptry-report-{u.generate_id()}.json",
+                    json_output_path=u.Cli.ensure_dir(
+                        project_path / c.Infra.REPORTS_DIR_NAME
+                    ).unwrap()
+                    / f"deptry-report-{u.generate_id()}.json",
                 ).unwrap()
                 if scan.report.root:
                     inputs = FlextInfraRuntimeDependencyCollector(

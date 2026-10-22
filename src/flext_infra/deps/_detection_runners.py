@@ -36,8 +36,11 @@ class FlextInfraDependencyDetectionRunnersMixin(FlextInfraDependencyTypingPackag
         """
         result_type = r[t.Pair[t.SequenceOf[t.JsonMapping], int]]
         settings = config_path or project_path / c.PYPROJECT_FILENAME
+        reports = u.Cli.ensure_dir(project_path / c.Infra.REPORTS_DIR_NAME)
+        if reports.failure:
+            return result_type.from_failure(reports)
         out_file = json_output_path or (
-            project_path / f".deptry-report-{u.generate_id()}.json"
+            reports.value / f"deptry-report-{u.generate_id()}.json"
         )
         captured = u.Infra.capture_deptry_scan(
             project_path,
