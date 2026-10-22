@@ -167,21 +167,19 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
-        FlextInfraPytestProfileChild.PROCESS_DIRECTORY_ENV
+        "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
     )
-    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = (
-        FlextInfraPytestProfileChild.CHILD_ROOT_ENV
-    )
+    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
     PYTEST_SELECTION_PROFILE_FILENAME: ClassVar[str] = "testmon-selection.pstats"
     PYTEST_INVENTORY_PROFILE_FILENAME: ClassVar[str] = "testmon-inventory.pstats"
-    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = (
-        FlextInfraPytestProfileChild.CLOCK_MODULE
-    )
+    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest_clock"
     PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
-        FlextInfraPytestProfileChild.bootstrap_stub()
+        FlextInfraPytestProfileChild.bootstrap_stub(PYTEST_PROFILE_CLOCK_MODULE)
     )
-    PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
-        FlextInfraPytestProfileChild.launcher_stub()
+    PYTEST_PROFILE_LAUNCHER: ClassVar[str] = FlextInfraPytestProfileChild.launcher_stub(
+        PYTEST_PROFILE_CLOCK_MODULE,
+        PYTEST_PROFILE_CHILD_ROOT_ENV,
+        PYTEST_PROFILE_PROCESS_DIRECTORY_ENV,
     )
     """Parent-free ``python -c`` payloads projected from their real owner.
 

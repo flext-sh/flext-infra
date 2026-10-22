@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -134,7 +133,7 @@ class FlextInfraImportNormalizationPhase:
         """
         del preflight
         source_states, declared_files = receipt.inputs, receipt.files
-        captured = FlextInfraCodegenPreconditions.unique_states((
+        captured = u.Infra.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
         ))

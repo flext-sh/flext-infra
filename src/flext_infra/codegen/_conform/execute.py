@@ -15,7 +15,6 @@ from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
@@ -528,7 +527,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             issues.extend(planned.value.issues)
             if first_exception is None:
                 first_exception = planned.value.exception
-        snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
+        snapshots = u.Infra.unique_states(tuple(inputs))
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
@@ -1642,7 +1641,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if prepared.failure:
             return result_type.from_failure(prepared)
         analysis = analysis.model_copy(update={"files": prepared.value})
-        inputs = FlextInfraCodegenPreconditions.unique_states(
+        inputs = u.Infra.unique_states(
             tuple(source for file in analysis.files for source in file.source_states),
         )
         if inputs.failure:

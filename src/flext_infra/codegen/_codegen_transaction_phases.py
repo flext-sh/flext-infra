@@ -257,15 +257,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 "\n".join(issue.formatted for issue in published.value.issues),
                 exception=session.exception or published.value.exception,
                 error_code=c.Infra.ToolOutcome.ERROR.value,
-                error_data={
-                    "written_files": tuple(
-                        str(path) for path in published.value.written_files
-                    ),
-                    "issues": tuple(
-                        issue.model_dump(mode="json")
-                        for issue in published.value.issues
-                    ),
-                },
+                error_data=self._publication_failure_data(
+                    published.value.written_files, published.value.issues
+                ),
             )
         journal, journal_state = current.journal, current.journal_state
         if any(item.dependency_group is not None for item in staged):
@@ -1323,11 +1317,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     error_code=c.Infra.ToolOutcome.ERROR.value,
                     error_data={
                         **(settled.error_data or {}),
-                        "written_files": tuple(
-                            str(path) for path in session.written_files
-                        ),
-                        "issues": tuple(
-                            issue.model_dump(mode="json") for issue in session.issues
+                        **self._publication_failure_data(
+                            session.written_files, session.issues
                         ),
                         "settlement_error": settled.error,
                     },
@@ -1396,13 +1387,26 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             "\n".join(issue.formatted for issue in session.issues),
             error_code=c.Infra.ToolOutcome.ERROR.value,
             exception=session.exception,
-            error_data={
-                "written_files": tuple(str(path) for path in session.written_files),
-                "issues": tuple(
-                    issue.model_dump(mode="json") for issue in session.issues
-                ),
-            },
+            error_data=self._publication_failure_data(
+                session.written_files, session.issues
+            ),
         )
+
+    @staticmethod
+    def _publication_failure_data(
+        written_files: t.SequenceOf[Path],
+        issues: t.SequenceOf[m.Infra.Issue],
+    ) -> t.JsonDict:
+        """Project the written files and issues of a failed publication as JSON.
+
+        Returns:
+            The JSON error data every publication failure carries.
+
+        """
+        return {
+            "written_files": [str(path) for path in written_files],
+            "issues": [issue.model_dump(mode="json") for issue in issues],
+        }
 
     def _verified_commit(
         self,

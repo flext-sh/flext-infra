@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
@@ -158,7 +157,7 @@ class FlextInfraAccessorRenamePhase(
 
         """
         source_states, declared_files = receipt.inputs, receipt.files
-        captured = FlextInfraCodegenPreconditions.unique_states((
+        captured = u.Infra.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
         ))

@@ -12,7 +12,6 @@ from pathlib import Path
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform import FlextInfraCodegenConformFilePlans
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -75,7 +74,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             if collected.failure:
                 return result_type.from_failure(collected)
             suppliers = collected.value
-        authenticated = FlextInfraCodegenPreconditions.unique_states(tuple(sources))
+        authenticated = u.Infra.unique_states(tuple(sources))
         if authenticated.failure:
             return result_type.from_failure(authenticated)
         return self._planned_resolution_files(

@@ -25,7 +25,7 @@ type _DocsScopePlan = t.Pair[m.Infra.DocScope, t.VariadicTuple[m.Infra.CodegenFi
 
 
 class FlextInfraDocGenerator(
-    FlextInfraDocServiceBase[m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]]],
+    FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
     FlextInfraDocGeneratorBundleMixin,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
@@ -41,7 +41,7 @@ class FlextInfraDocGenerator(
     @classmethod
     def execute_request(
         cls, request: m.Infra.DocsGenerateRequest
-    ) -> p.Result[m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]]]:
+    ) -> p.Result[m.Infra.DocsPhaseReports]:
         """Expose one fixed-effect CLI request without inherited mode controls.
 
         Returns:
@@ -49,10 +49,7 @@ class FlextInfraDocGenerator(
 
         """
         owner = cls(repository_root=request.repository_root)
-        adapter: m.TypeAdapter[m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]]] = (
-            u.type_adapter(m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]])
-        )
-        return owner.generate(request).map(adapter.validate_python)
+        return owner.generate(request).map(m.Infra.DocsPhaseReports.model_validate)
 
     def generate(
         self,
@@ -329,17 +326,16 @@ class FlextInfraDocGenerator(
     @override
     def execute(
         self,
-    ) -> p.Result[m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]]]:
+    ) -> p.Result[m.Infra.DocsPhaseReports]:
         """Execute the configured docs generation flow.
 
         Returns:
             The committed reports in the canonical model-valued service result.
 
         """
-        adapter: m.TypeAdapter[m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]]] = (
-            u.type_adapter(m.RootModel[t.SequenceOf[m.Infra.DocsPhaseReport]])
+        return self.generate(self._configured_request()).map(
+            m.Infra.DocsPhaseReports.model_validate
         )
-        return self.generate(self._configured_request()).map(adapter.validate_python)
 
     def _configured_request(self) -> m.Infra.DocsGenerateRequest:
         """Return the pure render request shared by both planner entry points.

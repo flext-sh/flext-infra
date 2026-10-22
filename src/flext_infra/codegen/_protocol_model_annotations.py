@@ -73,7 +73,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 names.append(scope.pyobject.get_name())
         return f"{module.get_name()}.{'.'.join(reversed(names))}"
 
-    def is_type(
+    def denotes(
         self, node: ast.expr, scope: p.Infra.RopeScope, module: str, name: str
     ) -> bool:
         binding = u.Infra.expression_name(scope, ast.unparse(node))
@@ -190,7 +190,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         primary = node.value if isinstance(node, ast.Subscript) else node
         binding = u.Infra.resolve_symbol(scope, primary)
         for module, name in (("builtins", "object"), ("typing", "Any")):
-            if self.is_type(primary, scope, module, name):
+            if self.denotes(primary, scope, module, name):
                 msg = f"forbidden generated protocol annotation: {module}.{name}"
                 raise TypeError(msg)
         alias = self.alias_definition(binding) if binding is not None else None
@@ -224,10 +224,10 @@ class FlextInfraCodegenProtocolModelAnnotations:
         parameters: t.MappingKV[str, ast.expr],
         visiting: t.StrTuple,
     ) -> ast.expr:
-        if self.is_type(node.value, scope, "typing", "Literal"):
+        if self.denotes(node.value, scope, "typing", "Literal"):
             self.record_imports(ast.unparse(node.value), scope)
             return node
-        if self.is_type(node.value, scope, "typing", "Annotated"):
+        if self.denotes(node.value, scope, "typing", "Annotated"):
             if not isinstance(node.slice, ast.Tuple):
                 msg = "Annotated requires a native payload and metadata"
                 raise ValueError(msg)

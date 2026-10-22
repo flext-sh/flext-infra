@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities import FlextInfraUtilitiesMiseBinary
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 
@@ -541,19 +540,19 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         ):
             return r[bool].fail("Mise role must not modify its reader project")
         # Reuse the reader's own manifest/lock authentication, never PATH election.
-        declared = FlextInfraUtilitiesMiseBinary.committed_mise_self_release(
+        declared = u.Infra.committed_mise_self_release(
             reader_root
         )
         if declared.failure:
             return r[bool].from_failure(declared)
         if not declared.value:
             return r[bool].fail("Mise role reader has no declared self pin")
-        pinned = FlextInfraUtilitiesMiseBinary.locked_mise_version(
+        pinned = u.Infra.locked_mise_version(
             reader_root, config.Infra.codegen.toolchain.mise_selector, declared.value[0]
         )
         if pinned.failure:
             return r[bool].from_failure(pinned)
-        qualified = FlextInfraUtilitiesMiseBinary.mise_self_identity(
+        qualified = u.Infra.mise_self_identity(
             Path(accepted.reader.path), pinned.value, reader_root
         )
         return qualified.map(lambda _identity: True)

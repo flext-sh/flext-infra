@@ -10,7 +10,6 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
 
@@ -143,14 +142,14 @@ class FlextInfraCandidateBootstrapService:
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
             for file in planned.value:
-                sources = FlextInfraCodegenPreconditions.unique_states((
+                sources = u.Infra.unique_states((
                     *declaration_states,
                     *file.source_states,
                 ))
                 if sources.failure:
                     return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
                 files.append(file.model_copy(update={"source_states": sources.value}))
-        sources = FlextInfraCodegenPreconditions.unique_states(
+        sources = u.Infra.unique_states(
             tuple(source for file in files for source in file.source_states),
         )
         if sources.failure:

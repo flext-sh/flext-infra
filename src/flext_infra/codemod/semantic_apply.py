@@ -15,10 +15,6 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFacades,
-    FlextInfraUtilitiesRopeRuntime,
-)
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraCodegenFileLeases, FlextInfraStagedPackage
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
@@ -200,7 +196,7 @@ class FlextInfraCodemodSemanticApply:
             TypeError: If the snapshot project does not satisfy its contract.
 
         """
-        owner = FlextInfraUtilitiesRopeRuntime.runtime_type(
+        owner = u.Infra.runtime_type(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
         )
@@ -208,7 +204,7 @@ class FlextInfraCodemodSemanticApply:
         if not callable(factory):
             msg = "Rope project owner does not expose authenticated construction"
             raise TypeError(msg)
-        extension_modules = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+        extension_modules = u.Infra.runtime_callable(
             "builtins", "getattr"
         )(live.get_pycore(), "extension_modules")
         project = factory(
@@ -252,7 +248,7 @@ class FlextInfraCodemodSemanticApply:
         return {
             path: source
             for scope in candidate.workspaces or (candidate.workspace,)
-            for path, source in FlextInfraUtilitiesCodegenFacades.facade_original_sources(
+            for path, source in u.Infra.facade_original_sources(
                 scope, states
             ).items()
         }
@@ -644,7 +640,7 @@ class FlextInfraCodemodSemanticApply:
         candidate = seed.candidate
         source_folders, python_folders = folders
         original_states, epoch_sources, sources = texts
-        owner = FlextInfraUtilitiesRopeRuntime.runtime_type(
+        owner = u.Infra.runtime_type(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
         )
@@ -652,7 +648,7 @@ class FlextInfraCodemodSemanticApply:
         if not callable(factory):
             msg = "Rope project owner does not expose authenticated construction"
             raise TypeError(msg)
-        extension_modules = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+        extension_modules = u.Infra.runtime_callable(
             "builtins", "getattr"
         )(live.get_pycore(), "extension_modules")
         project = factory(

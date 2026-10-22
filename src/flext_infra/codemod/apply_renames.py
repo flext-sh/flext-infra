@@ -14,7 +14,6 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -89,7 +88,7 @@ class FlextInfraApplyRenames:
             TypeError: If the snapshot project does not satisfy its contract.
 
         """
-        owner = FlextInfraUtilitiesRopeRuntime.runtime_type(
+        owner = u.Infra.runtime_type(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
         )
@@ -97,7 +96,7 @@ class FlextInfraApplyRenames:
         if not callable(factory):
             msg = "Rope project owner does not expose authenticated construction"
             raise TypeError(msg)
-        reader = FlextInfraUtilitiesRopeRuntime.runtime_callable("builtins", "getattr")
+        reader = u.Infra.runtime_callable("builtins", "getattr")
         extension_modules = reader(live.get_pycore(), "extension_modules")
         project = factory(
             live,

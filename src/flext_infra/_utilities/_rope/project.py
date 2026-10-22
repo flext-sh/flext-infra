@@ -45,11 +45,11 @@ def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
     return result.value
 
 
-class _RopeProjectSourceAccessMixin:
-    """Authenticated source access surface shared by the native project.
+class FlextInfraRopeProject(Project):
+    """Rope project with the upstream self-warning initializer repaired.
 
-    The concrete project class owns ``fscommands`` and the snapshot owner
-    classes; this mixin only reads them through the declared boundary.
+    Source access reads ``fscommands`` and the snapshot owner classes only
+    through the declared authenticated boundary.
     """
 
     fscommands: (
@@ -222,10 +222,6 @@ class _RopeProjectSourceAccessMixin:
     def verify_source_states(self) -> None:
         """Verify the original input epoch after semantic planning."""
         self._authenticated_reads.verify()
-
-
-class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
-    """Rope project with the upstream self-warning initializer repaired."""
 
     # Import roots are declared by FLEXT; a read-only analysis pass also
     # freezes their resource identities and the external Python path.

@@ -298,5 +298,8 @@ class FlextInfraModelsDocs(
             m.Field(description="Phase-specific item payloads"),
         ] = m.Field(default_factory=tuple)
 
+    class DocsPhaseReports(m.RootModel[t.SequenceOf[DocsPhaseReport]]):
+        """Ordered phase reports of one documentation lifecycle run."""
+
 
 __all__: list[str] = ["FlextInfraModelsDocs"]

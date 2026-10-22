@@ -18,7 +18,6 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraStagedPackage,
 )
@@ -42,11 +41,8 @@ class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
 
     @staticmethod
-    @pytest.mark.parametrize("utility_owner", [True, False])
     def test_input_union_preserves_shared_identity_and_rejects_conflicts(
         tmp_path: Path,
-        *,
-        utility_owner: bool,
     ) -> None:
         """One source authority survives repeats; neither conflicting order wins."""
         source = tmp_path / "source.py"
@@ -54,11 +50,7 @@ class TestsFlextInfraSemanticPublication:
         first = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         absent = tm.ok(u.Cli.atomic_read_binary_file_state(tmp_path / "optional"))
         shared = m.Cli.AtomicFileState.model_validate_json(first.model_dump_json())
-        unique_states = (
-            u.Infra.unique_states
-            if utility_owner
-            else FlextInfraCodegenPreconditions.unique_states
-        )
+        unique_states = u.Infra.unique_states
         tm.that(
             tm.ok(
                 unique_states((

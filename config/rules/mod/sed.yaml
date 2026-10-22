@@ -503,6 +503,32 @@ rules:
     include: [src/flext_infra/_protocols/base.py]
     find: '(?m)^        @staticmethod\n        def _repository_provider\(\n(?:[^\n]*\n)*?        \) -> p\.Result\[m\.Infra\.ProviderIdentitySpec\]: \.\.\.\n'
     replace: ''
+  - id: codegen-unique-states-single-owner
+    description: Source-state unification has one owner; services consume it through u.Infra, never by inheriting a private utility.
+    distributions: [flext-infra]
+    find: '\bFlextInfraCodegenPreconditions\.unique_states\('
+    replace: 'u.Infra.unique_states('
+  - id: codegen-preconditions-consume-unique-states-owner
+    description: The preconditions service calls the source-state owner instead of an inherited copy.
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/codegen_preconditions.py]
+    find: '\bcls\.unique_states\('
+    replace: 'u.Infra.unique_states('
+  - id: codegen-preconditions-retire-utility-base
+    description: A service never inherits a private utility tree (ENFORCE-068).
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/codegen_preconditions.py]
+    find: '\bclass FlextInfraCodegenPreconditions\(FlextInfraUtilitiesCodegenFilePlan\):'
+    replace: 'class FlextInfraCodegenPreconditions:'
+  - id: consume-private-utilities-through-facade
+    description: Modules outside the private utility tree reach composed utilities through u.Infra (ENFORCE-068).
+    distributions: [flext-infra]
+    include:
+      - src/flext_infra/codegen/mise_toolchain_proof.py
+      - src/flext_infra/codemod/apply_renames.py
+      - src/flext_infra/codemod/semantic_apply.py
+    find: '\bFlextInfraUtilities(?:MiseBinary|RopeRuntime|CodegenFacades)\.([a-z][a-z_]*)\('
+    replace: 'u.Infra.\g<1>('
 
   - id: repository-discovery-retire-manifest-exclusion-name
     description: Name Git-derived participation at its canonical discovery owner and consumers.

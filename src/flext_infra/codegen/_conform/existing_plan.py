@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenProtocolModels,
 )
 from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
 from flext_infra.workspace import (
@@ -383,7 +382,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
             if custom_result.failure:
                 return result_type.from_failure(custom_result)
-            custom_inputs = FlextInfraCodegenPreconditions.unique_states((
+            custom_inputs = u.Infra.unique_states((
                 *lazy_result.value[1],
                 *binding[1]()[0],
                 *(
@@ -461,7 +460,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 exports.value.exception, issues=exports.value.issues
             )
             files = exports.value.files
-            merged = FlextInfraCodegenPreconditions.unique_states((
+            merged = u.Infra.unique_states((
                 *inputs,
                 *projected[1]()[0],
                 *(state for plan in files for state in plan.source_states),
@@ -597,7 +596,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return result_type.ok(initial)
         changed = {plan.path: plan for plan in protocols}
         staged = {plan.path: plan for plan in (*initial[0], *protocols)}
-        merged = FlextInfraCodegenPreconditions.unique_states((
+        merged = u.Infra.unique_states((
             *initial[1],
             *(state for plan in protocols for state in plan.source_states),
         ))
@@ -666,7 +665,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     return result_type.from_failure(files)
                 changed.update((plan.path, plan) for plan in files.value)
                 staged.update((plan.path, plan) for plan in files.value)
-                captured = FlextInfraCodegenPreconditions.unique_states((
+                captured = u.Infra.unique_states((
                     *inputs,
                     *binding[1]()[0],
                     *(
@@ -753,7 +752,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         }
                     )
                 )
-            return FlextInfraCodegenPreconditions.unique_states((
+            return u.Infra.unique_states((
                 *initial[1],
                 *states,
             )).map(lambda inputs: (tuple(plans), inputs))
@@ -829,7 +828,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         if planned.failure:
             return result_type.from_failure(planned)
-        sources = FlextInfraCodegenPreconditions.unique_states(
+        sources = u.Infra.unique_states(
             tuple(state for plan in planned.value for state in plan.source_states)
         )
         if sources.failure:
@@ -910,7 +909,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ):
                 qualified.append(file)
                 continue
-            inputs = FlextInfraCodegenPreconditions.unique_states((
+            inputs = u.Infra.unique_states((
                 *file.source_states,
                 *states,
             ))
@@ -1183,7 +1182,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 return result_type.from_failure(composed)
             content = composed.value.rendered
             sources = (*sources, *composed.value.source_states)
-        captured = FlextInfraCodegenPreconditions.unique_states(sources)
+        captured = u.Infra.unique_states(sources)
         if captured.failure:
             return result_type.from_failure(captured)
         return self.file_plan(
@@ -1698,7 +1697,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if planned.failure:
                 return result_type.from_failure(planned)
             staged.update((plan.path, plan) for plan in planned.value)
-            captured = FlextInfraCodegenPreconditions.unique_states((
+            captured = u.Infra.unique_states((
                 *inputs,
                 *current[1]()[0],
             ))
@@ -1786,7 +1785,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if utility_plan.failure:
             return result_type.from_failure(utility_plan)
         states, directories, topology = consumed_states()
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *utility_plan.value.source_states,
             *states,
         ))

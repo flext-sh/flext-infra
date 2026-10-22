@@ -312,8 +312,8 @@ class FlextInfraMisePublication:
 
         """
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
-        inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
-        declared = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states(analysis.inputs)
+        declared = u.Infra.unique_states((
             *(source for file in analysis.files for source in file.source_states),
             *(
                 source

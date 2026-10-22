@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
+    @runtime_checkable
     class CodemodContextOperands(Protocol):
         """Read-only rule operands consumed by semantic context admission."""
 

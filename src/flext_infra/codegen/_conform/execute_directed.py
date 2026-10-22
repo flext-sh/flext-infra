@@ -256,7 +256,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *analysis.inputs,
             *(source for file in analysis.files for source in file.source_states),
         ))
@@ -366,7 +366,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if candidate.failure:
             return result_type.from_failure(candidate)
         stage_plan = candidate.value
-        source_states = FlextInfraCodegenPreconditions.unique_states((
+        source_states = u.Infra.unique_states((
             *analysis.inputs,
             *stage_plan.inputs,
         ))

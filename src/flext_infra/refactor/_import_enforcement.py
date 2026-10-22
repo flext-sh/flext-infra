@@ -15,7 +15,6 @@ from libcst.helpers import get_full_name_for_node
 from libcst.metadata import MetadataWrapper, QualifiedNameProvider, ScopeProvider
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.refactor import (
     FlextInfraImportNormalizationPlacementMixin,
     FlextInfraImportNormalizationRoutesMixin,
@@ -74,7 +73,7 @@ class FlextInfraImportNormalization(
 
         """
         source_states, declared_files = receipt.inputs, receipt.files
-        captured = FlextInfraCodegenPreconditions.unique_states((
+        captured = u.Infra.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
         ))

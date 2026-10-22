@@ -146,11 +146,14 @@ class TestsFlextInfraPytestProfile:
             "    assert pstats.Stats(sys.argv[0]).get_stats_profile().func_profiles\n"
             "    print('single-finalization', flush=True)\n"
             "atexit.register(finished)\n"
-            "os.environ[child.FlextInfraPytestProfileChild.CHILD_ROOT_ENV] = (\n"
+            f"os.environ[{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}] = (\n"
             "    sys.argv[2])\n"
             "child.FlextInfraPytestProfileChild.startup(\n"
-            "    sys.argv[2] + '/sitecustomize.py')\n"
-            "assert child.FlextInfraPytestProfileChild.bootstrap()[1] is profile\n"
+            "    sys.argv[2] + '/sitecustomize.py',\n"
+            f"    {c.Infra.PYTEST_PROFILE_CLOCK_MODULE!r},\n"
+            f"    {c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r})\n"
+            "assert child.FlextInfraPytestProfileChild.bootstrap(\n"
+            f"    {c.Infra.PYTEST_PROFILE_CLOCK_MODULE!r})[1] is profile\n"
             "sys.argv = [sys.argv[1], sys.argv[1], '--version']\n"
             + c.Infra.PYTEST_PROFILE_LAUNCHER
         )

@@ -11,7 +11,6 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPreconditions,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -374,7 +373,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             self._retain_diagnostics(
                 exports.value.exception, issues=exports.value.issues
             )
-            inputs = FlextInfraCodegenPreconditions.unique_states((
+            inputs = u.Infra.unique_states((
                 *binding[1]()[0],
                 *(
                     state

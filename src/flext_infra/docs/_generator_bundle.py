@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
 
@@ -300,7 +299,7 @@ class FlextInfraDocGeneratorBundleMixin:
             return result_type.fail(
                 "docs scope inventory changed before batch admission",
             )
-        return FlextInfraCodegenPreconditions.unique_states((
+        return u.Infra.unique_states((
             *sources.value,
             declaration,
         ))
@@ -519,7 +518,7 @@ class FlextInfraDocGeneratorBundleMixin:
             if tooling.failure:
                 return result_type.from_failure(tooling)
             states.extend(tooling.value.sources)
-        return FlextInfraCodegenPreconditions.unique_states(tuple(states))
+        return u.Infra.unique_states(tuple(states))
 
     @classmethod
     def _validated_scopes(

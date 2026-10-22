@@ -15,7 +15,6 @@ from typing import Literal
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
@@ -1573,7 +1572,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         complete: list[m.Infra.CodegenFilePlan] = []
         for file in files:
-            sources = FlextInfraCodegenPreconditions.unique_states(
+            sources = u.Infra.unique_states(
                 (*file.source_states, *inputs.sources),
             )
             if sources.failure:

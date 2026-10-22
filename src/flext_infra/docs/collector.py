@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Annotated, ClassVar
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
 
@@ -160,14 +159,14 @@ class FlextInfraDocCollector:
 
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
-        inputs = FlextInfraCodegenPreconditions.unique_states(
+        inputs = u.Infra.unique_states(
             (snapshot, *bundle.source_states),
         )
         if inputs.failure:
             return result_type.from_failure(inputs)
         files: list[m.Infra.CodegenFilePlan] = []
         for plan in bundle.files:
-            sources = FlextInfraCodegenPreconditions.unique_states(
+            sources = u.Infra.unique_states(
                 (snapshot, *plan.source_states),
             )
             if sources.failure:

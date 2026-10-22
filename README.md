@@ -14,7 +14,8 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-**Version**: `0.12.0` | **Python**: 3.13+ | **Project class**: `infra`
+**Version**: `0.12.0` | **Python**: see `pyproject.toml` `requires-python` | **Project
+class**: `infra`
 
 > **Alpha (0.12.0).** This package is alpha quality. Every package in the workspace must
 > be re-checked and re-validated at 0.12.0 before any promotion beyond alpha; treat
@@ -38,9 +39,8 @@ management
 ## Collection Rules
 
 Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
-§9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent
-FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry
-verification).
+and this project's `AGENTS.md` for the current authority chain, execution boundaries and
+required validation.
 
 ## Operation Flow
 
@@ -59,7 +59,8 @@ verification).
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
   `FlextInfraCommandPayloadMixin`, `FlextInfraConfig`, `FlextInfraConformWiring`,
   `FlextInfraConstants` (+19 more).
-- Library abstraction boundaries: see AGENTS.md §2.7.
+- Library abstraction boundaries: see the project `AGENTS.md` and the referenced parent
+  architecture rules.
 
 ## Quality Gates
 

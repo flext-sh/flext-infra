@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsProcess as process,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 if TYPE_CHECKING:
@@ -118,7 +117,7 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        sources = FlextInfraCodegenPreconditions.unique_states((
+        sources = u.Infra.unique_states((
             *(state for plan in plans for state in plan.source_states),
             *(
                 plan.before
@@ -213,7 +212,7 @@ class FlextInfraCodegenStaging:
             )
         if prepared.failure:
             return result_type.from_failure(prepared)
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *sources.value,
             *prepared.value.inputs,
         ))
@@ -365,7 +364,7 @@ class FlextInfraCodegenStaging:
                 )
             if all(receipt is not previous for previous in receipts):
                 receipts.append(receipt)
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *(state for receipt in receipts for state in receipt.inputs),
             *(state for plan in plans for state in plan.source_states),
         ))

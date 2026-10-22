@@ -656,6 +656,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeDefaultWildcard(RopeWildcard[str], Protocol):
         """Native default wildcard consuming Rope's string constraint grammar."""
 
+    @runtime_checkable
     class RopeChangeComputer(Protocol):
         """Native source computation consumed by the restructuring planner."""
 

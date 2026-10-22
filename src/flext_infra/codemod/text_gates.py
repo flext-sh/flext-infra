@@ -88,7 +88,7 @@ class FlextInfraModTextGateEngine:
                     "\n".join(issue.formatted for issue in issues),
                     exception=error,
                     error_data={
-                        "issues": tuple(issue.model_dump() for issue in issues)
+                        "issues": [issue.model_dump(mode="json") for issue in issues]
                     },
                 )
             sources = cls._source_paths(project, elected.value[2])
@@ -1127,8 +1127,8 @@ class FlextInfraModTextGateEngine:
                 error_code=c.Infra.ToolOutcome.ERROR.value,
                 error_data={
                     "report": report.model_dump(mode="json"),
-                    "issues": tuple(issue.model_dump() for issue in issues),
-                    "written_files": (),
+                    "issues": [issue.model_dump(mode="json") for issue in issues],
+                    "written_files": [],
                 },
             )
         if fix and analysis.files:

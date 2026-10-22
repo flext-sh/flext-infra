@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps import (
     FlextInfraDependencyDetectionService,
@@ -210,7 +209,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if render_inputs is None or render_inputs.tooling_runtime is None
             else render_inputs.tooling_runtime.sources
         )
-        captured = FlextInfraCodegenPreconditions.unique_states(
+        captured = u.Infra.unique_states(
             (*source_states, *tooling_sources, *composed.value.source_states),
         )
         if captured.failure:
@@ -285,7 +284,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if render_inputs is None or render_inputs.tooling_runtime is None
             else render_inputs.tooling_runtime.sources
         )
-        combined_sources = FlextInfraCodegenPreconditions.unique_states(
+        combined_sources = u.Infra.unique_states(
             (*original_tooling_sources, *tooling.value.sources),
         )
         if combined_sources.failure:
