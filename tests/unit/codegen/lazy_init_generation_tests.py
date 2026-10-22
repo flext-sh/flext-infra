@@ -107,7 +107,6 @@ class TestsFlextInfraCodegenGeneration:
                 "c": ("tests.constants", "c"),
             },
             eager_dunders={},
-            inline_constants={},
         )
         source = FlextInfraCodegenGeneration.render_init(plan)
         testing.joinpath(c.Infra.INIT_PY).write_text(
@@ -205,9 +204,7 @@ class TestsFlextInfraCodegenGeneration:
             exports=exports,
             lazy_map=MappingProxyType(dict(lazy_map)),
             eager_dunders=MappingProxyType(dict(eager_dunders or {})),
-            inline_constants=MappingProxyType({}),
             child_packages_for_lazy=(),
-            excluded_lazy_names=("internal_only",),
         )
 
     def test_root_initializer_is_the_lazy_ssot(self) -> None:
@@ -740,9 +737,7 @@ class TestsFlextInfraCodegenGeneration:
                 "project_p": ("demo_worktree_pkg", "p"),
             }),
             eager_dunders=MappingProxyType({}),
-            inline_constants=MappingProxyType({}),
             child_packages_for_lazy=(),
-            excluded_lazy_names=("internal_only",),
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)

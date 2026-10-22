@@ -48,7 +48,6 @@ def _probe_publication(
         exports=tuple(exports),
         lazy_map={},
         eager_dunders={},
-        inline_constants={},
     )
 
 
@@ -112,7 +111,12 @@ class TestsFlextInfraFreshImport:
     def test_declared_target_without_interpreter_fails_loudly(
         tmp_path: Path,
     ) -> None:
-        """A declared target lacking its interpreter fails, never falls back."""
+        """A declared target lacking its interpreter fails, never falls back.
+
+        The runtime proves the environment is physical before probing its
+        interpreter, so the case declares a physical environment without one.
+        """
+        u.Infra.runtime_environment_dir(tmp_path, runtime_root=tmp_path).mkdir()
         validator = FlextInfraValidateFreshImport(
             repository_root=tmp_path,
             runtime_root=tmp_path,

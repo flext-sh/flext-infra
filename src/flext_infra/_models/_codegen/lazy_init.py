@@ -74,20 +74,9 @@ class FlextInfraModelsCodegenLazyInitModels:
                 "package dict before any submodule re-import can shadow it."
             ),
         )
-        inline_constants: t.StrMapping = m.Field(
-            description="Inline constants emitted directly into __init__.py.",
-        )
-        wildcard_runtime_modules: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Runtime wildcard import modules.",
-        )
         child_packages_for_lazy: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Direct child package imports merged at runtime.",
-        )
-        excluded_lazy_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Names excluded from runtime child lazy import merges.",
         )
         source_states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(),

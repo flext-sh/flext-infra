@@ -276,10 +276,8 @@ class FlextInfraCodegenLazyInitPlanner(
                     action=empty_action,
                     lazy_map={},
                     eager_dunders={},
-                    inline_constants={},
                 ),
             )
-        excluded_lazy_names: t.StrSequence = ()
         is_facade_root = self._is_facade_root(context)
         export_names = {*lazy_map, *eager_dunders}
         if not is_facade_root:
@@ -326,7 +324,6 @@ class FlextInfraCodegenLazyInitPlanner(
             )
             lazy_map = filtered_lazy_map
             child_lazy = ()
-            excluded_lazy_names = ()
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,
@@ -340,10 +337,7 @@ class FlextInfraCodegenLazyInitPlanner(
             ),
             lazy_map=dict(lazy_map),
             eager_dunders=eager_dunders,
-            inline_constants={},
-            wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
-            excluded_lazy_names=excluded_lazy_names,
         )
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return self._publish_plan(plan)
@@ -378,7 +372,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 exports=tuple(sorted(exports)),
                 lazy_map=exports,
                 eager_dunders={},
-                inline_constants={},
             ),
         )
 
@@ -410,7 +403,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 action=residue_action,
                 lazy_map={},
                 eager_dunders={},
-                inline_constants={},
             ),
         )
 

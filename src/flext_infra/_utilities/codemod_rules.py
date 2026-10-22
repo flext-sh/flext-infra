@@ -127,7 +127,7 @@ class FlextInfraUtilitiesCodemodRules(
         if observed.content is None:
             msg = f"codemod utility input is absent: {path}"
             raise ValueError(msg)
-        for document in FlextInfraUtilitiesCodemodRules.parse_yaml_documents(
+        for document in u.Cli.yaml_parse_documents(
             observed.content.decode(c.DEFAULT_ENCODING)
         ).unwrap():
             identity = document.get("id")

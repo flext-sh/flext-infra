@@ -1546,10 +1546,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,
             m.Field(description="Workspace governing the selection"),
         ]
-        make_spec: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
-            m.Field(description="Canonical Make contract"),
-        ]
         uv_environments: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsRelease.UvEnvironmentPlan],
             m.Field(description="uv plans paired with selected repositories"),

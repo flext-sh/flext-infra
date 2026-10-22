@@ -475,7 +475,7 @@ rules:
     description: Rule catalog parsing reuses the shared YAML stream parser.
     distributions: [flext-infra]
     include: [src/flext_infra/_utilities/codemod_rules.py]
-    find: '\bcls\.parse_yaml_documents\b'
+    find: '\b(?:cls|FlextInfraUtilitiesCodemodRules)\.parse_yaml_documents\b'
     replace: u.Cli.yaml_parse_documents
   - id: codemod-retire-yaml-stream-wrapper
     description: Remove the superseded parser after consumer cutover.
@@ -535,6 +535,12 @@ rules:
     include: [tests/*.py, tests/**/*.py]
     find: '\bFlextInfraCodegenConform\.render_project_gitignore\('
     replace: 'u.Infra.render_project_gitignore('
+  - id: codegen-models-retire-unread-fields
+    description: Codegen plan fields no consumer reads are retired at their model; constructors stop passing them (LazyInitPlan inline_constants, wildcard_runtime_modules and excluded_lazy_names were always empty; CodegenPlan.make_spec only echoed config.Infra.codegen.make).
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/*.py, src/flext_infra/codegen/**/*.py, tests/*.py, tests/**/*.py]
+    find: '(?m)^[ \t]+(?:inline_constants|wildcard_runtime_modules|excluded_lazy_names|make_spec)=[^\n]*,\n'
+    replace: ''
   - id: consume-private-utilities-through-facade
     description: Modules outside the private utility tree reach composed utilities through u.Infra (ENFORCE-068).
     distributions: [flext-infra]

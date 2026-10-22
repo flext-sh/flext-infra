@@ -348,7 +348,6 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     action=c.Infra.LazyInitAction.WRITE,
                     lazy_map={},
                     eager_dunders={},
-                    inline_constants={},
                 )
                 desired: bytes | None = FlextInfraCodegenGeneration.render_init(
                     generated_plan,

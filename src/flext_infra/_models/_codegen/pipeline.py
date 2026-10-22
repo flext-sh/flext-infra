@@ -426,11 +426,6 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Actual planner before effects",
         )
-        scaffolded_repository: bool = m.Field(
-            default=False,
-            exclude=True,
-            description="Whether this invocation initialized an unpublished Git root",
-        )
         _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
             m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])
         )

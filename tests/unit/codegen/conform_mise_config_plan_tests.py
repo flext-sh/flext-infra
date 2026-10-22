@@ -45,7 +45,6 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
             request=request,
             repositories=(),
             workspace=workspace,
-            make_spec=config.Infra.codegen.make,
             uv_environments=uv_environments,
             files=files,
         )
