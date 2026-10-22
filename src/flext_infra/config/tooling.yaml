@@ -23,9 +23,7 @@ Infra:
       - [disable-project-excludes-heuristics, true]
       - [use-ignore-files, false]
       - - project-excludes
-        - ["**/__pycache__", "**/__pyrefly_virtual__/**", "**/node_modules",
-          "**/.venv/**", "**/site-packages/**", "**/typings/**", "**/venv/**",
-          "**/vendor/**", ".venv/**", "typings/**", "vendor/**"]
+        - ["**/typings/**"]
       pyrefly.errors:
       # Preserve every diagnostic from the strict-error policy during cutover.
       - [bad-argument-count, error]
@@ -162,7 +160,6 @@ Infra:
       - [ typeCheckingMode, strict ]
       - [ useLibraryCodeForTypes, true ]
       ruff:
-      - [ extend-exclude, [ "**/.archive/**", "**/.agents/aihub-hooks/**", "**/.claude/aihub-hooks/**", "**/.codex/aihub-hooks/**", "**/.cursor/aihub-hooks/**", "**/.gemini/aihub-hooks/**" ] ]
       - [ namespace-packages, [ tests, examples, scripts ] ]
       - [ fix, false ]
       - [ line-length, *formatting_width ]
@@ -344,19 +341,12 @@ Infra:
         # Ruff exits 1 on findings. Remaining findings block repair acceptance;
         # the gate verifies the repaired state through the native read-only check.
         findings-exit-codes: [ 1 ]
-        # Historical evidence trees (.archive/**) hold archived session
-        # artifacts, never live source: they are evidence-only material
-        # (operator law 11) and stay outside the lint scope of every
-        # projected member.
-        # Generated source trees (codegen artifacts with generated_source)
-        # are appended by the projection from that one key, never listed.
-        # Provider-owned AI Hub hook projections live under the tool-home
-        # dot directories (.agents/.claude/.codex/.cursor/.gemini ...); the
-        # operators rule (fleet learned constraint) keeps ~/.* code outside
-        # the lint scope, and these hooks are distributed tool-home state,
-        # not member source.
-        # Lint covers every tracked Python surface; `.gitignore` alone decides
-        # visibility (respect-gitignore below), never a copied exclude list.
+        # The codegen artifact registry (analysis_exclude, generated_source and
+        # the declared exclusion registry) is the only exclusion source: the
+        # projection appends it, so evidence trees, generated sources and the
+        # tool-home dot directories holding AI Hub hooks are never listed here.
+        # Lint covers every tracked Python surface; `.gitignore` and the
+        # artifact registry decide visibility, never a copied exclude list.
         # tests, examples, and scripts are dev/tooling source roots (see `src`
         # below), not installed packages: they hold namespace/command modules
         # loaded by path (e.g. the scripts/<verb>/<what> dispatch pattern), so
@@ -498,25 +488,7 @@ Infra:
           env-dirs: [ src, tests, examples, scripts ]
           test-like-dirs: [ tests, examples, scripts ]
           default-excludes:
-          - "**/node_modules"
-          - "**/__pycache__"
-          - "**/__pyrefly_virtual__/**"
-          - "**/.mypy_cache"
-          - "**/.ruff_cache"
-          - "**/.pytest_cache"
           - "**/.*"
-          - .git
-          - .reports
-          - vendor
-          - .venv
-          - "**/.venv"
-          - "**/.venv/**"
-          - "**/venv"
-          - "**/venv/**"
-          - "**/site-packages"
-          - "**/site-packages/**"
-          - "**/dist-packages"
-          - "**/dist-packages/**"
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []

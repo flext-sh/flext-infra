@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import sys
 from collections.abc import Callable, Generator, MutableMapping
-from contextlib import closing, contextmanager, nullcontext
+from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Literal, override
 
@@ -67,10 +67,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
         planned_sources: t.MappingKV[Path, str | None] | None = None,
         project_roots: t.VariadicTuple[Path] = (),
-        source_conflict: Callable[
-            [p.Infra.RopeProject, m.Infra.CodegenPhaseAnalysis], None
-        ]
-        | None = None,
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -233,40 +229,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     project.consumed_source_topology(),
                 )
 
-            completed = False
-            runtime_errors: tuple[type[Exception], ...] = (
-                OSError,
-                *c.EXC_BROAD_RUNTIME,
-            )
-            try:
-                with (
-                    (
-                        project.source_consumption()
-                        if source_conflict is not None
-                        else nullcontext()
-                    ) as consumption,
-                    project.frozen_layout(),
-                ):
-                    yield (
-                        FlextInfraUtilitiesCodegenFacades._require_source_project(
-                            project
-                        ),
-                        consumed,
-                        sources,
-                    )
-                completed = True
-            finally:
-                if completed:
-                    try:
-                        project.verify_source_states()
-                    except runtime_errors as exc:
-                        if (
-                            source_conflict is not None
-                            and consumption is not None
-                            and project.source_epoch_failure is exc
-                        ):
-                            source_conflict(project, consumption.receipt())
-                        raise
+            with project.frozen_layout():
+                yield (
+                    FlextInfraUtilitiesCodegenFacades._require_source_project(project),
+                    consumed,
+                    sources,
+                )
+            # A body failure escapes at the yield; only a completed pass verifies.
+            project.verify_source_states()
 
     @staticmethod
     def _require_source_project(value: p.AttributeProbe) -> p.Infra.RopeProject:

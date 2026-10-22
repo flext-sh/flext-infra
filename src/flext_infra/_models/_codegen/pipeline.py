@@ -396,23 +396,6 @@ class FlextInfraModelsCodegenPipelineModels:
                 "Authenticated complete source output, absent before validation"
             ),
         )
-        source_epoch_active: bool = m.Field(
-            default=False,
-            exclude=True,
-            description="One source epoch organizer owns nested conform planning",
-        )
-        source_epoch_project: t.Port[p.Infra.RopeProject | None] = m.Field(
-            default=None,
-            exclude=True,
-            description="Native owner of the first failed conform source epoch",
-        )
-        source_epoch_receipt: (
-            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis | None
-        ) = m.Field(
-            default=None,
-            exclude=True,
-            description="Issued consumption evidence of the failed source scope",
-        )
         repository_root: Path = m.Field(
             default=Path(),
             exclude=True,

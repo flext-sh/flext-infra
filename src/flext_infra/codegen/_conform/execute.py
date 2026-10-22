@@ -23,7 +23,10 @@ from flext_infra.codegen import (
 from flext_infra.codegen._conform.execute_directed import (
     FlextInfraCodegenConformExecuteDirected,
 )
-from flext_infra.workspace import FlextInfraWorkspaceNativeReference
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceNativeReference,
+)
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
@@ -814,7 +817,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         planning owns no expected destinations: its failure is recorded in
         the plan's issues, and aborting here would discard the valid
         siblings' publication instead of letting the aggregate carry the
-        original cause.
+        original cause. Each repository's runtime election selects its
+        resolver views, so an unelected runtime-local view is not expected.
 
         Returns:
             The expected destination paths paired with each path's owning
@@ -833,18 +837,33 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 if repository_root not in rejected_roots:
                     return result_type.from_failure(inputs)
                 continue
-            destinations = self.surface_contract(
-                surface,
-                codegen=inputs.value.spec,
-            ).destinations
+            spec = inputs.value.spec
+            destinations = self.surface_contract(surface, codegen=spec).destinations
             if not destinations:
                 return result_type.fail(
                     f"bootstrap requires declared destinations for {surface}",
                 )
+            election = FlextInfraWorkspaceDetector.runtime_election(repository_root)
+            if election.failure:
+                if repository_root not in rejected_roots:
+                    return result_type.from_failure(election)
+                continue
+            selected = {
+                directory / c.PYPROJECT_FILENAME
+                for directory in self.selected_resolution_directories(
+                    spec.make.uv_resolution,
+                    supplier_root=election.value.editable_supplier_root,
+                )
+            }
+            unselected = {
+                path.as_posix()
+                for path in spec.uv_resolution_pyprojects
+                if path not in selected
+            }
             expected_owners.update(
                 {
                     (repository_root / path).resolve(): repository_root
-                    for path in destinations
+                    for path in destinations - unselected
                 },
             )
         expected_paths = set(expected_owners)

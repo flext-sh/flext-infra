@@ -683,7 +683,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
     @staticmethod
     @pytest.mark.parametrize("consumer_fails", [False, True])
-    def test_source_epoch_failure_preserves_consumer_exception(
+    def test_changed_source_preserves_consumer_exception(
         tmp_path: Path,
         *,
         consumer_fails: bool,

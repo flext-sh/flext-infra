@@ -10,7 +10,6 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 from re import escape
-from traceback import format_exception
 
 import pytest
 
@@ -86,8 +85,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     "# Unconsumed source edit\n__all__ = []\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-            if binding is not None:
-                tm.that(binding.source_epoch_failure, eq=None)
             retained.append(analysis)
             return owner.publish_file_phase_locked(
                 scope_root,
@@ -153,219 +150,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             absent.write_text("VALUE = 'born'\n", encoding=c.DEFAULT_ENCODING)
             with pytest.raises(ValueError, match=escape(str(absent))):
                 contexts.close()
-
-    @staticmethod
-    @pytest.mark.parametrize("exported", [False, True])
-    def test_original_epoch_conflict_keeps_independent_production_publication(
-        tmp_path: Path,
-        *,
-        exported: bool,
-    ) -> None:
-        """Keep the original error red while an independently proved init lands."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        (package / "service.py").write_text(
-            "class Published: pass\n__all__ = ['Published']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        tests = root / c.Infra.DIR_TESTS
-        tests.mkdir()
-        conftest = tests / "conftest.py"
-        source = (
-            "class FixtureProvider: pass\n__all__ = ['FixtureProvider']\n"
-            if exported
-            else "__all__ = []\n"
-        )
-        conftest.write_text(source, encoding=c.DEFAULT_ENCODING)
-        phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT
-        owner = transaction.FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=root),
-        )
-        roots = owner.capability_roots(phase.value, (root,))
-        retained: list[m.Infra.CodegenPhaseAnalysis] = []
-
-        def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
-            service = u.Tests.create_lazy_init_service(root)
-            with ExitStack() as contexts:
-                binding = contexts.enter_context(
-                    u.Infra.facade_source_project(root, project_roots=(root,)),
-                )
-                analysis = tm.ok(service.plan_files(source_project=binding[0]))
-                original = next(
-                    file
-                    for file in analysis.files
-                    if file.path == package / c.Infra.INIT_PY
-                )
-                tm.that(
-                    conftest in {state.path for state in original.source_states},
-                    eq=False,
-                )
-                conftest.write_text(
-                    source + "# Concurrent source edit\n",
-                    encoding=c.DEFAULT_ENCODING,
-                )
-                with pytest.raises(ValueError, match=escape(str(conftest))) as caught:
-                    contexts.close()
-            classified = service.classify_source_conflict(
-                analysis, binding[0], caught.value
-            )
-            retained.append(classified)
-            tm.ok(classified.exception is caught.value)
-            tm.that(
-                package / c.Infra.INIT_PY in {file.path for file in classified.files},
-                eq=True,
-            )
-            tm.that(
-                tests / c.Infra.INIT_PY in {file.path for file in classified.files},
-                eq=False,
-            )
-            tm.that(
-                any(
-                    issue.file == str(tests / c.Infra.INIT_PY)
-                    for issue in classified.issues
-                ),
-                eq=True,
-            )
-            return owner.publish_file_phase_locked(
-                scope_root,
-                roots,
-                classified,
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            )
-
-        outcome = owner.run_files_locked(roots, publish)
-        tm.ok(outcome.failure)
-        assert outcome.exception is retained[0].exception, (
-            outcome.error,
-            outcome.exception,
-            outcome.error_data,
-            format_exception(outcome.exception)
-            if outcome.exception is not None
-            else (),
-        )
-        tm.that(
-            conftest.read_text(encoding=c.DEFAULT_ENCODING),
-            eq=source + "# Concurrent source edit\n",
-        )
-        production = next(
-            file for file in retained[0].files if file.path == package / c.Infra.INIT_PY
-        )
-        tm.that(production.path.read_bytes(), eq=production.desired_content)
-        tm.that(
-            u.Tests.run_lazy_init_probe(
-                f"from {package.name} import Published\nprint(Published.__name__)",
-                python_paths=(str(package.parent),),
-                cwd=root,
-            ),
-            eq=["Published"],
-        )
-
-    @staticmethod
-    def test_classify_source_conflict_reports_the_changed_bytes_scope(
-        tmp_path: Path,
-    ) -> None:
-        """Attribute changed bytes to the scope that consumed them."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        source = package / "service.py"
-        source.write_text(
-            "class Published: pass\n__all__ = ['Published']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        service = u.Tests.create_lazy_init_service(root)
-        with ExitStack() as contexts:
-            binding = contexts.enter_context(
-                u.Infra.facade_source_project(root, project_roots=(root,))
-            )
-            analysis = tm.ok(service.plan_files(source_project=binding[0]))
-            original = next(
-                file
-                for file in analysis.files
-                if file.path == package / c.Infra.INIT_PY
-            )
-            tm.that(
-                source in {state.path for state in original.source_states},
-                eq=True,
-            )
-            source.write_text(
-                "class Published: pass\n__all__ = ['Published']\n# Changed\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-            with pytest.raises(ValueError, match=escape(str(source))) as caught:
-                contexts.close()
-        classified = service.classify_source_conflict(
-            analysis, binding[0], caught.value
-        )
-        tm.ok(classified.exception is caught.value)
-        tm.that(
-            package / c.Infra.INIT_PY in {file.path for file in classified.files},
-            eq=False,
-        )
-        tm.that(
-            any(
-                issue.file == str(package / c.Infra.INIT_PY)
-                for issue in classified.issues
-            ),
-            eq=True,
-        )
-
-    @staticmethod
-    def test_classify_source_conflict_observes_a_fresh_boundary(
-        tmp_path: Path,
-    ) -> None:
-        """Every classification observes the physical directories again."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        published = package / "service.py"
-        published.write_text(
-            "class Published: pass\n__all__ = ['Published']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        tests = root / c.Infra.DIR_TESTS
-        tests.mkdir()
-        conftest = tests / "conftest.py"
-        source = "class FixtureProvider: pass\n__all__ = ['FixtureProvider']\n"
-        conftest.write_text(source, encoding=c.DEFAULT_ENCODING)
-        service = u.Tests.create_lazy_init_service(root)
-        with ExitStack() as contexts:
-            binding = contexts.enter_context(
-                u.Infra.facade_source_project(root, project_roots=(root,))
-            )
-            analysis = tm.ok(service.plan_files(source_project=binding[0]))
-            conftest.write_text(
-                source + "# Concurrent source edit\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-            with pytest.raises(ValueError, match=escape(str(conftest))) as caught:
-                contexts.close()
-        classified = service.classify_source_conflict(
-            analysis, binding[0], caught.value
-        )
-        tm.ok(classified.exception is caught.value)
-        tm.that(
-            package / c.Infra.INIT_PY in {file.path for file in classified.files},
-            eq=True,
-        )
-        tm.that(
-            any(
-                issue.file == str(tests / c.Infra.INIT_PY)
-                for issue in classified.issues
-            ),
-            eq=True,
-        )
-        published.write_text(
-            "class Published: pass\n__all__ = ['Published']\n# Later edit\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        repeated = service.classify_source_conflict(analysis, binding[0], caught.value)
-        tm.that(
-            package / c.Infra.INIT_PY in {file.path for file in repeated.files},
-            eq=False,
-        )
-        tm.that(
-            any(
-                issue.file == str(package / c.Infra.INIT_PY)
-                for issue in repeated.issues
-            ),
-            eq=True,
-        )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -909,10 +693,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that({target for target, _ in analysis.failed_targets}, eq=set(roots))
 
     @staticmethod
-    def test_failed_target_epoch_conflict_keeps_healthy_publication(
+    def test_failed_target_source_change_fails_the_whole_epoch(
         tmp_path: Path,
     ) -> None:
-        """Separate failed-target evidence from healthy publication dependencies."""
+        """Failed-target evidence stays separate; its source change fails loud."""
         failed_root, failed_package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="a-failed",
@@ -964,51 +748,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 "class Shared: pass\n__all__ = ['Shared']\n# Changed failed target\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-            with pytest.raises(ValueError, match=escape(str(provider))) as caught:
+            with pytest.raises(ValueError, match=escape(str(provider))):
                 contexts.close()
-        analysis = FlextInfraCodegenLazyInit.classify_source_conflict(
-            analysis,
-            binding[0],
-            caught.value,
-        )
-        tm.ok(analysis.exception is caught.value)
-        tm.that(
-            any("collision(s)" in issue.message for issue in analysis.issues),
-            eq=True,
-        )
-        tm.that(
-            any(
-                issue.file == str(failed_root) and issue.message == str(caught.value)
-                for issue in analysis.issues
-            ),
-            eq=True,
-        )
-        owner = transaction.FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=tmp_path),
-        )
-        roots = owner.capability_roots(
-            c.Infra.CodegenStagedFilePhase.LAZY_INIT.value,
-            (root,),
-        )
-        outcome = owner.run_files_locked(
-            roots,
-            lambda scope_root: owner.publish_file_phase_locked(
-                scope_root,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            ),
-        )
-        tm.ok(outcome.failure)
-        tm.ok(outcome.exception is caught.value)
-        tm.that(plan.path.read_bytes(), eq=plan.desired_content)
-        tm.ok(
-            u.Infra.publish_refactor_report_evidence(
-                tmp_path,
-                analysis,
-                relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
-            ),
-        )
 
     @staticmethod
     @pytest.mark.parametrize("invalid", ["missing", "outside", "ambiguous"])

@@ -332,15 +332,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
         ]
-        source_replan_limit: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                description=(
-                    "Maximum authenticated source-epoch successors per generation plan"
-                ),
-            ),
-        ]
         lint_snapshot_workers: Annotated[
             int,
             m.Field(

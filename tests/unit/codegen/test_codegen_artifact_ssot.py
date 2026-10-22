@@ -121,7 +121,9 @@ class TestsFlextInfraCodegenArtifactSsot:
             if artifact.vscode_exclude
         }
         expected_watchers = {
-            (f"**/{artifact.name}/**" if artifact.is_dir else f"**/{artifact.name}"): True
+            (
+                f"**/{artifact.name}/**" if artifact.is_dir else f"**/{artifact.name}"
+            ): True
             for artifact in codegen.artifacts
             if artifact.watch_exclude
         }

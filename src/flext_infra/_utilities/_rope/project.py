@@ -23,7 +23,7 @@ from rope.base.project import NoProject, Project
 from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder, Resource
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModuleQueries
 
 
@@ -79,15 +79,6 @@ class _RopeProjectSourceAccessMixin:
         """Whether all source operations share an authenticated original epoch."""
         return isinstance(self.fscommands, FlextInfraRopeProject.AtomicReadFiles)
 
-    @property
-    def source_epoch_failure(self) -> BaseException | None:
-        """Expose only the original exception raised by the global epoch verifier."""
-        return (
-            self.fscommands.epoch_failure
-            if isinstance(self.fscommands, FlextInfraRopeProject.AtomicReadFiles)
-            else None
-        )
-
     def source_consumption(
         self,
     ) -> AbstractContextManager[p.Infra.RopeSourceConsumption]:
@@ -120,17 +111,6 @@ class _RopeProjectSourceAccessMixin:
     def replay_source_consumption(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
         """Attribute an authentic cached result's original dependencies."""
         self._authenticated_reads.replay(receipt)
-
-    def adopt_source_consumption(
-        self, receipt: m.Infra.CodegenPhaseAnalysis
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Reissue a verified predecessor receipt, rejecting foreign evidence.
-
-        Returns:
-            New-epoch evidence, or the verified dependency comparison failure.
-
-        """
-        return self._authenticated_reads.adopt(receipt)
 
     def source_state(
         self, path: Path, *, required: bool = True
@@ -241,19 +221,7 @@ class _RopeProjectSourceAccessMixin:
 
     def verify_source_states(self) -> None:
         """Verify the original input epoch after semantic planning."""
-        reads = self._authenticated_reads
-        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
-        try:
-            reads.verify()
-            if reads.epoch_failure is not None:
-                raise reads.epoch_failure
-        except runtime_errors as exc:
-            if reads.epoch_failure is None:
-                reads.epoch_failure = exc
-                raise
-            if reads.epoch_failure is exc:
-                raise
-            raise reads.epoch_failure from exc
+        self._authenticated_reads.verify()
 
 
 class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
@@ -801,12 +769,8 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             source_states: tuple[m.Cli.AtomicFileState, ...],
             sources: t.MappingKV[Path, str],
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-            *,
-            predecessor_receipts: tuple[m.Infra.CodegenPhaseAnalysis, ...] = (),
         ) -> None:
             self._root = root
-            self._predecessor_receipts = predecessor_receipts
-            self.epoch_failure: BaseException | None = None
             self._structural_queries = 0
             self._capturing = 0
             self._scopes: list[FlextInfraRopeProject.SourceConsumption] = []
@@ -997,151 +961,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 receipt.inputs,
                 receipt.source_directories,
                 receipt.source_query_topology,
-            )
-
-        def adopt(
-            self, receipt: m.Infra.CodegenPhaseAnalysis
-        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-            """Authenticate issuance before checking and importing old evidence.
-
-            Returns:
-                A distinct successor-issued receipt, or verified drift evidence.
-
-            Raises:
-                ValueError: The predecessor did not issue this exact receipt.
-
-            """
-            if not any(issued is receipt for issued in self._predecessor_receipts):
-                msg = "Rope adoption requires a predecessor-issued source receipt"
-                raise ValueError(msg)
-            current = self._receipt_current(receipt)
-            if current.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(current)
-            self._register_original_states(receipt.inputs)
-            self._consumed.update((state.path, state) for state in receipt.inputs)
-            directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-                (*self._imported_directories.values(), *receipt.source_directories),
-                (*self._imported_topology.values(), *receipt.source_query_topology),
-            )
-            self._imported_directories.update(
-                (item.root.path, item) for item in directories
-            )
-            self._imported_topology.update((item.target, item) for item in topology)
-            adopted = receipt.model_copy()
-            self._receipts.append(adopted)
-            return r[m.Infra.CodegenPhaseAnalysis].ok(adopted)
-
-        @staticmethod
-        def _receipt_current(receipt: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
-            """Distinguish physical drift from an IO failure on authentic evidence.
-
-            Returns:
-                Whether every original observation is still physically current.
-
-            """
-            for state in receipt.inputs:
-                current = require_value(
-                    u.Cli.atomic_read_binary_file_state(state.path, required=False)
-                )
-                if current != state:
-                    return r[bool].fail(f"Rope source receipt changed: {state.path}")
-            directories: list[m.Cli.AtomicDirectoryInventory] = []
-            for inventory in receipt.source_directories:
-                chain = require_value(
-                    u.Cli.atomic_plan_directory_chain(inventory.root.path)
-                )
-                if chain.directories:
-                    return r[bool].fail(
-                        "Rope source receipt directory disappeared: "
-                        f"{inventory.root.path}"
-                    )
-                current_inventory = require_value(
-                    u.Cli.atomic_inventory_physical_directory(inventory.root.path)
-                )
-                # Invalid aliases and IO failures are not comparison failures.
-                # Validate selectors before entering the pure receipt merge.
-                for name, predicate in inventory.queries:
-                    u.Cli.atomic_directory_query_value(
-                        current_inventory, name, predicate
-                    )
-                directories.append(current_inventory)
-            topology = tuple(
-                require_value(u.Cli.atomic_plan_directory_chain(witness.target))
-                for witness in receipt.source_query_topology
-            )
-            try:
-                u.Cli.atomic_merge_directory_query_receipts(
-                    (*receipt.source_directories, *directories),
-                    (*receipt.source_query_topology, *topology),
-                )
-            except ValueError as exc:
-                # All observations succeeded. This owner performs comparisons
-                # only, so a mismatch cannot hide a failed filesystem operation.
-                return r[bool].fail(str(exc), exception=exc)
-            return r[bool].ok(value=True)
-
-        def successor(self) -> FlextInfraRopeProject.AtomicReadFiles:
-            """Create a new authority without changing any predecessor originals.
-
-            Returns:
-                The successor retaining independently current captured bytes.
-
-            Raises:
-                ValueError: A scope is active or a declared overlay became stale.
-
-            """
-            if self._scopes:
-                msg = "Rope source succession requires all consumers to be sealed"
-                raise ValueError(msg)
-            for plan in self._effects.values():
-                evidence = m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
-                    files=(),
-                    inputs=m.Infra.CodemodBindingSnapshot(
-                        states=(
-                            *plan.source_states,
-                            *(
-                                (plan.before,)
-                                if isinstance(plan.before, m.Cli.AtomicFileState)
-                                else ()
-                            ),
-                        ),
-                    ).states,
-                    source_directories=plan.source_directories,
-                    source_query_topology=(
-                        *plan.source_query_topology,
-                        *(
-                            (plan.before,)
-                            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                            else ()
-                        ),
-                    ),
-                )
-                if self._receipt_current(evidence).failure:
-                    if self.epoch_failure is not None:
-                        raise self.epoch_failure
-                    msg = (
-                        f"Rope declared overlay changed before succession: {plan.path}"
-                    )
-                    raise ValueError(msg)
-            retained = tuple(
-                state
-                for state in self._originals.values()
-                if state.parent_inode is not None
-                and require_value(
-                    u.Cli.atomic_read_binary_file_state(state.path, required=False)
-                )
-                == state
-            )
-            return type(self)(
-                self._root,
-                retained,
-                {
-                    path: content.decode(c.DEFAULT_ENCODING)
-                    for path, content in self._sources.items()
-                },
-                tuple(self._effects.values()),
-                predecessor_receipts=tuple(self._receipts),
             )
 
         def _record(
@@ -1923,32 +1742,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             declared_files,
         )
         return cls._from_files(live.root.real_path, files, election)
-
-    @contextmanager
-    def source_successor(self) -> Generator[Self]:
-        """Open a distinct authenticated epoch; old consumers remain unchanged.
-
-        Yields:
-            A new native authority capable of adopting predecessor receipts.
-
-        Raises:
-            ValueError: The original import election is unavailable.
-
-        """
-        if self._source_election is None:
-            msg = "Rope source successor requires an authenticated election"
-            raise ValueError(msg)
-        files = self._authenticated_reads.successor()
-        with closing(
-            self._from_files(self.root.real_path, files, self._source_election)
-        ) as successor:
-            completed = False
-            try:
-                yield successor
-                completed = True
-            finally:
-                if completed:
-                    successor.verify_source_states()
 
     @contextmanager
     def source_consumer(self, *, consumer_root: Path | None = None) -> Generator[Self]:

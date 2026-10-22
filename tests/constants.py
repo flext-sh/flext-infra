@@ -203,12 +203,6 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
             "__version__.py",
             "py.typed",
         })
-        CODEGEN_SKIPPED_DIRS: ClassVar[frozenset[str]] = frozenset({
-            ".hidden",
-            "vendor",
-            "node_modules",
-            ".venv",
-        })
 
         REFACTOR_SCAN_FILE_COUNT: ClassVar[int] = 1000
         REFACTOR_SCAN_MAX_SECONDS: ClassVar[float] = 30.0

@@ -411,17 +411,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             consumer_root: Path | None = None,
         ) -> AbstractContextManager[Self]: ...
 
-        def source_successor(self) -> AbstractContextManager[Self]: ...
-
-        def adopt_source_consumption(
-            self, receipt: m.Infra.CodegenPhaseAnalysis
-        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
-
         @property
         def authenticated_sources(self) -> bool: ...
-
-        @property
-        def source_epoch_failure(self) -> BaseException | None: ...
 
         def replay_source_consumption(
             self, receipt: m.Infra.CodegenPhaseAnalysis

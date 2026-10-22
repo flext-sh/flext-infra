@@ -744,18 +744,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         contract = self.surface_contract(surface, codegen=inputs.spec)
         providers: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
         if contract.complete_governed and tasks:
-            # Rope-bound planning runs one global in-process loop over every
-            # repository so the shared workspace Rope session (and its one
-            # structural index) serves the whole cohort. The forkserver fleet
-            # pool cannot inherit the unpicklable Rope project: fanning out
-            # here reindexes the same workspace tree once per worker.
-            lazy_outcomes = tuple(
-                type(self).plan_repository_task(
+            # Each repository's lazy plan indexes only its own sources, so the
+            # independent read-only plans run across the fleet workers; the
+            # dependency-ordered managed pass below stays serial.
+            lazy_outcomes = u.Infra.fleet_map(
+                type(self).plan_repository_task,
+                tuple(
                     task.model_copy(
                         update={"surface": c.Infra.CodegenConformSurface.LAZY_INIT}
-                    ),
-                )
-                for task in tasks
+                    )
+                    for task in tasks
+                ),
             )
             if self.state.planning_exception is None:
                 self.state.planning_exception = next(
@@ -958,7 +957,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 for outcome in lazy_outcomes
             )
         else:
-            outcomes = tuple(type(self).plan_repository_task(task) for task in tasks)
+            outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
         if self.state.planning_exception is None:
             self.state.planning_exception = next(
                 (item.exception for item in outcomes if item.exception is not None),
@@ -1191,9 +1190,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """Plan one repository from a self-contained task.
 
         The planner rebuilds from the task: no parent planner state crosses
-        the boundary, the Rope workspace session is shared per resolved root
-        through the process-global registry, and failures return as data
-        instead of live results.
+        the boundary, each repository indexes only its own sources, and
+        failures return as data instead of live results.
 
         Returns:
             The repository's file and environment plans, or its failure.

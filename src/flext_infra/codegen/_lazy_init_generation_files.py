@@ -24,12 +24,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
     if TYPE_CHECKING:
-        _file_plan_cache: t.MutableMappingKV[
-            str,
-            t.Pair[
-                t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenPhaseAnalysis
-            ],
-        ]
+        _publication_receipts: t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis]
 
         @property
         def source_project(self) -> p.Infra.RopeProject: ...
@@ -198,235 +193,6 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     and source_project.source_query(module, "isfile")
                 )
             )
-
-    @staticmethod
-    def _verify_original_sources(
-        states: tuple[m.Cli.AtomicFileState, ...],
-        directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
-        topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
-        *,
-        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory],
-    ) -> p.Result[bool]:
-        """Reverify original evidence via the native verifier, never recapture.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
-        try:
-            verified = u.Cli.atomic_verify_binary_file_states(states)
-            if verified.failure:
-                if verified.exception is not None:
-                    raise verified.exception
-                return r[bool].from_failure(verified)
-            return u.Cli.atomic_verify_directory_queries(
-                directories, topology, observations=observations
-            )
-        except OSError:
-            raise
-        except runtime_errors as exc:
-            return r[bool].fail(str(exc), exception=exc)
-
-    @classmethod
-    def _original_plans_covered(
-        cls,
-        originals: tuple[
-            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
-        ],
-        candidates: tuple[
-            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
-        ],
-    ) -> bool:
-        """Prove every failing original is represented by a genuine candidate.
-
-        Membership-stripped forms are constant across every original query, so
-        each plan is copied once instead of once per pairwise comparison.
-
-        Returns:
-            Whether all originals are covered by an authenticated candidate.
-
-        """
-        stripped_candidates = tuple(
-            covered.model_copy(update={"queries": (), "membership_queried": False})
-            for covered in candidates
-        )
-        return all(
-            any(
-                stripped_original == stripped_covered
-                and set(original.queries).issubset(covered.queries)
-                and (not original.membership_queried or covered.membership_queried)
-                for covered, stripped_covered in zip(
-                    candidates, stripped_candidates, strict=True
-                )
-            )
-            for original in originals
-            for stripped_original in (
-                original.model_copy(
-                    update={"queries": (), "membership_queried": False}
-                ),
-            )
-        )
-
-    @classmethod
-    def classify_source_conflict(
-        cls,
-        analysis: m.Infra.CodegenPhaseAnalysis,
-        project: p.Infra.RopeProject,
-        cause: BaseException,
-    ) -> m.Infra.CodegenPhaseAnalysis:
-        """Partition an authenticated global conflict using genuine original scopes.
-
-        Every failing global constraint must be represented by scoped evidence.
-        Unknown failures escape unchanged; classification never blesses a new epoch.
-
-        Returns:
-            The conflict-partitioned analysis receipt.
-
-        """
-        if isinstance(cause, OSError) or project.source_epoch_failure is not cause:
-            raise cause
-        scopes: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
-            *analysis.files,
-            *analysis.publications,
-        )
-        states = m.Infra.CodemodBindingSnapshot(
-            states=(
-                *(state for scope in scopes for state in scope.source_states),
-                *(
-                    state
-                    for _, receipt in analysis.failed_targets
-                    for state in receipt.inputs
-                ),
-            ),
-        ).states
-        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            (
-                *(item for scope in scopes for item in scope.source_directories),
-                *(
-                    item
-                    for _, receipt in analysis.failed_targets
-                    for item in receipt.source_directories
-                ),
-            ),
-            (
-                *(item for scope in scopes for item in scope.source_query_topology),
-                *(
-                    item
-                    for _, receipt in analysis.failed_targets
-                    for item in receipt.source_query_topology
-                ),
-            ),
-        )
-        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory] = {}
-        failed_states = tuple(
-            original
-            for original in project.consumed_source_states()
-            if cls._verify_original_sources(
-                (original,), (), (), observations=observations
-            ).failure
-        )
-        if any(original not in states for original in failed_states):
-            raise cause
-        failed_directories = tuple(
-            original
-            for original in project.consumed_source_directories()
-            if cls._verify_original_sources(
-                (), (original,), (), observations=observations
-            ).failure
-        )
-        failed_topology = tuple(
-            original
-            for original in project.consumed_source_topology()
-            if cls._verify_original_sources(
-                (), (), (original,), observations=observations
-            ).failure
-        )
-        if not cls._original_plans_covered(
-            (*failed_directories, *failed_topology), (*directories, *topology)
-        ):
-            raise cause
-        if not (failed_states or failed_directories or failed_topology):
-            raise cause
-        accepted: list[m.Infra.CodegenFilePlan] = []
-        affected = {
-            target
-            for target, receipt in analysis.failed_targets
-            if cls._verify_original_sources(
-                receipt.inputs,
-                receipt.source_directories,
-                receipt.source_query_topology,
-                observations=observations,
-            ).failure
-        }
-        for file in analysis.files:
-            if cls._verify_original_sources(
-                file.source_states,
-                file.source_directories,
-                file.source_query_topology,
-                observations=observations,
-            ).success:
-                accepted.append(file)
-            else:
-                affected.add(file.path)
-        publications: list[m.Infra.LazyInitPlan] = []
-        for publication in analysis.publications:
-            if (
-                publication.context.init_path in affected
-                or cls._verify_original_sources(
-                    publication.source_states,
-                    publication.source_directories,
-                    publication.source_query_topology,
-                    observations=observations,
-                ).failure
-            ):
-                affected.add(publication.context.init_path)
-            else:
-                publications.append(publication)
-        if not affected:
-            raise cause
-        retained: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
-            *accepted,
-            *publications,
-        )
-        retained_states = m.Infra.CodemodBindingSnapshot(
-            states=tuple(state for scope in retained for state in scope.source_states)
-        ).states
-        retained_directories, retained_topology = (
-            u.Cli.atomic_merge_directory_query_receipts(
-                tuple(item for scope in retained for item in scope.source_directories),
-                tuple(
-                    item for scope in retained for item in scope.source_query_topology
-                ),
-            )
-        )
-        return analysis.model_copy(
-            update={
-                "files": tuple(accepted),
-                "publications": tuple(publications),
-                "inputs": retained_states,
-                "source_directories": retained_directories,
-                "source_query_topology": retained_topology,
-                "exception": (
-                    analysis.exception if analysis.exception is not None else cause
-                ),
-                "issues": (
-                    *analysis.issues,
-                    *(
-                        m.Infra.Issue(
-                            file=str(path),
-                            line=0,
-                            column=0,
-                            code=c.Infra.ToolOutcome.ERROR.value,
-                            message=str(cause),
-                            locations=(),
-                            related_locations=(),
-                        )
-                        for path in sorted(affected)
-                    ),
-                ),
-            }
-        )
 
     def _file_plan(
         self,
@@ -617,37 +383,20 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         cleanup_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = {}
-        by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
-        retired_by_package: MutableMapping[
-            str, t.VariadicTuple[m.Infra.CodegenFilePlan]
-        ] = {}
+        retired = self._retired_support_plans(
+            plans,
+            index,
+            source_receipts,
+            cleanup_receipts=cleanup_receipts,
+        )
+        if retired.failure:
+            return result_type.from_failure(retired)
+        by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = dict(retired.value)
         for plan in plans:
             key = str(plan.context.pkg_dir.resolve())
-            cached = self._file_plan_cache.get(key)
-            if cached is not None:
-                files, receipt = cached
-                self.source_project.replay_source_consumption(receipt)
-                by_path.update((file.path, file) for file in files)
-                continue
-            retired = self._retired_support_plans(
-                (plan,),
-                index,
-                source_receipts,
-                cleanup_receipts=cleanup_receipts,
-            )
-            if retired.failure:
-                return result_type.from_failure(retired)
-            by_path.update(retired.value)
-            retired_by_package[key] = tuple(retired.value.values())
-        for plan in plans:
-            key = str(plan.context.pkg_dir.resolve())
-            if key in self._file_plan_cache:
-                continue
             with self.source_project.source_consumption() as consumption:
-                self.source_project.replay_source_consumption(
-                    source_receipts[str(plan.context.pkg_dir.resolve())],
-                )
-                cleanup = cleanup_receipts.get(str(plan.context.pkg_dir.resolve()))
+                self.source_project.replay_source_consumption(source_receipts[key])
+                cleanup = cleanup_receipts.get(key)
                 if cleanup is not None:
                     self.source_project.replay_source_consumption(cleanup)
                 artifact_plans = self._package_file_plans(
@@ -658,15 +407,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 )
             if artifact_plans.failure:
                 return result_type.from_failure(artifact_plans)
-            bound = self._bound_file_plans(
-                artifact_plans.value,
-                consumption.receipt(),
-            )
-            self._file_plan_cache[key] = (
-                (*retired_by_package[key], *bound),
-                consumption.receipt(),
-            )
-            for artifact_plan in bound:
+            receipt = consumption.receipt()
+            self._publication_receipts[key] = receipt
+            for artifact_plan in self._bound_file_plans(artifact_plans.value, receipt):
                 existing = by_path.get(artifact_plan.path)
                 if existing is not None and existing != artifact_plan:
                     return result_type.fail(

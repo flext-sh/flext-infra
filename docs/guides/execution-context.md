@@ -1393,27 +1393,16 @@ a generated file. No directory-name exemption list selects this behavior.
 Shared input snapshots document the planner's inputs; later source edits do not
 invalidate an entire generation. Directed validation checks the actual generated
 targets rather than comparing every source with an earlier workspace snapshot.
-Conform retains the native failed source owner and its issued consumption scope.
-Only the owner's exact epoch exception can enter bounded source rederivation;
-native successor/adoption and conflict classification must prove changed inputs.
-One typed organizer serves managed rendering and independent protocol/source
-composition, sharing its bound across nested consumers. It checks both raised
-exceptions and original exception objects transported through result composition.
-Independent file plans keep their original receipts. Stale declared overlays are
-never admitted into a successor: their upstream lazy producer is rederived before
-protocols, facades, exports and tooling consume a fresh binding. IO, alias and
-unknown failures remain failures. At its configured bound, lazy initializer
-planning returns the native-classified independent plans with affected-target
-issues and the first original exception; later conflicts remain recorded in the
-issues and exception notes. Conform can publish only those independently proven
-effects through the existing journal, then reports the unresolved errors with a
-nonzero public outcome. Exhaustion never blesses affected plans or turns the
-analysis receipt into a successful generation.
-Changed external member dependencies are source inputs, not exclusions: affected
-provider roots are rederived while independently proven provider plans remain.
+Each repository plans once against one original source epoch. A source that
+changes while it is being planned fails verification and raises its original
+exception; there is no in-process successor, receipt adoption, conflict
+classification or bounded re-plan. The repository outcome records that exception
+and no files, and generation is rerun with `make gen` once the sources are stable.
+Changed external member dependencies are source inputs, not exclusions.
 
 Repository generation plans treat malformed source as a failed input. The
-planning report at `.reports/codegen-plan.json` records each selected repository's
+planning report at `.reports/codegen-plan.json` under the worktree's Git directory
+(never the source tree) records each selected repository's
 outcome, exception type and original traceback. Generation reports failures at
 their affected files and retains successfully generated files. Changes made
 outside the generator do not authorize restoration of earlier workspace bytes.
@@ -1607,47 +1596,46 @@ complete execution. Uploading reports does not change the native command status 
 authorize cache publication from an incomplete run.
 
 The SSH gate-attestation owner consumes an original producer receipt and verifies its
-workspace execution context, policy and report digests before signing. It does not invoke Make.
-Schema v3 addresses each immutable proof by original receipt digest, effective
-runtime/policy context and stage. The signed Git tag anchors the exact original receipt
-blob, never a commit or tree. An unborn repository needs no commit to store proof.
-Unlike v2, the signed command retains workspace scope, runtime identity and nullable
-before/after Git observations; the JSON shapes are not interchangeable.
+workspace execution context, policy and report digests before signing. It does not
+invoke Make. Schema v3 addresses each immutable proof by original receipt digest,
+effective runtime/policy context and stage. The signed Git tag anchors the exact
+original receipt blob, never a commit or tree. An unborn repository needs no commit to
+store proof. Unlike v2, the signed command retains workspace scope, runtime identity and
+nullable before/after Git observations; the JSON shapes are not interchangeable.
 Repeated publication compares the canonical signed fields, not process-local model
-state, and verifies the existing object and original artifacts before reusing it.
-Signed public facts retain the actual process
-outcome, portable operation intent and diagnostic classification. The original public
-receipt binds the exact argv digest; command bytes and the working directory remain in
-private execution checkpoints, outside the CI artifact allowlist.
+state, and verifies the existing object and original artifacts before reusing it. Signed
+public facts retain the actual process outcome, portable operation intent and diagnostic
+classification. The original public receipt binds the exact argv digest; command bytes
+and the working directory remain in private execution checkpoints, outside the CI
+artifact allowlist.
 
 Admission derives from the original typed reports rather than caller success flags.
 Checks require complete target and requested-gate coverage in SARIF. Tests require
 original process, accounting and diagnostics reports with complete positive execution.
-Timeouts, signals, collection errors, operational failures, missing artifacts and changed
-digests remain failures. The complete-execution policy may admit finished findings while
-preserving their nonzero status; the clean-quality policy rejects them. Bare `make check`
-uses the existing workspace capture route to execute the original checker once. It
-preserves that producer's native process outcome and owns an exclusive report base,
-then writes an immutable receipt when the original reports and execution context remain
-valid. Dirty, changed or unversioned workspaces still execute and can retain original
-execution receipts with observational Git metadata, never commit-validation proof.
-Tracked and untracked WIP, unknown Git identity, missing origin and HEAD/tree movement
-are not acceptance failures. Observations retain `true` or `null` rather than pretending
-to be clean. Unrelated changes do not invalidate the run; relevant inputs require
-affected-scope revalidation, not a globally frozen tree. No receipt certifies all WIP.
-Signature verification authenticates the named execution history. Reuse by a new
-operation still requires that operation's consumed-source and native-context checks;
-the signed receipt is not a substitute for affected-input revalidation.
-Configuration or runtime drift still prevents receipt publication. The native pytest runner captures its
-candidate immediately before the original suite process and publishes original receipts
-after accounting and diagnostics are written. It retains its existing deadline and
-testmon execution. Both producers share the same capture and report-binding owner.
-CI preserves the public original receipts and their required structured reports, while
-omitting private checkpoints, commands and capture errors. The Make policy and receipt
-directory come from the typed codegen specification. CI signing/restore wiring,
-zero-execution cache evidence and other
-stage adapters remain required integration work. Verifying a setup proof never
-provisions a fresh runner.
+Timeouts, signals, collection errors, operational failures, missing artifacts and
+changed digests remain failures. The complete-execution policy may admit finished
+findings while preserving their nonzero status; the clean-quality policy rejects them.
+Bare `make check` uses the existing workspace capture route to execute the original
+checker once. It preserves that producer's native process outcome and owns an exclusive
+report base, then writes an immutable receipt when the original reports and execution
+context remain valid. Dirty, changed or unversioned workspaces still execute and can
+retain original execution receipts with observational Git metadata, never
+commit-validation proof. Tracked and untracked WIP, unknown Git identity, missing origin
+and HEAD/tree movement are not acceptance failures. Observations retain `true` or `null`
+rather than pretending to be clean. Unrelated changes do not invalidate the run;
+relevant inputs require affected-scope revalidation, not a globally frozen tree. No
+receipt certifies all WIP. Signature verification authenticates the named execution
+history. Reuse by a new operation still requires that operation's consumed-source and
+native-context checks; the signed receipt is not a substitute for affected-input
+revalidation. Configuration or runtime drift still prevents receipt publication. The
+native pytest runner captures its candidate immediately before the original suite
+process and publishes original receipts after accounting and diagnostics are written. It
+retains its existing deadline and testmon execution. Both producers share the same
+capture and report-binding owner. CI preserves the public original receipts and their
+required structured reports, while omitting private checkpoints, commands and capture
+errors. The Make policy and receipt directory come from the typed codegen specification.
+CI signing/restore wiring, zero-execution cache evidence and other stage adapters remain
+required integration work. Verifying a setup proof never provisions a fresh runner.
 
 Capture receives the selected repository's full `CodegenInputs` through the canonical
 layer loader. Its policy and report directory come from that typed target specification.

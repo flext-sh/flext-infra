@@ -78,6 +78,32 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             supplier_root=supplier_root,
         )
 
+    @staticmethod
+    def selected_resolution_directories(
+        policy: m.Infra.MakeUvResolutionSpec,
+        *,
+        supplier_root: Path | None,
+    ) -> t.VariadicTuple[Path]:
+        """Return the resolver view directories one runtime election plans.
+
+        The editable view is runtime-local: it exists only while the runtime
+        elects an editable supplier, so planning and bootstrap ownership both
+        derive the selected views from this one rule.
+
+        Args:
+            policy: The declared native resolution directories.
+            supplier_root: The elected editable supplier, absent without one.
+
+        Returns:
+            The selected view directories in planning order.
+
+        """
+        return (
+            policy.local_directory,
+            policy.standalone_directory,
+            *((policy.editable_directory,) if supplier_root is not None else ()),
+        )
+
     @classmethod
     def _collected_supplier_projects(
         cls,
@@ -256,16 +282,16 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         local_members = tuple(item for item in members if item.role == "member")
         root = owner.directory
         files: list[m.Infra.CodegenFilePlan] = []
-        views = (
-            (policy.local_directory, local_members),
-            (policy.standalone_directory, ()),
-            *(
-                ((policy.editable_directory, tuple(members)),)
-                if supplier_root is not None
-                else ()
-            ),
-        )
-        for relative, selected in views:
+        view_members = {
+            policy.local_directory: local_members,
+            policy.standalone_directory: (),
+            policy.editable_directory: tuple(members),
+        }
+        for relative in self.selected_resolution_directories(
+            policy,
+            supplier_root=supplier_root,
+        ):
+            selected = view_members[relative]
             destination = relative / c.PYPROJECT_FILENAME
             metadata = catalogue.get(destination)
             if metadata is None:

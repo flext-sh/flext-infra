@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
+from typing_extensions import TypeForm
+
 from flext_infra import FlextInfraProjectSelectionServiceBase, config, m, p, r, t, u
 from flext_infra._models.deps import (
     GitSourceRefFromField,
@@ -38,7 +40,7 @@ class FlextInfraPyprojectModernizerBase(
 
         """
         return u.Infra.native_tool_setting(
-            config.Infra.tooling, "tomlsort", "sort_first", t.StrSequence
+            config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
         )
 
     audit: Annotated[

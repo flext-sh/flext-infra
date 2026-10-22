@@ -387,15 +387,11 @@ class TestsFlextInfraDepsModernizerTooling:
         )
 
         tm.that(payload, lacks="lint")
-        # Shared artifact exclusions remain declared independently of workspace
-        # topology; Ruff keeps its own native defaults alongside them.
+        # The artifact registry is Ruff's only exclusion source; a standalone
+        # project adds no workspace exclusions and Ruff keeps its own defaults.
         tm.that(
             ruff["extend-exclude"],
-            eq=sorted(
-                u.Infra.native_tool_setting(
-                    tool_config_document, "ruff", "extend-exclude", list[str]
-                )
-            ),
+            eq=sorted(config.Infra.codegen.analyzer_exclude_globs),
         )
         tm.that(ruff, lacks="exclude")
         tm.that(
