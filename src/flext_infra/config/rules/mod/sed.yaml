@@ -13,6 +13,6 @@ rules:
       marks; marks stacked above it make analyzers bind the first parameter as
       self. Applies to every project.
     include: [tests/*.py, tests/**/*.py]
-    find: '^(?P<i>[ \t]+)(?P<marks>@pytest\.mark\.(?:[^\n]|\n(?!(?P=i)@staticmethod\n|(?P=i)def ))*\n)(?P=i)@staticmethod\n'
+    find: '^(?P<i>[ \t]+)(?P<marks>@pytest\.mark\.(?:[^\n]|\n(?!(?P=i)@staticmethod\n|(?P=i)(?:async )?def ))*\n)(?P=i)@staticmethod\n'
     replace: '\g<i>@staticmethod\n\g<i>\g<marks>'
     flags: [MULTILINE]
