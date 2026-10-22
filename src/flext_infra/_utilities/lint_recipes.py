@@ -418,39 +418,35 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             The docstring literal without the named ``Raises`` entries.
 
         """
-        if not names:
-            return raw
         prefix, inner = cls._split_literal(raw)
-        lines = inner.rstrip().split("\n")
-        header = f"{indent}Raises:"
-        entry = re.compile(rf"^{re.escape(indent)}    (?P<name>[\w.]+):")
-        kept: list[str] = []
-        index = 0
-        while index < len(lines):
-            if lines[index].rstrip() != header:
-                kept.append(lines[index])
-                index += 1
-                continue
-            block: list[str] = []
-            index += 1
-            dropping = False
-            while index < len(lines) and lines[index].startswith(f"{indent}    "):
-                matched = entry.match(lines[index])
-                if matched is not None:
-                    dropping = matched.group("name").rsplit(".", 1)[-1] in names
-                if not dropping:
-                    block.append(lines[index])
-                index += 1
-            if block:
-                kept.extend((header, *block))
-            elif index == len(lines) and kept and not kept[-1]:
-                # The emptied section closed the docstring: so does its separator.
-                kept.pop()
-            elif index < len(lines) and not lines[index]:
-                # The separator after the emptied section duplicates the one
-                # that preceded it.
-                index += 1
-        body = "\n".join(kept)
+        inner = inner.rstrip()
+        section = re.search(rf"^{re.escape(indent)}Raises:\s*$", inner, re.MULTILINE)
+        if not names or section is None:
+            return raw
+        following = re.search(
+            rf"^{re.escape(indent)}\S[^\n]*:\s*$",
+            inner[section.end() :],
+            re.MULTILINE,
+        )
+        cut = section.end() + following.start() if following else len(inner)
+        # One entry per line at the section's entry indent; deeper lines
+        # continue the entry above them.
+        entries = re.split(
+            rf"(?m)^(?={re.escape(indent)}    \S)",
+            inner[section.end() : cut].strip("\n"),
+        )
+        kept = [
+            text.rstrip()
+            for text in entries
+            if text.strip()
+            and text.strip().split(":", 1)[0].rsplit(".", 1)[-1] not in names
+        ]
+        parts = [inner[: section.start()].rstrip()]
+        if kept:
+            parts.append("\n".join((f"{indent}Raises:", *kept)))
+        if inner[cut:].strip():
+            parts.append(inner[cut:].strip("\n"))
+        body = "\n\n".join(parts)
         if "\n" not in body:
             return f'{prefix}"""{body}"""'
         return f'{prefix}"""{body}\n{indent}"""'

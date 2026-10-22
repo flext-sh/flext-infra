@@ -14,11 +14,11 @@ from flext_cli import m, t
 from packaging.utils import canonicalize_name
 
 from flext_infra import c
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._constants.config import FlextInfraConstantsConfig
 
 
 class FlextInfraConfigModelsWorkspace:

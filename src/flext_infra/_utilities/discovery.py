@@ -259,17 +259,16 @@ class FlextInfraUtilitiesDiscovery(
         if (
             resolved_root.is_dir()
             and not (execution_dir / c.PYPROJECT_FILENAME).is_file()
+        ) and (
+            discovered_root is None
+            or resolved_root == discovered_root
+            or not resolved_root.is_relative_to(discovered_root)
+            or not cls.root_namespace(
+                discovered_root,
+                resolved_root.relative_to(discovered_root).parts[0],
+            )
         ):
-            if (
-                discovered_root is None
-                or resolved_root == discovered_root
-                or not resolved_root.is_relative_to(discovered_root)
-                or not cls.root_namespace(
-                    discovered_root,
-                    resolved_root.relative_to(discovered_root).parts[0],
-                )
-            ):
-                project_root = resolved_root
+            project_root = resolved_root
         if project_root is not None and (
             (project_root / c.PYPROJECT_FILENAME).is_file()
             or (project_root / c.Infra.GIT_DIR).exists()

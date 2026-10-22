@@ -16,13 +16,13 @@ from flext_cli import m, t
 
 from flext_infra import c
 from flext_infra._config_make_contract import FlextInfraMakeContract
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
     FlextInfraExternalCacheDirectorySpec,
 )
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
-from flext_infra._constants.config import FlextInfraConstantsConfig
 
 
 @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)

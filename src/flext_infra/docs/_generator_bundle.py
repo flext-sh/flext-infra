@@ -12,9 +12,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraMiseArtifactsVerification,
-)
+from flext_infra.codegen import FlextInfraMiseArtifactsVerification
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
