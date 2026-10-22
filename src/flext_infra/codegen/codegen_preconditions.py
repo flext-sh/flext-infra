@@ -230,7 +230,12 @@ class FlextInfraCodegenPreconditions:
         if owned.failure:
             return result_type.from_failure(owned)
         return cls._sealed_source_authority(
-            names, roots, trees, states, bootstrap_inputs=owned.value
+            names,
+            roots,
+            trees,
+            states,
+            bootstrap_inputs=owned.value,
+            repository_root=repository_root.resolve(),
         ).map(lambda authority: (authority, observed.value))
 
     @classmethod
@@ -670,6 +675,7 @@ class FlextInfraCodegenPreconditions:
         bootstrap_inputs: t.VariadicTuple[
             t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileReceipt]
         ],
+        repository_root: Path,
     ) -> p.Result[m.Infra.CodegenSourceAuthority]:
         """Seal receipts into the cold authority and re-prove it current.
 
@@ -680,6 +686,8 @@ class FlextInfraCodegenPreconditions:
             states: Captured atomic file states awaiting their receipts.
             bootstrap_inputs: Original buffered source candidates and receipts,
                 pending actual import consumption.
+            repository_root: The repository being generated, the only one whose
+                sources the authority authenticates.
 
         Returns:
             The authenticated immutable producer closure.
@@ -705,6 +713,7 @@ class FlextInfraCodegenPreconditions:
             return result_type.from_failure(authenticated)
         authority = m.Infra.CodegenSourceAuthority(
             runtime=Path(sys.executable).resolve(),
+            repository_root=repository_root,
             optimize=sys.flags.optimize,
             inputs=tuple(receipts),
             bootstrap_sources=tuple(state for state, _ in bootstrap_inputs),
@@ -816,6 +825,9 @@ class FlextInfraCodegenPreconditions:
     ) -> p.Result[bool]:
         """Re-prove producer receipts and every captured resource tree.
 
+        Only the generated repository's receipts and trees are re-proven; other
+        repositories' sources are read-only inputs.
+
         Returns:
             Success for unchanged producer inputs and inventories; bootstrap
             candidates retain their original buffered identities until consumed.
@@ -826,7 +838,9 @@ class FlextInfraCodegenPreconditions:
         if bootstrap.failure:
             return result_type.from_failure(bootstrap)
         for expected in authority.inputs:
-            if expected.path in bootstrap.value:
+            if expected.path in bootstrap.value or not expected.path.is_relative_to(
+                authority.repository_root
+            ):
                 continue
             observed = u.Cli.atomic_read_binary_file_receipt(
                 expected.path,
@@ -839,6 +853,8 @@ class FlextInfraCodegenPreconditions:
                     f"cold producer source changed: {expected.path}"
                 )
         for tree in authority.generator_trees:
+            if not tree.root.path.is_relative_to(authority.repository_root):
+                continue
             observed = u.Cli.atomic_inventory_physical_tree(tree.root.path)
             if observed.failure:
                 return result_type.from_failure(observed)
@@ -1099,6 +1115,10 @@ class FlextInfraCodegenPreconditions:
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileReceipt]]:
         """Authenticate every child receipt within the original physical election.
 
+        Every receipt must stay inside its elected provider; only receipts of
+        the generated repository must keep unchanged bytes, because other
+        repositories' sources are read-only inputs.
+
         Returns:
             The original and newly consumed receipts with unchanged physical bytes.
 
@@ -1129,6 +1149,9 @@ class FlextInfraCodegenPreconditions:
                 return result_type.fail(
                     f"cold source escaped its elected provider: {path}"
                 )
+            if not path.is_relative_to(authority.repository_root):
+                executed[path] = receipt
+                continue
             previous = executed.get(path, pinned.get(path))
             if previous is not None and previous != receipt:
                 return result_type.fail(f"cold source input changed: {path}")
@@ -1190,6 +1213,9 @@ class FlextInfraCodegenPreconditions:
                         state
                         for state in request.inputs
                         if state.path not in bootstrap.value
+                        and state.path.is_relative_to(
+                            request.source_authority.repository_root
+                        )
                     )
                 )
             )

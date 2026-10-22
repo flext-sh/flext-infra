@@ -666,6 +666,16 @@ Infra:
         # the aggregate wall and the slow marker owns its narrow item policy.
       tomlsort:
         process-timeout-seconds: 60
+      # jscpd's own near-miss and meaning passes own clone semantics: the
+      # structural pass (--similarity) compares normalized syntax trees and
+      # runs everywhere; the embedding pass (--semantic) needs the declared
+      # embeddings host, so the CI context records it NOT EXECUTED.
+      jscpd:
+        similarity: 0.8
+        semantic:
+          provider: http
+          url: http://localhost:11434/v1
+          model: unclemusclez/jina-embeddings-v2-base-code
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law

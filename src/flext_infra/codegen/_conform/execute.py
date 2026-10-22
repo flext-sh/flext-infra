@@ -1270,20 +1270,26 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction. Lazy-init plans exactly the repositories conform
         rewrites: the selected mutable ``internal_flext`` repositories of
         ``plan``, never a scope-excluded root or a third-party checkout.
+        Each repository plans independently across the fleet workers, folded
+        in canonical root order.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         """
-        roots = tuple(
+        roots = sorted({
             (request.root / repository.path).resolve()
             for repository in plan.repositories
             if repository.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+        })
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            FlextInfraCodegenLazyInit.composed_analysis(
+                u.Infra.fleet_map(
+                    FlextInfraCodegenLazyInit.plan_scope_root,
+                    tuple((request.root, root) for root in roots),
+                )
+            )
         )
-        return FlextInfraCodegenLazyInit(
-            repository_root=request.root,
-            project_scope_roots=roots,
-        ).plan_files()
 
     def _prepare_managed_plan(
         self,

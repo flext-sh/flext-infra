@@ -222,29 +222,6 @@ class FlextInfraPytestRunnerBase(s[int]):
             raise ValueError(msg)
         return self
 
-    @staticmethod
-    def _memory_gb() -> int:
-        """Read physical memory from the operating-system owner.
-
-        Returns:
-            The resulting ``int``.
-
-        Raises:
-            ValueError: If physical memory capacity is unavailable; or if physical
-                memory is below one GiB.
-
-        """
-        page_size = os.sysconf("SC_PAGE_SIZE")
-        pages = os.sysconf("SC_PHYS_PAGES")
-        if page_size <= 0 or pages <= 0:
-            msg = "physical memory capacity is unavailable"
-            raise ValueError(msg)
-        memory_gb = (page_size * pages) // c.Infra.BYTES_PER_GIB
-        if memory_gb <= 0:
-            msg = "physical memory is below one GiB"
-            raise ValueError(msg)
-        return memory_gb
-
     def _declared_project_name(self) -> str | None:
         """Read the declared project identity shared by runtime policies.
 
@@ -334,11 +311,10 @@ class FlextInfraPytestRunnerBase(s[int]):
             msg = "CPU capacity is unavailable"
             raise ValueError(msg)
         declared_workers = self.resolve_worker_ceiling(ceiling, cpu_count)
-        memory_workers = self._memory_gb() // policy.parallel_worker_memory_gb
-        if memory_workers <= 0:
-            msg = "physical memory cannot support one pytest worker"
-            raise ValueError(msg)
-        return min(declared_workers, cpu_count, memory_workers)
+        return min(
+            declared_workers,
+            u.Infra.machine_worker_capacity(policy.parallel_worker_memory_gb),
+        )
 
     def _report_directory(self) -> Path:
         """Create a collision-resistant report directory.

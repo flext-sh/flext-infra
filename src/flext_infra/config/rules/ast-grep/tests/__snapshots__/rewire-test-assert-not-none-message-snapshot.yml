@@ -1,0 +1,48 @@
+id: rewire-test-assert-not-none-message
+snapshots:
+  ? |
+    from tests import tm
+    assert value is not None, "A value is required"
+  : fixed: |
+      from tests import tm
+      value = tm.not_none(value, msg="A value is required")
+    labels:
+    - source: assert value is not None, "A value is required"
+      style: primary
+      start: 21
+      end: 68
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert value is not None, "A value is required"
+      style: secondary
+      start: 0
+      end: 69
+  ? |
+    from tests import tm
+    if not (value is not None):
+        raise AssertionError(report)
+  : fixed: |
+      from tests import tm
+      value = tm.not_none(value, msg=report)
+    labels:
+    - source: |-
+        if not (value is not None):
+            raise AssertionError(report)
+      style: primary
+      start: 21
+      end: 81
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        if not (value is not None):
+            raise AssertionError(report)
+      style: secondary
+      start: 0
+      end: 82

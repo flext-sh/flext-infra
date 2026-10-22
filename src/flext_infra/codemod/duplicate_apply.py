@@ -1255,11 +1255,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         seen: MutableSet[str],
         layers: t.MappingKV[Path, int],
     ) -> m.Infra.DuplicateCurePlan | None:
-        """Plan one jscpd clone when it is a semantic structural candidate.
+        """Plan one jscpd clone; jscpd's own passes own what counts as one.
 
         Returns:
             The resulting plan, or ``None`` when the clone is a double-scan
-            mirror, already seen, or carries no executable python behavior.
+            mirror or already seen.
 
         """
         duplicate = report_duplicate.model_dump(by_alias=True)
@@ -1283,8 +1283,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if mirror in seen:
             return None
         seen.add(mirror)
-        if not FlextInfraDuplicationGate.semantic_clone(duplicate, first, second):
-            return None
         owner_side, other_side = sorted(sides, key=cls._side_layer_key(layers))
         return cls._clone_plan(report_duplicate.lines, owner_side, other_side)
 

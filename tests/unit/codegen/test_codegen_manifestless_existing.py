@@ -296,7 +296,12 @@ class TestsFlextInfraCodegenManifestlessExisting:
     def test_root_distribution_preserves_its_runtime_requirements(
         tmp_path: Path,
     ) -> None:
-        """The tree's root declares no flext runtime dependency and still conforms."""
+        """The tree's root declares no flext runtime dependency and still conforms.
+
+        Since 208716f4f the checkout must declare the infrastructure line it
+        consumes; a manifestless root declares it the way a real member does,
+        through its development group's direct Git source.
+        """
         manifestless = TestsFlextInfraCodegenManifestlessExisting
         base = config.Infra.codegen.scaffold.project.config_bases[-1]
         root = manifestless.seed_root_distribution(

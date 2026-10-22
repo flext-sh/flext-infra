@@ -74,10 +74,11 @@ Infra:
     # resource-limited deadline, so the bound caps concurrent type checkers.
     lint_snapshot_workers: 4
     # Independent read-only per-repository work of one fleet run (generation
-    # planning, lazy-init analysis) runs in this many worker processes; every
-    # publication stays serial inside the single generation lease. Measured
-    # with `make profile-gen`: planning is CPU-bound (one core per repository).
-    fleet_workers: 6
+    # planning, lazy-init analysis) runs in worker processes whose count derives
+    # from the process CPU count bounded by physical memory over this per-worker
+    # budget; every publication stays serial inside the single generation lease.
+    # Measured with `make profile-gen`: one planning worker peaks below 2 GiB RSS.
+    fleet_worker_memory_gb: 2
 
     # Per-module scc code-LOC ceiling, enforced by the loc-cap gate. This key
     # is its only declaration; guidance references the key, never its value.

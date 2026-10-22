@@ -83,23 +83,6 @@ class FlextInfraModelsDeps(
             m.Field(description="Packaging facts from the same parsed document"),
         ]
 
-    class InstalledResourceSnapshot(m.ContractModel):
-        """An exact installed resource authenticated by its owning wheel inventory."""
-
-        resource: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(
-                description="Physical installed resource bytes verified against RECORD"
-            ),
-        ]
-        inventory: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(
-                min_length=1,
-                description="Owning distribution metadata and RECORD snapshots",
-            ),
-        ]
-
     class RuntimeDependencyProvider(m.Value):
         """One imported package associated with an authenticated locked supplier."""
 

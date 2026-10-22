@@ -330,6 +330,9 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         Returns:
             The declared projects and their local runtime dependency closure.
 
+        Raises:
+            ValueError: When a ``flext-`` dependency has no workspace source owner.
+
         """
         checkout = Path(__file__).resolve().parents[1]
         context = tm.ok(

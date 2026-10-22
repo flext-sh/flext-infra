@@ -1,4 +1,8 @@
-"""Native alias identity remains available inside its declaring class scope."""
+"""Native alias identity remains available inside its declaring class scope.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -14,7 +18,12 @@ class TestsFlextInfraProtocolAliasLexicalScope:
 
     @staticmethod
     def test_nested_alias_keeps_its_generic_alias_owner(tmp_path: Path) -> None:
-        """A class-owned alias retains the identity of its sibling generic alias."""
+        """A class-owned alias retains the identity of its sibling generic alias.
+
+        Raises:
+            TypeError: When the fixture alias is not a parameterized subscript.
+
+        """
         source = (
             "from collections.abc import Sequence\n"
             "class Types:\n"

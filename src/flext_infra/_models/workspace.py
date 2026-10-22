@@ -38,6 +38,12 @@ class FlextInfraModelsWorkspace:
         """Cold reference authority has no project publication capability."""
 
         runtime: Path = m.Field(description="Authenticated native interpreter")
+        repository_root: Path = m.Field(
+            description=(
+                "Repository being generated: only its sources are authenticated; "
+                "other repositories' sources are read-only inputs"
+            )
+        )
         optimize: int = m.Field(ge=0, le=2, description="Native compiler optimization")
         inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"

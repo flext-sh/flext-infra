@@ -1152,7 +1152,12 @@ class FlextInfraConfigModelsMake(
         @m.computed_field
         @property
         def check_gates_default(self) -> t.VariadicTuple[str]:
-            """Active default gates, shared by local, CI, hooks, and project gates."""
+            """Active default gates, shared by local, CI, hooks, and project gates.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
             excluded = frozenset(self.standalone_check_gates.values())
             return tuple(
                 gate for gate in self.check_gates_allowed if gate not in excluded

@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import stat
 from collections.abc import Callable, MutableMapping
+from concurrent.futures import ThreadPoolExecutor
 from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, codegen, m, r, t, u
+from flext_infra import c, codegen, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles as files,
     FlextInfraMiseArtifactsProcess as process,
@@ -72,6 +73,8 @@ class FlextInfraCodegenStaging:
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Prepare one independent component per declared owning project.
 
+        Components share no state, so they prepare across the fleet workers.
+
         Args:
             workspace: Shared read-only workspace root of every plan.
             plans: Plans of all components in their original order.
@@ -82,18 +85,47 @@ class FlextInfraCodegenStaging:
             Prepared plans joined back into their original order.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        prepared_by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
-        for project in projects:
-            local = cls.prepare_python_plans(
-                workspace,
-                tuple(plan for plan in plans if plan.project == project),
-                prepare=prepare,
+        prepared_by_path = {
+            plan.path: plan
+            for component in u.Infra.fleet_map(
+                cls.prepare_project_plans,
+                tuple(
+                    (
+                        workspace,
+                        tuple(plan for plan in plans if plan.project == project),
+                        prepare,
+                    )
+                    for project in projects
+                ),
             )
-            if local.failure:
-                return result_type.from_failure(local)
-            prepared_by_path.update((plan.path, plan) for plan in local.value)
-        return result_type.ok(tuple(prepared_by_path[plan.path] for plan in plans))
+            for plan in component
+        }
+        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(
+            tuple(prepared_by_path[plan.path] for plan in plans)
+        )
+
+    @classmethod
+    def prepare_project_plans(
+        cls,
+        component: t.Triple[
+            Path,
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+            Callable[[m.Infra.StageSourcePlan], p.Result[m.Infra.StageSourcePlan]]
+            | None,
+        ],
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        """Prepare one owning project's component as an independent fleet task.
+
+        Args:
+            component: The workspace root, the project's plans and the optional
+                producer-owned preparation.
+
+        Returns:
+            The project's prepared plans; a preparation failure raises its cause.
+
+        """
+        workspace, plans, prepare = component
+        return cls.prepare_python_plans(workspace, plans, prepare=prepare).unwrap()
 
     @classmethod
     def _prepare_single_project_plans(
@@ -281,36 +313,44 @@ class FlextInfraCodegenStaging:
             codegen.FlextInfraCodegenTransaction.consume_source_runtime
         )
 
+        def admit(root: Path, project: Path) -> p.Result[bool]:
+            consumed = consume_source_runtime(
+                planned.value,
+                root,
+                u.Infra.runtime_environment_dir(project).parent
+                if runtime_root is None
+                else runtime_root,
+                project_root=project,
+            )
+            if consumed.failure:
+                return r[bool].from_failure(consumed)
+            if not consumed.value.passed:
+                return r[bool].fail(
+                    f"candidate runtime rejected: {project}:\n"
+                    + "\n".join((consumed.value.summary, *consumed.value.violations))
+                )
+            if validator is None:
+                return r[bool].ok(value=True)
+            checked = validator(root, planned.value, project, consumed.value)
+            if checked.failure or checked.value:
+                return checked
+            return r[bool].fail(f"candidate check rejected: {project}")
+
         def validate(root: Path) -> p.Result[bool]:
-            for project in projects:
-                consumer_runtime = (
-                    u.Infra.runtime_environment_dir(project).parent
-                    if runtime_root is None
-                    else runtime_root
+            # Each admission waits on its own fresh-import child process, so
+            # the projects admit concurrently and report in declaration order.
+            with ThreadPoolExecutor(
+                max_workers=u.Infra.machine_worker_capacity(
+                    config.Infra.codegen.fleet_worker_memory_gb
                 )
-                consumed = consume_source_runtime(
-                    planned.value,
-                    root,
-                    consumer_runtime,
-                    project_root=project,
+            ) as executor:
+                outcomes = tuple(
+                    executor.map(lambda project: admit(root, project), projects)
                 )
-                if consumed.failure:
-                    return r[bool].from_failure(consumed)
-                if not consumed.value.passed:
-                    return r[bool].fail(
-                        f"candidate runtime rejected: {project}:\n"
-                        + "\n".join((
-                            consumed.value.summary,
-                            *consumed.value.violations,
-                        ))
-                    )
-                if validator is not None:
-                    checked = validator(root, planned.value, project, consumed.value)
-                    if checked.failure:
-                        return r[bool].from_failure(checked)
-                    if not checked.value:
-                        return r[bool].fail(f"candidate check rejected: {project}")
-            return r[bool].ok(value=True)
+            return next(
+                (outcome for outcome in outcomes if outcome.failure),
+                r[bool].ok(value=True),
+            )
 
         checked = FlextInfraStagedPackage.consume_sources(planned.value, validate)
         if checked.failure:

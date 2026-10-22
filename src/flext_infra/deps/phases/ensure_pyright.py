@@ -174,8 +174,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
+    @staticmethod
     def _workspace_member_roots(
-        self, repository_root: Path
+        repository_root: Path,
     ) -> t.SequenceOf[t.Pair[str, t.StrSequence]]:
         """Discover each declared member's owned Python roots independently.
 
@@ -608,6 +609,9 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         Returns:
             The resulting ``t.StrSequence``.
+
+        Raises:
+            ValueError: When the pyright owner produces no native table.
 
         """
         desired: t.MutableJsonMapping = {

@@ -229,25 +229,24 @@ class FlextInfraCodemodGate(FlextInfraGate):
         # A completed scan still blocks when elected policy rules find code.
         # Native scanner failures retain their distinct failure diagnostics.
         issues = (*failures, *findings)
-        return m.Infra.GateExecution(
-            result=self._gate_result(
-                project_dir,
-                passed=not issues,
-                errors=[issue.formatted for issue in issues],
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=not issues,
+                issues=issues,
                 started=started,
-            ),
-            issues=issues,
-            outcome=(
-                c.Infra.ToolOutcome.ERROR
-                if failures
-                else c.Infra.ToolOutcome.FINDINGS
-                if findings
-                else c.Infra.ToolOutcome.CLEAN
-            ),
-            raw_output="\n".join((
-                (f"{len(findings)} policy findings; {len(failures)} native failures"),
-                *raw_output,
-            )),
+                outcome=(
+                    c.Infra.ToolOutcome.ERROR
+                    if failures
+                    else c.Infra.ToolOutcome.FINDINGS
+                    if findings
+                    else c.Infra.ToolOutcome.CLEAN
+                ),
+                raw_output="\n".join((
+                    f"{len(findings)} policy findings; {len(failures)} native failures",
+                    *raw_output,
+                )),
+            )
         )
 
     def _failure_gate_execution(

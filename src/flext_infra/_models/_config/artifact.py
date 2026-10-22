@@ -340,14 +340,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 description="Concurrent protected-edit lint snapshot threads",
             ),
         ]
-        fleet_workers: Annotated[
+        fleet_worker_memory_gb: Annotated[
             int,
             m.Field(
                 ge=1,
-                le=32,
                 description=(
-                    "Worker processes for independent read-only per-repository "
-                    "work of one fleet run"
+                    "Physical memory one fleet worker process needs, in GiB; the "
+                    "worker count derives from CPU and memory capacity"
                 ),
             ),
         ]

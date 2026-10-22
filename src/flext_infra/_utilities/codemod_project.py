@@ -1559,9 +1559,13 @@ class FlextInfraUtilitiesCodemodProject(
     ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
         """Select a rule's full import closure from its original closed epoch.
 
+        Authentication ends at the rule's repository: supplier and dependency
+        modules of the closure are read for inference, never authenticated.
+
         Returns:
             Original witnesses for the rule's sources and declared owners, without
-            dependencies elected solely by another rule.
+            dependencies elected solely by another rule, inside the rule's
+            repository.
 
         """
         states = {state.path: state for state in snapshot.states}
@@ -1576,7 +1580,12 @@ class FlextInfraUtilitiesCodemodProject(
         paths = cls._snapshot_project_imports(
             project, selection, states, memo, closed=True
         )
-        return tuple(state for state in snapshot.states if state.path in paths)
+        repository = selection.root.resolve()
+        return tuple(
+            state
+            for state in snapshot.states
+            if state.path in paths and state.path.is_relative_to(repository)
+        )
 
     @classmethod
     def _snapshot_project_imports(

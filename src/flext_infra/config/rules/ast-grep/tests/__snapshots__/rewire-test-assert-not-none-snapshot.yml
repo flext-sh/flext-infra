@@ -1,0 +1,48 @@
+id: rewire-test-assert-not-none
+snapshots:
+  ? |
+    from tests import tm
+    assert value is not None
+  : fixed: |
+      from tests import tm
+      value = tm.not_none(value)
+    labels:
+    - source: assert value is not None
+      style: primary
+      start: 21
+      end: 45
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert value is not None
+      style: secondary
+      start: 0
+      end: 46
+  ? |
+    from tests import tm
+    if not (value is not None):
+        raise AssertionError
+  : fixed: |
+      from tests import tm
+      value = tm.not_none(value)
+    labels:
+    - source: |-
+        if not (value is not None):
+            raise AssertionError
+      style: primary
+      start: 21
+      end: 73
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        if not (value is not None):
+            raise AssertionError
+      style: secondary
+      start: 0
+      end: 74

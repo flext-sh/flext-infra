@@ -11,7 +11,7 @@ from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
 from os import PathLike
-from os.path import normpath, realpath
+from os.path import normpath, realpath, sep
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, Protocol, Self, cast, overload, override
@@ -457,8 +457,9 @@ class FlextInfraRopeProject(Project):
             ambient_roots: t.SequenceOf[Path] = (),
         ) -> None:
             self._ambient_roots = tuple(
-                Path(self.realpath(str(root))) for root in ambient_roots
+                self.realpath(str(root)) for root in ambient_roots
             )
+            self._identities: t.MutableMappingKV[str, Path] = {}
             self._sources = MappingProxyType({
                 Path(self.realpath(str(path))): content
                 for path, content in sources.items()
@@ -491,6 +492,17 @@ class FlextInfraRopeProject(Project):
             """
             return normpath(str(Path(path).absolute()))
 
+        def _identity(self, path: str) -> Path:
+            """Resolve one queried path once for this immutable snapshot.
+
+            Returns:
+                The lexical absolute identity of the queried path.
+
+            """
+            if path not in self._identities:
+                self._identities[path] = Path(self.realpath(path))
+            return self._identities[path]
+
         def _ambient_identity(self, resolved: Path) -> Path | None:
             """Return the real path when it belongs to an ambient interpreter root.
 
@@ -502,8 +514,10 @@ class FlextInfraRopeProject(Project):
                 for repository-scoped paths the closed inventory owns.
 
             """
+            # Both sides are lexical absolute paths: a string prefix test is exact.
+            text = str(resolved)
             if any(
-                root == resolved or root in resolved.parents
+                text == root or text.startswith(root + sep)
                 for root in self._ambient_roots
             ):
                 return resolved
@@ -519,7 +533,7 @@ class FlextInfraRopeProject(Project):
                 Whether the specified path exists within the snapshot.
 
             """
-            resolved = Path(self.realpath(path))
+            resolved = self._identity(path)
             if resolved in self._sources or resolved in self._directories:
                 return True
             ambient = self._ambient_identity(resolved)
@@ -535,7 +549,7 @@ class FlextInfraRopeProject(Project):
                 Whether the specified path is a captured source file.
 
             """
-            resolved = Path(self.realpath(path))
+            resolved = self._identity(path)
             if resolved in self._sources:
                 return True
             ambient = self._ambient_identity(resolved)
@@ -551,7 +565,7 @@ class FlextInfraRopeProject(Project):
                 Whether the specified path is a captured or ambient folder.
 
             """
-            resolved = Path(self.realpath(path))
+            resolved = self._identity(path)
             if resolved in self._directories:
                 return True
             ambient = self._ambient_identity(resolved)
@@ -571,7 +585,7 @@ class FlextInfraRopeProject(Project):
                   captured in the snapshot nor ambient interpreter state.
 
             """
-            directory = Path(self.realpath(path))
+            directory = self._identity(path)
             if directory in self._directories:
                 return [child.name for child in self._children[directory]]
             ambient = self._ambient_identity(directory)
@@ -594,7 +608,7 @@ class FlextInfraRopeProject(Project):
                   ambient interpreter state.
 
             """
-            source = Path(self.realpath(path))
+            source = self._identity(path)
             if source in self._sources:
                 return self._sources[source]
             ambient = self._ambient_identity(source)
@@ -617,7 +631,7 @@ class FlextInfraRopeProject(Project):
                   ambient interpreter state.
 
             """
-            source = Path(self.realpath(path))
+            source = self._identity(path)
             if source in self._children:
                 return self._children[source]
             ambient = self._ambient_identity(source)
@@ -738,7 +752,11 @@ class FlextInfraRopeProject(Project):
             return self._receipt
 
     class AtomicReadFiles:
-        """Authenticate only sources actually read by the native semantic graph."""
+        """Authenticate only sources actually read by the native semantic graph.
+
+        Authentication ends at the repository root: supplier and dependency
+        sources outside it are read for inference and never authenticated.
+        """
 
         stat = staticmethod(FileSystemCommands.stat)
 
@@ -1077,6 +1095,14 @@ class FlextInfraRopeProject(Project):
 
             """
             directory = Path(path)
+            if not directory.is_relative_to(self._root):
+                # Folders outside the repository are listed for inference only:
+                # their membership is never inventoried, attributed or verified.
+                return sorted(
+                    child.name
+                    for child in directory.iterdir()
+                    if not self._is_generated_artifact(child)
+                )
             inventory = self._inventory(directory)
             names: list[str] = (
                 [] if inventory is None else [item.name for item in inventory.entries]
@@ -1429,6 +1455,12 @@ class FlextInfraRopeProject(Project):
             children = tuple(Path(path) / name for name in self.listdir(path))
             if follow_aliases:
                 return children
+            if not Path(path).is_relative_to(self._root):
+                return tuple(
+                    child
+                    for child in children
+                    if not child.is_symlink() and (child.is_file() or child.is_dir())
+                )
             inventory = self._inventory(Path(path))
             excluded: set[str] = (
                 {
@@ -1490,32 +1522,24 @@ class FlextInfraRopeProject(Project):
                   witness.
 
             """
+            # Supplier and dependency sources outside the repository are read
+            # for inference only: never consumed, attributed or re-verified, so
+            # a supplier edit cannot abort this repository's run.
+            owned = source in self._effects or source.is_relative_to(self._root)
             state = self._consumed.get(source)
             if state is None:
-                state = self._originals.get(source)
-                if state is None:
-                    declaration = self._effects.get(source)
-                    if declaration is not None and isinstance(
-                        declaration.before, m.Cli.AtomicDirectoryChainPlan
-                    ):
-                        # The original absent parent proves this file absent too.
-                        state = m.Cli.AtomicFileState(path=source)
-                    else:
-                        state = require_value(
-                            u.Cli.atomic_read_binary_file_state(source, required=False),
-                        )
-                    self._originals[source] = state
-                if not self._capturing:
+                state = self._original_state(source)
+                if owned and not self._capturing:
                     self._verify_declarations(source, check_current=False)
                     if state.parent_inode is not None:
                         self._consumed[source] = state
-            if state.parent_inode is None:
+            if owned and state.parent_inode is None:
                 witness = self._directory_chain(source.parent)
                 if not witness.directories:
                     msg = f"Rope source lacks its original parent absence: {source}"
                     raise ValueError(msg)
                 self._record(topology=(witness,))
-            else:
+            elif owned:
                 self._record(states=(state,))
             declaration = self._effects.get(source)
             if declaration is not None and isinstance(
@@ -1525,6 +1549,28 @@ class FlextInfraRopeProject(Project):
             if required and state.content is None:
                 msg = f"Rope required source is absent: {source}"
                 raise FileNotFoundError(msg)
+            return state
+
+        def _original_state(self, source: Path) -> m.Cli.AtomicFileState:
+            """Pin one source's original state on first use, absence included.
+
+            Returns:
+                The original physical state for the source.
+
+            """
+            state = self._originals.get(source)
+            if state is None:
+                declaration = self._effects.get(source)
+                # An original absent parent proves its declared file absent too.
+                state = (
+                    m.Cli.AtomicFileState(path=source)
+                    if declaration is not None
+                    and isinstance(declaration.before, m.Cli.AtomicDirectoryChainPlan)
+                    else require_value(
+                        u.Cli.atomic_read_binary_file_state(source, required=False),
+                    )
+                )
+                self._originals[source] = state
             return state
 
         def states(self) -> tuple[m.Cli.AtomicFileState, ...]:

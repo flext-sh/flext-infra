@@ -15,6 +15,7 @@ from flext_infra import t
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,
+    FlextInfraModelsDuplication,
 )
 
 
@@ -495,6 +496,22 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
+    class JscpdToolConfig(m.ArbitraryTypesModel):
+        """jscpd's own clone-semantics passes the duplication gate selects."""
+
+        similarity: Annotated[
+            float,
+            m.Field(
+                gt=0,
+                le=1,
+                description="Lowest structural similarity reported (--similarity).",
+            ),
+        ]
+        semantic: Annotated[
+            FlextInfraModelsDuplication.JscpdSemantic,
+            m.Field(description="Embedding pass host (--semantic)."),
+        ]
+
     class MarkdownConfig(m.ArbitraryTypesModel):
         """Markdown lint rules and excluded non-documentation surfaces."""
 
@@ -536,6 +553,9 @@ class FlextInfraModelsDepsToolConfig(
         )
         tomlsort: FlextInfraModelsDepsToolConfig.TomlsortConfig = m.Field(
             description="Tomlsort settings",
+        )
+        jscpd: FlextInfraModelsDepsToolConfig.JscpdToolConfig = m.Field(
+            description="jscpd clone-semantics passes",
         )
 
     class LazyInitConfig(m.ArbitraryTypesModel):

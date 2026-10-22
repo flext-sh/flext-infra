@@ -429,7 +429,9 @@ class TestsFlextInfraSymbolicTextCutover:
         captured = tuple(state.path for state in findings[0].binding_states)
         tm.that(captured, has=outcome.resolve(), lacks=unused.resolve())
         if builtin_subscript:
-            tm.that(captured, has=Path(typing.__file__).resolve())
+            # Interpreter modules inform inference but lie outside the repository,
+            # so they are never authenticated binding witnesses.
+            tm.that(captured, lacks=Path(typing.__file__).resolve())
         if stale_provider:
             outcome.write_text(
                 outcome.read_text(encoding="utf-8") + "\n# Changed provider receipt.\n",

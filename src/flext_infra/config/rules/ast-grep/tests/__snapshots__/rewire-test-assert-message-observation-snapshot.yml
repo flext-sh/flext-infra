@@ -1,0 +1,48 @@
+id: rewire-test-assert-message-observation
+snapshots:
+  ? |
+    from tests import tm
+    assert result.success, result.error
+  : fixed: |
+      from tests import tm
+      tm.that(result.success, msg=result.error)
+    labels:
+    - source: assert result.success, result.error
+      style: primary
+      start: 21
+      end: 56
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert result.success, result.error
+      style: secondary
+      start: 0
+      end: 57
+  ? |
+    from tests import tm
+    if not (started.success):
+        raise AssertionError(started.error)
+  : fixed: |
+      from tests import tm
+      tm.that(started.success, msg=started.error)
+    labels:
+    - source: |-
+        if not (started.success):
+            raise AssertionError(started.error)
+      style: primary
+      start: 21
+      end: 86
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        if not (started.success):
+            raise AssertionError(started.error)
+      style: secondary
+      start: 0
+      end: 87

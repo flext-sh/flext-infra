@@ -26,7 +26,13 @@ class FlextInfraApplyRenames:
         params: m.Infra.ApplyRenamesInput,
         pairs: t.SequenceOf[t.Pair[str, str]],
     ) -> bool:
-        """Whether this campaign changes only semantic identifier declarations."""
+        """Whether this campaign changes only semantic identifier declarations.
+
+        Returns:
+            True when definitions are renamed, no documentation or text-glob edits
+            are requested, and every old name is a valid Python identifier.
+
+        """
         return (
             params.rename_definitions
             and not params.python_documentation

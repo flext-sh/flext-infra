@@ -232,82 +232,93 @@ class FlextInfraCodegenLazyInit(
             )
         )
         if manifests.failure:
-            original = next(
-                (
-                    analysis.exception
-                    for analysis in analyses
-                    if analysis.exception is not None
-                ),
-                None,
-            )
+            original = self._first_recorded_exception(analyses)
             if original is not None:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"{original}\n{manifests.error}",
                     exception=original,
                 )
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(manifests)
-        composed += manifests.value
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            self.composed_analysis(analyses, manifests=manifests.value)
+        )
+
+    @classmethod
+    def plan_scope_root(cls, scope: t.Pair[Path, Path]) -> m.Infra.CodegenPhaseAnalysis:
+        """Plan one selected repository of a workspace as an independent fleet task.
+
+        The workspace authority binds only the selected repository, exactly as
+        a one-root ``project_scope_roots`` invocation does, so fleet workers can
+        plan the repositories of one generation concurrently.
+
+        Args:
+            scope: The workspace authority root and the selected repository root.
+
+        Returns:
+            The selected repository's complete analysis receipt.
+
+        """
+        return (
+            cls(repository_root=scope[0], project_scope_roots=(scope[1],))
+            .plan_files()
+            .unwrap()
+        )
+
+    @classmethod
+    def composed_analysis(
+        cls,
+        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
+        *,
+        manifests: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+    ) -> m.Infra.CodegenPhaseAnalysis:
+        """Fold per-repository analyses into one phase analysis receipt.
+
+        Args:
+            analyses: Per-repository analyses in canonical root order.
+            manifests: Projection manifest plans derived from the composed files.
+
+        Returns:
+            One analysis whose inputs and directory receipts derive from every
+            composed file and publication.
+
+        """
+        composed = (
+            *(file for analysis in analyses for file in analysis.files),
+            *manifests,
+        )
         publications = tuple(
             plan for analysis in analyses for plan in analysis.publications
         )
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
             tuple(
                 item
-                for dependency in composed
-                for item in dependency.source_directories
-            )
-            + tuple(
-                item
-                for dependency in publications
+                for dependency in (*composed, *publications)
                 for item in dependency.source_directories
             ),
             tuple(
                 item
-                for dependency in composed
-                for item in dependency.source_query_topology
-            )
-            + tuple(
-                item
-                for dependency in publications
+                for dependency in (*composed, *publications)
                 for item in dependency.source_query_topology
             ),
         )
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
-                files=composed,
-                inputs=m.Infra.CodemodBindingSnapshot(
-                    states=tuple(
-                        state
-                        for dependency in composed
-                        for state in dependency.source_states
-                    )
-                    + tuple(
-                        state
-                        for dependency in publications
-                        for state in dependency.source_states
-                    ),
-                ).states,
-                source_directories=directories,
-                source_query_topology=topology,
-                publications=publications,
-                failed_targets=tuple(
-                    target
-                    for analysis in analyses
-                    for target in analysis.failed_targets
+        return m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+            files=composed,
+            inputs=m.Infra.CodemodBindingSnapshot(
+                states=tuple(
+                    state
+                    for dependency in (*composed, *publications)
+                    for state in dependency.source_states
                 ),
-                issues=tuple(
-                    issue for analysis in analyses for issue in analysis.issues
-                ),
-                exception=next(
-                    (
-                        analysis.exception
-                        for analysis in analyses
-                        if analysis.exception is not None
-                    ),
-                    None,
-                ),
+            ).states,
+            source_directories=directories,
+            source_query_topology=topology,
+            publications=publications,
+            failed_targets=tuple(
+                target for analysis in analyses for target in analysis.failed_targets
             ),
+            issues=tuple(issue for analysis in analyses for issue in analysis.issues),
+            exception=cls._first_recorded_exception(analyses),
         )
 
     @staticmethod

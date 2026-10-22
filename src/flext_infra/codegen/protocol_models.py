@@ -864,6 +864,15 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
         binding: p.Infra.RopePyName,
         directory: Path,
     ) -> set[str]:
+        """Read actual imported protocol primaries from every indexed Python root.
+
+        Returns:
+            The resulting ``set[str]``.
+
+        Raises:
+            ValueError: If an indexed module is unavailable.
+
+        """
         found: set[str] = set()
         for entry in workspace.modules():
             resource = workspace.resource(entry.file_path)

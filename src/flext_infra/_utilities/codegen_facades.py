@@ -141,8 +141,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         retired = frozenset(
             plan.path for plan in declared_files if plan.desired_content is None
         )
-        # Consumed states include the dependency modules native reads loaded
-        # from the checkout-local environment; they stay verified inputs, but
+        # Dependency modules native reads load from the checkout-local
+        # environment are read for inference only and never authenticated;
         # only repository-owned sources are planning targets (70dc29f1b9
         # republished site-packages/flext_cli/utilities.py otherwise).
         original_sources = FlextInfraUtilitiesCodegenFacades.facade_original_sources(
