@@ -298,17 +298,21 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
         Returns:
             Success only when no plan requires an effect; otherwise the failure
-            names every residual destination.
+            names every residual destination with its bounded residual diff.
 
         """
-        residual = [
-            str(plan.path)
+        residual = tuple(
+            plan
             for plan in plans
             if FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(plan)
-        ]
+        )
         if residual:
+            names = ", ".join(str(plan.path) for plan in residual)
+            drift = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report(
+                residual,
+            )
             return r[bool].fail(
-                f"{subject} did not reach a fixed point: {', '.join(residual)}",
+                f"{subject} did not reach a fixed point: {names}\n{drift}",
             )
         return r[bool].ok(value=True)
 

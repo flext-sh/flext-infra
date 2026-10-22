@@ -80,16 +80,23 @@ class TestsFlextInfraCodegenArtifactSsot:
             tm.that(owners[path].owner, eq=original.owner)
             tm.that(owners[path].mode, eq=original.mode)
             tm.that(owners[path].policy, eq="full")
-        contract = FlextInfraCodegenConform.surface_contract(
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            codegen=declared,
-        )
-        tm.that(
-            contract.destinations,
-            eq=frozenset(
-                (c.PYPROJECT_FILENAME, *(path.as_posix() for path in manifests)),
+        managed = frozenset(
+            (
+                c.PYPROJECT_FILENAME,
+                *(path.as_posix() for path in declared.uv_resolution_pyprojects),
             ),
         )
+        for surface in (
+            c.Infra.CodegenConformSurface.PYPROJECT,
+            c.Infra.CodegenConformSurface.DEPENDENCIES,
+        ):
+            contract = FlextInfraCodegenConform.surface_contract(
+                surface,
+                codegen=declared,
+            )
+            tm.that(contract.destinations, eq=managed)
+            for path in manifests:
+                tm.that(contract.destinations, has=path.as_posix())
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 declared,
@@ -114,7 +121,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             if artifact.vscode_exclude
         }
         expected_watchers = {
-            f"**/{artifact.name}/**": True
+            (f"**/{artifact.name}/**" if artifact.is_dir else f"**/{artifact.name}"): True
             for artifact in codegen.artifacts
             if artifact.watch_exclude
         }

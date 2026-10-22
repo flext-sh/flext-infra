@@ -31,7 +31,33 @@ class FlextInfraWorkspaceDetector(
         """Elect native resolution inputs without package metadata or members.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceRuntimeContext]``.
+            The elected runtime whose selected install view stays inside its
+            physical runtime, or the first election or containment failure.
+
+        """
+        result_type = r[m.Infra.WorkspaceRuntimeContext]
+        election = cls.runtime_election(repository_root)
+        if election.failure:
+            return result_type.from_failure(election)
+        context = election.value
+        if not context.resolution_root.resolve().is_relative_to(context.runtime_root):
+            return result_type.fail(
+                "UV resolution directory leaves its physical runtime"
+            )
+        return election
+
+    @classmethod
+    def runtime_election(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.WorkspaceRuntimeContext]:
+        """Elect the physical runtime and editable supplier of one repository.
+
+        Metadata planning consumes the election alone: validating the selected
+        install view belongs to the consumers that read or write that view.
+
+        Returns:
+            The elected runtime context, or the first election failure.
 
         """
         result_type = r[m.Infra.WorkspaceRuntimeContext]
@@ -104,10 +130,6 @@ class FlextInfraWorkspaceDetector(
             else policy.local_directory
         )
         resolution_root = runtime_root / directory
-        if not resolution_root.resolve().is_relative_to(runtime_root):
-            return result_type.fail(
-                "UV resolution directory leaves its physical runtime"
-            )
         return result_type.ok(
             m.Infra.WorkspaceRuntimeContext(
                 editable_supplier_root=supplier_root,

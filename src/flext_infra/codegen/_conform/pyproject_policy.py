@@ -49,7 +49,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         if projects.failure:
             return result_type.from_failure(projects)
         suppliers: list[m.Infra.UvResolutionProject] = []
-        runtime = FlextInfraWorkspaceDetector.resolution_context(root)
+        runtime = FlextInfraWorkspaceDetector.runtime_election(root)
         if runtime.failure:
             return result_type.from_failure(runtime)
         supplier_root = runtime.value.editable_supplier_root
@@ -75,6 +75,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             inputs,
             rendered_by,
             workspace=workspace,
+            supplier_root=supplier_root,
         )
 
     @classmethod
@@ -93,9 +94,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
         """
         result_type = r[list[m.Infra.UvResolutionProject]]
-        runtime = FlextInfraWorkspaceDetector.resolution_context(root)
-        if runtime.failure:
-            return result_type.from_failure(runtime)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(supplier_root)
         if workspace.failure:
             return result_type.from_failure(workspace)
@@ -235,8 +233,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         rendered_by: str,
         *,
         workspace: m.Infra.WorkspaceSpec,
+        supplier_root: Path | None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan both managed native resolution views.
+        """Plan the managed native resolution views the runtime selects.
 
         Args:
             projects: The owner-first resolution projects of the workspace.
@@ -244,6 +243,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             inputs: Loaded codegen inputs owning the resolution policy.
             rendered_by: Render-provenance line of the running generator.
             workspace: Authenticated composition electing remote member sources.
+            supplier_root: The elected editable supplier, absent without one.
 
         Returns:
             The managed resolution view plans, or the first planning failure.
@@ -256,15 +256,12 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         local_members = tuple(item for item in members if item.role == "member")
         root = owner.directory
         files: list[m.Infra.CodegenFilePlan] = []
-        runtime = FlextInfraWorkspaceDetector.resolution_context(root)
-        if runtime.failure:
-            return result_type.from_failure(runtime)
         views = (
             (policy.local_directory, local_members),
             (policy.standalone_directory, ()),
             *(
                 ((policy.editable_directory, tuple(members)),)
-                if runtime.value.editable_supplier_root is not None
+                if supplier_root is not None
                 else ()
             ),
         )

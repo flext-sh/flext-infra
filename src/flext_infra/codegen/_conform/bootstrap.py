@@ -213,6 +213,8 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 # Metadata must bootstrap before the consumer's imports exist.
                 # Complete generation owns source-derived analyzer settings.
+                # Every managed resolver view stays a destination: the runtime
+                # supplier selection decides whether the editable view renders.
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
