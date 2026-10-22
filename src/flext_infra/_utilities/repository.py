@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 
 from flext_cli import u
 from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -376,10 +377,10 @@ class FlextInfraUtilitiesRepository:
     ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
         """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
 
-        The line is a fact of the infrastructure dependency, never of the
-        consumer's own identity: every internal ``flext-*`` floor renders from
-        it, so a repository living in another organization still resolves the
-        whole family from one source. It is detected, never cataloged, from the
+        The line is a fact of the exact infrastructure dependency, never of
+        another distribution's ref or the consumer's own identity. Family
+        distributions share a provider but may declare different refs.
+        It is detected, never cataloged, from the
         first declaration the checkout carries — the infrastructure checkout's
         own origin and integration branch, a declared direct Git source for
         the distribution (URL and ref), or the owning workspace manifest's
@@ -642,27 +643,41 @@ class FlextInfraUtilitiesRepository:
         *,
         pyproject_path: Path,
         prefix: str,
-    ) -> p.Result[t.MutableMappingKV[t.Pair[str, str], str]]:
+    ) -> p.Result[t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]]:
         """Collect the declared ``<prefix>*`` line sources of one pyproject.
 
         Returns:
-            The declared base-url/ref lines mapped to one witness requirement.
+            Sources keyed by normalized distribution and marker.
 
         """
-        lines: t.MutableMappingKV[t.Pair[str, str], str] = {}
+        lines: t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]] = {}
+        providers: set[str] = set()
         for requirement in cls._dependency_requirements(payload):
             parsed = cls._declared_requirement_line(requirement, prefix)
             if parsed.failure:
-                return r[t.MutableMappingKV[t.Pair[str, str], str]].from_failure(parsed)
+                return r[
+                    t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]
+                ].from_failure(parsed)
             if parsed.value[0]:
-                lines.setdefault(parsed.value, requirement)
-        if len(lines) > 1:
-            declared = "; ".join(sorted(lines.values()))
-            return r[t.MutableMappingKV[t.Pair[str, str], str]].fail(
-                f"{pyproject_path.name} declares conflicting {prefix}* line sources "
-                f"(one family, one provider and ref): {declared}",
-            )
-        return r[t.MutableMappingKV[t.Pair[str, str], str]].ok(lines)
+                declaration = Requirement(requirement)
+                key = (
+                    canonicalize_name(declaration.name),
+                    str(declaration.marker or ""),
+                )
+                providers.add(parsed.value[0].removesuffix(".git").rsplit("/", 1)[0])
+                if len(providers) > 1 or (key in lines and lines[key] != parsed.value):
+                    return r[
+                        t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]
+                    ].fail(
+                        f"{pyproject_path.name} declares conflicting "
+                        f"{prefix}* line sources (one provider per family, "
+                        f"one source per distribution and marker): "
+                        f"{requirement}",
+                    )
+                lines[key] = parsed.value
+        return r[t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]].ok(
+            lines,
+        )
 
     @classmethod
     def _declared_workspace_source(
@@ -717,17 +732,16 @@ class FlextInfraUtilitiesRepository:
         prefix: str,
         policy_branch: str,
     ) -> p.Result[t.Pair[str, str]]:
-        """Return the family line the pyproject declares, as a source for one member.
+        """Return the exact distribution source declared by the pyproject.
 
-        Internal dependencies name one provider base URL and one integration
-        line; uv.lock alone records the commit each line resolves to, so a
+        Internal dependencies share a provider, not necessarily a ref.
+        uv.lock alone records the commit each line resolves to, so a
         commit ref left in the projection declares no line. A plain
         (source-less) requirement names a workspace dependency whose URL the
-        workspace manifest owns. The line supplies the source of
-        ``distribution``.
+        workspace manifest owns. Other distributions never supply its ref.
 
         Returns:
-            The family line the pyproject declares, as a source for one member.
+            The exact distribution's source, or its declared workspace source.
 
         """
         payload = FlextInfraUtilitiesPyproject.declared_dependency_payload(
@@ -742,9 +756,19 @@ class FlextInfraUtilitiesRepository:
         )
         if lines.failure:
             return r[t.Pair[str, str]].from_failure(lines)
-        if lines.value:
-            (base_url, ref), _ = next(iter(lines.value.items()))
-            return r[t.Pair[str, str]].ok((f"{base_url}/{distribution}.git", ref))
+        sources = {
+            source
+            for (name, _), source in lines.value.items()
+            if name == canonicalize_name(distribution)
+            and not cls.ref_is_commit(source[1])
+        }
+        if len(sources) > 1:
+            return r[t.Pair[str, str]].fail(
+                f"{pyproject_path.name} declares ambiguous {distribution} authority",
+            )
+        if sources:
+            (source,) = sources
+            return r[t.Pair[str, str]].ok(source)
         return cls._declared_workspace_source(
             payload.value,
             pyproject_path=pyproject_path,
@@ -785,16 +809,18 @@ class FlextInfraUtilitiesRepository:
         """Validate one family member's provenance before collecting its line.
 
         Returns:
-            The provider URL and ref, or the empty pair for a non-line.
+            The declared repository URL and ref, or the empty pair for a non-line.
 
         """
         name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+        if name is not None:
+            name = canonicalize_name(name)
         if name is None or not name.startswith(prefix):
             return r[t.Pair[str, str]].ok(("", ""))
         parsed = cls.declared_git_source(requirement)
         if parsed.failure:
             return parsed
-        url, ref = parsed.value
+        url = parsed.value[0]
         if not url:
             return parsed
         if not url.startswith("https://"):
@@ -807,12 +833,7 @@ class FlextInfraUtilitiesRepository:
                 f"internal dependency source must be the {name} repository: "
                 f"{requirement}",
             )
-        line = (
-            ("", "")
-            if cls.ref_is_commit(ref)
-            else (url.removesuffix(".git").rsplit("/", 1)[0], ref)
-        )
-        return r[t.Pair[str, str]].ok(line)
+        return r[t.Pair[str, str]].ok(parsed.value)
 
     @classmethod
     def _git_declared_distribution_url(

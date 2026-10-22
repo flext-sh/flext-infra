@@ -43,6 +43,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             environment: Environment,
             template: str,
         ) -> tuple[str, str, Callable[[], bool] | None]:
+            del environment
             path = self._root.joinpath(*split_template_path(template))
             if not self._project.source_query(path, "isfile"):
                 raise TemplateNotFound(template)

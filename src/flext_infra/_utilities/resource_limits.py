@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import platform
 import shutil
+import signal
 import sys
 from importlib import metadata
 from pathlib import Path
@@ -18,7 +19,6 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, settings, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesProcess,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
 )
@@ -106,8 +106,6 @@ class FlextInfraUtilitiesResourceLimits:
             ),
             "--no-error-summary",
             "--no-color-output",
-            # Profile the full analysis, never an incidental warm-cache hit.
-            *(("--no-incremental",) if invocation.profile_output is not None else ()),
             *(("--output", c.Infra.OUTPUT_JSON) if invocation.report_json else ()),
             *(("--verbose",) if invocation.verbose else ()),
             "--",
@@ -149,9 +147,13 @@ class FlextInfraUtilitiesResourceLimits:
         if invocation.profile_output is not None:
             return (
                 interpreter,
-                "-m",
-                f"{__package__}._mypy_profile",
-                invocation.model_dump_json(),
+                str(Path(__file__).with_name("_mypy_profile.py")),
+                str(invocation.profile_output.resolve()),
+                "--timing-stats",
+                str(invocation.profile_output.with_suffix(".timing.txt").resolve()),
+                "--line-checking-stats",
+                str(invocation.profile_output.with_suffix(".lines.txt").resolve()),
+                *FlextInfraUtilitiesResourceLimits.mypy_arguments(invocation),
             )
         return (
             interpreter,
@@ -435,27 +437,33 @@ class FlextInfraUtilitiesResourceLimits:
         output: p.Cli.CommandOutput,
         limit: m.Infra.MypyResourceLimit | None = None,
     ) -> str | None:
-        """Return a controlled diagnostic only for timeout or memory exhaustion.
+        """Report native timeout, signal and memory evidence for bounded Mypy.
+
+        The owned supervisor reserves deadline and KILL exit statuses; these
+        remain meaningful when the outer CLI deadline does not expire.
 
         Returns:
-            A controlled diagnostic only for timeout or memory exhaustion.
+            A controlled diagnostic when resource or signal evidence is present.
 
         """
         validated_limit = limit or cls.mypy_resource_limit()
+        outcome = output.outcome
+        exit_code = outcome.raw_return_code
+        signal_number = outcome.forwarded_signal
+        if signal_number is None:
+            if exit_code < 0:
+                signal_number = -exit_code
+            elif exit_code == c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + signal.SIGKILL:
+                signal_number = signal.SIGKILL
         combined = f"{output.stdout}\n{output.stderr}".lower()
-        classification = FlextInfraUtilitiesProcess.process_exit_classification(
-            output.outcome.raw_return_code,
-        )
-        resource_failure = classification != "failure" or any(
-            marker in combined for marker in cls._MEMORY_FAILURE_MARKERS
+        resource_failure = (
+            outcome.timed_out
+            or exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE
+            or signal_number is not None
+            or any(marker in combined for marker in cls._MEMORY_FAILURE_MARKERS)
         )
         if not resource_failure:
             return None
-        signal = (
-            classification.removeprefix("signal=")
-            if classification.startswith("signal=")
-            else "none"
-        )
         detail = (
             "\n".join(
                 stream.strip()
@@ -467,8 +475,8 @@ class FlextInfraUtilitiesResourceLimits:
         return cls._bounded_mypy_diagnostic(
             validated_limit,
             detail=detail,
-            exit_code=output.outcome.raw_return_code,
-            signal=signal,
+            exit_code=exit_code,
+            signal=signal_number if signal_number is not None else "none",
         )
 
 

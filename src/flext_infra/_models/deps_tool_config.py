@@ -582,7 +582,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
-    class ToolConfigDocument(m.ContractModel):
+    class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
         settings: Annotated[
@@ -799,6 +799,22 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         @m.model_validator(mode="after")
+        def validate_pyright_options(self) -> Self:
+            """Require strict checking in the elected native configuration.
+
+            Returns:
+                The configuration with strict diagnostics preserved.
+
+            Raises:
+                ValueError: If the elected checking mode weakens diagnostics.
+
+            """
+            if dict(self.settings["pyright"]).get("typeCheckingMode") != "strict":
+                msg = "Pyright typeCheckingMode must remain strict"
+                raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
         def validate_pyrefly_options(self) -> Self:
             """Preserve strict Pyrefly diagnostics for every selected rule.
 
@@ -809,7 +825,10 @@ class FlextInfraModelsDepsToolConfig(
                 ValueError: If a selected rule is weakened or generated code hidden.
 
             """
-            if any(value != "error" for _, value in self.settings["pyrefly.errors"]):
+            if any(
+                value != "error"
+                for value in dict(self.settings["pyrefly.errors"]).values()
+            ):
                 msg = "Pyrefly selected diagnostics must remain errors"
                 raise ValueError(msg)
             if (

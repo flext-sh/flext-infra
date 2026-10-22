@@ -7,3 +7,12 @@ rules:
     find: '^from (?P<own>\w+(?:\.\w+)*) import (?P<names>(?:\w+, )*\w+), (?P<facet>[ctpmu])\nfrom (?P<parent>\w+(?:\.\w+)*) import (?P=facet)$'
     replace: 'from \g<own> import \g<names>\nfrom \g<parent> import \g<facet>'
     flags: [MULTILINE]
+  - id: tests-staticmethod-outermost-decorator
+    description: >-
+      A static test method declares @staticmethod outermost, above its pytest
+      marks; marks stacked above it make analyzers bind the first parameter as
+      self. Applies to every project.
+    include: [tests/*.py, tests/**/*.py]
+    find: '^(?P<i>[ \t]+)(?P<marks>@pytest\.mark\.(?:[^\n]|\n(?!(?P=i)@staticmethod\n|(?P=i)(?:async )?def ))*\n)(?P=i)@staticmethod\n'
+    replace: '\g<i>@staticmethod\n\g<i>\g<marks>'
+    flags: [MULTILINE]

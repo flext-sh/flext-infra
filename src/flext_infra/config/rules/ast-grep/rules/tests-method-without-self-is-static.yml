@@ -1,0 +1,64 @@
+# A test-tree method that never reads its instance is a static method
+# (ruff PLR6301 no-self-use). The fix declares @staticmethod and drops `self`;
+# the packaged text rule tests-staticmethod-outermost-decorator then lifts the
+# decorator above any pytest marks. Methods that read `self` or call super(),
+# dunders, properties, overloads, overrides and already static or class
+# methods stay as they are.
+id: tests-method-without-self-is-static
+language: Python
+severity: error
+message: A test method that never reads self is a @staticmethod (PLR6301).
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  pattern:
+    context: |-
+      class C:
+          def $NAME($$$PARAMS) -> $RET:
+              $$$BODY
+    selector: function_definition
+  all:
+    - has:
+        field: parameters
+        has:
+          nthChild: 1
+          kind: identifier
+          regex: '^self$'
+    - any:
+        - inside:
+            kind: block
+            inside:
+              kind: class_definition
+        - inside:
+            kind: decorated_definition
+            inside:
+              kind: block
+              inside:
+                kind: class_definition
+    - not:
+        has:
+          field: body
+          stopBy: end
+          kind: identifier
+          regex: '^(self|super)$'
+    - not:
+        inside:
+          kind: decorated_definition
+          has:
+            kind: decorator
+            regex: '^@(staticmethod|classmethod|property|overload|abstractmethod|(typing\.)?override|[\w.]+\.(setter|deleter))\b'
+    - not:
+        has:
+          field: name
+          regex: '^__'
+transform:
+  STATIC_PARAMS:
+    replace:
+      source: $$$PARAMS
+      replace: '^self\s*,?\s*'
+      by: ''
+fix: |-
+  @staticmethod
+  def $NAME($STATIC_PARAMS) -> $RET:
+      $$$BODY

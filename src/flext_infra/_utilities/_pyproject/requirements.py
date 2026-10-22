@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from hashlib import sha256
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
+from packaging.version import Version
 
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
@@ -31,6 +34,265 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
+
+    @staticmethod
+    def generated_typing_version(
+        implementation_version: str, files: t.MappingKV[Path, bytes]
+    ) -> str:
+        """Derive the producer version from ordered relative stub names and bytes.
+
+        Returns:
+            The exact implementation release plus its generated content digest.
+
+        """
+        digest = sha256()
+        for relative, content in sorted(files.items()):
+            digest.update(relative.as_posix().encode(c.DEFAULT_ENCODING))
+            digest.update(content)
+        return f"{Version(implementation_version).public}+{digest.hexdigest()}"
+
+    @classmethod
+    def generated_typing_packages(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        root: Path,
+        policy: m.Infra.TypingGenerationPolicy,
+        for_generation: bool = False,
+    ) -> p.Result[t.VariadicTuple[m.Infra.GeneratedTypingPackage]]:
+        """Authenticate declared local typing sources against the producer contract.
+
+        Generation elects repair targets from metadata identity; admission always
+        authenticates the complete generated snapshot unless explicitly producing it.
+
+        Returns:
+            Captured, validated local provenance, never a prefix exemption.
+
+        """
+        result = r[t.VariadicTuple[m.Infra.GeneratedTypingPackage]]
+        sources = u.Cli.toml_table_path(document, ("tool", "uv", "sources"))
+        if sources is None:
+            return result.ok(())
+        packages: list[m.Infra.GeneratedTypingPackage] = []
+        for name, source in (
+            u
+            .json_mapping_adapter()
+            .validate_python(
+                u.Cli.toml_unwrap_item(sources),
+            )
+            .items()
+        ):
+            if not isinstance(source, Mapping) or not isinstance(
+                source.get("path"), str
+            ):
+                continue
+            path = source["path"]
+            if not isinstance(path, str):
+                continue
+            candidate = root / path
+            if not (
+                canonicalize_name(name).startswith(
+                    canonicalize_name(policy.distribution_prefix)
+                )
+                or candidate.is_relative_to(root / policy.directory)
+            ):
+                continue
+            validated = cls._generated_typing_package(
+                root, name, candidate, policy, for_generation=for_generation
+            )
+            if validated.failure:
+                return result.from_failure(validated)
+            packages.append(validated.value)
+        return result.ok(tuple(packages))
+
+    @classmethod
+    def _generated_typing_package(
+        cls,
+        root: Path,
+        name: str,
+        candidate: Path,
+        policy: m.Infra.TypingGenerationPolicy,
+        *,
+        for_generation: bool = False,
+    ) -> p.Result[m.Infra.GeneratedTypingPackage]:
+        """Read and authenticate one physical producer output, without global probes.
+
+        Returns:
+            Its typed provenance or the first invalid producer fact.
+
+        """
+        result = r[m.Infra.GeneratedTypingPackage]
+        confined = root.resolve() / policy.directory
+        package = candidate.resolve()
+        if (
+            not confined.resolve().is_relative_to(root.resolve())
+            or not package.is_relative_to(confined.resolve())
+            or package.parent != confined.resolve()
+            or not (package / c.PYPROJECT_FILENAME).resolve().is_relative_to(package)
+        ):
+            return result.fail(
+                f"generated typing package escapes producer directory: {candidate}"
+            )
+        metadata = u.Cli.atomic_read_binary_file_state(
+            package / c.PYPROJECT_FILENAME, required=True
+        )
+        if metadata.failure:
+            return result.from_failure(metadata)
+        content = metadata.value.content
+        if content is None or not content.startswith(
+            c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING)
+        ):
+            return result.fail(
+                f"generated typing package lacks producer metadata: {candidate}"
+            )
+        document = u.Cli.toml_parse_text(content.decode(c.DEFAULT_ENCODING))
+        if document is None:
+            return result.fail(f"invalid generated typing metadata: {candidate}")
+        identity = cls._generated_typing_identity(
+            document, metadata.value, name, policy
+        )
+        if identity.failure:
+            return result.from_failure(identity)
+        # A producer elects repair targets from their identity, not missing or stale
+        # outputs. Admission consumers still require the complete content contract.
+        return (
+            identity
+            if for_generation
+            else cls._generated_typing_content(identity.value)
+        )
+
+    @staticmethod
+    def _generated_typing_identity(
+        document: t.Cli.TomlDocument,
+        metadata: m.Cli.AtomicFileState,
+        name: str,
+        policy: m.Infra.TypingGenerationPolicy,
+    ) -> p.Result[m.Infra.GeneratedTypingPackage]:
+        """Validate metadata identities before admitting any local requirement.
+
+        Returns:
+            The producer identity bound to its captured metadata.
+
+        """
+        result = r[m.Infra.GeneratedTypingPackage]
+        project = u.Cli.toml_table_child(document, "project")
+        typing = u.Cli.toml_table_path(document, ("tool", "flext", "typing"))
+        entries = u.Cli.toml_table_path(
+            document, ("project", "entry-points", c.Infra.TYPING_STUB_ENTRY_POINT_GROUP)
+        )
+        wheel = u.Cli.toml_table_path(
+            document, ("tool", "hatch", "build", "targets", "wheel")
+        )
+        if (
+            project is None
+            or typing is None
+            or entries is None
+            or wheel is None
+            or len(entries) != 1
+        ):
+            return result.fail(
+                f"generated typing package lacks producer contract: {metadata.path}"
+            )
+        module = next(iter(entries))
+        version = u.Cli.toml_value(project, "version")
+        implementation = u.Cli.toml_value(typing, "implementation")
+        if (
+            not c.Infra.PYTHON_IMPORT_NAME_RE.fullmatch(module)
+            or module.startswith(c.Infra.INTERNAL_PREFIXES)
+            or u.Cli.toml_value(entries, module) != module
+            or tuple(u.Cli.toml_as_string_list(u.Cli.toml_value(wheel, "packages")))
+            != (f"{module}-stubs",)
+        ):
+            return result.fail(
+                f"generated typing stub identity mismatch: {metadata.path}"
+            )
+        if (
+            canonicalize_name(policy.distribution_prefix + module)
+            != canonicalize_name(name)
+            or metadata.path.parent.name != canonicalize_name(name)
+            or u.Cli.toml_value(project, "name") != canonicalize_name(name)
+            or not isinstance(version, str)
+            or not isinstance(implementation, str)
+        ):
+            return result.fail(
+                f"generated typing package identity mismatch: {metadata.path}"
+            )
+        return result.ok(
+            m.Infra.GeneratedTypingPackage(
+                distribution=canonicalize_name(name),
+                path=metadata.path.parent,
+                module=module,
+                implementation=implementation,
+                version=version,
+                inputs=(metadata,),
+            )
+        )
+
+    @classmethod
+    def _generated_typing_content(
+        cls,
+        identity: m.Infra.GeneratedTypingPackage,
+    ) -> p.Result[m.Infra.GeneratedTypingPackage]:
+        """Bind exact implementation and producer snapshot version to local stubs.
+
+        Returns:
+            The authenticated complete producer provenance.
+
+        """
+        result = r[m.Infra.GeneratedTypingPackage]
+        parsed = Requirement(identity.implementation)
+        bounds = tuple(parsed.specifier)
+        if (
+            any((parsed.url, parsed.marker, parsed.extras))
+            or len(bounds) != 1
+            or bounds[0].operator != "=="
+            or "*" in bounds[0].version
+        ):
+            return result.fail(
+                f"generated typing package implementation is not exact: {identity.path}"
+            )
+        version = Version(identity.version)
+        if (
+            version.public != Version(bounds[0].version).public
+            or version.local is None
+            or len(version.local) != len(sha256().hexdigest())
+            or any(character not in "0123456789abcdef" for character in version.local)
+        ):
+            return result.fail(
+                f"generated typing producer version mismatch: {identity.path}"
+            )
+        states: list[m.Cli.AtomicFileState] = list(identity.inputs)
+        stub_root = identity.path / f"{identity.module}-stubs"
+        files = tuple(sorted(stub_root.rglob("*.pyi")))
+        if not files or not (stub_root / c.Infra.INIT_PYI).is_file():
+            return result.fail(
+                f"generated typing package has no stub entry point: {identity.path}"
+            )
+        for path in files:
+            if not path.resolve().is_relative_to(identity.path):
+                return result.fail(f"generated typing stub escapes package: {path}")
+            state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            stub = state.content
+            if stub is None or (
+                path == stub_root / c.Infra.INIT_PYI
+                and not stub.startswith(
+                    c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING)
+                )
+            ):
+                return result.fail(
+                    f"generated typing stub entry point lacks producer content: {path}"
+                )
+            states.append(state)
+        content = {
+            state.path.relative_to(identity.path): state.content
+            for state in states
+            if state.path.suffix == ".pyi" and state.content is not None
+        }
+        if cls.generated_typing_version(bounds[0].version, content) != identity.version:
+            return result.fail(
+                f"generated typing producer digest mismatch: {identity.path}"
+            )
+        return result.ok(identity.model_copy(update={"inputs": tuple(states)}))
 
     @staticmethod
     def dependency_group_entries(
@@ -72,12 +334,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
         generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
         custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
     ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
-        """Lead generated floors and retire authored pins of one identity.
+        """Lead missing complete requirements and preserve authored entries.
 
-        SSOT floors win over existing same-name pins: the first occurrence per
-        extras/marker/origin identity is kept, so authored entries replaced by
-        a leading floor are dropped. Authored direct sources and include groups
-        carry a different identity and always survive.
+        Packaging owns requirement identity, including version constraints.
+        Explicit retirement policy determines which authored entries are removed.
 
         Returns:
             The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
@@ -100,34 +360,19 @@ class FlextInfraUtilitiesPyprojectRequirements:
             if not isinstance(entry, str)
         }
         additions: list[str | m.Infra.DependencyGroupInclude] = []
-        seen: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
-        replaced: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
         for entry in generated:
             if isinstance(entry, str):
-                identity = cls._development_requirement_identity(entry)
-                if identity in seen:
-                    continue
-                seen.add(identity)
                 parsed = Requirement(entry)
                 if parsed in requirements:
                     continue
                 requirements.add(parsed)
-                replaced.add(identity)
             else:
                 included = canonicalize_name(entry.include_group)
                 if included in inclusions:
                     continue
                 inclusions.add(included)
             additions.append(entry)
-        return (
-            *additions,
-            *(
-                entry
-                for entry in authored
-                if not isinstance(entry, str)
-                or cls._development_requirement_identity(entry) not in replaced
-            ),
-        )
+        return (*additions, *authored)
 
     @staticmethod
     def _development_requirement_identity(
@@ -181,6 +426,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         declared_sources: t.StrMapping,
         candidate_sources: t.StrMapping,
         family_line: str | None,
+        generated_local: t.VariadicTuple[m.Infra.GeneratedTypingPackage] = (),
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -192,6 +438,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=family_line,
+            generated_local=generated_local,
         )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
@@ -336,6 +583,17 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[str]``.
 
         """
+        parsed_requirement = Requirement(requirement)
+        local = next(
+            (
+                item
+                for item in provenance.generated_local
+                if item.distribution == canonicalize_name(parsed_requirement.name)
+            ),
+            None,
+        )
+        if local is not None:
+            return cls._canonical_generated_typing_requirement(requirement, local)
         dependency_name = cls._internal_dependency_name(
             requirement,
             declared_sources=provenance.declared_sources,
@@ -380,6 +638,27 @@ class FlextInfraUtilitiesPyprojectRequirements:
             marker_pair,
             pins_commit=pins_commit,
         )
+
+    @staticmethod
+    def _canonical_generated_typing_requirement(
+        requirement: str,
+        local: m.Infra.GeneratedTypingPackage,
+    ) -> p.Result[str]:
+        """Preserve full requirements only when compatible with their local producer.
+
+        Returns:
+            The unchanged requirement or its source/constraint conflict.
+
+        """
+        parsed = Requirement(requirement)
+        if parsed.url is not None or (
+            parsed.specifier and not parsed.specifier.contains(local.version)
+        ):
+            return r[str].fail(
+                "generated typing requirement conflicts with local producer: "
+                f"{requirement}"
+            )
+        return r[str].ok(requirement.strip())
 
     @classmethod
     def _resolved_requirement_provenance(
@@ -659,13 +938,8 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
             groups, str(c.Infra.DEV)
         )
-        # SSOT required floors win over existing same-name pins: dedupe_specs
-        # keeps the first occurrence, so toolchain floors must lead the merge.
-        # Otherwise stale member pins override the declared fleet floor. One
-        # exception is structural: a bare internal floor name carries no Git
-        # source and no version to enforce, so a live requirement that declares
-        # its own direct source is the authority for that dependency and the
-        # floor yields to it.
+        # A bare internal requirement carries no source or version constraint.
+        # Preserve its declared direct source when composing the policy floor.
         live = cls._normalized_live_group_entries(
             groups,
             dev_name,

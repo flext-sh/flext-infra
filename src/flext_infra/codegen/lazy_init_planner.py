@@ -31,7 +31,6 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -71,6 +70,9 @@ class FlextInfraCodegenLazyInitPlanner(
     _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
+    _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
+        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
+    )
     _ancestry_receipts: MutableMapping[
         tuple[Path, int], m.Infra.CodegenPhaseAnalysis
     ] = m.PrivateAttr(
@@ -81,11 +83,6 @@ class FlextInfraCodegenLazyInitPlanner(
     )
     _module_file_by_name: MutableMapping[str, Path] = m.PrivateAttr(
         default_factory=dict[str, Path],
-    )
-    _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        m.PrivateAttr(
-            default_factory=dict[Path, m.Infra.RopeProjectLayout],
-        )
     )
     _version_module_name: str = m.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
@@ -120,12 +117,7 @@ class FlextInfraCodegenLazyInitPlanner(
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
             package_key = str(pkg_dir.resolve())
-            plan = self._source_plan_cache.get(package_key)
-            if plan is None:
-                plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
-            else:
-                receipt = self.source_receipt(pkg_dir)
-                self.rope_workspace.rope_project.replay_source_consumption(receipt)
+            plan, receipt = self._package_plan(pkg_dir, dir_exports=dir_exports)
             self._source_plan_cache[package_key] = plan
             self._plan_receipts[package_key] = receipt
             if report_progress:
@@ -160,43 +152,30 @@ class FlextInfraCodegenLazyInitPlanner(
             )
         return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
 
-    def _isolated_plan(
+    def _package_plan(
         self,
         pkg_dir: Path,
         *,
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> t.Pair[m.Infra.LazyInitPlan, m.Infra.CodegenPhaseAnalysis]:
-        """Resolve one artifact with fresh native and planner caches in the same epoch.
+        """Resolve one artifact in the repository's existing workspace and planner.
 
-        Reuse the structural index with its original selection receipt, while
-        keeping native semantic caches local to the publication.
+        Cache hits replay query receipts into this artifact's own consumption
+        scope instead of inheriting an unrelated package's read union.
 
         Returns:
-            The isolated plan bound to its original consumption receipt.
+            The package plan bound to its original consumption receipt.
 
         """
         project = self.rope_workspace.rope_project
-        workspace_index = self.rope_workspace.workspace_index
+        _ = self.rope_workspace.workspace_index
         index_receipt = self.rope_workspace.source_index_receipt
         with (
             project.source_consumption() as consumption,
-            project.source_consumer() as consumer,
-            FlextInfraRopeWorkspace.open_workspace(
-                self.rope_workspace.repository_root,
-                rope_repository_root=self.rope_workspace.rope_repository_root,
-                source_project=consumer,
-                workspace_index=workspace_index,
-                index_receipt=index_receipt,
-            ) as workspace,
+            project.frozen_layout(),
         ):
-            planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
-            planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
-            planner.ancestry_receipts.update(self._ancestry_receipts)
-            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
-            self._collision_count += planner.collision_count
-            self._source_plan_cache.update(planner.source_plans)
-            self._plan_receipts.update(planner.source_receipts)
-            self._ancestry_receipts.update(planner.ancestry_receipts)
+            project.replay_source_consumption(index_receipt)
+            plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
         receipt = consumption.receipt()
         return plan.model_copy(
             update={
@@ -205,37 +184,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 "source_query_topology": receipt.source_query_topology,
             }
         ), receipt
-
-    @property
-    def collision_count(self) -> int:
-        """The export collisions observed by this isolated planner."""
-        return self._collision_count
-
-    @property
-    def ancestry_receipts(
-        self,
-    ) -> t.MutableMappingKV[tuple[Path, int], m.Infra.CodegenPhaseAnalysis]:
-        """Share sealed same-epoch evidence without native semantic cache objects."""
-        return self._ancestry_receipts
-
-    def seed_source_plans(
-        self,
-        plans: t.MappingKV[str, m.Infra.LazyInitPlan],
-        receipts: t.MappingKV[str, m.Infra.CodegenPhaseAnalysis],
-    ) -> None:
-        """Seed prior package decisions without copying native semantic caches."""
-        self._source_plan_cache.update(plans)
-        self._plan_receipts.update(receipts)
-
-    @property
-    def source_plans(self) -> t.MappingKV[str, m.Infra.LazyInitPlan]:
-        """Expose immutable decisions, never native semantic cache objects."""
-        return self._source_plan_cache
-
-    @property
-    def source_receipts(self) -> t.MappingKV[str, m.Infra.CodegenPhaseAnalysis]:
-        """Expose only sealed decisions, excluding the package still being planned."""
-        return self._plan_receipts
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.
@@ -328,10 +276,8 @@ class FlextInfraCodegenLazyInitPlanner(
                     action=empty_action,
                     lazy_map={},
                     eager_dunders={},
-                    inline_constants={},
                 ),
             )
-        excluded_lazy_names: t.StrSequence = ()
         is_facade_root = self._is_facade_root(context)
         export_names = {*lazy_map, *eager_dunders}
         if not is_facade_root:
@@ -378,7 +324,6 @@ class FlextInfraCodegenLazyInitPlanner(
             )
             lazy_map = filtered_lazy_map
             child_lazy = ()
-            excluded_lazy_names = ()
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,
@@ -392,10 +337,7 @@ class FlextInfraCodegenLazyInitPlanner(
             ),
             lazy_map=dict(lazy_map),
             eager_dunders=eager_dunders,
-            inline_constants={},
-            wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
-            excluded_lazy_names=excluded_lazy_names,
         )
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return self._publish_plan(plan)
@@ -430,7 +372,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 exports=tuple(sorted(exports)),
                 lazy_map=exports,
                 eager_dunders={},
-                inline_constants={},
             ),
         )
 
@@ -462,7 +403,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 action=residue_action,
                 lazy_map={},
                 eager_dunders={},
-                inline_constants={},
             ),
         )
 
@@ -570,7 +510,7 @@ class FlextInfraCodegenLazyInitPlanner(
         visited.add(id(owner))
         with project.source_consumption() as consumption:
             if resource is not None:
-                project.source_state(Path(resource.real_path))
+                project.source_bytes(Path(resource.real_path))
             for base in owner.get_superclasses():
                 self._consume_class_bases(base, visited)
         if key is not None:

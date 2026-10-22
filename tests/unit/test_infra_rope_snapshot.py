@@ -6,16 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
 from flext_infra import config, m
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests import p, tm, u
 
 
 class TestsFlextInfraRopeSnapshot:
@@ -43,6 +40,41 @@ class TestsFlextInfraRopeSnapshot:
                 "paths": (),
                 "evidence": ({"kind": "module"},),
             })
+
+    @staticmethod
+    def test_governance_projection_alias_is_not_a_python_source(tmp_path: Path) -> None:
+        """Agent projections never become source inputs through provider aliases."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = tmp_path / "provider"
+        provider.mkdir()
+        (provider / "external.py").write_text("value = 1\n", encoding="utf-8")
+        skills = root / ".codex" / "skills"
+        skills.mkdir(parents=True)
+        (skills / "provider-helper").symlink_to(provider, target_is_directory=True)
+
+        with u.Infra.facade_source_project(root) as (project, _receipts, _sources):
+            paths = tuple(
+                Path(resource.real_path) for resource in project.get_python_files()
+            )
+            tm.that(package / "__init__.py" in paths, eq=True)
+            tm.that(
+                any(path.is_relative_to(root / ".codex") for path in paths), eq=False
+            )
+
+    @staticmethod
+    def test_python_source_alias_remains_rejected(tmp_path: Path) -> None:
+        """Ignoring governance projections never admits aliases in project code."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = tmp_path / "provider"
+        provider.mkdir()
+        (provider / "external.py").write_text("value = 1\n", encoding="utf-8")
+        (package / "provider_alias").symlink_to(provider, target_is_directory=True)
+
+        with (
+            pytest.raises(OSError, match="physical alias"),
+            u.Infra.facade_source_project(root) as (project, _receipts, _sources),
+        ):
+            tuple(project.get_python_files())
 
     @staticmethod
     def test_source_queries_use_the_closed_snapshot(tmp_path: Path) -> None:
@@ -235,6 +267,57 @@ class TestsFlextInfraRopeSnapshot:
             plan_changed_source()
 
     @staticmethod
+    def test_native_lazy_ancestry_consumes_unpublished_declared_source(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Proposed classes retain physical absence without admitting missing inputs."""
+        native_consumer(
+            r"""sys.path.insert(0, sys.argv[1])
+import pytest
+from tests import c, m, tm, u
+root, package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
+layout = tm.not_none(u.Infra.layout(root))
+source = package / "provider.py"
+name = f"{layout.class_stem}Projected"
+proposed = (
+    f"class {name}Base: pass\n"
+    f"class {name}({name}Base): pass\n"
+    f"__all__ = [{name!r}, '{name}Base']\n"
+).encode(c.DEFAULT_ENCODING)
+original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=False))
+tm.that(original.content, eq=None)
+declaration = m.Infra.CodegenFilePlan(
+    project=root, path=source, before=original,
+    desired_content=proposed, desired_mode=c.Infra.CONFIG_SPEC[1])
+service = u.Tests.create_lazy_init_service(root)
+with u.Infra.facade_source_project(
+    root, source_states=(original,), declared_files=(declaration,)
+) as (project, receipts, _):
+    for _ in range(2):
+        analysis = tm.ok(service.plan_files(source_project=project))
+        initializer = next(
+            plan for plan in analysis.files
+            if plan.path == package / c.Infra.INIT_PY)
+        tm.that(tm.not_none(initializer.desired_content).decode(
+            c.DEFAULT_ENCODING), has=name)
+        tm.that(tuple(state for state in receipts()[0]
+                      if state.path == source), eq=(original,))
+        tm.that(tuple(state for state in initializer.source_states
+                      if state.path == source), eq=(original,))
+        tm.that(project.source_bytes(source), eq=proposed)
+        with pytest.raises(FileNotFoundError, match="required source is absent"):
+            project.source_state(source)
+        with pytest.raises(FileNotFoundError):
+            project.source_bytes(package / "unplanned.py")
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+tm.that(source.exists(), eq=False)
+""",
+            str(Path(__file__).resolve().parents[2]),
+            str(tmp_path),
+        )
+
+    @staticmethod
     def test_module_lookup_uses_declared_source_roots(tmp_path: Path) -> None:
         """Unrelated root packages never expand live or snapshot import roots."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -332,6 +415,55 @@ class TestsFlextInfraRopeSnapshot:
                 tm.that(resource.read(), eq=sources[conftest.resolve()])
             finally:
                 snapshot.close()
+
+    @staticmethod
+    def test_snapshot_admits_proposal_for_captured_absence(tmp_path: Path) -> None:
+        """A descriptor-proven absence admits only its proposed virtual source."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / "__init__.py"
+        source = package / "proposed.py"
+        states = tuple(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(path, required=path == initializer)
+            )
+            for path in (initializer, source)
+        )
+        epoch = u.Infra.codemod_source_epoch(
+            m.Infra.CodemodBindingSnapshot(states=states)
+        )
+        content = "value = 1\n"
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            snapshot = u.Infra.snapshot_project(
+                rope.rope_project, {source: content}, captured=epoch
+            )
+            try:
+                resource = u.Infra.require_file_resource(
+                    snapshot.get_resource(source.relative_to(root).as_posix()), source
+                )
+                tm.that(resource.read(), eq=content)
+                tm.that(source.exists(), eq=False)
+                tm.ok(u.Cli.atomic_verify_binary_file_states(states))
+            finally:
+                snapshot.close()
+
+    @staticmethod
+    def test_snapshot_rejects_uncaptured_absent_proposal(tmp_path: Path) -> None:
+        """No live path or absence is silently added to an authenticated epoch."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / "__init__.py"
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
+        epoch = u.Infra.codemod_source_epoch(
+            m.Infra.CodemodBindingSnapshot(states=(state,))
+        )
+        with (
+            FlextInfraRopeWorkspace.open_workspace(root) as rope,
+            pytest.raises(ValueError, match="outside its input inventory"),
+        ):
+            u.Infra.snapshot_project(
+                rope.rope_project,
+                {package / "uncaptured.py": "value = 1\n"},
+                captured=epoch,
+            )
 
     @staticmethod
     def test_snapshot_rejects_sources_outside_the_project(tmp_path: Path) -> None:

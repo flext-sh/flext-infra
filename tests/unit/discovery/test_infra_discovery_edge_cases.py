@@ -137,6 +137,32 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             tm.that(u.Infra.project_root(source, source_project=project), eq=tmp_path)
 
     @staticmethod
+    @pytest.mark.parametrize("nested_manifest", [False, True])
+    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    def test_nearest_manifest_owns_nested_source_layout(
+        tmp_path: Path, suffix: str, *, nested_manifest: bool
+    ) -> None:
+        """A nested src tree belongs to the closest declared project."""
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'outer'\nversion = '1.0.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        nested = tmp_path / "examples" / "demo"
+        package = nested / c.Infra.DEFAULT_SRC_DIR / "package"
+        package.mkdir(parents=True)
+        source = package / f"module{suffix}"
+        source.write_text("", encoding=c.DEFAULT_ENCODING)
+        if nested_manifest:
+            (nested / c.PYPROJECT_FILENAME).write_text(
+                "[project]\nname = 'inner'\nversion = '1.0.0'\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        expected = nested if nested_manifest else tmp_path
+        tm.that(u.Infra.project_root(source), eq=expected)
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            tm.that(u.Infra.project_root(source, source_project=project), eq=expected)
+
+    @staticmethod
     @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
     def test_publication_policy_preserves_explicit_project_layout(
         tmp_path: Path, suffix: str

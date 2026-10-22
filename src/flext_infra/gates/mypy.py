@@ -168,7 +168,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 target; or if Mypy native report contains an unsubmitted source.
 
         """
-        _ = ctx
+        del ctx
         source_lines = (
             line for line in result.stderr.splitlines() if "Found source:" in line
         )
@@ -213,7 +213,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             The resulting ``int``.
 
         """
-        _ = ctx
+        del ctx
         return u.Infra.mypy_runner_timeout_for_project(project_dir)
 
     @override
@@ -254,7 +254,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             The run's verdict and its diagnostics, stderr failures or limit hit.
 
         """
-        _ = ctx
+        del ctx
         diagnostics: t.MutableSequenceOf[p.Infra.Issue] = []
         if resource_diagnostic := u.Infra.mypy_failure_diagnostic(result):
             return (

@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, c, config, infra, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from tests import t, tm, u
@@ -118,7 +117,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         cls._declare_layout_override(project, project.name)
         codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
         override = codegen.layout.project_overrides[project.name]
-        rendered = FlextInfraCodegenConform.render_project_gitignore(
+        rendered = u.Infra.render_project_gitignore(
             codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=project.name,
@@ -135,7 +134,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tmp_path: Path,
     ) -> None:
         """A backup module is source code even when its name contains backup."""
-        rendered = FlextInfraCodegenConform.render_project_gitignore(
+        rendered = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name="flext-cli",

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+from collections import ChainMap
 from pathlib import Path
 
 from flext_cli import cli, u
@@ -250,12 +251,13 @@ class FlextInfraUtilitiesSemanticContracts(
         t.MutableMappingKV[str, Path],
     ]:
         working = dict(context[0])
+        proposed_sources = ChainMap(working, sources)
         relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
         applied: t.MutableMappingKV[Path, t.MutableSequenceOf[str]] = {}
         project: p.Infra.RopeProject | None = None
         try:
             project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project, {**sources, **working}, captured=context[1]
+                workspace.rope_project, proposed_sources, captured=context[1]
             )
             owned_modules = {
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
@@ -278,7 +280,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 if project is None:
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                         workspace.rope_project,
-                        {**sources, **working},
+                        proposed_sources,
                         captured=context[1],
                     )
                 resources = tuple(
@@ -302,13 +304,14 @@ class FlextInfraUtilitiesSemanticContracts(
                         project = (
                             FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                                 workspace.rope_project,
-                                {**sources, **working},
+                                proposed_sources,
                                 captured=context[1],
                             )
                         )
                     members = cls._contract_rule_members(
                         project,
                         rule,
+                        proposed_sources,
                         (implementation_owners, context[1], working, owned_modules),
                         restrictions,
                     )
@@ -339,6 +342,7 @@ class FlextInfraUtilitiesSemanticContracts(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
+        sources: t.MappingKV[Path, str],
         context: tuple[
             t.MutableMappingKV[t.Pair[str, str], t.Infra.RopeImplementationPaths],
             p.Infra.CodemodSourceEpoch,
@@ -358,7 +362,7 @@ class FlextInfraUtilitiesSemanticContracts(
             selected_rule,
             selected_resources,
         ) in FlextInfraUtilitiesImportLaw.import_contract_routes(
-            project, rule, resources, {**context[1].sources, **context[2]}
+            project, rule, resources, sources
         ):
 
             def admit(
@@ -376,7 +380,7 @@ class FlextInfraUtilitiesSemanticContracts(
                         match,
                         context=(
                             context[0],
-                            {**context[1].sources, **context[2]},
+                            sources,
                             context[3],
                         ),
                     )

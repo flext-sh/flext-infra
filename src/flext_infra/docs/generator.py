@@ -25,7 +25,7 @@ type _DocsScopePlan = t.Pair[m.Infra.DocScope, t.VariadicTuple[m.Infra.CodegenFi
 
 
 class FlextInfraDocGenerator(
-    FlextInfraDocServiceBase,
+    FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
     FlextInfraDocGeneratorBundleMixin,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
@@ -39,19 +39,17 @@ class FlextInfraDocGenerator(
     ] = True
 
     @classmethod
-    def execute_request(cls, request: m.Infra.DocsGenerateRequest) -> p.Result[bool]:
+    def execute_request(
+        cls, request: m.Infra.DocsGenerateRequest
+    ) -> p.Result[m.Infra.DocsPhaseReports]:
         """Expose one fixed-effect CLI request without inherited mode controls.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Committed reports, or the original failure with prior committed effects.
 
         """
         owner = cls(repository_root=request.repository_root)
-        return owner._propagate_phase_outcome(
-            "generate",
-            owner.generate(request),
-            failure_predicate=lambda report: not report.passed,
-        )
+        return owner.generate(request).map(m.Infra.DocsPhaseReports.model_validate)
 
     def generate(
         self,
@@ -60,7 +58,8 @@ class FlextInfraDocGenerator(
         """Publish generated docs through the existing durable file lifecycle.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            Committed reports on success. Failure preserves its original cause and
+            ``error_data.committed_reports`` for preceding successful batches only.
 
         """
         reports: list[m.Infra.DocsPhaseReport] = []
@@ -70,13 +69,41 @@ class FlextInfraDocGenerator(
             publication_receipts=receipts,
         ):
             if prepared.failure:
-                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(prepared)
-            published = self.publish_batch(
-                prepared.value, publication_receipts=receipts
+                terminal: p.FailureLike = prepared
+            else:
+                published = self.publish_batch(
+                    prepared.value, publication_receipts=receipts
+                )
+                if published.success:
+                    reports.extend(published.value)
+                    continue
+                terminal = published
+            data: t.JsonDict = dict(terminal.error_data or {})
+            data["committed_reports"] = [
+                dict(
+                    t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                        report.model_dump(
+                            mode="json",
+                            include={
+                                "phase": True,
+                                "scope": True,
+                                "passed": True,
+                                "applied": True,
+                                "generated": True,
+                                "changed_files": True,
+                                "items": {"__all__": {"phase", "path", "written"}},
+                            },
+                        )
+                    )
+                )
+                for report in reports
+            ]
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+                r.require_error(terminal),
+                error_code=terminal.error_code,
+                error_data=data,
+                exception=terminal.exception,
             )
-            if published.failure:
-                return published
-            reports.extend(published.value)
         return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok(tuple(reports))
 
     def publish_batch(
@@ -196,10 +223,16 @@ class FlextInfraDocGenerator(
                 scope,
                 root_scope=root_scope,
             )
+            metadata_paths = tuple(
+                plan.path
+                for plan in bundle.metadata_files
+                if plan.project == scope.path and not collocated
+            )
+            all_paths = (*paths, *metadata_paths)
             report = m.Infra.DocsPhaseReport(
                 phase="generate",
                 scope=scope.name,
-                changed_files=len(changed),
+                changed_files=sum(path in written for path in all_paths),
                 generated=len(changed),
                 applied=True,
                 source="code-docstring-ssot",
@@ -209,11 +242,13 @@ class FlextInfraDocGenerator(
                         path=str(path),
                         written=path in written,
                     )
-                    for path in paths
+                    for path in all_paths
                 ),
                 result=c.Infra.ResultStatus.OK,
                 reason=(
-                    "aggregate-root-owner" if collocated else f"changes:{len(changed)}"
+                    "aggregate-root-owner"
+                    if collocated
+                    else f"changes:{sum(path in written for path in all_paths)}"
                 ),
                 passed=True,
             )
@@ -289,24 +324,17 @@ class FlextInfraDocGenerator(
         )
 
     @override
-    def execute(self) -> p.Result[bool]:
+    def execute(
+        self,
+    ) -> p.Result[m.Infra.DocsPhaseReports]:
         """Execute the configured docs generation flow.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The committed reports in the canonical model-valued service result.
 
         """
-        return self._propagate_phase_outcome(
-            "generate",
-            self.generate(
-                m.Infra.DocsGenerateRequest(
-                    repository_root=self.repository_root,
-                    projects=self.selected_projects,
-                    output_dir=self.output_dir,
-                    include_root=self.include_root,
-                ),
-            ),
-            failure_predicate=lambda report: not report.passed,
+        return self.generate(self._configured_request()).map(
+            m.Infra.DocsPhaseReports.model_validate
         )
 
     def _configured_request(self) -> m.Infra.DocsGenerateRequest:
@@ -337,10 +365,15 @@ class FlextInfraDocGenerator(
         if planned.failure:
             return r[tuple[_DocsScopePlan, ...]].from_failure(planned)
         scope_plans: list[_DocsScopePlan] = []
+        metadata = {plan.project: plan for plan in bundle.metadata_files}
         offset = 0
         for scoped in bundle.scopes:
             size = len(scoped.artifacts)
-            scope_plans.append((scoped.scope, planned.value[offset : offset + size]))
+            files = planned.value[offset : offset + size]
+            projection = metadata.pop(scoped.scope.path, None)
+            if projection is not None:
+                files = (*files, projection)
+            scope_plans.append((scoped.scope, files))
             offset += size
         return r[tuple[_DocsScopePlan, ...]].ok(tuple(scope_plans))
 

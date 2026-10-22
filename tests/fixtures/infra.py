@@ -10,19 +10,71 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import partial
 from pathlib import Path
 from shlex import quote
 
 import pytest
 
-from flext_infra import codegen, config, infra, workspace
+from flext_infra import codegen, config, infra, settings, workspace
 from tests import c, m, p, r, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture
+def editable_supplier() -> Iterator[Callable[[Path | None], None]]:
+    """Select a real typed supplier setting and restore it after the scenario.
+
+    Yields:
+        The selector for the scenario's editable supplier root.
+
+    """
+    name = type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT
+    previous = os.environ.get(name)
+
+    def select(root: Path | None) -> None:
+        u.Tests.restore_env(name, None if root is None else root.as_posix())
+        type(settings).reset_for_testing()
+
+    try:
+        select(None)
+        yield select
+    finally:
+        u.Tests.restore_env(name, previous)
+        type(settings).reset_for_testing()
+
+
+@pytest.fixture
+def native_cprofile(tmp_path: Path) -> Path:
+    """Create real pstats outside any profiler owned by the pytest worker.
+
+    Returns:
+        The independently measured native profile.
+
+    """
+    profile = tmp_path / c.Infra.REPORTS_DIR_NAME / "fixture.pstats"
+    profile.parent.mkdir(parents=True, exist_ok=True)
+    workload = tmp_path / "profile_workload.py"
+    workload.write_text("sum(range(3))\n", encoding=c.DEFAULT_ENCODING)
+    tm.ok(
+        u.Cli.run_checked(
+            (
+                sys.executable,
+                "-m",
+                "cProfile",
+                "-o",
+                str(profile),
+                str(workload),
+            ),
+            cwd=tmp_path,
+        )
+    )
+    return profile
 
 
 @pytest.fixture
@@ -386,7 +438,6 @@ def _provision_consumer_template(
                 workspace,
                 tm.ok(u.Infra.load_codegen_inputs(root)),
                 plan.files,
-                rendered_by=conform.rendered_by_stamp(),
             ).map(tuple),
         ),
     )
@@ -919,8 +970,14 @@ def real_detector_project(
             ).is_file(),
             eq=True,
         )
-        (root / "limits.toml").write_text(
-            "[typing_libraries]\nexclude = []\n", encoding="utf-8"
+        (root / "limits.toml").write_bytes(
+            (
+                _PROJECT_ROOT
+                / "src"
+                / "flext_infra"
+                / "deps"
+                / c.Infra.DEPENDENCY_LIMITS_FILENAME
+            ).read_bytes(),
         )
         yield root
 
@@ -1126,17 +1183,22 @@ def policy_violation_project(tmp_path: Path) -> Path:
     return project_root
 
 
-@pytest.fixture
-def mod_workspace(installed_dependency_path: Path) -> Path:
-    """Create the shared real workspace for the public refactor-mod CLI.
+@pytest.fixture(scope="session")
+def mod_workspace_artifact(
+    session_runtime: p.Tests.SessionRuntime,
+) -> t.Pair[Path, Path]:
+    """Build the worker's native refactor fixture distribution once.
 
     Returns:
-        The resulting ``Path``.
+        The source template and its backend-produced wheel.
 
     """
     project_document = u.read_project_document_cached(_PROJECT_ROOT)
     project = u.build_project_metadata(_PROJECT_ROOT, project_document)
-    workspace = installed_dependency_path / "mod_workspace"
+    workspace = session_runtime.directory / "mod_workspace"
+    build = config.Infra.codegen.scaffold.build
+    build_backend = tm.ok(u.Cli.json_dumps(build.backend))
+    build_requirements = tm.ok(u.Cli.json_dumps(list(build.requirements)))
     author_name = tm.ok(u.Cli.json_dumps(project.project.authors[0].name))
     license_id = tm.ok(
         u.Cli.json_dumps(
@@ -1147,22 +1209,14 @@ def mod_workspace(installed_dependency_path: Path) -> Path:
         ),
     )
     tm.ok(u.Cli.ensure_dir(workspace))
-    metadata = (
-        installed_dependency_path
-        / f"{workspace.name}-{project.project.version}.dist-info"
-    )
-    tm.ok(u.Cli.ensure_dir(metadata))
-    tm.ok(
-        u.Cli.atomic_write_text_file(
-            metadata / "METADATA",
-            f"Metadata-Version: 2.1\nName: {workspace.name.replace('_', '-')}\n"
-            f"Version: {project.project.version}\n",
-        )
-    )
     tm.ok(
         u.Cli.atomic_write_text_file(
             workspace / c.PYPROJECT_FILENAME,
             (
+                "[build-system]\n"
+                f"build-backend = {build_backend}\n"
+                f"requires = {build_requirements}\n"
+                "\n"
                 "[project]\n"
                 f'name = "{workspace.name.replace("_", "-")}"\n'
                 f'version = "{project.project.version}"\n'
@@ -1225,6 +1279,46 @@ def mod_workspace(installed_dependency_path: Path) -> Path:
                 "\n"
                 "u.Infra.serialization_lock_execute(paths, timeout)\n"
             ),
+        ),
+    )
+    wheels = tm.ok(
+        u.Tests.python_dependency_wheels(
+            session_runtime.directory,
+            (workspace,),
+        ),
+    )
+    return workspace, wheels[0]
+
+
+@pytest.fixture
+def mod_workspace(
+    installed_dependency_path: Path,
+    mod_workspace_artifact: t.Pair[Path, Path],
+) -> Path:
+    """Provide case-local sources and a genuinely installed fixture distribution.
+
+    Returns:
+        The source workspace beside the installed package root.
+
+    """
+    template, wheel = mod_workspace_artifact
+    workspace = installed_dependency_path.parent / template.name
+    shutil.copytree(template, workspace)
+    tm.ok(
+        u.Cli.run_checked(
+            (
+                u.Tests.managed_uv(),
+                "pip",
+                "install",
+                "--no-config",
+                "--python",
+                sys.executable,
+                "--no-deps",
+                "--target",
+                str(installed_dependency_path),
+                str(wheel),
+            ),
+            cwd=workspace,
         ),
     )
     u.Tests.initialize_git_repo(workspace)

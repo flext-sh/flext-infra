@@ -1045,8 +1045,10 @@ class FlextInfraMiseArtifactsVerification(
             The resulting ``p.Result[bool]``.
 
         """
-        u.Cli.info(
-            f"phase={analysis.phase} verify destinations={len(analysis.files)}",
+        u.Cli.emit_raw(
+            f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: phase={analysis.phase} "
+            f"verify destinations={len(analysis.files)}\n",
+            error=True,
         )
         if session is not None:
             owned = cls.journal_destinations_live(
@@ -1237,8 +1239,10 @@ class FlextInfraMiseArtifactsVerification(
             plan.path.name == c.Infra.INIT_PY
             and u.Infra.codegen_initializer_is_authored(current.content)
         ):
-            u.Cli.info(
-                f"ownership=authored disposition=retained target={plan.path}",
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: ownership=authored "
+                f"disposition=retained target={plan.path}\n",
+                error=True,
             )
             return r[bool].ok(value=True)
         if (current.content, current.mode) != (

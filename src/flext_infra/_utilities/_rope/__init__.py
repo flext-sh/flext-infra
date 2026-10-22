@@ -13,11 +13,16 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra._utilities._rope._sdk import Restructure
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
     from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
 
 
-__all__: tuple[str, ...] = ("FlextInfraRopeProject", "FlextInfraRopeRestructure")
+__all__: tuple[str, ...] = (
+    "FlextInfraRopeProject",
+    "FlextInfraRopeRestructure",
+    "Restructure",
+)
 
 install_lazy_exports(
     __name__,
@@ -25,6 +30,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraRopeProject": ".project",
         "FlextInfraRopeRestructure": ".restructure",
+        "Restructure": "._sdk",
     }),
     public_exports=__all__,
 )

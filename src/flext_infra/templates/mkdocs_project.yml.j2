@@ -1,12 +1,12 @@
 {% import "mkdocs_macros.j2" as mk -%}
 # AUTO-GENERATED — DO NOT EDIT MANUALLY
-site_name: {{ site_title }} Documentation
-site_description: Generated documentation for {{ site_title }}
+site_name: {{ site_title }} {{ documentation_label }}
+site_description: {{ project_site_description }} {{ site_title }}
 site_url: {{ site_url }}
 repo_name: {{ repo_name }}
 repo_url: {{ repo_url }}
 edit_uri: edit/main/{{ scope_name }}/
-{{ mk.site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block) }}
+{{ mk.site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block, documentation_language, dark_mode_label, light_mode_label) }}
 
 # MkDocs discovers the complete documentation tree, including maintained pages.
 # A fixed three-page nav silently omitted every domain guide and decision record.

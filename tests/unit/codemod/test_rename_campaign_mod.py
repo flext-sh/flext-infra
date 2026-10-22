@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 import sys
 from pathlib import Path
 
@@ -21,12 +20,12 @@ class TestsFlextInfraRenameCampaignMod:
 
     @staticmethod
     def _declare(config_dir: Path) -> None:
-        shutil.copytree(FlextInfraConfig.ssot_config_dir(), config_dir)
+        config_dir.mkdir(exist_ok=True)
         (config_dir / "renames.csv").write_text(
             "old,new\ncampaign_token,campaign_renamed_token\n",
             encoding="utf-8",
         )
-        (config_dir / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
             "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
             "      - csv: renames.csv\n"
             "        text_globs: ['**/*.md']\n"
@@ -39,17 +38,18 @@ class TestsFlextInfraRenameCampaignMod:
     def test_public_mod_consumes_declared_text_campaign(
         self,
         mod_workspace: Path,
-        tmp_path: Path,
         *,
         apply: bool,
     ) -> None:
         """Test public mod consumes declared text campaign."""
-        config_dir = tmp_path / "campaign_config"
+        config_dir = mod_workspace / "config"
         self._declare(config_dir)
         (mod_workspace / "sample.py").write_text(
             '"""Document campaign_token without changing the runtime payload."""\n'
             "\nfrom __future__ import annotations\n"
-            '\nPAYLOAD: str = "campaign_token"\n',
+            "\nclass ModWorkspaceSample:\n"
+            '    PAYLOAD: str = "campaign_token"\n\n'
+            '__all__ = ["ModWorkspaceSample"]\n',
             encoding="utf-8",
         )
         guide = mod_workspace / "guide.md"
@@ -66,9 +66,6 @@ class TestsFlextInfraRenameCampaignMod:
                     str(mod_workspace),
                     *(("--apply",) if apply else ()),
                 ),
-                options=m.Cli.ProcessOptions(
-                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
-                ),
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=apply, msg=result.stderr)
@@ -82,11 +79,100 @@ class TestsFlextInfraRenameCampaignMod:
         )
         consumer = tm.ok(
             u.Cli.run(
-                (sys.executable, "-c", "import sample; print(sample.PAYLOAD)"),
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from sample import ModWorkspaceSample; "
+                        "print(ModWorkspaceSample.PAYLOAD)"
+                    ),
+                ),
                 cwd=mod_workspace,
             ),
         )
         tm.that(consumer.stdout, eq="campaign_token\n")
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_public_mod_renames_only_declared_field_binding(
+        mod_workspace: Path,
+    ) -> None:
+        """A field campaign preserves unrelated members with the same spelling."""
+        config_dir = mod_workspace / "config"
+        config_dir.mkdir(exist_ok=True)
+        (config_dir / "renames.csv").write_text(
+            "old,new\nldif,Ldif\n", encoding="utf-8"
+        )
+        (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
+            "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
+            "      - csv: renames.csv\n"
+            "        rename_definitions: true\n"
+            "        bindings: {'': ['sample.ModWorkspaceSample.Settings']}\n",
+            encoding="utf-8",
+        )
+        source = mod_workspace / "sample.py"
+        source.write_text(
+            "from __future__ import annotations\n\n"
+            "class ModWorkspaceSample:\n"
+            "    class Settings:\n        ldif: str = 'configured'\n\n"
+            "    class Client:\n        ldif: str = 'service'\n\n"
+            "    @classmethod\n"
+            "    def values(cls) -> tuple[str, str]:\n"
+            "        settings = cls.Settings()\n"
+            "        client = cls.Client()\n"
+            "        return settings.ldif, client.ldif\n\n"
+            "__all__ = ['ModWorkspaceSample']\n",
+            encoding="utf-8",
+        )
+        original = source.read_bytes()
+        preview = tm.ok(
+            infra.apply_renames(
+                m.Infra.ApplyRenamesInput(
+                    repository_root=mod_workspace,
+                    csv=str(config_dir / "renames.csv"),
+                    roots=(str(mod_workspace),),
+                    bindings={"": ("sample.ModWorkspaceSample.Settings",)},
+                    rename_definitions=True,
+                )
+            )
+        )
+        tm.that(preview.preview_diff, has=f"--- {source}")
+        tm.that(preview.preview_diff, has="settings.Ldif, client.ldif")
+        tm.that(preview.preview_diff, lacks="client.Ldif")
+        tm.that(source.read_bytes(), eq=original)
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    "flext_infra",
+                    "refactor",
+                    "mod",
+                    "--repository-root",
+                    str(mod_workspace),
+                    "--apply",
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        updated = source.read_text(encoding="utf-8")
+        tm.that(updated, has="Ldif: str")
+        tm.that(updated, has="settings.Ldif")
+        tm.that(updated, has="client.ldif")
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from sample import ModWorkspaceSample; "
+                        "print(ModWorkspaceSample.values())"
+                    ),
+                ),
+                cwd=mod_workspace,
+            ),
+        )
+        tm.that(consumer.stdout, eq="('configured', 'service')\n")
 
     @staticmethod
     def test_packaged_campaigns_preserve_prose_and_converge(
@@ -148,14 +234,13 @@ class TestsFlextInfraRenameCampaignMod:
     def test_public_config_rejects_escaping_campaign_paths(
         self,
         mod_workspace: Path,
-        tmp_path: Path,
         csv: str,
         roots: tuple[str, ...],
     ) -> None:
         """A malformed campaign fails at config validation before source edits."""
-        config_dir = tmp_path / "campaign_config"
+        config_dir = mod_workspace / "config"
         self._declare(config_dir)
-        (config_dir / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+        (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
             "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
             f"      - csv: {csv!r}\n"
             f"        roots: {list(roots)!r}\n"
@@ -176,14 +261,11 @@ class TestsFlextInfraRenameCampaignMod:
                     str(mod_workspace),
                     "--apply",
                 ),
-                options=m.Cli.ProcessOptions(
-                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
-                ),
             ),
         )
         tm.fail(u.Cli.process_succeeded(result.outcome))
         tm.that(
-            result.stderr,
+            result.stderr + result.stdout,
             has="CSV campaign path must be relative and non-escaping",
         )
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
@@ -197,7 +279,7 @@ class TestsFlextInfraRenameCampaignMod:
         escape: str,
     ) -> None:
         """A relative declaration cannot follow a link outside its owner."""
-        config_dir = tmp_path / "campaign_config"
+        config_dir = mod_workspace / "config"
         self._declare(config_dir)
         outside = tmp_path / "outside"
         outside.mkdir()
@@ -211,7 +293,7 @@ class TestsFlextInfraRenameCampaignMod:
             expected = "CSV campaign driver escapes config directory"
         else:
             (mod_workspace / "outside").symlink_to(outside, target_is_directory=True)
-            (config_dir / c.Infra.CODEGEN_LOCAL_OVERRIDES_FILENAME).write_text(
+            (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
                 "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
                 "      - csv: renames.csv\n"
                 "        roots: [outside]\n"
@@ -231,14 +313,9 @@ class TestsFlextInfraRenameCampaignMod:
                     str(mod_workspace),
                     "--apply",
                 ),
-                options=m.Cli.ProcessOptions(
-                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
-                ),
             ),
         )
         tm.fail(u.Cli.process_succeeded(result.outcome))
-        # The preflight refusal is a typed command failure, which the CLI
-        # renders on stdout; config-validation errors escape on stderr.
-        tm.that(result.stdout, has=expected)
+        tm.that(result.stdout + result.stderr, has=expected)
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")

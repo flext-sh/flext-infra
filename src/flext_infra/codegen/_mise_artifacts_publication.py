@@ -98,8 +98,10 @@ class FlextInfraMisePublication:
             and plan.path.name == c.Infra.INIT_PY
             and u.Infra.codegen_initializer_is_authored(before.content)
         ):
-            u.Cli.info(
-                f"ownership=authored disposition=retained target={plan.path}",
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: ownership=authored "
+                f"disposition=retained target={plan.path}\n",
+                error=True,
             )
             return r[bool].ok(value=False)
         staged_publication = cls._staged_publication(
@@ -270,6 +272,7 @@ class FlextInfraMisePublication:
             {},
             directories=analysis.source_directories,
             topology=analysis.source_query_topology,
+            journal=journal,
         )
         if current.failure:
             return result_type.from_failure(current)
@@ -309,8 +312,8 @@ class FlextInfraMisePublication:
 
         """
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
-        inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
-        declared = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states(analysis.inputs)
+        declared = u.Infra.unique_states((
             *(source for file in analysis.files for source in file.source_states),
             *(
                 source
@@ -505,22 +508,25 @@ class FlextInfraMisePublication:
         )
         if prior.failure:
             return result_type.from_failure(prior)
+        directory_publications = (
+            tuple(
+                item.created for item in journal.directories if item.created is not None
+            )
+            if journal is not None
+            else ()
+        )
         for index, publication in enumerate(ordered, start=1):
             u.Cli.emit_raw(
-                f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
+                f"  publish [{index}/{len(publications)}] {publication.before.path}\n",
+                error=True,
             )
             blocking, blocked_by = FlextInfraMisePublication._prerequisite_issue(
                 publication,
                 publications,
                 written,
                 published_states,
-                directory_publications=tuple(
-                    item.created
-                    for item in journal.directories
-                    if item.created is not None
-                )
-                if journal is not None
-                else (),
+                directory_publications=directory_publications,
+                journal=journal,
             )
             if blocking is not None:
                 issues.append(blocking)
@@ -531,9 +537,10 @@ class FlextInfraMisePublication:
             )
             if FlextInfraMisePublication._authored_retention(publication, observed):
                 retained.append(publication.before.path)
-                u.Cli.info(
-                    "ownership=authored disposition=retained "
-                    f"target={publication.before.path}",
+                u.Cli.emit_raw(
+                    f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: ownership=authored "
+                    f"disposition=retained target={publication.before.path}\n",
+                    error=True,
                 )
                 continue
             changed = (
@@ -647,6 +654,7 @@ class FlextInfraMisePublication:
         ],
         *,
         directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
         """Name the first failed publication prerequisite of one target.
 
@@ -656,6 +664,7 @@ class FlextInfraMisePublication:
             written: Destination paths already written by earlier targets.
             published_states: Before and after states of published targets.
             directory_publications: Directory states published by this batch.
+            journal: Durable owner of the batch's directory creation receipts.
 
         Returns:
             The blocking prerequisite issue with its causal exception, or
@@ -674,6 +683,7 @@ class FlextInfraMisePublication:
                 directories=publication.source_directories,
                 topology=publication.source_query_topology,
                 directory_publications=directory_publications,
+                journal=journal,
             )
         if ready.success:
             return None, None
@@ -840,6 +850,7 @@ class FlextInfraMisePublication:
         directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = (),
         topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
         directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[bool]:
         """Verify this target's inputs, rebinding only this phase's own writes.
 
@@ -848,7 +859,15 @@ class FlextInfraMisePublication:
 
         """
         expected: list[m.Cli.AtomicFileState] = []
-        for source in sources:
+        for item in sources:
+            source = item
+            if source.parent_device is None and journal is not None:
+                bound = FlextInfraMiseArtifactsVerification.bind_source_parent(
+                    source, journal
+                )
+                if bound.failure:
+                    return r[bool].from_failure(bound)
+                source = bound.value
             receipt = published.get(source.path)
             if receipt is None:
                 expected.append(source)

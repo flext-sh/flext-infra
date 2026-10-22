@@ -148,9 +148,8 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
     ) -> p.Result[m.Infra.TypingsReport]:
         """Analyze project and generate typing stubs requirements report.
 
-        Under the governed policy that follows untyped imports, mypy analyzes
-        untyped packages directly and reports no missing stub, so stub
-        packages are neither required nor removable findings.
+        Stub discovery uses its own native invocation, independently of
+        normal checking's policy for following untyped implementations.
 
         Returns:
             The resulting ``p.Result[m.Infra.TypingsReport]``.
@@ -161,14 +160,11 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             return r[m.Infra.TypingsReport].from_failure(followed)
         limits = self.load_dependency_limits(limits_path)
         exclude_set = self._typing_excludes(limits)
-        hinted: t.StrSequence = []
-        missing_modules: t.StrSequence = []
-        if not followed.value:
-            hints_result = self.run_mypy_stub_hints(project_path)
-            if hints_result.failure:
-                return r[m.Infra.TypingsReport].from_failure(hints_result)
-            typed_hints: t.Pair[t.StrSequence, t.StrSequence] = hints_result.value
-            hinted, missing_modules = typed_hints
+        hints_result = self.run_mypy_stub_hints(project_path)
+        if hints_result.failure:
+            return r[m.Infra.TypingsReport].from_failure(hints_result)
+        native = hints_result.value
+        hinted, missing_modules = native.hinted, native.missing_modules
         required_set = self._required_set(hinted, missing_modules, limits) - exclude_set
         current = self.read_current_typings_from_pyproject(project_path)
         current_set = set(current)
@@ -181,6 +177,11 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             required_packages=sorted(required_set),
             hinted=hinted,
             missing_modules=missing_modules,
+            untyped_modules=tuple(
+                module
+                for module in native.untyped_modules
+                if self.module_to_types_package(module, limits) is None
+            ),
             current=current,
             to_add=sorted(required_set - current_set),
             to_remove=(
@@ -258,6 +259,18 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             msg = f"failed to load dependency limits from {path}: {result.error}"
             raise RuntimeError(msg)
         return result.value
+
+    def load_typing_generation_policy(self) -> m.Infra.TypingGenerationPolicy:
+        """Read the producer's sole dependency-limits policy as a typed contract.
+
+        Returns:
+            The validated generation policy.
+
+        """
+        limits = u.Cli.json_as_mapping(
+            self.load_dependency_limits()[c.Infra.TYPING_LIBRARIES]
+        )
+        return m.Infra.TypingGenerationPolicy.model_validate(limits["generation"])
 
     @staticmethod
     def module_to_types_package(

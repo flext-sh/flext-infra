@@ -8,17 +8,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_core import FlextRuntime
-
-from flext_infra import c, m, p, r, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.deps import FlextInfraDependencyDetectorRuntimeSteps
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping, MutableMapping
-
-    from flext_infra import t
 
 
 class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSteps):
@@ -40,25 +32,24 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             The resulting ``p.Result[bool]``.
 
         """
-        root = params.repository_root
         # The environment under inspection is the repository's own; an ambient
         # UV_PROJECT_ENVIRONMENT would silently redirect detection elsewhere.
-        venv_bin = u.Infra.runtime_environment_dir(root) / (
+        venv_bin = u.Infra.runtime_environment_dir(params.repository_root) / (
             "Scripts" if os.name == "nt" else "bin"
         )
-        env_result = self._validate_environment(params, root, venv_bin)
+        env_result = self._validate_environment(
+            params, params.repository_root, venv_bin
+        )
         if env_result.failure:
             return r[bool].from_failure(env_result)
         projects, limits_path = env_result.value
-        do_typings = params.typings or params.apply_typings
-        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]] = {}
         report_model = m.Infra.WorkspaceDependencyReport(
-            workspace=str(root),
+            workspace=str(params.repository_root),
             projects={},
             pip_check=None,
             dependency_limits=None,
         )
-        if do_typings:
+        if params.typings or params.apply_typings:
             limits_setup = self._configure_typings_limits(limits_path, report_model)
             if limits_setup.failure:
                 return r[bool].from_failure(limits_setup)
@@ -68,125 +59,79 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
                 venv_bin=venv_bin,
                 limits_path=limits_path,
                 params=params,
-                projects_report=projects_report,
+                projects_report=report_model.projects,
             )
             if project_result.failure:
                 return r[bool].from_failure(project_result)
-        report_model.projects = {
-            project_name: m.Infra.ProjectRuntimeReport.model_validate(project_payload)
-            for project_name, project_payload in projects_report.items()
-        }
-        pip_check_result = self._run_pip_check(root, venv_bin, params, report_model)
-        if pip_check_result.failure:
-            return r[bool].from_failure(pip_check_result)
-        pip_ok = pip_check_result.value
-        return self._finalize_run(
-            (params, root),
-            report_model,
-            projects_report,
-            projects,
-            pip_ok=pip_ok,
-        )
+        return self._finalize_run(params, report_model, venv_bin, limits_path)
 
     def _finalize_run(
         self,
-        scope: t.Pair[m.Infra.DetectCommand, Path],
-        report_model: p.Infra.WorkspaceReport,
-        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
-        projects: t.SequenceOf[Path],
-        *,
-        pip_ok: bool,
-    ) -> p.Result[bool]:
-        """Persist and summarize the workspace report unless JSON-silent.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        params, root = scope
-        if params.output_format == c.Cli.OutputFormats.JSON:
-            return r[bool].ok(value=True)
-        write_result = self._write_workspace_report(
-            params,
-            root,
-            report_model,
-            projects_report,
-        )
-        if write_result.failure:
-            return r[bool].from_failure(write_result)
-        return self._summarize_run(
-            projects,
-            projects_report,
-            pip_ok=pip_ok,
-            params=params,
-        )
-
-    def _write_workspace_report(
-        self,
         params: m.Infra.DetectCommand,
-        root: Path,
-        report_model: p.Infra.WorkspaceReport,
-        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
-    ) -> p.Result[Path]:
-        """Render and persist the canonical workspace dependency report JSON.
-
-        Returns:
-            The resulting ``p.Result[Path]``.
-
-        """
-        out_path: Path = params.output_path or u.Cli.resolve_report_path(
-            root,
-            c.Infra.PROJECT,
-            c.Infra.DEPENDENCIES,
-            "detect-runtime-dev-latest.json",
-        )
-        report_payload: t.JsonDict = {
-            key: FlextRuntime.normalize_to_json_value(value)
-            for key, value in report_model.model_dump().items()
-        }
-        report_payload["projects"] = {
-            project_name: {
-                key: FlextRuntime.normalize_to_json_value(value)
-                for key, value in project_payload.items()
-            }
-            for project_name, project_payload in projects_report.items()
-        }
-        write_result = u.Cli.json_write(out_path, report_payload)
-        if write_result.failure:
-            return r[Path].from_failure(write_result)
-        if not params.quiet:
-            self._detector.log.info("deps_report_written", path=str(out_path))
-        return r[Path].ok(out_path)
-
-    def _summarize_run(
-        self,
-        projects: t.SequenceOf[Path],
-        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
-        *,
-        pip_ok: bool,
-        params: m.Infra.DetectCommand,
+        report_model: m.Infra.WorkspaceDependencyReport,
+        venv_bin: Path,
+        limits_path: Path,
     ) -> p.Result[bool]:
-        """Aggregate deptry counts, log the summary, decide overall pass/fail.
+        """Publish the typed report and return its actual dependency verdict.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Success only when the configured dependency checks succeed.
 
         """
-        total_issues = sum(
-            u.Cli.json_pick_int(
-                u.Cli.json_as_mapping(payload.get(c.Infra.DEPTRY)),
-                "raw_count",
+        if params.apply and params.apply_typings:
+            generated = self._deps.generate_typing_packages(
+                u.Infra.runtime_owner_root(params.repository_root).unwrap(),
+                tuple(
+                    module
+                    for project in report_model.projects.values()
+                    if project.typings is not None
+                    for module in project.typings.untyped_modules
+                ),
+                m.Infra.TypingGenerationPolicy.model_validate(
+                    t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                        self._deps.load_dependency_limits(limits_path).get(
+                            c.Infra.TYPING_LIBRARIES,
+                        ),
+                    ).get("generation"),
+                ),
             )
-            for payload in projects_report.values()
+            if generated.failure:
+                return r[bool].from_failure(generated)
+            report_model.generated_typings = generated.value
+        pip_check_result = self._run_pip_check(
+            params.repository_root,
+            venv_bin,
+            params,
+            report_model,
+        )
+        if pip_check_result.failure:
+            return r[bool].from_failure(pip_check_result)
+        if params.output_format != c.Cli.OutputFormats.JSON:
+            out_path = params.output_path or u.Cli.resolve_report_path(
+                params.repository_root,
+                c.Infra.PROJECT,
+                c.Infra.DEPENDENCIES,
+                "detect-runtime-dev-latest.json",
+            )
+            written = u.Cli.atomic_write_text_file(
+                out_path,
+                report_model.model_dump_json(indent=2, exclude_none=True) + "\n",
+            )
+            if written.failure:
+                return r[bool].from_failure(written)
+            if not params.quiet:
+                self._detector.log.info("deps_report_written", path=str(out_path))
+        total_issues = sum(
+            report.deptry.raw_count for report in report_model.projects.values()
         )
         if not params.quiet:
             self._detector.log.info(
                 "deps_summary",
-                projects=len(projects),
+                projects=len(report_model.projects),
                 deptry_issues=total_issues,
-                pip_check=c.Infra.RK_OK if pip_ok else "FAIL",
+                pip_check=c.Infra.RK_OK if pip_check_result.value else "FAIL",
             )
-        if params.no_fail or (total_issues == 0 and pip_ok):
+        if params.no_fail or (total_issues == 0 and pip_check_result.value):
             return r[bool].ok(value=True)
         return r[bool].fail("dependency issues detected")
 

@@ -211,6 +211,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 associated reports.
 
             """
+            del _view_root
             return FlextInfraUtilitiesProtectedEditPreview._preview_write_reports(
                 candidates,
                 before_sources,
@@ -269,6 +270,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             _view_root: Path,
             candidates: t.MappingKV[Path, Path],
         ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
+            del _view_root
             return FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
                 candidates[path], workspace, gates=gates
             )

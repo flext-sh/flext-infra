@@ -22,6 +22,7 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsRepository,
     FlextInfraConfigModelsScaffold,
 )
+from flext_infra._models.deps_typings import FlextInfraModelsDepsTypings
 
 GitSourceUrlPrefixField = Annotated[
     t.NonEmptyStr | None,
@@ -40,7 +41,11 @@ GitSourceRefToField = Annotated[
 ]
 
 
-class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
+class FlextInfraModelsDeps(
+    FlextInfraModelsDepsToolConfig,
+    FlextInfraModelsDepsToml,
+    FlextInfraModelsDepsTypings,
+):
     """Models for dependency detection and modernization reporting."""
 
     class ProjectPackagingDeclaration(m.ContractModel):
@@ -275,10 +280,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             bool,
             m.Field(
                 alias="apply-typings",
-                description=(
-                    "Declare project.optional-dependencies.typings "
-                    "and install through UV"
-                ),
+                description=("Declare dependency-groups.dev and install through UV"),
             ),
         ] = False
         no_pip_check: Annotated[
@@ -303,9 +305,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             if self.limits is None:
                 return None
             return Path(self.limits).expanduser().resolve()
-
-    class ExtraPathsCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
-        """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
     class GitSourceReferenceMigration(m.ContractModel):
         """Explicit source scope and reference transition; no source conversion."""
@@ -333,44 +332,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 description="Operator-declared replacement Git reference",
             ),
         ]
-
-    class ModernizeCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
-        """Canonical CLI payload for ``flext-infra deps modernize``."""
-
-        check: Annotated[
-            bool,
-            m.Field(default=False, description="Run in check mode"),
-        ] = False
-        audit: Annotated[
-            bool,
-            m.Field(description="Audit pyproject changes without writing"),
-        ] = False
-        skip_check: Annotated[
-            bool,
-            m.Field(alias="skip-check", description="Skip post-write validation step"),
-        ] = False
-        skip_comments: Annotated[
-            bool,
-            m.Field(
-                alias="skip-comments",
-                description="Skip modernization of explanatory comments",
-            ),
-        ] = False
-        rewrite_constraints: Annotated[
-            bool,
-            m.Field(
-                alias="rewrite-constraints",
-                description=(
-                    "Rewrite dependency constraints from the provisioned runtime"
-                ),
-            ),
-        ] = False
-        git_source_url_prefix: GitSourceUrlPrefixField = None
-        git_source_ref_from: GitSourceRefFromField = None
-        git_source_ref_to: GitSourceRefToField = None
-
-    # Codegen consumes the pure pyproject
-    # renderer directly, so no deps CLI payload remains for path/workspace modes.
 
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
@@ -586,7 +547,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         lines: Annotated[
             t.StrSequence,
             m.Field(description="Pip check output lines"),
-        ] = m.Field(default_factory=tuple)
+        ] = ()
 
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
@@ -653,6 +614,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Missing modules"),
         ] = m.Field(default_factory=tuple)
+        untyped_modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Installed modules without a published stub hint"),
+        ] = m.Field(default_factory=tuple)
         current: Annotated[t.StrSequence, m.Field(description="Current typings")] = (
             m.Field(default_factory=tuple)
         )
@@ -675,16 +640,15 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             bool,
             m.Field(
                 description=(
-                    "Governed mypy follow_untyped_imports policy; when true, "
-                    "missing stubs are not findings"
+                    "Normal mypy follow_untyped_imports policy; "
+                    "stub discovery is independent of this policy"
                 ),
             ),
         ]
 
-    class ProjectRuntimeReport(m.ArbitraryTypesModel):
+    class ProjectRuntimeReport(ProjectDependencyReport):
         """Project runtime dependency and typings report."""
 
-        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
         typings: FlextInfraModelsDeps.TypingsReport | None = m.Field(
             None,
             description="Typings report",
@@ -699,8 +663,12 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         """
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
-        projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
-            description="Per-project reports",
+        generated_typings: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Declared generated PEP 561 source directories"),
+        ] = ()
+        projects: t.MutableMappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = (
+            m.Field(description="Per-project reports")
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,

@@ -66,7 +66,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = ctx
+        del ctx
         return self._python_targets(project_dir)
 
     @override
@@ -83,7 +83,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
         """
         json_file = self._native_report_path(project_dir, ctx)
-        target_args = u.Infra.pyrefly_target_args(project_dir, tuple(check_dirs))
+        target_args = u.Infra.pyrefly_target_args(
+            project_dir,
+            tuple(check_dirs),
+            selected_files=ctx.selected_files,
+        )
         return self._python_module_command(
             c.Infra.PYREFLY,
             c.Infra.CHECK,
@@ -154,6 +158,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     code=diag.name,
                     message=diag.description,
                     severity=diag.severity,
+                    locations=(),
+                    related_locations=(),
                 )
                 for diag in validated.value.errors
             ),

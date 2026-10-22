@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
@@ -42,7 +41,7 @@ if TYPE_CHECKING:
     from importlib.metadata import Distribution
 
 
-class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
+class FlextInfraCodegenPreconditions:
     """Validate source consistency and receipt ownership before publishing."""
 
     @classmethod
@@ -347,7 +346,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
                 )
                 if selected.failure:
                     return r[bool].from_failure(selected)
-                sources = cls.unique_states((
+                sources = u.Infra.unique_states((
                     *states.values(),
                     observed.value,
                     project_source,
@@ -750,7 +749,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
                     "bootstrap source authority lacks its original capture "
                     "identity and payload"
                 )
-        sources = cls.unique_states(authority.bootstrap_sources)
+        sources = u.Infra.unique_states(authority.bootstrap_sources)
         if sources.failure:
             return result_type.from_failure(sources)
         by_path = {source.path: source for source in sources.value}
@@ -1167,7 +1166,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
         bootstrap = cls._bootstrap_source_paths(request.source_authority)
         if bootstrap.failure:
             return r[bool].from_failure(bootstrap)
-        states = cls.unique_states(request.inputs)
+        states = u.Infra.unique_states(request.inputs)
         if states.failure:
             return r[bool].from_failure(states)
         by_path = {state.path: state for state in states.value}
@@ -1289,7 +1288,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
         )
         if captured.failure:
             return result_type.from_failure(captured)
-        sources = cls.unique_states((*states.values(), *captured.value[1]))
+        sources = u.Infra.unique_states((*states.values(), *captured.value[1]))
         if sources.failure:
             return result_type.from_failure(sources)
         trees.update((tree.root.path, tree) for tree in captured.value[0])
@@ -1370,7 +1369,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
             return result_type.fail(
                 "producer distribution file manifest changed while capturing ownership"
             )
-        sources = cls.unique_states((*elected, *captured.value[1]))
+        sources = u.Infra.unique_states((*elected, *captured.value[1]))
         if sources.failure:
             return result_type.from_failure(sources)
         return result_type.ok((captured.value[0], sources.value))
@@ -1394,7 +1393,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
         birth = cls.reference_birth_current(producer.generator_reference)
         if birth.failure:
             return birth
-        states = cls.unique_states(producer.inputs)
+        states = u.Infra.unique_states(producer.inputs)
         if states.failure:
             return r[bool].from_failure(states)
         by_path = {state.path: state for state in states.value}
@@ -1832,7 +1831,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
                 m.Cli.AtomicFileState]]]``.
 
         """
-        return FlextInfraCodegenPreconditions.unique_states(
+        return u.Infra.unique_states(
             tuple(source for plan in plans for source in plan.source_states)
         ).map(lambda sources: tuple((phase, source) for source in sources))
 
@@ -1874,7 +1873,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
         # Earlier owned publications may replace producer source bytes. Planner
         # inputs still agree among themselves; the native epoch is never rewritten.
         output_paths = {output.path for output in outputs}
-        sources = cls.unique_states((
+        sources = u.Infra.unique_states((
             *(state for state in producer.inputs if state.path not in output_paths),
             *analysis.inputs,
             *(source for plan in analysis.files for source in plan.source_states),
@@ -1903,7 +1902,7 @@ class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
             The resulting ``p.Result[bool]``.
 
         """
-        source_barrier = FlextInfraCodegenPreconditions.unique_states(sources).flat_map(
+        source_barrier = u.Infra.unique_states(sources).flat_map(
             FlextInfraMiseArtifactsComparison.states_current
         )
         if source_barrier.failure:

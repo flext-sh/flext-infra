@@ -21,24 +21,30 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
         _parent_package_cache: MutableMapping[str, t.StrSequence]
+        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
-        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
+        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str:
+            del pkg_dir, inherited_key
 
         def _package_entry(
             self,
             pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None:
+            del pkg_dir
 
-        def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
+        def _export_names_for_package(self, package_name: str) -> frozenset[str]:
+            del package_name
 
-        def _package_name_from_target(self, target: str) -> str: ...
+        def _package_name_from_target(self, target: str) -> str:
+            del target
 
         def _parents_from_constants_module(
             self,
             module_path: Path,
             current_pkg: str,
             visited: set[str] | None = None,
-        ) -> t.StrSequence: ...
+        ) -> t.StrSequence:
+            del module_path, current_pkg, visited
 
         def _resolve_inherited_alias_source(
             self,
@@ -46,7 +52,8 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             alias_name: str,
             *,
             current_pkg: str,
-        ) -> str: ...
+        ) -> str:
+            del package_names, alias_name, current_pkg
 
     def _resolve_aliases(
         self,
@@ -181,18 +188,26 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
 
         """
         cache_key = str(pkg_dir.resolve())
-        cached = self._parent_package_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        package_entry = self._package_entry(pkg_dir)
-        current_pkg = package_entry.package_name if package_entry is not None else ""
-        constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
-        if self.rope_workspace.resource(constants_path) is None:
-            self._parent_package_cache[cache_key] = ()
-            return ()
-        parents = self._parents_from_constants_module(constants_path, current_pkg)
-        self._parent_package_cache[cache_key] = parents
-        return parents
+        with u.Infra.cached_source_query(
+            self.rope_workspace.rope_project,
+            self._parent_package_cache,
+            cache_key,
+            self._query_receipts,
+            f"parents:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._parent_package_cache[cache_key]
+            package_entry = self._package_entry(pkg_dir)
+            current_pkg = (
+                package_entry.package_name if package_entry is not None else ""
+            )
+            constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
+            if self.rope_workspace.resource(constants_path) is None:
+                self._parent_package_cache[cache_key] = ()
+                return ()
+            parents = self._parents_from_constants_module(constants_path, current_pkg)
+            self._parent_package_cache[cache_key] = parents
+            return parents
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlannerAliasesMixin"]

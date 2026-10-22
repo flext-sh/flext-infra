@@ -38,7 +38,7 @@ class FlextInfraConstantsGit:
     class GateAttestationSchema(StrEnum):
         """Supported signed gate-attestation schema identities."""
 
-        V2 = "https://flext.sh/attestations/gates/v2"
+        V3 = "https://flext.sh/attestations/gates/v3"
 
     @unique
     class GateEvidenceReportKind(StrEnum):

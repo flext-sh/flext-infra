@@ -76,7 +76,10 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             (
                 api_root / "public-api.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    f"{scope.name} Public API", scope.package_name, width=width
+                    f"{scope.name} "
+                    f"{scope.documentation_text(c.Infra.DocumentationText.PUBLIC_API)}",
+                    scope.package_name,
+                    width=width,
                 ),
             ),
             (
@@ -147,11 +150,26 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             and state.path.suffix == ".md"
             and state.path.name != "README.md"
         }
+        guide_contents = {
+            state.path: state.content.decode(c.DEFAULT_ENCODING)
+            for state in source_states
+            if scope.documentation_language == "pt-BR"
+            and state.path in guide_paths
+            and state.content is not None
+        }
         for _project, path, content in guides.value:
             if content is None:
                 guide_paths.discard(path)
+                guide_contents.pop(path, None)
             else:
                 guide_paths.add(path)
+                guide_contents[path] = content
+        guide_titles = {
+            path: title
+            for path, content in guide_contents.items()
+            if scope.documentation_language == "pt-BR"
+            and (title := FlextInfraUtilitiesDocsContract.docs_contract_title(content))
+        }
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path,
             scope.package_name,
@@ -182,7 +200,10 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             (
                 scope.path / "docs/guides/README.md",
                 FlextInfraUtilitiesDocsRender.docs_guides_index(
-                    scope, guide_paths=tuple(sorted(guide_paths)), width=width
+                    scope,
+                    guide_paths=tuple(sorted(guide_paths)),
+                    guide_titles=guide_titles,
+                    width=width,
                 ),
             ),
             (
@@ -202,6 +223,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                         contract,
                         ("src",),
                         source_states=source_states,
+                        documentation_language=scope.documentation_language,
                     )
                     if scope.path == repository_root
                     else FlextInfraUtilitiesDocsRender.docs_project_mkdocs(

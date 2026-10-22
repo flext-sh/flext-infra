@@ -88,7 +88,7 @@ class FlextInfraModTextGateEngine:
                     "\n".join(issue.formatted for issue in issues),
                     exception=error,
                     error_data={
-                        "issues": tuple(issue.model_dump() for issue in issues)
+                        "issues": [issue.model_dump(mode="json") for issue in issues]
                     },
                 )
             sources = cls._source_paths(project, elected.value[2])
@@ -1080,9 +1080,9 @@ class FlextInfraModTextGateEngine:
             plans = cls._without_conflicting_plans(
                 plans, conflicting_dependencies, issues
             )
-            inputs = {
-                state.path: state for plan in plans for state in plan.source_states
-            }
+        # Publication depends only on the planned rewrites; unmatched scanned
+        # sources are never written, so they are not batch inputs.
+        inputs = {state.path: state for plan in plans for state in plan.source_states}
         report = m.Infra.ModTextReport(
             findings=len(entries),
             actionable=actionable,
@@ -1127,8 +1127,8 @@ class FlextInfraModTextGateEngine:
                 error_code=c.Infra.ToolOutcome.ERROR.value,
                 error_data={
                     "report": report.model_dump(mode="json"),
-                    "issues": tuple(issue.model_dump() for issue in issues),
-                    "written_files": (),
+                    "issues": [issue.model_dump(mode="json") for issue in issues],
+                    "written_files": [],
                 },
             )
         if fix and analysis.files:

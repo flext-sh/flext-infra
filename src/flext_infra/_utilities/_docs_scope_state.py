@@ -135,21 +135,34 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         project_root: Path,
         *,
         source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+        metadata_projection: m.Infra.CodegenFilePlan | None = None,
     ) -> m.Infra.ProjectPyprojectState:
         """Return the shared state bound to authenticated pyproject bytes.
 
         Returns:
             The immutable cached state for the authenticated pyproject bytes.
 
+        Raises:
+            ValueError: If a projected view lacks or differs from its physical source.
+
         """
+        if source_states is None and metadata_projection is not None:
+            msg = "projected metadata requires authenticated source states"
+            raise ValueError(msg)
         if source_states is None:
             return FlextInfraUtilitiesDocsScopeStateMixin._project_state(project_root)
         path = project_root / c.PYPROJECT_FILENAME
         state = next(item for item in source_states if item.path == path)
+        content = state.content
+        if metadata_projection is not None:
+            if metadata_projection.path != path or metadata_projection.before != state:
+                msg = f"projected metadata differs from authenticated source: {path}"
+                raise ValueError(msg)
+            content = metadata_projection.desired_content
         return FlextInfraUtilitiesDocsScopeStateMixin._state_from_content(
             project_root,
             path,
-            state.content,
+            content,
             tuple(item.path for item in source_states),
         )
 
@@ -189,6 +202,27 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
 
         """
         return FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
+
+    @staticmethod
+    def docs_documentation_language(
+        docs_meta: t.JsonMapping,
+    ) -> t.Infra.DocumentationLanguage:
+        """Validate the project declaration's documentation-language projection.
+
+        Returns:
+            The supported presentation language, defaulting only on absence.
+
+        Raises:
+            ValueError: If the projected language is unsupported.
+
+        """
+        language = docs_meta.get("documentation_language", "en")
+        if language == "en":
+            return "en"
+        if language == "pt-BR":
+            return "pt-BR"
+        msg = f"unsupported documentation_language: {language!r}"
+        raise ValueError(msg)
 
     @staticmethod
     def docs_scope_enabled(docs_meta: t.JsonMapping) -> bool:

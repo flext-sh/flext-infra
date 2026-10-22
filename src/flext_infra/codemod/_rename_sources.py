@@ -19,6 +19,44 @@ class FlextInfraRenameSources:
     """Read campaign data and source snapshots without granting write effects."""
 
     @staticmethod
+    def symbol_paths(
+        sources: t.MappingKV[Path, str],
+        symbols: frozenset[str],
+    ) -> frozenset[Path]:
+        """Elect actual identifier syntax, never executable string payloads.
+
+        Returns:
+            Candidate paths whose bindings must still be resolved by Rope.
+
+        """
+        selected: set[Path] = set()
+        for path, source in sources.items():
+            for node in ast.walk(ast.parse(source, filename=str(path))):
+                match node:
+                    case (
+                        ast.Name(id=name)
+                        | ast.Attribute(attr=name)
+                        | ast.ClassDef(name=name)
+                        | ast.FunctionDef(name=name)
+                        | ast.AsyncFunctionDef(name=name)
+                        | ast.arg(arg=name)
+                        | ast.keyword(arg=name)
+                    ):
+                        found = name in symbols
+                    case ast.alias(name=imported, asname=local):
+                        found = local in symbols or bool(
+                            symbols.intersection(imported.split("."))
+                        )
+                    case ast.ImportFrom(module=module) if module is not None:
+                        found = bool(symbols.intersection(module.split(".")))
+                    case _:
+                        found = False
+                if found:
+                    selected.add(path)
+                    break
+        return frozenset(selected)
+
+    @staticmethod
     def pairs(source: str) -> t.VariadicTuple[t.Pair[str, str]]:
         rows = u.Cli.csv_loads(source).unwrap()
         if not rows or rows[0] != ["old", "new"]:

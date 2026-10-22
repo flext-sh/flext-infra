@@ -298,6 +298,11 @@ class FlextInfraModelsCore:
                 "full operations; absent for coverage"
             ),
         )
+        testmon_lease_acquired: bool | None = m.Field(
+            description=(
+                "Whether this phase acquired its Testmon lease; absent for coverage"
+            ),
+        )
         deadline_monotonic: float | None = m.Field(
             gt=0,
             description=(
@@ -314,6 +319,28 @@ class FlextInfraModelsCore:
             pattern=r"^[0-9a-f]{64}$",
             description="Digest binding a profile sidecar to its exact pstats artifact",
         )
+
+        @m.model_validator(mode="after")
+        def require_testmon_identity(self) -> Self:
+            """Keep coverage and Testmon execution identities disjoint.
+
+            Returns:
+                The validated execution identity.
+
+            Raises:
+                ValueError: If the mode contradicts its database or lease state.
+
+            """
+            coverage = self.execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+            if coverage != (self.testmon_db is None) or coverage != (
+                self.testmon_lease_acquired is None
+            ):
+                msg = (
+                    "coverage requires no Testmon database or lease; "
+                    "Testmon execution requires both"
+                )
+                raise ValueError(msg)
+            return self
 
     class PytestReportEvent(m.Value):
         """Common report-log envelope and the complete warning payload."""

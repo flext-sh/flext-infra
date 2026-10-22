@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import stat
 import sys
+import threading
 from pathlib import Path
 from types import FrameType
 from typing import TYPE_CHECKING
@@ -17,15 +18,19 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
+    FlextInfraStagedPackage,
 )
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraImportNormalization,
 )
+from flext_infra.services import FlextInfraCliModProgress
 from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
 from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
@@ -36,11 +41,8 @@ class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
 
     @staticmethod
-    @pytest.mark.parametrize("utility_owner", [True, False])
     def test_input_union_preserves_shared_identity_and_rejects_conflicts(
         tmp_path: Path,
-        *,
-        utility_owner: bool,
     ) -> None:
         """One source authority survives repeats; neither conflicting order wins."""
         source = tmp_path / "source.py"
@@ -48,11 +50,7 @@ class TestsFlextInfraSemanticPublication:
         first = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         absent = tm.ok(u.Cli.atomic_read_binary_file_state(tmp_path / "optional"))
         shared = m.Cli.AtomicFileState.model_validate_json(first.model_dump_json())
-        unique_states = (
-            u.Infra.unique_states
-            if utility_owner
-            else FlextInfraCodegenPreconditions.unique_states
-        )
+        unique_states = u.Infra.unique_states
         tm.that(
             tm.ok(
                 unique_states((
@@ -76,8 +74,27 @@ class TestsFlextInfraSemanticPublication:
     @staticmethod
     def test_cold_public_cli_composes_semantic_ports_without_an_import_cycle() -> None:
         """A fresh native CLI process must finish API composition before dispatch."""
+        u.Tests.run_native_callable(
+            TestsFlextInfraSemanticPublication.scenario_cold_cli
+        )
+
+    @staticmethod
+    def scenario_cold_cli() -> None:
+        """Spawn retains the native thread hook and the real public capture graph."""
+        assert threading.excepthook is threading.__excepthook__
+        selections = tm.ok(native.producer_selections(threading.Thread.__init__, ()))
+        before = tm.ok(native.capture(selections))
+        tm.ok(
+            any(
+                item.kind != "alias"
+                and item.supplier == threading.excepthook.__module__
+                and item.qualname == threading.excepthook.__qualname__
+                for item in before.bindings
+            )
+        )
         result = tm.ok(u.Cli.run((sys.executable, "-I", "-m", "flext_infra", "--help")))
         tm.ok(u.Cli.process_succeeded(result.outcome))
+        tm.ok(native.compare(before, tm.ok(native.capture(selections))))
 
     @staticmethod
     def test_public_workspace_factory_preserves_selected_rope_root(
@@ -190,14 +207,19 @@ class TestsFlextInfraSemanticPublication:
         )
         return hydrated, captured
 
-    @staticmethod
     @pytest.mark.parametrize("kind", ["class", "module"])
     def test_mod_composes_native_cross_root_effects_and_is_idempotent(
+        self,
         tmp_path: Path,
         kind: str,
         mod_progress: p.Infra.ModProgress,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_cross_root_mod, tmp_path, kind)
+
+    @staticmethod
+    def scenario_cross_root_mod(tmp_path: Path, kind: str) -> None:
         """The normal public mod action consumes one coordinated native candidate."""
+        mod_progress = FlextInfraCliModProgress()
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
             tmp_path,
             kind=kind,
@@ -205,11 +227,74 @@ class TestsFlextInfraSemanticPublication:
             executable=kind == "module",
         )
         root = (artifact.candidate.workspaces or (artifact.candidate.workspace,))[0]
+        for receiver in artifact.consumer_roots:
+            inventory = next(
+                item
+                for item in artifact.source_directories
+                if item.root.path == receiver
+            )
+            tm.ok(
+                any(
+                    entry.name == c.Infra.TRANSACTION_STATE_DIRNAME
+                    and entry.kind == "directory"
+                    for entry in inventory.entries
+                )
+            )
         source = next(
             state
             for state in artifact.candidate.inputs
             if state.path.name == "service.py"
         )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / ".git" / "persisted-plan-metadata", "metadata\n"
+            )
+        )
+        with infra.rope_workspace(root) as workspace:
+            rebuilt = tm.ok(
+                FlextInfraCodemodSemanticApply.build_rename_plan(
+                    root,
+                    workspace,
+                    FlextInfraCodemodSemanticApply.rename_selections(artifact),
+                    source_plan=artifact,
+                )
+            )
+        tm.ok(any(effect.source_states for effect in rebuilt.candidate.declared_files))
+        tm.ok(
+            all(
+                not effect.source_states for effect in artifact.candidate.declared_files
+            )
+        )
+        for original, retained in zip(
+            artifact.source_directories, rebuilt.source_directories, strict=True
+        ):
+            assert retained is original
+        tm.that(
+            rebuilt.model_dump(mode="python"), eq=artifact.model_dump(mode="python")
+        )
+        if kind == "class":
+            tm.ok(root != artifact.candidate.workspace)
+            preview = tm.ok(
+                infra.source_preview(root).preview_sources(
+                    artifact.candidate.workspace,
+                    artifact.candidate.updates,
+                    lambda view_root, _paths: FlextInfraModGateEngine.scan_candidate(
+                        root, view_root, artifact.candidate
+                    ).unwrap(),
+                    options=m.Infra.CodegenSourcePreviewOptions(
+                        inputs=artifact.candidate.inputs,
+                        workspaces=artifact.candidate.workspaces,
+                        modes=artifact.candidate.modes,
+                        runtime_check=False,
+                    ),
+                )
+            )
+            tm.ok(any(state.path == source.path for state in preview.source_states))
+            tm.ok(
+                all(state.path.is_relative_to(root) for state in preview.source_states)
+            )
+            tm.ok(u.Cli.atomic_verify_binary_file_states(artifact.candidate.inputs))
+            tm.ok(FlextInfraStagedPackage.source_inputs_current(artifact.candidate))
         tm.ok(
             infra.mod(
                 m.Infra.ModCommand(
@@ -260,12 +345,239 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(u.Cli.atomic_verify_binary_file_states(published))
         tm.that(driver.path.read_bytes(), eq=driver.content)
 
+    @pytest.mark.parametrize(
+        "drift", ["edits", "membership", "identity", "foreign-directory"]
+    )
+    def test_mod_rejects_changed_persisted_rename_payload(
+        self, tmp_path: Path, mod_progress: p.Infra.ModProgress, drift: str
+    ) -> None:
+        u.Tests.run_native_callable(self.scenario_payload_drift, tmp_path, drift)
+
     @staticmethod
+    def scenario_payload_drift(tmp_path: Path, drift: str) -> None:
+        """Ephemeral receipt exclusion never permits a different persisted edit plan."""
+        mod_progress = FlextInfraCliModProgress()
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path,
+            kind="class",
+            external_consumers=1 if drift == "foreign-directory" else 0,
+        )
+        tm.that(artifact.edits, empty=False)
+        changed = artifact.model_copy(update={"edits": ()})
+        tm.ok(u.Cli.atomic_write_text_file(driver.path, changed.model_dump_json()))
+        observed_driver = tm.ok(
+            u.Cli.atomic_read_binary_file_state(driver.path, required=True)
+        )
+        root = (artifact.candidate.workspaces or (artifact.candidate.workspace,))[0]
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / ".git" / "persisted-plan-metadata", "metadata\n"
+            )
+        )
+        source = next(
+            state for state in artifact.source_states if state.path.name == "service.py"
+        )
+        expected_error = "fields=edits"
+        if drift == "membership":
+            (source.path.parent / "new_consumer.py").write_text(
+                "VALUE = 1\n", encoding=c.DEFAULT_ENCODING
+            )
+            expected_error = str(source.path.parent)
+        elif drift == "identity":
+            replacement = source.path.with_suffix(".replacement")
+            replacement.write_bytes(tm.not_none(source.content))
+            replacement.chmod(tm.not_none(source.mode))
+            replacement.replace(source.path)
+            expected_error = str(source.path)
+        elif drift == "foreign-directory":
+            receiver = artifact.consumer_roots[0]
+            foreign = receiver / "foreign-controller"
+            foreign.mkdir()
+            expected_error = str(receiver)
+            tm.fail(
+                FlextInfraStagedPackage.source_inputs_current(artifact.candidate),
+                has=expected_error,
+            )
+        tm.fail(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    apply=True,
+                    rename_plan=driver.path,
+                    consumer_roots=artifact.consumer_roots,
+                ),
+                mod_progress,
+            ),
+            has=expected_error,
+        )
+        tm.ok(
+            u.Cli.atomic_verify_binary_file_states((
+                *(
+                    state
+                    for state in (*artifact.candidate.inputs, *artifact.source_states)
+                    if drift != "identity" or state.path != source.path
+                ),
+                observed_driver,
+            ))
+        )
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("needs_ast", [False, True])
+    def test_source_campaign_applies_ast_without_a_rename_artifact(
+        self,
+        tmp_path: Path,
+        mod_progress: p.Infra.ModProgress,
+        *,
+        needs_ast: bool,
+    ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_source_campaign,
+            tmp_path,
+            needs_ast=needs_ast,
+        )
+
+    @staticmethod
+    def scenario_source_campaign(tmp_path: Path, *, needs_ast: bool) -> None:
+        """The public pipeline accepts real automatic work and its no-op repeat."""
+        mod_progress = FlextInfraCliModProgress()
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        u.Tests.declare_codemod_rules(
+            root,
+            {
+                "source-campaign": (
+                    "id: source-campaign\n"
+                    "language: Python\n"
+                    "rule:\n"
+                    "  pattern: 'value: int = 1'\n"
+                    "fix: 'value: int = 2'\n"
+                    "severity: warning\n"
+                )
+            },
+        )
+        source = package / "service.py"
+        notice = u.Infra.copyright_notice(root)
+        source.write_text(
+            f'"""Automatic source campaign.\n\n{notice}\n"""\n\n'
+            "from __future__ import annotations\n\n"
+            f"value: int = {1 if needs_ast else 2}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        tm.that(bool(before.actionable), eq=needs_ast)
+        request = m.Infra.ModCommand(repository_root=root, apply=True)
+        tm.ok(infra.mod(request, mod_progress))
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name}.service import value\nprint(value)\n",
+                python_paths=(str(package.parent),),
+            ),
+            eq=["2"],
+        )
+        tm.that(tm.ok(FlextInfraModGateEngine.scan(root, fix=False)).findings, eq=0)
+        published = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        tm.ok(infra.mod(request, mod_progress))
+        tm.ok(u.Cli.atomic_verify_binary_file_states((published,)))
+
+    @staticmethod
+    @pytest.mark.parametrize("retire", [False, True])
+    def test_source_effect_rejects_unpaired_content_and_mode(
+        tmp_path: Path, *, retire: bool
+    ) -> None:
+        """A deletion clears mode; a write always declares its actual mode."""
+        source = tmp_path / "source.py"
+        source.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        with pytest.raises(ValueError, match="desired bytes and mode"):
+            m.Infra.CodegenFilePlan(
+                project=tmp_path,
+                path=source,
+                before=original,
+                desired_content=None if retire else original.content,
+                desired_mode=original.mode if retire else None,
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+
+    @pytest.mark.parametrize("drift", ["none", "source", "directory", "same-byte"])
+    def test_composed_module_rename_preserves_mode_and_original_receipts(
+        self, tmp_path: Path, drift: str
+    ) -> None:
+        u.Tests.run_native_callable(self.scenario_composed_rename, tmp_path, drift)
+
+    @staticmethod
+    def scenario_composed_rename(tmp_path: Path, drift: str) -> None:
+        """Composition preserves strict rename intent, executable mode and CAS."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path, kind="module", executable=True
+        )
+        root = artifact.candidate.workspace
+        origin, target = artifact.moves[0]
+        originals = {state.path: state for state in artifact.candidate.inputs}
+        composed = tm.ok(
+            FlextInfraCodemodSemanticApply.compose_candidate(
+                artifact,
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=(driver,),
+                    files=(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=target,
+                            before=originals[target],
+                            desired_content=tm.not_none(
+                                artifact.candidate.updates[target]
+                            ).encode(c.DEFAULT_ENCODING),
+                            desired_mode=artifact.candidate.modes[target],
+                            source_states=artifact.source_states,
+                            source_directories=artifact.source_directories,
+                            source_query_topology=artifact.source_query_topology,
+                        ),
+                    ),
+                ),
+            )
+        )
+        tm.ok(isinstance(composed, m.Infra.SemanticRenamePlan))
+        tm.that(composed.decisions, eq=artifact.decisions)
+        tm.that(composed.edits, eq=artifact.edits)
+        tm.that(composed.moves, eq=artifact.moves)
+        tm.that(composed.candidate.modes[target], eq=originals[origin].mode)
+        tm.ok(driver in composed.source_states)
+        if drift == "source":
+            origin.write_bytes(tm.not_none(originals[origin].content) + b"\n")
+        elif drift == "directory":
+            (origin.parent / "new_consumer.py").write_text(
+                "value = 1\n", encoding=c.DEFAULT_ENCODING
+            )
+        elif drift == "same-byte":
+            foreign = origin.with_suffix(".foreign")
+            foreign.write_bytes(tm.not_none(originals[origin].content))
+            foreign.chmod(tm.not_none(originals[origin].mode))
+            foreign.replace(origin)
+        observed = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in originals
+        )
+        published = FlextInfraCodemodSemanticApply.publish_candidate(root, composed)
+        if drift == "none":
+            tm.ok(published)
+            tm.fail(origin.exists())
+            tm.that(stat.S_IMODE(target.stat().st_mode), eq=originals[origin].mode)
+        else:
+            tm.fail(published)
+            tm.ok(u.Cli.atomic_verify_binary_file_states(observed))
+        tm.that(driver.path.read_bytes(), eq=driver.content)
+
     def test_automatic_nesting_rewrites_declared_consumers_without_syntax_fanout(
+        self,
         tmp_path: Path,
         mod_progress: p.Infra.ModProgress,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_nesting, tmp_path)
+
+    @staticmethod
+    def scenario_nesting(tmp_path: Path) -> None:
         """Rule authority selects the owner while external read scope stays bounded."""
+        mod_progress = FlextInfraCliModProgress()
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         receiver, receiver_package = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -326,14 +638,19 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), has="    class Payload:")
 
-    @staticmethod
     @pytest.mark.parametrize("failure", ["missing", "collision", "drift"])
     def test_mod_refuses_invalid_cross_root_campaign_before_source_publication(
+        self,
         tmp_path: Path,
         failure: str,
         mod_progress: p.Infra.ModProgress,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_invalid_campaign, tmp_path, failure)
+
+    @staticmethod
+    def scenario_invalid_campaign(tmp_path: Path, failure: str) -> None:
         """Missing scope, occupied native name and stale epochs stay unpublished."""
+        mod_progress = FlextInfraCliModProgress()
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
             tmp_path,
             kind="class",
@@ -384,11 +701,14 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
-    @staticmethod
     @pytest.mark.parametrize("drift", ["none", "driver", "source", "snapshot"])
     def test_candidate_publication_keeps_driver_separate_and_authenticated(
-        tmp_path: Path, drift: str
+        self, tmp_path: Path, drift: str
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_driver_identity, tmp_path, drift)
+
+    @staticmethod
+    def scenario_driver_identity(tmp_path: Path, drift: str) -> None:
         """Native runtime acceptance never replaces source or driver snapshots."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(tmp_path)
         candidate = artifact.candidate
@@ -453,12 +773,16 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(u.Cli.atomic_verify_binary_file_states(before))
         tm.that(driver.path.read_bytes(), eq=driver_bytes)
 
-    @staticmethod
     @pytest.mark.parametrize("kind", ["callable", "class", "module"])
     def test_authenticated_rename_apply_publishes_then_rejects_stale_repeat(
+        self,
         tmp_path: Path,
         kind: str,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_stale_repeat, tmp_path, kind)
+
+    @staticmethod
+    def scenario_stale_repeat(tmp_path: Path, kind: str) -> None:
         """The actual artifact consumer applies once and preserves its stale driver."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
             tmp_path, kind=kind
@@ -504,12 +828,16 @@ class TestsFlextInfraSemanticPublication:
             eq=["True"],
         )
 
-    @staticmethod
     @pytest.mark.parametrize("kind", ["class", "module"])
     def test_native_rename_artifact_preserves_originals_and_refuses_consumer_drift(
+        self,
         tmp_path: Path,
         kind: str,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_consumer_drift, tmp_path, kind)
+
+    @staticmethod
+    def scenario_consumer_drift(tmp_path: Path, kind: str) -> None:
         """A changed external epoch rejects the cut before the producer changes."""
         producer, package = u.Tests.create_lazy_init_workspace(tmp_path)
         consumer_root, consumer_package = u.Tests.create_lazy_init_workspace(
@@ -567,10 +895,14 @@ class TestsFlextInfraSemanticPublication:
         tm.that(consumer.read_bytes(), eq=changed)
         tm.fail(declaration.with_name("renamed.py").exists())
 
-    @staticmethod
     def test_joint_phases_reconcile_an_unchanged_initializer_later_owned_by_lazy_init(
+        self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_initializer_receipt, mod_workspace)
+
+    @staticmethod
+    def scenario_initializer_receipt(mod_workspace: Path) -> None:
         """Keep the historical initializer proof while consuming declared exports."""
         package = mod_workspace / "src" / mod_workspace.name
         declaration = package / "service.py"
@@ -633,8 +965,12 @@ class TestsFlextInfraSemanticPublication:
         self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_foreign_destination, mod_workspace)
+
+    @staticmethod
+    def scenario_foreign_destination(mod_workspace: Path) -> None:
         """An unchanged plan never authorizes a foreign inode with equal bytes."""
-        first, second = self._plans(mod_workspace)
+        first, second = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         unchanged = second.model_copy(
             update={"desired_content": second.before.content},
         )
@@ -661,8 +997,12 @@ class TestsFlextInfraSemanticPublication:
         self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_append_receipt, mod_workspace)
+
+    @staticmethod
+    def scenario_append_receipt(mod_workspace: Path) -> None:
         """A real accepted phase never authorizes a later foreign identical inode."""
-        first, second = self._plans(mod_workspace)
+        first, second = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         plans = tuple(
             m.Infra.CodegenFilePlan(
                 project=mod_workspace,
@@ -734,13 +1074,21 @@ class TestsFlextInfraSemanticPublication:
             eq=tm.not_none(foreign_state),
         )
 
-    @staticmethod
     @pytest.mark.parametrize("foreign_parent", [False, True])
     def test_artifact_publication_owns_declared_absent_parent_chain(
+        self,
         mod_workspace: Path,
         *,
         foreign_parent: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_absent_parents,
+            mod_workspace,
+            foreign_parent=foreign_parent,
+        )
+
+    @staticmethod
+    def scenario_absent_parents(mod_workspace: Path, *, foreign_parent: bool) -> None:
         """Create missing parents through the journal or refuse a foreign owner."""
         package = mod_workspace / "src" / mod_workspace.name
         target = package / "relocated" / "nested" / "service.py"
@@ -798,13 +1146,21 @@ class TestsFlextInfraSemanticPublication:
             tm.ok(u.Cli.process_succeeded(consumer.outcome))
             tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    @staticmethod
     @pytest.mark.parametrize("accepted", [False, True])
     def test_artifact_candidate_retires_old_package_before_acceptance(
+        self,
         mod_workspace: Path,
         *,
         accepted: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_retired_package,
+            mod_workspace,
+            accepted=accepted,
+        )
+
+    @staticmethod
+    def scenario_retired_package(mod_workspace: Path, *, accepted: bool) -> None:
         """Preview a package move without exposing retired sources or live effects."""
         package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
         previous = package / "previous" / "service.py"
@@ -888,8 +1244,12 @@ class TestsFlextInfraSemanticPublication:
         self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_preflight_commit, mod_workspace)
+
+    @staticmethod
+    def scenario_preflight_commit(mod_workspace: Path) -> None:
         """Original input checks precede effects; consumers see the desired bytes."""
-        plans = self._plans(mod_workspace)
+        plans = TestsFlextInfraSemanticPublication._plans(mod_workspace)
 
         def preflight() -> p.Result[bool]:
             return u.Cli.atomic_verify_binary_file_states(
@@ -928,8 +1288,12 @@ class TestsFlextInfraSemanticPublication:
         mod_workspace: Path,
         stage: str,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_scope_drift, mod_workspace, stage)
+
+    @staticmethod
+    def scenario_scope_drift(mod_workspace: Path, stage: str) -> None:
         """A foreign input introduced inside the transaction cannot be accepted."""
-        plans = self._plans(mod_workspace)
+        plans = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         scope = tuple(u.Infra.ast_grep_scan_targets(mod_workspace))
         catalog = mod_workspace / c.Infra.CODEMOD_CONFIG_RELPATH
         catalog.parent.mkdir(parents=True, exist_ok=True)
@@ -994,15 +1358,30 @@ class TestsFlextInfraSemanticPublication:
                 has="concurrent catalog edit",
             )
 
-    @staticmethod
     @pytest.mark.parametrize("unchanged", [False, True])
     def test_semantic_publication_retains_full_native_candidate_checker(
+        self,
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
         *,
         unchanged: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_native_checker,
+            tmp_path,
+            session_runtime.directory,
+            unchanged=unchanged,
+        )
+
+    @staticmethod
+    def scenario_native_checker(
+        tmp_path: Path,
+        runtime_directory: Path,
+        *,
+        unchanged: bool,
+    ) -> None:
         """Changed and unchanged semantic plans keep the full default checker."""
+        session_runtime = u.Tests.SessionRuntime(runtime_directory)
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         checkout = Path(__file__).resolve().parents[3]
         tm.ok(
@@ -1187,14 +1566,22 @@ class TestsFlextInfraSemanticPublication:
             tm.ok(rejected.exception is failure)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("rejected", [False, True])
     def test_unchanged_semantic_entry_validates_generated_public_consumer(
+        self,
         tmp_path: Path,
         *,
         rejected: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_unchanged_entry,
+            tmp_path,
+            rejected=rejected,
+        )
+
+    @staticmethod
+    def scenario_unchanged_entry(tmp_path: Path, *, rejected: bool) -> None:
         """The real semantic entry cannot accept stale exports without its gates."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)
@@ -1261,10 +1648,14 @@ class TestsFlextInfraSemanticPublication:
             tm.that(consumer.stderr, has="consumer rejected")
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @staticmethod
     def test_publication_refreshes_warm_normalized_export_route(
+        self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_warm_exports, mod_workspace)
+
+    @staticmethod
+    def scenario_warm_exports(mod_workspace: Path) -> None:
         """A moved declaration routes identically in warm and fresh consumers."""
         package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
         previous = package / "previous.py"
@@ -1401,13 +1792,21 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.that(initializer.read_bytes(), eq=published)
 
-    @staticmethod
     @pytest.mark.parametrize("accepted", [False, True])
     def test_projection_only_candidate_validates_real_public_consumer(
+        self,
         mod_workspace: Path,
         *,
         accepted: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_projection_consumer,
+            mod_workspace,
+            accepted=accepted,
+        )
+
+    @staticmethod
+    def scenario_projection_consumer(mod_workspace: Path, *, accepted: bool) -> None:
         """Generate declared exports before acceptance without changing authored WIP."""
         package = mod_workspace / "src" / mod_workspace.name
         declaration = package / "service.py"
@@ -1498,8 +1897,16 @@ class TestsFlextInfraSemanticPublication:
         *,
         raises: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_rejected_acceptance,
+            mod_workspace,
+            raises=raises,
+        )
+
+    @staticmethod
+    def scenario_rejected_acceptance(mod_workspace: Path, *, raises: bool) -> None:
         """The complete candidate is consumed before any original file changes."""
-        plans = self._plans(mod_workspace)
+        plans = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         failure = RuntimeError("semantic acceptance rejected")
 
         def reject(candidate_root: Path) -> p.Result[bool]:
@@ -1576,8 +1983,16 @@ class TestsFlextInfraSemanticPublication:
         *,
         linked: bool,
     ) -> None:
+        u.Tests.run_native_callable(
+            self.scenario_middle_identity,
+            mod_workspace,
+            linked=linked,
+        )
+
+    @staticmethod
+    def scenario_middle_identity(mod_workspace: Path, *, linked: bool) -> None:
         """Complete admission rejects stale identity before any file is changed."""
-        first, second, third = self._plans(
+        first, second, third = TestsFlextInfraSemanticPublication._plans(
             mod_workspace,
             ("first.py", "second.py", "third.py"),
         )
@@ -1598,10 +2013,14 @@ class TestsFlextInfraSemanticPublication:
         tm.that(third.path.read_bytes(), eq=third.before.content)
         tm.that(second.path.read_bytes(), eq=observed)
 
-    @staticmethod
     def test_semantic_publication_changes_authored_initializer(
+        self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_authored_initializer, mod_workspace)
+
+    @staticmethod
+    def scenario_authored_initializer(mod_workspace: Path) -> None:
         """An explicit semantic plan owns its authored initializer transformation."""
         package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
         initializer = package / c.Infra.INIT_PY
@@ -1645,8 +2064,12 @@ class TestsFlextInfraSemanticPublication:
         self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_generated_plan, mod_workspace)
+
+    @staticmethod
+    def scenario_generated_plan(mod_workspace: Path) -> None:
         """Test generated later plan rejects authored earlier plan."""
-        first, second = self._plans(mod_workspace)
+        first, second = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         u.Cli.atomic_write_text_file(
             second.path,
             f'{c.Infra.AUTOGEN_HEADERS[0]}\nvalue = "before"\n',
@@ -1669,8 +2092,12 @@ class TestsFlextInfraSemanticPublication:
         tm.that(first.path.read_bytes(), eq=first.before.content)
 
     def test_none_content_preserves_the_file(self, mod_workspace: Path) -> None:
+        u.Tests.run_native_callable(self.scenario_none_content, mod_workspace)
+
+    @staticmethod
+    def scenario_none_content(mod_workspace: Path) -> None:
         """Test none content preserves the file."""
-        first, _ = self._plans(mod_workspace)
+        first, _ = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         noop = first.model_copy(update={"desired_content": None, "desired_mode": None})
         tm.that(
             tm.ok(
@@ -1683,10 +2110,14 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.that(first.path.read_bytes(), eq=first.before.content)
 
-    @staticmethod
     def test_declared_template_input_is_not_its_generated_projection(
+        self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_template_input, mod_workspace)
+
+    @staticmethod
+    def scenario_template_input(mod_workspace: Path) -> None:
         """Test declared template input is not its generated projection."""
         template_root = mod_workspace / "templates"
         template_root.mkdir()
@@ -1752,8 +2183,12 @@ class TestsFlextInfraSemanticPublication:
         self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_formatter_rejection, mod_workspace)
+
+    @staticmethod
+    def scenario_formatter_rejection(mod_workspace: Path) -> None:
         """Test real formatter rejects later source before any publication."""
-        plans = self._plans(mod_workspace)
+        plans = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         edits = tuple(
             m.Infra.SemanticMigrationEdit(
                 file_path=plan.path,
@@ -1776,8 +2211,12 @@ class TestsFlextInfraSemanticPublication:
         self,
         mod_workspace: Path,
     ) -> None:
+        u.Tests.run_native_callable(self.scenario_normalized_caller, mod_workspace)
+
+    @staticmethod
+    def scenario_normalized_caller(mod_workspace: Path) -> None:
         """Test real semantic caller commits normalized source idempotently."""
-        first, _ = self._plans(mod_workspace)
+        first, _ = TestsFlextInfraSemanticPublication._plans(mod_workspace)
         edit = m.Infra.SemanticMigrationEdit(
             file_path=first.path,
             original_source=first.path.read_text(),

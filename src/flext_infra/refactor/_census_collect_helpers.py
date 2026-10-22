@@ -35,6 +35,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         @staticmethod
         def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
             """Resolve selected families through the composed object mixin."""
+            del family_names
             ...
 
         def _scan_module(
@@ -46,6 +47,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             findings: m.Infra.ScanFindings,
         ) -> None:
             """Scan through the composed census collection mixin."""
+            del rope, module, scan_config, findings
             ...
 
         def _assemble_report(
@@ -57,6 +59,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             scan_config: m.Infra.ScanConfig,
         ) -> m.Infra.WorkspaceReport:
             """Assemble through the composed census collection mixin."""
+            del rope, source_preview, findings, scan_config
             ...
 
     @staticmethod

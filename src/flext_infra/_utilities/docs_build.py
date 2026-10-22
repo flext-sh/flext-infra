@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -120,20 +121,28 @@ class FlextInfraUtilitiesDocsBuild:
             reason=f"build succeeded ({settings.name})",
             site_dir=site_dir.as_posix(),
             passed=True,
+            strict=True,
         )
 
     @staticmethod
     def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:
         """Validate and build through the typed public MkDocs SDK."""
         site_dir.parent.mkdir(parents=True, exist_ok=True)
-        config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
-            mkdocs.config,
-        ).load_config(
-            config_file=str(settings),
-            site_dir=str(site_dir),
-            strict=True,
-        )
-        mkdocs.commands.build.build(config_obj, dirty=False)
+        logger = logging.getLogger("mkdocs")
+        handler = logging.StreamHandler()
+        logger.addHandler(handler)
+        try:
+            config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
+                mkdocs.config,
+            ).load_config(
+                config_file=str(settings),
+                site_dir=str(site_dir),
+                strict=True,
+            )
+            mkdocs.commands.build.build(config_obj, dirty=False)
+        finally:
+            logger.removeHandler(handler)
+            handler.close()
 
     @staticmethod
     def docs_serve_mkdocs(
@@ -182,7 +191,7 @@ class FlextInfraUtilitiesDocsBuild:
         """Persist the standard build summary and markdown report."""
         _ = u.Cli.json_write(
             scope.report_dir / "build-summary.json",
-            {c.Infra.RK_SUMMARY: report.model_dump()},
+            {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
         ).unwrap()
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "build-report.md",

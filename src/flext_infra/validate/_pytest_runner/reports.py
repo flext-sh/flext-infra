@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -117,10 +118,15 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             report_dir / "run-context.json",
             context.model_dump_json(indent=2) + "\n",
         ).unwrap()
-        u.Cli.atomic_write_text_file(
-            report_dir.parent / "latest.txt",
-            f"{report_dir.name}\n",
-        ).unwrap()
+        latest = report_dir.parent / "latest.txt"
+        wait_seconds = (
+            c.Infra.JOURNAL_LEASE_WAIT_SECONDS
+            if context.deadline_monotonic is None
+            else max(0.0, context.deadline_monotonic - time.monotonic())
+        )
+        # This publication runs both before and inside the separate cache lease.
+        with u.Infra.codegen_transaction_lease(latest, wait_seconds=wait_seconds):
+            u.Cli.atomic_write_text_file(latest, f"{report_dir.name}\n").unwrap()
 
     @staticmethod
     def _bind_child_profile(report_dir: Path, profile: Path) -> None:

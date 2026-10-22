@@ -273,19 +273,18 @@ class FlextInfraConfigModelsTemplates:
         @m.computed_field
         @property
         def managed_tool_tables(self) -> t.VariadicTuple[str]:
-            """First ``tool.*`` segment of each declared conflict section.
+            """Complete tool-relative table paths declared by the file owner.
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
 
             """
-            return tuple(
-                dict.fromkeys(
-                    section.split(".", 1)[1].split(".", 1)[0]
-                    for section in self.conflict_sections
-                    if section.startswith("tool.") and "." in section
-                ),
-            )
+            tables: list[str] = []
+            for section in self.conflict_sections:
+                root, _separator, table = section.partition(".")
+                if root == c.Infra.TOOL and table and table not in tables:
+                    tables.append(table)
+            return tuple(tables)
 
     class GitignoreRenderContext(FlextInfraConfigModelsContract.ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""

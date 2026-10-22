@@ -167,6 +167,9 @@ class FlextInfraCodegenGenerationPathsMixin:
         Returns:
             The resulting ``str``.
 
+        Raises:
+            ValueError: When the import cannot resolve to an absolute owner.
+
         """
         if not local_package_root:
             return mod
@@ -232,7 +235,11 @@ class FlextInfraCodegenGenerationPathsMixin:
             raise ValueError(msg)
 
     @staticmethod
-    def _format_root_package_docstring(current_pkg: str, notice: str) -> str:
+    def _format_root_package_docstring(
+        current_pkg: str,
+        notice: str,
+        language: t.Infra.DocumentationLanguage,
+    ) -> str:
         """Format a generated package docstring carrying the copyright notice.
 
         Returns:
@@ -241,7 +248,12 @@ class FlextInfraCodegenGenerationPathsMixin:
         """
         label = current_pkg.replace("_", " ").replace("-", " ").strip()
         package_name = " ".join(word.capitalize() for word in label.split())
-        return f'"""{package_name} package.\n\n{notice}\n"""'
+        summary = c.Infra.DocumentationText.PACKAGE_DOCSTRING.localized(
+            language
+        ).format(
+            package_name=package_name,
+        )
+        return f'"""{summary}\n\n{notice}\n"""'
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationPathsMixin"]

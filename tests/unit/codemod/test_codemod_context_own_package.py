@@ -19,6 +19,356 @@ class TestsFlextInfraCodemodContextOwnPackage:
     """An import between a project's own namespaces never crosses an owner."""
 
     @staticmethod
+    @pytest.mark.parametrize("with_utilities", [False, True])
+    @pytest.mark.parametrize("constructor", ["native", "m", "t"])
+    def test_adapter_construction_excludes_only_native_layer_zero_calls(
+        mod_workspace: Path, *, with_utilities: bool, constructor: str
+    ) -> None:
+        """Both rules keep consumers, ancestor roles and facade aliases visible."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        imports = "from pydantic import TypeAdapter\n"
+        if constructor != "native":
+            imports += f"from flext_core import {constructor}\n"
+        if with_utilities:
+            imports += "from flext_core import u\n"
+        receiver = "" if constructor == "native" else f"{constructor}."
+        source = f"{imports}\nADAPTER = {receiver}TypeAdapter(int)\n"
+        paths = tuple(
+            package / relative
+            for relative in (
+                "_settings.py",
+                "_config.py",
+                "consumer.py",
+                "_models/_settings.py",
+                "_utilities/_config.py",
+            )
+        )
+        # A consumer imports its real package, so the native graph authenticates
+        # its initializer instead of treating these files as standalone modules.
+        original = {
+            path: (
+                f"import {namespace}\n"
+                f"import {namespace}._models\n"
+                f"import {namespace}._utilities\n\n{source}"
+                if path.name == "consumer.py"
+                else source
+            )
+            for path in paths
+        }
+        for path, content in original.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.parent != package:
+                (path.parent / c.Infra.INIT_PY).write_text(
+                    "", encoding=c.DEFAULT_ENCODING
+                )
+            path.write_text(content, encoding=c.DEFAULT_ENCODING)
+        rule_ids = (
+            "rewire-type-adapter-construction",
+            "rewire-type-adapter-construction-missing-u-import",
+        )
+        selected = tuple(
+            dict.fromkeys((
+                *(path.parent / c.Infra.INIT_PY for path in paths),
+                *paths,
+            ))
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=False,
+                selection=rule_ids,
+                source_files=selected,
+            )
+        )
+        expected = set(paths if constructor != "native" else paths[2:])
+        expected_id = rule_ids[0] if with_utilities else rule_ids[1]
+        tm.that(
+            {
+                (u.Infra.codemod_source_path(mod_workspace, row.file), row.rule_id)
+                for row in report.entries
+            },
+            eq={(path.resolve(), expected_id) for path in expected},
+        )
+        tm.that(report.findings, eq=len(expected))
+        for path in paths:
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original[path])
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "case",
+        [
+            "publisher",
+            "assigned-installer",
+            "static-consumer",
+            "runtime-root",
+            "wrong-module",
+            "wrong-attribute",
+            "absent-export",
+            "shadow-guard",
+            "shadow-installer",
+            "authored",
+            "competing-write",
+            "foreign-provider",
+            "non-alias",
+        ],
+    )
+    def test_only_canonical_static_publication_is_not_a_consumer(
+        tmp_path: Path,
+        *,
+        case: str,
+    ) -> None:
+        """Real generated publication is allowed; consumer lookalikes stay banned."""
+        mod_workspace, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        layout = tm.not_none(u.Infra.layout(mod_workspace))
+        namespace = layout.package_name
+        class_name = f"{layout.class_stem}Models"
+        u.Tests.write_lazy_init_namespace_module(
+            layout.package_dir / "models.py", class_name=class_name, alias="m"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(layout.init_path, ""))
+        tm.that(u.Tests.run_lazy_init(mod_workspace), eq=0)
+        generated = layout.init_path.read_text(encoding=c.DEFAULT_ENCODING)
+        original_import = f"from {namespace}.models import"
+        tm.that(generated, has=original_import)
+        target = layout.init_path
+        candidate = generated
+        edits = {
+            "assigned-installer": (
+                generated,
+                generated.replace(
+                    "\ninstall_lazy_exports(", "\n__getattr__ = install_lazy_exports("
+                ).rstrip()
+                + "[0]\n",
+            ),
+            "runtime-root": ("if TYPE_CHECKING:", "if True:"),
+            "wrong-attribute": ('"m": ".models"', '"m": (".models", "Different")'),
+            "shadow-guard": (
+                "if TYPE_CHECKING:",
+                "TYPE_CHECKING = True\n\nif TYPE_CHECKING:",
+            ),
+            "shadow-installer": (
+                "\ninstall_lazy_exports(",
+                "\ninstall_lazy_exports = print\n\ninstall_lazy_exports(",
+            ),
+        }
+        edit = edits.get(case)
+        if edit is not None:
+            candidate = candidate.replace(*edit)
+        match case:
+            case "static-consumer":
+                target = layout.package_dir / "consumer.py"
+            case "non-alias":
+                target = layout.package_dir / "consumer.py"
+                candidate = f"from {namespace}.models import {class_name}\n"
+            case "wrong-module":
+                u.Tests.write_lazy_init_namespace_module(
+                    layout.package_dir / "other.py", class_name="OtherModels", alias="m"
+                )
+                candidate = candidate.replace(
+                    original_import, f"from {namespace}.other import"
+                )
+            case "absent-export":
+                declaration = next(
+                    row
+                    for row in u.Infra.logical_statements(candidate)
+                    if row.text.startswith("__all__")
+                )
+                candidate = candidate.replace(declaration.text, "__all__ = ()", 1)
+            case "authored":
+                candidate = candidate.partition("\n")[2]
+            case "competing-write":
+                candidate += f"\nm = {class_name}\n"
+            case "foreign-provider":
+                candidate = candidate.replace(
+                    original_import,
+                    f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE}.models import",
+                )
+                document = mod_workspace / c.PYPROJECT_FILENAME
+                document.write_text(
+                    document.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                        f"{c.Infra.DEPENDENCIES} = []",
+                        f'{c.Infra.DEPENDENCIES} = ["flext-core"]',
+                    ),
+                    encoding=c.DEFAULT_ENCODING,
+                )
+            case _:
+                pass
+        if case not in {"publisher", "static-consumer"}:
+            tm.ok(candidate != generated)
+        tm.ok(u.Cli.atomic_write_text_file(target, candidate))
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=False,
+                selection=("ban-noncanonical-alias-import",),
+                source_files=(target,),
+            )
+        )
+        violations = tuple(
+            row
+            for row in report.entries
+            if u.Infra.codemod_source_path(mod_workspace, row.file) == target
+        )
+        tm.that(
+            len(violations),
+            eq=0 if case in {"publisher", "assigned-installer", "non-alias"} else 1,
+        )
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=candidate)
+
+    @staticmethod
+    def test_namespace_alias_context_conjunction_and_native_fixtures(
+        mod_workspace: Path,
+    ) -> None:
+        """The real catalog retains publication and layer-zero native contexts."""
+        plan = tm.ok(
+            u.Infra.codemod_rule_plan(
+                mod_workspace,
+                rule_ids=(
+                    "ban-noncanonical-alias-import",
+                    "rewire-type-adapter-construction",
+                    "rewire-type-adapter-construction-missing-u-import",
+                ),
+            )
+        )
+        rule = next(
+            item for item in plan.rules if item.id == "ban-noncanonical-alias-import"
+        )
+        tm.that(
+            tuple(
+                (condition.predicate, condition.holds, condition.of)
+                for condition in rule.context
+                if condition.variable == "NAME"
+            ),
+            eq=(
+                (c.Infra.CodemodContextPredicate.RUNTIME_ALIAS, True, "MODULE"),
+                (
+                    c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION,
+                    False,
+                    "MODULE",
+                ),
+            ),
+        )
+        for adapter in plan.rules:
+            if adapter.id == rule.id:
+                continue
+            tm.that(
+                tuple(
+                    (condition.variable, condition.predicate, condition.holds)
+                    for condition in adapter.context
+                ),
+                eq=(
+                    ("NATIVE", c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE, False),
+                ),
+            )
+        tm.ok(
+            FlextInfraModGateEngine.validate_rule_fixtures(
+                mod_workspace,
+                tuple(dict.fromkeys(item.resource for item in plan.rules)),
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("of", "arg", "as_"),
+        [
+            (None, (), ()),
+            ("MODULE", ("unexpected",), ()),
+            ("MODULE", (), ("unexpected",)),
+        ],
+    )
+    def test_static_publication_requires_only_a_provider_capture(
+        of: str | None,
+        arg: tuple[str, ...],
+        as_: tuple[str, ...],
+    ) -> None:
+        """The rule syntax cannot broaden the canonical publication proof."""
+        with pytest.raises(ValueError, match="requires of and accepts no arg or as"):
+            m.Infra.CodemodContextCondition(
+                variable="NAME",
+                predicate=c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION,
+                holds=False,
+                of=of,
+                arg=arg,
+                as_=as_,
+            )
+
+    def test_static_publication_rejects_a_different_native_epoch(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A genuine snapshot cannot authenticate a different native source graph."""
+        layout = tm.not_none(u.Infra.layout(mod_workspace))
+        source = layout.init_path
+        provider = f"{layout.package_name}.models"
+        text = f"from {provider} import m\n"
+        u.Tests.write_lazy_init_namespace_module(
+            layout.package_dir / "models.py",
+            class_name=f"{layout.class_stem}Models",
+            alias="m",
+        )
+        source.write_text(text, encoding=c.DEFAULT_ENCODING)
+        original = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),),
+        )
+        source.write_text(
+            text + "# A later source epoch.\n", encoding=c.DEFAULT_ENCODING
+        )
+        later = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),),
+        )
+        predicate = c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION
+        rule = self._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="NAME",
+                        predicate=predicate,
+                        holds=True,
+                        of="MODULE",
+                    ),
+                ),
+            },
+        )
+        alias_start = text.rindex("m\n")
+        module_start = text.index(provider)
+        captures: t.JsonMapping = {
+            "NAME": {
+                "text": "m",
+                "range": {"byteOffset": {"start": alias_start, "end": alias_start + 1}},
+            },
+            "MODULE": {
+                "text": provider,
+                "range": {
+                    "byteOffset": {
+                        "start": module_start,
+                        "end": module_start + len(provider),
+                    }
+                },
+            },
+        }
+        with (
+            u.Infra.codemod_binding_project(
+                mod_workspace, u.Infra.codemod_source_epoch(later)
+            ) as (project, _sources),
+            pytest.raises(ValueError, match="original native epoch"),
+        ):
+            u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    rule=rule,
+                    root=mod_workspace,
+                    file_path=source,
+                    captures=captures,
+                    snapshot=original,
+                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                ),
+                project=project,
+                sources=u.Infra.codemod_source_epoch(original).sources,
+            )
+
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("producer", [False, True])
     @pytest.mark.parametrize("module_import", [False, True])
@@ -345,11 +695,23 @@ class TestsFlextInfraCodemodContextOwnPackage:
             ("consumer.py", "from pydantic import BaseModel\n", True),
             ("ordinary.py", 'message = "from pydantic import BaseModel"\n', False),
         ):
+            content = (
+                f"import {package.name}\n"
+                f"import {package.name}._settings\n"
+                f"import {package.name}._models\n"
+                f"import {package.name}._utilities\n\n{source}"
+                if relative == "consumer.py"
+                else source
+            )
             path = package / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+            if path.parent != package:
+                (path.parent / c.Infra.INIT_PY).write_text(
+                    "", encoding=c.DEFAULT_ENCODING
+                )
+            path.write_text(content, encoding=c.DEFAULT_ENCODING)
             sources.append(path)
-            original[path] = source
+            original[path] = content
             if finding:
                 expected.add(path.resolve())
         report = tm.ok(
@@ -481,7 +843,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 tm.ok(
                     u.Cli.atomic_read_binary_file_state(package / name, required=True)
                 )
-                for name in contents
+                for name in (c.Infra.INIT_PY, *contents)
             ),
             modules,
         )
@@ -582,7 +944,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 tm.ok(
                     u.Cli.atomic_read_binary_file_state(package / name, required=True)
                 )
-                for name in contents
+                for name in (c.Infra.INIT_PY, *contents)
             ),
             modules,
         )
@@ -676,7 +1038,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 tm.ok(
                     u.Cli.atomic_read_binary_file_state(package / name, required=True)
                 )
-                for name in contents
+                for name in (c.Infra.INIT_PY, *contents)
             ),
             modules,
         )
@@ -881,17 +1243,24 @@ class TestsFlextInfraCodemodContextOwnPackage:
     @staticmethod
     @pytest.mark.parametrize("same_generic", [True, False])
     @pytest.mark.parametrize("bind_import", [True, False])
+    @pytest.mark.parametrize("package_owner", [True, False])
     def test_generic_specialization_requires_original_binding(
         mod_workspace: Path,
         binding_probe_rule: m.Infra.CodemodRule,
         *,
         same_generic: bool,
         bind_import: bool,
+        package_owner: bool,
     ) -> None:
         """A same-named alias of another generic is never a migration target."""
         namespace = u.Infra.project_package_name(mod_workspace)
-        module_name = f"{namespace}.generic_owner"
-        owner = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace / "generic_owner.py"
+        module_name = namespace if package_owner else f"{namespace}.generic_owner"
+        owner = (
+            mod_workspace
+            / c.Infra.DEFAULT_SRC_DIR
+            / namespace
+            / (c.Infra.INIT_PY if package_owner else "generic_owner.py")
+        )
         selected = "Value" if same_generic else "Other"
         owner.write_text(
             "class Types:\n"
@@ -922,7 +1291,18 @@ class TestsFlextInfraCodemodContextOwnPackage:
         )
         closed = u.Infra.codemod_binding_snapshot(
             mod_workspace,
-            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                for path in (
+                    (
+                        mod_workspace
+                        / c.Infra.DEFAULT_SRC_DIR
+                        / namespace
+                        / c.Infra.INIT_PY
+                    ),
+                    consumer,
+                )
+            ),
             (module_name,),
         )
         start = source.index("t.Value")
@@ -1043,7 +1423,19 @@ class TestsFlextInfraCodemodContextOwnPackage:
         facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
         closed = u.Infra.codemod_binding_snapshot(
             mod_workspace,
-            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                for path in dict.fromkeys((
+                    (
+                        mod_workspace
+                        / c.Infra.DEFAULT_SRC_DIR
+                        / u.Infra.project_package_name(mod_workspace)
+                        / c.Infra.INIT_PY
+                    ),
+                    owner.parent / c.Infra.INIT_PY,
+                    consumer,
+                ))
+            ),
             (module_name,),
         )
         epoch = u.Infra.codemod_source_epoch(closed)
@@ -1129,7 +1521,11 @@ class TestsFlextInfraCodemodContextOwnPackage:
             )
         changed = u.Infra.codemod_binding_snapshot(
             mod_workspace,
-            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(state.path, required=True))
+                for state in closed.states
+                if state.path.is_relative_to(mod_workspace)
+            ),
             (module_name,),
         )
         with u.Infra.codemod_binding_project(

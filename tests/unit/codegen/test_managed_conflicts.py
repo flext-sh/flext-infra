@@ -6,14 +6,118 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from tests import tm
 
 
 class TestsFlextInfraManagedConflictRecovery:
     """Prove conflict recovery remains bounded by the document SSOT."""
+
+    @staticmethod
+    def test_managed_tool_paths_retain_declared_subtree_boundaries() -> None:
+        """Classify the source segment without promoting ownership to its parent."""
+        spec = m.Infra.ManagedFileSpec(
+            path=Path(c.PYPROJECT_FILENAME),
+            owner="codegen",
+            policy="merge",
+            conflict_sections=(
+                "build-system",
+                "tools.unowned",
+                "toolkit.unowned",
+                "tool.vendor.generated",
+                "tool.other",
+                "tool.vendor.generated.child",
+                "tool.vendor.generated",
+            ),
+        )
+        tm.that(
+            spec.managed_tool_tables,
+            eq=("vendor.generated", "other", "vendor.generated.child"),
+        )
+        declared = tm.ok(u.Infra.pyproject_managed_file())
+        tm.that(
+            declared.managed_tool_tables,
+            eq=tuple(
+                dict.fromkeys(
+                    section.removeprefix("tool.")
+                    for section in declared.conflict_sections
+                    if section.startswith("tool.")
+                )
+            ),
+        )
+
+    @staticmethod
+    def test_regeneration_preserves_custom_siblings_of_a_managed_subtree() -> None:
+        """The real declaration keeps CUSTOM siblings beside the namespace table."""
+        owned = u.Cli.toml_dot_path(*c.Infra.CONFORM_NAMESPACE_TABLE)
+        parent = owned.rsplit(".", 1)[0]
+        custom = (
+            '[project]\nname = "fixture-project"\n'
+            f'[{parent}.custom]\nlabel = "Preservar"\n'
+        )
+        source = (
+            custom
+            + f'[{owned}]\nstale = "owner must replace this"\n'
+            + f"[{owned}.child]\nstale = true\n"
+        )
+        recovered = tm.ok(u.Infra.pyproject_regeneration_source(source))
+        tm.that(recovered, eq=custom)
+        tm.that(tm.ok(u.Infra.pyproject_regeneration_source(recovered)), eq=recovered)
+
+    @staticmethod
+    @pytest.mark.parametrize("render_owned", [True, False])
+    def test_overlay_preserves_inline_custom_and_replaces_entire_owned_subtree(
+        render_owned: bool,
+    ) -> None:
+        """Keep sibling data while replacing owned descendants and unknown keys."""
+        rendered = '[project]\nname = "fixture-project"\n'
+        if render_owned:
+            rendered += (
+                '[tool.vendor.generated]\nvalue = "new"\n'
+                '[tool.vendor.generated.child]\nvalue = "current"\n'
+            )
+        live = (
+            '[project]\nname = "fixture-project"\n'
+            '[tool.vendor]\nlabel = "custom parent"\n'
+            'generated = {value = "old", stale = true, child = {stale = true}}\n'
+            'custom = {label = "Preservar", nested = {enabled = true}}\n'
+            '[tool.vendor_extra]\nvalue = "unrelated"\n'
+        )
+        overlaid = tm.ok(
+            u.Infra.overlay_preserved(
+                rendered, live, managed_tool_tables=("vendor.generated",)
+            )
+        )
+        payload = tm.not_none(u.Cli.toml_mapping_from_text(overlaid))
+        vendor = tm.not_none(u.Cli.toml_mapping_path(payload, ("tool", "vendor")))
+        tm.that(vendor["label"], eq="custom parent")
+        tm.that(
+            vendor["custom"],
+            eq={"label": "Preservar", "nested": {"enabled": True}},
+        )
+        tm.that(
+            u.Cli.toml_mapping_path(payload, ("tool", "vendor_extra")),
+            eq={"value": "unrelated"},
+        )
+        if render_owned:
+            tm.that(
+                vendor["generated"],
+                eq={"value": "new", "child": {"value": "current"}},
+            )
+        else:
+            tm.that("generated" in vendor, eq=False)
+        tm.that(
+            tm.ok(
+                u.Infra.overlay_preserved(
+                    rendered, overlaid, managed_tool_tables=("vendor.generated",)
+                )
+            ),
+            eq=overlaid,
+        )
 
     @staticmethod
     @pytest.mark.parametrize("closing_quotes", [0, 1, 2])

@@ -1,0 +1,138 @@
+id: overload-unused-parameter-read
+snapshots:
+  ? |
+    from typing import TYPE_CHECKING, overload
+
+    class Collection:
+        @overload
+        @staticmethod
+        def map[T, U](
+            items: tuple[T, ...],
+            mapper,
+        ) -> tuple[U, ...]:
+            _ = items, mapper
+            raise NotImplementedError
+  : fixed: |
+      from typing import TYPE_CHECKING, overload
+
+      class Collection:
+          @overload
+          @staticmethod
+          def map[T, U](
+              items: tuple[T, ...],
+              mapper,
+          ) -> tuple[U, ...]:
+              raise NotImplementedError
+    labels:
+    - source: |-
+        _ = items, mapper
+                raise NotImplementedError
+      style: primary
+      start: 191
+      end: 242
+    - source: '@overload'
+      style: secondary
+      start: 66
+      end: 75
+    - source: |-
+        @overload
+            @staticmethod
+            def map[T, U](
+                items: tuple[T, ...],
+                mapper,
+            ) -> tuple[U, ...]:
+                _ = items, mapper
+                raise NotImplementedError
+      style: secondary
+      start: 66
+      end: 242
+    - source: |-
+        def map[T, U](
+                items: tuple[T, ...],
+                mapper,
+            ) -> tuple[U, ...]:
+                _ = items, mapper
+                raise NotImplementedError
+      style: secondary
+      start: 98
+      end: 242
+    - source: overload
+      style: secondary
+      start: 34
+      end: 42
+    - source: from typing import TYPE_CHECKING, overload
+      style: secondary
+      start: 0
+      end: 42
+    - source: |
+        from typing import TYPE_CHECKING, overload
+
+        class Collection:
+            @overload
+            @staticmethod
+            def map[T, U](
+                items: tuple[T, ...],
+                mapper,
+            ) -> tuple[U, ...]:
+                _ = items, mapper
+                raise NotImplementedError
+      style: secondary
+      start: 0
+      end: 243
+  ? |
+    from typing_extensions import overload
+
+    @overload
+    def declaration(value: int) -> int:
+        _ = (value,)
+        raise NotImplementedError
+  : fixed: |
+      from typing_extensions import overload
+
+      @overload
+      def declaration(value: int) -> int:
+          raise NotImplementedError
+    labels:
+    - source: |-
+        _ = (value,)
+            raise NotImplementedError
+      style: primary
+      start: 90
+      end: 132
+    - source: '@overload'
+      style: secondary
+      start: 40
+      end: 49
+    - source: |-
+        @overload
+        def declaration(value: int) -> int:
+            _ = (value,)
+            raise NotImplementedError
+      style: secondary
+      start: 40
+      end: 132
+    - source: |-
+        def declaration(value: int) -> int:
+            _ = (value,)
+            raise NotImplementedError
+      style: secondary
+      start: 50
+      end: 132
+    - source: overload
+      style: secondary
+      start: 30
+      end: 38
+    - source: from typing_extensions import overload
+      style: secondary
+      start: 0
+      end: 38
+    - source: |
+        from typing_extensions import overload
+
+        @overload
+        def declaration(value: int) -> int:
+            _ = (value,)
+            raise NotImplementedError
+      style: secondary
+      start: 0
+      end: 133

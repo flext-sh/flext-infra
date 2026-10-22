@@ -82,7 +82,7 @@ class FlextInfraPytestRunnerExecution(
                 msg = "test target has no declared project owner"
                 raise ValueError(msg)
             source_root = target_root
-        overrides: dict[str, str] = {}
+        overrides: t.MutableStrMapping = {}
         if not self.ci_context:
             inherited_path = u.Cli.process_env().get(
                 c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
@@ -189,7 +189,7 @@ class FlextInfraPytestRunnerExecution(
             complete=complete,
             execution_mode=execution_mode,
         )
-        if self.collection_command_prefix:
+        if self.profile_enabled or self.collection_command_prefix:
             sys.stdout.write(
                 f"pytest {artifact} profile: {manifest_path.with_suffix('.pstats')}\n",
             )
@@ -231,7 +231,7 @@ class FlextInfraPytestRunnerExecution(
             detail = log_text.strip()
             msg = f"testmon selection failed ({outcome.raw_return_code}): {detail}"
             raise RuntimeError(msg)
-        if self.collection_command_prefix:
+        if self.profile_enabled or self.collection_command_prefix:
             self._bind_child_profile(report_dir, manifest_path.with_suffix(".pstats"))
         if not owns_no_tests:
             self._collection_diagnostics(report_log)
@@ -534,31 +534,21 @@ class FlextInfraPytestRunnerExecution(
             not accounting_complete,
             not markdown_complete,
         ))
-        accepted_cache_hit = cache_hit and not rejected
-        # A file's empty phase retains pytest's native status so Make can
-        # distinguish it from execution and reject an aggregate zero-run.
-        accepted_zero_tests = accounting.owns_no_tests and not rejected
+        accepted_cache_hit = cache_hit and not rejected and not accounting.owns_no_tests
         selected_count = (
             None
             if accounting.inventory_count is None
             else accounting.inventory_count - accounting.deselected_count
         )
         final_exit = (
-            int(pytest.ExitCode.NO_TESTS_COLLECTED)
-            if accepted_zero_tests and self.target_file is not None
-            else 0
-            if accepted_cache_hit or accepted_zero_tests
-            else raw_return_code or int(rejected)
+            0
+            if accepted_cache_hit
+            else raw_return_code or int(rejected or accounting.owns_no_tests)
         )
         # A graceful stop at the suite stop instant publishes the executed
         # prefix and remains red: the unexecuted remainder is the next run's
         # testmon selection.
-        # A graceful stop at the suite stop instant publishes the executed
-        # prefix and remains red: the unexecuted remainder is the next run's
-        # testmon selection.
-        if accepted_zero_tests and self.target_file is not None:
-            result = "not_executed"
-        elif final_exit and (
+        if final_exit and (
             selected_count is not None
             and accounting.executed_count < selected_count
             and not (diagnostics.failed_count or diagnostics.error_count)
@@ -719,10 +709,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         incremental_exit = self.execute().unwrap()
-        if incremental_exit not in {
-            pytest.ExitCode.OK,
-            pytest.ExitCode.NO_TESTS_COLLECTED,
-        }:
+        if incremental_exit != pytest.ExitCode.OK:
             return r.ok(incremental_exit)
         return self._execute_testmon(complete=True)
 
@@ -772,6 +759,17 @@ class FlextInfraPytestRunnerExecution(
         # Selection, execution, and integrity inspection share one database.
         # Serialize competing worktrees within this invocation's typed deadline.
         deadline = self._process_deadline()
+        report_dir = self._report_directory()
+        context = m.Infra.PytestRunContext(
+            execution_mode=execution_mode,
+            testmon_db=self.testmon_db,
+            testmon_lease_acquired=False,
+            deadline_monotonic=(
+                None if deadline is None else deadline.expires_at_monotonic
+            ),
+            report_directory=report_dir,
+        )
+        self._write_run_context(report_dir, context)
         wait_seconds = (
             c.Infra.JOURNAL_LEASE_WAIT_SECONDS
             if deadline is None
@@ -789,6 +787,10 @@ class FlextInfraPytestRunnerExecution(
             self.testmon_db,
             wait_seconds=wait_seconds,
         ):
+            self._write_run_context(
+                report_dir,
+                context.model_copy(update={"testmon_lease_acquired": True}),
+            )
             sys.stderr.write(
                 "pytest cache lease: acquired "
                 f"after {time.monotonic() - lease_started:.3f}s\n",
@@ -796,6 +798,7 @@ class FlextInfraPytestRunnerExecution(
             result = self._execute_testmon_leased(
                 complete=complete,
                 execution_mode=execution_mode,
+                report_dir=report_dir,
             )
         # Only the parent publishes, after SQLite closure and lease release.
         self._publish_cache_output()
@@ -833,6 +836,7 @@ class FlextInfraPytestRunnerExecution(
         *,
         complete: bool,
         execution_mode: c.Infra.PytestExecutionMode,
+        report_dir: Path,
     ) -> p.Result[int]:
         """Run one testmon phase while holding the database lease.
 
@@ -845,19 +849,6 @@ class FlextInfraPytestRunnerExecution(
                 cache.
 
         """
-        report_dir = self._report_directory()
-        deadline = self._process_deadline()
-        self._write_run_context(
-            report_dir,
-            m.Infra.PytestRunContext(
-                execution_mode=execution_mode,
-                testmon_db=self.testmon_db,
-                deadline_monotonic=(
-                    None if deadline is None else deadline.expires_at_monotonic
-                ),
-                report_directory=report_dir,
-            ),
-        )
         pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
         cache_restored = False
         if pre_digest is not None:
@@ -919,6 +910,7 @@ class FlextInfraPytestRunnerExecution(
             and outcome.forwarded_signal is None
             and not selection
             and cache_restored
+            and not selection_plan.owns_no_tests
         )
         # A zero-test project (empty suite by declared design) completes its
         # lifecycle with pytest's NO_TESTS_COLLECTED: the run must reach the
@@ -1014,6 +1006,7 @@ class FlextInfraPytestRunnerExecution(
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
+                testmon_lease_acquired=None,
                 deadline_monotonic=(
                     None if deadline is None else deadline.expires_at_monotonic
                 ),

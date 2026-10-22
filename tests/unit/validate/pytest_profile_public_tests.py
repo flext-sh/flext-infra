@@ -10,17 +10,85 @@ import os
 import pstats
 import signal
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from flext_infra.validate import FlextInfraCProfileReport, FlextInfraPytestRunner
+from flext_infra import config, validate
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
+
+    @staticmethod
+    @pytest.mark.parametrize("handler", ["default", "raise", "return"])
+    @pytest.mark.parametrize("event", ["tempfile.mkstemp", "marshal.dumps"])
+    def test_sigterm_during_publication_never_reenters_snapshot(
+        tmp_path: Path, handler: str, event: str
+    ) -> None:
+        """A real synchronous signal delegates without another staging or snapshot."""
+        output = tmp_path / "current.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, pstats, signal\n"
+            "output = Path(sys.argv[1])\n"
+            "sum(range(10))\n"
+            "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "before = output.read_bytes()\n"
+            "profile.enable()\n"
+            "stages = []\n"
+            "snapshots = []\n"
+            "def observe(frame, name, argument):\n"
+            "    if (name == 'c_call'\n"
+            "            and getattr(argument, '__name__', '') == 'getstats'):\n"
+            "        snapshots.append(name)\n"
+            "def native(signum, frame):\n"
+            "    print('native-handler', flush=True)\n"
+            + (
+                "    raise RuntimeError('first native signal failure')\n"
+                if handler == "raise"
+                else "    return\n"
+            )
+            + (
+                "signal.signal(signal.SIGTERM, native)\n"
+                if handler != "default"
+                else ""
+            )
+            + "clock.FlextInfraPytestClock.register_signal_checkpoint(\n"
+            "    profile, output)\n"
+            "def interrupt(name, arguments):\n"
+            "    if name == 'tempfile.mkstemp':\n"
+            "        stages.append(name)\n"
+            f"    if name == {event!r}:\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            "sys.addaudithook(interrupt)\n"
+            "sys.setprofile(observe)\n"
+            "try:\n"
+            "    clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "except RuntimeError as failure:\n"
+            "    assert str(failure) == 'first native signal failure'\n"
+            "    assert output.read_bytes() == before\n"
+            "else:\n"
+            "    assert pstats.Stats(str(output)).get_stats_profile().func_profiles\n"
+            "finally:\n"
+            "    sys.setprofile(None)\n"
+            "assert len(stages) == 1, stages\n"
+            "assert len(snapshots) == "
+            f"{int(event == 'marshal.dumps' or handler == 'return')}, snapshots\n"
+            "assert not tuple(output.parent.glob('.current.pstats.*.tmp'))\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw((sys.executable, "-c", script, str(output)), cwd=tmp_path)
+        )
+        tm.that(
+            result.outcome.raw_return_code,
+            eq=-signal.SIGTERM if handler == "default" else 0,
+            msg=result.stdout + result.stderr,
+        )
+        tm.fail(result.outcome.timed_out)
+        if handler != "default":
+            tm.that(result.stdout.count("native-handler"), eq=1)
 
     @staticmethod
     def test_interrupted_publication_preserves_the_previous_readable_profile(
@@ -63,6 +131,80 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
+    def test_startup_transfers_finalization_to_launcher(tmp_path: Path) -> None:
+        """Startup and launcher share one profiler and publish the elected output."""
+        output = tmp_path / "suite.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import atexit, os, pstats\n"
+            "stages = []\n"
+            "def observe(name, arguments):\n"
+            "    if name == 'tempfile.mkstemp':\n"
+            "        stages.append(arguments[0])\n"
+            "sys.addaudithook(observe)\n"
+            "def finished():\n"
+            "    assert len(stages) == 1, stages\n"
+            "    assert pstats.Stats(sys.argv[0]).get_stats_profile().func_profiles\n"
+            "    print('single-finalization', flush=True)\n"
+            "atexit.register(finished)\n"
+            f"os.environ[{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}] = (\n"
+            "    sys.argv[2])\n"
+            "child.FlextInfraPytestProfileChild.startup(\n"
+            "    sys.argv[2] + '/sitecustomize.py',\n"
+            f"    {c.Infra.PYTEST_PROFILE_CLOCK_MODULE!r},\n"
+            f"    {c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r})\n"
+            "assert child.FlextInfraPytestProfileChild.bootstrap(\n"
+            f"    {c.Infra.PYTEST_PROFILE_CLOCK_MODULE!r})[1] is profile\n"
+            "sys.argv = [sys.argv[1], sys.argv[1], '--version']\n"
+            + c.Infra.PYTEST_PROFILE_LAUNCHER
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output), str(tmp_path)),
+                cwd=tmp_path,
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(result.outcome), msg=result.stderr)
+        tm.that(result.stdout, has="single-finalization")
+        tm.that(tuple(tmp_path.glob("*.pstats")), eq=(output,))
+
+    @staticmethod
+    @pytest.mark.parametrize("cause", ["exception", "exit", "success"])
+    def test_launcher_publication_failure_preserves_first_cause(
+        tmp_path: Path, cause: str
+    ) -> None:
+        """A failed final artifact cannot hide a native failure or accept success."""
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "def fail_pytest(name, arguments):\n"
+            "    if (name == 'exec'\n"
+            "            and arguments[0].co_filename.endswith(\n"
+            "                '/pytest/__main__.py')):\n"
+            + (
+                "        raise RuntimeError('original pytest failure')\n"
+                if cause == "exception"
+                else f"        raise SystemExit({7 if cause == 'exit' else 0})\n"
+            )
+            + "sys.addaudithook(fail_pytest)\n"
+            + c.Infra.PYTEST_PROFILE_LAUNCHER
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    script,
+                    str(tmp_path / "missing" / "suite.pstats"),
+                ),
+                cwd=tmp_path,
+            )
+        )
+        tm.that(result.outcome.raw_return_code, eq=7 if cause == "exit" else 1)
+        tm.fail(result.outcome.timed_out)
+        tm.that(result.stderr, has="FileNotFoundError")
+        if cause == "exception":
+            tm.that(result.stderr, has="RuntimeError: original pytest failure")
+            tm.that(result.stderr, has="profile publication failed")
+
+    @staticmethod
     def test_immutable_profile_is_linked_before_public_replacement(
         tmp_path: Path,
     ) -> None:
@@ -95,6 +237,7 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
+    @pytest.mark.slow
     @pytest.mark.parametrize("interruption", ["signal", "timeout"])
     def test_native_termination_keeps_a_readable_profile_checkpoint(
         tmp_path: Path,
@@ -111,29 +254,48 @@ class TestsFlextInfraPytestProfile:
         probe.write_text(
             "import os\nimport signal\nimport time\n"
             "def interrupt_import():\n"
+            "    print('profile-checkpoint-ready', flush=True)\n"
             f"    {action}\n"
             "interrupt_import()\n",
             encoding=c.DEFAULT_ENCODING,
         )
         output = tmp_path / "terminated.pstats"
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    c.Infra.PYTEST_PROFILE_LAUNCHER,
-                    str(output),
-                    "-p",
-                    probe.stem,
-                    "--collect-only",
-                ),
-                cwd=tmp_path,
-                timeout=deadline,
-            ),
+        command = (
+            sys.executable,
+            "-c",
+            c.Infra.PYTEST_PROFILE_LAUNCHER,
+            str(output),
+            "-p",
+            probe.stem,
+            "--collect-only",
         )
-        tm.that(result.outcome.raw_return_code, eq=-signal.SIGTERM)
-        tm.that(result.outcome.timed_out, eq=interruption == "timeout")
-        tm.that(result.outcome.forwarded_signal, eq=None)
+        if interruption == "timeout":
+            process = tm.ok(u.Cli.process_start(command, cwd=tmp_path))
+            try:
+                ready = tm.ok(
+                    process.stdout_read_until(
+                        b"profile-checkpoint-ready\n",
+                        timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds,
+                    )
+                )
+                tm.that(
+                    ready.decode(c.DEFAULT_ENCODING), has="profile-checkpoint-ready"
+                )
+                expired = process.wait(timeout=deadline)
+                tm.fail(expired)
+                tm.that(expired.error, has=f"timeout {deadline}s")
+                tm.ok(process.terminate())
+                tm.that(tm.ok(process.wait(timeout=deadline)), eq=-signal.SIGTERM)
+            finally:
+                if process.poll() is None:
+                    tm.ok(process.kill())
+                    tm.ok(process.wait(timeout=deadline))
+        else:
+            result = tm.ok(u.Cli.run_raw(command, cwd=tmp_path, timeout=deadline))
+            tm.that(result.outcome.raw_return_code, eq=-signal.SIGTERM)
+            tm.fail(result.outcome.timed_out)
+            tm.that(result.outcome.forwarded_signal, eq=None)
+            tm.that(result.stdout, has="profile-checkpoint-ready")
         measured = pstats.Stats(str(output)).get_stats_profile().func_profiles
         tm.that(
             any(Path(function.file_name) == probe for function in measured.values()),
@@ -144,6 +306,7 @@ class TestsFlextInfraPytestProfile:
     @pytest.mark.slow
     def test_native_profiler_owns_workload_after_startup_handoff(
         cached_runner_project: Path,
+        record_property: Callable[[str, str], None],
     ) -> None:
         """Native cProfile and automatic startup publish distinct real segments."""
         cache = config.Infra.codegen.make.testmon_cache
@@ -208,6 +371,51 @@ class TestsFlextInfraPytestProfile:
             "workload" in pstats.Stats(str(native)).get_stats_profile().func_profiles,
             eq=True,
         )
+        report = output.with_suffix(".txt")
+        tm.ok(
+            validate.FlextInfraCProfileReport(
+                repository_root=cached_runner_project,
+                profile=output,
+                output=report,
+                sort=policy.profile_sort,
+                limit=policy.profile_limit,
+                run_receipt=output.with_suffix(".pstats.json"),
+            ).execute()
+        )
+        measured = pstats.Stats(str(output)).get_stats_profile()
+        context = m.Infra.PytestRunContext.model_validate_json(
+            output.with_suffix(".pstats.json").read_bytes()
+        )
+        directory = tm.not_none(context.report_directory)
+        lifecycle: list[tuple[str, float, tuple[tuple[str, float], ...]]] = []
+        for artifact in (output, *sorted(directory.glob("*.pstats"))):
+            segment = pstats.Stats(str(artifact)).get_stats_profile()
+            lifecycle.append((
+                artifact.name,
+                round(segment.total_tt, 3),
+                tuple(
+                    (name, round(function.cumtime, 3))
+                    for name, function in sorted(
+                        segment.func_profiles.items(),
+                        key=lambda item: item[1].cumtime,
+                        reverse=True,
+                    )[:3]
+                ),
+            ))
+        record_property("profile_lifecycle", repr(lifecycle))
+        hotspots = tuple(
+            (name, function.ncalls, round(function.cumtime, 3))
+            for name, function in measured.func_profiles.items()
+            if name
+            in {
+                "_config_testmon_digest",
+                "snapshot_config_sources",
+                "_validated_config_roots",
+                "__class_getitem__",
+                "create_generic_submodel",
+            }
+        )
+        record_property("parent_profile_hotspots", repr(hotspots))
 
     @staticmethod
     @pytest.mark.slow
@@ -255,7 +463,7 @@ class TestsFlextInfraPytestProfile:
             output = directory / "interrupted-profile.txt"
             tm.that(
                 tm.ok(
-                    FlextInfraCProfileReport(
+                    validate.FlextInfraCProfileReport(
                         repository_root=cached_runner_project,
                         profile=profile,
                         run_receipt=receipt,
@@ -306,8 +514,8 @@ class TestsFlextInfraPytestProfile:
             + "os.environ['PROFILE_PARENT_PID'] = str(os.getpid())\n"
             "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
             "def interrupt(event, arguments):\n"
-            "    if event == 'os.rename' and "
-            "str(arguments[1]).endswith('/command.txt'):\n"
+            "    if event in {'os.rename', 'os.link'} and "
+            "Path(arguments[1]).name == 'command.txt':\n"
             "        os.kill(os.getpid(), signal.SIGTERM)\n"
             + ("sys.addaudithook(interrupt)\n" if phase == "between_children" else "")
             + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
@@ -316,7 +524,7 @@ class TestsFlextInfraPytestProfile:
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(output)),
                 cwd=cached_runner_project,
-                timeout=policy.slow_timeout_seconds,
+                timeout=policy.run_timeout_seconds,
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
@@ -346,7 +554,7 @@ class TestsFlextInfraPytestProfile:
         receipt = output.with_suffix(".pstats.json")
         context = m.Infra.PytestRunContext.model_validate_json(receipt.read_bytes())
         tm.that(context.profile_sha256, eq=u.Cli.sha256_bytes(output.read_bytes()))
-        tm.ok(pstats.Stats(str(output)).get_stats_profile().func_profiles)
+        tm.that(pstats.Stats(str(output)).get_stats_profile().func_profiles, truth=True)
         contexts = tuple(
             (cached_runner_project / runner.reports).glob("*/run-context.json")
         )
@@ -363,7 +571,7 @@ class TestsFlextInfraPytestProfile:
             with pytest.raises(ProcessLookupError):
                 os.kill(int(child_pid.read_text(encoding=c.DEFAULT_ENCODING)), 0)
             tm.ok(
-                FlextInfraCProfileReport(
+                validate.FlextInfraCProfileReport(
                     repository_root=cached_runner_project,
                     profile=output,
                     run_receipt=receipt,
@@ -413,8 +621,8 @@ class TestsFlextInfraPytestProfile:
             + c.Infra.PYTEST_PROFILE_BOOTSTRAP
             + "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
             "def close_diagnostic(event, arguments):\n"
-            "    if event == 'os.rename' and str(arguments[1]) == "
-            f"{str(output.with_suffix('.pstats.json'))!r}:\n"
+            "    if event in {'os.rename', 'os.link'} and Path(arguments[1]).name == "
+            f"{output.with_suffix('.pstats.json').name!r}:\n"
             "        sys.stderr.close()\n"
             + (
                 "sys.addaudithook(close_diagnostic)\n"
@@ -432,7 +640,7 @@ class TestsFlextInfraPytestProfile:
                     str(output),
                 ),
                 cwd=cached_runner_project,
-                timeout=policy.slow_timeout_seconds,
+                timeout=policy.run_timeout_seconds,
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
@@ -512,7 +720,7 @@ class TestsFlextInfraPytestProfile:
         tm.that(command, lacks="test_unselected.py")
         tm.ok(runner.testmon_db.is_file())
         stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
-        tm.ok(FlextInfraPytestRunner.__name__ in stats)
+        tm.ok(validate.FlextInfraPytestRunner.__name__ in stats)
         tm.ok("FlextInfraPytestProfile" in stats)
         processes = (
             output.parent / config.Infra.tooling.tools.pytest.profile_process_directory
@@ -623,7 +831,7 @@ class TestsFlextInfraPytestProfile:
                 any("_pytest" in function.file_name for function in functions.values()),
                 eq=True,
             )
-        report = FlextInfraCProfileReport(
+        report = validate.FlextInfraCProfileReport(
             repository_root=cached_runner_project,
             profile=output,
             output=output.with_suffix(".txt"),
@@ -766,9 +974,10 @@ class TestsFlextInfraPytestProfile:
         # The class body runs on import, unlike its methods: this proves the
         # public runner was first imported while the parent profiler was active.
         tm.that(
-            FlextInfraPytestRunner.__name__ in parent_stats.func_profiles, truth=True
+            validate.FlextInfraPytestRunner.__name__ in parent_stats.func_profiles,
+            truth=True,
         )
-        report = FlextInfraCProfileReport(
+        report = validate.FlextInfraCProfileReport(
             repository_root=project,
             profile=parent_profile,
             output=parent_profile.with_suffix(".txt"),
@@ -790,7 +999,8 @@ class TestsFlextInfraPytestProfile:
         # The profiled incremental operation is bounded, so its receipt names
         # a deadline.
         deadline = receipt.deadline_monotonic
-        tm.that(deadline, none=False)
+        if deadline is None:
+            pytest.fail("bounded selection receipt did not record its deadline")
         receipt_path.write_text(
             receipt.model_copy(
                 update={"deadline_monotonic": deadline + 1},

@@ -356,8 +356,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 paths.update(
                     project_root / directory / c.PYPROJECT_FILENAME
                     for directory in (
-                        plan.make_spec.uv_resolution.local_directory,
-                        plan.make_spec.uv_resolution.standalone_directory,
+                        config.Infra.codegen.make.uv_resolution.local_directory,
+                        config.Infra.codegen.make.uv_resolution.standalone_directory,
                     )
                 )
             artifacts = tuple(

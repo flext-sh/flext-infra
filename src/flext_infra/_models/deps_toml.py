@@ -32,37 +32,15 @@ class FlextInfraModelsDepsToml:
                 m.Field(description="Declared distribution identity"),
             ]
             dependencies: Annotated[
-                t.StrTuple,
+                t.StrSequence,
                 m.Field(description="Production requirement lines"),
             ]
             optional_dependencies: Annotated[
-                t.MappingKV[str, t.StrTuple],
+                t.MappingKV[str, t.StrSequence],
                 m.Field(description="Every declared optional requirement group"),
             ]
 
-            @m.field_validator(
-                "dependencies",
-                "optional_dependencies",
-                mode="before",
-            )
-            @classmethod
-            def toml_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
-                """Freeze TOML arrays before validating their strict element types.
-
-                Returns:
-                    The same declarations with array containers converted to tuples.
-
-                """
-                if isinstance(value, list):
-                    return tuple(value)
-                if isinstance(value, dict):
-                    return {
-                        name: tuple(entries) if isinstance(entries, list) else entries
-                        for name, entries in value.items()
-                    }
-                return value
-
-        class SetOp(m.ContractModel):
+        class SetOp(m.ContractModel, str_strip_whitespace=False):
             """Set one TOML key to one JSON-compatible value."""
 
             kind: Annotated[
@@ -72,7 +50,7 @@ class FlextInfraModelsDepsToml:
             key: str = m.Field(description="TOML key name")
             value: t.JsonValue = m.Field(description="JSON-compatible value")
 
-        class ListOp(m.ContractModel):
+        class ListOp(m.ContractModel, str_strip_whitespace=False):
             """Set or merge one TOML string list."""
 
             kind: Annotated[

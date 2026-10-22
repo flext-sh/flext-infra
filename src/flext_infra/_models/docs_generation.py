@@ -12,9 +12,12 @@ from typing import Annotated, Literal, Self
 from flext_cli import m as cli_m
 from flext_core import m
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
-from flext_infra._models._config import FlextInfraConfigModelsWorkspace
+from flext_infra._models._config import (
+    FlextInfraConfigModelsArtifact,
+    FlextInfraConfigModelsWorkspace,
+)
 
 
 class FlextInfraModelsDocsGeneration:
@@ -37,6 +40,10 @@ class FlextInfraModelsDocsGeneration:
             str,
             m.Field(description="Primary package name for scope"),
         ] = ""
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
+
         governance_source: (
             FlextInfraConfigModelsWorkspace.CodegenBootstrapSource | None
         ) = m.Field(
@@ -59,6 +66,15 @@ class FlextInfraModelsDocsGeneration:
                 ),
             ),
         ] = None
+
+        def documentation_text(self, message: c.Infra.DocumentationText) -> str:
+            """Resolve one finite presentation message without changing source prose.
+
+            Returns:
+                The project-local message in its selected language.
+
+            """
+            return message.localized(self.documentation_language)
 
         @m.field_validator("path", "report_dir")
         @classmethod
@@ -170,8 +186,11 @@ class FlextInfraModelsDocsGeneration:
         ]
         source_states: Annotated[
             t.VariadicTuple[cli_m.Cli.AtomicFileState],
-            m.Field(min_length=1, description="Exact sources consumed by rendering"),
+            m.Field(min_length=1, description="Authenticated physical render inputs"),
         ]
+        metadata_files: t.VariadicTuple[
+            FlextInfraConfigModelsArtifact.CodegenFilePlan
+        ] = m.Field(default=(), description="Owned metadata published with this render")
         source_roots: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Exact roots elected for this batch source topology"),
@@ -213,6 +232,14 @@ class FlextInfraModelsDocsGeneration:
                 for item in self.scopes
                 for artifact in item.artifacts
             )
+            metadata_paths = tuple(plan.path for plan in self.metadata_files)
+            allowed_metadata = {
+                item.scope.path / c.PYPROJECT_FILENAME for item in self.scopes
+            }
+            if any(path not in allowed_metadata for path in metadata_paths):
+                msg = "docs metadata target is outside its selected scope"
+                raise ValueError(msg)
+            destinations = (*destinations, *metadata_paths)
             if len(set(destinations)) != len(destinations):
                 msg = "docs generation destinations must be unique"
                 raise ValueError(msg)

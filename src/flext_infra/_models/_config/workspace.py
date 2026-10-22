@@ -18,7 +18,7 @@ from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 
 
 class FlextInfraConfigModelsWorkspace:
@@ -54,7 +54,7 @@ class FlextInfraConfigModelsWorkspace:
             ),
         ]
         layer: Annotated[
-            FlextInfraConfigVocabulary.MemberArchitectureLayer | None,
+            FlextInfraConstantsConfig.MemberArchitectureLayer | None,
             m.Field(
                 description=(
                     "Declared architecture layer (domain or platform); "
@@ -212,17 +212,17 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Repository enables automatic CI matrix execution"),
         ] = False
         codegen: Annotated[
-            FlextInfraConfigVocabulary.CodegenKind,
+            FlextInfraConstantsConfig.CodegenKind,
             m.Field(description="Own canonical generation policy"),
-        ] = FlextInfraConfigVocabulary.CodegenKind.CONFORM
+        ] = FlextInfraConstantsConfig.CodegenKind.CONFORM
         kind: Annotated[
-            FlextInfraConfigVocabulary.ProjectKind,
+            FlextInfraConstantsConfig.ProjectKind,
             m.Field(description="Own governance profile and architecture boundary"),
-        ] = FlextInfraConfigVocabulary.ProjectKind.INTERNAL_FLEXT
+        ] = FlextInfraConstantsConfig.ProjectKind.INTERNAL_FLEXT
         state: Annotated[
-            FlextInfraConfigVocabulary.RepositoryState,
+            FlextInfraConstantsConfig.RepositoryState,
             m.Field(description="Own lifecycle participation policy"),
-        ] = FlextInfraConfigVocabulary.RepositoryState.ACTIVE
+        ] = FlextInfraConstantsConfig.RepositoryState.ACTIVE
         read_only: Annotated[
             bool,
             m.Field(description="Repository rejects generated mutations"),
@@ -264,7 +264,7 @@ class FlextInfraConfigModelsWorkspace:
 
         path: Annotated[Path, m.Field(description="Relative candidate worktree path")]
         what: Annotated[
-            FlextInfraConfigVocabulary.CodegenConformSurface,
+            FlextInfraConstantsConfig.CodegenConformSurface,
             m.Field(description="Canonical generator surface for this target"),
         ]
 
@@ -702,7 +702,7 @@ class FlextInfraConfigModelsWorkspace:
             t.NonEmptyStr, m.Field(description="Project's governing checkout identity")
         ]
         project_profile: Annotated[
-            FlextInfraConfigVocabulary.ProjectKind | Literal["unclassified"],
+            FlextInfraConstantsConfig.ProjectKind | Literal["unclassified"],
             m.Field(description="Host's declared governance and architecture profile"),
         ]
         upstream_project_id: Annotated[

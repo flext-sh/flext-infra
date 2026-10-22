@@ -37,6 +37,9 @@ class FlextInfraRopeWorkspace(
     _owns_rope_project: bool = m.PrivateAttr(default=True)
     _index_receipt: m.Infra.CodegenPhaseAnalysis | None = m.PrivateAttr(default=None)
     _reused_index: bool = m.PrivateAttr(default=False)
+    _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
+        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
+    )
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -257,6 +260,7 @@ class FlextInfraRopeWorkspace(
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
+        self._query_receipts.clear()
         if not preserve_indexes:
             self._workspace_index = None
             self._codegen_projects = None
@@ -326,30 +330,41 @@ class FlextInfraRopeWorkspace(
         """
         resolved_dir = package_dir.resolve()
         cache_key = str(resolved_dir)
-        cached = self._package_context_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        package_entry = self.package(resolved_dir)
-        init_path = resolved_dir / c.Infra.INIT_PY
-        current_pkg = package_entry.package_name if package_entry is not None else ""
-        init_resource = self.resource(init_path)
-        generated_init = init_resource is not None and init_resource.read().startswith(
-            c.Infra.AUTOGEN_HEADERS,
-        )
-        context = m.Infra.LazyInitPackageContext(
-            pkg_dir=resolved_dir,
-            init_path=init_path,
-            current_pkg=current_pkg,
-            surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
-            generated_init=generated_init,
-            importable=bool(current_pkg)
-            and all(
-                part.isidentifier() and not iskeyword(part)
-                for part in current_pkg.split(".")
-            ),
-        )
-        self._package_context_cache[cache_key] = context
-        return context
+        with u.Infra.cached_source_query(
+            self.rope_project,
+            self._package_context_cache,
+            cache_key,
+            self._query_receipts,
+            f"context:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._package_context_cache[cache_key]
+            package_entry = self.package(resolved_dir)
+            init_path = resolved_dir / c.Infra.INIT_PY
+            current_pkg = (
+                package_entry.package_name if package_entry is not None else ""
+            )
+            init_resource = self.resource(init_path)
+            generated_init = (
+                init_resource is not None
+                and init_resource.read().startswith(
+                    c.Infra.AUTOGEN_HEADERS,
+                )
+            )
+            context = m.Infra.LazyInitPackageContext(
+                pkg_dir=resolved_dir,
+                init_path=init_path,
+                current_pkg=current_pkg,
+                surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
+                generated_init=generated_init,
+                importable=bool(current_pkg)
+                and all(
+                    part.isidentifier() and not iskeyword(part)
+                    for part in current_pkg.split(".")
+                ),
+            )
+            self._package_context_cache[cache_key] = context
+            return context
 
     @override
     def resource(self, file_path: Path) -> t.Infra.RopeFile | None:
@@ -392,26 +407,32 @@ class FlextInfraRopeWorkspace(
             rel_path if rel_path is not None else Path(resolved_file.name)
         )
         cache_key = (str(resolved_file), str(resolved_rel_path), current_pkg)
-        cached = self._module_policy_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        module_entry = self.module(resolved_file)
-        project_root = (
-            module_entry.project_root
-            if module_entry is not None and module_entry.project_root is not None
-            else u.Infra.project_root(resolved_file)
-        )
-        policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
-            resolved_file,
-            rope_project=self.rope_project,
-            rel_path=resolved_rel_path,
-            current_pkg=current_pkg,
-            project_layout=self.layout(project_root)
-            if project_root is not None
-            else None,
-        )
-        self._module_policy_cache[cache_key] = policy
-        return policy
+        with u.Infra.cached_source_query(
+            self.rope_project,
+            self._module_policy_cache,
+            cache_key,
+            self._query_receipts,
+            f"policy:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._module_policy_cache[cache_key]
+            module_entry = self.module(resolved_file)
+            project_root = (
+                module_entry.project_root
+                if module_entry is not None and module_entry.project_root is not None
+                else u.Infra.project_root(resolved_file)
+            )
+            policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
+                resolved_file,
+                rope_project=self.rope_project,
+                rel_path=resolved_rel_path,
+                current_pkg=current_pkg,
+                project_layout=self.layout(project_root)
+                if project_root is not None
+                else None,
+            )
+            self._module_policy_cache[cache_key] = policy
+            return policy
 
     @override
     def convention(
@@ -428,48 +449,56 @@ class FlextInfraRopeWorkspace(
         """
         resolved_file = file_path.resolve()
         cache_key = f"{resolved_file}::{rel_path or ''}"
-        cached = self._module_convention_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        module_entry = self.module(resolved_file)
-        package_dir = (
-            module_entry.package_dir.resolve()
-            if module_entry is not None
-            else resolved_file.parent.resolve()
-        )
-        resolved_rel_path = (
-            rel_path
-            if rel_path is not None
-            else resolved_file.relative_to(package_dir)
-            if resolved_file.is_relative_to(package_dir)
-            else Path(resolved_file.name)
-        )
-        package_context = self.package_context(package_dir)
-        policy = self.policy(
-            resolved_file,
-            rel_path=resolved_rel_path,
-            current_pkg=package_context.current_pkg,
-        )
-        project_root = (
-            module_entry.project_root
-            if module_entry is not None and module_entry.project_root is not None
-            else u.Infra.project_root(resolved_file)
-        )
-        project_layout = self.layout(project_root) if project_root is not None else None
-        convention = m.Infra.RopeModuleConvention(
-            file_path=resolved_file,
-            relative_path=resolved_rel_path,
-            module_name=module_entry.module_name
-            if module_entry is not None
-            else resolved_file.stem,
-            package_name=package_context.current_pkg,
-            package_dir=package_dir,
-            package_context=package_context,
-            module_policy=policy,
-            project_layout=project_layout,
-        )
-        self._module_convention_cache[cache_key] = convention
-        return convention
+        with u.Infra.cached_source_query(
+            self.rope_project,
+            self._module_convention_cache,
+            cache_key,
+            self._query_receipts,
+            f"convention:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._module_convention_cache[cache_key]
+            module_entry = self.module(resolved_file)
+            package_dir = (
+                module_entry.package_dir.resolve()
+                if module_entry is not None
+                else resolved_file.parent.resolve()
+            )
+            resolved_rel_path = (
+                rel_path
+                if rel_path is not None
+                else resolved_file.relative_to(package_dir)
+                if resolved_file.is_relative_to(package_dir)
+                else Path(resolved_file.name)
+            )
+            package_context = self.package_context(package_dir)
+            policy = self.policy(
+                resolved_file,
+                rel_path=resolved_rel_path,
+                current_pkg=package_context.current_pkg,
+            )
+            project_root = (
+                module_entry.project_root
+                if module_entry is not None and module_entry.project_root is not None
+                else u.Infra.project_root(resolved_file)
+            )
+            project_layout = (
+                self.layout(project_root) if project_root is not None else None
+            )
+            convention = m.Infra.RopeModuleConvention(
+                file_path=resolved_file,
+                relative_path=resolved_rel_path,
+                module_name=module_entry.module_name
+                if module_entry is not None
+                else resolved_file.stem,
+                package_name=package_context.current_pkg,
+                package_dir=package_dir,
+                package_context=package_context,
+                module_policy=policy,
+                project_layout=project_layout,
+            )
+            self._module_convention_cache[cache_key] = convention
+            return convention
 
     @override
     def exports(
@@ -506,6 +535,7 @@ class FlextInfraRopeWorkspace(
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
+        self._query_receipts.clear()
         self._name_index = None
         self._import_dependents_index = None
 
@@ -528,6 +558,7 @@ class FlextInfraRopeWorkspace(
         _tb: TracebackType | None,
     ) -> None:
         """Close the Rope project on context-manager exit."""
+        del _exc_type, _exc, _tb
         self.close()
 
     @override

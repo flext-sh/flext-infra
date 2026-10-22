@@ -15,7 +15,6 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
 
@@ -71,7 +70,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         while still ignoring the root-level vendor tree it was meant for.
         """
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name="probe-project",
@@ -111,7 +110,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         )
 
         rendered = tm.ok(
-            FlextInfraCodegenConform.render_project_gitignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",

@@ -22,7 +22,7 @@ from flext_infra._models._config.external_cache import (
 )
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 
 
 @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
@@ -58,7 +58,7 @@ def _effective_custom_handler_policies(
         )
         for profile in (
             *dict(overrides),
-            *FlextInfraConfigVocabulary.MakeProfile,
+            *FlextInfraConstantsConfig.MakeProfile,
         )
     }
 
@@ -75,14 +75,14 @@ class FlextInfraConfigModelsMake(
         data_home_environment_variable: Annotated[
             str,
             m.Field(min_length=1, description="XDG persistent cache-home variable"),
-        ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.DATA_HOME.value
+        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME.value
         user_home_environment_variable: Annotated[
             str,
             m.Field(
                 min_length=1,
                 description="User home variable for the XDG default",
             ),
-        ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.USER_HOME.value
+        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME.value
 
     class MakeUvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Native resolver views independent of the physical environment and gates."""
@@ -101,14 +101,6 @@ class FlextInfraConfigModelsMake(
                 description="Runtime-root-relative opt-in supplier resolution directory"
             ),
         ]
-        editable_supplier_root: Annotated[
-            Path | None,
-            m.Field(
-                description=(
-                    "Explicit external workspace supplying local editable dependencies"
-                )
-            ),
-        ] = None
         hosted_variable: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actual hosted runner environment key"),
@@ -153,12 +145,6 @@ class FlextInfraConfigModelsMake(
                     raise ValueError(msg)
             if len(set(directories)) != len(directories):
                 msg = "UV resolution views must use distinct directories"
-                raise ValueError(msg)
-            if (
-                self.editable_supplier_root is not None
-                and not self.editable_supplier_root.is_absolute()
-            ):
-                msg = "editable supplier root must be an absolute path"
                 raise ValueError(msg)
             return self
 
@@ -230,7 +216,7 @@ class FlextInfraConfigModelsMake(
             ),
         ] = True
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraConfigVocabulary.MakeProfile],
+            t.VariadicTuple[FlextInfraConstantsConfig.MakeProfile],
             m.Field(
                 min_length=1,
                 description=(
@@ -238,7 +224,7 @@ class FlextInfraConfigModelsMake(
                     "a verb exists only where its operation applies"
                 ),
             ),
-        ] = tuple(FlextInfraConfigVocabulary.MakeProfile)
+        ] = tuple(FlextInfraConstantsConfig.MakeProfile)
 
     class MakeLifecycleStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One public command in the declared runtime acceptance sequence."""
@@ -364,30 +350,30 @@ class FlextInfraConfigModelsMake(
 
     class MypyCacheSpec(
         FlextInfraExternalCacheDirectorySpec[
-            FlextInfraConfigVocabulary.MypyCacheEnvironment
+            FlextInfraConstantsConfig.MypyCacheEnvironment
         ],
         FlextInfraConfigModelsContract.ConfigContract,
     ):
         """Project-keyed shared Mypy cache, one analysis reused across relocks."""
 
         cache_environment_variable: Annotated[
-            FlextInfraConfigVocabulary.MypyCacheEnvironment,
+            FlextInfraConstantsConfig.MypyCacheEnvironment,
             m.Field(
                 description="Mypy's cache-directory environment variable",
             ),
-        ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.CACHE_DIR
+        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.CACHE_DIR
         data_home_environment_variable: Annotated[
-            FlextInfraConfigVocabulary.MypyCacheEnvironment,
+            FlextInfraConstantsConfig.MypyCacheEnvironment,
             m.Field(
                 description="XDG persistent cache-home variable",
             ),
-        ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.DATA_HOME
+        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME
         user_home_environment_variable: Annotated[
-            FlextInfraConfigVocabulary.MypyCacheEnvironment,
+            FlextInfraConstantsConfig.MypyCacheEnvironment,
             m.Field(
                 description="User home variable for the XDG default",
             ),
-        ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.USER_HOME
+        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME
 
         @m.model_validator(mode="after")
         def require_external_cache_contract(self) -> Self:
@@ -404,17 +390,17 @@ class FlextInfraConfigModelsMake(
                 (
                     "cache_environment_variable",
                     self.cache_environment_variable,
-                    FlextInfraConfigVocabulary.MypyCacheEnvironment.CACHE_DIR,
+                    FlextInfraConstantsConfig.MypyCacheEnvironment.CACHE_DIR,
                 ),
                 (
                     "data_home_environment_variable",
                     self.data_home_environment_variable,
-                    FlextInfraConfigVocabulary.MypyCacheEnvironment.DATA_HOME,
+                    FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME,
                 ),
                 (
                     "user_home_environment_variable",
                     self.user_home_environment_variable,
-                    FlextInfraConfigVocabulary.MypyCacheEnvironment.USER_HOME,
+                    FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME,
                 ),
             ):
                 if actual != expected:
@@ -564,7 +550,7 @@ class FlextInfraConfigModelsMake(
 
         class TestmonCacheSpec(
             FlextInfraExternalCacheDirectorySpec[
-                FlextInfraConfigVocabulary.PytestCacheEnvironment
+                FlextInfraConstantsConfig.PytestCacheEnvironment
             ],
             FlextInfraConfigModelsContract.ConfigContract,
         ):
@@ -575,17 +561,17 @@ class FlextInfraConfigModelsMake(
                 m.Field(description="pytest-testmon database filename"),
             ]
             database_environment_variable: Annotated[
-                FlextInfraConfigVocabulary.PytestCacheEnvironment,
+                FlextInfraConstantsConfig.PytestCacheEnvironment,
                 m.Field(
                     description="pytest-testmon's supported database-path variable",
                 ),
             ]
             data_home_environment_variable: Annotated[
-                FlextInfraConfigVocabulary.PytestCacheEnvironment,
+                FlextInfraConstantsConfig.PytestCacheEnvironment,
                 m.Field(description="XDG persistent cache-home variable"),
             ] = m.Field()
             user_home_environment_variable: Annotated[
-                FlextInfraConfigVocabulary.PytestCacheEnvironment,
+                FlextInfraConstantsConfig.PytestCacheEnvironment,
                 m.Field(
                     description="User home variable for the XDG default",
                 ),
@@ -615,17 +601,17 @@ class FlextInfraConfigModelsMake(
                     (
                         "database_environment_variable",
                         self.database_environment_variable,
-                        FlextInfraConfigVocabulary.PytestCacheEnvironment.DATABASE_FILE,
+                        FlextInfraConstantsConfig.PytestCacheEnvironment.DATABASE_FILE,
                     ),
                     (
                         "data_home_environment_variable",
                         self.data_home_environment_variable,
-                        FlextInfraConfigVocabulary.PytestCacheEnvironment.DATA_HOME,
+                        FlextInfraConstantsConfig.PytestCacheEnvironment.DATA_HOME,
                     ),
                     (
                         "user_home_environment_variable",
                         self.user_home_environment_variable,
-                        FlextInfraConfigVocabulary.PytestCacheEnvironment.USER_HOME,
+                        FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME,
                     ),
                 ):
                     if actual != expected:
@@ -646,7 +632,7 @@ class FlextInfraConfigModelsMake(
             """
 
             user_home_environment_variable: Annotated[
-                FlextInfraConfigVocabulary.PytestCacheEnvironment,
+                FlextInfraConstantsConfig.PytestCacheEnvironment,
                 m.Field(description="User home variable anchoring the scratch root"),
             ]
             home_relative_directory: Annotated[
@@ -677,11 +663,11 @@ class FlextInfraConfigModelsMake(
                 """
                 if (
                     self.user_home_environment_variable
-                    != FlextInfraConfigVocabulary.PytestCacheEnvironment.USER_HOME
+                    != FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME
                 ):
                     msg = (
                         "pytest scratch user_home_environment_variable must be "
-                        f"{FlextInfraConfigVocabulary.PytestCacheEnvironment.USER_HOME.value}"
+                        f"{FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME.value}"
                     )
                     raise ValueError(msg)
                 base = Path(self.home_relative_directory)
@@ -798,9 +784,9 @@ class FlextInfraConfigModelsMake(
             m.Field(description="Scratch root declared by every pytest verb"),
         ]
         gate_acceptance_policy: Annotated[
-            FlextInfraConfigVocabulary.GateAcceptancePolicy,
+            FlextInfraConstantsConfig.GateAcceptancePolicy,
             m.Field(description="Policy recorded by original gate execution receipts"),
-        ] = FlextInfraConfigVocabulary.GateAcceptancePolicy.CLEAN
+        ] = FlextInfraConstantsConfig.GateAcceptancePolicy.CLEAN
         gate_receipts_directory: Annotated[
             Path,
             m.Field(description="Repository-relative immutable execution receipts"),
@@ -967,7 +953,7 @@ class FlextInfraConfigModelsMake(
                 if FlextInfraMakeContract.selector_free_make_verb(
                     verb.arguments,
                     verb.profiles,
-                    tuple(FlextInfraConfigVocabulary.MakeProfile),
+                    tuple(FlextInfraConstantsConfig.MakeProfile),
                 )
             }
             if set(self.violations_sweep_repair_verbs) - admissible:
@@ -1014,7 +1000,7 @@ class FlextInfraConfigModelsMake(
                 verb.name
                 for verb in self.verbs
                 if verb.name in self.standalone_check_gates
-                and set(verb.profiles) != set(FlextInfraConfigVocabulary.MakeProfile)
+                and set(verb.profiles) != set(FlextInfraConstantsConfig.MakeProfile)
             )
             if partial_standalone:
                 msg = (

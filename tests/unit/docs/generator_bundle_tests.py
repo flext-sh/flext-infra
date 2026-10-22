@@ -17,7 +17,6 @@ _DOCS_CONSUMER_SOURCE = r"""sys.path.insert(0, sys.argv[1])
 from flext_infra import FlextInfraConfig, c, m
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,

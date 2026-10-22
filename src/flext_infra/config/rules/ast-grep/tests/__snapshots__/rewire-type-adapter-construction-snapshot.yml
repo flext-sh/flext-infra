@@ -84,6 +84,10 @@ snapshots:
       style: primary
       start: 70
       end: 86
+    - source: TypeAdapter
+      style: secondary
+      start: 70
+      end: 81
     - source: from pydantic import TypeAdapter
       style: secondary
       start: 0

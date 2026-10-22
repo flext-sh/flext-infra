@@ -1,0 +1,46 @@
+id: tests-method-without-self-is-static
+valid:
+  - |
+    class TestsSample:
+        def test_reads_instance(self) -> None:
+            self.helper()
+  - |
+    class TestsSample:
+        def test_calls_super(self) -> None:
+            super().setup()
+  - |
+    class TestsSample:
+        @staticmethod
+        def test_static() -> None:
+            return None
+  - |
+    class TestsSample:
+        @property
+        def value(self) -> int:
+            return 1
+  - |
+    class TestsSample:
+        @override
+        def runtest(self) -> None:
+            return None
+  - |
+    class TestsSample:
+        def __init__(self) -> None:
+            pass
+  - |
+    def module_level(self) -> None:
+        return None
+invalid:
+  - |
+    class TestsSample:
+        def test_plain(self, tmp_path: Path) -> None:
+            tm.that(tmp_path.name, ne="")
+  - |
+    class TestsSample:
+        def test_no_parameters(self) -> None:
+            tm.that(1, eq=1)
+  - |
+    class TestsSample:
+        @pytest.mark.parametrize("a", [1, 2])
+        def test_marked(self, a: int) -> None:
+            tm.that(a, gt=0)

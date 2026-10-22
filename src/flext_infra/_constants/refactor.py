@@ -167,6 +167,9 @@ class FlextInfraConstantsRefactor:
     PAIRED_CONTEXT_PREDICATE_ARG_COUNT: ClassVar[int] = 2
     "Exact argument count a module/producer pair context predicate requires."
 
+    MEMBER_RELOCATION_CONTEXT_ARG_COUNT: ClassVar[int] = 5
+    "Exact operand count a native member-relocation predicate requires."
+
     @unique
     class CodemodContextPredicate(StrEnum):
         """Project-context predicate a rule applies to one captured metavariable.
@@ -250,6 +253,7 @@ class FlextInfraConstantsRefactor:
         RUNTIME_PACKAGE = "runtime-package"
         FACADE_PACKAGE = "facade-package"
         RUNTIME_ALIAS = "runtime-alias"
+        CANONICAL_STATIC_PUBLICATION = "canonical-static-publication"
         LOCAL_ALIAS = "local-alias"
         COMPOSE_MODULE = "compose-module"
         MODULE_EXPORT = "module-export"
@@ -269,6 +273,7 @@ class FlextInfraConstantsRefactor:
         PROTOCOL_DECLARATION = "protocol-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"
+        MEMBER_RELOCATION = "member-relocation"
         GENERIC_SPECIALIZATION = "generic-specialization"
         SAME_BINDING = "same-binding"
         EXECUTABLE_OCCURRENCE = "executable-occurrence"

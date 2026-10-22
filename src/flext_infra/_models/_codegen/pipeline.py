@@ -387,6 +387,15 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Original cohort plans available to native source reads",
         )
+        completed_source_plans: (
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description=(
+                "Authenticated complete source output, absent before validation"
+            ),
+        )
         repository_root: Path = m.Field(
             default=Path(),
             exclude=True,
@@ -416,11 +425,6 @@ class FlextInfraModelsCodegenPipelineModels:
             default=None,
             exclude=True,
             description="Actual planner before effects",
-        )
-        scaffolded_repository: bool = m.Field(
-            default=False,
-            exclude=True,
-            description="Whether this invocation initialized an unpublished Git root",
         )
         _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
             m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])

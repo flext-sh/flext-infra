@@ -10,6 +10,8 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, settings, t, u
+from flext_infra.codegen import FlextInfraCodegenFileLeases
+from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
 
 class FlextInfraDependencyDetectorRuntimeSteps:
@@ -88,7 +90,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         venv_bin: Path,
         limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
+        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport],
     ) -> p.Result[bool]:
         """Run deptry + optional typings detection/apply for one project.
 
@@ -102,15 +104,33 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         project_name = project_path.name
         if not params.quiet:
             detector.log.info("deps_deptry_running", project=project_name)
+        if params.apply:
+            with FlextInfraCodegenFileLeases.mutation_lease(project_path):
+                scan = u.Infra.capture_deptry_scan(
+                    project_path,
+                    venv_bin,
+                    config_path=project_path / c.PYPROJECT_FILENAME,
+                    json_output_path=u.Cli.ensure_dir(
+                        project_path / c.Infra.REPORTS_DIR_NAME
+                    ).unwrap()
+                    / f"deptry-report-{u.generate_id()}.json",
+                ).unwrap()
+                if scan.report.root:
+                    inputs = FlextInfraRuntimeDependencyCollector(
+                        python=u.Infra.runtime_python(params.repository_root),
+                        development_only=(),
+                    )(project_path, scan).unwrap()
+                    plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+                    u.Infra.publish_runtime_dependency_plan(plan).unwrap()
+                u.Cli.atomic_delete_binary_file_guarded(scan.report_state).unwrap()
         deptry_result = deps_service.run_deptry(project_path, venv_bin)
         if deptry_result.failure:
             return r[bool].from_failure(deptry_result)
         issues, _ = deptry_result.value
-        project_payload = deps_service.build_project_report(
+        projects_report[project_name] = deps_service.build_project_report(
             project_name,
             issues,
         )
-        projects_report[project_name] = dict(project_payload.model_dump())
         run_typings_for_project = (
             do_typings and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
         )
@@ -129,9 +149,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         *,
         limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
+        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport],
     ) -> p.Result[bool]:
-        """Declare CUSTOM typing extras and install them through UV's source editor.
+        """Declare typing requirements in the development group through native UV.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -148,20 +168,20 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if typings_result.failure:
             return r[bool].from_failure(typings_result)
         typings_report = typings_result.value
-        projects_report[project_name][c.Infra.DIR_TYPINGS] = typings_report.model_dump()
+        projects_report[project_name].typings = typings_report
         to_add: t.StrSequence = typings_report.to_add
         if not (params.apply_typings and to_add and params.apply):
             return r[bool].ok(value=True)
-        # UV owns the TOML edit, lock, installation and failed-add source recovery.
-        # Inherit Make's UV_PROJECT_ENVIRONMENT; never rebind a parent's runtime.
+        # UV declares the development requirement; Make owns resolution and install.
         run_outcome = u.Cli.run_raw(
             [
                 settings.Infra.uv_executable or c.Infra.UV,
                 "add",
                 "--project",
                 str(project_path),
-                "--optional",
-                c.Infra.TYPINGS,
+                "--group",
+                c.Infra.DEV,
+                "--frozen",
                 "--",
                 *to_add,
             ],

@@ -15,6 +15,9 @@ import pytest
 from packaging.requirements import Requirement
 
 from flext_infra import config
+from flext_infra.codegen._conform.pyproject_policy import (
+    FlextInfraCodegenConformPyprojectPolicy,
+)
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -24,6 +27,135 @@ from tests import c, m, t, tm, u
 
 class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
+
+    @staticmethod
+    @pytest.mark.parametrize("with_extra", [False, True])
+    def test_supplier_selection_resolves_transitive_runtime_closure(
+        tmp_path: Path, *, with_extra: bool
+    ) -> None:
+        """Select real supplier metadata transitively, excluding supplier dev groups."""
+        root = tmp_path / "consumer"
+        supplier_root = tmp_path / "suppliers"
+        repository = u.Tests.repository_ref("closure-consumer")
+        names = ("closure-a", "closure-b", "closure-c", "closure-dev")
+        beads = u.Tests.BeadsIdentity(
+            workspace="closure-suppliers",
+            database="closure_suppliers",
+            issue_prefix="closure",
+        )
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            supplier_root, "closure-suppliers", beads=beads
+        )
+        for name in names:
+            member = supplier_root / name
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member, name, beads=beads
+            )
+            u.Tests.WorktreeFixture.attach_submodule(
+                supplier_root, member, distribution=name, relative_path=name
+            )
+        extra = "[feature]" if with_extra else ""
+        transitive = f'closure-b{extra}>=1,<2 ; python_version >= "0"'
+        u.Tests.write_native_resolution_project(
+            supplier_root / names[0],
+            names[0],
+            dependencies=(transitive,),
+            groups=(
+                "[project.optional-dependencies]\nunused = ['closure-dev']\n"
+                "[dependency-groups]\ndev = ['closure-dev']\n"
+            ),
+        )
+        u.Tests.write_native_resolution_project(
+            supplier_root / names[1],
+            names[1],
+            dependencies=('closure-a>=1 ; python_version >= "0"',),
+            groups="[project.optional-dependencies]\nfeature = ['closure-c>=1']\n",
+        )
+        for name in names[2:]:
+            u.Tests.write_native_resolution_project(supplier_root / name, name)
+        u.Tests.write_native_resolution_project(
+            root, repository.distribution, dependencies=("closure-a>=1",)
+        )
+        u.Tests.initialize_git_repo(root, origin_url=repository.url)
+        originals = {
+            path: path.read_bytes()
+            for path in (
+                root / c.PYPROJECT_FILENAME,
+                *(supplier_root / name / c.PYPROJECT_FILENAME for name in names),
+            )
+        }
+        owner = m.Infra.UvResolutionProject(
+            repository=repository,
+            directory=root,
+            document=u.Tests.toml_doc(
+                originals[root / c.PYPROJECT_FILENAME].decode(c.DEFAULT_ENCODING)
+            ),
+        )
+        requirements = tm.ok(u.Infra.document_requirement_lines(owner.document))
+        sources: list[m.Cli.AtomicFileState] = []
+        selected = tm.ok(
+            FlextInfraCodegenConformPyprojectPolicy._collected_supplier_projects(
+                supplier_root, sources, requirements=requirements
+            )
+        )
+        expected = names[:3] if with_extra else names[:2]
+        tm.that(tuple(item.repository.distribution for item in selected), eq=expected)
+        captured = {item.path for item in sources}
+        for name in expected:
+            tm.that(captured, has=supplier_root / name / c.PYPROJECT_FILENAME)
+        tm.that(captured, lacks=supplier_root / names[3] / c.PYPROJECT_FILENAME)
+        policy = config.Infra.codegen.make.uv_resolution
+        workspace = u.Tests.workspace_spec(repository)
+        default = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                owner,
+                workspace=workspace,
+                members=(),
+                directory=root / policy.local_directory,
+                policy=policy,
+            )
+        )
+        default_text = u.Cli.toml_dumps(default)
+        directory = root / policy.editable_directory
+        editable = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                owner,
+                workspace=workspace,
+                members=selected,
+                directory=directory,
+                policy=policy,
+            )
+        )
+        uv = u.Tests.toml_table_at(u.Cli.toml_dumps(editable), "tool", "uv")
+        tm.that(
+            u.Tests.toml_strings(uv["constraint-dependencies"]),
+            has=u.Infra.dependency_constraint(transitive, replace_source=True),
+        )
+        tm.that(
+            u.Tests.toml_strings(uv["override-dependencies"]),
+            has=f"closure-b{extra}",
+        )
+        locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
+            directory, editable
+        )
+        for name in expected:
+            package = next(item for item in locked.package if item.name == name)
+            tm.that(
+                package.source.editable,
+                eq=(supplier_root / name)
+                .relative_to(directory, walk_up=True)
+                .as_posix(),
+            )
+        tm.that(tuple(item.name for item in locked.package), lacks=names[3])
+        if not with_extra:
+            tm.that(tuple(item.name for item in locked.package), lacks=names[2])
+        for path, content in originals.items():
+            tm.that(path.read_bytes(), eq=content)
+        tm.that(u.Cli.toml_dumps(default), eq=default_text)
+        tm.that(
+            (root / policy.local_directory / c.Infra.UV_LOCK_FILENAME).exists(),
+            eq=False,
+        )
 
     @staticmethod
     def test_override_layers_elect_local_source_without_losing_inherited_policy(
@@ -225,16 +357,16 @@ class TestsFlextInfraUvNativeResolution:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("invalid", ["relative-supplier", "same-directory"])
+    @pytest.mark.parametrize("invalid", ["supplier-in-config", "same-directory"])
     def test_editable_resolution_policy_rejects_ambiguous_paths(invalid: str) -> None:
         """Invalid opt-ins cannot silently select a default graph."""
         policy = config.Infra.codegen.make.uv_resolution
         payload = policy.model_dump()
-        if invalid == "relative-supplier":
+        if invalid == "supplier-in-config":
             payload["editable_supplier_root"] = Path("relative")
         else:
             payload["editable_directory"] = policy.local_directory
-        with pytest.raises(ValueError, match=r"absolute path|distinct directories"):
+        with pytest.raises(ValueError, match=r"Extra inputs|distinct directories"):
             m.Infra.MakeUvResolutionSpec.model_validate(payload)
 
     @staticmethod

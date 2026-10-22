@@ -27,6 +27,39 @@ class TestsFlextInfraGateAcceptance:
     """Observe acceptance through real checker and Ruff public boundaries."""
 
     @staticmethod
+    def test_attestation_bootstrap_uses_workspace_v3_contract() -> None:
+        """The imported owner and public model agree without admitting v2 JSON."""
+        tm.ok(callable(u.Infra.git_capture_gate))
+        tm.that(
+            m.Infra.GateAttestationPredicate.model_fields["schema_version"].default,
+            eq=c.Infra.GateAttestationSchema.V3,
+        )
+        with pytest.raises(ValueError, match="is not a valid"):
+            c.Infra.GateAttestationSchema("https://flext.sh/attestations/gates/v2")
+        required = m.Infra.GateCommandEvidence.model_json_schema()["required"]
+        for field in (
+            "scope",
+            "runtime_identity",
+            "dirty",
+            "after_repository",
+            "after_commit_sha",
+            "after_tree_sha",
+            "after_dirty",
+        ):
+            tm.that(required, has=field)
+
+    @staticmethod
+    def test_capture_intent_requires_exactly_one_original_producer() -> None:
+        """Current capture signatures retain portable intent without signing."""
+        intent = m.Infra.GateExecutionIntent(requested_gates=(c.Infra.LINT,))
+        restored = m.Infra.GateExecutionIntent.model_validate_json(
+            intent.model_dump_json(round_trip=True),
+        )
+        tm.that(restored, eq=intent)
+        with pytest.raises(ValueError, match="exactly one producer intent"):
+            m.Infra.GateExecutionIntent()
+
+    @staticmethod
     def test_native_formatter_warnings_remain_execution_failures(
         tmp_path: Path,
     ) -> None:

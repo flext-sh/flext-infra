@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
@@ -180,15 +180,6 @@ class FlextInfraModelsCheck:
             Path | None,
             m.Field(description="Optional cProfile output destination"),
         ] = None
-        report_file: Annotated[
-            Path | None,
-            m.Field(
-                description=(
-                    "Owned file receiving one JSON diagnostic per line through "
-                    "the machine-channel report runner"
-                ),
-            ),
-        ] = None
 
     class FixPyreflyConfigCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
@@ -233,7 +224,7 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Emit native optional span coordinates only when present.
 
@@ -284,12 +275,12 @@ class FlextInfraModelsCheck:
             c.Infra.ERROR
         )
         locations: t.VariadicTuple[SarifLocation] = m.Field(
-            (),
+            default=(),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
         related_locations: t.VariadicTuple[SarifLocation] = m.Field(
-            (),
+            default=(),
             description="All native comparison locations, including other projects",
             validate_default=True,
         )
@@ -475,7 +466,7 @@ class FlextInfraModelsCheck:
             ),
         ]
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize.
 
@@ -518,7 +509,7 @@ class FlextInfraModelsCheck:
             )
         )
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize.
 
@@ -569,7 +560,7 @@ class FlextInfraModelsCheck:
             description="Run results",
         )
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize.
 

@@ -11,16 +11,13 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import FlextCliConfig
-from pydantic import ConfigDict
 
 from flext_infra import c
 from flext_infra._models._config import FlextInfraConfigModels
 
 
-class FlextInfraConfig(FlextCliConfig):
+class FlextInfraConfig(FlextCliConfig, extra="ignore"):
     """Declarative flext-infra config loaded and validated once."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True)
 
     # Direct config.Infra is the only codegen information surface; no accessor
     # method.

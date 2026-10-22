@@ -361,6 +361,93 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
+    @pytest.mark.parametrize("infra_first", [False, True])
+    def test_infra_authority_preserves_distinct_distribution_refs(
+        tmp_path: Path,
+        infra_first: bool,
+    ) -> None:
+        """Exact Infra provenance is independent of another distribution's order/ref."""
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        distribution = config.Infra.codegen.infra_repository.distribution
+        requirements = [
+            f"flext-core @ git+{provider.base_url}/flext-core.git@other-line",
+            f"{distribution} @ git+{provider.base_url}/{distribution}.git@{branch}",
+        ]
+        if infra_first:
+            requirements.reverse()
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            f"dependencies = {requirements!r}\n"
+        )
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        line = tm.ok(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=tmp_path,
+            ),
+        )
+        tm.that((line.base_url, line.branch), eq=(provider.base_url, branch))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("requirements", "error"),
+        [
+            (
+                ["flext-core @ git+https://github.com/flext-sh/flext-core.git@core"],
+                "is undeclared by this checkout",
+            ),
+            (
+                [
+                    (
+                        "flext-infra @ git+https://github.com/flext-sh/"
+                        'flext-infra.git@one ; python_version < "3.14"'
+                    ),
+                    (
+                        "flext-infra @ git+https://github.com/flext-sh/"
+                        'flext-infra.git@two ; python_version >= "3.14"'
+                    ),
+                ],
+                "ambiguous flext-infra authority",
+            ),
+            (
+                [
+                    "flext-core @ git+https://other.example.org/team/flext-core.git@core",
+                    "flext-infra @ git+https://github.com/flext-sh/flext-infra.git@infra",
+                ],
+                "conflicting flext-* line sources",
+            ),
+            (
+                ["flext-infra @ git+https://github.com/flext-sh/flext-core.git@infra"],
+                "must be the flext-infra repository",
+            ),
+        ],
+    )
+    def test_infra_authority_rejects_missing_ambiguous_or_invalid_source(
+        tmp_path: Path,
+        requirements: list[str],
+        error: str,
+    ) -> None:
+        """No other distribution, marker variant or provider elects Infra authority."""
+        path = tmp_path / c.PYPROJECT_FILENAME
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            f"dependencies = {requirements!r}\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        tm.fail(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=tmp_path,
+            ),
+            has=error,
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
     def test_flext_line_fails_loud_on_conflicting_infra_sources(
         tmp_path: Path,
     ) -> None:

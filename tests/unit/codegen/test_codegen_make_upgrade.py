@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -22,31 +23,20 @@ class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
-    def test_editable_cold_setup_requires_its_own_lock(tmp_path: Path) -> None:
-        """An elected supplier never lets frozen setup seed another view's lock."""
+    @pytest.mark.parametrize("partial_runtime", [False, True])
+    def test_editable_cold_setup_bootstraps_its_own_lock(
+        tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
+        partial_runtime: bool,
+    ) -> None:
+        """First opt-in provisions an owned runtime without installed Infra."""
         credential = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
         source = tm.ok(infra.project_context(Path.cwd()))
         root, _ = u.Tests.render_make_environment(
             tmp_path, c.Infra.MakeProfile.STANDALONE, bootstrap=True
         )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / "codegen.local.yaml",
-                {
-                    "Infra": {
-                        "codegen": {
-                            "make": {
-                                "uv_resolution": {
-                                    "editable_supplier_root": tm.not_none(
-                                        source.runtime
-                                    ).runtime_root.as_posix(),
-                                },
-                            },
-                        },
-                    },
-                },
-            )
-        )
+        supplier = tm.not_none(source.runtime).runtime_root
+        editable_supplier(supplier)
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.ok(
@@ -56,38 +46,50 @@ class TestsFlextInfraCodegenMakeUpgrade:
             )
         )
         policy = inputs.spec.make.uv_resolution
-        paths = (
-            root / c.PYPROJECT_FILENAME,
-            root / c.Infra.UV_LOCK_FILENAME,
-            root / c.Infra.MISE_LOCK_FILENAME,
-            *(
-                root / directory / name
-                for directory in (
-                    policy.local_directory,
-                    policy.standalone_directory,
-                    policy.editable_directory,
+        environment = root / c.Infra.ENVIRONMENT_DIRECTORY
+        resolution = root / policy.editable_directory
+        tm.fail(environment.exists())
+        tm.fail((resolution / c.PYPROJECT_FILENAME).exists())
+        if partial_runtime:
+            binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+            created = tm.ok(
+                u.Cli.run_raw(
+                    [str(binary), "venv", str(environment), "--python", sys.executable],
+                    cwd=root,
                 )
-                for name in (c.PYPROJECT_FILENAME, c.Infra.UV_LOCK_FILENAME)
-            ),
-        )
-        before = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
-        )
+            )
+            tm.that(created.outcome.raw_return_code, eq=0, msg=created.stderr)
+        tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
         process = tm.ok(
             u.Tests.run_isolated_make(
-                ["setup"], cwd=root, private_env={"GITHUB_TOKEN": credential}
+                ["setup"],
+                cwd=root,
+                env={type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(supplier)},
+                private_env={"GITHUB_TOKEN": credential},
             )
         )
-        tm.that(process.outcome.raw_return_code, eq=2)
         tm.that(
-            process.stderr,
-            has=f"ERROR[setup] uv.lock is missing: {root / policy.editable_directory}",
+            process.outcome.raw_return_code,
+            eq=0,
+            msg=process.stdout + process.stderr,
         )
-        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
-        tm.that(
-            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
-            eq=before,
+        tm.ok((environment / "pyvenv.cfg").is_file())
+        tm.ok((resolution / c.Infra.UV_LOCK_FILENAME).is_file())
+        verified = tm.ok(
+            u.Cli.run_raw(
+                [
+                    str(u.Infra.runtime_python(root, runtime_root=root)),
+                    "-m",
+                    "flext_infra",
+                    "workspace",
+                    "verify-environment",
+                    "--repository-root",
+                    str(root),
+                ],
+                cwd=root,
+            )
         )
+        tm.that(verified.outcome.raw_return_code, eq=0, msg=verified.stderr)
 
     @staticmethod
     def test_help_parses_before_runtime_provisioning(

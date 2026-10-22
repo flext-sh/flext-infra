@@ -1,20 +1,21 @@
 {# Shared mkdocs.yml macros — single source of truth for theme, plugins, validation. #}
 {# Imported by mkdocs_project.yml.j2 and mkdocs_root.yml.j2 — DO NOT INLINE THESE. #}
 {# All loop/conditional logic is pre-formatted in Python and passed as ready strings. #}
-{%- macro site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block) -%}
+{%- macro site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block, documentation_language, dark_mode_label, light_mode_label) -%}
 docs_dir: docs
 site_dir: .reports/docs/site
 
-{{ exclude_docs_block }}{{ material_theme() }}
+{{ exclude_docs_block }}{{ material_theme(documentation_language, dark_mode_label, light_mode_label) }}
 
 {{ plugins_block(exclude_plugin_block, mkdocstrings_paths_block) }}
 
 {{ markdown_extensions_block() }}
 {%- endmacro %}
-{%- macro material_theme() -%}
+{%- macro material_theme(documentation_language, dark_mode_label, light_mode_label) -%}
 theme:
   name: material
-  features:
+{% if documentation_language == "pt-BR" %}  language: pt-BR
+{% endif %}  features:
     - navigation.tabs
     - navigation.sections
     - navigation.top
@@ -30,13 +31,13 @@ theme:
       accent: indigo
       toggle:
         icon: material/weather-night
-        name: Switch to dark mode
+        name: {{ dark_mode_label }}
     - scheme: slate
       primary: indigo
       accent: indigo
       toggle:
         icon: material/weather-sunny
-        name: Switch to light mode
+        name: {{ light_mode_label }}
 {%- endmacro %}
 {%- macro plugins_block(exclude_plugin_block, mkdocstrings_paths_block) -%}
 {# Plugin distributions are declared by config/codegen.yaml scaffold.project.dev. #}

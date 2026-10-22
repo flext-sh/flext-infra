@@ -125,7 +125,18 @@ class FlextInfraUtilitiesPyprojectUvSources(
             Successful binding or the first supplier identity mismatch.
 
         """
-        requirements = cls.document_requirement_lines(root.document).unwrap()
+        requirements: list[str] = []
+        for project in (root, *members):
+            if project.role == "supplier":
+                continue
+            declared = cls.document_requirement_lines(project.document)
+            if declared.failure:
+                return r[bool].from_failure(declared)
+            requirements.extend(declared.value)
+        expanded = cls.resolution_supplier_requirements(requirements, members)
+        if expanded.failure:
+            return r[bool].from_failure(expanded)
+        requirements = expanded.value
         supplied_names = {
             canonicalize_name(item.repository.distribution)
             for item in members
@@ -1082,8 +1093,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def document_requirement_lines(
         cls,
         document: t.Cli.TomlDocument,
+        *,
+        development: bool = True,
+        extras: t.StrSequence | None = None,
     ) -> p.Result[list[str]]:
-        """Collect every declared requirement line of one pyproject document.
+        """Collect declared requirements, optionally limiting runtime extras.
+
+        Development groups and all optional groups remain selected by default.
+        Supplier traversal selects only runtime dependencies and requested extras.
 
         Returns:
             The resulting ``p.Result[list[str]]``.
@@ -1095,14 +1112,25 @@ class FlextInfraUtilitiesPyprojectUvSources(
         requirements: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if isinstance(project, Mapping):
-            for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
-                requirements.extend(
-                    FlextInfraUtilitiesDependencies.raw_requirement_values(
-                        project.get(key),
-                    ),
+            requirements.extend(
+                FlextInfraUtilitiesDependencies.raw_requirement_values(
+                    project.get(c.Infra.DEPENDENCIES),
+                ),
+            )
+            optional = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
+            if isinstance(optional, Mapping):
+                selected = (
+                    None if extras is None else set(map(canonicalize_name, extras))
                 )
+                for extra, entries in optional.items():
+                    if selected is None or canonicalize_name(extra) in selected:
+                        requirements.extend(
+                            FlextInfraUtilitiesDependencies.raw_requirement_values(
+                                entries
+                            )
+                        )
         groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, Mapping):
+        if development and isinstance(groups, Mapping):
             for group in groups.values():
                 requirements.extend(
                     FlextInfraUtilitiesDependencies.raw_requirement_values(
@@ -1110,6 +1138,46 @@ class FlextInfraUtilitiesPyprojectUvSources(
                     ),
                 )
         return r[list[str]].ok(requirements)
+
+    @classmethod
+    def resolution_supplier_requirements(
+        cls,
+        requirements: t.StrSequence,
+        suppliers: t.SequenceOf[m.Infra.UvResolutionProject],
+    ) -> p.Result[list[str]]:
+        """Expand runtime demands and requested extras without supplier dev groups.
+
+        Markers stay unevaluated because the native resolver owns the complete
+        environment graph. Revisit declarations when a backedge requests extras.
+
+        Returns:
+            Ordered unique requirements or the first invalid supplier document.
+
+        """
+        selected = list(dict.fromkeys(requirements))
+        while True:
+            before = len(selected)
+            parsed = tuple(map(Requirement, selected))
+            for supplier in sorted(
+                suppliers, key=lambda item: item.repository.distribution
+            ):
+                name = canonicalize_name(supplier.repository.distribution)
+                demands = [
+                    item for item in parsed if canonicalize_name(item.name) == name
+                ]
+                if not demands:
+                    continue
+                extras = tuple(
+                    sorted({extra for item in demands for extra in item.extras})
+                )
+                runtime = cls.document_requirement_lines(
+                    supplier.document, development=False, extras=extras
+                )
+                if runtime.failure:
+                    return r[list[str]].from_failure(runtime)
+                selected.extend(item for item in runtime.value if item not in selected)
+            if len(selected) == before:
+                return r[list[str]].ok(selected)
 
     @classmethod
     def active_session_requirements(

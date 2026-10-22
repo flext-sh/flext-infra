@@ -72,7 +72,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        _ = ctx
+        del ctx
         started = time.monotonic()
         scan = self._scan(project_dir)
         issues = self._scanned_issues(scan, project_dir)
@@ -126,7 +126,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
 
         """
-        _ = ctx
+        del ctx
         issues = self._scanned_issues(result, project_dir)
         return not issues, issues
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from operator import itemgetter
+from pathlib import Path
 
 from flext_infra import c, config, m, p, t, u
 from flext_infra.codegen import FlextInfraCodegenGenerationRenderersMixin
@@ -63,14 +64,6 @@ class FlextInfraCodegenGenerationStandardMixin(
         """
         current_pkg = plan.context.current_pkg
         statements: t.MutableSequenceOf[tuple[t.StrPair, t.StrSequence]] = []
-        for module in sorted(set(plan.wildcard_runtime_modules)):
-            rendered_module = cls.normalize_type_checking_module_path(
-                module, current_pkg
-            )
-            statements.append((
-                cls._type_checking_sort_key(rendered_module, root_names),
-                (f"from {rendered_module} import *",),
-            ))
         eager_groups = cls._group_imports(plan.eager_dunders)
         for module in eager_groups:
             rendered_module = cls.normalize_type_checking_module_path(
@@ -225,6 +218,43 @@ class FlextInfraCodegenGenerationStandardMixin(
         lines.append("    }),")
         return "\n".join(lines)
 
+    @staticmethod
+    def _project_documentation_language(
+        plan: m.Infra.LazyInitPlan,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.Pair[Path, t.Infra.DocumentationLanguage]:
+        """Resolve presentation policy through the original project source authority.
+
+        Returns:
+            The owning root and its declared language or model-owned default.
+
+        """
+        project_root = next(
+            candidate
+            for candidate in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
+            if (
+                (candidate / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    candidate / c.PYPROJECT_FILENAME, "isfile"
+                )
+            )
+        )
+        declaration = u.Infra.load_repository_declaration_inputs(
+            project_root, source_project=source_project
+        ).unwrap()
+        language = (
+            declaration.spec.project.documentation_language
+            if declaration.spec.project is not None
+            else u.Infra.docs_documentation_language({
+                "documentation_language": m.Infra.ProjectSpec.model_fields[
+                    "documentation_language"
+                ].get_default(),
+            })
+        )
+        return project_root, language
+
     @classmethod
     def _root_context(
         cls,
@@ -264,16 +294,8 @@ class FlextInfraCodegenGenerationStandardMixin(
         # into the same pyproject (FlextInfraToolTablesPhase); the package
         # being rendered is first-party to ruff through its declared ``src``
         # roots (tests, examples, scripts).
-        project_root = next(
-            candidate
-            for candidate in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
-            if (
-                (candidate / c.PYPROJECT_FILENAME).is_file()
-                if source_project is None
-                else source_project.source_query(
-                    candidate / c.PYPROJECT_FILENAME, "isfile"
-                )
-            )
+        project_root, language = cls._project_documentation_language(
+            plan, source_project=source_project
         )
         first_party_names = {
             current_pkg,
@@ -302,6 +324,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                 u.Infra.copyright_notice(
                     plan.context.pkg_dir, source_project=source_project
                 ),
+                language,
             ),
             runtime_import_lines=runtime_import_lines,
             type_checking_lines=type_checking_lines,

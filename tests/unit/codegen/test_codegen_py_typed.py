@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from tests import c, tm
 
@@ -73,7 +74,10 @@ class TestsFlextInfraCodegenPyTyped:
         tm.ok((pkg / c.Infra.PY_TYPED).exists())
 
     @staticmethod
-    @pytest.mark.parametrize("skip_dir", tuple(c.Tests.CODEGEN_SKIPPED_DIRS))
+    @pytest.mark.parametrize(
+        "skip_dir",
+        [".hidden", *config.Infra.codegen.analysis_excluded_dirs],
+    )
     def test_skips_known_excluded_directories(
         tmp_path: Path,
         skip_dir: str,

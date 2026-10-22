@@ -23,6 +23,7 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsRepository,
     FlextInfraConfigModelsScaffold,
 )
+from flext_infra._models.settings import FlextInfraSettingsModels
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -30,6 +31,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
     class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
+
+        editable_supplier_environment: str = m.Field(
+            default=FlextInfraSettingsModels.InfraSettings.EDITABLE_SUPPLIER_ENVIRONMENT,
+            description="Typed settings environment alias, never a host path",
+        )
 
         infra_cli: Annotated[
             t.NonEmptyStr,
@@ -254,8 +260,17 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ""
 
-    class ProjectRenderContext(MakeRenderContext):
+    class ProjectRenderContext(FlextInfraConfigModelsContract.ConfigContract):
         """Complete typed input consumed by project scaffold templates."""
+
+        dist: t.NonEmptyStr = m.Field(description="Project distribution identity")
+        make_profile: c.Infra.MakeProfile = m.Field(
+            description="Selected repository Make profile"
+        )
+        uv_link_mode: t.NonEmptyStr = m.Field(description="Declared UV link mode")
+        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext = m.Field(
+            description="Resolved tooling document required by project metadata"
+        )
 
         # This render field is the exact
         # projection of ProjectSpec; templates must not infer or default a hook.
@@ -377,6 +392,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Development policy composed for the target's kind"),
         ]
+        generated_typing_distributions: t.StrSequence = m.Field(
+            default=(),
+            description="Authenticated locally generated typing distributions",
+        )
         tooling: Annotated[
             FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
@@ -512,6 +531,9 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Project description"),
         ]
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         python_required_version: Annotated[

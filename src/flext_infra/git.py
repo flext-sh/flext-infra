@@ -9,14 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import FlextInfraGitLanes, m, r, s, u
+from flext_infra import FlextInfraGitLanes, m, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraGitService(s[m.Infra.GitStatusReport]):
-    """Thin public status, cleanliness, and lane admission use cases."""
+    """Thin public status reporting and lane admission use cases."""
 
     repository: Annotated[
         Path | None,
@@ -47,33 +47,16 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
         cls,
         request: m.Infra.GitStatusRequest,
     ) -> p.Result[m.Infra.GitStatusReport]:
-        """Reject staged, unstaged, untracked work and unresolved stash entries.
+        """Report staged, unstaged, and untracked work without rejecting WIP.
 
-        This detection-only gate preserves every ref and recovery object. It does
-        not prove live integration-tip alignment or enforce direct Git commands.
+        Preserve recovery objects without probing them for ordinary admission.
+        Technical Git failures propagate unchanged from the status use case.
 
         Returns:
             The resulting ``p.Result[m.Infra.GitStatusReport]``.
 
         """
-        report = cls(repository_root=request.repo_root).execute()
-        if report.failure:
-            return report
-        if report.value.dirty:
-            return r[m.Infra.GitStatusReport].fail(
-                f"dirty repository: {report.value.repo_root}\n{report.value.porcelain}",
-            )
-        stashes = u.Infra.git_stash_oids(
-            m.Infra.GitRepoRequest(repo_root=report.value.repo_root),
-        )
-        if stashes.failure:
-            return r[m.Infra.GitStatusReport].from_failure(stashes)
-        if stashes.value.oids:
-            return r[m.Infra.GitStatusReport].fail(
-                f"stash recovery required: {report.value.repo_root}\n"
-                + "\n".join(stashes.value.oids),
-            )
-        return report
+        return cls(repository_root=request.repo_root).execute()
 
     @staticmethod
     def verify_lane(

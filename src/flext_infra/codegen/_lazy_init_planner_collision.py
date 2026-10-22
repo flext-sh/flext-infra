@@ -403,7 +403,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return frozenset(
             (index, part)
             for index, part in enumerate(parts[1:], start=1)
-            if part.startswith("_") and not part.startswith("__")
+            if part.startswith("_")
+            and not (part.startswith("__") and part.endswith("__"))
         )
 
     @classmethod

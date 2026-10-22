@@ -530,6 +530,8 @@ class FlextInfraUtilitiesDependencies(
         cls,
         root: Path,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        *,
+        planned_manifests: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
     ) -> t.StrSequence:
         """Order declared packages by their actual runtime dependency graph.
 
@@ -547,18 +549,37 @@ class FlextInfraUtilitiesDependencies(
         if len(by_name) != len(repositories):
             msg = "workspace declares duplicate distribution identities"
             raise ValueError(msg)
-        graph = {
-            name: tuple(
+        manifests = {plan.path.resolve(): plan for plan in planned_manifests}
+        if len(manifests) != len(planned_manifests):
+            msg = "workspace declares duplicate planned manifest paths"
+            raise ValueError(msg)
+        graph: dict[str, tuple[str, ...]] = {}
+        for name, repository in by_name.items():
+            project = (root / repository.path).resolve()
+            path = project / c.PYPROJECT_FILENAME
+            plan = manifests.get(path)
+            if plan is None:
+                physical = u.Cli.toml_read_json(path)
+                if physical.failure:
+                    raise ValueError(physical.error) from physical.exception
+                payload = physical.value
+            else:
+                if plan.project.resolve() != project or plan.desired_content is None:
+                    msg = f"planned manifest has no owning payload: {path}"
+                    raise ValueError(msg)
+                payload = u.Cli.toml_mapping_from_text(
+                    plan.desired_content.decode(c.DEFAULT_ENCODING),
+                )
+                if payload is None:
+                    msg = f"invalid planned manifest: {path}"
+                    raise ValueError(msg)
+            graph[name] = tuple(
                 dependency
                 for dependency in cls.project_dependency_names_from_payload(
-                    u.Cli.toml_read_json(
-                        root / repository.path / c.PYPROJECT_FILENAME,
-                    ).unwrap(),
+                    payload,
                 )
                 if dependency in by_name
             )
-            for name, repository in by_name.items()
-        }
         waves = cls.dependency_waves(graph)
         if waves.failure:
             raise ValueError(waves.error)

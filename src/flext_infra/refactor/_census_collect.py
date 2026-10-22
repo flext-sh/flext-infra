@@ -28,26 +28,35 @@ class FlextInfraRefactorCensusCollectMixin:
             project_reports: t.VariadicTuple[m.Infra.ProjectReport],
             *,
             source_preview: p.Infra.SourcePreview,
-        ) -> t.VariadicTuple[m.Infra.ProjectReport]: ...
+        ) -> t.VariadicTuple[m.Infra.ProjectReport]:
+            del rope, project_reports, source_preview
 
         @staticmethod
         def project_name_for_module(
             module: m.Infra.RopeModuleIndexEntry,
             convention: m.Infra.RopeModuleConvention,
-        ) -> str: ...
+        ) -> str:
+            del module, convention
+
         @staticmethod
         def _include_object(
             item: m.Infra.Object,
             *,
             selected_families: frozenset[str],
             selected_kinds: frozenset[str] | None,
-        ) -> bool: ...
+        ) -> bool:
+            del item, selected_families, selected_kinds
+
         @staticmethod
         def duplicate_groups(
             project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
-        ) -> t.VariadicTuple[m.Infra.DuplicateGroup]: ...
+        ) -> t.VariadicTuple[m.Infra.DuplicateGroup]:
+            del project_objects
+
         @staticmethod
-        def _object_key(item: m.Infra.Object) -> str: ...
+        def _object_key(item: m.Infra.Object) -> str:
+            del item
+
         def _project_report(
             self,
             project: str,
@@ -55,7 +64,8 @@ class FlextInfraRefactorCensusCollectMixin:
             findings: m.Infra.ScanFindings,
             duplicate_keys: frozenset[str],
             scan_config: m.Infra.ScanConfig,
-        ) -> m.Infra.ProjectReport: ...
+        ) -> m.Infra.ProjectReport:
+            del project, findings, duplicate_keys, scan_config
 
     def _scan_module(
         self,

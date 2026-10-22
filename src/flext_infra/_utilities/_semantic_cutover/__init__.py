@@ -40,6 +40,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.declaration_relocation import (
         FlextInfraUtilitiesSemanticDeclarationRelocation,
     )
+    from flext_infra._utilities._semantic_cutover.declaration_retirement import (
+        FlextInfraUtilitiesSemanticDeclarationRetirement,
+    )
     from flext_infra._utilities._semantic_cutover.dynamic_environment import (
         FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     )
@@ -66,6 +69,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._semantic_cutover.helper_references import (
         FlextInfraUtilitiesSemanticHelperReferences,
+    )
+    from flext_infra._utilities._semantic_cutover.model_aliases import (
+        FlextInfraUtilitiesSemanticModelAliases,
     )
     from flext_infra._utilities._semantic_cutover.model_fields import (
         FlextInfraUtilitiesSemanticCutoverModelFields,
@@ -134,10 +140,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSemanticCutoverSelfFacade",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
+    "FlextInfraUtilitiesSemanticDeclarationRetirement",
     "FlextInfraUtilitiesSemanticFamilyFlatten",
     "FlextInfraUtilitiesSemanticFamilyReferences",
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
+    "FlextInfraUtilitiesSemanticModelAliases",
     "FlextInfraUtilitiesSemanticNestingTypes",
     "FlextInfraUtilitiesSemanticTestHelpers",
 )
@@ -175,10 +183,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverPrivateImports": ".private_imports",
         "FlextInfraUtilitiesSemanticCutoverSelfFacade": ".self_facade",
         "FlextInfraUtilitiesSemanticDeclarationRelocation": ".declaration_relocation",
+        "FlextInfraUtilitiesSemanticDeclarationRetirement": ".declaration_retirement",
         "FlextInfraUtilitiesSemanticFamilyFlatten": ".family_flatten",
         "FlextInfraUtilitiesSemanticFamilyReferences": ".family_references",
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
+        "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
         "FlextInfraUtilitiesSemanticNestingTypes": ".nesting_types",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
     }),

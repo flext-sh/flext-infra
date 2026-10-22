@@ -12,7 +12,6 @@ import runpy
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
 
 from flext_infra import config, infra, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -962,15 +961,14 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
 
             """
             path = root / "config" / "beads.yaml"
-            payload: t.MutableMappingKV[str, t.JsonValue] = {
+            payload: t.JsonDict = {
                 "version": 1,
                 "workspace": workspace,
                 "database": database,
                 "issue_prefix": issue_prefix,
             }
             if custom_issue_types:
-                custom_types: list[str] = [*custom_issue_types]
-                payload["custom_issue_types"] = cast("t.JsonValue", custom_types)
+                payload["custom_issue_types"] = [*custom_issue_types]
             tm.ok(u.Cli.yaml_dump(path, payload))
             return path
 

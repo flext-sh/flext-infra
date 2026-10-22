@@ -69,8 +69,6 @@ Infra:
       evidence: "name: flext-strict-jsonvalue-session-continuation"
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
-    # Bound concurrent-edit convergence without discarding independent plans.
-    source_replan_limit: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
     # threads per level (paths, then gates per path); mypy keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
@@ -631,8 +629,8 @@ Infra:
       # The full suite remains a separate local verb that first runs this
       # incremental phase and then exercises the complete inventory.
       - { verb: test, contexts: [ local, ci, pre_push, pre_commit ] }
-      # The generation fixed point and the clean tree close every CI run and
-      # every push: a projection that drifts from its source is red.
+      # Verify owned projections against their sources without requiring a clean
+      # worktree. Concurrent staged, unstaged, or untracked work is expected.
       - { verb: verify-clean, contexts: [ local, ci, pre_push ] }
       # Root mutation verbs own their existing member fanout. Per-repository
       # consumers run from the invoking root with the member's Makefile.
@@ -751,6 +749,10 @@ Infra:
         description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
       - name: profile-test-report
         description: Render the parent pytest profile and the aggregated child profiles from that run.
+      - name: profile-docs
+        description: Profile the complete configured mutating documentation lifecycle and retain reached phase profiles on native failure.
+      - name: profile-docs-report
+        description: Render only the latest documentation profiling run, including explicit lifecycle and phase completion states.
       - name: profile-environment
         description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
       - name: profile-environment-report
@@ -787,7 +789,7 @@ Infra:
       - name: status
         description: Report the resolved runtime and repository state.
       - name: verify-clean
-        description: Verify managed artifacts and generated documentation against their sources, then reject staged, unstaged, untracked changes and stash entries through the public Git service.
+        description: Audit documentation consistency and report the current Git state without rejecting concurrent work or requiring cleanup.
       - name: docs
         description: Generate, fix, format, and check documentation.
       - name: clean
@@ -813,6 +815,8 @@ Infra:
       - name: gen-pyproject
         description: Regenerate this project's analyzer and dependency metadata through guarded publication.
         requires_activation: false
+      - name: typings
+        description: Detect published typing dependencies and generate, package, and install missing third-party stubs through native Pyright and UV.
       - name: gen-editor
         description: Project editor settings, analyzer configuration, and Git ignores without generating Python facades.
         requires_activation: false
@@ -868,7 +872,7 @@ Infra:
     artifacts:
     - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
     - { name: __pyrefly_virtual__, analysis_exclude: true }
-    # Governance content (.agents/.claude) and direnv runtime state stay
+    # Governance content (.agents/.claude/.codex) and direnv runtime state stay
     # visible to the editor and watcher; source_scan keeps its dotdir skip.
     - { name: .agents, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .beads, source_scan_ignore: true }
@@ -882,6 +886,7 @@ Infra:
     - { name: .cache, source_scan_ignore: true, analysis_exclude: true }
     # Agent worktrees are duplicate repositories, never production input.
     - { name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
+    - { name: .codex, gitignore: false, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     # .direnv keeps the source-scan skip (order-sensitive, after .claude).
     - { name: .direnv, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .dolt }
@@ -934,7 +939,6 @@ Infra:
     - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
-    - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false }
     # npm's lockfile emission: the resolver owns sibling-shared resolved
     # dependency lines; clone detection never reads it (resolver_owned).
     - { name: package-lock.json, is_dir: false, vscode_exclude: false, watch_exclude: false, gitignore: false, resolver_owned: true }
@@ -1445,7 +1449,9 @@ Infra:
       # own output and is recoverable. tool.flext.docs is deliberately
       # absent: the template seeds it with package_name at project creation
       # only, and afterwards it stays CUSTOM — keys such as site_title are
-      # owned by the live repository and survive every gen.
+      # owned by the live repository and survive every gen. The sole exception
+      # is documentation_language: _sync_documentation_language projects it
+      # from repository.project and removes the leaf for the English default.
       - tool.flext.namespace
       preserve_project_keys:
       - name

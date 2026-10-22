@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -115,7 +114,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
 
         """
         source_states, declared_files = receipt.inputs, receipt.files
-        captured = FlextInfraCodegenPreconditions.unique_states((
+        captured = u.Infra.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
         ))
@@ -1078,6 +1077,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             The resulting ``bool``.
 
         """
+        del _paths
         return True
 
     @staticmethod

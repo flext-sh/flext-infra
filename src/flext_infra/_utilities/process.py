@@ -42,21 +42,5 @@ class FlextInfraUtilitiesProcess:
             return c.Infra.ToolOutcome.FINDINGS
         return c.Infra.ToolOutcome.ERROR
 
-    @staticmethod
-    def process_exit_classification(exit_code: int) -> str:
-        """Classify a process exit without discarding its original status.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
-            return "timeout"
-        if exit_code < 0:
-            return f"signal={-exit_code}"
-        if exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
-            return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
-        return "failure"
-
 
 __all__: list[str] = ["FlextInfraUtilitiesProcess"]

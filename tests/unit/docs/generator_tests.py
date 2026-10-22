@@ -84,7 +84,14 @@ class TestsFlextInfraDocsGenerator:
         paths = {plan.path for plan in plans}
         tm.ok(workspace / "docs/projects/generated/catalog.md" in paths)
         tm.ok(workspace / "flext-a/README.md" in paths)
-        tm.ok(all(plan.owner == "docs" for plan in plans))
+        ownership = tm.ok(u.Infra.pyproject_managed_file())
+        for plan in plans:
+            if plan.path.name == c.PYPROJECT_FILENAME:
+                tm.that(plan.owner, eq=ownership.owner)
+                tm.that(plan.policy, eq=ownership.policy)
+                tm.that(plan.desired_content, eq=plan.path.read_bytes())
+            else:
+                tm.that(plan.owner, eq="docs")
 
     @staticmethod
     def _seed_runtime_package(
@@ -98,10 +105,19 @@ class TestsFlextInfraDocsGenerator:
 
         """
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-        (workspace / "pyproject.toml").write_text(
-            f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n',
+        pyproject = workspace / c.PYPROJECT_FILENAME
+        document = tm.not_none(u.Cli.toml_parse_text(pyproject.read_text()))
+        project = u.Cli.toml_ensure_path(document, ("project",))
+        project["name"] = project_name
+        pyproject.write_text(
+            u.Cli.toml_dumps(document),
             encoding="utf-8",
         )
+        if project_name == config.Infra.name:
+            u.Tests.initialize_git_repo(
+                workspace,
+                origin_url=u.Tests.repository_ref(project_name).url,
+            )
         package = workspace / "src/workspace_runtime"
         package.mkdir(parents=True)
         (package / "__init__.py").write_text(
@@ -183,6 +199,15 @@ class TestsFlextInfraDocsGenerator:
         tm.ok(fixed_point)
         tm.ok(all(report.changed_files == 0 for report in fixed_point.value))
 
+        TestsFlextInfraDocsGenerator._assert_frozen_publication_guard(
+            generator, workspace
+        )
+
+    @staticmethod
+    def _assert_frozen_publication_guard(
+        generator: FlextInfraDocGenerator, workspace: Path
+    ) -> None:
+        """Retain the same receipts and reject publication after a source edit."""
         bundle = u.Tests.prepare_docs_bundle(generator)
         # Mutate an authenticated source selected by the bundle itself.
         # Different project selections legitimately watch different sources.
@@ -191,8 +216,27 @@ class TestsFlextInfraDocsGenerator:
             for state in bundle.source_states
             if workspace in state.path.parents
         )
+        original_receipts = bundle.source_states
+        desired = tuple(
+            (plan.path, plan.desired_content)
+            for plan in tm.ok(generator.plan_files(bundle))
+        )
+        outputs = {
+            path: path.read_bytes() if path.exists() else None
+            for path, _content in desired
+        }
         watched.write_text('"""Source changed after rendering."""\n', encoding="utf-8")
-        tm.fail(generator.plan_files(bundle))
+        concurrent = watched.read_bytes()
+        frozen = tm.ok(generator.plan_files(bundle))
+        tm.that(tuple((plan.path, plan.desired_content) for plan in frozen), eq=desired)
+        tm.that(bundle.source_states, eq=original_receipts)
+        tm.fail(generator.publish_batch(bundle))
+        tm.that(watched.read_bytes(), eq=concurrent)
+        for path, content in outputs.items():
+            tm.that(
+                path.read_bytes() if path.exists() else None,
+                eq=concurrent if path == watched else content,
+            )
 
     @staticmethod
     def test_root_generated_catalog_survives_project_pass_and_required_indexes_validate(

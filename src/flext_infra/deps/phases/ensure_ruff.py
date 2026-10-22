@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import c, config, m, t, u
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraExtraPathsManager
@@ -128,7 +130,7 @@ class FlextInfraEnsureRuffConfigPhase:
         existing_root = tuple(
             directory
             for directory in u.Infra.native_tool_setting(
-                self._tool_config, "ruff", "src", t.StrSequence
+                self._tool_config, "ruff", "src", TypeForm(t.StrSequence)
             )
             if _present(directory)
         )
@@ -137,7 +139,10 @@ class FlextInfraEnsureRuffConfigPhase:
             directory
             for directory in (
                 *u.Infra.native_tool_setting(
-                    self._tool_config, "ruff", "namespace-packages", t.StrSequence
+                    self._tool_config,
+                    "ruff",
+                    "namespace-packages",
+                    TypeForm(t.StrSequence),
                 ),
                 *facts.repository_namespace_packages,
             )
@@ -150,26 +155,37 @@ class FlextInfraEnsureRuffConfigPhase:
         ruff_options["target-version"] = (
             "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
         )
-        declared_excludes = u.Infra.native_tool_setting(
-            self._tool_config, "ruff", "extend-exclude", t.StrSequence
-        )
         ruff_options.update({
-            "extend-exclude": sorted({*declared_excludes, *workspace_exclusions}),
-            "namespace-packages": sorted(existing_namespace_packages),
-            "src": sorted(existing_root),
+            "extend-exclude": list[t.JsonValue](
+                sorted({
+                    *config.Infra.codegen.analyzer_exclude_globs,
+                    *workspace_exclusions,
+                })
+            ),
+            "namespace-packages": list[t.JsonValue](
+                sorted(existing_namespace_packages)
+            ),
+            "src": list[t.JsonValue](sorted(existing_root)),
         })
         lint_options = u.Cli.toml_mapping_ensure_table(
             ruff_options, c.Infra.LINT_SECTION
         )
-        lint_options["ignore"] = sorted({
-            *delegated_rules,
-            *ruff_cfg.lint.ruling_disabled_rules,
-            *u.Infra.native_tool_setting(
-                self._tool_config, "ruff.lint", "ignore", t.StrSequence
-            ),
-        })
+        lint_options["ignore"] = list[t.JsonValue](
+            sorted({
+                *delegated_rules,
+                *ruff_cfg.lint.ruling_disabled_rules,
+                *u.Infra.native_tool_setting(
+                    self._tool_config,
+                    "ruff.lint",
+                    "ignore",
+                    TypeForm(t.StrSequence),
+                ),
+            })
+        )
         isort_options = u.Cli.toml_mapping_ensure_table(lint_options, c.Infra.ISORT)
-        isort_options[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = sorted(facts.first_party)
+        isort_options[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = list[t.JsonValue](
+            sorted(facts.first_party)
+        )
         return toml.PhaseConfig(
             name="ruff",
             operations=(toml.SetOp(key=c.Infra.RUFF, value=ruff_options),),

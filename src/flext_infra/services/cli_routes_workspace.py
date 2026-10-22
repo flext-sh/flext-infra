@@ -187,12 +187,13 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             m.Cli.ResultCommandRoute(
                 name="verify-clean",
                 help_text=(
-                    "Reject staged, unstaged, untracked changes and stash entries"
+                    "Report staged, unstaged, and untracked changes without "
+                    "rejecting WIP or requiring recovery cleanup"
                 ),
                 model_cls=m.Infra.GitStatusRequest,
                 handler=FlextInfraGitService.verify_clean,
                 success_message=(
-                    "workspace Git worktree is clean and has no stash entries"
+                    "workspace Git status reported; existing work preserved"
                 ),
             ),
             m.Cli.ResultCommandRoute(

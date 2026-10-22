@@ -25,9 +25,13 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         def _package_entry(
             self,
             pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None:
+            del pkg_dir
+            raise NotImplementedError(type(self).__qualname__)
 
-        def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext: ...
+        def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
+            del pkg_dir
+            raise NotImplementedError(type(self).__qualname__)
 
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
         _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
@@ -37,16 +41,24 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             index: t.MutableLazyAliasMap,
             name: str,
             target: t.StrPair,
-        ) -> None: ...
+        ) -> None:
+            del index, name, target
+            raise NotImplementedError(type(self).__qualname__)
 
         @staticmethod
-        def _publish(name: str, *, allow_main: bool) -> bool: ...
+        def _publish(name: str, *, allow_main: bool) -> bool:
+            del name, allow_main
+            raise NotImplementedError
 
         @staticmethod
-        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool: ...
+        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool:
+            del context
+            raise NotImplementedError
 
         @staticmethod
-        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool: ...
+        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool:
+            del module_path, root_pkg
+            raise NotImplementedError
 
     def _has_live_package_content(
         self,
@@ -160,7 +172,16 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         # sibling module declares for the same name.
         is_facade_root = self._is_facade_root(parent_context)
         direct: list[str] = []
-        for child_dir in package_entry.descendant_child_dirs:
+        children = dict.fromkeys((
+            *package_entry.descendant_child_dirs,
+            *(
+                plan.context.pkg_dir
+                for plan in self._source_plan_cache.values()
+                if plan.action == c.Infra.LazyInitAction.WRITE
+                and plan.context.pkg_dir.parent.resolve() == resolved_pkg_dir
+            ),
+        ))
+        for child_dir in children:
             merged = self._merge_child(
                 resolved_pkg_dir,
                 dir_exports,
@@ -216,8 +237,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 msg = f"lazy-init child decision lacks original provenance: {child_dir}"
                 raise ValueError(msg)
             self.rope_workspace.rope_project.replay_source_consumption(receipt)
+        planned_action = child_plan.action if child_plan is not None else None
+        planned_write = planned_action == c.Infra.LazyInitAction.WRITE
         retired = child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
-        if retired or not self.context(child_dir).importable:
+        if retired or (not planned_write and not self.context(child_dir).importable):
             return None
         # Children are planned before their parent (depth
         # descending), so the parent inventory follows the child's plan in
@@ -226,9 +249,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         # example a stdlib-shadowing name) never does. Without a plan the
         # on-disk initializer decides. This keeps check and apply at a
         # fixed point after one run.
-        planned_action = child_plan.action if child_plan is not None else None
-        planned_write = planned_action is c.Infra.LazyInitAction.WRITE
-        unmergeable = planned_action is c.Infra.LazyInitAction.REMOVE or (
+        unmergeable = planned_action == c.Infra.LazyInitAction.REMOVE or (
             not planned_write
             and not self.rope_workspace.rope_project.source_query(
                 child_dir / c.Infra.INIT_PY,

@@ -35,7 +35,8 @@ class FlextInfraUtilitiesCodegen(
             file_path: Path,
             *,
             source_project: p.Infra.RopeProject | None = None,
-        ) -> Path | None: ...
+        ) -> Path | None:
+            del file_path, source_project
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:

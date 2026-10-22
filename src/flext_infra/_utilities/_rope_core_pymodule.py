@@ -105,15 +105,17 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     @overload
     def resolve_pymodule(
         rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeFile,
-    ) -> t.Infra.RopeSourceModule: ...
+        resource: t.Infra.RopeFile | None = None,
+    ) -> t.Infra.RopeSourceModule:
+        del rope_project, resource
 
     @staticmethod
     @overload
     def resolve_pymodule(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-    ) -> t.Infra.RopeParsedModule: ...
+    ) -> t.Infra.RopeParsedModule:
+        del rope_project, resource
 
     @staticmethod
     def resolve_pymodule(

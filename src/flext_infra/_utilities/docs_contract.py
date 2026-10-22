@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from markdown import Markdown
 from markdown.extensions.toc import slugify
+from pymdownx.superfences import SuperFencesCodeExtension
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
@@ -125,15 +126,11 @@ class FlextInfraUtilitiesDocsContract:
         return slugify(text, "-")
 
     @staticmethod
-    def docs_contract_build_toc(content: str) -> str:
-        """Generate a managed TOC block from second- and third-level headings.
-
-        Headings inside fenced code blocks are documentation samples, not
-        sections: markdown renders them verbatim and emits no anchor, so a TOC
-        entry pointing at them is a dead link that fails the strict docs build.
+    def _docs_contract_headings(content: str, depth: str) -> m.Infra.DocsRenderedToc:
+        """Parse real headings through the same Markdown extensions as MkDocs.
 
         Returns:
-            The resulting ``str``.
+            The typed rendered heading inventory.
 
         """
         renderer = Markdown(
@@ -141,9 +138,9 @@ class FlextInfraUtilitiesDocsContract:
                 "attr_list",
                 "md_in_html",
                 "toc",
-                "pymdownx.superfences",
+                SuperFencesCodeExtension(),
             ],
-            extension_configs={"toc": {"toc_depth": "2-3"}},
+            extension_configs={"toc": {"toc_depth": depth}},
         )
         body = c.Infra.TOC_BLOCK_RE.sub("", content)
         lines = body.splitlines()
@@ -154,11 +151,40 @@ class FlextInfraUtilitiesDocsContract:
                 ],
             ),
         )
-        items: t.MutableSequenceOf[str] = []
-        rendered = m.Infra.DocsRenderedToc.model_validate(
+        return m.Infra.DocsRenderedToc.model_validate(
             renderer,
             from_attributes=True,
         )
+
+    @staticmethod
+    def docs_contract_title(content: str) -> str | None:
+        """Read the authored H1, excluding frontmatter and fenced examples.
+
+        Returns:
+            The first rendered H1 label, or no title when none exists.
+
+        """
+        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(content, "1")
+        if not rendered.toc_tokens:
+            return None
+        return (
+            unescape(rendered.toc_tokens[0].name)
+            .replace("[", r"\[")
+            .replace("]", r"\]")
+        )
+
+    @staticmethod
+    def docs_contract_build_toc(content: str) -> str:
+        """Generate the managed TOC from real second- and third-level headings.
+
+        Returns:
+            The canonical TOC block, without headings inside code fences.
+
+        """
+        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(
+            content, "2-3"
+        )
+        items: t.MutableSequenceOf[str] = []
         FlextInfraUtilitiesDocsContract._docs_contract_toc_items(
             rendered.toc_tokens,
             items,

@@ -15,11 +15,88 @@ from pathlib import Path
 
 import pytest
 
-from tests import tm, u
+from flext_infra import FlextInfraPytestClock
+from tests import c, tm, u
 
 
 class TestsFlextInfraCProfileInterruption:
     """Exercise publication and continuation through real Python processes."""
+
+    @staticmethod
+    def test_sigterm_cleanup_preserves_replaced_staging_identity(
+        tmp_path: Path,
+    ) -> None:
+        """A native handler failure stays primary and cleanup never deletes a new inode."""
+        output = tmp_path / "profile.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal\n"
+            "output = Path(sys.argv[1])\n"
+            "sum(range(3))\n"
+            "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "before = output.read_bytes()\n"
+            "staging = []\n"
+            "def native(signum, frame):\n"
+            "    raise RuntimeError('original native failure')\n"
+            "signal.signal(signal.SIGTERM, native)\n"
+            "clock.FlextInfraPytestClock.register_signal_checkpoint(profile, output)\n"
+            "def interrupt(name, arguments):\n"
+            "    if name == 'tempfile.mkstemp':\n"
+            "        staging.append(Path(arguments[0]))\n"
+            "    if name == 'marshal.dumps':\n"
+            "        staging[0].rename(staging[0].with_suffix('.retained'))\n"
+            "        staging[0].write_bytes(b'foreign inode')\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            "sys.addaudithook(interrupt)\n"
+            "try:\n"
+            "    clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
+            "except RuntimeError as failure:\n"
+            "    assert str(failure) == 'original native failure'\n"
+            "    assert 'profile staging cleanup failed' in '\\n'.join(failure.__notes__)\n"
+            "else:\n"
+            "    raise AssertionError('native failure was lost')\n"
+            "assert len(staging) == 1, staging\n"
+            "assert staging[0].read_bytes() == b'foreign inode'\n"
+            "assert output.read_bytes() == before\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw((sys.executable, "-c", script, str(output)), cwd=tmp_path)
+        )
+        tm.ok(u.Cli.process_succeeded(result.outcome), msg=result.stderr)
+
+    @staticmethod
+    @pytest.mark.parametrize("status", [0, 7])
+    def test_public_command_retains_status_and_profile(
+        tmp_path: Path, status: int
+    ) -> None:
+        """The flat public owner publishes readable invocation-owned evidence."""
+        output = tmp_path / "command.pstats"
+        tm.that(
+            FlextInfraPytestClock.profile_command(lambda: status, output),
+            eq=status,
+        )
+        tm.that(
+            pstats.Stats(str(output)).get_stats_profile().func_profiles,
+            truth=True,
+        )
+        retained = tuple(tmp_path.glob("command-*.pstats"))
+        tm.that(len(retained), eq=1)
+        tm.ok(retained[0].samefile(output))
+
+    @staticmethod
+    def test_public_command_preserves_first_exception(tmp_path: Path) -> None:
+        """A real missing output parent cannot replace the command failure."""
+        failure = RuntimeError("command failed")
+
+        def command() -> int:
+            raise failure
+
+        with pytest.raises(RuntimeError) as raised:
+            FlextInfraPytestClock.profile_command(
+                command, tmp_path / "missing" / "command.pstats"
+            )
+        tm.ok(raised.value is failure)
+        tm.that("\n".join(failure.__notes__), has="profile publication failed")
+        tm.fail((tmp_path / "missing").exists())
 
     @staticmethod
     @pytest.mark.parametrize("handler", ["default", "raise", "return", "ignore"])

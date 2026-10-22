@@ -127,6 +127,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope import (
         FlextInfraRopeProject,
         FlextInfraRopeRestructure,
+        Restructure,
     )
     from flext_infra._utilities._rope_analysis import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -185,10 +186,12 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesSemanticCutoverPrivateImports,
         FlextInfraUtilitiesSemanticCutoverSelfFacade,
         FlextInfraUtilitiesSemanticDeclarationRelocation,
+        FlextInfraUtilitiesSemanticDeclarationRetirement,
         FlextInfraUtilitiesSemanticFamilyFlatten,
         FlextInfraUtilitiesSemanticFamilyReferences,
         FlextInfraUtilitiesSemanticFamilyTypeReferences,
         FlextInfraUtilitiesSemanticHelperReferences,
+        FlextInfraUtilitiesSemanticModelAliases,
         FlextInfraUtilitiesSemanticNestingTypes,
     )
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
@@ -269,6 +272,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.namespace_moves import (
         FlextInfraUtilitiesRefactorNamespaceMoves,
     )
+    from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
     from flext_infra._utilities.network import FlextInfraUtilitiesNetwork
     from flext_infra._utilities.private_import_ancestry import (
         FlextInfraUtilitiesPrivateImportAncestry,
@@ -328,6 +332,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
     from flext_infra._utilities.rope_runtime_base import (
         FlextInfraUtilitiesRopeRuntimeBase,
+    )
+    from flext_infra._utilities.rope_runtime_matching import (
+        FlextInfraUtilitiesRopeRuntimeMatching,
     )
     from flext_infra._utilities.rope_runtime_module_queries import (
         FlextInfraUtilitiesRopeRuntimeModuleQueries,
@@ -461,6 +468,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesMiseBinary",
     "FlextInfraUtilitiesNamespaceConfig",
+    "FlextInfraUtilitiesNativeTooling",
     "FlextInfraUtilitiesNetwork",
     "FlextInfraUtilitiesPrivateImportAncestry",
     "FlextInfraUtilitiesPrivateImportFacades",
@@ -520,6 +528,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
+    "FlextInfraUtilitiesRopeRuntimeMatching",
     "FlextInfraUtilitiesRopeRuntimeModuleQueries",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
@@ -555,10 +564,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSemanticCutoverSelfFacade",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
+    "FlextInfraUtilitiesSemanticDeclarationRetirement",
     "FlextInfraUtilitiesSemanticFamilyFlatten",
     "FlextInfraUtilitiesSemanticFamilyReferences",
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
+    "FlextInfraUtilitiesSemanticModelAliases",
     "FlextInfraUtilitiesSemanticNestingTypes",
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
@@ -568,6 +579,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
+    "Restructure",
     "_git",
     "_promoted",
     "_pyproject",
@@ -682,6 +694,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
+        "FlextInfraUtilitiesNativeTooling": ".native_tooling",
         "FlextInfraUtilitiesNetwork": ".network",
         "FlextInfraUtilitiesPrivateImportAncestry": ".private_import_ancestry",
         "FlextInfraUtilitiesPrivateImportFacades": ".private_import_facades",
@@ -743,6 +756,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
+        "FlextInfraUtilitiesRopeRuntimeMatching": ".rope_runtime_matching",
         "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".rope_runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".rope_runtime_modules",
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".rope_runtime_refactors",
@@ -814,6 +828,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticDeclarationRelocation": (
             "._semantic_cutover.declaration_relocation"
         ),
+        "FlextInfraUtilitiesSemanticDeclarationRetirement": (
+            "._semantic_cutover.declaration_retirement"
+        ),
         "FlextInfraUtilitiesSemanticFamilyFlatten": "._semantic_cutover.family_flatten",
         "FlextInfraUtilitiesSemanticFamilyReferences": (
             "._semantic_cutover.family_references"
@@ -824,6 +841,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticHelperReferences": (
             "._semantic_cutover.helper_references"
         ),
+        "FlextInfraUtilitiesSemanticModelAliases": "._semantic_cutover.model_aliases",
         "FlextInfraUtilitiesSemanticNestingTypes": "._semantic_cutover.nesting_types",
         "FlextInfraUtilitiesTransformerHeader": ".transformer_header",
         "FlextInfraUtilitiesTransformerHeaderParser": ".transformer_header_parser",
@@ -833,6 +851,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesWorkspaceManifest": ".workspace_manifest",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",
+        "Restructure": "._rope._sdk",
         "_git": "._git",
         "_promoted": "._promoted",
         "_pyproject": "._pyproject",

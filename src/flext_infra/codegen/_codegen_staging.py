@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsProcess as process,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 if TYPE_CHECKING:
@@ -118,7 +117,7 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        sources = FlextInfraCodegenPreconditions.unique_states((
+        sources = u.Infra.unique_states((
             *(state for plan in plans for state in plan.source_states),
             *(
                 plan.before
@@ -213,7 +212,7 @@ class FlextInfraCodegenStaging:
             )
         if prepared.failure:
             return result_type.from_failure(prepared)
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *sources.value,
             *prepared.value.inputs,
         ))
@@ -248,6 +247,7 @@ class FlextInfraCodegenStaging:
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         workspace: Path,
+        runtime_root: Path | None = None,
         validator: Callable[
             [Path, m.Infra.StageSourcePlan, Path, m.Infra.ValidationReport],
             p.Result[bool],
@@ -258,6 +258,8 @@ class FlextInfraCodegenStaging:
 
         Unchanged outputs enter the same mandatory runtime admission.
         Preparation never occurs inside this authenticated consumer.
+        A scaffold retains its declared executor runtime until its generated
+        checkout can provision its own environment through setup.
 
         Returns:
             The original session, or the original runtime/checker failure.
@@ -281,11 +283,15 @@ class FlextInfraCodegenStaging:
 
         def validate(root: Path) -> p.Result[bool]:
             for project in projects:
-                runtime_root = u.Infra.runtime_environment_dir(project).parent
+                consumer_runtime = (
+                    u.Infra.runtime_environment_dir(project).parent
+                    if runtime_root is None
+                    else runtime_root
+                )
                 consumed = consume_source_runtime(
                     planned.value,
                     root,
-                    runtime_root,
+                    consumer_runtime,
                     project_root=project,
                 )
                 if consumed.failure:
@@ -358,7 +364,7 @@ class FlextInfraCodegenStaging:
                 )
             if all(receipt is not previous for previous in receipts):
                 receipts.append(receipt)
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *(state for receipt in receipts for state in receipt.inputs),
             *(state for plan in plans for state in plan.source_states),
         ))
@@ -811,6 +817,12 @@ class FlextInfraCodegenStaging:
         for index, (file_plan, before, replacement_input, staged_present) in enumerate(
             prepared,
         ):
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: phase={phase} "
+                f"staging={index + 1}/{len(prepared)} stage=write "
+                f"destination={file_plan.path}\n",
+                error=True,
+            )
             replacement: m.Cli.AtomicFileState | None = None
             original_replacement: m.Cli.AtomicFileState | None = None
             if file_plan.dependency_group is not None and before.content is not None:
@@ -848,6 +860,11 @@ class FlextInfraCodegenStaging:
                     index_before=file_plan.index_before,
                     tracking_dependencies=file_plan.tracking_dependencies,
                 ),
+            )
+            u.Cli.emit_raw(
+                f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: phase={phase} "
+                f"staging={index + 1}/{len(prepared)} stage=bound\n",
+                error=True,
             )
         return result_type.ok(tuple(publications))
 

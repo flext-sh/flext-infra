@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
@@ -480,6 +479,11 @@ class FlextInfraModelsWorkspace:
     class WorkspaceRuntimeContext(m.ContractModel):
         """Physical runtime ownership and its selected native resolution input."""
 
+        editable_supplier_root: Path | None = m.Field(
+            default=None,
+            description="Validated external supplier elected for this physical runtime",
+        )
+
         project_root: Annotated[
             Path, m.Field(description="Submitted Git worktree root")
         ]
@@ -823,9 +827,7 @@ class FlextInfraModelsWorkspace:
                 description="Resolved edges by extra; absent when no extras exist",
             ),
         ] = m.Field(
-            default_factory=lambda: MappingProxyType[
-                str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
-            ]({}),
+            default_factory=dict,
             validate_default=True,
         )
         dev_dependencies: Annotated[
@@ -835,9 +837,7 @@ class FlextInfraModelsWorkspace:
                 description="Resolved edges by development group; absent means none",
             ),
         ] = m.Field(
-            default_factory=lambda: MappingProxyType[
-                str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
-            ]({}),
+            default_factory=dict,
             validate_default=True,
         )
         resolution_markers: Annotated[

@@ -57,7 +57,15 @@ class FlextInfraUtilitiesDiscovery(
             else resolved
         )
         wrapper_root: Path | None = None
+        layout_root: Path | None = None
         for current in (candidate, *candidate.parents):
+            manifest = current / c.PYPROJECT_FILENAME
+            if (
+                manifest.is_file()
+                if source_project is None
+                else source_project.source_query(manifest, "isfile")
+            ):
+                return str(current)
             if current.name == c.Infra.DEFAULT_SRC_DIR:
                 wrapper_root = current.parent
                 continue
@@ -72,12 +80,13 @@ class FlextInfraUtilitiesDiscovery(
                 )
             ):
                 relative = candidate.relative_to(current)
-                if (
+                if layout_root is None and (
                     not relative.parts
                     or relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
                 ):
-                    return str(current)
-        return str(wrapper_root) if wrapper_root is not None else ""
+                    layout_root = current
+        discovered = layout_root or wrapper_root
+        return str(discovered) if discovered is not None else ""
 
     @staticmethod
     def _relative_path_parts(resolved: Path, project_root: Path | None) -> t.StrTuple:

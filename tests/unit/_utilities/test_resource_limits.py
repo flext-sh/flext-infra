@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pstats
+import signal
 import sys
 from pathlib import Path
 
@@ -78,7 +79,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     @pytest.mark.requires_engine("mypy")
     @pytest.mark.slow
     def test_mypy_profile_records_the_real_checker(tmp_path: Path) -> None:
-        """Keep the public profiling contract while removing executable selection."""
+        """Profile the real checker without changing its incremental workload."""
         project = u.Tests.mypy_workload(tmp_path)
         profile = tmp_path / "checker.pstats"
         invocation = m.Infra.MypyInvocation(
@@ -86,6 +87,16 @@ class TestsFlextInfraUtilitiesResourceLimits:
             config_file=project.config_file,
             profile_output=profile,
             verbose=True,
+        )
+        tm.that(
+            u.Infra.mypy_arguments(invocation),
+            eq=u.Infra.mypy_arguments(
+                m.Infra.MypyInvocation(
+                    targets=project.targets,
+                    config_file=project.config_file,
+                    verbose=True,
+                ),
+            ),
         )
         result = u.Cli.run_raw(
             u.Infra.mypy_limited_command(invocation),
@@ -97,15 +108,82 @@ class TestsFlextInfraUtilitiesResourceLimits:
             bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
             eq=True,
         )
-        # The second profile must analyze the source even after warming its cache.
+        tm.that(result.value.stderr, has=f"Parsing {project.targets[0]}")
+        tm.that(
+            profile.with_suffix(".timing.txt").read_text(encoding=c.DEFAULT_ENCODING),
+            has="checked ",
+        )
+        tm.that(
+            profile.with_suffix(".lines.txt").read_text(encoding=c.DEFAULT_ENCODING),
+            has="checked:",
+        )
+        # Profiling retains the same warm-cache behavior as the production gate.
         repeated = u.Cli.run_raw(
             u.Infra.mypy_limited_command(invocation),
             timeout=u.Infra.mypy_runner_timeout(),
         )
         tm.ok(repeated)
         tm.ok(u.Cli.process_succeeded(repeated.value.outcome))
-        for output in (result.value, repeated.value):
-            tm.that(output.stderr, has=f"Parsing {project.targets[0]}")
+        tm.that(
+            repeated.value.stderr,
+            has="Metadata fresh for checked:",
+            lacks=f"Parsing {project.targets[0]}",
+        )
+        tm.that(
+            bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
+            eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.requires_engine("mypy")
+    @pytest.mark.slow
+    @pytest.mark.parametrize("scenario", ["assignment", "SIGINT", "SIGTERM"])
+    def test_mypy_profile_preserves_failure_and_interruption(
+        tmp_path: Path,
+        scenario: str,
+    ) -> None:
+        """Retain native failure status and readable profiles after termination."""
+        project = u.Tests.mypy_workload(
+            tmp_path,
+            ""
+            if scenario == "assignment"
+            else (
+                "import signal\nfrom pathlib import Path\n"
+                f"Path(__file__).with_suffix('.signal').write_text('{scenario}', "
+                f"encoding={c.DEFAULT_ENCODING!r})\n"
+                f"signal.raise_signal(signal.{scenario})"
+            ),
+        )
+        if scenario == "assignment":
+            project.targets[0].write_text(
+                "value: int = 'invalid'\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        profile = tmp_path / "checker.pstats"
+        result = u.Cli.run_raw(
+            u.Infra.mypy_limited_command(
+                m.Infra.MypyInvocation(
+                    targets=project.targets,
+                    config_file=project.config_file,
+                    profile_output=profile,
+                ),
+            ),
+            timeout=u.Infra.mypy_runner_timeout(),
+        )
+        tm.ok(result)
+        tm.fail(u.Cli.process_succeeded(result.value.outcome))
+        tm.fail(result.value.outcome.timed_out)
+        if scenario == "assignment":
+            tm.that(result.value.stdout, has="Incompatible types in assignment")
+        else:
+            tm.that(
+                (tmp_path / "workload.signal").read_text(encoding=c.DEFAULT_ENCODING),
+                eq=scenario,
+            )
+        tm.that(
+            bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
+            eq=True,
+        )
 
     @staticmethod
     def test_mypy_budget_resolves_the_project_tooling_overlay(
@@ -249,6 +327,12 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 tm.that(result.value.stderr, has="RSS limit reached")
         else:
             tm.that(result.value.outcome.raw_return_code, eq=expected)
+            if scenario == "deadline":
+                tm.fail(result.value.outcome.timed_out)
+                tm.that(
+                    u.Infra.mypy_failure_diagnostic(result.value, limit),
+                    has=[f"exit={expected}", "signal=none"],
+                )
 
     @staticmethod
     @pytest.mark.slow
@@ -424,7 +508,20 @@ class TestsFlextInfraUtilitiesResourceLimits:
             )
 
     @staticmethod
-    def test_mypy_timeout_has_controlled_exit_and_signal_diagnostic() -> None:
+    @pytest.mark.parametrize(
+        ("exit_code", "timed_out"),
+        [
+            (0, True),
+            (7, True),
+            (c.Infra.PROCESS_TIMEOUT_EXIT_CODE, True),
+            (c.Infra.PROCESS_TIMEOUT_EXIT_CODE, False),
+        ],
+    )
+    def test_mypy_timeout_has_controlled_exit_and_signal_diagnostic(
+        exit_code: int,
+        *,
+        timed_out: bool,
+    ) -> None:
         """Expose the configured ceilings and process status on timeout."""
         limit = m.Infra.MypyResourceLimit(
             memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -435,8 +532,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 stdout="",
                 stderr="",
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
-                    timed_out=True,
+                    raw_return_code=exit_code,
+                    timed_out=timed_out,
                     forwarded_signal=None,
                 ),
             ),
@@ -448,13 +545,56 @@ class TestsFlextInfraUtilitiesResourceLimits:
             has=[
                 f"memory_limit={limit.memory_limit_mb} MiB",
                 f"timeout={limit.timeout_seconds}s",
-                f"exit={c.Infra.PROCESS_TIMEOUT_EXIT_CODE}",
+                f"exit={exit_code}",
                 "signal=none",
             ],
         )
 
     @staticmethod
-    def test_mypy_signal_diagnostic_preserves_both_output_streams() -> None:
+    @pytest.mark.parametrize(
+        "exit_code",
+        [1, 2, c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 1],
+    )
+    def test_ordinary_exit_codes_do_not_invent_resource_failures(
+        exit_code: int,
+    ) -> None:
+        """Numeric exit conventions cannot replace causal resource evidence."""
+        limit = m.Infra.MypyResourceLimit(
+            memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+            timeout_seconds=config.Infra.tooling.tools.mypy.timeout_seconds,
+        )
+        diagnostic = u.Infra.mypy_failure_diagnostic(
+            m.Cli.CommandOutput(
+                stdout="",
+                stderr="",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=exit_code,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
+            ),
+            limit,
+        )
+        tm.that(diagnostic, is_=None)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("exit_code", "forwarded_signal", "signal_number"),
+        [
+            (-signal.SIGSEGV, None, signal.SIGSEGV),
+            (0, signal.SIGINT, signal.SIGINT),
+            (
+                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + signal.SIGKILL,
+                None,
+                signal.SIGKILL,
+            ),
+        ],
+    )
+    def test_mypy_signal_diagnostic_preserves_both_output_streams(
+        exit_code: int,
+        forwarded_signal: int | None,
+        signal_number: int,
+    ) -> None:
         """Expose traceback output when Mypy also writes an error banner."""
         limit = m.Infra.MypyResourceLimit(
             memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -465,15 +605,23 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 stdout="Traceback: checker frame",
                 stderr="INTERNAL ERROR",
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=-11,
+                    raw_return_code=exit_code,
                     timed_out=False,
-                    forwarded_signal=None,
+                    forwarded_signal=forwarded_signal,
                 ),
             ),
             limit,
         )
 
-        tm.that(diagnostic, has=["Traceback: checker frame", "INTERNAL ERROR"])
+        tm.that(
+            diagnostic,
+            has=[
+                "Traceback: checker frame",
+                "INTERNAL ERROR",
+                f"exit={exit_code}",
+                f"signal={signal_number}",
+            ],
+        )
 
     @staticmethod
     def test_mypy_cache_directory_is_project_keyed_and_survives_relocks(
@@ -497,7 +645,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
         shared = u.Infra.mypy_cache_directory(lane)
         # Every checkout of one project reuses one analysis.
         tm.that(u.Infra.mypy_cache_directory(primary), eq=shared)
-        tm.that(shared.parent.name, eq=Path(spec.external_storage_directory).name)
+        tm.that(
+            shared.is_relative_to(u.Infra.external_cache_directory(spec)),
+            eq=True,
+        )
         # A relock keeps the directory: Mypy revalidates changed modules itself.
         (lane / c.Infra.UV_LOCK_FILENAME).write_text("rotated\n", encoding="utf-8")
         tm.that(u.Infra.mypy_cache_directory(lane), eq=shared)

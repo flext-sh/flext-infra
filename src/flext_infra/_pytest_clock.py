@@ -16,20 +16,71 @@ import sys
 import tempfile
 import time
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 from types import FrameType
 from typing import ClassVar
+from uuid import uuid4
 
 
 class FlextInfraPytestClock:
     """Own the process-local clock for the canonical pytest entrypoint."""
 
     started_at_monotonic: ClassVar[float] = time.monotonic()
+    _publishing: ClassVar[set[cProfile.Profile]] = set()
     profiler: ClassVar[cProfile.Profile | None] = (
         cProfile.Profile() if sys.argv[1:2] == ["profile"] else None
     )
     if profiler is not None:
         profiler.enable()
+
+    @staticmethod
+    def profile_command(command: Callable[[], int], output: Path) -> int:
+        """Profile a command while retaining its native status and first exception.
+
+        Returns:
+            The command exit status.
+
+        """
+        immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
+        previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
+        profiler = cProfile.Profile()
+        previous = signal.getsignal(signal.SIGTERM)
+        status: int | None = None
+
+        FlextInfraPytestClock.register_signal_checkpoint(
+            profiler,
+            output,
+            immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
+            previous_output=previous_output.with_suffix(".checkpoint.pstats"),
+        )
+        profiler.enable()
+        try:
+            status = command()
+            return status
+        finally:
+            profiler.disable()
+            signal.signal(signal.SIGTERM, previous)
+            primary = sys.exception() if status is None else None
+            try:
+                FlextInfraPytestClock.publish_profile(
+                    profiler,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
+                )
+            except BaseException as publication_failure:
+                if primary is not None:
+                    primary.add_note(
+                        "profile publication failed:\n"
+                        + "".join(
+                            traceback.format_exception(publication_failure, chain=False)
+                        )
+                    )
+                elif status:
+                    traceback.print_exception(publication_failure)
+                else:
+                    raise
 
     @classmethod
     def start_profiler(cls) -> cProfile.Profile:
@@ -101,40 +152,48 @@ class FlextInfraPytestClock:
 
         Raises:
             OSError: If staging identity or atomic publication fails.
+            RuntimeError: If the same profiler is already being published.
 
         """
-        descriptor, name = tempfile.mkstemp(
-            dir=output.parent,
-            prefix=f".{output.name}.",
-            suffix=".tmp",
-        )
-        staging = Path(name)
-        identity = os.fstat(descriptor)
+        if profile in FlextInfraPytestClock._publishing:
+            msg = "profile publication is already active"
+            raise RuntimeError(msg)
+        FlextInfraPytestClock._publishing.add(profile)
         try:
-            with os.fdopen(descriptor, "wb") as stream:
-                profile.create_stats()
-                marshal.dump(profile.stats, stream)
-                stream.flush()
-                os.fsync(stream.fileno())
-            FlextInfraPytestClock._guard_staging_identity(staging, identity)
-            if immutable_output is not None:
-                immutable_output.hardlink_to(staging)
-            if previous_output is not None:
-                try:
-                    previous = output.lstat()
-                except FileNotFoundError:
-                    previous = None
-                if previous is not None:
-                    if not stat.S_ISREG(previous.st_mode):
-                        msg = "previous profile artifact is not a regular file"
-                        raise OSError(errno.EINVAL, msg)
-                    os.link(output, previous_output, follow_symlinks=False)
-                    FlextInfraPytestClock._guard_staging_identity(
-                        previous_output, previous
-                    )
-            Path(staging).replace(output)
+            descriptor, name = tempfile.mkstemp(
+                dir=output.parent,
+                prefix=f".{output.name}.",
+                suffix=".tmp",
+            )
+            staging = Path(name)
+            identity = os.fstat(descriptor)
+            try:
+                with os.fdopen(descriptor, "wb") as stream:
+                    profile.create_stats()
+                    marshal.dump(profile.stats, stream)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                FlextInfraPytestClock._guard_staging_identity(staging, identity)
+                if immutable_output is not None:
+                    immutable_output.hardlink_to(staging)
+                if previous_output is not None:
+                    try:
+                        previous = output.lstat()
+                    except FileNotFoundError:
+                        previous = None
+                    if previous is not None:
+                        if not stat.S_ISREG(previous.st_mode):
+                            msg = "previous profile artifact is not a regular file"
+                            raise OSError(errno.EINVAL, msg)
+                        os.link(output, previous_output, follow_symlinks=False)
+                        FlextInfraPytestClock._guard_staging_identity(
+                            previous_output, previous
+                        )
+                Path(staging).replace(output)
+            finally:
+                FlextInfraPytestClock._discard_staging(staging, identity)
         finally:
-            FlextInfraPytestClock._discard_staging(staging, identity)
+            FlextInfraPytestClock._publishing.remove(profile)
 
     @classmethod
     def register_signal_checkpoint(
@@ -144,7 +203,7 @@ class FlextInfraPytestClock:
         *,
         immutable_output: Path | None = None,
         previous_output: Path | None = None,
-    ) -> None:
+    ) -> Callable[[], None]:
         """Persist measured progress before preserving native termination handling.
 
         Args:
@@ -152,6 +211,9 @@ class FlextInfraPytestClock:
             output: The profile artifact elected by the canonical launcher.
             immutable_output: Invocation-owned link to the interrupted profile.
             previous_output: Retained link to the previously published profile.
+
+        Returns:
+            A callback retiring only this checkpoint's signal ownership.
 
         Raises:
             RuntimeError: If the native termination handler cannot be observed.
@@ -164,15 +226,18 @@ class FlextInfraPytestClock:
 
         def checkpoint(signum: int, frame: FrameType | None) -> None:
             """Persist the profiler, then delegate the original signal unchanged."""
+            signal.signal(signum, previous)
+            publishing = profile in cls._publishing
             try:
                 if frame is not None:
                     traceback.print_stack(frame)
-                cls.publish_profile(
-                    profile,
-                    output,
-                    immutable_output=immutable_output,
-                    previous_output=previous_output,
-                )
+                if not publishing:
+                    cls.publish_profile(
+                        profile,
+                        output,
+                        immutable_output=immutable_output,
+                        previous_output=previous_output,
+                    )
             finally:
                 signal.signal(signum, previous)
                 if callable(previous):
@@ -181,9 +246,17 @@ class FlextInfraPytestClock:
                     signal.raise_signal(signum)
                 # create_stats() disables profiling; returning handlers keep
                 # the command alive and must keep measuring its remaining work.
-                profile.enable()
+                if not publishing:
+                    profile.enable()
 
         signal.signal(signal.SIGTERM, checkpoint)
+
+        def retire() -> None:
+            """Release only this checkpoint's signal ownership."""
+            if signal.getsignal(signal.SIGTERM) is checkpoint:
+                signal.signal(signal.SIGTERM, previous)
+
+        return retire
 
 
 __all__: list[str] = ["FlextInfraPytestClock"]

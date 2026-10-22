@@ -15,15 +15,17 @@ from abc import ABC
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, e, m, r
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, e, m, r, t
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
-class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC):
+class FlextInfraDocServiceBase[TResult: t.JsonPayload = bool](
+    FlextInfraProjectSelectionServiceBase[TResult], ABC
+):
     """Shared base for audit/build/fix/generate/validate verbs."""
 
     output_dir: Annotated[Path | None, m.Field(description="Docs output dir")] = Path(

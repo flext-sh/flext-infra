@@ -55,14 +55,12 @@ class TestsFlextInfraPublicApi:
         )
         first.planning_issues.append(issue)
         first.planning_exception = ValueError(issue.message)
-        first.scaffolded_repository = True
 
         assert first.ports is ports
         assert second.ports is ports
         tm.that(first.planning_issues, eq=[issue])
         tm.that(second.planning_issues, empty=True)
         tm.that(second.planning_exception, none=True)
-        tm.that(second.scaffolded_repository, truth=False)
 
     @staticmethod
     def test_codegen_handlers_are_inherited_without_replacing_health(
@@ -129,9 +127,7 @@ class TestsFlextInfraPublicApi:
             tm.that(engine.state.repository_root, eq=engine.state.request.root)
         assert first is not second
         assert first.state.request is not second.state.request
-        first.state.scaffolded_repository = True
         first.state.planning_exception = ValueError("First invocation failure")
-        tm.that(second.state.scaffolded_repository, truth=False)
         tm.that(second.state.planning_exception, none=True)
         tm.that(second.state.planning_issues, empty=True)
 

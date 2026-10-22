@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, u
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
 from flext_infra.refactor._census_collect_helpers import (
     FlextInfraRefactorCensusCollectHelpersMixin,
@@ -79,7 +78,7 @@ class FlextInfraDuplicateApplyPhase:
         """
         del preflight
         source_states, declared_files = receipt.inputs, receipt.files
-        captured = FlextInfraCodegenPreconditions.unique_states((
+        captured = u.Infra.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
         ))

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from importlib.metadata import distribution
 from importlib.util import find_spec
 from pathlib import Path
@@ -257,32 +257,8 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
     ):
         (package / filename).write_text(content, encoding=c.DEFAULT_ENCODING)
     u.Tests.copy_tracked_mise_seeds(root)
-    local_path = root / c.CONFIG_DIR_NAME / "codegen.local.yaml"
-    supplier_declaration: t.JsonDict = {
-        "Infra": {
-            "codegen": {
-                "make": {
-                    "uv_resolution": {
-                        "editable_supplier_root": supplier_root.as_posix(),
-                    }
-                }
-            }
-        },
-    }
-    if local_path.exists():
-        local = tm.ok(u.Cli.yaml_roundtrip_load_map(local_path))
-        u.Cli.yaml_overlay_preserving_order(local, supplier_declaration)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                local_path, tm.ok(u.Cli.yaml_roundtrip_dump_text(local))
-            )
-        )
-    else:
-        tm.ok(u.Cli.yaml_dump(local_path, supplier_declaration))
     tm.that(
-        tm.ok(
-            u.Infra.load_codegen_inputs(root)
-        ).spec.make.uv_resolution.editable_supplier_root,
+        settings.Infra.editable_supplier_root,
         eq=supplier_root,
     )
     u.Tests.run_lazy_init(root)
@@ -345,7 +321,6 @@ def _conform_member(root: t.DirectoryPath, workspace: m.Infra.WorkspaceSpec) -> 
                 workspace,
                 tm.ok(u.Infra.load_codegen_inputs(root)),
                 plan.files,
-                rendered_by=conform.rendered_by_stamp(),
             ).map(tuple)
         )
     )
@@ -374,7 +349,16 @@ def _install_member_runtime(
     private_env = {"GITHUB_TOKEN": github_token}
     for verb in ("upg", "setup"):
         provisioned = tm.ok(
-            u.Tests.run_isolated_make([verb], cwd=root, private_env=private_env)
+            u.Tests.run_isolated_make(
+                [verb],
+                cwd=root,
+                env={
+                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(
+                        supplier_root
+                    )
+                },
+                private_env=private_env,
+            )
         )
         tm.that(
             u.Cli.process_succeeded(provisioned.outcome),
@@ -444,13 +428,17 @@ def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None
 
 
 @pytest.fixture
-def member_root(session_runtime: p.Tests.SessionRuntime) -> Iterator[t.DirectoryPath]:
+def member_root(
+    session_runtime: p.Tests.SessionRuntime,
+    editable_supplier: Callable[[Path | None], None],
+) -> Iterator[t.DirectoryPath]:
     """Lease this project's own installed runtime at its stable source path.
 
     Yields:
         The isolated project with its original source and physical environment.
 
     """
+    editable_supplier(_verify_supplier_sources()[0])
     with session_runtime.lease(_provision_member) as root:
         yield root
 
@@ -1259,6 +1247,92 @@ def test_operational_port_model_annotations_use_the_projected_contract(
         'assert hints["value"] is p.DemoMember.Order\n'
         'assert hints["return"] is p.DemoMember.Order\n'
         'assert isinstance(m.DemoMember.Order(sku="port"), hints["value"])\n',
+    )
+
+
+def test_staged_publication_survives_same_family_contract_routing(
+    member_root: t.DirectoryPath,
+) -> None:
+    """Routing reads proposed exports without making generated barrels editable."""
+    package = member_root / "src" / MEMBER
+    (package / "_models/domain.py").write_text(
+        "from flext_core import m\n"
+        "class Packet(m.FrozenModel):\n"
+        '    payload: str = m.Field(description="Delivered payload.")\n'
+        "class DemoMemberModels(m):\n"
+        "    class Delivery:\n"
+        "        Packet = Packet\n"
+        "m = DemoMemberModels\n"
+        "__all__ = ['DemoMemberModels', 'm']\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "_protocols/manual_ports.py").write_text(
+        "from typing import Protocol\n"
+        "from demo_member import m\n"
+        "class ManualPort(Protocol):\n"
+        "    def deliver(self, value: m.Delivery.Packet) -> m.Delivery.Packet: ...\n"
+        "__all__ = ['ManualPort']\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "protocols.py").write_text(
+        "from flext_core import p\n"
+        "from demo_member._protocols.manual_ports import ManualPort\n"
+        "class DemoMemberProtocols(p):\n"
+        "    class Delivery:\n"
+        "        ManualPort = ManualPort\n"
+        "p = DemoMemberProtocols\n"
+        "__all__ = ['DemoMemberProtocols', 'p']\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "consumer.py").write_text(
+        "from demo_member import p\n"
+        "def deliver(value: p.Delivery.Packet) -> str:\n"
+        "    return value.payload\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        "from flext_infra import c, m, u\n"
+        "from flext_infra.codegen import FlextInfraCodegenConform\n"
+        "package = root / 'src/demo_member'\n"
+        "before = {path: path.read_bytes() for path in package.rglob('*.py')}\n"
+        "request = m.Infra.CodegenConformRequest(root=root)\n"
+        "plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))\n"
+        "if plan.exception is not None:\n"
+        "    raise plan.exception\n"
+        "assert not plan.issues, plan.issues\n"
+        "assert {path: path.read_bytes() for path in package.rglob('*.py')} == before\n"
+        "projected = {file.path: file.desired_content.decode(c.DEFAULT_ENCODING)\n"
+        "    for file in plan.files if file.desired_content is not None\n"
+        "    and file.path.suffix == '.py'}\n"
+        "receiver = next(file for file in plan.files\n"
+        "    if file.path.parent == package / '_protocols'\n"
+        "    and file.desired_content is not None\n"
+        "    and projected[file.path].startswith(c.Infra.AUTOGEN_HEADERS)\n"
+        "    and b'class Packet(' in file.desired_content)\n"
+        "assert receiver.before.content is None and not receiver.path.exists()\n"
+        "initializer = next(file for file in plan.files\n"
+        "    if file.path == package / '_protocols/__init__.py')\n"
+        "assert initializer.before.content == before[initializer.path]\n"
+        "owners = u.Infra.public_export_names_source(projected[receiver.path])\n"
+        "exports = u.Infra.import_lazy_exports(root, 'demo_member._protocols',\n"
+        "    sources=projected)\n"
+        "assert exports is not None\n"
+        "assert any(exports.get(owner) == 'demo_member._protocols.' + receiver.path.stem\n"
+        "    for owner in owners)\n"
+        "receipt = tm.not_none(tm.ok(service.execute()).publication_receipt)\n"
+        "assert receipt.completed and receiver.path in receipt.written_files\n"
+        "assert not tm.ok(service.execute()).written_files\n",
+        consumer="from demo_member import consumer, m, p\n"
+        "from demo_member._protocols import ManualPort\n"
+        "assert p.Delivery.ManualPort is ManualPort\n"
+        "hints = get_type_hints(ManualPort.deliver)\n"
+        'assert hints["value"] is p.Delivery.Packet\n'
+        'assert hints["return"] is p.Delivery.Packet\n'
+        'value = m.Delivery.Packet(payload="delivered")\n'
+        "assert isinstance(value, p.Delivery.Packet)\n"
+        'assert get_type_hints(consumer.deliver)["value"] is p.Delivery.Packet\n'
+        'assert consumer.deliver(value) == "delivered"\n',
     )
 
 

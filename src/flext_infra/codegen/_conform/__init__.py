@@ -23,9 +23,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen._conform.context_render import (
         FlextInfraCodegenConformContextRender,
     )
-    from flext_infra.codegen._conform.docs_ownership import (
-        FlextInfraCodegenConformDocsOwnership,
-    )
+    from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
     from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
     from flext_infra.codegen._conform.execute_directed import (
         FlextInfraCodegenConformExecuteDirected,
@@ -39,7 +37,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen._conform.file_plans import (
         FlextInfraCodegenConformFilePlans,
     )
-    from flext_infra.codegen._conform.gitignore import FlextInfraCodegenConformGitignore
     from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
     from flext_infra.codegen._conform.pyproject_policy import (
         FlextInfraCodegenConformPyprojectPolicy,
@@ -54,13 +51,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformBeadsRoutes",
     "FlextInfraCodegenConformBootstrap",
     "FlextInfraCodegenConformContextRender",
-    "FlextInfraCodegenConformDocsOwnership",
+    "FlextInfraCodegenConformEditor",
     "FlextInfraCodegenConformExecute",
     "FlextInfraCodegenConformExecuteDirected",
     "FlextInfraCodegenConformExecuteScaffold",
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
-    "FlextInfraCodegenConformGitignore",
     "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
@@ -74,13 +70,12 @@ install_lazy_exports(
         "FlextInfraCodegenConformBeadsRoutes": ".beads_routes",
         "FlextInfraCodegenConformBootstrap": ".bootstrap",
         "FlextInfraCodegenConformContextRender": ".context_render",
-        "FlextInfraCodegenConformDocsOwnership": ".docs_ownership",
+        "FlextInfraCodegenConformEditor": ".editor",
         "FlextInfraCodegenConformExecute": ".execute",
         "FlextInfraCodegenConformExecuteDirected": ".execute_directed",
         "FlextInfraCodegenConformExecuteScaffold": ".execute_scaffold",
         "FlextInfraCodegenConformExistingPlan": ".existing_plan",
         "FlextInfraCodegenConformFilePlans": ".file_plans",
-        "FlextInfraCodegenConformGitignore": ".gitignore",
         "FlextInfraCodegenConformPlan": ".plan",
         "FlextInfraCodegenConformPyprojectPolicy": ".pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": ".scaffold_plan",

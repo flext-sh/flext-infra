@@ -49,7 +49,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             The resulting ``t.SequenceOf[Path]``.
 
         """
-        _ = self
         return [
             project_root
             for project_root in u.Infra.discover_project_roots(repository_root)
@@ -63,7 +62,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             The resulting ``bool``.
 
         """
-        _ = self
         root_mod = module_name.split(".", 1)[0]
         project_root = project_name.replace("-", "_")
         if root_mod.startswith(c.Infra.INTERNAL_PREFIXES):
@@ -77,7 +75,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             The resulting ``bool``.
 
         """
-        _ = self
         root_module = module_name.split(".", maxsplit=1)[0]
         try:
             spec = importlib_util.find_spec(root_module)
@@ -174,7 +171,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             The resulting ``p.Result[m.Infra.StubAnalysisReport]``.
 
         """
-        _ = repository_root
+        del repository_root
         proj = project_dir.resolve()
         mypy_result = self._run_mypy_hints(proj)
         if mypy_result.failure:

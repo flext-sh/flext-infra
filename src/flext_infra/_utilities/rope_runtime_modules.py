@@ -649,7 +649,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         expected: p.Infra.RopePyName,
         actual: p.Infra.RopePyName | None,
     ) -> bool:
-        """Use Rope's imported-name identity contract for semantic comparisons.
+        """Compare native builtin identity or Rope's imported-name identity.
 
         Returns:
             The resulting ``bool``.
@@ -658,6 +658,28 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If Rope name comparison returned a non-boolean result.
 
         """
+        if actual is None:
+            return False
+        expected_object, actual_object = expected.get_object(), actual.get_object()
+        builtin_types = (
+            cls.runtime_type("rope.base.builtins", "BuiltinClass"),
+            cls.runtime_type("rope.base.builtins", "BuiltinFunction"),
+        )
+        if (
+            isinstance(expected_object, builtin_types)
+            and isinstance(actual_object, builtin_types)
+            and (native := expected_object.builtin) is not None
+        ):
+            return native is actual_object.builtin
+        unknown = cls.runtime_callable("rope.base.pyobjects", "get_unknown")()
+        if (
+            expected_object is unknown
+            and expected.get_definition_location() == (None, None)
+        ) or (
+            actual_object is unknown
+            and actual.get_definition_location() == (None, None)
+        ):
+            return False
         result = cls.runtime_callable("rope.refactor.occurrences", "same_pyname")(
             expected,
             actual,

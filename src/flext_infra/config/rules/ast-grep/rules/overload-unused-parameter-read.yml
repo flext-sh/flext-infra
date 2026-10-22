@@ -1,0 +1,40 @@
+id: overload-unused-parameter-read
+language: Python
+severity: error
+message: Overload declarations must not execute redundant parameter reads.
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern:
+        context: |
+          def declaration():
+              _ = $PARAMETERS
+              raise NotImplementedError
+        selector: block
+    - regex: '\n'
+    - inside:
+        kind: function_definition
+        inside:
+          kind: decorated_definition
+          has:
+            kind: decorator
+            pattern: "@overload"
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          kind: import_from_statement
+          regex: '^from[ \t]+typing(_extensions)?[ \t]+import\b'
+          has:
+            pattern: overload
+            not:
+              inside:
+                kind: aliased_import
+                stopBy: end
+            stopBy: end
+          stopBy: end
+constraints:
+  PARAMETERS:
+    regex: '^\(?\s*[A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*\s*,?\s*\)?$'
+fix: raise NotImplementedError

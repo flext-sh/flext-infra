@@ -27,6 +27,45 @@ class FlextInfraCodegenFileLeases:
     """Hold destination identities for the lifetime of one transaction."""
 
     @staticmethod
+    def prepare_source_controlplanes(roots: t.SequenceOf[Path]) -> p.Result[bool]:
+        """Initialize native control planes before electing a source epoch.
+
+        Persistent directories and their native lease identities become original
+        source observations, not exceptions to a captured membership receipt.
+        Never use this operation to repair a rejected persisted source epoch.
+
+        Returns:
+            Success after each physical root's guarded control-plane creation.
+
+        """
+        for root in dict.fromkeys(roots):
+            try:
+                FlextInfraMiseArtifactsFiles.physical_directory_identity(root).unwrap()
+                plan = u.Cli.atomic_plan_directory_chain(
+                    root / c.Infra.TRANSACTION_STATE_DIRNAME
+                ).unwrap()
+                u.Cli.atomic_create_directory_chain_guarded(
+                    plan,
+                    permission_mode=config.Infra.codegen.modes.directory_private,
+                ).unwrap()
+            except c.EXC_BROAD_RUNTIME_OS as exc:
+                return r[bool].fail(str(exc), exception=exc)
+            journal = plan.target / c.Infra.JOURNAL_NAME
+            lock = journal.with_name(f"{journal.name}.lock")
+            observed = u.Cli.atomic_read_binary_file_state(lock, required=False)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value.content is None:
+                try:
+                    with u.Infra.codegen_transaction_lease(journal):
+                        u.Cli.atomic_read_binary_file_state(
+                            lock, required=True
+                        ).unwrap()
+                except c.EXC_BROAD_RUNTIME_OS as exc:
+                    return r[bool].fail(str(exc), exception=exc)
+        return r[bool].ok(value=True)
+
+    @staticmethod
     @contextmanager
     def mutation_lease(root: Path) -> Generator[None]:
         """Serialize one nontransactional writer with its canonical scope owner.
@@ -189,13 +228,28 @@ class FlextInfraCodegenFileLeases:
         self,
         roots: t.MappingKV[str, Path],
         operation: Callable[[], p.Result[T]],
+        identities: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
     ) -> p.Result[T]:
         """Keep native preparation outside the source epoch and retain first failure.
+
+        Args:
+            roots: The original capability roots held by native file leases.
+            operation: Source capture and validation within those roots.
+            identities: Original participant directory witnesses checked first.
 
         Returns:
             The operation result, with any native cleanup refusal attached.
 
         """
+        for identity in identities:
+            observed = u.Cli.atomic_plan_directory_chain(identity.target)
+            if observed.failure:
+                return r[T].from_failure(observed)
+            if observed.value != identity:
+                return r[T].fail(
+                    "source preview participant changed before capture: "
+                    f"{identity.target}"
+                )
         created: list[m.Cli.AtomicDirectoryState] = []
         try:
             self._prepare_source_controlplanes(roots, created)

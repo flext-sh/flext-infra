@@ -15,7 +15,6 @@ from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
@@ -23,7 +22,10 @@ from flext_infra.codegen import (
 from flext_infra.codegen._conform.execute_directed import (
     FlextInfraCodegenConformExecuteDirected,
 )
-from flext_infra.workspace import FlextInfraWorkspaceNativeReference
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceNativeReference,
+)
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
@@ -331,7 +333,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request = self.state.request or m.Infra.CodegenConformRequest(
             root=self.state.repository_root,
         )
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
@@ -355,13 +357,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         if (
-            c.Infra.CodegenConformMode(request.mode)
+            request.mode
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return None
         if not (
             self.surface_contract(
-                c.Infra.CodegenConformSurface(request.what),
+                request.what,
                 codegen=spec,
             ).complete_governed
             or request.declaration_kind is not None
@@ -385,12 +387,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
-        surface = c.Infra.CodegenConformSurface(request.what)
+        surface = request.what
         if surface in c.Infra.FILE_ONLY_SURFACES:
             return self._execute_lazy_init(request)
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+        if request.mode is c.Infra.CodegenConformMode.APPLY:
             if surface in c.Infra.PARTIAL_PLAN_SURFACES:
                 return self.execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
@@ -413,7 +415,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         targets = u.Infra.repository_operation_targets(
             request.root,
-            c.Infra.CodegenConformScope(request.scope),
+            request.scope,
         )
         if targets.failure:
             return r[bool].from_failure(targets)
@@ -525,7 +527,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             issues.extend(planned.value.issues)
             if first_exception is None:
                 first_exception = planned.value.exception
-        snapshots = FlextInfraCodegenPreconditions.unique_states(tuple(inputs))
+        snapshots = u.Infra.unique_states(tuple(inputs))
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
@@ -582,9 +584,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "completed migration failure has no residual issue",
                 exception=published.exception,
             )
-        self.state.planning_issues.extend(parsed.value)
-        if self.state.planning_exception is None:
-            self.state.planning_exception = published.exception
+        self._retain_diagnostics(published.exception, issues=parsed.value)
         return r[bool].ok(value=True)
 
     def _plan_or_report(
@@ -620,7 +620,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         if request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
             return r[p.Infra.CodegenResult].fail(
@@ -637,7 +637,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if planned.failure:
             return r[p.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
-        surface = c.Infra.CodegenConformSurface(request.what)
+        surface = request.what
         if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
             return r[p.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
@@ -731,7 +731,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         scope_root, roots = publication_scope
-        surface = c.Infra.CodegenConformSurface(request.what)
+        surface = request.what
         expected = self._bootstrap_expected_surface(request, plan, surface)
         if expected.failure:
             return r[t.VariadicTuple[Path]].from_failure(expected)
@@ -814,7 +814,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         planning owns no expected destinations: its failure is recorded in
         the plan's issues, and aborting here would discard the valid
         siblings' publication instead of letting the aggregate carry the
-        original cause.
+        original cause. Each repository's runtime election selects its
+        resolver views, so an unelected runtime-local view is not expected.
 
         Returns:
             The expected destination paths paired with each path's owning
@@ -833,18 +834,33 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 if repository_root not in rejected_roots:
                     return result_type.from_failure(inputs)
                 continue
-            destinations = self.surface_contract(
-                surface,
-                codegen=inputs.value.spec,
-            ).destinations
+            spec = inputs.value.spec
+            destinations = self.surface_contract(surface, codegen=spec).destinations
             if not destinations:
                 return result_type.fail(
                     f"bootstrap requires declared destinations for {surface}",
                 )
+            election = FlextInfraWorkspaceDetector.runtime_election(repository_root)
+            if election.failure:
+                if repository_root not in rejected_roots:
+                    return result_type.from_failure(election)
+                continue
+            selected = {
+                directory / c.PYPROJECT_FILENAME
+                for directory in self.selected_resolution_directories(
+                    spec.make.uv_resolution,
+                    supplier_root=election.value.editable_supplier_root,
+                )
+            }
+            unselected = {
+                path.as_posix()
+                for path in spec.uv_resolution_pyprojects
+                if path not in selected
+            }
             expected_owners.update(
                 {
                     (repository_root / path).resolve(): repository_root
-                    for path in destinations
+                    for path in destinations - unselected
                 },
             )
         expected_paths = set(expected_owners)
@@ -1014,7 +1030,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         configured = self._managed_policy(request)
         if configured.failure:
@@ -1625,7 +1641,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if prepared.failure:
             return result_type.from_failure(prepared)
         analysis = analysis.model_copy(update={"files": prepared.value})
-        inputs = FlextInfraCodegenPreconditions.unique_states(
+        inputs = u.Infra.unique_states(
             tuple(source for file in analysis.files for source in file.source_states),
         )
         if inputs.failure:
@@ -1676,6 +1692,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 self._validate_generation_stage,
                 plans=analysis.files,
                 workspace=request.root,
+                runtime_root=(
+                    u.Infra.runtime_environment_dir(self.state.repository_root).parent
+                    if self.state.initial_workspace is not None
+                    else None
+                ),
             ),
         )
         return inputs.flat_map(
@@ -1699,6 +1720,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         workspace: Path,
+        runtime_root: Path | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Compose existing Mise and Pyproject consumers over exact staged subsets.
 
@@ -1735,6 +1757,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             publications,
             plans=plans,
             workspace=workspace,
+            runtime_root=runtime_root,
         )
 
     def _publish_docs_batches(
@@ -1815,7 +1838,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         if (
-            c.Infra.CodegenConformMode(request.mode)
+            request.mode
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return r[bool].ok(value=False)

@@ -673,6 +673,7 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
         snapshot = epoch.snapshot
         with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
+            bindings: t.MutableMappingKV[str, tuple[m.Cli.AtomicFileState, ...]] = {}
             accepted: list[m.Infra.ModScanFinding] = []
             due = 0.0
             for index, entry in enumerate(report.entries, start=1):
@@ -698,9 +699,34 @@ class FlextInfraModGateEngine:
                     sources=sources,
                 )
                 if admitted:
+                    if (
+                        entry.source_state is not None
+                        and entry.rule_id in facts.binding_rule_ids
+                        and entry.rule_id not in bindings
+                    ):
+                        _rule_ids, modules = u.Infra.codemod_binding_requirements((
+                            rules_by_id[entry.rule_id],
+                        ))
+                        paths = dict.fromkeys(
+                            row.file
+                            for row in report.entries
+                            if row.rule_id == entry.rule_id
+                            and row.source_state is not None
+                        )
+                        bindings[entry.rule_id] = u.Infra.codemod_rule_binding_states(
+                            project,
+                            snapshot,
+                            m.Infra.CodemodBindingProject(
+                                root=root,
+                                source_paths=tuple(paths),
+                                modules=modules,
+                            ),
+                        )
                     accepted.append(
-                        entry.model_copy(update={"binding_states": snapshot.states})
-                        if entry.rule_id in facts.binding_rule_ids
+                        entry.model_copy(
+                            update={"binding_states": bindings[entry.rule_id]}
+                        )
+                        if entry.rule_id in bindings
                         else entry
                     )
             entries = tuple(accepted)
@@ -1314,6 +1340,7 @@ class FlextInfraModGateEngine:
             Current membership and catalog proof, without requiring old output bytes.
 
         """
+        del _candidate_root
         plan = report.rule_plan
         if (
             report.repository_root != root.resolve()
@@ -1579,6 +1606,26 @@ class FlextInfraModGateEngine:
             and not isinstance(selection, m.Infra.CodemodRulePlan),
         )
 
+    @staticmethod
+    def _candidate_scan_updates(
+        candidate: m.Infra.StageSourcePlan,
+    ) -> p.Result[t.MappingKV[Path, bytes]]:
+        """Validate candidate updates without dropping source retirements.
+
+        Returns:
+            The encoded updates or the original invalid retirement.
+
+        """
+        result_type = r[t.MappingKV[Path, bytes]]
+        updates: dict[Path, bytes] = {}
+        for path, source in candidate.updates.items():
+            if source is None:
+                return result_type.fail(
+                    f"semantic scan candidate cannot retire a source: {path}"
+                )
+            updates[path] = source.encode(c.DEFAULT_ENCODING)
+        return result_type.ok(updates)
+
     @classmethod
     def scan_candidate(
         cls,
@@ -1592,40 +1639,29 @@ class FlextInfraModGateEngine:
             Full-catalog findings authenticated to candidate bytes and bindings.
 
         """
+        root = root.resolve()
+        view_root /= root.relative_to(candidate.workspace)
         plan = u.Infra.codemod_rule_plan(root).unwrap()
         rules_by_id = {rule.id: rule for rule in plan.rules}
-        updates: dict[Path, bytes] = {}
-        for path, source in candidate.updates.items():
-            if source is None:
-                return r[m.Infra.ModScanReport].fail(
-                    f"semantic scan candidate cannot retire a source: {path}"
-                )
-            updates[path] = source.encode(c.DEFAULT_ENCODING)
+        updates = cls._candidate_scan_updates(candidate)
+        if updates.failure:
+            return r[m.Infra.ModScanReport].from_failure(updates)
         states = tuple(
             state.model_copy(
-                update={
-                    "content": updates.get(state.path, state.content),
-                }
+                update={"content": updates.value.get(state.path, state.content)}
             )
             for state in candidate.inputs
         )
-        source_states = tuple(
-            state
-            for state in states
-            if state.content is not None
-            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-        )
-        physical = {
-            view_root
-            / state.path.relative_to(
-                root.resolve()
-            ): u.Cli.atomic_read_binary_file_state(
-                view_root / state.path.relative_to(root.resolve()), required=True
-            ).unwrap()
-            for state in source_states
-        }
+        owned_sources = u.Infra.facade_original_sources(root, states)
+        source_states = tuple(state for state in states if state.path in owned_sources)
         context = m.Infra.ModScanSourceContext(
-            source_states=physical,
+            source_states={
+                view_root
+                / state.path.relative_to(root): u.Cli.atomic_read_binary_file_state(
+                    view_root / state.path.relative_to(root), required=True
+                ).unwrap()
+                for state in source_states
+            },
             repository_roots=tuple(
                 sorted(
                     u.Infra.governed_project_roots(view_root),
@@ -1636,24 +1672,19 @@ class FlextInfraModGateEngine:
         )
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
-        artifacts: t.MutableMappingKV[Path, m.Cli.AtomicFileReceipt] = {}
         u.Cli.ensure_dir(settings.work_dir).unwrap()
         with tempfile.TemporaryDirectory(
             prefix="mod-native-catalog-", dir=settings.work_dir
         ) as directory:
-            ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
             scanned = cls._ruleset_report(
                 view_root,
-                ruleset,
+                u.Infra.codemod_stage_scan_ruleset(plan, Path(directory)),
                 rules_by_id,
                 (u.Infra.ast_grep_scan_targets(root), context),
                 artifact_root=root,
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
-            artifacts.update(
-                (artifact.path, artifact) for artifact in scanned.value.native_artifacts
-            )
             for entry in scanned.value.entries:
                 relative = (
                     entry.file.relative_to(view_root)
@@ -1673,7 +1704,7 @@ class FlextInfraModGateEngine:
             cls.recounted(
                 tuple(entries),
                 source_states=source_states,
-                native_artifacts=tuple(artifacts.values()),
+                native_artifacts=scanned.value.native_artifacts,
             ),
             rules_by_id,
             plan.project_rule_ids,

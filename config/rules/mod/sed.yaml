@@ -268,8 +268,9 @@ rules:
   - id: duplicate-cure-model-owner-ast-import
     description: Bind the native AST contract in the census declaration owner.
     include: [src/flext_infra/_models/census.py]
-    find: '(?m)(?<!import ast\n)^(from collections\.abc import MutableSet)$'
-    replace: 'import ast\n\g<1>'
+    # Fires only with the declarations rule below, whose payload uses ``ast``.
+    find: '(?ms)\A(?!.*^    class DuplicateDefinition\()(.*?)(?<!import ast\n)^(from collections\.abc import MutableSet)$'
+    replace: '\g<1>import ast\n\g<2>'
   - id: duplicate-cure-model-owner-declarations
     description: Declare frozen duplicate cure payloads beside the existing census contracts.
     include: [src/flext_infra/_models/census.py]
@@ -459,7 +460,10 @@ rules:
   - id: config-vocabulary-use-constants-owner
     description: Configuration vocabulary belongs to the bootstrap-safe constants family.
     distributions: [flext-infra]
-    exclude: [src/flext_infra/_models/_config/vocabulary.py]
+    exclude:
+      - src/flext_infra/_models/_config/vocabulary.py
+      - src/flext_infra/_models/__init__.py
+      - src/flext_infra/_models/_config/__init__.py
     find: '\bflext_infra\._models\._config\.vocabulary\b'
     replace: flext_infra._constants.config
   - id: codemod-use-cli-yaml-stream-owner
@@ -471,7 +475,7 @@ rules:
     description: Rule catalog parsing reuses the shared YAML stream parser.
     distributions: [flext-infra]
     include: [src/flext_infra/_utilities/codemod_rules.py]
-    find: '\bcls\.parse_yaml_documents\b'
+    find: '\b(?:cls|FlextInfraUtilitiesCodemodRules)\.parse_yaml_documents\b'
     replace: u.Cli.yaml_parse_documents
   - id: codemod-retire-yaml-stream-wrapper
     description: Remove the superseded parser after consumer cutover.
@@ -482,7 +486,12 @@ rules:
   - id: config-vocabulary-use-constants-class
     description: Share one configuration vocabulary through the constants owner.
     distributions: [flext-infra]
-    exclude: [src/flext_infra/_models/_config/vocabulary.py]
+    # Generated initializers re-export whatever the source declares; the
+    # generator, not this rule, removes the vocabulary export after cutover.
+    exclude:
+      - src/flext_infra/_models/_config/vocabulary.py
+      - src/flext_infra/_models/__init__.py
+      - src/flext_infra/_models/_config/__init__.py
     find: '\bFlextInfraConfigVocabulary\b'
     replace: FlextInfraConstantsConfig
   - id: conform-consume-validated-request-enums
@@ -503,6 +512,44 @@ rules:
     include: [src/flext_infra/_protocols/base.py]
     find: '(?m)^        @staticmethod\n        def _repository_provider\(\n(?:[^\n]*\n)*?        \) -> p\.Result\[m\.Infra\.ProviderIdentitySpec\]: \.\.\.\n'
     replace: ''
+  - id: codegen-unique-states-single-owner
+    description: Source-state unification has one owner; services consume it through u.Infra, never by inheriting a private utility.
+    distributions: [flext-infra]
+    find: '\bFlextInfraCodegenPreconditions\.unique_states\('
+    replace: 'u.Infra.unique_states('
+  - id: codegen-preconditions-consume-unique-states-owner
+    description: The preconditions service calls the source-state owner instead of an inherited copy.
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/codegen_preconditions.py]
+    find: '\bcls\.unique_states\('
+    replace: 'u.Infra.unique_states('
+  - id: codegen-preconditions-retire-utility-base
+    description: A service never inherits a private utility tree (ENFORCE-068).
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/codegen_preconditions.py]
+    find: '\bclass FlextInfraCodegenPreconditions\(FlextInfraUtilitiesCodegenFilePlan\):'
+    replace: 'class FlextInfraCodegenPreconditions:'
+  - id: conform-retire-gitignore-forwarder-consumers
+    description: Gitignore rendering has one owner, u.Infra.render_project_gitignore; the conform forwarder had test consumers only.
+    distributions: [flext-infra]
+    include: [tests/*.py, tests/**/*.py]
+    find: '\bFlextInfraCodegenConform\.render_project_gitignore\('
+    replace: 'u.Infra.render_project_gitignore('
+  - id: codegen-models-retire-unread-fields
+    description: Codegen plan fields no consumer reads are retired at their model; constructors stop passing them (LazyInitPlan inline_constants, wildcard_runtime_modules and excluded_lazy_names were always empty; CodegenPlan.make_spec only echoed config.Infra.codegen.make).
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/*.py, src/flext_infra/codegen/**/*.py, tests/*.py, tests/**/*.py]
+    find: '(?m)^[ \t]+(?:inline_constants|wildcard_runtime_modules|excluded_lazy_names|make_spec)=[^\n]*,\n'
+    replace: ''
+  - id: consume-private-utilities-through-facade
+    description: Modules outside the private utility tree reach composed utilities through u.Infra (ENFORCE-068).
+    distributions: [flext-infra]
+    include:
+      - src/flext_infra/codegen/mise_toolchain_proof.py
+      - src/flext_infra/codemod/apply_renames.py
+      - src/flext_infra/codemod/semantic_apply.py
+    find: '\bFlextInfraUtilities(?:MiseBinary|RopeRuntime|CodegenFacades)\.([a-z][a-z_]*)\('
+    replace: 'u.Infra.\g<1>('
 
   - id: repository-discovery-retire-manifest-exclusion-name
     description: Name Git-derived participation at its canonical discovery owner and consumers.

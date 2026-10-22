@@ -284,10 +284,20 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
+    class RopeModuleScope(RopeScope, Protocol):
+        """Lexical lookup owned by the global scope of a parsed source module."""
+
+        def get_inner_scope_for_line(
+            self, lineno: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
+        def get_inner_scope_for_offset(
+            self, offset: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
+    @runtime_checkable
     class RopeSemanticModule(Protocol):
         """Module attributes shared by native builtins, packages, and source."""
-
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         def get_module(
             self,
@@ -325,7 +335,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeModuleScope: ...
 
     @runtime_checkable
     class RopePyModule(RopeParsedModule, Protocol):
@@ -401,17 +411,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             consumer_root: Path | None = None,
         ) -> AbstractContextManager[Self]: ...
 
-        def source_successor(self) -> AbstractContextManager[Self]: ...
-
-        def adopt_source_consumption(
-            self, receipt: m.Infra.CodegenPhaseAnalysis
-        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
-
         @property
         def authenticated_sources(self) -> bool: ...
-
-        @property
-        def source_epoch_failure(self) -> BaseException | None: ...
 
         def replay_source_consumption(
             self, receipt: m.Infra.CodegenPhaseAnalysis
@@ -590,14 +591,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_word_range(self, offset: int) -> tuple[int, int]: ...
 
-        def get_parameters(
-            self,
-            first: int,
-            last: int,
-        ) -> tuple[list[str], list[tuple[str, str]]]: ...
-
-        def is_function_keyword_parameter(self, offset: int) -> bool: ...
-
     @runtime_checkable
     class RopeChangeSet(Protocol):
         """Rope change set shape."""
@@ -651,15 +644,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             end: int | None = None,
         ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
 
-        def get_match_regions(
-            self,
-            code: str,
-            args: t.MappingKV[str, str],
-            *,
-            start: int = 0,
-            end: int | None = None,
-        ) -> Iterator[tuple[int, int]]: ...
-
     @runtime_checkable
     class RopeWildcard[Argument](Protocol):
         """Native wildcard callback, parameterized by its argument grammar."""
@@ -672,6 +656,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeDefaultWildcard(RopeWildcard[str], Protocol):
         """Native default wildcard consuming Rope's string constraint grammar."""
 
+    @runtime_checkable
     class RopeChangeComputer(Protocol):
         """Native source computation consumed by the restructuring planner."""
 
@@ -747,8 +732,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_word_range(self) -> tuple[int, int]: ...
 
         def get_primary_range(self) -> tuple[int, int]: ...
-
-        def get_pyname(self) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
 
         def is_written(self) -> bool: ...
 

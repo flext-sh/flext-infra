@@ -118,6 +118,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
             r with ValidationReport.
 
         """
+        del _project_filter
         try:
             return self._build_skill_report(repository_root, skill_name, mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:

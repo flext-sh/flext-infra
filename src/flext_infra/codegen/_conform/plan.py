@@ -15,7 +15,6 @@ from typing import Literal
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
@@ -114,7 +113,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             root,
             targets.value,
             selected,
-            c.Infra.CodegenConformSurface(request.what),
+            request.what,
             inputs,
         )
         if gathered.failure:
@@ -125,7 +124,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 request=request,
                 repositories=selected,
                 workspace=workspace,
-                make_spec=config_spec.make,
                 uv_environments=tuple(environments),
                 files=tuple(files),
                 issues=tuple(issues),
@@ -214,7 +212,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ),
             project_inputs.value,
             files,
-            rendered_by=self.rendered_by_stamp(),
         ).map(list)
 
     @staticmethod
@@ -288,7 +285,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             request=request,
             repositories=(repository,),
             workspace=workspace,
-            make_spec=inputs.spec.make,
             uv_environments=(),
             files=analysis.files,
             issues=analysis.issues,
@@ -577,7 +573,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             request=request,
             repositories=selected.value,
             workspace=workspace,
-            make_spec=inputs.spec.make,
             uv_environments=(),
             files=analysis.files,
             issues=analysis.issues,
@@ -742,55 +737,22 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         contract = self.surface_contract(surface, codegen=inputs.spec)
-        providers: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
-        if contract.complete_governed:
-            # Rope-bound planning runs one global in-process loop over every
-            # repository so the shared workspace Rope session (and its one
-            # structural index) serves the whole cohort. The forkserver fleet
-            # pool cannot inherit the unpicklable Rope project: fanning out
-            # here reindexes the same workspace tree once per worker.
-            lazy_outcomes = tuple(
-                type(self).plan_repository_task(
-                    task.model_copy(
-                        update={"surface": c.Infra.CodegenConformSurface.LAZY_INIT}
-                    ),
-                )
-                for task in tasks
-            )
-            providers = tuple(
-                file
-                for outcome in lazy_outcomes
-                if not outcome.failed
-                for file in outcome.files
-            )
-            ready = tuple(
-                task.model_copy(update={"provider_plans": providers})
-                for task, outcome in zip(tasks, lazy_outcomes, strict=True)
-                if not outcome.failed
-            )
-            planned = {
-                outcome.repository: outcome
-                for outcome in (type(self).plan_repository_task(task) for task in ready)
-            }
-            outcomes = tuple(
-                outcome if outcome.failed else planned[outcome.repository]
-                for outcome in lazy_outcomes
-            )
-        else:
-            outcomes = tuple(type(self).plan_repository_task(task) for task in tasks)
-        if self.state.planning_exception is None:
-            self.state.planning_exception = next(
-                (item.exception for item in outcomes if item.exception is not None),
-                None,
-            )
-        metadata = tuple(
-            file for outcome in outcomes if not outcome.failed for file in outcome.files
-        )
-        extended_outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
         selected_pyproject = contract.pyproject and (
             contract.destinations is None
             or c.PYPROJECT_FILENAME in contract.destinations
         )
+        providers: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        if contract.complete_governed and tasks:
+            outcomes, providers = self._governed_plan_outcomes(
+                tasks, selected_pyproject=selected_pyproject
+            )
+        else:
+            outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
+        self._retain_diagnostics(*(outcome.exception for outcome in outcomes))
+        metadata = tuple(
+            file for outcome in outcomes if not outcome.failed for file in outcome.files
+        )
+        extended_outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
         for task, outcome in zip(tasks, outcomes, strict=True):
             if outcome.failed or not selected_pyproject:
                 extended_outcomes.append(outcome)
@@ -844,6 +806,256 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             for outcome in extended_outcomes
         )
+
+    @staticmethod
+    def _failed_outcome(
+        repository: str,
+        exception: BaseException,
+        elapsed: float = 0.0,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Retain one native planning failure, with its traceback, as data.
+
+        Returns:
+            The failed outcome carrying the original cause.
+
+        """
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=repository,
+            error=str(exception),
+            error_type=f"{type(exception).__module__}.{type(exception).__qualname__}",
+            error_traceback=traceback.format_exc(),
+            exception=exception,
+            elapsed=elapsed,
+        )
+
+    @staticmethod
+    def _cohort_failure(
+        failure: m.Infra.CodegenRepositoryPlanOutcome,
+        outcomes: t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
+    ) -> t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome]:
+        """Fail every still-planned repository with one cohort-wide cause.
+
+        Returns:
+            The outcomes, each successful one carrying the shared failure.
+
+        """
+        return tuple(
+            outcome
+            if outcome.failed
+            else outcome.model_copy(
+                update={
+                    "files": (),
+                    "environment": None,
+                    "error": failure.error,
+                    "error_type": failure.error_type,
+                    "error_traceback": failure.error_traceback,
+                    "issues": failure.issues,
+                    "exception": failure.exception,
+                },
+            )
+            for outcome in outcomes
+        )
+
+    def _governed_plan_outcomes(
+        self,
+        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
+        *,
+        selected_pyproject: bool,
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
+        t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ]:
+        """Plan lazy providers in parallel, then managed surfaces in order.
+
+        Each repository's lazy plan indexes only its own sources, so those
+        read-only plans run across the fleet workers. Root metadata fixes the
+        dependency order; the managed pass then stays serial. A cohort-wide
+        failure fails every planned repository and keeps no provider.
+
+        Returns:
+            The ordered outcomes and the lazy provider plans they may consume.
+
+        """
+        plan = type(self).plan_repository_task
+        lazy = u.Infra.fleet_map(
+            plan,
+            tuple(
+                task.model_copy(
+                    update={"surface": c.Infra.CodegenConformSurface.LAZY_INIT}
+                )
+                for task in tasks
+            ),
+        )
+        self._retain_diagnostics(*(outcome.exception for outcome in lazy))
+        providers = tuple(
+            file for outcome in lazy if not outcome.failed for file in outcome.files
+        )
+        ready = {
+            task.repository.distribution: task
+            for task, outcome in zip(tasks, lazy, strict=True)
+            if not outcome.failed
+        }
+        root_task = next(
+            (
+                task
+                for task in ready.values()
+                if selected_pyproject
+                and task.initial_workspace is not None
+                and task.repository.name == task.workspace.repository.name
+            ),
+            None,
+        )
+        manifests: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        try:
+            if root_task is not None:
+                metadata = plan(
+                    root_task.model_copy(
+                        update={
+                            "surface": c.Infra.CodegenConformSurface.PYPROJECT,
+                            "provider_plans": providers,
+                        },
+                    ),
+                )
+                if metadata.failed:
+                    self._retain_diagnostics(metadata.exception)
+                    return self._cohort_failure(metadata, lazy), ()
+                project = (root_task.root / root_task.repository.path).resolve()
+                manifests = tuple(
+                    file
+                    for file in metadata.files
+                    if file.project.resolve() == project
+                    and file.path.resolve() == project / c.PYPROJECT_FILENAME
+                    and file.desired_content is not None
+                )
+                if len(manifests) != 1:
+                    msg = "root metadata requires exactly one owned pyproject plan"
+                    raise ValueError(msg)
+            order = u.Infra.workspace_dependency_order(
+                tasks[0].root,
+                tuple(task.repository for task in tasks),
+                planned_manifests=manifests,
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            self._retain_diagnostics(exc)
+            failure = self._failed_outcome(tasks[0].repository.name, exc)
+            return self._cohort_failure(failure, lazy), ()
+        planned, providers = self._managed_plan_outcomes(
+            tuple(ready[name] for name in order if name in ready), providers
+        )
+        outcomes = tuple(
+            outcome if outcome.failed else planned[outcome.repository]
+            for outcome in lazy
+        )
+        try:
+            for manifest in manifests:
+                self._verify_root_manifest(manifest, outcomes, tasks)
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            self._retain_diagnostics(exc)
+            failure = self._failed_outcome(tasks[0].repository.name, exc)
+            return self._cohort_failure(failure, outcomes), providers
+        return outcomes, providers
+
+    def _managed_plan_outcomes(
+        self,
+        ordered: t.VariadicTuple[m.Infra.CodegenRepositoryPlanTask],
+        providers: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> t.Pair[
+        t.MappingKV[str, m.Infra.CodegenRepositoryPlanOutcome],
+        t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ]:
+        """Plan managed surfaces serially over the staged provider plans.
+
+        A failed repository withdraws its own lazy providers. Only
+        authenticated complete source output survives an unrelated managed
+        failure, never incoming lazy inputs.
+
+        Returns:
+            The managed outcome per repository and the surviving providers.
+
+        """
+        planned: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+        staged = {file.path: file for file in providers}
+        for task in ordered:
+            outcome = type(self).plan_repository_task(
+                task.model_copy(update={"provider_plans": tuple(staged.values())})
+            )
+            self._retain_diagnostics(outcome.exception)
+            files = outcome.files
+            if outcome.failed:
+                project_root = (task.root / task.repository.path).resolve()
+                staged = {
+                    path: file
+                    for path, file in staged.items()
+                    if file.project != project_root
+                }
+                providers = tuple(
+                    file for file in providers if file.project != project_root
+                )
+                if outcome.error:
+                    providers = (*providers, *files)
+                    outcome = outcome.model_copy(update={"files": ()})
+                else:
+                    files = ()
+            staged.update((file.path, file) for file in files)
+            planned[outcome.repository] = outcome
+        return planned, providers
+
+    @staticmethod
+    def _verify_root_manifest(
+        manifest: m.Infra.CodegenFilePlan,
+        outcomes: t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
+        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
+    ) -> None:
+        """Prove the planned root manifest stayed current and its graph stable.
+
+        Raises:
+            ValueError: When the final root metadata lost its single payload or
+                its internal dependency edges changed after metadata planning.
+
+        """
+        FlextInfraMiseArtifactsVerification.plans_current((manifest,)).unwrap()
+        FlextInfraMiseArtifactsVerification.states_current(
+            manifest.source_states,
+        ).unwrap()
+        u.Cli.atomic_verify_directory_queries(
+            manifest.source_directories,
+            manifest.source_query_topology,
+        ).unwrap()
+        repository = next(
+            task.repository.name
+            for task in tasks
+            if (task.root / task.repository.path).resolve()
+            == manifest.project.resolve()
+        )
+        final = next(item for item in outcomes if item.repository == repository)
+        if final.failed:
+            return
+        selected = tuple(file for file in final.files if file.path == manifest.path)
+        if len(selected) != 1 or selected[0].desired_content is None:
+            msg = "final root metadata has no single pyproject payload"
+            raise ValueError(msg)
+        names = {u.Infra.dep_name(task.repository.distribution) for task in tasks}
+        edges: set[frozenset[str]] = set()
+        for file in (manifest, selected[0]):
+            if file.desired_content is None:
+                msg = "root dependency manifest has no payload"
+                raise ValueError(msg)
+            payload = u.Cli.toml_mapping_from_text(
+                file.desired_content.decode(c.DEFAULT_ENCODING),
+            )
+            if payload is None:
+                msg = "invalid root dependency manifest"
+                raise ValueError(msg)
+            edges.add(
+                frozenset(
+                    name
+                    for name in u.Infra.project_dependency_names_from_payload(payload)
+                    if name in names
+                ),
+            )
+        if len(edges) != 1:
+            msg = "root dependency graph changed after metadata planning"
+            raise ValueError(msg)
 
     def _gathered_repository_plans(
         self,
@@ -934,8 +1146,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         for index, outcome in enumerate(outcomes, start=1):
             issues.extend(outcome.issues)
             files.extend(outcome.files)
-            if self.state.planning_exception is None:
-                self.state.planning_exception = outcome.exception
+            self._retain_diagnostics(outcome.exception)
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
             if (
                 outcome.error
@@ -993,13 +1204,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         try:
             return cls._plan_repository_task(task)
         except (OSError, ValueError) as exc:
-            return m.Infra.CodegenRepositoryPlanOutcome(
-                repository=task.repository.name,
-                error=str(exc),
-                error_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
-                error_traceback=traceback.format_exc(),
-                exception=exc,
-                elapsed=time.monotonic() - started,
+            return cls._failed_outcome(
+                task.repository.name, exc, time.monotonic() - started
             )
 
     @classmethod
@@ -1010,9 +1216,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """Plan one repository from a self-contained task.
 
         The planner rebuilds from the task: no parent planner state crosses
-        the boundary, the Rope workspace session is shared per resolved root
-        through the process-global registry, and failures return as data
-        instead of live results.
+        the boundary, each repository indexes only its own sources, and
+        failures return as data instead of live results.
 
         Returns:
             The repository's file and environment plans, or its failure.
@@ -1084,6 +1289,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             planned = (
                 r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
                 if task.initial_workspace is not None
+                and task.initial_workspace.project is not None
                 and repository.name == task.workspace.repository.name
                 else planner._planned_lazy_init_files(repository_root)
             )
@@ -1111,14 +1317,25 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             inputs,
             scaffold=(
                 task.initial_workspace is not None
+                and task.initial_workspace.project is not None
                 and repository.name == task.workspace.repository.name
             ),
         )
         if planned.failure:
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=repository.name,
+                files=tuple(
+                    file
+                    for file in planner.state.completed_source_plans or ()
+                    if file.project == repository_root
+                ),
                 error=planned.error or f"planning failed: {repository.name}",
-                exception=planned.exception,
+                exception=(
+                    planned.exception
+                    if planner.state.planning_exception is None
+                    else planner.state.planning_exception
+                ),
+                issues=tuple(planner.state.planning_issues),
                 elapsed=time.monotonic() - started,
             )
         governed_plans, retired_plans = planned.value
@@ -1352,7 +1569,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         complete: list[m.Infra.CodegenFilePlan] = []
         for file in files:
-            sources = FlextInfraCodegenPreconditions.unique_states(
+            sources = u.Infra.unique_states(
                 (*file.source_states, *inputs.sources),
             )
             if sources.failure:
@@ -1381,7 +1598,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]``.
 
         """
-        scope = c.Infra.CodegenConformScope(request.scope)
+        scope = request.scope
         selected: t.VariadicTuple[m.Infra.RepositoryRef]
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
@@ -1427,18 +1644,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 f"{repository.path.as_posix()}",
             )
         return r[Path].ok(resolved)
-
-    @staticmethod
-    def _repository_provider(
-        repository: m.Infra.RepositoryRef,
-    ) -> p.Result[m.Infra.ProviderIdentitySpec]:
-        """Resolve one repository to its self-declared provider identity.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.ProviderIdentitySpec]``.
-
-        """
-        return u.Infra.repository_provider(repository)
 
 
 __all__: list[str] = ["FlextInfraCodegenConformPlan"]

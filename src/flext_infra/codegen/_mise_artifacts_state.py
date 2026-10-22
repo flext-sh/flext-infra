@@ -830,6 +830,26 @@ class FlextInfraMiseArtifactsState:
             The original manifests' currency after guarded empty-only cleanup.
 
         """
+        for intent in journal.staging_intents:
+            observed = files.read_state(intent.before.path, required=False)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            current = observed.value
+            if current.link_count is not None and current.link_count > 1:
+                digest = (
+                    files.digest(current.content)
+                    if current.content is not None
+                    else None
+                )
+                u.Cli.emit_raw(
+                    f"{c.Cli.OUTPUT_LOG_LEVEL_INFO}: recovery=staging-intention "
+                    f"path={current.path} device={current.device} "
+                    f"inode={current.inode} links={current.link_count} "
+                    f"mode={current.mode} intended-mode={intent.mode} "
+                    f"sha256={digest} "
+                    f"intended-sha256={intent.sha256}\n",
+                    error=True,
+                )
         inputs: list[m.Cli.AtomicDirectoryState] = []
         for intent in journal.directories:
             if intent.disposition != "temporary" or intent.created is not None:

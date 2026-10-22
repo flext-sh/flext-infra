@@ -1023,134 +1023,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class CodegenConform(Protocol):
-        """Complete state and collaboration contract for conform partials."""
-
-        request: m.Infra.CodegenConformRequest | None
-        repository_root: Path
-        initial_workspace: m.Infra.WorkspaceSpec | None
-
-        def plan(
-            self,
-            request: m.Infra.CodegenConformRequest,
-        ) -> p.Result[m.Infra.CodegenPlan]: ...
-
-        def conform_workspace_beads_routes(
-            self,
-            request: m.Infra.CodegenConformRequest,
-        ) -> p.Result[bool]: ...
-
-        @classmethod
-        def surface_contract(
-            cls,
-            surface: c.Infra.CodegenConformSurface,
-            *,
-            codegen: m.Infra.CodegenConfigSpec,
-        ) -> m.Infra.CodegenConformSurfaceContract: ...
-
-        @classmethod
-        def retired_projection_plans(
-            cls,
-            root: Path,
-            profile: c.Infra.MakeProfile,
-            *,
-            inputs: m.Infra.CodegenInputs | None = None,
-        ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
-
-        @staticmethod
-        def uv_environment_plan(
-            *,
-            root: Path,
-            target: m.Infra.RepositoryConformTarget,
-            workspace: m.Infra.WorkspaceSpec,
-            config: m.Infra.CodegenConfigSpec,
-        ) -> m.Infra.UvEnvironmentPlan: ...
-
-        @staticmethod
-        def _scaffold_python_dirs(
-            entries: t.SequenceOf[m.Infra.TemplateEntrySpec],
-            profile: c.Infra.MakeProfile,
-        ) -> t.StrSequence: ...
-
-        @staticmethod
-        def mise_config_plans(
-            plan: m.Infra.CodegenPlan,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
-
-        @classmethod
-        def owned_docs_files(
-            cls,
-            request: m.Infra.CodegenConformRequest,
-            files: t.SequenceOf[m.Infra.CodegenFilePlan],
-        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @classmethod
-        def _owned_docs_directories(
-            cls,
-            request: m.Infra.CodegenConformRequest,
-            plan: m.Infra.CodegenPlan,
-            directories: t.SequenceOf[Path],
-        ) -> t.VariadicTuple[Path]: ...
-
-        def _project_render_context(
-            self,
-            render_inputs: m.Infra.CodegenRenderInputs,
-        ) -> p.Result[m.Infra.ProjectRenderContext]: ...
-
-        def _rendered_artifact_source(
-            self,
-            render_inputs: m.Infra.CodegenRenderInputs,
-            *,
-            template_relpath: Path,
-            destination: str,
-            failure_prefix: str,
-            project_context: m.Infra.ProjectRenderContext | None,
-        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
-
-        @classmethod
-        def compose_project_artifact(
-            cls,
-            repository_root: Path,
-            destination: str,
-            rendered: str,
-            *,
-            render_inputs: m.Infra.CodegenRenderInputs | None = None,
-            source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
-
-        @staticmethod
-        def validate_custom_make(
-            content: str,
-            policy: m.Infra.CustomHandlerPolicy,
-        ) -> p.Result[bool]: ...
-
-        @staticmethod
-        def _absent_file_plan(
-            root: Path,
-            path: Path,
-        ) -> p.Result[m.Infra.CodegenFilePlan]: ...
-
-        @staticmethod
-        def _repository_provider(
-            repository: m.Infra.RepositoryRef,
-        ) -> p.Result[m.Infra.ProviderIdentitySpec]: ...
-
-        @staticmethod
-        def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str: ...
-
-        @staticmethod
-        def _merge_extra_verbs(
-            declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
-            discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
-            canonical_names: frozenset[str],
-        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
-
-        @staticmethod
-        def _discover_script_verbs(
-            repository_root: Path,
-        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
-
-    @runtime_checkable
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance and templates."""
 
@@ -1309,10 +1181,6 @@ class FlextInfraProtocolsBase(Protocol):
         pip_check: m.Infra.PipCheckReport | None
         dependency_limits: m.Infra.DependencyLimitsInfo | None
 
-        def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
-            """Serialize report model payload."""
-            ...
-
     @runtime_checkable
     class JsonService(Protocol):
         """Service for JSON serialization and persistence."""
@@ -1323,14 +1191,6 @@ class FlextInfraProtocolsBase(Protocol):
             payload: t.MappingKV[str, t.JsonValue],
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
-            ...
-
-    @runtime_checkable
-    class ProjectReportLike(Protocol):
-        """Protocol for project-level dependency report contracts."""
-
-        def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
-            """Serialize project report payload."""
             ...
 
     @runtime_checkable
@@ -1358,7 +1218,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_name: str,
             deptry_issues: t.SequenceOf[t.JsonMapping],
-        ) -> FlextInfraProtocolsBase.ProjectReportLike:
+        ) -> m.Infra.ProjectRuntimeReport:
             """Build project report from deptry issues."""
             ...
 
@@ -1383,6 +1243,15 @@ class FlextInfraProtocolsBase(Protocol):
             venv_bin: Path,
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
+            ...
+
+        def generate_typing_packages(
+            self,
+            repository_root: Path,
+            modules: t.StrSequence,
+            policy: m.Infra.TypingGenerationPolicy,
+        ) -> p.Result[t.VariadicTuple[Path]]:
+            """Generate and install PEP 561 packages in the owning environment."""
             ...
 
     @runtime_checkable

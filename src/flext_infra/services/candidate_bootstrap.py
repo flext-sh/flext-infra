@@ -10,7 +10,6 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
 
@@ -143,23 +142,29 @@ class FlextInfraCandidateBootstrapService:
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
             for file in planned.value:
-                sources = FlextInfraCodegenPreconditions.unique_states((
+                sources = u.Infra.unique_states((
                     *declaration_states,
                     *file.source_states,
                 ))
                 if sources.failure:
                     return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
                 files.append(file.model_copy(update={"source_states": sources.value}))
-        sources = FlextInfraCodegenPreconditions.unique_states(
+        sources = u.Infra.unique_states(
             tuple(source for file in files for source in file.source_states),
         )
         if sources.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            tuple(directory for file in files for directory in file.source_directories),
+            tuple(chain for file in files for chain in file.source_query_topology),
+        )
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
                 files=tuple(files),
                 inputs=sources.value,
+                source_directories=directories,
+                source_query_topology=topology,
             ),
         )
 

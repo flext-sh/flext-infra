@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, r, u
+from flext_infra import c, config, r, u
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
@@ -59,6 +59,7 @@ class FlextInfraCodegenPyTyped(FlextInfraCodegenExecutionBase[bool]):
             for pattern in c.Infra.ALL_SCAN_PATTERNS
             if (self.repository_root / pattern.split("/*")[0]).is_dir()
         ]
+        excluded = frozenset(config.Infra.codegen.analysis_excluded_dirs)
         created = 0
         removed = 0
         for base_dir in dirs_to_scan:
@@ -66,7 +67,7 @@ class FlextInfraCodegenPyTyped(FlextInfraCodegenExecutionBase[bool]):
                 if not dirpath.is_dir():
                     continue
                 if any(
-                    part.startswith(".") or part in {"vendor", "node_modules", ".venv"}
+                    part.startswith(".") or part in excluded
                     for part in dirpath.relative_to(self.repository_root).parts
                 ):
                     continue

@@ -287,8 +287,11 @@ class FlextInfraToolTablesPhase:
         Returns:
             Native table replacements followed by topology and runtime policy.
 
+        Raises:
+            KeyError: If a declared tool is missing from the registry.
+
         """
-        declared_tables = set(self._tool_config.settings)
+        declared_tables = self._tool_config.settings
         tables = tuple(
             table
             for table in sorted(declared_tables)

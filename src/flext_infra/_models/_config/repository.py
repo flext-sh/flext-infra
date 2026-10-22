@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m, t
+from flext_cli import m
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.make import FlextInfraConfigModelsMake
@@ -96,6 +96,9 @@ class FlextInfraConfigModelsRepository:
             t.NonEmptyStr,
             m.Field(description="Project description"),
         ]
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         author_name: Annotated[
             t.NonEmptyStr,

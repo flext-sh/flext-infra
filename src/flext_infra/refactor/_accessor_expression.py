@@ -31,11 +31,14 @@ class FlextInfraAccessorMigrationExpressionMixin:
 
         """
         return u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "accessor-migrations.yaml",
-            ).unwrap(),
+            u.Yaml.safe_load(
+                (
+                    type(config).ssot_config_dir().parent
+                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
+                    / "accessor-migrations.yaml"
+                ).read_text(encoding=c.DEFAULT_ENCODING)
+            ),
+            strict=True,
         )
 
     @classmethod
@@ -59,7 +62,7 @@ class FlextInfraAccessorMigrationExpressionMixin:
         resolver = FlextInfraAccessorOriginResolver(rope_project)
         replacements: t.MutableSequenceOf[t.Triple[int, int, str]] = []
         changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
-        imports: dict[str, str] = {}
+        imports: t.MutableMappingKV[str, str] = {}
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
                 continue

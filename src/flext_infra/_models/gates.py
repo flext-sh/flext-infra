@@ -482,6 +482,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
+        scope: Annotated[
+            Literal["workspace"],
+            m.Field(description="Execution evidence, never validation of a Git commit"),
+        ]
+        runtime_identity: Annotated[
+            str, m.Field(description="Native runtime identity consumed by execution")
+        ]
+
         gate: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -557,16 +565,33 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             return self
 
     class GateCommandEvidence(GateExecutionFacts):
-        """Public original receipt bound to its candidate and exact argv digest."""
+        """Workspace execution with observational, non-gating Git metadata."""
 
-        repository: Annotated[t.NonEmptyStr, m.Field(description="Candidate origin")]
+        repository: Annotated[str | None, m.Field(description="Observed start origin")]
         commit_sha: Annotated[
-            str,
-            m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate commit"),
+            str | None,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed start HEAD"),
         ]
         tree_sha: Annotated[
-            str,
-            m.Field(pattern=r"^[a-f0-9]{40}$", description="Original candidate tree"),
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$", description="Observed start commit tree"
+            ),
+        ]
+        dirty: Annotated[bool | None, m.Field(description="Observed start WIP state")]
+        after_repository: Annotated[
+            str | None, m.Field(description="Observed end origin")
+        ]
+        after_commit_sha: Annotated[
+            str | None,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed end HEAD"),
+        ]
+        after_tree_sha: Annotated[
+            str | None,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Observed end commit tree"),
+        ]
+        after_dirty: Annotated[
+            bool | None, m.Field(description="Observed end WIP state")
         ]
 
     class GateCaptureBeginRequest(m.ContractModel):
@@ -603,8 +628,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         commit_sha: Annotated[str | None, m.Field(description="Observed commit")]
         tree_sha: Annotated[str | None, m.Field(description="Observed committed tree")]
         dirty: Annotated[
-            bool | None, m.Field(description="Observed tracked dirty state")
+            bool | None, m.Field(description="Observed tracked and untracked WIP")
         ]
+        runtime_identity: Annotated[str, m.Field(description="Original native runtime")]
         context_digest: Annotated[
             str,
             m.Field(pattern=r"^sha256:[a-f0-9]{64}$", description="Original context"),
@@ -667,7 +693,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ] = ()
 
     class GateAttestationPredicate(m.ContractModel):
-        """Canonical signed statement for locally completed gates."""
+        """Signed workspace execution, stored on an observational Git anchor."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
@@ -679,10 +705,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         schema_version: Annotated[
             c.Infra.GateAttestationSchema,
             m.Field(description="Predicate schema identity"),
-        ] = c.Infra.GateAttestationSchema.V2
-        repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
-        commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]
-        tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Full tree SHA")]
+        ] = c.Infra.GateAttestationSchema.V3
+        anchor_oid: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$", description="Original receipt's Git blob"
+            ),
+        ]
         signer: Annotated[
             t.NonEmptyStr,
             m.Field(description="Allowed-signers principal"),
@@ -710,7 +739,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         commands: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateExecutionFacts],
+            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
             m.Field(
                 min_length=1, max_length=1, description="Original accepted execution"
             ),
@@ -718,13 +747,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         @m.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
-            for name, value in (
-                ("commit_sha", self.commit_sha),
-                ("tree_sha", self.tree_sha),
-            ):
-                if not re.fullmatch(r"[0-9a-f]{40}", value):
-                    msg = f"{name} must be a full lowercase Git SHA"
-                    raise ValueError(msg)
             if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.toolchain_digest):
                 msg = "toolchain_digest must be sha256:<64 lowercase hex>"
                 raise ValueError(msg)
@@ -786,7 +808,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             return self
 
     class GateAttestationVerifyRequest(m.ContractModel):
-        """Verify the signed attestation for the repository HEAD."""
+        """Verify one original workspace receipt and its signed storage anchor."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
@@ -816,9 +838,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 pattern=r"^sha256:[a-f0-9]{64}$", description="Required recorded policy"
             ),
         ]
-        commit_sha: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact attested commit SHA"),
+        receipt: Annotated[
+            Path, m.Field(description="Exact original workspace receipt")
         ]
         output: Annotated[
             str | None,
@@ -830,17 +851,15 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             if len(self.expected_gates) != len(set(self.expected_gates)):
                 msg = "expected attestation gates must be unique"
                 raise ValueError(msg)
-            if not re.fullmatch(r"[0-9a-f]{40}", self.commit_sha):
-                msg = "commit_sha must be a full lowercase Git SHA"
-                raise ValueError(msg)
             return self
 
     class GateAttestationReport(m.ContractModel):
         """Verified or newly created signed gate attestation."""
 
         tag: Annotated[t.NonEmptyStr, m.Field(description="Full attestation tag")]
-        commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested commit SHA")]
-        tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested tree SHA")]
+        anchor_oid: Annotated[
+            t.NonEmptyStr, m.Field(description="Original receipt blob")
+        ]
         signer: Annotated[
             t.NonEmptyStr,
             m.Field(description="Verified signer principal"),

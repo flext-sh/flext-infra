@@ -12,6 +12,11 @@ valid:
     api: FlextFooApi = FlextFooApi.fetch_global()
     __all__ = ["FlextFooApi", "api"]
   - |
+    class FlextFooApi:
+        pass
+    api: FlextFooApi = FlextFooApi.model_validate({})
+    __all__ = ["FlextFooApi", "api"]
+  - |
     class FlextFooConfig:
         pass
     config: FlextFooConfig = FlextFooConfig.fetch_global()
@@ -75,3 +80,15 @@ invalid:
     class FlextFooApi:
         pass
     api: FlextFooApi = FlextFooOther.fetch_global()
+  - |
+    class FlextFooApi:
+        pass
+    api = FlextFooApi.model_validate({})
+  - |
+    class FlextFooApi:
+        pass
+    api: FlextFooOther = FlextFooApi.model_validate({})
+  - |
+    class FlextFooApi:
+        pass
+    api: FlextFooApi = FlextFooOther.model_validate({})

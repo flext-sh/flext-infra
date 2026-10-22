@@ -25,19 +25,22 @@ class FlextInfraUtilitiesPyrefly:
     def pyrefly_target_args(
         project_dir: Path,
         discovered_dirs: t.StrSequence,
+        *,
+        selected_files: t.VariadicTuple[Path],
     ) -> t.StrSequence:
-        """Check every selected owned target with configured artifact exclusions.
+        """Preserve native literal-file selection and discovery exclusions.
 
-        Pyrefly ignores the configured ``project-excludes`` whenever files are
-        passed on the command line and reads them only from
-        ``--project-excludes``. Explicit targets therefore carry the project's
-        configured excludes, so a generated or vendored tree inside a target
-        directory stays excluded exactly as in project-checking mode.
+        Validated ``GateContext.selected_files`` carries explicit selection intent.
+        Pyrefly's positional-file contract ignores config exclusions unless CLI
+        exclusions are supplied. Discovery alone retransmits those exclusions to
+        keep generated and vendored trees outside its discovered roots.
 
         Returns:
             The resulting ``t.StrSequence``.
 
         """
+        if selected_files:
+            return discovered_dirs
         parsed = u.Cli.toml_read_document(project_dir / c.PYPROJECT_FILENAME)
         document = parsed.value if parsed.success else None
         tool = (

@@ -10,11 +10,11 @@ from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from flext_infra import c, check, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
@@ -41,7 +41,7 @@ class FlextInfraSemanticPublication:
             Published paths or the original input or publication failure.
 
         """
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *(state for plan in plans for state in plan.source_states),
             *(
                 plan.before
@@ -199,7 +199,7 @@ class FlextInfraSemanticPublication:
             The complete analysis or its first planning failure.
 
         """
-        snapshots = FlextInfraCodegenPreconditions.unique_states((
+        snapshots = u.Infra.unique_states((
             *inputs,
             *(state for plan in plans for state in (plan.before, *plan.source_states)),
         ))
@@ -375,7 +375,7 @@ class FlextInfraSemanticPublication:
             combined[item.path] = item.model_copy(
                 update={"dependency_group": dependency_group},
             )
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *analysis.inputs,
             *projection.inputs,
             *(state for item in combined.values() for state in item.source_states),
@@ -602,7 +602,7 @@ class FlextInfraSemanticPublication:
         with TemporaryDirectory(
             prefix="flext-semantic-admission-reports-"
         ) as directory:
-            return check.FlextInfraWorkspaceChecker(
+            return FlextInfraWorkspaceChecker(
                 repository_root=candidate
             ).execute_candidate(
                 m.Infra.RunCommand(
@@ -776,7 +776,7 @@ class FlextInfraSemanticPublication:
         )
         if prepared_files.failure:
             return result_type.from_failure(prepared_files)
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *analysis.inputs,
             *(state for plan in prepared_files.value for state in plan.source_states),
         ))

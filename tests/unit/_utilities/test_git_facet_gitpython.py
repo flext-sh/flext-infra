@@ -579,6 +579,19 @@ class TestsFlextInfraGitFacet:
         tm.that(u.Infra.git_source_scope_paths(scope), eq=(created,))
         tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
 
+        u.Tests.git_run(repository, "add", "--", "src/created.py")
+        captured = tm.ok(u.Cli.atomic_read_binary_file_state(created, required=True))
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[created])
+        created.unlink()
+
+        tm.fail(u.Cli.atomic_verify_binary_file_states((captured,)))
+        tm.that(u.Infra.git_source_scope_paths(scope), eq=())
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+        tm.that(
+            u.Tests.git_capture(repository, "ls-files", "--", "src/created.py").strip(),
+            eq="src/created.py",
+        )
+
     @staticmethod
     def test_invalid_nested_git_marker_matches_native_tracked_scope(
         tmp_path: Path,
@@ -687,18 +700,16 @@ class TestsFlextInfraGitFacet:
     @staticmethod
     def test_service_status_reports_dirty_tree(real_git_repo: Path) -> None:
         """The status-only service flips dirty when the worktree changes."""
-        clean = FlextInfraGitService(repository_root=real_git_repo).execute()
-        tm.that(clean.success, truth=True)
-        assert clean.value.dirty is False
+        clean = tm.ok(FlextInfraGitService(repository_root=real_git_repo).execute())
+        tm.that(clean.dirty, eq=False)
         (real_git_repo / "dirty.txt").write_text("x", encoding="utf-8")
-        dirty = FlextInfraGitService(repository_root=real_git_repo).execute()
-        tm.that(dirty.success, truth=True)
-        assert dirty.value.dirty is True
-        tm.that("dirty.txt" in dirty.value.porcelain, truth=True)
+        dirty = tm.ok(FlextInfraGitService(repository_root=real_git_repo).execute())
+        tm.that(dirty.dirty, eq=True)
+        tm.that(dirty.porcelain, has="dirty.txt")
 
     @staticmethod
     @pytest.mark.parametrize("change", ["tracked", "staged", "untracked"])
-    def test_verify_clean_cli_rejects_real_worktree_changes(
+    def test_verify_clean_cli_accepts_real_worktree_changes(
         real_git_repo: Path,
         capsys: pytest.CaptureFixture[str],
         change: str,
@@ -722,14 +733,20 @@ class TestsFlextInfraGitFacet:
                     ),
                 )
 
-        tm.that(main(argv), eq=1)
+        request = m.Infra.GitStatusRequest(repo_root=real_git_repo)
+        before = tm.ok(u.Infra.git_status(request))
+        report = tm.ok(FlextInfraGitService.verify_clean(request))
+        tm.that(report.dirty, eq=True)
+        tm.that(report.porcelain, eq=before.porcelain)
+        tm.that(main(argv), eq=0)
         output = capsys.readouterr()
-        tm.that(output.out + output.err, has=changed_path.name)
+        tm.that(output.out + output.err, has="existing work preserved")
+        tm.that(tm.ok(u.Infra.git_status(request)).porcelain, eq=before.porcelain)
 
     @staticmethod
     @pytest.mark.parametrize("entries", [1, 2])
     @pytest.mark.parametrize("linked", [False, True])
-    def test_verify_clean_rejects_recovery_stash_objects_without_mutation(
+    def test_verify_clean_preserves_recovery_stash_objects_without_mutation(
         real_git_repo: Path,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
@@ -737,7 +754,7 @@ class TestsFlextInfraGitFacet:
         *,
         linked: bool,
     ) -> None:
-        """Real recovery refs fail the service and CLI without any stash operation."""
+        """Real recovery refs remain intact after accepted service and CLI calls."""
         repository = (
             u.Tests.git_linked_lane(tmp_path, real_git_repo, "owned-lane")
             if linked
@@ -784,15 +801,13 @@ class TestsFlextInfraGitFacet:
 
         result = FlextInfraGitService.verify_clean(request)
 
-        tm.fail(result, has="stash recovery required")
+        tm.that(tm.ok(result).dirty, eq=False)
         tm.that(
             main(["workspace", "verify-clean", "--repo-root", str(repository)]),
-            eq=1,
+            eq=0,
         )
         output = capsys.readouterr()
-        for oid in oids:
-            tm.that(result.error, has=oid)
-            tm.that(output.out + output.err, has=oid)
+        tm.that(output.out + output.err, has="existing work preserved")
         remaining = tm.ok(
             u.Infra.git_stash_oids(m.Infra.GitRepoRequest(repo_root=repository)),
         ).oids
@@ -804,21 +819,13 @@ class TestsFlextInfraGitFacet:
         tm.fail(tm.ok(u.Infra.git_status(request)).dirty)
 
     @staticmethod
-    def test_verify_clean_propagates_stash_probe_failure(
-        real_git_repo: Path,
+    def test_verify_clean_propagates_status_probe_failure(
+        tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """A corrupt recovery ref is not normalized to an empty stash inventory."""
-        head = u.Tests.git_capture(real_git_repo, "rev-parse", c.Infra.GIT_HEAD)
-        (real_git_repo / ".git" / "refs" / "stash").write_text(
-            "f" * len(head) + "\n",
-            encoding="utf-8",
-        )
-        request = m.Infra.GitStatusRequest(repo_root=real_git_repo)
-        tm.fail(tm.ok(u.Infra.git_status(request)).dirty)
-        probe = u.Infra.git_stash_oids(
-            m.Infra.GitRepoRequest(repo_root=real_git_repo),
-        )
+        """An unusable Git root retains the original technical status failure."""
+        request = m.Infra.GitStatusRequest(repo_root=tmp_path)
+        probe = u.Infra.git_status(request)
         tm.fail(probe)
 
         result = FlextInfraGitService.verify_clean(request)
@@ -828,9 +835,9 @@ class TestsFlextInfraGitFacet:
         tm.that(result.error_code, eq=probe.error_code)
         tm.that(result.error_data, eq=probe.error_data)
         tm.not_none(result.exception)
-        assert type(result.exception) is type(probe.exception)
+        tm.that(type(result.exception), eq=type(probe.exception))
         tm.that(
-            main(["workspace", "verify-clean", "--repo-root", str(real_git_repo)]),
+            main(["workspace", "verify-clean", "--repo-root", str(tmp_path)]),
             eq=1,
         )
         output = capsys.readouterr()

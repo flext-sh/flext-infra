@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 import flext_infra
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -188,8 +187,8 @@ class TestsFlextInfraInfraRopeService:
         tm.that(u.Infra.symbol_has_docstring_source(source, symbol), eq=documented)
 
     @staticmethod
-    def test_open_workspace_materializes_snapshot(tmp_path: Path) -> None:
-        """Public service class exposes one typed workspace snapshot."""
+    def test_public_workspace_materializes_index(tmp_path: Path) -> None:
+        """The public workspace exposes its typed repository index directly."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
@@ -199,13 +198,9 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        rope = FlextInfraRopeWorkspace.open_workspace(repository_root)
-        try:
-            snapshot_result = rope.execute()
-            tm.ok(snapshot_result)
-            snapshot = snapshot_result.unwrap()
-            tm.that(snapshot.repository_root, eq=repository_root.resolve())
-            tm.that(snapshot.workspace_index.package_dirs, has=package_root)
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            tm.that(rope.repository_root, eq=repository_root.resolve())
+            tm.that(rope.workspace_index.package_dirs, has=package_root)
             tm.that(rope.module(module_path), none=False)
             tm.that(rope.package(package_root), none=False)
             exports = rope.exports(
@@ -216,8 +211,6 @@ class TestsFlextInfraInfraRopeService:
             )
             tm.that(exports, has="FlextTestsModels")
             tm.that(exports, has="m")
-        finally:
-            rope.close()
 
     @staticmethod
     def test_script_guard_bindings_are_not_exports(tmp_path: Path) -> None:
@@ -243,8 +236,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        rope = FlextInfraRopeWorkspace.open_workspace(repository_root)
-        try:
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
             exports = rope.exports(
                 module_path,
                 export_options=m.Infra.ExportOptions.model_validate({
@@ -252,8 +244,6 @@ class TestsFlextInfraInfraRopeService:
                     "allow_functions": True,
                 }),
             )
-        finally:
-            rope.close()
 
         tm.that(exports, has=["LIMIT", "run"], lacks=["result", "msg"])
 
@@ -324,7 +314,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
             tm.that(rope.workspace_index.package_dirs, has=examples_root)
             module = rope.module(module_path)
             tm.that(module, none=False)
@@ -393,36 +383,46 @@ class TestsFlextInfraInfraRopeService:
             eq=(f"nested {extra_class_name} under {owner}",),
         )
 
-    def test_workspace_indexes_declared_members_and_keeps_member_boundary(
+    def test_workspace_indexes_only_each_repositorys_own_sources(
         self,
         tmp_path: Path,
     ) -> None:
-        """The workspace indexes declared members; a member excludes its siblings."""
-        monorepo_root = tmp_path / "repo"
-        monorepo_root.mkdir()
+        """Planning targets stay local while member repositories remain importable."""
+        monorepo_root, owned_package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="repo", package_name="workspace_root"
+        )
         u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra", "flext-demo"))
+        owned_module_path = owned_package_root / "owned.py"
+        owned_module_path.write_text(
+            "class WorkspaceOwned:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
         (
             repository_root,
             package_root,
             module_path,
-            sibling_root,
+            _sibling_root,
             sibling_module_path,
         ) = self._paired_namespace_projects(monorepo_root)
 
         for call_root in (monorepo_root, repository_root, package_root):
             workspace_scope = call_root == monorepo_root
             expected_root = monorepo_root if workspace_scope else repository_root
-            expected_projects = {repository_root.resolve()}
-            if workspace_scope:
-                expected_projects.add(sibling_root.resolve())
+            expected_projects = {expected_root.resolve()}
             with flext_infra.infra.rope_workspace(call_root) as rope:
                 tm.that(rope.rope_repository_root, eq=expected_root.resolve())
                 tm.that(
                     {entry.project_root for entry in rope.modules()},
                     eq=expected_projects,
                 )
-                tm.that(rope.module(module_path), none=False)
-                tm.that(rope.module(sibling_module_path), none=not workspace_scope)
+                tm.that(rope.module(module_path), none=workspace_scope)
+                tm.that(rope.module(sibling_module_path), none=True)
+                tm.that(rope.module(owned_module_path), none=not workspace_scope)
+                if workspace_scope:
+                    dependency = u.Infra.resolve_pymodule(
+                        rope.rope_project,
+                        tm.not_none(rope.resource(sibling_module_path)),
+                    )
+                    tm.not_none(dependency.get_attribute("FlextDemoModels"))
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""

@@ -10,13 +10,9 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
-from flext_infra import FlextInfraConfig, config
-from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.deps import (
-    FlextInfraEnsureRuffConfigPhase,
-    FlextInfraPyprojectModernizer,
-)
+from flext_infra import FlextInfraConfig, check, config, deps
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -29,25 +25,16 @@ class TestsFlextInfraDepsModernizerTooling:
     @staticmethod
     def _yaml_settings_payload(
         document: m.Infra.ToolConfigDocument,
-    ) -> dict[str, t.JsonPayload]:
+    ) -> t.JsonDict:
         """Recreate YAML settings lists while retaining unrelated validated fields.
 
         Returns:
             A document payload exercising only the native settings ingress.
 
         """
-        return {
-            "settings": {
-                table: [[key, value] for key, value in pairs]
-                for table, pairs in document.settings.items()
-            },
-            "derived-tool-roots": document.derived_tool_roots,
-            "derived-settings": document.derived_settings,
-            "raw-check-receipt-suffix": document.raw_check_receipt_suffix,
-            "tools": document.tools,
-            "lazy-init": document.lazy_init,
-            "mod": document.mod,
-        }
+        return document.model_dump(
+            mode="json", by_alias=True, exclude_computed_fields=True
+        )
 
     @staticmethod
     def test_native_settings_yaml_pairs_validate_as_tuples(
@@ -111,6 +98,37 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(tool_config_document.settings, eq=original)
 
     @staticmethod
+    def test_native_tooling_render_keeps_caller_nested_tables_unchanged() -> None:
+        """Missing output tables never become mutations of the caller's tree."""
+        options: t.MappingKV[str, t.JsonMapping] = {
+            "fixture_native": {
+                "branch": {
+                    "keep": [{"label": "last"}, {"label": "first"}],
+                    "ratio": 1.25,
+                }
+            },
+            "fixture_native.branch.child": {
+                "enabled": True,
+                "order": ["zulu", " alpha "],
+            },
+        }
+        original = deepcopy(options)
+        rendered = tm.ok(
+            deps.FlextInfraPyprojectModernizer.tooling_configuration(options)
+        )
+        tm.that(options, eq=original)
+        tm.that(
+            u.Tests.toml_table_at(
+                rendered, "tool", "fixture_native", "branch", "child"
+            ),
+            eq=options["fixture_native.branch.child"],
+        )
+        tm.that(
+            u.Tests.toml_table_at(rendered, "tool", "fixture_native", "branch")["keep"],
+            eq=u.Tests.toml_mapping(options["fixture_native"]["branch"])["keep"],
+        )
+
+    @staticmethod
     def test_native_tool_configuration_rejects_an_undeclared_root(
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
@@ -132,15 +150,11 @@ class TestsFlextInfraDepsModernizerTooling:
         root = u.Tests.git_repository(tmp_path, "project")
         workspace = u.Tests.standalone_workspace(root)
         project = u.Tests.project_spec(workspace.repository.name)
-        directory = root / "config"
-        directory.mkdir(parents=True, exist_ok=True)
         native_root = "fixture_native_tool"
-        declared_roots = {
+        while native_root in {
             table.partition(".")[0] for table in config.Infra.tooling.settings
-        }
-        while native_root in declared_roots:
+        }:
             native_root = f"_{native_root}"
-        nested = f"{native_root}.parser"
         ordered: t.JsonValueList = ["zulu", " alpha ", "middle"]
         spacing = "  value  "
         records: t.JsonValueList = [
@@ -154,13 +168,23 @@ class TestsFlextInfraDepsModernizerTooling:
             ["spacing", spacing],
             ["retired_option", "old"],
         ]
-        declarations: t.MutableJsonMapping = {
+        declarations: t.JsonDict = {
             native_root: pairs,
-            nested: [["ratio", 1.25], ["options", {"enabled": True}]],
+            f"{native_root}.parser": [
+                ["ratio", 1.25],
+                ["options", {"enabled": True}],
+            ],
         }
-        path = directory / "tooling.yaml"
+        path = root / "config" / "tooling.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.yaml_dump(path, {"Infra": {"tooling": {"settings": declarations}}}))
-        modernizer = FlextInfraPyprojectModernizer(
+        tm.that(
+            u.Infra.native_tool_configuration(
+                tm.ok(u.Infra.load_tooling_inputs(root)).document, native_root
+            )["ordered"],
+            eq=ordered,
+        )
+        modernizer = deps.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_comments=True,
             skip_check=True,
@@ -168,98 +192,103 @@ class TestsFlextInfraDepsModernizerTooling:
         topology = m.Infra.PyprojectDeclaredTopology()
         source = (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING)
         metadata = u.Tests.toml_table_at(source, "project")
-        runtime = tm.ok(
-            modernizer.resolve_tooling_context(
-                m.Infra.ToolingContextRequest(
-                    environment_dir=root / c.Infra.ENVIRONMENT_DIRECTORY,
-                    planned_sources={},
-                    project_name=workspace.repository.distribution,
-                    package_name=project.package_name,
-                    path=root / c.PYPROJECT_FILENAME,
-                    scaffold_project=config.Infra.codegen.scaffold.project,
-                    topology=topology,
-                    runtime_dependency_overlay=(),
-                    declared_project_dependencies=u.Tests.strings(
-                        metadata["dependencies"]
-                    ),
-                )
-            )
-        )
         entry = next(
             item
             for item in config.Infra.codegen.templates.entries
             if item.destination == c.PYPROJECT_FILENAME
         )
-        assert entry.source is not None
-        context = m.FlexibleModel.model_validate({
-            **project.model_dump(mode="json", exclude_computed_fields=True),
-            "dist": workspace.repository.distribution,
-            "version": metadata["version"],
-            "scaffold": config.Infra.codegen.scaffold,
-            "project_dependencies": metadata["dependencies"],
-            "development_dependencies": u.Tests.toml_table_at(
-                source, "dependency-groups"
-            )["dev"],
-            "python_required_version": config.Infra.codegen.toolchain.python_required_version,
-            "make_profile": c.Infra.MakeProfile.STANDALONE,
-            "tooling_runtime": runtime,
-            "root_packages": [],
-            "root_modules": [],
-            "repository_namespace_packages": [],
-            "packaged_data_paths": [],
-            "packaged_data_files": [],
-            "packaged_data_excludes": [],
-            "project_declaration_resource": None,
-            "hatch_build_hook_path": "",
-            "namespace_scan_dirs": [],
-            "cli_module": False,
-            "repository": "",
-            "flext_git_base_url": u.Tests.provider().base_url,
-            "flext_git_branch": "fixture-branch",
-            "uv_link_mode": config.Infra.codegen.toolchain.uv_link_mode,
-        })
-        template = tm.ok(
+        source = tm.ok(
             u.Cli.template_render(
-                FlextInfraConfig.ssot_config_dir().parent / "templates" / entry.source,
-                context,
+                FlextInfraConfig.ssot_config_dir().parent
+                / "templates"
+                / config.Infra.codegen.templates.root
+                / tm.not_none(entry.source),
+                m.RootModel[t.JsonDict].model_validate({
+                    **project.model_dump(mode="json", exclude_computed_fields=True),
+                    "dist": workspace.repository.distribution,
+                    "version": metadata["version"],
+                    "scaffold": config.Infra.codegen.scaffold.model_dump(mode="json"),
+                    "project_dependencies": metadata["dependencies"],
+                    "development_dependencies": u.Tests.toml_table_at(
+                        source, "dependency-groups"
+                    )["dev"],
+                    "python_required_version": (
+                        config.Infra.codegen.toolchain.python_required_version
+                    ),
+                    "make_profile": c.Infra.MakeProfile.STANDALONE,
+                    "tooling_runtime": tm.ok(
+                        modernizer.resolve_tooling_context(
+                            m.Infra.ToolingContextRequest(
+                                environment_dir=root / c.Infra.ENVIRONMENT_DIRECTORY,
+                                planned_sources={},
+                                project_name=workspace.repository.distribution,
+                                package_name=project.package_name,
+                                path=root / c.PYPROJECT_FILENAME,
+                                scaffold_project=config.Infra.codegen.scaffold.project,
+                                topology=topology,
+                                runtime_dependency_overlay=(),
+                                declared_project_dependencies=u.Tests.strings(
+                                    metadata["dependencies"]
+                                ),
+                            )
+                        )
+                    ).model_dump(mode="json"),
+                    "root_packages": [],
+                    "root_modules": [],
+                    "repository_namespace_packages": [],
+                    "packaged_data_paths": [],
+                    "packaged_data_files": [],
+                    "packaged_data_excludes": [],
+                    "project_declaration_resource": None,
+                    "hatch_build_hook_path": "",
+                    "namespace_scan_dirs": [],
+                    "cli_module": False,
+                    "repository": "",
+                    "flext_git_base_url": u.Tests.provider().base_url,
+                    "flext_git_branch": "fixture-branch",
+                    "uv_link_mode": config.Infra.codegen.toolchain.uv_link_mode,
+                }),
             )
         )
-        document = tm.ok(u.Infra.load_tooling_inputs(root)).document
         tm.that(
-            u.Tests.toml_table_at(template, "tool", native_root),
-            eq=u.Infra.native_tool_configuration(document, native_root),
+            u.Tests.toml_table_at(source, "tool", native_root),
+            eq=u.Infra.native_tool_configuration(
+                tm.ok(u.Infra.load_tooling_inputs(root)).document, native_root
+            ),
         )
-        first = tm.ok(
+        source = tm.ok(
             modernizer.conform_source(
-                template, path=root / c.PYPROJECT_FILENAME, topology=topology
+                source, path=root / c.PYPROJECT_FILENAME, topology=topology
             )
         )
         tm.that(
-            u.Tests.toml_table_at(first, "tool", native_root)["ordered"], eq=ordered
+            u.Tests.toml_table_at(source, "tool", native_root)["ordered"], eq=ordered
         )
         tm.that(
-            u.Tests.toml_table_at(first, "tool", native_root)["records"], eq=records
+            u.Tests.toml_table_at(source, "tool", native_root)["records"], eq=records
         )
         tm.that(
-            u.Tests.toml_table_at(first, "tool", native_root)["spacing"], eq=spacing
+            u.Tests.toml_table_at(source, "tool", native_root)["spacing"], eq=spacing
         )
         declarations[native_root] = pairs[:-1]
         tm.ok(u.Cli.yaml_dump(path, {"Infra": {"tooling": {"settings": declarations}}}))
-        removed = tm.ok(
+        source = tm.ok(
             modernizer.conform_source(
-                first, path=root / c.PYPROJECT_FILENAME, topology=topology
+                source, path=root / c.PYPROJECT_FILENAME, topology=topology
             )
         )
         tm.that(
-            u.Tests.toml_table_at(removed, "tool", native_root),
+            u.Tests.toml_table_at(source, "tool", native_root),
             lacks="retired_option",
         )
-        repeated = tm.ok(
-            modernizer.conform_source(
-                removed, path=root / c.PYPROJECT_FILENAME, topology=topology
-            )
+        tm.that(
+            tm.ok(
+                modernizer.conform_source(
+                    source, path=root / c.PYPROJECT_FILENAME, topology=topology
+                )
+            ),
+            eq=source,
         )
-        tm.that(repeated, eq=removed)
 
     @staticmethod
     def _applied(
@@ -276,7 +305,7 @@ class TestsFlextInfraDepsModernizerTooling:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(f'[project]\nname = "{project_dir.name}"\n{source}'),
         )
-        phase = FlextInfraEnsureRuffConfigPhase(
+        phase = deps.FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
         )
         path = project_dir / "pyproject.toml"
@@ -328,7 +357,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "pyrefly",
                     "project-excludes",
-                    t.StrSequence,
+                    TypeForm(t.StrSequence),
                 )
             ),
             eq=True,
@@ -358,15 +387,11 @@ class TestsFlextInfraDepsModernizerTooling:
         )
 
         tm.that(payload, lacks="lint")
-        # Shared artifact exclusions remain declared independently of workspace
-        # topology; Ruff keeps its own native defaults alongside them.
+        # The artifact registry is Ruff's only exclusion source; a standalone
+        # project adds no workspace exclusions and Ruff keeps its own defaults.
         tm.that(
             ruff["extend-exclude"],
-            eq=sorted(
-                u.Infra.native_tool_setting(
-                    tool_config_document, "ruff", "extend-exclude", list[str]
-                )
-            ),
+            eq=sorted(config.Infra.codegen.analyzer_exclude_globs),
         )
         tm.that(ruff, lacks="exclude")
         tm.that(
@@ -424,7 +449,7 @@ class TestsFlextInfraDepsModernizerTooling:
                 config.Infra.tooling, "ruff.lint", "extend-safe-fixes", list[str]
             ),
         )
-        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
+        delegated = check.FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_policy.lint.rule_owners,
             check_gates=config.Infra.codegen.make.check_gates_default,
             repair_gates=(
@@ -438,7 +463,10 @@ class TestsFlextInfraDepsModernizerTooling:
                 *delegated,
                 *ruff_policy.lint.ruling_disabled_rules,
                 *u.Infra.native_tool_setting(
-                    tool_config_document, "ruff.lint", "ignore", t.StrSequence
+                    tool_config_document,
+                    "ruff.lint",
+                    "ignore",
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )

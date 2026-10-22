@@ -145,17 +145,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
         # republished site-packages/flext_cli/utilities.py otherwise).
+        original_sources = FlextInfraUtilitiesCodegenFacades.facade_original_sources(
+            root, source_states
+        )
         sources = {
             **{
-                state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in source_states
-                if state.path.is_relative_to(root)
-                and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                if state.content is not None
-                and state.path not in retired
-                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    root, state.path
-                )
+                path: source
+                for path, source in original_sources.items()
+                if path not in retired
             },
             **{
                 plan.path: proposed[plan.path].decode(c.DEFAULT_ENCODING)
@@ -218,7 +215,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     declared_files=declared_files,
                 )
             ) as project,
-            project.frozen_layout(),
         ):
 
             def consumed() -> t.Triple[
@@ -233,17 +229,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     project.consumed_source_topology(),
                 )
 
-            completed = False
-            try:
+            with project.frozen_layout():
                 yield (
                     FlextInfraUtilitiesCodegenFacades._require_source_project(project),
                     consumed,
                     sources,
                 )
-                completed = True
-            finally:
-                if completed:
-                    project.verify_source_states()
+            # A body failure escapes at the yield; only a completed pass verifies.
+            project.verify_source_states()
 
     @staticmethod
     def _require_source_project(value: p.AttributeProbe) -> p.Infra.RopeProject:
@@ -260,6 +253,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             message = "facade source project has no native Rope capabilities"
             raise TypeError(message)
         return value
+
+    @staticmethod
+    def facade_original_sources(
+        root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> t.MappingKV[Path, str]:
+        """Select root-owned Python sources while retaining all inputs as receipts.
+
+        Returns:
+            The canonical original source view shared by native planning owners.
+
+        """
+        return {
+            state.path: state.content.decode(c.DEFAULT_ENCODING)
+            for state in source_states
+            if state.content is not None
+            and state.path.is_relative_to(root)
+            and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                root, state.path
+            )
+        }
 
     @staticmethod
     def _facade_declared_sources(
@@ -302,9 +317,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 before=chain if chain.directories else original,
                 desired_content=content,
                 desired_mode=(
-                    original.mode
-                    if original.mode is not None
-                    else config.Infra.codegen.modes.file_default
+                    None
+                    if content is None
+                    else (
+                        original.mode
+                        if original.mode is not None
+                        else config.Infra.codegen.modes.file_default
+                    )
                 ),
             )
         return tuple(originals.values()), tuple(declarations.values())
@@ -1518,13 +1537,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facade: t.Pair[Path, ast.ClassDef],
         declared_names: set[str],
     ) -> frozenset[str]:
-        """Retire own bases whose source no longer belongs to this family.
+        """Retire own bases whose source no longer publishes in this family.
 
-        Upstream inheritance and source-proven current family providers remain.
+        Authored inheritance and source-proven current family providers remain.
         Unknown bindings fail instead of being classified by their spelling.
 
         Returns:
-            Existing base expressions whose providers moved out of the family.
+            Existing base expressions whose providers left the family publication.
 
         Raises:
             ValueError: If an existing base has no resolved source identity.
@@ -1596,8 +1615,27 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     )
                 continue
             path = Path(provider.real_path).resolve()
-            if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
-                roots[1].resolve(),
+            if (
+                all((
+                    projection_is_autogen,
+                    path.parent == roots[1].resolve(),
+                    path.name != c.Infra.INIT_PY,
+                    FlextInfraUtilitiesRopeRuntime.py_class(binding.get_object()),
+                ))
+                and any(
+                    isinstance(node, ast.ClassDef)
+                    and node.name == binding.get_object().get_name()
+                    for node in ast.parse(contents[path], filename=str(path)).body
+                )
+                and binding.get_object().get_name()
+                not in (
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        contents[path]
+                    )
+                )
+            ) or (
+                path.is_relative_to(roots[0].resolve())
+                and not path.is_relative_to(roots[1].resolve())
             ):
                 retired.add(ast.unparse(base))
         return frozenset(retired)
@@ -2086,20 +2124,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             return cls._base_name(base.value)
         message = f"unsupported utility facade base: {ast.dump(base)}"
         raise ValueError(message)
-
-    @staticmethod
-    def _reachable_bases(
-        roots: t.SequenceOf[str],
-        ancestors: t.MappingKV[str, frozenset[str]],
-    ) -> set[str]:
-        reachable = set(roots)
-        pending = list(roots)
-        while pending:
-            for base in ancestors.get(pending.pop(), frozenset()):
-                if base not in reachable:
-                    reachable.add(base)
-                    pending.append(base)
-        return reachable
 
     @staticmethod
     def _insert_protocol_imports(

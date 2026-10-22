@@ -9,13 +9,13 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._constants.config import FlextInfraConstantsConfig
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
+class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     """Deps infrastructure constants."""
 
     # NOTE: Hardcoded base path constants removed.
@@ -61,6 +61,12 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     )
     DEPENDENCY_LIMITS_FILENAME: ClassVar[str] = "limits.toml"
     """Packaged dependency-limit configuration resource."""
+    TYPING_STUB_HEADER: ClassVar[str] = "# @flext-generated: typing-stubs\n"
+    """Ownership marker for generated third-party typing packages."""
+    TEMPLATE_TYPING_PACKAGE: ClassVar[str] = "typing_package.toml.j2"
+    """PEP 561 distribution metadata template."""
+    TYPING_STUB_ENTRY_POINT_GROUP: ClassVar[str] = "flext.typing-stubs"
+    """Installed generated packages publish their implementation module here."""
     DEPTRY_UNUSED_DEPENDENCY_CODE: ClassVar[str] = "DEP002"
     """Deptry rule code for a declared dependency the code never imports."""
     DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(

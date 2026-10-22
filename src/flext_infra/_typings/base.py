@@ -35,6 +35,9 @@ from jinja2.environment import (
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
+    type DocumentationLanguage = t.DocumentationLanguage
+    "Supported project-local documentation presentation languages."
+
     type Path = pathlib.Path
     "Unconstrained native filesystem path, independent of existence and kind."
 
@@ -160,9 +163,6 @@ class FlextInfraTypesBase:
     "Immutable instructions indexed by strong native code identity."
     type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
     "The two immutable fact caches scoped to one native observation invocation."
-
-    type ModelFieldSpec = m.FieldInfo
-    "Field metadata a model-field factory returns, from the m facade."
 
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."

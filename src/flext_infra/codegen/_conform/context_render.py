@@ -7,12 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
-from flext_infra.deps import FlextInfraEnsurePackagingPhase
+from flext_infra.deps import (
+    FlextInfraDependencyDetectionService,
+    FlextInfraEnsurePackagingPhase,
+)
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -94,6 +98,70 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 workspace.integration.branch
                 if workspace.integration is not None
                 else None
+            ),
+        )
+
+    @classmethod
+    def conformed_pyproject_source(
+        cls,
+        source: str,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        *,
+        typing_policy: m.Infra.TypingGenerationPolicy,
+        member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
+    ) -> p.Result[str]:
+        """Conform one pyproject source under the plan's render inputs.
+
+        An attached member renders on its workspace's integration line (a
+        governed .gitmodules branch must equal it): the line the render inputs
+        resolved once for this plan, never a second probe.
+
+        Returns:
+            The conformed pyproject source, or the first resolution failure.
+
+        """
+        target, workspace, codegen = (
+            render_inputs.target,
+            render_inputs.workspace,
+            render_inputs.codegen,
+        )
+        flext_line = u.Infra.flext_integration_line_for_checkout(
+            codegen=codegen, repository_root=target.root, workspace=workspace
+        )
+        if flext_line.failure:
+            return r[str].from_failure(flext_line)
+        if workspace.integration is None:
+            branch = cls.render_integration_branch(render_inputs)
+            if branch.failure:
+                return r[str].from_failure(branch)
+            workspace = workspace.model_copy(
+                update={
+                    "integration": m.Infra.WorkspaceIntegrationSpec(
+                        provider=workspace.repository.provider,
+                        branch=branch.value,
+                    ),
+                },
+            )
+        toolchain = codegen.toolchain
+        return u.Infra.pyproject_conform(
+            source,
+            workspace=workspace,
+            required_dev_dependencies=u.Infra.project_development_requirements(
+                codegen.scaffold.project,
+                distribution=target.repository.distribution,
+                kind=target.repository.kind,
+            ),
+            uv_resolution=m.Infra.UvResolutionSpec(
+                link_mode=cls.link_mode(target.repository, toolchain),
+                constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
+                override_dependencies=tuple(toolchain.uv_override_dependencies),
+                environments=tuple(toolchain.uv_environments),
+            ),
+            options=u.Infra.PyprojectConformOptions(
+                flext_line=flext_line.value,
+                repository_root=target.root,
+                member_declarations=member_declarations,
+                typing_policy=typing_policy,
             ),
         )
 
@@ -421,9 +489,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             kind=repository.kind,
             declared=declared_dev,
         )
-        development_dependencies = u.validate_value(
-            t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
-            composed_dev,
+        development_dependencies = r[
+            t.VariadicTuple[t.NonEmptyStr]
+        ].create_from_callable(
+            partial(t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python, composed_dev),
         )
         if development_dependencies.failure:
             return result_type.from_failure(development_dependencies)
@@ -437,6 +506,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
         planned_data_files: t.StrSequence = (),
+        scaffold_sources: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
 
@@ -460,10 +530,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectRenderContext].from_failure(dependencies)
         project_dependencies, development_dependencies = dependencies.value
         profile = target.make_profile
-        make_context = self.make_render_context(render_inputs)
-        if make_context.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        tooling = make_context.value.tooling_runtime.document
+        tooling_runtime = render_inputs.tooling_runtime
+        if tooling_runtime is None:
+            return r[m.Infra.ProjectRenderContext].fail(
+                "Project rendering requires resolved tooling context",
+            )
+        tooling = tooling_runtime.document
         if tooling is None:
             return r[m.Infra.ProjectRenderContext].fail(
                 "Project rendering requires the elected tooling document",
@@ -487,10 +559,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 docs_audit=workspace.docs_audit,
-                **make_context.value.model_dump(
-                    by_alias=True,
-                    exclude_computed_fields=True,
-                ),
+                dist=repository.distribution,
+                make_profile=profile,
+                uv_link_mode=self.link_mode(repository, codegen.toolchain),
+                tooling_runtime=tooling_runtime,
                 scaffold=codegen.scaffold,
                 gitignore_sections=u.Infra.gitignore_sections(
                     codegen,
@@ -506,6 +578,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 project_dependencies=project_dependencies,
                 development_dependencies=tuple(development_dependencies),
+                generated_typing_distributions=self._generated_typing_distributions(
+                    repository_root
+                ),
                 tooling=tooling,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads=workspace.beads,
@@ -545,9 +620,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 upstream=project.upstream,
                 # Scaffolded facades extend the class each upstream letter names
                 # in the __all__ that declares it, never the letter itself.
-                upstream_facades=u.Infra.facade_classes(
-                    project.upstream,
-                    source_root=repository_root,
+                upstream_facades=(
+                    u.Infra.facade_classes(
+                        project.upstream,
+                        source_root=repository_root,
+                    )
+                    if scaffold_sources
+                    else {}
                 ),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
@@ -556,6 +635,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 cli_module=project.cli_module,
                 runtime_dependency_overlay=project.runtime_dependency_overlay,
                 description=project.description,
+                documentation_language=project.documentation_language,
                 version=version.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
@@ -584,8 +664,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
-        and development extras; a scaffold render falls back to the project
-        declaration's runtime overlay without declared extras.
+        and development extras. The repository overlay extends those runtime
+        requirements for existing projects as well as new scaffolds.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
@@ -605,25 +685,55 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 return result_type.from_failure(metadata)
             payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
             groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
-            runtime = u.validate_value(
-                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
-                metadata.value.project.dependencies,
+            runtime = r[t.VariadicTuple[t.NonEmptyStr]].create_from_callable(
+                partial(
+                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
+                    metadata.value.project.dependencies,
+                ),
             )
             if runtime.failure:
                 return result_type.from_failure(runtime)
-            declared_dev = u.validate_value(
-                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER,
-                (
-                    *t.Infra.STR_SEQ_ADAPTER.validate_python(
-                        groups.get(c.Infra.DEV, ()),
+            declared_dev = r[t.VariadicTuple[t.NonEmptyStr]].create_from_callable(
+                partial(
+                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
+                    (
+                        *t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            groups.get(c.Infra.DEV, ()),
+                        ),
+                        *u.Infra.canonical_dev_dependencies_from_payload(payload),
                     ),
-                    *u.Infra.canonical_dev_dependencies_from_payload(payload),
                 ),
             )
             if declared_dev.failure:
                 return result_type.from_failure(declared_dev)
-            return result_type.ok((runtime.value, declared_dev.value))
+            return result_type.ok((
+                tuple(
+                    dict.fromkeys((
+                        *runtime.value,
+                        *project.runtime_dependency_overlay,
+                    ))
+                ),
+                declared_dev.value,
+            ))
         return result_type.ok((project.runtime_dependency_overlay, ()))
+
+    @staticmethod
+    def _generated_typing_distributions(repository_root: Path) -> t.StrSequence:
+        """Authenticate local typing sources before template Git-floor rendering.
+
+        Returns:
+            Validated producer identities, empty only for a new scaffold.
+
+        """
+        declaration = repository_root / c.PYPROJECT_FILENAME
+        if not declaration.is_file():
+            return ()
+        generated = u.Infra.generated_typing_packages(
+            u.Cli.toml_read_document(declaration).unwrap(),
+            root=repository_root,
+            policy=FlextInfraDependencyDetectionService().load_typing_generation_policy(),
+        ).unwrap()
+        return tuple(item.distribution for item in generated)
 
     def _validated_render_project(
         self,

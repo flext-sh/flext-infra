@@ -98,8 +98,7 @@ class TestsFlextInfraGithubGateAttestation:
         u.Tests.WorktreeFixture.write_python_project(root, "fixture")
         source = root / c.Infra.DEFAULT_SRC_DIR
         (source / "consumer.py").write_text("import os\n", encoding="utf-8")
-        # The attested toolchain digest reads the resolver inputs the runtime
-        # context elects from the uv resolution policy; commit them there.
+        # Resolver inputs remain untracked: execution proof binds their live bytes.
         context = TestsFlextInfraGithubGateAttestation._context(root)
         context.resolution_root.mkdir(parents=True, exist_ok=True)
         context.pyproject_path.write_bytes((root / "pyproject.toml").read_bytes())
@@ -113,8 +112,6 @@ class TestsFlextInfraGithubGateAttestation:
                         "pyproject.toml",
                         "tracked.txt",
                         c.Infra.DEFAULT_SRC_DIR,
-                        context.pyproject_path.relative_to(root).as_posix(),
-                        context.lock_path.relative_to(root).as_posix(),
                     ),
                 ),
             ),
@@ -428,12 +425,31 @@ class TestsFlextInfraGithubGateAttestation:
             configuration.read_text(encoding="utf-8") + "\n[broken\n",
             encoding="utf-8",
         )
+        native = tm.ok(
+            cli_u.Cli.run_raw(
+                (
+                    "git",
+                    "config",
+                    "get",
+                    "--null",
+                    "--show-origin",
+                    "--show-scope",
+                    c.Infra.GIT_SIGNING_CONFIGURATION_KEYS[0],
+                ),
+                cwd=tmp_path,
+            )
+        )
+        process = m.Cli.ProcessOutcome.model_validate(
+            native.outcome,
+            from_attributes=True,
+        )
+        tm.that(cli_u.Cli.process_succeeded(process), truth=False)
+        tm.that(native.stderr, empty=False)
         failed = u.Infra.git_signing_identity(
             m.Infra.GitRepoRequest(repo_root=tmp_path)
         )
         tm.fail(failed)
-        tm.that(failed.error, none=False)
-        tm.that("bad config" in failed.error, truth=True)
+        tm.that(failed.error, eq=native.stderr)
 
     def test_signing_identity_rejects_unsupported_native_format(
         self,
@@ -558,7 +574,7 @@ class TestsFlextInfraGithubGateAttestation:
                     workspace=request.workspace,
                     allowed_signers=request.allowed_signers,
                     expected_gates=request.gates,
-                    commit_sha=self._head(tmp_path),
+                    receipt=request.receipt,
                     context_digest=request.context_digest,
                     policy=request.policy,
                     policy_digest=request.policy_digest,
@@ -569,14 +585,20 @@ class TestsFlextInfraGithubGateAttestation:
             tm.that(verification.error, none=False)
             tm.that(str(unavailable) in verification.error, truth=True)
 
-    def test_dirty_candidate_still_executes_without_reusable_receipt(
+    @pytest.mark.parametrize("has_origin", [False, True])
+    def test_dirty_workspace_publishes_original_execution_evidence(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        *,
+        has_origin: bool,
     ) -> None:
-        """Working changes cannot suppress the native command or assert proof."""
+        """Tracked and untracked WIP remain truthful, non-gating observations."""
         signed_repository_factory(tmp_path)
+        if not has_origin:
+            u.Tests.git_bootstrap(tmp_path, ("remote", "remove", c.Infra.GIT_ORIGIN))
         (tmp_path / "tracked.txt").write_text("uncommitted\n", encoding="utf-8")
+        (tmp_path / "untracked.txt").write_text("shared\n", encoding="utf-8")
         captured = tm.ok(
             u.Infra.git_capture_gate(
                 m.Infra.GateCaptureRequest(
@@ -589,9 +611,102 @@ class TestsFlextInfraGithubGateAttestation:
             )
         )
         tm.that(captured.process.raw_return_code != 0, truth=True)
-        tm.that(captured.receipt, none=True)
-        tm.that(captured.issues, truth=True)
+        tm.that(captured.receipt, none=False)
+        tm.that(captured.issues, empty=True)
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(
+            captured.receipt.read_bytes()
+        )
+        tm.that(evidence.scope, eq="workspace")
+        tm.that(evidence.dirty, eq=True)
+        tm.that(evidence.after_dirty, eq=True)
+        tm.that(evidence.repository is not None, eq=has_origin)
+        tm.that(evidence.after_repository is not None, eq=has_origin)
+        tm.that(evidence.process, eq=captured.process)
         tm.that(tuple(tmp_path.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME)), truth=True)
+
+    def test_capture_does_not_require_a_committed_git_identity(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """An unborn workspace captures and signs receipt bytes without a commit."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "-b", c.Infra.GIT_MAIN))
+        u.Tests.WorktreeFixture.write_python_project(tmp_path, "fixture")
+        (tmp_path / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "import os\n", encoding=c.DEFAULT_ENCODING
+        )
+        context = self._context(tmp_path)
+        context.resolution_root.mkdir(parents=True, exist_ok=True)
+        context.pyproject_path.write_bytes(
+            (tmp_path / c.PYPROJECT_FILENAME).read_bytes()
+        )
+        context.lock_path.write_text("version = 1\n", encoding=c.DEFAULT_ENCODING)
+        captured = tm.ok(
+            u.Infra.git_capture_gate(
+                m.Infra.GateCaptureRequest(
+                    repository_root=tmp_path, gates=c.Infra.LINT
+                ),
+                inputs=tm.ok(u.Infra.load_codegen_inputs(tmp_path)),
+                load_inputs=u.Infra.load_codegen_inputs,
+                read_runtime_identity=self._runtime_identity,
+            )
+        )
+        tm.that(captured.receipt, none=False)
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(
+            captured.receipt.read_bytes()
+        )
+        tm.that(evidence.commit_sha, none=True)
+        tm.that(evidence.tree_sha, none=True)
+        tm.that(evidence.dirty, none=True)
+        tm.that(evidence.after_commit_sha, none=True)
+        tm.that(evidence.after_dirty, none=True)
+        tm.that(evidence.process, eq=captured.process)
+        tm.that(captured.issues, empty=True)
+        signer = tmp_path.with_name(tmp_path.name + "-signer")
+        signer.mkdir()
+        allowed = signed_repository_factory(signer)
+        for key, value in (
+            ("user.name", "Workspace Signer"),
+            ("user.email", "workspace@example.test"),
+            ("gpg.format", "ssh"),
+            ("user.signingkey", str(signer / "signing_key")),
+        ):
+            u.Tests.git_bootstrap(tmp_path, ("config", key, value))
+        tm.ok(u.Infra.git_signing_identity(m.Infra.GitRepoRequest(repo_root=tmp_path)))
+        request = m.Infra.GateAttestationCreateRequest(
+            workspace=str(tmp_path),
+            signer="attester@example.test",
+            gates=(evidence.gate,),
+            receipt=captured.receipt,
+            allowed_signers=str(allowed),
+            context_digest=evidence.context_digest,
+            policy=evidence.policy,
+            policy_digest=evidence.policy_digest,
+        )
+        created = tm.ok(u.Infra.git_create_gate_attestation(request, context))
+        verified = tm.ok(
+            self._verify(tmp_path, allowed, request.receipt, evidence.gate)
+        )
+        tm.that(verified.anchor_oid, eq=created.anchor_oid)
+        tm.that(self._rev_parse(tmp_path, f"{created.tag}^{{}}"), eq=created.anchor_oid)
+        tm.fail(u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=tmp_path)))
+
+    def test_changed_consumed_configuration_requires_scope_revalidation(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Git movement is irrelevant but changed effective inputs are not."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        directory = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir(exist_ok=True)
+        (directory / c.Infra.CODEGEN_CONFIG_FILENAME).write_text(
+            "Infra:\n  codegen:\n    make:\n"
+            "      gate_receipts_directory: .reports/changed-scope\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
     @classmethod
     def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
@@ -628,33 +743,19 @@ class TestsFlextInfraGithubGateAttestation:
     def _verify(
         root: Path,
         allowed_signers: Path,
-        commit_sha: str,
+        receipt: Path,
         *gates: str,
     ) -> p.Result[m.Infra.GateAttestationReport]:
-        receipts = (
-            root
-            / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
-        )
-        evidence = tuple(
-            record
-            for path in receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)
-            if (
-                record := m.Infra.GateCommandEvidence.model_validate_json(
-                    path.read_bytes(),
-                )
-            ).commit_sha
-            == commit_sha
-        )
-        tm.that(len(evidence) == 1, truth=True)
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
         return u.Infra.git_verify_gate_attestation(
             m.Infra.GateAttestationVerifyRequest(
                 workspace=str(root),
                 allowed_signers=str(allowed_signers),
                 expected_gates=gates,
-                commit_sha=commit_sha,
-                context_digest=evidence[0].context_digest,
-                policy=evidence[0].policy,
-                policy_digest=evidence[0].policy_digest,
+                receipt=receipt,
+                context_digest=evidence.context_digest,
+                policy=evidence.policy,
+                policy_digest=evidence.policy_digest,
             ),
             TestsFlextInfraGithubGateAttestation._context(root),
         )
@@ -666,15 +767,20 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test signed gate attestation round trip is local."""
         allowed_signers = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
         created = u.Infra.git_create_gate_attestation(
-            self._request(tmp_path),
+            request,
             self._context(tmp_path),
         )
 
         tm.ok(created)
-        head = self._head(tmp_path)
-        tm.that(self._rev_parse(tmp_path, f"{created.unwrap().tag}^{{}}"), eq=head)
-        verified = self._verify(tmp_path, allowed_signers, head, c.Infra.VERB_CHECK)
+        tm.that(
+            self._rev_parse(tmp_path, f"{created.unwrap().tag}^{{}}"),
+            eq=created.unwrap().anchor_oid,
+        )
+        verified = self._verify(
+            tmp_path, allowed_signers, request.receipt, c.Infra.VERB_CHECK
+        )
         tm.ok(verified)
         tm.that(verified.unwrap().signer, eq="attester@example.test")
 
@@ -696,19 +802,30 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(reused.tag, eq=created.tag)
         tm.that((tmp_path / "invocations.txt").read_bytes(), eq=before)
 
+    @pytest.mark.parametrize("has_origin", [False, True])
     def test_original_findings_keep_their_real_nonzero_exit_in_signed_evidence(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        *,
+        has_origin: bool,
     ) -> None:
         """Completed Ruff findings prove execution without claiming quality passed."""
         allowed = signed_repository_factory(tmp_path)
+        if not has_origin:
+            u.Tests.git_bootstrap(tmp_path, ("remote", "remove", c.Infra.GIT_ORIGIN))
+        (tmp_path / "tracked.txt").write_text(
+            "working copy\n", encoding=c.DEFAULT_ENCODING
+        )
+        (tmp_path / "untracked.txt").write_text("shared\n", encoding=c.DEFAULT_ENCODING)
         request = self._request(tmp_path)
         source = m.Infra.GateCommandEvidence.model_validate_json(
             request.receipt.read_bytes()
         )
         tm.ok(source.process.raw_return_code != 0)
         tm.that(source.native_outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(source.dirty, eq=True)
+        tm.that(source.scope, eq="workspace")
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         destination = tmp_path / c.Infra.REPORTS_DIR_NAME / "verified-proof.json"
         verified = u.Infra.git_verify_gate_attestation(
@@ -716,7 +833,7 @@ class TestsFlextInfraGithubGateAttestation:
                 workspace=str(tmp_path),
                 allowed_signers=str(allowed),
                 expected_gates=request.gates,
-                commit_sha=self._head(tmp_path),
+                receipt=request.receipt,
                 context_digest=request.context_digest,
                 policy=request.policy,
                 policy_digest=request.policy_digest,
@@ -772,7 +889,7 @@ class TestsFlextInfraGithubGateAttestation:
                     workspace=str(tmp_path),
                     allowed_signers=str(allowed),
                     expected_gates=request.gates,
-                    commit_sha=self._head(tmp_path),
+                    receipt=request.receipt,
                     context_digest=digest,
                     policy=request.policy,
                     policy_digest=request.policy_digest,
@@ -795,9 +912,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         (tmp_path / source.reports[0].path).unlink()
 
-        tm.fail(
-            self._verify(tmp_path, allowed, self._head(tmp_path), c.Infra.VERB_CHECK)
-        )
+        tm.fail(self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK))
 
     def test_untrusted_signing_key_cannot_verify_an_existing_stage(
         self,
@@ -821,9 +936,7 @@ class TestsFlextInfraGithubGateAttestation:
             encoding="utf-8",
         )
 
-        tm.fail(
-            self._verify(tmp_path, allowed, self._head(tmp_path), c.Infra.VERB_CHECK)
-        )
+        tm.fail(self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK))
 
     def test_real_make_timeout_cannot_borrow_an_earlier_complete_report(
         self,
@@ -872,11 +985,8 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation normalizes network remote git suffix."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(
-            u.Infra.git_create_gate_attestation(
-                self._request(tmp_path), self._context(tmp_path)
-            )
-        )
+        request = self._request(tmp_path)
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         remote = tm.ok(
             u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path)),
         ).text
@@ -889,43 +999,48 @@ class TestsFlextInfraGithubGateAttestation:
             self._verify(
                 tmp_path,
                 allowed_signers,
-                self._head(tmp_path),
+                request.receipt,
                 c.Infra.VERB_CHECK,
             ),
         )
 
-    def test_gate_attestation_verifies_selected_commit_with_equal_tree(
+    def test_workspace_proof_survives_head_and_tree_movement(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
-        """Test gate attestation verifies selected commit with equal tree."""
+        """Unrelated commits cannot change receipt-anchored workspace proof."""
         allowed_signers = signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        created = tm.ok(
+            u.Infra.git_create_gate_attestation(request, self._context(tmp_path))
+        )
+        selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
+        unrelated = tmp_path / "another-lane.txt"
+        unrelated.write_text("new work\n", encoding=c.DEFAULT_ENCODING)
         tm.ok(
-            u.Infra.git_create_gate_attestation(
-                self._request(tmp_path), self._context(tmp_path)
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(repo_root=tmp_path, paths=(unrelated.name,))
             )
         )
-        selected_sha = self._head(tmp_path)
-        selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
         tm.ok(
             u.Infra.git_commit(
                 m.Infra.GitCommitRequest(
                     repo_root=tmp_path,
-                    message="test: later equal-tree commit",
+                    message="test: later unrelated fixture commit",
                 ),
             ),
         )
-        tm.that(self._rev_parse(tmp_path, "HEAD^{tree}"), eq=selected_tree)
+        tm.that(self._rev_parse(tmp_path, "HEAD^{tree}"), ne=selected_tree)
 
         verified = self._verify(
             tmp_path,
             allowed_signers,
-            selected_sha,
+            request.receipt,
             c.Infra.VERB_CHECK,
         )
         tm.ok(verified)
-        tm.that(verified.unwrap().commit_sha, eq=selected_sha)
+        tm.that(verified.unwrap().anchor_oid, eq=created.anchor_oid)
 
     def test_gate_attestation_keeps_an_unpublished_stage_out_of_coverage(
         self,
@@ -934,16 +1049,13 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation rejects incomplete coverage."""
         allowed_signers = signed_repository_factory(tmp_path)
-        tm.ok(
-            u.Infra.git_create_gate_attestation(
-                self._request(tmp_path), self._context(tmp_path)
-            )
-        )
+        request = self._request(tmp_path)
+        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
         verified = self._verify(
             tmp_path,
             allowed_signers,
-            self._head(tmp_path),
+            request.receipt,
             c.Infra.VERB_TEST,
         )
 

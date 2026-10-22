@@ -20,7 +20,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm, u
-from tests.unit.codegen import TestsFlextInfraConformSupport
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 def _write_candidate_targets(
@@ -146,18 +146,16 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             view.parent.symlink_to(foreign, target_is_directory=True)
 
     @staticmethod
-    def _tree_without_plan_report(root: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
-        """Return the project tree minus the planning report every plan rewrites.
+    def _unsupplied_views(root: Path) -> set[Path]:
+        """Return the resolution views a runtime without an editable supplier plans.
 
         Returns:
-            The tree entries outside the planning report path.
+            Every managed resolution view except the editable supplier view.
 
         """
-        return tuple(
-            item
-            for item in TestsFlextInfraConformSupport.project_tree(root)
-            if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
-        )
+        spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        editable = spec.make.uv_resolution.editable_directory / c.PYPROJECT_FILENAME
+        return set(spec.uv_resolution_pyprojects) - {editable}
 
     @staticmethod
     def _assert_independent_views_planned(
@@ -165,17 +163,18 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         plan: m.Infra.CodegenPlan,
         report: m.Infra.CodegenPlanningReport,
     ) -> None:
-        """Require every independent resolution view in the plan and its report."""
+        """Require every selected independent resolution view in plan and report."""
         planned_paths = {file.path for file in plan.files}
         reported_paths = {file.path for item in report.outcomes for file in item.files}
-        for relative in tm.ok(
-            u.Infra.load_codegen_inputs(independent)
-        ).spec.uv_resolution_pyprojects:
+        for relative in TestsFlextInfraCodegenCandidateBootstrap._unsupplied_views(
+            independent,
+        ):
             tm.ok(independent / relative in planned_paths)
             tm.ok(independent / relative in reported_paths)
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.usefixtures("editable_supplier")
     @pytest.mark.parametrize(
         "failure",
         ["root-source", "member-package", "root-view", "member-view"],
@@ -229,9 +228,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tmp_path / "foreign",
             failure,
         )
-        before = TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(
-            root,
-        )
+        before = TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
             FlextInfraCodegenConform(
@@ -245,12 +242,18 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
         tm.ok(bool(plan.issues))
         report = m.Infra.CodegenPlanningReport.model_validate_json(
-            (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
+            (
+                tm.ok(u.Infra.refactor_report_evidence_root(root))
+                / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
+            ).read_bytes(),
         )
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
         tm.ok(bool(failed_outcome.error or failed_outcome.issues))
         if failure == "root-source":
-            tm.that(failed_outcome.error, has="live pyproject is not valid TOML")
+            tm.that(
+                tm.not_none(failed_outcome.error_type).rpartition(".")[2],
+                eq="TOMLDecodeError",
+            )
         elif failure == "root-view":
             tm.that(
                 failed_outcome.error,
@@ -272,12 +275,13 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             )
             tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
         tm.that(
-            TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(root),
+            TestsFlextInfraConformSupport.project_tree(root),
             eq=before,
         )
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.usefixtures("editable_supplier")
     def test_public_bootstrap_rewrites_own_pyproject_and_repeats(
         tmp_path: Path,
     ) -> None:
@@ -320,13 +324,16 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         tm.that(plan.issues, empty=True)
-        resolution = tm.ok(
-            u.Infra.load_codegen_inputs(root)
-        ).spec.uv_resolution_pyprojects
+        spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
         views = tuple(
-            file for file in plan.files if file.path.relative_to(root) in resolution
+            file
+            for file in plan.files
+            if file.path.relative_to(root) in spec.uv_resolution_pyprojects
         )
-        tm.that(len(views), eq=len(resolution))
+        tm.that(
+            {file.path.relative_to(root) for file in views},
+            eq=TestsFlextInfraCodegenCandidateBootstrap._unsupplied_views(root),
+        )
 
         tm.ok(infra.bootstrap_candidate(command))
         projected = tm.ok(
@@ -684,7 +691,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         self,
         tmp_path: Path,
     ) -> None:
-        """Dynamic initializer destinations retain source and converge."""
+        """Dynamic destinations retain source and unchanged native publications."""
         source, first, _ = self._campaign(tmp_path)
         package_name = u.Infra.project_package_name(first)
         tm.ok(bool(package_name))
@@ -708,6 +715,17 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         authored_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(authored, required=True),
         )
+        stable = package / "stable"
+        stable.mkdir()
+        stable_initializer = stable / c.Infra.INIT_PY
+        stable_initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (stable / "domain.py").write_text(
+            "class StableCase: pass\n__all__ = ['StableCase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         _write_candidate_targets(
             source,
             (
@@ -729,6 +747,23 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ne=f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n".encode(
                 c.DEFAULT_ENCODING
             ),
+        )
+        stable_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(stable_initializer, required=True),
+        )
+        initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(infra.bootstrap_candidate(command))
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(stable_initializer, required=True)
+            ),
+            eq=stable_before,
+        )
+        generated = tm.ok(
+            u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
         observed = tm.ok(
             u.Cli.capture(
@@ -960,9 +995,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         projection = candidate / c.PYPROJECT_FILENAME
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
-        roots = TestsFlextInfraCodegenCandidateBootstrap._write_runtime_probe(
-            candidate,
-        )
+        environment = u.Infra.runtime_environment_dir(candidate)
+        tm.fail(environment.exists())
         original = tm.ok(u.Infra.pyproject_regeneration_source(original))
         corrupt = (
             original
@@ -1023,18 +1057,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 tuple(item for item in after if item[0] not in destinations),
             ),
         )
-        tm.that(
-            u.Infra.runtime_evaluated_base_classes(candidate, {}, roots),
-            eq=tuple(
-                sorted({
-                    *roots,
-                    *(
-                        f"bootstrap_probe.models.BootstrapProbe{index}"
-                        for index in range(len(roots))
-                    ),
-                })
-            ),
-        )
+        tm.fail(environment.exists())
         tm.ok(infra.bootstrap_candidate(command))
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True)),

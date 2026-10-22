@@ -335,7 +335,7 @@ class TestsFlextInfraTypeGates:
 
         source.write_text("value: int = 1\n", encoding="utf-8")
         repaired = gate.check(project, ctx)
-        tm.that(repaired.result.passed, truth=True, msg=repaired)
+        tm.that(repaired.result.passed, truth=True, msg=repaired.raw_output)
         tm.that(repaired.issues, truth=False)
 
     @staticmethod
@@ -395,7 +395,7 @@ class TestsFlextInfraTypeGates:
         reports = checker_context.reports_dir
         gate = FlextInfraPyreflyGate(project)
         first = gate.check(project, checker_context)
-        tm.that(first.result.passed, truth=True, msg=first)
+        tm.that(first.result.passed, truth=True, msg=first.raw_output)
         native_reports = tuple(reports.glob("*-pyrefly.json"))
         tm.that(len(native_reports) == 1, truth=True)
         tm.that(
@@ -429,7 +429,7 @@ class TestsFlextInfraTypeGates:
         unselected.write_text('value: int = "incorrect"\n', encoding="utf-8")
         gate = gate_class(project)
         result = gate.check_files([package / "identity.py"], project, checker_context)
-        tm.that(result.result.passed, truth=True, msg=result)
+        tm.that(result.result.passed, truth=True, msg=result.raw_output)
         tm.that(result.issues, truth=False)
 
         selected_error = gate.check_files([unselected], project, checker_context)

@@ -53,6 +53,7 @@ class FlextInfraExtraPathsManager(
     @override
     def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
         """Initialize workspace metadata after validation."""
+        del __context
         self._workspace_project_names = set(
             u.Infra.workspace_project_paths(self.repository_root),
         )

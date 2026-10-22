@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m
+from flext_infra.codemod import FlextInfraImportNormalizationPhase
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import tm, u
 from tests.unit.refactor.import_normalization_support import (
@@ -312,6 +313,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         cls,
         tmp_path: Path,
     ) -> None:
+        """Reject conflicting inline providers through the native publisher caller."""
+        u.Tests.run_native_callable(cls.scenario_distinct_providers, tmp_path)
+
+    @classmethod
+    def scenario_distinct_providers(
+        cls,
+        tmp_path: Path,
+    ) -> None:
         """Refuse a global binding that would change two real local consumers."""
         project, package = cls._project(tmp_path)
         for provider, value in (
@@ -342,7 +351,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
         tm.that(before.stdout.strip(), eq="first provider second provider")
         with pytest.raises(ValueError, match="conflicting inline import providers"):
-            FlextInfraImportNormalization.apply_files(project, (consumer,))
+            FlextInfraImportNormalizationPhase.apply_files(project, (consumer,))
         after = tm.ok(u.Cli.run(command, cwd=project, options=options))
         tm.that(u.Cli.process_succeeded(after.outcome), eq=True, msg=after.stderr)
         tm.that(after.stdout, eq=before.stdout)

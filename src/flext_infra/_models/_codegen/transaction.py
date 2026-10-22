@@ -146,6 +146,31 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
+    class SemanticSourcePlan(m.ImmutableValueModel):
+        """Authenticated source campaign independent of explicit rename intent."""
+
+        candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
+            description="Authenticated complete source and runtime candidate closure",
+        )
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="External scopes elected before producer publication",
+        )
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(),
+            description="Original physical binding and consumption epoch",
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            description="Original native directory-election receipts",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Original native path-election topology receipts",
+            )
+        )
+
     class StagePackageView(FlextInfraModelsBase.FrozenArbitrary):
         """Journal-owned materialized package view, never another source of truth."""
 

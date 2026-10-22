@@ -33,6 +33,9 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -94,14 +97,25 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 source,
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-            if (
-                condition.predicate
-                is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
-            ):
-                return cls._unreferenced_import_holds(
-                    project, module, capture.text, (start, end)
-                )
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
+            if condition.predicate in {
+                c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
+                c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
+            }:
+                return (
+                    cls._unreferenced_import_holds(
+                        project, module, capture.text, (start, end)
+                    )
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
+                    else cls._member_relocation_holds(
+                        (project, module, scope),
+                        condition,
+                        captures,
+                        (text, start, end),
+                        sources,
+                    )
+                )
             resolved_symbol = (
                 condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
             )
@@ -121,9 +135,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     start=start,
                     end=end,
                 )
-            ):
-                return False
-            if cls._type_payload_occurrence(module, text, start, end):
+            ) or cls._type_payload_occurrence(module, text, start, end):
                 return False
             if (
                 condition.predicate
@@ -167,6 +179,233 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
 
         @classmethod
+        def _member_relocation_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            captures: t.JsonMapping,
+            occurrence: t.Triple[str, int, int],
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Admit a missing inherited member only with a proven emitted owner.
+
+            Returns:
+                Whether the exact source occurrence is safe to relocate.
+
+            """
+            project, module, scope = frame
+            text, start, end = occurrence
+            receiver = m.Infra.AstGrepCapture.model_validate(
+                captures[condition.variable]
+            )
+            if condition.of is None or condition.of not in captures:
+                return False
+            member = m.Infra.AstGrepCapture.model_validate(captures[condition.of])
+            resource = module.get_resource()
+            if resource is None:
+                return False
+            cls._validated_capture_span(
+                Path(resource.real_path), member, text.encode("utf-8")
+            )
+            if (
+                cls._binding_expression(receiver.text) is None
+                or not member.text.isidentifier()
+                or not cls.stable_binding_chain(frame, receiver.text, start, sources)
+                or not cls.single_reaching_binding(
+                    module, scope, f"{receiver.text}.{member.text}", start
+                )
+                or not cls._subscript_bindings_stable(
+                    project, module, text, (start, end), sources
+                )
+            ):
+                return False
+            return (
+                cls._member_relocation_owners(
+                    frame, condition, (receiver.text, member.text), start, sources
+                )
+                and (start, end)
+                in FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+                    module, f"(\n{receiver.text}\n)", arguments={}, start=start, end=end
+                )
+                and cls._member_relocation_payload(module, condition, occurrence)
+            )
+
+        @classmethod
+        def _member_relocation_owners(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            reference: t.Pair[str, str],
+            start: int,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Require canonical ancestry and the identical emitted SDK declaration.
+
+            The receiver and member are proved separately: a canonical class-level
+            reexport can bind the same spelling as its module-level imported value.
+
+            Returns:
+                Whether both facades and the target declaration are authenticated.
+
+            """
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            project, module, scope = frame
+            if (
+                condition.arg[2] != f"m.{reference[1]}"
+                or condition.arg[4] != condition.arg[2]
+            ):
+                return False
+            if not (
+                cls.stable_binding_chain(frame, "m", start, sources)
+                and cls.single_reaching_binding(module, scope, condition.arg[2], start)
+            ):
+                return False
+            actual = tuple(
+                runtime.expression_name(scope, name) for name in (reference[0], "m")
+            )
+            if actual[0] is None or actual[1] is None:
+                return False
+            canonical = (
+                runtime.qualified_name(
+                    project, condition.arg[1], module_name=condition.arg[0]
+                ),
+                runtime.qualified_name(project, "m", module_name=condition.arg[3]),
+            )
+            if not all(
+                FlextInfraUtilitiesRopeRuntime.abstract_class(binding.get_object())
+                for binding in (actual[0], actual[1], *canonical)
+            ):
+                return False
+            canonical_member = runtime.qualified_name(
+                project, condition.arg[4], module_name=condition.arg[3]
+            )
+            if not cls._binding_symbols_match(
+                canonical_member, runtime.expression_name(scope, condition.arg[2])
+            ):
+                return False
+            return cls._member_relocation_declaration(
+                canonical_member, reference[1], sources
+            ) and (
+                FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_relocation(
+                    project, (actual[0], actual[1]), canonical, reference[1]
+                )
+            )
+
+        @classmethod
+        def _member_relocation_declaration(
+            cls,
+            binding: p.Infra.RopePyName,
+            member: str,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Prove one unconditional SDK assignment without counting its RHS.
+
+            Native assignment identities distinguish the single declaration in
+            ``BeforeValidator = BeforeValidator`` from its imported RHS value.
+
+            Returns:
+                Whether the canonical SDK member has one runtime declaration.
+
+            """
+            if (
+                not isinstance(binding, p.Infra.RopeAssignedName)
+                or len(binding.assignments) != 1
+            ):
+                return False
+            context = cls._chain_holder_context(binding, sources)
+            if context is None:
+                return False
+            holder, line, text = context
+            if line is None:
+                return False
+            declaration = next(
+                (
+                    row
+                    for row in FlextInfraUtilitiesRopeStructure.logical_statements(text)
+                    if row.line <= line <= row.end_line
+                ),
+                None,
+            )
+            return declaration is not None and cls._declaration_reaches_unconditionally(
+                holder,
+                FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                    holder, declaration.start_offset, declaration_line=line
+                ),
+                declaration,
+                member,
+                None,
+            )
+
+        @classmethod
+        def _member_relocation_payload(
+            cls,
+            module: p.Infra.RopePyModule,
+            condition: m.Infra.CodemodContextCondition,
+            occurrence: t.Triple[str, int, int],
+        ) -> bool:
+            """Permit only a complete canonical BeforeValidator metadata call.
+
+            Returns:
+                Whether the reference is executable outside protected type data.
+
+            """
+            text, start, end = occurrence
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+            for match in finder.get_matches(
+                "${relocation_literal}[${relocation_values}]",
+                args={"relocation_literal": "name=typing.Literal"},
+            ):
+                left, right = (
+                    FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
+                        match, "relocation_values"
+                    )
+                )
+                if left <= start < end <= right:
+                    return False
+            annotated = False
+            for match in finder.get_matches(
+                "${relocation_annotation}[${relocation_arguments}]",
+                args={"relocation_annotation": "name=typing.Annotated"},
+            ):
+                left, right = (
+                    FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
+                        match, "relocation_arguments"
+                    )
+                )
+                if not left <= start < end <= right:
+                    continue
+                annotated = True
+                if (
+                    condition.arg[3] != "flext_core"
+                    or condition.arg[4] != "m.BeforeValidator"
+                ):
+                    return False
+                metadata = (
+                    FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+                        text, left, right, ","
+                    )[1:]
+                )
+                if not any(
+                    call.get_region() in metadata
+                    and FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
+                        call, "relocation_callable"
+                    )
+                    == (start, end + len(".BeforeValidator"))
+                    for call in finder.get_matches(
+                        "${relocation_callable}(${relocation_call_arguments})",
+                        {},
+                    )
+                ):
+                    return False
+            if annotated:
+                return True
+            return not cls._type_payload_occurrence(module, text, start, end)
+
+        @classmethod
         def _generic_specialization_holds(
             cls,
             frame: t.Triple[
@@ -193,7 +432,11 @@ class FlextInfraUtilitiesCodemodBindingChain:
             target_frame = frame
             target_start = start
             if namespace is not None:
-                target_module = project.get_module(namespace)
+                target_module = (
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                        project.get_module(namespace)
+                    ).get_module()
+                )
                 if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(target_module):
                     message = (
                         f"generic specialization requires a source module: {namespace}"
@@ -203,11 +446,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 if target_source is None:
                     return False
                 target_scope = target_module.get_scope()
-                if not isinstance(target_scope, p.Infra.RopeScope):
-                    message = (
-                        f"generic specialization has no lexical scope: {namespace}"
-                    )
-                    raise TypeError(message)
                 target_frame = (project, target_module, target_scope)
                 target_start = len(target_source[1])
             if not (
@@ -242,20 +480,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
-            destination_module, line = destination_binding.get_definition_location()
-            if destination_module is None or line is None:
+            context = cls._chain_holder_context(destination_binding, sources)
+            if context is None:
+                return False
+            destination_module, line, text = context
+            if line is None:
                 return False
             if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
                 destination_module
             ):
                 message = "generic specialization alias requires a source module"
                 raise TypeError(message)
-            source = cls._chain_module_text(destination_module, sources)
-            if source is None:
-                return False
             aliases = tuple(
                 node
-                for node in ast.walk(ast.parse(source[1]))
+                for node in ast.walk(ast.parse(text))
                 if isinstance(node, ast.TypeAlias)
                 and node.lineno == line
                 and isinstance(node.value, ast.Subscript)
@@ -610,7 +848,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return False
             if (
                 isinstance(expected, p.Infra.RopeAssignedName)
-                and len(expected.assignments) != 1
+                and len(expected.assignments) > 1
             ):
                 return False
             if FlextInfraUtilitiesRopeRuntimeModules.same_name(expected, actual):
@@ -675,7 +913,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             ):
                 return False
             if not cls._chain_alias_and_assignment_proven(
-                project, binding, expression, routes
+                project, binding, expression, routes, sources
             ):
                 return False
             if isinstance(binding, p.Infra.RopeImportedName):
@@ -747,18 +985,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return None
             return path, resource.read()
 
-        @staticmethod
+        @classmethod
         def _chain_alias_and_assignment_proven(
+            cls,
             project: p.Infra.RopeProject,
             binding: p.Infra.RopePyName,
             expression: str,
             routes: t.StrMapping,
+            sources: t.MappingKV[Path, str],
         ) -> bool:
             """Hold the lazy alias route and the single-assignment contract.
 
             Returns:
                 Whether the alias route agrees with the binding and the binding is
-                assigned exactly once.
+                assigned exactly once or declares a lazy type alias.
 
             """
             if expression.isidentifier() and expression in routes:
@@ -775,10 +1015,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     or target.get_object() is not binding.get_object()
                 ):
                     return False
-            return not (
+            if (
                 isinstance(binding, p.Infra.RopeAssignedName)
                 and len(binding.assignments) != 1
-            )
+            ):
+                context = cls._chain_holder_context(binding, sources)
+                if binding.assignments or context is None:
+                    return False
+                _holder, line, text = context
+                # Rope records no assigned value for lazy PEP 695 aliases.
+                return any(
+                    isinstance(node, ast.TypeAlias) and node.lineno == line
+                    for node in ast.walk(ast.parse(text))
+                )
+            return True
 
         @classmethod
         def chain_imported_binding(
@@ -935,6 +1185,24 @@ class FlextInfraUtilitiesCodemodBindingChain:
             chain = cls._chain_module_text(holder, sources)
             if chain is None:
                 return None
+            if line is None:
+                runtime = FlextInfraUtilitiesRopeRuntimeModules
+                aliases = tuple(
+                    node.lineno
+                    for node in ast.walk(ast.parse(chain[1]))
+                    if isinstance(node, ast.TypeAlias)
+                    and runtime.same_name(
+                        binding,
+                        runtime.expression_name(
+                            runtime.scope_at(
+                                holder, holder.lines.get_line_start(node.lineno)
+                            ),
+                            node.name.id,
+                        ),
+                    )
+                )
+                if len(aliases) == 1:
+                    (line,) = aliases
             return holder, line, chain[1]
 
         @classmethod
@@ -1222,6 +1490,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if row.category not in {
                 c.Infra.StatementCategory.FUNC_DEF,
                 c.Infra.StatementCategory.CLASS_DEF,
+                c.Infra.StatementCategory.TYPE_ALIAS,
             }:
                 return occurrence.is_written()
             prefix = len(row.text) - len(row.text.lstrip())

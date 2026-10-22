@@ -20,6 +20,7 @@ class FlextInfraDeadScaffold(cst.CSTTransformer):
         original_node: cst.If,
         updated_node: cst.If,
     ) -> cst.If | cst.RemovalSentinel:
+        del original_node
         test = updated_node.test
         body = updated_node.body
         if isinstance(test, cst.Name) and test.value == "TYPE_CHECKING":

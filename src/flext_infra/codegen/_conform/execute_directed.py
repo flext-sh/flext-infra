@@ -115,7 +115,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             The checked or atomically published initializer plan.
 
         """
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
@@ -204,7 +204,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
 
         """
         roots, scope_root = scope
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        if request.mode is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         planned = self._plan_single_surface(request)
         if planned.failure:
@@ -256,7 +256,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
-        inputs = FlextInfraCodegenPreconditions.unique_states((
+        inputs = u.Infra.unique_states((
             *analysis.inputs,
             *(source for file in analysis.files for source in file.source_states),
         ))
@@ -366,7 +366,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if candidate.failure:
             return result_type.from_failure(candidate)
         stage_plan = candidate.value
-        source_states = FlextInfraCodegenPreconditions.unique_states((
+        source_states = u.Infra.unique_states((
             *analysis.inputs,
             *stage_plan.inputs,
         ))
@@ -421,23 +421,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if checked.failure:
             return result_type.from_failure(checked)
         return result_type.ok(current)
-
-    @staticmethod
-    def _drift_message(
-        changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        label: str,
-    ) -> str | None:
-        """Render the drift failure message for a changed file set, if any.
-
-        Returns:
-            The drift message, or None when the set is empty.
-
-        """
-        if not changed:
-            return None
-        paths = ", ".join(str(file.path) for file in changed)
-        report = u.Infra.codegen_file_drift_report(changed)
-        return f"{label} drift detected: {paths}\n{report}"
 
 
 __all__: list[str] = ["FlextInfraCodegenConformExecuteDirected"]

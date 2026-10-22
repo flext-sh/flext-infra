@@ -255,13 +255,26 @@ class FlextInfraUtilitiesPyprojectOverlay:
         live_payload: t.JsonMapping,
         tool_tables: t.StrSequence,
     ) -> None:
-        """Copy every live tool table the fleet does not manage."""
-        tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
+        """Preserve CUSTOM siblings without merging into an owned table subtree."""
+        tool: t.JsonDict = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
-        managed = frozenset(tool_tables)
-        tool.update({
-            key: value for key, value in live_tool.items() if key not in managed
-        })
+        managed = tuple(tuple(table.split(".")) for table in tool_tables)
+        pending: list[tuple[t.JsonDict, t.JsonMapping, tuple[str, ...]]] = [
+            (tool, live_tool, ()),
+        ]
+        while pending:
+            target, source, prefix = pending.pop()
+            for key, value in source.items():
+                path = (*prefix, key)
+                if any(path[: len(owned)] == owned for owned in managed):
+                    continue
+                if any(owned[: len(path)] == path for owned in managed):
+                    child = dict(u.Cli.toml_mapping_child(target, key) or {})
+                    target[key] = child
+                    if isinstance(value, dict):
+                        pending.append((child, value, path))
+                else:
+                    target[key] = value
         merged[c.Infra.TOOL] = tool
 
     @classmethod

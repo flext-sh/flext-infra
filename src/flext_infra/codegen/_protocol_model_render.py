@@ -320,7 +320,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             msg = f"method has no authenticated lexical module: {method_name}"
             raise TypeError(msg)
         if any(
-            self.is_type(
+            self.denotes(
                 decorator.func if isinstance(decorator, ast.Call) else decorator,
                 lexical,
                 self.project.upstream,
@@ -333,15 +333,15 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         signature = self._method_signature(name, method, node, module)
         lines: list[str] = []
         for decorator in node.decorator_list:
-            if self.is_type(
+            if self.denotes(
                 decorator.func if isinstance(decorator, ast.Call) else decorator,
                 lexical,
                 self.project.upstream,
-                "u.computed_field",
+                "m.computed_field",
             ):
                 continue
             if any(
-                self.is_type(decorator, lexical, "builtins", descriptor)
+                self.denotes(decorator, lexical, "builtins", descriptor)
                 for descriptor in ("property", "classmethod", "staticmethod")
             ) or (isinstance(decorator, ast.Attribute) and decorator.attr == "setter"):
                 lines.append(f"    @{ast.unparse(decorator)}")
@@ -449,7 +449,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             positional[0]
             if positional
             and not any(
-                self.is_type(decorator, lexical, "builtins", "staticmethod")
+                self.denotes(decorator, lexical, "builtins", "staticmethod")
                 for decorator in node.decorator_list
             )
             else None
@@ -647,9 +647,9 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             msg = f"model configuration has no native literal proof: {identity}"
             raise TypeError(msg)
         if isinstance(value, ast.Call) and not (
-            self.is_type(value.func, lexical, "pydantic", "ConfigDict")
-            or self.is_type(value.func, lexical, self.project.upstream, "m.ConfigDict")
-            or self.is_type(value.func, lexical, "builtins", "dict")
+            self.denotes(value.func, lexical, "pydantic", "ConfigDict")
+            or self.denotes(value.func, lexical, self.project.upstream, "m.ConfigDict")
+            or self.denotes(value.func, lexical, "builtins", "dict")
         ):
             msg = f"model configuration has no canonical source owner: {identity}"
             raise TypeError(msg)
@@ -689,13 +689,13 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         if name.startswith("_"):
             return
         annotation = statement.annotation
-        if isinstance(annotation, ast.Subscript) and self.is_type(
+        if isinstance(annotation, ast.Subscript) and self.denotes(
             annotation.value, lexical, "typing", "ClassVar"
         ):
             fields.pop(name, None)
             return
         field_frozen = False
-        if isinstance(annotation, ast.Subscript) and self.is_type(
+        if isinstance(annotation, ast.Subscript) and self.denotes(
             annotation.value, lexical, "typing", "Final"
         ):
             if statement.value is not None:
@@ -706,7 +706,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         metadata = [statement.value] if statement.value is not None else []
         if (
             isinstance(annotation, ast.Subscript)
-            and self.is_type(annotation.value, lexical, "typing", "Annotated")
+            and self.denotes(annotation.value, lexical, "typing", "Annotated")
             and isinstance(annotation.slice, ast.Tuple)
         ):
             metadata = [*annotation.slice.elts[1:], *metadata]
@@ -733,7 +733,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
 
         """
         for value in metadata:
-            if isinstance(value, ast.Call) and self.is_type(
+            if isinstance(value, ast.Call) and self.denotes(
                 value.func, lexical, "pydantic", "Field"
             ):
                 for option in value.keywords:

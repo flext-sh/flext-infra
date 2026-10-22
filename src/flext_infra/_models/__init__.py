@@ -47,7 +47,6 @@ if TYPE_CHECKING:
         FlextInfraConfigModelsStatic,
         FlextInfraConfigModelsTemplates,
         FlextInfraConfigModelsWorkspace,
-        FlextInfraConfigVocabulary,
         FlextInfraExternalCacheDirectorySpec,
     )
     from flext_infra._models._git import (
@@ -82,6 +81,7 @@ if TYPE_CHECKING:
     from flext_infra._models.deps_tool_config_type_checkers import (
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
+    from flext_infra._models.deps_typings import FlextInfraModelsDepsTypings
     from flext_infra._models.docs import FlextInfraModelsDocs
     from flext_infra._models.docs_collection import FlextInfraModelsDocsCollection
     from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
@@ -139,7 +139,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsStatic",
     "FlextInfraConfigModelsTemplates",
     "FlextInfraConfigModelsWorkspace",
-    "FlextInfraConfigVocabulary",
     "FlextInfraExternalCacheDirectorySpec",
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
@@ -163,6 +162,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigProjectGitignore",
     "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
+    "FlextInfraModelsDepsTypings",
     "FlextInfraModelsDocs",
     "FlextInfraModelsDocsCollection",
     "FlextInfraModelsDocsGeneration",
@@ -222,7 +222,6 @@ install_lazy_exports(
         "FlextInfraConfigModelsStatic": "._config.static",
         "FlextInfraConfigModelsTemplates": "._config.templates",
         "FlextInfraConfigModelsWorkspace": "._config.workspace",
-        "FlextInfraConfigVocabulary": "._config.vocabulary",
         "FlextInfraExternalCacheDirectorySpec": "._config.external_cache",
         "FlextInfraModelsBase": ".base",
         "FlextInfraModelsCensus": ".census",
@@ -250,6 +249,7 @@ install_lazy_exports(
         ),
         "FlextInfraModelsDepsToolConfigProjectMise": ".deps_tool_config_project_mise",
         "FlextInfraModelsDepsToolConfigTypeCheckers": ".deps_tool_config_type_checkers",
+        "FlextInfraModelsDepsTypings": ".deps_typings",
         "FlextInfraModelsDocs": ".docs",
         "FlextInfraModelsDocsCollection": ".docs_collection",
         "FlextInfraModelsDocsGeneration": ".docs_generation",

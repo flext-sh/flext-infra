@@ -71,7 +71,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
             The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
 
         """
-        _ = ctx
+        del ctx
         if not u.Cli.process_succeeded(result.outcome):
             return (
                 False,

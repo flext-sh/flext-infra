@@ -36,6 +36,7 @@ class FlextInfraCliModProgress:
             f"{report.label}: {report.files_changed} published file(s), "
             f"{report.occurrences} pending source edit(s), "
             f"{report.files_scanned} scanned file(s)"
+            + (f"\n{report.preview_diff}" if report.preview_diff else "")
         )
 
 

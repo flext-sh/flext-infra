@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
 from flext_infra import c, p, t
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -31,7 +32,6 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsScaffold,
     FlextInfraConfigModelsTemplates,
     FlextInfraConfigModelsWorkspace,
-    FlextInfraConfigVocabulary,
 )
 from flext_infra._models._git import FlextInfraModelsGitWorktreeState
 
@@ -308,6 +308,8 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
+
         repository: Annotated[
             FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
             m.Field(
@@ -329,16 +331,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         fresh_import_workers: Annotated[
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
-        ]
-        source_replan_limit: Annotated[
-            int,
-            m.Field(
-                ...,
-                ge=0,
-                description=(
-                    "Maximum authenticated source-epoch successors per generation plan"
-                ),
-            ),
         ]
         lint_snapshot_workers: Annotated[
             int,
@@ -477,11 +469,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                     "every scanner exclusion derives from"
                 ),
             ),
-        ] = m.Field(
-            default_factory=lambda: (
-                FlextInfraConfigModelsArtifact.DeclaredExclusionsSpec.model_validate({})
-            ),
-        )
+        ]
         layout: Annotated[
             FlextInfraModelsLayout.LayoutSpec,
             m.Field(
@@ -891,11 +879,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for directory in (
                     self.make.uv_resolution.local_directory,
                     self.make.uv_resolution.standalone_directory,
-                    *(
-                        (self.make.uv_resolution.editable_directory,)
-                        if self.make.uv_resolution.editable_supplier_root is not None
-                        else ()
-                    ),
+                    self.make.uv_resolution.editable_directory,
                 )
             )
 
@@ -1077,7 +1061,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenGenerateRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Validated projection inputs for ``flext-infra codegen generate``."""
 
-        model_config = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
             c.Infra.CodegenConformSurface,
@@ -1228,7 +1212,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
         """Exact before state and desired state for one managed file."""
 
-        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True,
+        )
 
         prepared_sources: p.Infra.StageSourceReceipt | None = m.Field(
             default=None,
@@ -1407,7 +1393,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(description="Repository this task plans"),
         ]
         surface: Annotated[
-            FlextInfraConfigVocabulary.CodegenConformSurface,
+            FlextInfraConstantsConfig.CodegenConformSurface,
             m.Field(
                 description="Requested surface resolved against each target policy"
             ),
@@ -1416,7 +1402,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenRepositoryPlanOutcome(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's planned files and environment, or its failure."""
 
-        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True,
+        )
         exception: BaseException | None = m.Field(
             default=None,
             exclude=True,
@@ -1538,7 +1526,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
         """Fully validated plan produced before any managed-file write."""
 
-        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True,
+        )
         exception: BaseException | None = m.Field(
             default=None,
             exclude=True,
@@ -1555,10 +1545,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         workspace: Annotated[
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,
             m.Field(description="Workspace governing the selection"),
-        ]
-        make_spec: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
-            m.Field(description="Canonical Make contract"),
         ]
         uv_environments: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsRelease.UvEnvironmentPlan],

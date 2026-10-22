@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from typing_extensions import TypeForm
+
 from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
@@ -78,17 +80,19 @@ class FlextInfraEnsurePyreflyConfigPhase:
             )
         options = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYREFLY)
         options.update({
-            c.Infra.PYTHON_VERSION_HYPHEN: config.Infra.codegen.toolchain.python_version,
+            c.Infra.PYTHON_VERSION_HYPHEN: (
+                config.Infra.codegen.toolchain.python_version
+            ),
             # Import search order is semantic and stays with the path owner.
-            c.Infra.SEARCH_PATH: list(expected_search),
-            c.Infra.PROJECT_INCLUDES: sorted(expected_includes),
-            c.Infra.PROJECT_EXCLUDES: list(
+            c.Infra.SEARCH_PATH: list[t.JsonValue](expected_search),
+            c.Infra.PROJECT_INCLUDES: list[t.JsonValue](sorted(expected_includes)),
+            c.Infra.PROJECT_EXCLUDES: list[t.JsonValue](
                 u.Infra.pyrefly_project_excludes(
                     u.Infra.native_tool_setting(
                         self._tool_config,
                         c.Infra.PYREFLY,
                         c.Infra.PROJECT_EXCLUDES,
-                        t.StrSequence,
+                        TypeForm(t.StrSequence),
                     )
                 )
             ),
