@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from contextlib import ExitStack
+from collections.abc import Callable, Generator
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from types import FrameType
-from typing import cast
 
 import pytest
 
@@ -183,6 +183,37 @@ class TestsFlextInfraSourceEpochRevalidation:
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE = 1\n")
 
     @staticmethod
+    @contextmanager
+    def _edit_after_package_planning(
+        edit: Callable[[], int | None],
+    ) -> Generator[t.MutableMappingKV[str, int]]:
+        """Apply one real edit each time package planning returns; count both events.
+
+        Yields:
+            Counts keyed by ``plan_all_inits`` and by each planned package directory.
+
+        """
+        counts: t.MutableMappingKV[str, int] = {}
+
+        def observe(frame: FrameType, event: str, _: p.AttributeProbe) -> None:
+            name = frame.f_code.co_name
+            if event == "call" and name == "_package_plan":
+                key = str(frame.f_locals["pkg_dir"])
+            elif event == "return" and name == "plan_all_inits":
+                key = name
+                edit()
+            else:
+                return
+            counts[key] = counts.get(key, 0) + 1
+
+        previous = sys.getprofile()
+        sys.setprofile(observe)
+        try:
+            yield counts
+        finally:
+            sys.setprofile(previous)
+
+    @staticmethod
     @pytest.mark.parametrize("topology", [False, True])
     def test_planner_raises_original_source_change(
         tmp_path: Path,
@@ -203,36 +234,20 @@ class TestsFlextInfraSourceEpochRevalidation:
             "class Independent: pass\n__all__ = ['Independent']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        calls: t.MutableMappingKV[Path, int] = {}
-        edits = 0
-
-        def observe(frame: FrameType, event: str, _: p.AttributeProbe) -> None:
-            nonlocal edits
-            if event == "call" and frame.f_code.co_name == "_package_plan":
-                directory = cast("Path", frame.f_locals["pkg_dir"])
-                calls[directory] = calls.get(directory, 0) + 1
-            if (
-                event == "return"
-                and frame.f_code.co_name == "plan_all_inits"
-                and not edits
-            ):
-                destination = left / "born.py" if topology else source
-                destination.write_text(
+        destination = left / "born.py" if topology else source
+        with (
+            TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+                lambda: destination.write_text(
                     "class After: pass\n__all__ = ['After']\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-                edits += 1
-
-        previous = sys.getprofile()
-        try:
-            sys.setprofile(observe)
-            with pytest.raises(ValueError, match="source"):
-                u.Tests.create_lazy_init_service(root).plan_files()
-        finally:
-            sys.setprofile(previous)
-        tm.that(edits, eq=1)
-        tm.that(calls[left], eq=1)
-        tm.that(calls[right], eq=1)
+            ) as counts,
+            pytest.raises(ValueError, match="source"),
+        ):
+            u.Tests.create_lazy_init_service(root).plan_files()
+        tm.that(counts["plan_all_inits"], eq=1)
+        tm.that(counts[str(left)], eq=1)
+        tm.that(counts[str(right)], eq=1)
 
     @staticmethod
     def test_injected_planner_propagates_original_source_change(
@@ -244,41 +259,25 @@ class TestsFlextInfraSourceEpochRevalidation:
         source.write_text(
             "class Before: pass\n__all__ = ['Before']\n", encoding=c.DEFAULT_ENCODING
         )
-        edits = 0
-
-        def observe(frame: FrameType, event: str, _: p.AttributeProbe) -> None:
-            nonlocal edits
-            if (
-                event == "return"
-                and frame.f_code.co_name == "plan_all_inits"
-                and not edits
-            ):
-                source.write_text(
+        with (
+            TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+                lambda: source.write_text(
                     "class After: pass\n__all__ = ['After']\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-                edits += 1
-
-        previous = sys.getprofile()
-        try:
-            sys.setprofile(observe)
-            with (
-                pytest.raises(ValueError, match="source") as failure,
-                u.Infra.facade_source_project(root) as (project, _, _),
-            ):
-                u.Tests.create_lazy_init_service(root).plan_files(
-                    source_project=project
-                )
-        finally:
-            sys.setprofile(previous)
-        tm.that(edits, eq=1)
+            ) as counts,
+            pytest.raises(ValueError, match="source") as failure,
+            u.Infra.facade_source_project(root) as (project, _, _),
+        ):
+            u.Tests.create_lazy_init_service(root).plan_files(source_project=project)
+        tm.that(counts["plan_all_inits"], eq=1)
         tm.that(failure.value.__context__, none=True)
 
     @staticmethod
     def test_planner_does_not_retry_unreadable_repository_metadata(
         tmp_path: Path,
     ) -> None:
-        """A failed metadata observation escapes with its native cause, without retry."""
+        """A failed metadata read escapes with its native cause, without retry."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / c.PYPROJECT_FILENAME
         (package / "provider.py").write_text(
@@ -286,58 +285,37 @@ class TestsFlextInfraSourceEpochRevalidation:
             encoding=c.DEFAULT_ENCODING,
         )
         mode = metadata.stat().st_mode
-        attempts = 0
-
-        def observe(frame: FrameType, event: str, _: p.AttributeProbe) -> None:
-            nonlocal attempts
-            if event == "return" and frame.f_code.co_name == "plan_all_inits":
-                attempts += 1
-                metadata.chmod(0)
-
-        previous = sys.getprofile()
         try:
-            sys.setprofile(observe)
-            with pytest.raises(PermissionError, match="Permission denied"):
+            with (
+                TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+                    lambda: metadata.chmod(0)
+                ) as counts,
+                pytest.raises(PermissionError, match="Permission denied"),
+            ):
                 u.Tests.create_lazy_init_service(root).plan_files()
         finally:
-            sys.setprofile(previous)
             metadata.chmod(mode)
-        tm.that(attempts, eq=1)
+        tm.that(counts["plan_all_inits"], eq=1)
 
     @staticmethod
     def test_planner_raises_changed_repository_metadata(tmp_path: Path) -> None:
         """A real metadata edit during planning raises once and is kept on disk."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / c.PYPROJECT_FILENAME
-        original = metadata.read_text(encoding=c.DEFAULT_ENCODING)
+        edited = (
+            metadata.read_text(encoding=c.DEFAULT_ENCODING)
+            + "# Concurrent repository metadata edit\n"
+        )
         (package / "provider.py").write_text(
             "class Published: pass\n__all__ = ['Published']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        edits = 0
-
-        def observe(frame: FrameType, event: str, _: p.AttributeProbe) -> None:
-            nonlocal edits
-            if (
-                event == "return"
-                and frame.f_code.co_name == "plan_all_inits"
-                and not edits
-            ):
-                metadata.write_text(
-                    original + "# Concurrent repository metadata edit\n",
-                    encoding=c.DEFAULT_ENCODING,
-                )
-                edits += 1
-
-        previous = sys.getprofile()
-        try:
-            sys.setprofile(observe)
-            with pytest.raises(ValueError, match="source"):
-                u.Tests.create_lazy_init_service(root).plan_files()
-        finally:
-            sys.setprofile(previous)
-        tm.that(edits, eq=1)
-        tm.that(
-            metadata.read_text(encoding=c.DEFAULT_ENCODING),
-            eq=original + "# Concurrent repository metadata edit\n",
-        )
+        with (
+            TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+                lambda: metadata.write_text(edited, encoding=c.DEFAULT_ENCODING)
+            ) as counts,
+            pytest.raises(ValueError, match="source"),
+        ):
+            u.Tests.create_lazy_init_service(root).plan_files()
+        tm.that(counts["plan_all_inits"], eq=1)
+        tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=edited)

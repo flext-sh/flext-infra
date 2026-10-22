@@ -284,12 +284,12 @@ class FlextInfraModelsCheck:
             c.Infra.ERROR
         )
         locations: t.VariadicTuple[SarifLocation] = m.Field(
-            (),
+            default=(),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
         related_locations: t.VariadicTuple[SarifLocation] = m.Field(
-            (),
+            default=(),
             description="All native comparison locations, including other projects",
             validate_default=True,
         )

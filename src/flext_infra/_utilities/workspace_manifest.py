@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesWorkspaceManifest:
             )
         validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
             m.Infra.WorkspaceManifestSpec,
-            cast("t.JsonPayload", loaded.value),
+            loaded.value,
         )
         if validated.failure:
             return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail_op(

@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform import FlextInfraCodegenConformFilePlans
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -18,14 +19,22 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans):
     """Pyproject, tooling-root, and custom Make policy projections."""
 
+    @classmethod
+    def rendered_by_stamp(cls) -> str:
+        """Return the render-provenance line for the running generator.
+
+        Returns:
+            The provenance marker followed by the generator version.
+
+        """
+        return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
+
     def native_resolution_plans(
         self,
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
         inputs: m.Infra.CodegenInputs,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
-        *,
-        rendered_by: str,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan both native resolver inputs from this generation's desired sources.
 
@@ -61,7 +70,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                     return result_type.from_failure(declared)
                 requirements.extend(declared.value)
             collected = self._collected_supplier_projects(
-                root, supplier_root, sources, requirements=requirements
+                supplier_root, sources, requirements=requirements
             )
             if collected.failure:
                 return result_type.from_failure(collected)
@@ -73,7 +82,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             [*projects.value, *suppliers],
             authenticated.value,
             inputs,
-            rendered_by,
             workspace=workspace,
             supplier_root=supplier_root,
         )
@@ -107,7 +115,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     @classmethod
     def _collected_supplier_projects(
         cls,
-        root: Path,
         supplier_root: Path,
         sources: list[m.Cli.AtomicFileState],
         *,
@@ -139,16 +146,14 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             return result_type.fail(
                 f"editable supplier selects no declared dependency: {supplier_root}"
             )
-        inputs = u.Infra.load_codegen_inputs(supplier_root)
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        sources.extend(inputs.value.sources)
-        captured = u.Cli.atomic_read_binary_file_state(
-            supplier_root / ".gitmodules", required=True
+        captured = u.Infra.load_codegen_inputs(supplier_root).flat_map(
+            lambda loaded: u.Cli.atomic_read_binary_file_state(
+                supplier_root / c.Infra.GITMODULES, required=True
+            ).map(lambda composition: (*loaded.sources, composition))
         )
         if captured.failure:
             return result_type.from_failure(captured)
-        sources.append(captured.value)
+        sources.extend(captured.value)
         projects: list[m.Infra.UvResolutionProject] = []
         selected: set[str] = set()
         while targets:
@@ -256,7 +261,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         projects: t.SequenceOf[m.Infra.UvResolutionProject],
         authenticated: t.VariadicTuple[m.Cli.AtomicFileState],
         inputs: m.Infra.CodegenInputs,
-        rendered_by: str,
         *,
         workspace: m.Infra.WorkspaceSpec,
         supplier_root: Path | None,
@@ -267,7 +271,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             projects: The owner-first resolution projects of the workspace.
             authenticated: Authenticated source states binding both views.
             inputs: Loaded codegen inputs owning the resolution policy.
-            rendered_by: Render-provenance line of the running generator.
             workspace: Authenticated composition electing remote member sources.
             supplier_root: The elected editable supplier, absent without one.
 
@@ -315,7 +318,10 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             file = self.file_plan(
                 root,
                 destination.as_posix(),
-                (f"{c.Infra.BANNER}{rendered_by}\n{formatted.value.lstrip()}"),
+                (
+                    f"{c.Infra.BANNER}{self.rendered_by_stamp()}\n"
+                    f"{formatted.value.lstrip()}"
+                ),
                 mode=metadata.mode,
                 source_states=authenticated,
             )
@@ -405,74 +411,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
             if directory in generated_roots and (package or directory != source_dir)
-        )
-
-    @classmethod
-    def conformed_pyproject_source(
-        cls,
-        source: str,
-        *,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-        typing_policy: m.Infra.TypingGenerationPolicy,
-        member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
-    ) -> p.Result[str]:
-        """Conform one pyproject source.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        flext_line = u.Infra.flext_integration_line_for_checkout(
-            codegen=codegen,
-            repository_root=target.root,
-            workspace=workspace,
-        )
-        if flext_line.failure:
-            return r[str].from_failure(flext_line)
-        if workspace.integration is None:
-            # Attached members render on the workspace's own integration line
-            # (a governed .gitmodules branch must equal it), derived from the
-            # checkout when the manifest does not declare it.
-            branch = u.Infra.resolve_integration_branch(
-                target.root,
-                policy_branch=codegen.branch_policy.integration_branch,
-            )
-            if branch.failure:
-                return r[str].from_failure(branch)
-            workspace = workspace.model_copy(
-                update={
-                    "integration": m.Infra.WorkspaceIntegrationSpec(
-                        provider=workspace.repository.provider,
-                        branch=branch.value,
-                    ),
-                },
-            )
-        return u.Infra.pyproject_conform(
-            source,
-            workspace=workspace,
-            required_dev_dependencies=u.Infra.project_development_requirements(
-                codegen.scaffold.project,
-                distribution=target.repository.distribution,
-                kind=target.repository.kind,
-            ),
-            uv_resolution=m.Infra.UvResolutionSpec(
-                link_mode=cls.link_mode(target.repository, codegen.toolchain),
-                constraint_dependencies=tuple(
-                    codegen.toolchain.uv_constraint_dependencies,
-                ),
-                override_dependencies=tuple(
-                    codegen.toolchain.uv_override_dependencies,
-                ),
-                environments=tuple(codegen.toolchain.uv_environments),
-            ),
-            options=u.Infra.PyprojectConformOptions(
-                flext_line=flext_line.value,
-                repository_root=target.root,
-                member_declarations=member_declarations,
-                typing_policy=typing_policy,
-            ),
         )
 
     @classmethod

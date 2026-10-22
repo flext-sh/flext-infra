@@ -186,38 +186,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
-        if managed_artifacts.success:
-            u.Cli.info(
-                f"  stage=managed-artifacts repository={repository.name} "
-                f"elapsed={time.monotonic() - managed_started:.2f}s",
-            )
-        if managed_artifacts.failure or not (contract.tooling or contract.custom):
-            tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
-            if managed_artifacts.success and contract.pyproject:
-                tooling_context = FlextInfraPyprojectModernizer(
-                    repository_root=root,
-                    skip_check=True,
-                    managed_artifacts=managed_artifacts.value.resolution,
-                ).resolve_tooling_context(
-                    self._existing_tooling_request(target, identity, codegen, ()),
-                    derive_runtime=False,
-                )
-                if tooling_context.failure:
-                    return result_type.from_failure(tooling_context)
-                tooling_runtime = tooling_context.value
-            return (
-                result_type.from_failure(managed_artifacts)
-                if managed_artifacts.failure
-                else self._plan_existing_templates(
-                    render_inputs=self.resolve_render_inputs(
-                        target=target,
-                        workspace=workspace,
-                        codegen=codegen,
-                        tooling_runtime=tooling_runtime,
-                        managed_artifacts=managed_artifacts.value,
-                    ),
-                    contract=contract,
-                )
+        if managed_artifacts.failure:
+            return result_type.from_failure(managed_artifacts)
+        u.Cli.info(
+            f"  stage=managed-artifacts repository={repository.name} "
+            f"elapsed={time.monotonic() - managed_started:.2f}s",
+        )
+        if not (contract.tooling or contract.custom):
+            return self._plan_existing_untooled(
+                target, workspace, codegen, contract, identity, managed_artifacts.value
             )
         tooling_started = time.monotonic()
         sources = self._existing_managed_sources(target, codegen, contract, identity[0])
@@ -276,6 +253,47 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     render_inputs, contract, completed, binding[1]()
                 )
             )
+
+    def _plan_existing_untooled(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
+        managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Plan templates for a surface that elects neither tooling nor custom.
+
+        Returns:
+            The managed template plans, or the tooling-context failure.
+
+        """
+        tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
+        if contract.pyproject:
+            tooling_context = FlextInfraPyprojectModernizer(
+                repository_root=target.root,
+                skip_check=True,
+                managed_artifacts=managed_artifacts.resolution,
+            ).resolve_tooling_context(
+                self._existing_tooling_request(target, identity, codegen, ()),
+                derive_runtime=False,
+            )
+            if tooling_context.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                    tooling_context
+                )
+            tooling_runtime = tooling_context.value
+        return self._plan_existing_templates(
+            render_inputs=self.resolve_render_inputs(
+                target=target,
+                workspace=workspace,
+                codegen=codegen,
+                tooling_runtime=tooling_runtime,
+                managed_artifacts=managed_artifacts,
+            ),
+            contract=contract,
+        )
 
     def _existing_managed_sources(
         self,
@@ -378,7 +396,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 return result_type.from_failure(custom_inputs)
         projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
         exported: t.SequenceOf[m.Infra.CodegenFilePlan] = ()
-        projected_inputs = custom_inputs
+        projected_inputs = custom_inputs.value
         # Exports re-derive only when this surface elected no initializer yet or
         # custom planning changed a Python source; otherwise the elected
         # initializers already describe these exact sources.
@@ -387,27 +405,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             and u.Infra.codegen_file_requires_effect(plan)
             for plan in custom_result.value
         ):
-            with u.Infra.facade_source_project(
-                root,
-                source_states=custom_inputs.value,
-                declared_files=tuple(projected_files.values()),
-            ) as projected:
-                exports = FlextInfraCodegenLazyInit(
-                    repository_root=root, project_scope_roots=(root,)
-                ).plan_files(source_project=projected[0])
-                if exports.failure:
-                    return result_type.from_failure(exports)
-                self.state.planning_issues.extend(exports.value.issues)
-                if self.state.planning_exception is None:
-                    self.state.planning_exception = exports.value.exception
-                exported = exports.value.files
-                projected_inputs = FlextInfraCodegenPreconditions.unique_states((
-                    *custom_inputs.value,
-                    *projected[1]()[0],
-                    *(state for plan in exported for state in plan.source_states),
-                ))
-                if projected_inputs.failure:
-                    return result_type.from_failure(projected_inputs)
+            planned_exports = self._projected_exports(
+                root, projected_inputs, tuple(projected_files.values())
+            )
+            if planned_exports.failure:
+                return result_type.from_failure(planned_exports)
+            exported, projected_inputs = planned_exports.value
         projected_files.update((plan.path, plan) for plan in exported)
         initializers = tuple(
             {
@@ -420,8 +423,52 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             tuple(projected_files.values()),
             custom_result.value,
             initializers,
-            projected_inputs.value,
+            projected_inputs,
         ))
+
+    def _projected_exports(
+        self,
+        root: Path,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        declared: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Re-plan initializers over one repository's projected sources.
+
+        Returns:
+            The export plans and the merged input witnesses they consumed.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.SequenceOf[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        with u.Infra.facade_source_project(
+            root, source_states=inputs, declared_files=declared
+        ) as projected:
+            exports = FlextInfraCodegenLazyInit(
+                repository_root=root, project_scope_roots=(root,)
+            ).plan_files(source_project=projected[0])
+            if exports.failure:
+                return result_type.from_failure(exports)
+            self.state.planning_issues.extend(exports.value.issues)
+            if self.state.planning_exception is None:
+                self.state.planning_exception = exports.value.exception
+            files = exports.value.files
+            merged = FlextInfraCodegenPreconditions.unique_states((
+                *inputs,
+                *projected[1]()[0],
+                *(state for plan in files for state in plan.source_states),
+            ))
+            if merged.failure:
+                return result_type.from_failure(merged)
+        return result_type.ok((files, merged.value))
 
     def _render_existing_protocol_plans(
         self,
@@ -560,49 +607,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         pending: t.SequenceOf[m.Infra.CodegenFilePlan] = protocols
         rederived = False
         for transfer in (True, False):
-            # Exports and facades re-derive only over staged sources that
-            # change: unchanged sources keep the original cohort's decisions.
-            # Neither stage publishes or replaces the input epoch.
-            if any(u.Infra.codegen_file_requires_effect(plan) for plan in pending):
-                rederived = True
-                pass_produced_new_files = False
-                for operation_index, operation in enumerate((
-                    "exports",
-                    "facade",
-                    "exports",
-                )):
-                    if self._skip_redundant_exports_pass(
-                        operation,
-                        operation_index,
-                        produced_new_files=pass_produced_new_files,
-                    ):
-                        continue
-                    with u.Infra.facade_source_project(
-                        root,
-                        source_states=inputs,
-                        declared_files=tuple(staged.values()),
-                    ) as binding:
-                        files = self._protocol_projection_pass(root, operation, binding)
-                        if files.failure:
-                            return result_type.from_failure(files)
-                        changed.update((plan.path, plan) for plan in files.value)
-                        staged.update((plan.path, plan) for plan in files.value)
-                        captured_inputs = FlextInfraCodegenPreconditions.unique_states((
-                            *inputs,
-                            *binding[1]()[0],
-                            *(
-                                state
-                                for plan in changed.values()
-                                for state in plan.source_states
-                            ),
-                        ))
-                        if captured_inputs.failure:
-                            return result_type.from_failure(captured_inputs)
-                        inputs = captured_inputs.value
-                        pass_produced_new_files = any(
-                            u.Infra.codegen_file_requires_effect(plan)
-                            for plan in files.value
-                        )
+            derived = self._rederived_protocol_passes(
+                root, staged, changed, pending, inputs
+            )
+            if derived.failure:
+                return result_type.from_failure(derived)
+            rederived = rederived or derived.value[0]
+            inputs = derived.value[1]
             if not transfer:
                 continue
             transferred = self._protocol_transfer_plans(
@@ -617,6 +628,60 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if not rederived:
             changed = {**{plan.path: plan for plan in initial[0]}, **changed}
         return result_type.ok((tuple(changed.values()), inputs))
+
+    def _rederived_protocol_passes(
+        self,
+        root: Path,
+        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        changed: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        pending: t.SequenceOf[m.Infra.CodegenFilePlan],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[t.Pair[bool, t.VariadicTuple[m.Cli.AtomicFileState]]]:
+        """Re-derive exports and facades when the pending plans change sources.
+
+        Unchanged sources keep the original cohort's decisions. The staged and
+        changed plan maps are updated in place. Neither pass publishes or
+        replaces the input epoch.
+
+        Returns:
+            Whether a re-derivation ran, and the merged original input witnesses.
+
+        """
+        result_type = r[t.Pair[bool, t.VariadicTuple[m.Cli.AtomicFileState]]]
+        if not any(u.Infra.codegen_file_requires_effect(plan) for plan in pending):
+            return result_type.ok((False, inputs))
+        produced = False
+        for index, operation in enumerate(("exports", "facade", "exports")):
+            if self._skip_redundant_exports_pass(
+                operation, index, produced_new_files=produced
+            ):
+                continue
+            with u.Infra.facade_source_project(
+                root,
+                source_states=inputs,
+                declared_files=tuple(staged.values()),
+            ) as binding:
+                files = self._protocol_projection_pass(root, operation, binding)
+                if files.failure:
+                    return result_type.from_failure(files)
+                changed.update((plan.path, plan) for plan in files.value)
+                staged.update((plan.path, plan) for plan in files.value)
+                captured = FlextInfraCodegenPreconditions.unique_states((
+                    *inputs,
+                    *binding[1]()[0],
+                    *(
+                        state
+                        for plan in changed.values()
+                        for state in plan.source_states
+                    ),
+                ))
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                inputs = captured.value
+                produced = any(
+                    u.Infra.codegen_file_requires_effect(plan) for plan in files.value
+                )
+        return result_type.ok((True, inputs))
 
     def _protocol_transfer_plans(
         self,
@@ -1586,25 +1651,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         sources=sources,
                     ) is None:
                         continue
-                    with u.Infra.facade_source_project(
-                        root,
-                        source_states=inputs,
-                        declared_files=tuple(staged.values()),
-                    ) as current:
-                        projected = self._captured_facade_plan(
-                            root, package_dir, family, current
+                    projected = self._captured_facade_plan(
+                        root, package_dir, family, staged, inputs
+                    )
+                    if projected.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            projected
                         )
-                        plans.extend(projected)
-                        staged.update((plan.path, plan) for plan in projected)
-                        captured = FlextInfraCodegenPreconditions.unique_states((
-                            *inputs,
-                            *current[1]()[0],
-                        ))
-                        if captured.failure:
-                            return r[
-                                t.SequenceOf[m.Infra.CodegenFilePlan]
-                            ].from_failure(captured)
-                        inputs = captured.value
+                    plans.extend(projected.value[0])
+                    inputs = projected.value[1]
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     def _captured_facade_plan(
@@ -1612,45 +1667,46 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         root: Path,
         package_dir: Path,
         family: Literal["u", "p", "m"],
-        binding: t.Triple[
-            p.Infra.RopeProject,
-            Callable[
-                [],
-                t.Triple[
-                    tuple[m.Cli.AtomicFileState, ...],
-                    tuple[m.Cli.AtomicDirectoryInventory, ...],
-                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
-                ],
-            ],
-            t.MappingKV[Path, str],
-        ],
-    ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
-        """Retain the original diagnostic while collecting independent plans.
+        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Plan one family facade over the staged candidate.
+
+        The staged plan map is updated in place; the original input witnesses
+        are recaptured while the candidate binding is still consumed.
 
         Returns:
-            The declared facade plans, or no effects for a recorded failure.
+            The facade plans and the merged input witnesses, or the first
+            planning failure.
 
         """
-        project, _, sources = binding
-        facade_path = u.Infra.facade_module_path(
-            package_dir, family, project=project, sources=sources
-        )
-        failure_path = facade_path if facade_path is not None else package_dir
-        try:
-            planned = self._utility_facade_plan(root, package_dir, family, binding)
-        except (OSError, ValueError) as exception:
-            self._record_file_failure(
-                failure_path, traceback.format_exc(), exception=exception
-            )
-            return ()
-        if planned.failure:
-            self._record_file_failure(
-                failure_path,
-                planned.error or "facade planning failed",
-                exception=planned.exception,
-            )
-            return ()
-        return planned.value
+        result_type = r[
+            t.Pair[
+                t.SequenceOf[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        with u.Infra.facade_source_project(
+            root,
+            source_states=inputs,
+            declared_files=tuple(staged.values()),
+        ) as current:
+            planned = self._utility_facade_plan(root, package_dir, family, current)
+            if planned.failure:
+                return result_type.from_failure(planned)
+            staged.update((plan.path, plan) for plan in planned.value)
+            captured = FlextInfraCodegenPreconditions.unique_states((
+                *inputs,
+                *current[1]()[0],
+            ))
+            if captured.failure:
+                return result_type.from_failure(captured)
+        return result_type.ok((planned.value, captured.value))
 
     def _validated_custom_make_plan(
         self,

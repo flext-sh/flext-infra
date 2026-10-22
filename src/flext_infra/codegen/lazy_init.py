@@ -381,17 +381,10 @@ class FlextInfraCodegenLazyInit(
                     f"{self.repository_root.resolve()}: {root}",
                 )
             else:
-                indexed = self._source_indexes.get(root)
-                with (
-                    source_project.source_consumption() as consumption,
-                    source_project.source_consumer(consumer_root=root) as binding,
-                    FlextInfraRopeWorkspace.open_workspace(
-                        root,
-                        rope_repository_root=Path(binding.root.real_path),
-                        source_project=binding,
-                        workspace_index=indexed[0] if indexed is not None else None,
-                        index_receipt=indexed[1] if indexed is not None else None,
-                    ) as rope,
+                with self._root_workspace(root, source_project) as (
+                    consumption,
+                    binding,
+                    rope,
                 ):
                     if root in candidates:
                         binding.replay_source_consumption(
@@ -541,6 +534,38 @@ class FlextInfraCodegenLazyInit(
             raise
         return {state.path: state for state in merged}
 
+    @contextmanager
+    def _root_workspace(
+        self,
+        root: Path,
+        source_project: p.Infra.RopeProject,
+    ) -> Generator[
+        t.Triple[
+            p.Infra.RopeSourceConsumption,
+            p.Infra.RopeProject,
+            FlextInfraRopeWorkspace,
+        ]
+    ]:
+        """Open one root's indexed workspace inside its own consumption scope.
+
+        Yields:
+            The consumption scope, the isolated consumer and its workspace.
+
+        """
+        indexed = self._source_indexes.get(root)
+        with (
+            source_project.source_consumption() as consumption,
+            source_project.source_consumer(consumer_root=root) as binding,
+            FlextInfraRopeWorkspace.open_workspace(
+                root,
+                rope_repository_root=Path(binding.root.real_path),
+                source_project=binding,
+                workspace_index=indexed[0] if indexed is not None else None,
+                index_receipt=indexed[1] if indexed is not None else None,
+            ) as rope,
+        ):
+            yield consumption, binding, rope
+
     def _target_repository_candidates(
         self,
         roots: t.VariadicTuple[Path],
@@ -564,17 +589,10 @@ class FlextInfraCodegenLazyInit(
                     or not root.is_dir()
                 ):
                     continue
-                indexed = self._source_indexes.get(root)
-                with (
-                    source_project.source_consumption() as consumption,
-                    source_project.source_consumer(consumer_root=root) as binding,
-                    FlextInfraRopeWorkspace.open_workspace(
-                        root,
-                        rope_repository_root=Path(binding.root.real_path),
-                        source_project=binding,
-                        workspace_index=indexed[0] if indexed is not None else None,
-                        index_receipt=indexed[1] if indexed is not None else None,
-                    ) as rope,
+                with self._root_workspace(root, source_project) as (
+                    consumption,
+                    _binding,
+                    rope,
                 ):
                     candidates[root] = (
                         self._target_package_dirs(rope.workspace_index, root),

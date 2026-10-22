@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -251,10 +250,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
         tm.ok(bool(failed_outcome.error or failed_outcome.issues))
         if failure == "root-source":
-            decode_error = tomllib.TOMLDecodeError
             tm.that(
-                failed_outcome.error_type,
-                eq=f"{decode_error.__module__}.{decode_error.__qualname__}",
+                tm.not_none(failed_outcome.error_type).rpartition(".")[2],
+                eq="TOMLDecodeError",
             )
         elif failure == "root-view":
             tm.that(
@@ -327,9 +325,13 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.that(plan.issues, empty=True)
         spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        planned = {file.path.relative_to(root) for file in plan.files}
+        views = tuple(
+            file
+            for file in plan.files
+            if file.path.relative_to(root) in spec.uv_resolution_pyprojects
+        )
         tm.that(
-            planned & set(spec.uv_resolution_pyprojects),
+            {file.path.relative_to(root) for file in views},
             eq=TestsFlextInfraCodegenCandidateBootstrap._unsupplied_views(root),
         )
 

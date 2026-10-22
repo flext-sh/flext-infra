@@ -1463,7 +1463,12 @@ class FlextInfraUtilitiesCodemodProject(
             roles = cls._module_role_cache.set({})
             stems = cls._class_stem_context.set((layout_project, {}, {}))
             try:
-                with FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context():
+                # The admission pass is the consumer of every layout read, so a
+                # cached class-stem query replays its receipt into this scope.
+                with (
+                    layout_project.source_consumption(),
+                    FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context(),
+                ):
                     yield project, sources
                 layout_project.verify_source_states()
             finally:

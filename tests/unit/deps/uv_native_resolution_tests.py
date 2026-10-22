@@ -95,7 +95,7 @@ class TestsFlextInfraUvNativeResolution:
         sources: list[m.Cli.AtomicFileState] = []
         selected = tm.ok(
             FlextInfraCodegenConformPyprojectPolicy._collected_supplier_projects(
-                root, supplier_root, sources, requirements=requirements
+                supplier_root, sources, requirements=requirements
             )
         )
         expected = names[:3] if with_extra else names[:2]

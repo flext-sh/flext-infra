@@ -321,7 +321,6 @@ def _conform_member(root: t.DirectoryPath, workspace: m.Infra.WorkspaceSpec) -> 
                 workspace,
                 tm.ok(u.Infra.load_codegen_inputs(root)),
                 plan.files,
-                rendered_by=conform.rendered_by_stamp(),
             ).map(tuple)
         )
     )

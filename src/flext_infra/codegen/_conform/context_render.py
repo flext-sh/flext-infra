@@ -101,6 +101,70 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
         )
 
+    @classmethod
+    def conformed_pyproject_source(
+        cls,
+        source: str,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        *,
+        typing_policy: m.Infra.TypingGenerationPolicy,
+        member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
+    ) -> p.Result[str]:
+        """Conform one pyproject source under the plan's render inputs.
+
+        An attached member renders on its workspace's integration line (a
+        governed .gitmodules branch must equal it): the line the render inputs
+        resolved once for this plan, never a second probe.
+
+        Returns:
+            The conformed pyproject source, or the first resolution failure.
+
+        """
+        target, workspace, codegen = (
+            render_inputs.target,
+            render_inputs.workspace,
+            render_inputs.codegen,
+        )
+        flext_line = u.Infra.flext_integration_line_for_checkout(
+            codegen=codegen, repository_root=target.root, workspace=workspace
+        )
+        if flext_line.failure:
+            return r[str].from_failure(flext_line)
+        if workspace.integration is None:
+            branch = cls.render_integration_branch(render_inputs)
+            if branch.failure:
+                return r[str].from_failure(branch)
+            workspace = workspace.model_copy(
+                update={
+                    "integration": m.Infra.WorkspaceIntegrationSpec(
+                        provider=workspace.repository.provider,
+                        branch=branch.value,
+                    ),
+                },
+            )
+        toolchain = codegen.toolchain
+        return u.Infra.pyproject_conform(
+            source,
+            workspace=workspace,
+            required_dev_dependencies=u.Infra.project_development_requirements(
+                codegen.scaffold.project,
+                distribution=target.repository.distribution,
+                kind=target.repository.kind,
+            ),
+            uv_resolution=m.Infra.UvResolutionSpec(
+                link_mode=cls.link_mode(target.repository, toolchain),
+                constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
+                override_dependencies=tuple(toolchain.uv_override_dependencies),
+                environments=tuple(toolchain.uv_environments),
+            ),
+            options=u.Infra.PyprojectConformOptions(
+                flext_line=flext_line.value,
+                repository_root=target.root,
+                member_declarations=member_declarations,
+                typing_policy=typing_policy,
+            ),
+        )
+
     def make_render_context(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,

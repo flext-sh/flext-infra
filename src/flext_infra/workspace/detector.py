@@ -119,7 +119,8 @@ class FlextInfraWorkspaceDetector(
         if supplier_root is not None:
             if not supplier_root.is_dir():
                 return result_type.fail(
-                    f"editable supplier root is not an existing directory: {supplier_root}"
+                    "editable supplier root is not an existing directory: "
+                    f"{supplier_root}"
                 )
             supplier_root = supplier_root.resolve()
         directory = (

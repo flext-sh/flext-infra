@@ -214,7 +214,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ),
             project_inputs.value,
             files,
-            rendered_by=self.rendered_by_stamp(),
         ).map(list)
 
     @staticmethod

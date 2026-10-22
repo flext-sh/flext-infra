@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.__version__ import __version__
 from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps import (
@@ -311,9 +310,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             source_states.extend(collected.value[0])
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
-                target=render_inputs.target,
-                workspace=render_inputs.workspace,
-                codegen=render_inputs.codegen,
+                render_inputs,
                 typing_policy=typing_policy,
                 member_declarations=collected.value[1],
             )
@@ -462,16 +459,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             declarations.append(declaration.value)
             source_states.append(declaration.value)
         return result_type.ok((tuple(source_states), tuple(declarations)))
-
-    @classmethod
-    def rendered_by_stamp(cls) -> str:
-        """Return the render-provenance line for the running generator.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
 
     @classmethod
     def _composed_mise_overlay(

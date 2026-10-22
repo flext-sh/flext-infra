@@ -438,7 +438,6 @@ def _provision_consumer_template(
                 workspace,
                 tm.ok(u.Infra.load_codegen_inputs(root)),
                 plan.files,
-                rendered_by=conform.rendered_by_stamp(),
             ).map(tuple),
         ),
     )
