@@ -84,11 +84,6 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_file_by_name: MutableMapping[str, Path] = m.PrivateAttr(
         default_factory=dict[str, Path],
     )
-    _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        m.PrivateAttr(
-            default_factory=dict[Path, m.Infra.RopeProjectLayout],
-        )
-    )
     _version_module_name: str = m.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
@@ -189,18 +184,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 "source_query_topology": receipt.source_query_topology,
             }
         ), receipt
-
-    @property
-    def collision_count(self) -> int:
-        """The export collisions observed by this repository planner."""
-        return self._collision_count
-
-    @property
-    def ancestry_receipts(
-        self,
-    ) -> t.MutableMappingKV[tuple[Path, int], m.Infra.CodegenPhaseAnalysis]:
-        """Share sealed same-epoch evidence without native semantic cache objects."""
-        return self._ancestry_receipts
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.

@@ -585,9 +585,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "completed migration failure has no residual issue",
                 exception=published.exception,
             )
-        self.state.planning_issues.extend(parsed.value)
-        if self.state.planning_exception is None:
-            self.state.planning_exception = published.exception
+        self._retain_diagnostics(published.exception, issues=parsed.value)
         return r[bool].ok(value=True)
 
     def _plan_or_report(

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSet, Sequence
+from collections.abc import MutableSet
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
@@ -205,64 +205,6 @@ class FlextInfraModelsCodegenFixModels:
             default_factory=tuple,
             description="Canonical root names allowed inside TYPE_CHECKING imports.",
         )
-
-    class BulkFixItem(
-        FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraModelsMixins.PositiveLineMixin,
-        m.ArbitraryTypesModel,
-    ):
-        """Shared line-addressable item used by bulk codegen fixes."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Item identifier")]
-
-    class ConstantDefinition(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        FlextInfraModelsMixins.NestedClassPathMixin,
-        BulkFixItem,
-    ):
-        """A single constant extracted from a constants.py file."""
-
-        value_repr: Annotated[
-            str,
-            m.Field(description="Source repr (e.g., '30', '\"localhost\"')"),
-        ]
-        type_annotation: Annotated[
-            str,
-            m.Field(description="Type annotation string"),
-        ] = ""
-
-    class DuplicateConstantGroup(m.ArbitraryTypesModel):
-        """Cross-project duplicate group with consolidation metadata."""
-
-        constant_name: t.NonEmptyStr = m.Field(description="Constant identifier")
-        definitions: Sequence[FlextInfraModelsCodegenFixModels.ConstantDefinition] = (
-            m.Field(description="Definitions across projects")
-        )
-        is_value_identical: bool = m.Field(description="Whether all values match")
-        canonical_ref: Annotated[
-            str,
-            m.Field(description="Canonical parent reference"),
-        ] = ""
-
-    class DirectConstantRef(
-        FlextInfraModelsMixins.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
-        """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
-
-        full_ref: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="e.g., FlextAuthConstants.Auth.DEFAULT_TIMEOUT"),
-        ]
-        alias_ref: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="e.g., c.Auth.DEFAULT_TIMEOUT"),
-        ]
-        file_path: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="File containing the reference"),
-        ]
-        line: Annotated[t.PositiveInt, m.Field(description="Line number")]
 
     class FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations.

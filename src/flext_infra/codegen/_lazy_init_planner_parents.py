@@ -105,52 +105,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 parents.append(package_name)
         return tuple(parents)
 
-    def _letter_import_parent_packages(self, pkg_dir: Path) -> t.StrSequence:
-        """Return packages whose governed facade letters the facade imports.
-
-        ``from owner_parent import r`` in ``constants.py`` declares a letter
-        consumption: an undeclared letter propagates from its nearest actual
-        owner even when no class base names that owner. Only governed letters
-        (``c.Infra.ALIAS_NAMES``) qualify, so plain helper imports never become
-        facade ancestors — the workspace-dependent leak that once forced
-        parents down to class bases. A target resolving to no package
-        contributes nothing: only a resolvable package can own a letter, and
-        the declared-base path stays the loud check for broken ancestors.
-
-        Returns:
-            Packages whose governed facade letters the facade imports.
-
-        """
-        cache_key = f"letter-imports:{pkg_dir.resolve()}"
-        with u.Infra.cached_source_query(
-            self.rope_workspace.rope_project,
-            self._parent_package_cache,
-            cache_key,
-            self._query_receipts,
-            f"parents:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._parent_package_cache[cache_key]
-            constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
-            resource = self.rope_workspace.resource(constants_path)
-            if resource is None:
-                self._parent_package_cache[cache_key] = ()
-                return ()
-            imports = u.Infra.resolve_declared_module_imports(
-                self.rope_workspace.rope_project,
-                resource,
-            )
-            parents: list[str] = []
-            for name in sorted(imports):
-                if name not in c.Infra.ALIAS_NAMES:
-                    continue
-                package_name = self._package_name_from_target(imports[name])
-                if package_name and package_name not in parents:
-                    parents.append(package_name)
-            resolved = tuple(parents)
-            self._parent_package_cache[cache_key] = resolved
-            return resolved
-
     def _declared_parent_package(self, target: str) -> str:
         """Return the package a class base declares as facade parent.
 

@@ -457,9 +457,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ).plan_files(source_project=projected[0])
             if exports.failure:
                 return result_type.from_failure(exports)
-            self.state.planning_issues.extend(exports.value.issues)
-            if self.state.planning_exception is None:
-                self.state.planning_exception = exports.value.exception
+            self._retain_diagnostics(
+                exports.value.exception, issues=exports.value.issues
+            )
             files = exports.value.files
             merged = FlextInfraCodegenPreconditions.unique_states((
                 *inputs,
@@ -788,9 +788,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ).plan_files(source_project=binding[0])
             if refreshed.failure:
                 return result_type.from_failure(refreshed)
-            self.state.planning_issues.extend(refreshed.value.issues)
-            if self.state.planning_exception is None:
-                self.state.planning_exception = refreshed.value.exception
+            self._retain_diagnostics(
+                refreshed.value.exception, issues=refreshed.value.issues
+            )
             return result_type.ok(refreshed.value.files)
         layout = u.Infra.layout(root, rope_project=binding[0])
         if layout is None:
@@ -1023,9 +1023,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         ).plan_files()
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        self.state.planning_issues.extend(planned.value.issues)
-        if self.state.planning_exception is None:
-            self.state.planning_exception = planned.value.exception
+        self._retain_diagnostics(planned.value.exception, issues=planned.value.issues)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value.files)
 
     @staticmethod

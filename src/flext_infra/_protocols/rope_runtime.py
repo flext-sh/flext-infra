@@ -591,14 +591,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_word_range(self, offset: int) -> tuple[int, int]: ...
 
-        def get_parameters(
-            self,
-            first: int,
-            last: int,
-        ) -> tuple[list[str], list[tuple[str, str]]]: ...
-
-        def is_function_keyword_parameter(self, offset: int) -> bool: ...
-
     @runtime_checkable
     class RopeChangeSet(Protocol):
         """Rope change set shape."""
@@ -651,15 +643,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             start: int = 0,
             end: int | None = None,
         ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
-
-        def get_match_regions(
-            self,
-            code: str,
-            args: t.MappingKV[str, str],
-            *,
-            start: int = 0,
-            end: int | None = None,
-        ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
     class RopeWildcard[Argument](Protocol):
@@ -748,8 +731,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_word_range(self) -> tuple[int, int]: ...
 
         def get_primary_range(self) -> tuple[int, int]: ...
-
-        def get_pyname(self) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
 
         def is_written(self) -> bool: ...
 

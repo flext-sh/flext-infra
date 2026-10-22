@@ -2126,20 +2126,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         raise ValueError(message)
 
     @staticmethod
-    def _reachable_bases(
-        roots: t.SequenceOf[str],
-        ancestors: t.MappingKV[str, frozenset[str]],
-    ) -> set[str]:
-        reachable = set(roots)
-        pending = list(roots)
-        while pending:
-            for base in ancestors.get(pending.pop(), frozenset()):
-                if base not in reachable:
-                    reachable.add(base)
-                    pending.append(base)
-        return reachable
-
-    @staticmethod
     def _insert_protocol_imports(
         source: str,
         additions: t.SequenceOf[t.Pair[str, str]],

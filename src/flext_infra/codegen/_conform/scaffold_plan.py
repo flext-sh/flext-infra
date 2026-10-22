@@ -371,9 +371,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             ).plan_files(source_project=binding[0])
             if exports.failure:
                 return result_type.from_failure(exports)
-            self.state.planning_issues.extend(exports.value.issues)
-            if self.state.planning_exception is None:
-                self.state.planning_exception = exports.value.exception
+            self._retain_diagnostics(
+                exports.value.exception, issues=exports.value.issues
+            )
             inputs = FlextInfraCodegenPreconditions.unique_states((
                 *binding[1]()[0],
                 *(

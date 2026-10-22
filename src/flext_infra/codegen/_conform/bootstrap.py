@@ -28,6 +28,19 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         ),
     ] = m.Field(default_factory=m.Infra.CodegenConformState, validate_default=True)
 
+    def _retain_diagnostics(
+        self,
+        *exceptions: BaseException | None,
+        issues: t.SequenceOf[m.Infra.Issue] = (),
+    ) -> None:
+        """Collect issues and keep the first cause the invocation re-raises."""
+        self.state.planning_issues.extend(issues)
+        if self.state.planning_exception is None:
+            self.state.planning_exception = next(
+                (exception for exception in exceptions if exception is not None),
+                None,
+            )
+
     def _record_file_failure(
         self,
         path: Path,
@@ -36,15 +49,16 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         exception: BaseException | None = None,
     ) -> None:
         """Retain an actual target failure through the shared diagnostic model."""
-        if self.state.planning_exception is None:
-            self.state.planning_exception = exception
-        self.state.planning_issues.append(
-            m.Infra.Issue(
-                file=str(path),
-                line=0,
-                column=0,
-                code=c.Infra.ToolOutcome.ERROR.value,
-                message=error,
+        self._retain_diagnostics(
+            exception,
+            issues=(
+                m.Infra.Issue(
+                    file=str(path),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message=error,
+                ),
             ),
         )
 

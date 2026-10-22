@@ -422,22 +422,5 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             return result_type.from_failure(checked)
         return result_type.ok(current)
 
-    @staticmethod
-    def _drift_message(
-        changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        label: str,
-    ) -> str | None:
-        """Render the drift failure message for a changed file set, if any.
-
-        Returns:
-            The drift message, or None when the set is empty.
-
-        """
-        if not changed:
-            return None
-        paths = ", ".join(str(file.path) for file in changed)
-        report = u.Infra.codegen_file_drift_report(changed)
-        return f"{label} drift detected: {paths}\n{report}"
-
 
 __all__: list[str] = ["FlextInfraCodegenConformExecuteDirected"]

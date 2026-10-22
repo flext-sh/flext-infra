@@ -2554,17 +2554,6 @@ class FlextInfraUtilitiesCodemodProject(
                 return (directory / f"base{c.Infra.EXT_PYTHON}").is_file()
         return True
 
-    @classmethod
-    def _path_layers(cls, path: Path) -> frozenset[str]:
-
-        order = frozenset(config.Infra.tooling.lazy_init.import_layer_order)
-        stems = {
-            part.removeprefix("_").removesuffix(c.Infra.EXT_PYTHON)
-            for part in (path.name, *(parent.name for parent in path.parents))
-        }
-        families = cls._file_families(path) if path.is_file() else frozenset[str]()
-        return families | (order & stems)
-
     @staticmethod
     def _layer_rank(order: t.StrSequence, layers: frozenset[str]) -> int | None:
         ranks = [order.index(layer) for layer in layers if layer in order]
