@@ -31,42 +31,6 @@ from flext_infra._utilities._rope_source_bases_runtime import (
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
     """Rope-backed workspace indexing helpers."""
 
-    @staticmethod
-    def _excluded_parts() -> frozenset[str]:
-        """Resolve analyzer exclusions from the generated artifact SSOT.
-
-        Returns:
-            The resulting ``frozenset[str]``.
-
-        """
-        ignored = frozenset[str](config.Infra.codegen.source_scan_ignored)
-        return frozenset[str]((*config.Infra.codegen.analysis_excluded_dirs, *ignored))
-
-    @classmethod
-    def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
-        """Return the import package a directory declares inside a project.
-
-        An empty string when the directory sits outside the project or under no
-        recognised source root.
-
-        Returns:
-            The import package a directory declares inside a project.
-
-        """
-        if not package_dir.is_relative_to(project_root):
-            return ""
-        relative_parts = package_dir.relative_to(project_root).parts
-        if not relative_parts:
-            return ""
-        root_name = relative_parts[0]
-        if root_name == c.Infra.DEFAULT_SRC_DIR:
-            package_parts = relative_parts[1:]
-        elif root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            package_parts = relative_parts
-        else:
-            package_parts = ()
-        return ".".join(package_parts)
-
     @classmethod
     def generated_source_packages(cls, project_root: Path) -> t.StrTuple:
         """Return the import packages of a project's generated source trees.
@@ -81,7 +45,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         root = project_root.resolve()
         names = frozenset(config.Infra.codegen.generated_sources)
-        ignored = cls._excluded_parts() - names
+        ignored = FlextInfraUtilitiesProjectDiscovery.excluded_parts() - names
         packages: set[str] = set()
         for scan_root in config.Infra.source_scan.roots:
             base = root / scan_root
@@ -89,7 +53,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 continue
             for name in names:
                 for directory in base.rglob(name):
-                    package = cls.package_name_for_dir(directory, project_root=root)
+                    package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                        directory, project_root=root
+                    )
                     if (
                         directory.is_dir()
                         and package
@@ -106,12 +72,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             The module name for a file.
 
         """
-        if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
-            return cls.package_name_for_dir(file_path.parent, project_root=project_root)
-        package_name = cls.package_name_for_dir(
+        package_name = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             file_path.parent,
             project_root=project_root,
         )
+        if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
+            return package_name
         return f"{package_name}.{file_path.stem}" if package_name else ""
 
     @classmethod
@@ -317,7 +283,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 continue
             if not resolved_file_path.is_relative_to(resolved_root):
                 continue
-            if cls._excluded_parts().intersection(
+            if FlextInfraUtilitiesProjectDiscovery.excluded_parts().intersection(
                 resolved_file_path.relative_to(resolved_root).parts[:-1],
             ):
                 # The scan-ignore SSOT owns source visibility everywhere: a
@@ -344,7 +310,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 else ""
             )
             package_name = (
-                cls.package_name_for_dir(package_dir, project_root=project_root)
+                FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                    package_dir, project_root=project_root
+                )
                 if project_root is not None
                 else module_name
                 if is_package_init
@@ -450,7 +418,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             )
         )
         package_name = (
-            cls.package_name_for_dir(package_dir, project_root=project_root)
+            FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                package_dir, project_root=project_root
+            )
             if project_root is not None
             else init_entry.package_name
             if init_entry is not None

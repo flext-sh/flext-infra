@@ -122,9 +122,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 failure = "managed scanner resolution failed without a diagnostic"
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
-        findings: list[m.Infra.Issue] = []
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
+        found: list[m.Infra.AstGrepDiagnostic] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
                 self._scan_command(ruleset, targets, binary.value, nonparticipants),
@@ -173,66 +173,58 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     ),
                 )
                 break
-            facts = u.Infra.codemod_project_facts(
+            found.extend(report.root)
+        # Every ruleset's findings share one fact pass and one captured epoch,
+        # as the mod engine admits its composed plan.
+        facts = u.Infra.codemod_project_facts(
+            project_dir,
+            tuple(
+                rules_by_id[rule_id]
+                for rule_id in dict.fromkeys(finding.rule_id for finding in found)
+            ),
+        )
+        snapshot = (
+            u.Infra.codemod_binding_snapshot(
                 project_dir,
                 tuple(
-                    rules_by_id[rule_id]
-                    for rule_id in dict.fromkeys(
-                        finding.rule_id for finding in report.root
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in dict.fromkeys(
+                        u.Infra.codemod_source_path(project_dir, Path(finding.file))
+                        for finding in found
+                        if finding.rule_id in facts.binding_rule_ids
                     )
                 ),
+                facts.binding_modules,
             )
-            admissions = tuple(
-                m.Infra.CodemodAdmission(
-                    root=project_dir,
-                    rule=rules_by_id[finding.rule_id],
-                    file_path=Path(finding.file),
-                    captures={**finding.captures, **finding.transformed},
-                    facts=facts,
+            if facts.binding_rule_ids
+            else m.Infra.CodemodBindingSnapshot(states=())
+        )
+        with u.Infra.codemod_binding_project(
+            project_dir, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            findings = [
+                m.Infra.Issue(
+                    file=finding.file,
+                    line=finding.line + 1,
+                    column=finding.column + 1,
+                    code=finding.rule_id,
+                    message=finding.message,
+                    severity=finding.severity,
                 )
-                for finding in report.root
-            )
-            snapshot = (
-                u.Infra.codemod_binding_snapshot(
-                    project_dir,
-                    tuple(
-                        u.Cli.atomic_read_binary_file_state(
-                            path,
-                            required=True,
-                        ).unwrap()
-                        for path in dict.fromkeys(
-                            u.Infra.codemod_source_path(project_dir, Path(finding.file))
-                            for finding in report.root
-                            if finding.rule_id in facts.binding_rule_ids
-                        )
+                for finding in found
+                if u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=project_dir,
+                        rule=rules_by_id[finding.rule_id],
+                        file_path=Path(finding.file),
+                        captures={**finding.captures, **finding.transformed},
+                        facts=facts,
+                        snapshot=snapshot,
                     ),
-                    facts.binding_modules,
+                    project=project,
+                    sources=sources,
                 )
-                if facts.binding_rule_ids
-                else m.Infra.CodemodBindingSnapshot(states=())
-            )
-            with u.Infra.codemod_binding_project(
-                project_dir, u.Infra.codemod_source_epoch(snapshot)
-            ) as (
-                project,
-                sources,
-            ):
-                findings.extend(
-                    m.Infra.Issue(
-                        file=finding.file,
-                        line=finding.line + 1,
-                        column=finding.column + 1,
-                        code=finding.rule_id,
-                        message=finding.message,
-                        severity=finding.severity,
-                    )
-                    for finding, admission in zip(report.root, admissions, strict=True)
-                    if u.Infra.codemod_context_admits(
-                        admission.model_copy(update={"snapshot": snapshot}),
-                        project=project,
-                        sources=sources,
-                    )
-                )
+            ]
 
         # A completed scan still blocks when elected policy rules find code.
         # Native scanner failures retain their distinct failure diagnostics.

@@ -405,7 +405,8 @@ Infra:
           # Repairs make fix applies after Ruff's own fixes, to findings Ruff
           # reports without a fix: each Ruff rule name maps to one recipe the
           # lint gate derives from the source (docstring sections from the
-          # signature, summary and raise statement; summaries from the declared
+          # signature, summary and raise statement; a documented exception the
+          # body no longer raises loses only its own Raises entry; summaries from the declared
           # name; the notice from the project's declared author and copyright
           # year; a method that never reads its instance becomes a static
           # method, its signature and decorators edited and its body kept
@@ -420,6 +421,7 @@ Infra:
             docstring-missing-returns: returns-section
             docstring-missing-yields: yields-section
             docstring-missing-exception: raises-section
+            docstring-extraneous-exception: extraneous-raises
             no-self-use: static-method
             import-outside-top-level: normalize-imports
             line-too-long: wrap-long-line
@@ -430,7 +432,7 @@ Infra:
           fix-recipe-phases:
           - [ normalize-imports ]
           - [ summary-docstring, copyright-notice, static-method ]
-          - [ returns-section, yields-section, raises-section ]
+          - [ returns-section, yields-section, raises-section, extraneous-raises ]
           - [ wrap-long-line ]
           # Pydantic evaluates model field annotations at runtime, so an
           # import used only in a model annotation is runtime, not typing-only.

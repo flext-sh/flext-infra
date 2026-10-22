@@ -458,6 +458,59 @@ class FlextInfraUtilitiesProjectDiscovery(
             ),
         ]
 
+    @staticmethod
+    def excluded_parts() -> frozenset[str]:
+        """Resolve analyzer exclusions from the generated artifact SSOT.
+
+        Returns:
+            The analysis-excluded and source-scan-ignored directory names.
+
+        """
+        return frozenset(config.Infra.codegen.analysis_excluded_dirs) | frozenset(
+            config.Infra.codegen.source_scan_ignored
+        )
+
+    @classmethod
+    def root_namespace(cls, project_root: Path, name: str) -> bool:
+        """Return whether a direct child folder of a project root is a namespace.
+
+        Namespaces are detected, never declared: ``src`` holds the public
+        packages and every other importable child folder is an internal tier.
+        A scan-ignored resource or a folder declaring its own project is no
+        namespace of this one. Callers ask about a Python path beneath the
+        folder, which proves that it holds code.
+
+        Returns:
+            Whether ``name`` is a namespace folder of ``project_root``.
+
+        """
+        folder = project_root / name
+        return name == c.Infra.DEFAULT_SRC_DIR or (
+            name.isidentifier()
+            and name not in cls.excluded_parts()
+            and folder.is_dir()
+            and not (folder / c.PYPROJECT_FILENAME).is_file()
+        )
+
+    @classmethod
+    def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
+        """Return the import package a directory declares inside a project.
+
+        ``src`` contributes its children with its own segment stripped; an
+        internal namespace keeps its name. An empty string when the directory
+        sits outside the project or under no detected namespace.
+
+        Returns:
+            The import package a directory declares inside a project.
+
+        """
+        if not package_dir.is_relative_to(project_root):
+            return ""
+        parts = package_dir.relative_to(project_root).parts
+        if not parts or not cls.root_namespace(project_root, parts[0]):
+            return ""
+        return ".".join(parts[1:] if parts[0] == c.Infra.DEFAULT_SRC_DIR else parts)
+
     @classmethod
     def discover_python_files(
         cls,
@@ -479,9 +532,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             else source_project.source_query(project_dir, "isdir")
         ):
             return ()
-        skip_dirs = frozenset(config.Infra.codegen.analysis_excluded_dirs) | frozenset(
-            config.Infra.codegen.source_scan_ignored
-        )
+        skip_dirs = cls.excluded_parts()
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
         )

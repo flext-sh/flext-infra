@@ -65,6 +65,12 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeImportLookup = t.MutableMappingKV[
         t.Triple[str, str, int], RopeResource | None
     ]
+    type CodemodImportWalkNode = (
+        t.Pair[Path, t.VariadicTuple[t.Pair[str, RopeResource]]] | None
+    )
+    type CodemodImportWalkMemo = t.Pair[
+        RopeImportLookup, t.MutableMappingKV[str, CodemodImportWalkNode]
+    ]
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
     type RopeSemanticModule = FlextInfraProtocolsRopeRuntime.RopeSemanticModule

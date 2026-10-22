@@ -254,48 +254,50 @@ class FlextInfraBindingService:
         *,
         requirements: t.StrSequence,
         flext_root: Path,
-    ) -> p.Result[t.MappingKV[str, Path]]:
+    ) -> p.Result[t.MappingKV[str, m.Infra.RepositoryRef]]:
         """Return the distributions this worktree can supply to the consumer.
 
         Fails closed when ``flext_root`` is not a flext workspace, so a mistyped
         path can never silently bind nothing and leave the consumer on its pins.
 
         Returns:
-            The distributions this worktree can supply to the consumer.
+            The supplier repository of each selected distribution, by name.
 
         """
+        result = r[t.MappingKV[str, m.Infra.RepositoryRef]]
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
         if workspace.failure:
-            return r[t.MappingKV[str, Path]].fail(
+            return result.fail(
                 f"FLEXT is not a flext workspace: {flext_root}: "
                 f"{workspace.error or 'manifest unreadable'}",
             )
-        available: MutableMapping[str, Path] = {}
+        available: MutableMapping[str, m.Infra.RepositoryRef] = {}
         for repository in (workspace.value.repository, *workspace.value.subprojects):
             if not repository.package:
                 continue
             name = u.Infra.dep_name(repository.distribution)
             if name is None or name in available:
-                return r[t.MappingKV[str, Path]].fail(
+                return result.fail(
                     f"binding supplier has an invalid or duplicate "
                     f"distribution: {repository.distribution}",
                 )
-            available[name] = (flext_root / repository.path).resolve()
+            available[name] = repository
         names = {u.Infra.dep_name(item) for item in requirements}
         selected = {
             name: available[name] for name in sorted(available) if name in names
         }
         if not selected:
-            return r[t.MappingKV[str, Path]].fail(
+            return result.fail(
                 "requested binding selects no active declared dependency: "
                 f"declared={names!r}; available={tuple(available)!r}",
             )
-        for path in selected.values():
+        for repository in selected.values():
+            path = (flext_root / repository.path).resolve()
             if not (path / c.PYPROJECT_FILENAME).is_file():
-                return r[t.MappingKV[str, Path]].fail(
+                return result.fail(
                     f"binding supplier package is not provisioned: {path}",
                 )
-        return r[t.MappingKV[str, Path]].ok(selected)
+        return result.ok(selected)
 
     @classmethod
     def plan_targets(
@@ -304,11 +306,11 @@ class FlextInfraBindingService:
         consumer_root: Path,
         flext_root: Path,
         python: Path,
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[t.MappingKV[str, m.Infra.RepositoryRef]]:
         """Resolve targets with marker facts from the consumer's interpreter.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[str]]``.
+            The supplier repository of each selected distribution, by name.
 
         """
         environment = cls.consumer_marker_environment(
@@ -316,14 +318,12 @@ class FlextInfraBindingService:
             python=python,
         )
         if environment.failure:
-            return r[t.VariadicTuple[str]].from_failure(environment)
+            return r[t.MappingKV[str, m.Infra.RepositoryRef]].from_failure(environment)
         requirements = u.Infra.active_session_requirements(
             cls._document(consumer_root),
             environment=environment.value,
         )
-        return cls._binding_paths(requirements=requirements, flext_root=flext_root).map(
-            tuple,
-        )
+        return cls._binding_paths(requirements=requirements, flext_root=flext_root)
 
     @classmethod
     def apply(
@@ -358,7 +358,10 @@ class FlextInfraBindingService:
         planned = cls._binding_paths(requirements=requirements, flext_root=flext_root)
         if planned.failure:
             return r[int].from_failure(planned)
-        paths = planned.value
+        paths = {
+            name: (flext_root / repository.path).resolve()
+            for name, repository in planned.value.items()
+        }
         resolution = u.Infra.session_dependency_requirements(
             document,
             requirements=requirements,

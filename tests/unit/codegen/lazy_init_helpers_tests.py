@@ -33,20 +33,27 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
     @staticmethod
-    def test_discover_package_from_standard_roots() -> None:
-        """Resolve package names consistently for every supported source shape."""
-        tm.that(
-            u.Infra.package_name(Path("/workspace/src/test_pkg/__init__.py")),
-            eq="test_pkg",
+    @pytest.mark.parametrize(
+        ("relative", "expected"),
+        [
+            ("src/test_pkg/__init__.py", "test_pkg"),
+            ("tests/unit/__init__.py", "tests.unit"),
+            ("examples/tests/__init__.py", "examples.tests"),
+            ("infra/pulumi/lib/__init__.py", "infra.pulumi.lib"),
+        ],
+    )
+    def test_discover_package_from_detected_namespaces(
+        tmp_path: Path, relative: str, expected: str
+    ) -> None:
+        """Every root folder of a declared project is a namespace; src is stripped."""
+        tmp_path.joinpath(c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'demo'\nversion = '0.1.0'\n",
+            encoding=c.DEFAULT_ENCODING,
         )
-        tm.that(
-            u.Infra.package_name(Path("/workspace/tests/unit/__init__.py")),
-            eq="tests.unit",
-        )
-        tm.that(
-            u.Infra.package_name(Path("/workspace/examples/tests/__init__.py")),
-            eq="examples.tests",
-        )
+        initializer = tmp_path / relative
+        initializer.parent.mkdir(parents=True)
+        initializer.write_text("", encoding=c.DEFAULT_ENCODING)
+        tm.that(u.Infra.package_name(initializer), eq=expected)
 
     def test_root_generation_uses_real_classes_and_aliases(
         self,

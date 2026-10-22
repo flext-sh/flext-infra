@@ -95,7 +95,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return self._plan_single_surface(request, inputs=inputs).map(
                 itemgetter(0),
             )
-        config_spec = inputs.spec
         root = request.root.expanduser().resolve()
         targets = self._planning_workspace(request, root, inputs=inputs)
         if targets.failure:
@@ -790,7 +789,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             (task.root / task.repository.path).resolve(): task.repository.name
             for task in tasks
         }
-        additions: dict[str, list[m.Infra.CodegenFilePlan]] = {}
+        additions: t.MutableMappingKV[str, list[m.Infra.CodegenFilePlan]] = {}
         for file in providers:
             if file.path in consumed and file.path not in included:
                 additions.setdefault(paths[file.project.resolve()], []).append(file)
@@ -865,12 +864,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome],
         t.VariadicTuple[m.Infra.CodegenFilePlan],
     ]:
-        """Plan lazy providers in parallel, then managed surfaces in order.
+        """Plan lazy providers in parallel, then managed surfaces by wave.
 
         Each repository's lazy plan indexes only its own sources, so those
         read-only plans run across the fleet workers. Root metadata fixes the
-        dependency order; the managed pass then stays serial. A cohort-wide
-        failure fails every planned repository and keeps no provider.
+        runtime dependency waves; each managed wave runs across the workers
+        over the plans of earlier waves. A cohort-wide failure fails every
+        planned repository and keeps no provider.
 
         Returns:
             The ordered outcomes and the lazy provider plans they may consume.
@@ -905,42 +905,33 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ),
             None,
         )
-        manifests: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        if root_task is not None:
+            metadata = plan(
+                root_task.model_copy(
+                    update={
+                        "surface": c.Infra.CodegenConformSurface.PYPROJECT,
+                        "provider_plans": providers,
+                    },
+                ),
+            )
+            if metadata.failed:
+                self._retain_diagnostics(metadata.exception)
+                return self._cohort_failure(metadata, lazy), ()
+            metadata_files = metadata.files
         try:
-            if root_task is not None:
-                metadata = plan(
-                    root_task.model_copy(
-                        update={
-                            "surface": c.Infra.CodegenConformSurface.PYPROJECT,
-                            "provider_plans": providers,
-                        },
-                    ),
-                )
-                if metadata.failed:
-                    self._retain_diagnostics(metadata.exception)
-                    return self._cohort_failure(metadata, lazy), ()
-                project = (root_task.root / root_task.repository.path).resolve()
-                manifests = tuple(
-                    file
-                    for file in metadata.files
-                    if file.project.resolve() == project
-                    and file.path.resolve() == project / c.PYPROJECT_FILENAME
-                    and file.desired_content is not None
-                )
-                if len(manifests) != 1:
-                    msg = "root metadata requires exactly one owned pyproject plan"
-                    raise ValueError(msg)
-            order = u.Infra.workspace_dependency_order(
-                tasks[0].root,
-                tuple(task.repository for task in tasks),
-                planned_manifests=manifests,
+            manifests, waves = self._planned_dependency_waves(
+                tasks, root_task, metadata_files
             )
         except (OSError, ValueError, TypeError) as exc:
             self._retain_diagnostics(exc)
             failure = self._failed_outcome(tasks[0].repository.name, exc)
             return self._cohort_failure(failure, lazy), ()
         planned, providers = self._managed_plan_outcomes(
-            tuple(ready[name] for name in order if name in ready), providers
+            tuple(
+                tuple(ready[name] for name in wave if name in ready) for wave in waves
+            ),
+            providers,
         )
         outcomes = tuple(
             outcome if outcome.failed else planned[outcome.repository]
@@ -955,49 +946,94 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return self._cohort_failure(failure, outcomes), providers
         return outcomes, providers
 
+    @staticmethod
+    def _planned_dependency_waves(
+        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
+        root_task: m.Infra.CodegenRepositoryPlanTask | None,
+        metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.CodegenFilePlan],
+        t.SequenceOf[t.StrSequence],
+    ]:
+        """Select the planned root manifest and derive the dependency waves.
+
+        Returns:
+            The single owned root manifest plan, if any, and the waves.
+
+        Raises:
+            ValueError: If root metadata has no single owned pyproject plan.
+
+        """
+        manifests: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        if root_task is not None:
+            project = (root_task.root / root_task.repository.path).resolve()
+            manifests = tuple(
+                file
+                for file in metadata_files
+                if file.project.resolve() == project
+                and file.path.resolve() == project / c.PYPROJECT_FILENAME
+                and file.desired_content is not None
+            )
+            if len(manifests) != 1:
+                msg = "root metadata requires exactly one owned pyproject plan"
+                raise ValueError(msg)
+        return manifests, u.Infra.workspace_dependency_waves(
+            tasks[0].root,
+            tuple(task.repository for task in tasks),
+            planned_manifests=manifests,
+        )
+
     def _managed_plan_outcomes(
         self,
-        ordered: t.VariadicTuple[m.Infra.CodegenRepositoryPlanTask],
+        waves: t.SequenceOf[t.VariadicTuple[m.Infra.CodegenRepositoryPlanTask]],
         providers: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.Pair[
         t.MappingKV[str, m.Infra.CodegenRepositoryPlanOutcome],
         t.VariadicTuple[m.Infra.CodegenFilePlan],
     ]:
-        """Plan managed surfaces serially over the staged provider plans.
+        """Plan managed surfaces wave by wave over the staged provider plans.
 
-        A failed repository withdraws its own lazy providers. Only
-        authenticated complete source output survives an unrelated managed
-        failure, never incoming lazy inputs.
+        A wave depends only on earlier waves, so its repositories plan across
+        the fleet workers over the plans staged by those waves. A failed
+        repository withdraws its own lazy providers. Only authenticated
+        complete source output survives an unrelated managed failure, never
+        incoming lazy inputs.
 
         Returns:
             The managed outcome per repository and the surviving providers.
 
         """
-        planned: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+        planned: t.MutableMappingKV[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
         staged = {file.path: file for file in providers}
-        for task in ordered:
-            outcome = type(self).plan_repository_task(
-                task.model_copy(update={"provider_plans": tuple(staged.values())})
+        for wave in waves:
+            current = tuple(staged.values())
+            outcomes = u.Infra.fleet_map(
+                type(self).plan_repository_task,
+                tuple(
+                    task.model_copy(update={"provider_plans": current}) for task in wave
+                ),
             )
-            self._retain_diagnostics(outcome.exception)
-            files = outcome.files
-            if outcome.failed:
-                project_root = (task.root / task.repository.path).resolve()
-                staged = {
-                    path: file
-                    for path, file in staged.items()
-                    if file.project != project_root
-                }
-                providers = tuple(
-                    file for file in providers if file.project != project_root
-                )
-                if outcome.error:
-                    providers = (*providers, *files)
-                    outcome = outcome.model_copy(update={"files": ()})
-                else:
-                    files = ()
-            staged.update((file.path, file) for file in files)
-            planned[outcome.repository] = outcome
+            for task, planned_outcome in zip(wave, outcomes, strict=True):
+                outcome = planned_outcome
+                self._retain_diagnostics(outcome.exception)
+                files = outcome.files
+                if outcome.failed:
+                    project_root = (task.root / task.repository.path).resolve()
+                    staged = {
+                        path: file
+                        for path, file in staged.items()
+                        if file.project != project_root
+                    }
+                    providers = tuple(
+                        file for file in providers if file.project != project_root
+                    )
+                    if outcome.error:
+                        providers = (*providers, *files)
+                        outcome = outcome.model_copy(update={"files": ()})
+                    else:
+                        files = ()
+                staged.update((file.path, file) for file in files)
+                planned[outcome.repository] = outcome
         return planned, providers
 
     @staticmethod

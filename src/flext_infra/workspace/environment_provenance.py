@@ -575,14 +575,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         )
         if targets.failure:
             return r[int].from_failure(targets)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(supplier_root)
-        if workspace.failure:
-            return r[int].from_failure(workspace)
-        repositories = tuple(
-            item
-            for item in (workspace.value.repository, *workspace.value.subprojects)
-            if u.Infra.dep_name(item.distribution) in targets.value
-        )
+        repositories = tuple(targets.value.values())
         observed = FlextInfraBindingService.consumer_package_environment(
             consumer_root=consumer_root,
             python=python,

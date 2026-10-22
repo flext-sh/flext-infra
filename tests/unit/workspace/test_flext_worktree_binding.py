@@ -19,14 +19,10 @@ import sys
 import sysconfig
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import config
 from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
-
-if TYPE_CHECKING:
-    from tests import p
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraWorktreeBinding:
@@ -184,7 +180,7 @@ class TestsFlextInfraWorktreeBinding:
         """Only declared flext deps present in the worktree are rebound."""
         consumer = self._consumer(tmp_path)
 
-        planned: p.Result[t.VariadicTuple[str]] = FlextInfraBindingService.plan_targets(
+        planned = FlextInfraBindingService.plan_targets(
             consumer_root=consumer,
             flext_root=self._flext_workspace(tmp_path),
             python=self._python(consumer),
@@ -222,7 +218,7 @@ class TestsFlextInfraWorktreeBinding:
             python=self._python(consumer),
         )
 
-        tm.that(tm.ok(planned), eq=(distribution,))
+        tm.that(tuple(tm.ok(planned)), eq=(distribution,))
         tm.that(declaration.read_bytes(), eq=before)
 
     def test_binding_rejects_a_path_that_is_not_a_flext_workspace(

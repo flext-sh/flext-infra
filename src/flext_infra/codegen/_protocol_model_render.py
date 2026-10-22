@@ -42,7 +42,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             )
             for name in models
         }
-        graph: dict[str, set[str]] = {}
+        graph: t.MutableMappingKV[str, set[str]] = {}
         for name, model in sorted(models.items()):
             declaration = self.declarations[name].get_object()
             scope = declaration.get_scope()
@@ -72,7 +72,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             normalize=lambda name: name,
         )
         modules: t.MutableMappingKV[Path, str] = {}
-        grouped: dict[str, list[str]] = defaultdict(list)
+        grouped: t.MutableMappingKV[str, list[str]] = defaultdict(list)
         for key in ordered:
             for name in components[key]:
                 grouped[name.rpartition(".")[0]].append(name)
@@ -272,7 +272,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             Every elected native method scope in source order.
 
         """
-        methods: dict[str, list[p.Infra.RopeScope]] = {}
+        methods: t.MutableMappingKV[str, list[p.Infra.RopeScope]] = {}
         for ancestor in reversed(self.source_lineage(model)):
             owner = ancestor.get_module()
             resource = owner.get_resource() if owner is not None else None
@@ -283,7 +283,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             lexical = ancestor.get_scope()
             if lexical is None:
                 continue
-            declared: dict[str, list[p.Infra.RopeScope]] = {}
+            declared: t.MutableMappingKV[str, list[p.Infra.RopeScope]] = {}
             for method in lexical.get_scopes():
                 if method.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
                     declared.setdefault(method.pyobject.get_name(), []).append(method)
@@ -324,7 +324,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 decorator.func if isinstance(decorator, ast.Call) else decorator,
                 lexical,
                 self.project.upstream,
-                f"u.{validator}",
+                f"m.{validator}",
             )
             for decorator in node.decorator_list
             for validator in ("field_validator", "model_validator")
@@ -405,7 +405,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
     @staticmethod
     def _method_type_parameters(
         node: ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> dict[str, ast.expr]:
+    ) -> t.MutableMappingKV[str, ast.expr]:
         """Bind native PEP 695 parameter names for signature annotation rebinding.
 
         Returns:
@@ -415,7 +415,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             TypeError: If a parameter is not a native Python type declaration.
 
         """
-        parameters: dict[str, ast.expr] = {}
+        parameters: t.MutableMappingKV[str, ast.expr] = {}
         for parameter in node.type_params:
             if not isinstance(
                 parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
@@ -456,7 +456,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         )
         if node.returns is None or any(
             argument.annotation is None
-            and not (argument is receiver and argument.arg in {"self", "cls"})
+            and not (argument.arg in {"self", "cls"} and argument is receiver)
             for argument in arguments
         ):
             msg = f"public method {name} has an untyped signature"
@@ -485,7 +485,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             The authenticated owners in canonical C3 order.
 
         """
-        owners: dict[str, p.Infra.RopePyObject] = {}
+        owners: t.MutableMappingKV[str, p.Infra.RopePyObject] = {}
 
         def lineage(
             value: p.Infra.RopePyObject, visiting: frozenset[str]
@@ -518,7 +518,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
 
     def source_fields(
         self, binding: p.Infra.RopePyName
-    ) -> tuple[dict[str, tuple[ast.expr, p.Infra.RopeScope, bool]], bool]:
+    ) -> tuple[t.MutableMappingKV[str, tuple[ast.expr, p.Infra.RopeScope, bool]], bool]:
         """Project native inherited fields in the canonical C3 source order.
 
         Returns:
@@ -528,7 +528,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             TypeError: If an ancestor lacks an authenticated native class.
 
         """
-        fields: dict[str, tuple[ast.expr, p.Infra.RopeScope, bool]] = {}
+        fields: t.MutableMappingKV[str, tuple[ast.expr, p.Infra.RopeScope, bool]] = {}
         frozen = False
         for owner in reversed(self.source_lineage(binding)):
             identity = self.identity(owner)
@@ -680,7 +680,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         statement: ast.AnnAssign,
         lexical: p.Infra.RopeScope,
         identity: str,
-        fields: dict[str, tuple[ast.expr, p.Infra.RopeScope, bool]],
+        fields: t.MutableMappingKV[str, tuple[ast.expr, p.Infra.RopeScope, bool]],
     ) -> None:
         """Apply one public annotated declaration to the inherited field map."""
         if not isinstance(statement.target, ast.Name):

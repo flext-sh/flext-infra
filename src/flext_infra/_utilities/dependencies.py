@@ -27,9 +27,6 @@ from flext_infra._utilities._dependency_deptry import (
     FlextInfraUtilitiesDependencyDeptryMixin,
 )
 
-_EXACT_INSTALL_METADATA_NAMES: frozenset[str] = frozenset({"METADATA", "RECORD"})
-_EXACT_INSTALL_METADATA_COUNT: int = 2
-
 
 class FlextInfraUtilitiesDependencies(
     FlextInfraUtilitiesDependencyDeptryMixin,
@@ -538,11 +535,33 @@ class FlextInfraUtilitiesDependencies(
         Returns:
             Dependencies before consumers, with stable distribution-name ties.
 
+        """
+        return tuple(
+            name
+            for wave in cls.workspace_dependency_waves(
+                root, repositories, planned_manifests=planned_manifests
+            )
+            for name in wave
+        )
+
+    @classmethod
+    def workspace_dependency_waves(
+        cls,
+        root: Path,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        *,
+        planned_manifests: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
+    ) -> t.SequenceOf[t.StrSequence]:
+        """Group declared packages into runtime-dependency-first waves.
+
+        Returns:
+            Distributions per wave; a wave depends only on earlier waves.
+
         Raises:
             ValueError: If distributions collide or the runtime graph is cyclic.
 
         """
-        by_name = {
+        by_name: t.MappingKV[str, p.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -553,7 +572,7 @@ class FlextInfraUtilitiesDependencies(
         if len(manifests) != len(planned_manifests):
             msg = "workspace declares duplicate planned manifest paths"
             raise ValueError(msg)
-        graph: dict[str, tuple[str, ...]] = {}
+        graph: t.MutableMappingKV[str, t.StrSequence] = {}
         for name, repository in by_name.items():
             project = (root / repository.path).resolve()
             path = project / c.PYPROJECT_FILENAME
@@ -584,7 +603,7 @@ class FlextInfraUtilitiesDependencies(
         if waves.failure:
             raise ValueError(waves.error)
         return tuple(
-            by_name[name].distribution for wave in waves.value for name in wave
+            tuple(by_name[name].distribution for name in wave) for wave in waves.value
         )
 
     @staticmethod
@@ -615,7 +634,7 @@ class FlextInfraUtilitiesDependencies(
                 "dependency graph references names outside the graph: "
                 + ", ".join(unknown),
             )
-        pending: dict[NameT, set[str]] = {
+        pending: Mapping[NameT, set[str]] = {
             name: set(deps) for name, deps in edges.items()
         }
         waves: list[tuple[NameT, ...]] = []
@@ -627,7 +646,7 @@ class FlextInfraUtilitiesDependencies(
                 )
             waves.append(tuple(sorted(ready)))
             pending = {
-                name: deps - ready
+                name: {dependency for dependency in deps if dependency not in ready}
                 for name, deps in pending.items()
                 if name not in ready
             }
@@ -751,17 +770,15 @@ class FlextInfraUtilitiesDependencies(
                 f"installed resource requires one exact RECORD entry: {distribution} "
                 f"{'/'.join(resource_parts)}; observed={len(resource_entries)}",
             )
+        required = frozenset({"METADATA", "RECORD"})
         metadata_entries = tuple(
             item
             for item in records
-            if item.name in {"METADATA", "RECORD"}
-            and item.parent.name.endswith(".dist-info")
+            if item.name in required and item.parent.name.endswith(".dist-info")
         )
-        if (
-            frozenset(item.name for item in metadata_entries)
-            != (_EXACT_INSTALL_METADATA_NAMES)
-            or len(metadata_entries) != _EXACT_INSTALL_METADATA_COUNT
-        ):
+        if frozenset(item.name for item in metadata_entries) != required or len(
+            metadata_entries
+        ) != len(required):
             return result_type.fail(
                 "installed resource needs its exact METADATA and RECORD: "
                 f"{distribution}",

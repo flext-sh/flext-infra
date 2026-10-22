@@ -22,7 +22,6 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
     conform: Annotated[
         Callable[[p.Infra.CodegenConformRequest], p.Result[p.Infra.CodegenResult]],
         m.Field(
-            ...,
             exclude=True,
             description="Caller-bound native conformance handler.",
         ),
@@ -880,6 +879,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             primaries = (
                 (source[begin:end], u.Infra.scope_at(module, begin))
                 for begin, end in u.Infra.reference_regions(source)
+                if "." in source[begin:end]
             )
             quoted = (
                 (expression[begin:end], scope)

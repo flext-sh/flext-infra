@@ -340,7 +340,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         )
 
     @staticmethod
-    def _role_environment(root: Path) -> dict[str, str]:
+    def _role_environment(root: Path) -> t.StrMapping:
         return {
             "HOME": str(root / "home"),
             "PWD": str(root),
@@ -540,9 +540,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         ):
             return r[bool].fail("Mise role must not modify its reader project")
         # Reuse the reader's own manifest/lock authentication, never PATH election.
-        declared = u.Infra.committed_mise_self_release(
-            reader_root
-        )
+        declared = u.Infra.committed_mise_self_release(reader_root)
         if declared.failure:
             return r[bool].from_failure(declared)
         if not declared.value:
@@ -570,10 +568,11 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         """
         root = accepted.target_root
-        root.mkdir(mode=0o700)
+        private = config.Infra.codegen.modes.directory_private
+        root.mkdir(mode=private)
         # npm's vendor self-test must stop local-prefix discovery inside this scope.
         for name in ("home", "data", "config", "cache", "state", "node_modules"):
-            (root / name).mkdir(mode=0o700)
+            (root / name).mkdir(mode=private)
         project = m.Infra.ProjectMiseConfig(
             tools={
                 entry.name: m.Infra.ProjectMiseTool(version=entry.version)
@@ -675,7 +674,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         if installed.failure:
             return r[p.Infra.MiseRoleInstallation].from_failure(installed)
         lock = u.Cli.toml_read_json(accepted.lock.path).unwrap()
-        binaries: dict[str, m.Cli.AtomicFileReceipt] = {}
+        binaries: t.MutableMappingKV[str, m.Cli.AtomicFileReceipt] = {}
         platform_name = cls.current_platform().unwrap()
         for entry in declaration.tools:
             proof = cls._role_tool_proof(request, entry, lock, platform_name)

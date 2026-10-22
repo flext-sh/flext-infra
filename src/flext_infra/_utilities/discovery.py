@@ -69,9 +69,8 @@ class FlextInfraUtilitiesDiscovery(
             if current.name == c.Infra.DEFAULT_SRC_DIR:
                 wrapper_root = current.parent
                 continue
-            if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS:
-                wrapper_root = current.parent
-                continue
+            # Without a manifest only ``src`` marks a root: every other folder
+            # name is a namespace solely relative to a declared project root.
             if (
                 (current / c.Infra.DEFAULT_SRC_DIR).is_dir()
                 if source_project is None
@@ -81,8 +80,7 @@ class FlextInfraUtilitiesDiscovery(
             ):
                 relative = candidate.relative_to(current)
                 if layout_root is None and (
-                    not relative.parts
-                    or relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
+                    not relative.parts or relative.parts[0] == c.Infra.DEFAULT_SRC_DIR
                 ):
                     layout_root = current
         discovered = layout_root or wrapper_root
@@ -113,24 +111,6 @@ class FlextInfraUtilitiesDiscovery(
         if resolved.suffix == c.Infra.EXT_PYTHON and path_parts:
             return (*path_parts[:-1], resolved.stem)
         return path_parts
-
-    @staticmethod
-    def _package_name_from_wrapper_parts(path_parts: t.StrSequence) -> str:
-        """Return package name when path parts start with a known wrapper.
-
-        Returns:
-            Package name when path parts start with a known wrapper.
-
-        """
-        if not path_parts:
-            return ""
-        root_name = path_parts[0]
-        if root_name not in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            return ""
-        package_parts = (
-            path_parts[1:] if root_name == c.Infra.DEFAULT_SRC_DIR else path_parts
-        )
-        return ".".join(package_parts)
 
     @staticmethod
     def _package_name_from_src_dir(resolved: Path) -> str:
@@ -197,17 +177,19 @@ class FlextInfraUtilitiesDiscovery(
             resolved,
             cls._relative_path_parts(resolved, project_root),
         )
-        package_name = cls._package_name_from_wrapper_parts(normalized_parts)
-        if package_name:
-            return package_name
-        package_name = cls._package_name_from_src_dir(resolved)
+        package_name = (
+            cls.package_name_for_dir(
+                project_root.joinpath(*normalized_parts), project_root=project_root
+            )
+            if project_root is not None
+            else ""
+        ) or cls._package_name_from_src_dir(resolved)
         if package_name:
             return package_name
         absolute_parts = cls._normalized_python_parts(resolved, resolved.parts)
         for index, part in enumerate(absolute_parts):
-            package_name = cls._package_name_from_wrapper_parts(absolute_parts[index:])
-            if package_name and part in c.Infra.ROOT_WRAPPER_SEGMENTS:
-                return package_name
+            if part == c.Infra.DEFAULT_SRC_DIR and absolute_parts[index + 1 :]:
+                return ".".join(absolute_parts[index + 1 :])
         if resolved.name == c.Infra.INIT_PY:
             top_level_parts = tuple(
                 part for part in absolute_parts if part and part != resolved.anchor
@@ -278,15 +260,14 @@ class FlextInfraUtilitiesDiscovery(
             resolved_root.is_dir()
             and not (execution_dir / c.PYPROJECT_FILENAME).is_file()
         ):
-            relative_parts = (
-                resolved_root.relative_to(discovered_root).parts
-                if discovered_root is not None
-                and resolved_root.is_relative_to(discovered_root)
-                else ()
-            )
             if (
-                not relative_parts
-                or relative_parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
+                discovered_root is None
+                or resolved_root == discovered_root
+                or not resolved_root.is_relative_to(discovered_root)
+                or not cls.root_namespace(
+                    discovered_root,
+                    resolved_root.relative_to(discovered_root).parts[0],
+                )
             ):
                 project_root = resolved_root
         if project_root is not None and (

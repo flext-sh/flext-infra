@@ -356,10 +356,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             retained planning receipt, or ``None`` to continue the run.
 
         """
-        if (
-            request.mode
-            is not c.Infra.CodegenConformMode.APPLY
-        ):
+        if request.mode is not c.Infra.CodegenConformMode.APPLY:
             return None
         if not (
             self.surface_contract(
@@ -1113,12 +1110,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             )
             for item in failures
         )
-        first_exception = planned.value.exception
-        if first_exception is None:
-            first_exception = next(
-                (item.exception for item in failures if item.exception is not None),
-                None,
-            )
+        first_exception = planned.value.exception or next(
+            (item.exception for item in failures if item.exception is not None),
+            None,
+        )
         completed = self._settle_generation_stage(
             lambda: FlextInfraCodegenTransaction.publish_operation_receipt(
                 request,
@@ -1837,10 +1832,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[bool]``.
 
         """
-        if (
-            request.mode
-            is not c.Infra.CodegenConformMode.APPLY
-        ):
+        if request.mode is not c.Infra.CodegenConformMode.APPLY:
             return r[bool].ok(value=False)
         roots = {
             path.expanduser().resolve().parent

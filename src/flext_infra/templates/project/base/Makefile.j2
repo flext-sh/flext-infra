@@ -713,59 +713,71 @@ endef
 
 {# Generation can repair activation inputs using its declared physical runtime.
    Operations that consume activation enter direnv before their handlers. -#}
-{% macro public_verb_entry(verb) -%}
-{% set direct_builtin = verb.requires_activation and verb.name not in ("help", "clean", "status", "initialize", "profile-environment", "profile-environment-report") %}
-{% if not verb.requires_activation %}
-# This operation consumes the declared physical runtime without activating the
-# environment file it may itself regenerate.
-{{ verb.name }}: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '{{ verb.name }}' "$(PROJECT_ROOT)" '{{ make_profile }}'
-	$(call RUN_PUBLIC,{{ verb.name }})
-{% else %}
-{% if verb.name not in ("help", "clean") %}
-{{ verb.name }}: _builtin_require_workspace{% if verb.name == "examples" %} _builtin_require_examples{% endif %}
-	@printf '==> %s | project=%s | profile=%s\n' '{{ verb.name }}' "$(PROJECT_ROOT)" '{{ make_profile }}'
-{% if verb.name == "status" %}
-	@$(GITHUB_AUTH_DIAGNOSTICS)
+{# One parameterized rule set per verb group replaces a rendered block per verb.
+   Unactivated verbs consume the physical runtime without the environment file
+   they may regenerate; activated verbs enter direnv (CI is pre-activated). An
+   activated verb without hooks resolves its builtin and environment in this
+   process; a hooked or interpreter-bound one runs through RUN_PUBLIC. -#}
+{% macro verb_rules(group, verbs) -%}
+{% set ns = namespace(plain=[], dispatch=[], active=[], interp=[]) -%}
+{% for verb in verbs if verb.name not in ("setup", "upg") -%}
+{% if not verb.requires_activation %}{% set ns.plain = ns.plain + [verb.name] -%}
+{% elif verb.name in ("help", "clean") %}{% set ns.dispatch = ns.dispatch + [verb.name] -%}
+{% else %}{% set ns.active = ns.active + [verb.name] -%}
+{% if verb.name in ("status", "initialize", "profile-environment", "profile-environment-report") %}{% set ns.interp = ns.interp + [verb.name] %}{% endif -%}
+{% endif -%}
+{% endfor -%}
+{{ group }}_PLAIN :={% for name in ns.plain %} {{ name }}{% endfor %}
+{{ group }}_DISPATCH :={% for name in ns.dispatch %} {{ name }}{% endfor %}
+{{ group }}_ACTIVATED :={% for name in ns.active %} {{ name }}{% endfor %}
+{{ group }}_INTERPRETER :={% for name in ns.interp %} {{ name }}{% endfor %}
+{{ group }}_HOOKED := $(foreach v,$(filter-out $({{ group }}_INTERPRETER),$({{ group }}_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
+{{ group }}_DIRECT := $(filter-out $({{ group }}_HOOKED) $({{ group }}_INTERPRETER),$({{ group }}_ACTIVATED))
+{{ group }}_ROUTED := $({{ group }}_HOOKED) $({{ group }}_INTERPRETER)
+{% if ns.plain %}
+$({{ group }}_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" '{{ make_profile }}'
+	$(call RUN_PUBLIC,$@)
 {% endif %}
-	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-{{ verb.name }},direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }})
-
-.PHONY: _activated-{{ verb.name }}
-{% if direct_builtin %}
-# Without hooks, Make resolves the guarded builtin and its environment
-# prerequisite once in this process instead of repeating it in a submake.
-ifeq ($(filter pre-{{ verb.name }} _custom-{{ verb.name }} post-{{ verb.name }},$(CUSTOM_DECLARED_TARGETS)),)
-_activated-{{ verb.name }}: _builtin-{{ verb.name }}
-_builtin-{{ verb.name }}: _builtin_require_environment
-else
+{% if ns.dispatch %}
+$({{ group }}_DISPATCH):
+	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),+@$(SELF_MAKE) _builtin-$@,$(call RUN_PUBLIC,$@))
 {% endif %}
-{% if verb.name == "status" %}
-_activated-{{ verb.name }}: _builtin_require_interpreter
-	+@$(SELF_MAKE) _builtin_status_import_observation
-	+@$(SELF_MAKE) _builtin_require_environment
-{% elif verb.name in ("initialize", "profile-environment", "profile-environment-report") %}
-_activated-{{ verb.name }}: _builtin_require_interpreter
-{% else %}
-_activated-{{ verb.name }}: _builtin_require_environment
-{% endif %}
-{% else %}
-{{ verb.name }}:
-{% endif %}
-	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),+@$(SELF_MAKE) _builtin-{{ verb.name }},$(call RUN_PUBLIC,{{ verb.name }}))
-{% if direct_builtin %}
+{% if ns.active %}
+$({{ group }}_ACTIVATED): %: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" '{{ make_profile }}'
+	$(if $(filter status,$@),@$(GITHUB_AUTH_DIAGNOSTICS))
+	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+.PHONY: $(addprefix _activated-,$({{ group }}_ACTIVATED))
+ifneq ($(strip $({{ group }}_DIRECT)),)
+$(addprefix _activated-,$({{ group }}_DIRECT)): _activated-%: _builtin-%
+$(addprefix _builtin-,$({{ group }}_DIRECT)): _builtin_require_environment
+endif
+ifneq ($(strip $({{ group }}_HOOKED)),)
+$(addprefix _activated-,$({{ group }}_HOOKED)): _builtin_require_environment
+endif
+ifneq ($(strip $({{ group }}_INTERPRETER)),)
+$(addprefix _activated-,$({{ group }}_INTERPRETER)): _builtin_require_interpreter
+endif
+ifneq ($(strip $({{ group }}_ROUTED)),)
+$(addprefix _activated-,$({{ group }}_ROUTED)): _activated-%:
+	$(if $(filter status,$*),+@$(SELF_MAKE) _builtin_status_import_observation)
+	$(if $(filter status,$*),+@$(SELF_MAKE) _builtin_require_environment)
+	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),+@$(SELF_MAKE) _builtin-$*,$(call RUN_PUBLIC,$*))
 endif
 {% endif %}
-{% endif %}
 {%- endmacro -%}
-{% macro verb_help_line(verb) %}@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}'{% endmacro -%}
+{% macro verb_description(verb) %}{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}{% endmacro -%}
+{% for verb in profile.verbs + (extra_verbs | list) %}
+VERB_DESCRIPTION_{{ verb.name }} := {{ verb_description(verb) }}
+{% endfor %}
+VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'
 # OPTIONS=Y (or HELP=Y) displays a built-in verb's contract without effects:
 # no prerequisite, hook or handler of that verb runs. A script verb keeps its
 # entry, and the promoted dispatcher renders its contract per WHAT.
 VERB_CONTRACT := $(filter {{ ((contract_env_values | list) + (contract_env_values | map("lower") | list) + (contract_env_values | map("capitalize") | list)) | unique(case_sensitive=true) | join(" ") }},$(OPTIONS) $(HELP))
 ifeq ($(VERB_CONTRACT),)
-{% for verb in profile.verbs if verb.name not in ("setup", "upg") %}
-{{ public_verb_entry(verb) }}
-{% endfor %}
+{{ verb_rules("PROFILE_VERBS", profile.verbs) }}
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -799,15 +811,11 @@ upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
 endif
 else
-{% for verb in profile.verbs %}
-{{ verb.name }}:
-	{{ verb_help_line(verb) }}
-	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make {{ verb.name }} to execute it.'
-{% endfor %}
+$(BUILTIN_VERBS):
+	@$(call VERB_HELP_LINE,$@)
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make $@ to execute it.'
 endif
-{% for verb in extra_verbs if verb.name not in ("setup", "upg") %}
-{{ public_verb_entry(verb) }}
-{% endfor %}
+{{ verb_rules("SCRIPT_VERBS", extra_verbs) }}
 
 .PHONY: _setup_lifecycle
 _setup_lifecycle:
@@ -836,10 +844,8 @@ _setup_activated:
 	esac
 
 _builtin-help:
-	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
-{% for verb in profile.verbs + (extra_verbs | list) %}
-	{{ verb_help_line(verb) }};
-{% endfor %}
+	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
+	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -993,15 +999,25 @@ _upg_provision_tools:
 	@mise -C "$(PROJECT_ROOT)" lock --bump
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 
-# Member lock resolution is independent of root tool provisioning: an editable
-# supplier keeps the runtime's pins while members refresh their standalone locks.
+# Writable FLEXT members keep their own native locks for independent setup.
+UPG_LOCK_MEMBERS :={% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %} {{ repository.path }}{% endfor %}
+
+# Every member .mise.toml is the root's toolchain projection, so its mise.lock
+# is the root resolution, published once instead of resolved again per member;
+# a member manifest that differs fails loud. An editable supplier keeps the
+# runtime's pins while members refresh their own UV views.
 .PHONY: _upg_refresh_member_locks
 _upg_refresh_member_locks:
-{% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %}
-	@printf 'upg: resolving native tool and UV locks for %s\n' "$(PROJECT_ROOT)/{{ repository.path }}"
-	@mise -C "$(PROJECT_ROOT)/{{ repository.path }}" lock --bump
-	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/{{ repository.path }}/Makefile" _upg_resolve_locks
-{% endfor %}
+	+@set -eu; \
+	for member in $(UPG_LOCK_MEMBERS); do \
+		if ! cmp -s "$(PROJECT_ROOT)/.mise.toml" "$(PROJECT_ROOT)/$$member/.mise.toml"; then \
+			printf 'ERROR: %s/.mise.toml differs from the root toolchain projection; run make gen\n' "$$member" >&2; \
+			exit 2; \
+		fi; \
+		cp "$(PROJECT_ROOT)/mise.lock" "$(PROJECT_ROOT)/$$member/mise.lock.upg"; \
+		mv "$(PROJECT_ROOT)/$$member/mise.lock.upg" "$(PROJECT_ROOT)/$$member/mise.lock"; \
+		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/$$member/Makefile" _upg_resolve_locks; \
+	done
 
 # Complete the upgrade against the projections just published. Re-reading the
 # current Makefile selects the new recipes without restarting the upgrade or
@@ -1010,9 +1026,10 @@ _upg_converge:
 	@$(SELF_MAKE) _builtin_typings_prepare
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
-{% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %}
-	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/{{ repository.path }}/Makefile" _upg_reconcile_locks
-{% endfor %}
+	+@set -eu; \
+	for member in $(UPG_LOCK_MEMBERS); do \
+		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/$$member/Makefile" _upg_reconcile_locks; \
+	done
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"

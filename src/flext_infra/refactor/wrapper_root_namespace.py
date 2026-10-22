@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 from flext_infra.refactor import FlextInfraWrapperRootNamespaceRewriteMixin
@@ -22,12 +22,6 @@ class FlextInfraWrapperRootNamespaceRefactor(
     FlextInfraWrapperRootNamespaceRewriteMixin,
 ):
     """Refactor wrapper alias imports and deprecated ``*.Core.Tests`` paths."""
-
-    _WRAPPER_PACKAGES: ClassVar[t.StrSequence] = tuple(
-        segment
-        for segment in c.Infra.ROOT_WRAPPER_SEGMENTS
-        if segment != c.Infra.DEFAULT_SRC_DIR
-    )
 
     include_init: Annotated[
         bool,

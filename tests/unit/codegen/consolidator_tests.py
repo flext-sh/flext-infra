@@ -193,16 +193,13 @@ class TestsFlextInfraCodegenConsolidator:
         tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
         tm.that(updated_source, has="from flext_demo import c")
 
-    @pytest.mark.parametrize(
-        "wrapper_segment",
-        sorted(c.Infra.ROOT_WRAPPER_SEGMENTS - {"src"}),
-    )
+    @pytest.mark.parametrize("wrapper_segment", ["infra", "scripts", "tests"])
     def test_execute_apply_mode_scans_wrapper_surfaces(
         self,
         tmp_path: Path,
         wrapper_segment: str,
     ) -> None:
-        """Test execute apply mode scans wrapper surfaces."""
+        """Every detected root namespace folder is scanned, whatever its name."""
         repository_root = self._build_consolidator_workspace(tmp_path)
         package_consumer_path = (
             repository_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
