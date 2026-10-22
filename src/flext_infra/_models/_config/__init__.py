@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from flext_infra._models._config.sonarcloud import FlextInfraConfigModelsSonarcloud
     from flext_infra._models._config.static import FlextInfraConfigModelsStatic
     from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-    from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
     from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
 
 
@@ -60,7 +59,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsStatic",
     "FlextInfraConfigModelsTemplates",
     "FlextInfraConfigModelsWorkspace",
-    "FlextInfraConfigVocabulary",
     "FlextInfraExternalCacheDirectorySpec",
 )
 
@@ -87,7 +85,6 @@ install_lazy_exports(
         "FlextInfraConfigModelsStatic": ".static",
         "FlextInfraConfigModelsTemplates": ".templates",
         "FlextInfraConfigModelsWorkspace": ".workspace",
-        "FlextInfraConfigVocabulary": ".vocabulary",
         "FlextInfraExternalCacheDirectorySpec": ".external_cache",
     }),
     public_exports=__all__,

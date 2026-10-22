@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         FlextInfraInjectCommentsPhase,
         FlextInfraToolTablesPhase,
     )
+    from flext_infra.deps.typing_packages import FlextInfraDependencyTypingPackages
 
 
 __all__: tuple[str, ...] = (
@@ -58,6 +59,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyDetectorRuntimeSteps",
+    "FlextInfraDependencyTypingPackages",
     "FlextInfraEnsurePackagingPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
@@ -89,6 +91,7 @@ install_lazy_exports(
         "FlextInfraDependencyDetectionService": ".detection",
         "FlextInfraDependencyDetectorRuntime": ".detector_runtime",
         "FlextInfraDependencyDetectorRuntimeSteps": "._detector_runtime_steps",
+        "FlextInfraDependencyTypingPackages": ".typing_packages",
         "FlextInfraEnsurePackagingPhase": ".phases.ensure_packaging",
         "FlextInfraEnsurePyreflyConfigPhase": ".phases.ensure_pyrefly",
         "FlextInfraEnsurePyrightConfigPhase": ".phases.ensure_pyright",

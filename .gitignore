@@ -368,5 +368,11 @@ CLAUDE.local.md
 !.flext/uv/local/pyproject.toml
 !.flext/uv/standalone/
 !.flext/uv/standalone/pyproject.toml
+!.flext/uv/editable/
+!.flext/uv/editable/pyproject.toml
 !.flext/uv/local/uv.lock
 !.flext/uv/standalone/uv.lock
+!.flext/uv/editable/uv.lock
+
+# RUNTIME: local projections (derived)
+/.flext/uv/editable/pyproject.toml

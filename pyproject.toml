@@ -134,39 +134,11 @@ dev = [
 ]
 codegen = []
 
-[tool.codespell]
-check-filenames = true
-ignore-words-list = "crate,nd"
-
-[tool.coverage.report]
-exclude_also = [
-  "if _t.TYPE_CHECKING:",
-  "if TYPE_CHECKING:",
-  "if typing.TYPE_CHECKING:",
-]
-precision = 2
-show_missing = true
-skip_covered = false
-
-[tool.coverage.run]
-source = ["src"]
-omit = [
-  "*/dependency_injector/providers.pyx",
-  "*/protocols.py",
-  "*/_protocols/*",
-]
-
-[tool.deptry]
-known_first_party = ["flext_infra"]
-
 [tool.flext.docs]
 package_name = "flext_infra"
 
 [tool.flext.namespace]
 scan_dirs = ["src"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 only-include = ["src/flext_infra"]
@@ -183,30 +155,59 @@ only-include = ["src/flext_infra"]
 [tool.hatch.build.targets.sdist.force-include]
 "pyproject.toml" = "pyproject.toml"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.codespell]
+check-filenames = true
+ignore-words-list = "crate,nd"
+
+[tool.coverage.report]
+exclude_also = [
+  "if _t.TYPE_CHECKING:",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
+]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.run]
+omit = [
+  "*/dependency_injector/providers.pyx",
+  "*/protocols.py",
+  "*/_protocols/*",
+]
+source = ["src"]
+
+[tool.deptry]
+known_first_party = ["flext_infra"]
+optional_dependencies_dev_groups = []
+
 [tool.mypy]
-mypy_path = ["src"]
-plugins = ["pydantic.mypy"]
-disable_error_code = ["prop-decorator", "call-arg"]
-python_version = "3.13"
 allow_redefinition = true
 check_untyped_defs = true
+disable_error_code = ["call-arg", "prop-decorator"]
 explicit_package_bases = true
 extra_checks = true
+follow_imports = "normal"
 follow_untyped_imports = true
 local_partial_types = true
+mypy_path = ["src"]
 namespace_packages = true
 no_implicit_reexport = true
+plugins = ["pydantic.mypy"]
+python_version = "3.13"
 show_traceback = true
 strict_equality = true
 warn_redundant_casts = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
-follow_imports = "normal"
 
 [[tool.mypy.overrides]]
-module = ["rope.*"]
 follow_untyped_imports = true
+module = ["rope.*"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -216,18 +217,59 @@ warn_required_dynamic_aliases = true
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
 project-excludes = [
+  "**/*.bak",
+  "**/*.egg-info/**",
+  "**/*.orig",
+  "**/*.rej",
+  "**/*.swp",
+  "**/.agents-sync-home/**",
+  "**/.agents/**",
+  "**/.archive/**",
+  "**/.beads/**",
+  "**/.benchmarks/**",
+  "**/.bkp/**",
+  "**/.cache/**",
+  "**/.claude/**",
+  "**/.codex/**",
+  "**/.cursor/**",
+  "**/.gemini/**",
+  "**/.git/**",
+  "**/.hypothesis/**",
+  "**/.kilo/**",
+  "**/.mypy_cache/**",
+  "**/.omo/**",
+  "**/.opencode/**",
+  "**/.pylance_cache/**",
+  "**/.pyrefly_cache/**",
+  "**/.pytest_cache/**",
+  "**/.reports/**",
+  "**/.ruff_cache/**",
+  "**/.serena/**",
+  "**/.snapshots/**",
+  "**/.test-tmp/**",
+  "**/.tmp/**",
+  "**/.tox/**",
+  "**/.venv.*/**",
   "**/.venv/**",
-  "**/__pycache__",
+  "**/.vscode/**",
+  "**/.worktrees/**",
+  "**/__pycache__/**",
   "**/__pyrefly_virtual__/**",
-  "**/node_modules",
+  "**/_tmp_*/**",
+  "**/build/**",
+  "**/dist-packages/**",
+  "**/dist/**",
+  "**/htmlcov/**",
+  "**/incoming/**",
+  "**/legado/**",
+  "**/node_modules/**",
   "**/protos/**",
+  "**/reports/**",
   "**/site-packages/**",
+  "**/site/**",
+  "**/target/**",
   "**/typings/**",
-  "**/vendor/**",
   "**/venv/**",
-  ".venv/**",
-  "typings/**",
-  "vendor/**",
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
@@ -338,54 +380,41 @@ exclude = [
   "**/.git/**",
   "**/.hypothesis/**",
   "**/.kilo/**",
-  "**/.mypy_cache",
   "**/.mypy_cache/**",
   "**/.omo/**",
   "**/.opencode/**",
   "**/.pylance_cache/**",
   "**/.pyrefly_cache/**",
-  "**/.pytest_cache",
   "**/.pytest_cache/**",
   "**/.reports/**",
-  "**/.ruff_cache",
   "**/.ruff_cache/**",
   "**/.serena/**",
   "**/.snapshots/**",
   "**/.test-tmp/**",
   "**/.tmp/**",
   "**/.tox/**",
-  "**/.venv",
   "**/.venv.*/**",
   "**/.venv/**",
   "**/.vscode/**",
   "**/.worktrees/**",
-  "**/__pycache__",
   "**/__pycache__/**",
   "**/__pyrefly_virtual__/**",
   "**/_tmp_*/**",
   "**/build/**",
-  "**/dist-packages",
   "**/dist-packages/**",
   "**/dist/**",
   "**/htmlcov/**",
   "**/incoming/**",
   "**/legado/**",
-  "**/node_modules",
   "**/node_modules/**",
   "**/protos/**",
   "**/reports/**",
-  "**/site-packages",
   "**/site-packages/**",
   "**/site/**",
   "**/target/**",
-  "**/venv",
   "**/venv/**",
-  ".git",
-  ".reports",
-  ".venv",
-  "vendor",
 ]
-extraPaths = [".", "src"]
+extraPaths = ["src", "."]
 include = ["conftest.py", "src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
@@ -424,13 +453,13 @@ addopts = [
   "--durations=10",
   "--flext-enforce-strict",
 ]
-flext_slow_timeout_seconds = "30"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
   "error",
   "module::flext_core._constants.enforcement.FlextMroViolation",
   "once::pytest.PytestAssertRewriteWarning",
 ]
+flext_slow_timeout_seconds = "30"
 markers = [
   "smoke: public-interface smoke tests",
   "unit: unit tests",
@@ -456,17 +485,62 @@ testpaths = ["tests"]
 
 [tool.ruff]
 extend-exclude = [
+  "**/*.bak",
+  "**/*.egg-info/**",
+  "**/*.orig",
+  "**/*.rej",
+  "**/*.swp",
+  "**/.agents-sync-home/**",
+  "**/.agents/**",
   "**/.archive/**",
-  "**/.agents/aihub-hooks/**",
-  "**/.claude/aihub-hooks/**",
-  "**/.codex/aihub-hooks/**",
-  "**/.cursor/aihub-hooks/**",
-  "**/.gemini/aihub-hooks/**",
+  "**/.beads/**",
+  "**/.benchmarks/**",
+  "**/.bkp/**",
+  "**/.cache/**",
+  "**/.claude/**",
+  "**/.codex/**",
+  "**/.cursor/**",
+  "**/.gemini/**",
+  "**/.git/**",
+  "**/.hypothesis/**",
+  "**/.kilo/**",
+  "**/.mypy_cache/**",
+  "**/.omo/**",
+  "**/.opencode/**",
+  "**/.pylance_cache/**",
+  "**/.pyrefly_cache/**",
+  "**/.pytest_cache/**",
+  "**/.reports/**",
+  "**/.ruff_cache/**",
+  "**/.serena/**",
+  "**/.snapshots/**",
+  "**/.test-tmp/**",
+  "**/.tmp/**",
+  "**/.tox/**",
+  "**/.venv.*/**",
+  "**/.venv/**",
+  "**/.vscode/**",
+  "**/.worktrees/**",
+  "**/__pycache__/**",
+  "**/__pyrefly_virtual__/**",
+  "**/_tmp_*/**",
+  "**/build/**",
+  "**/dist-packages/**",
+  "**/dist/**",
+  "**/htmlcov/**",
+  "**/incoming/**",
+  "**/legado/**",
+  "**/node_modules/**",
   "**/protos/**",
+  "**/reports/**",
+  "**/site-packages/**",
+  "**/site/**",
+  "**/target/**",
+  "**/venv/**",
 ]
 fix = false
 line-length = 88
-namespace-packages = ["tests", "examples", "scripts"]
+namespace-packages = ["examples", "scripts", "tests"]
 preview = true
 respect-gitignore = true
 show-fixes = true
@@ -482,16 +556,14 @@ skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
 extend-safe-fixes = [
-  "camelcase-imported-as-lowercase",
   "relative-imports",
   "typing-only-first-party-import",
+  "camelcase-imported-as-lowercase",
 ]
 extend-select = ["missing-blank-line-after-last-section"]
 ignore = [
-  "camelcase-imported-as-lowercase",
-  "implicit-namespace-package",
-  "missing-required-import",
   "missing-trailing-comma",
+  "non-empty-init-module",
   "runtime-import-in-type-checking-block",
   "typing-only-first-party-import",
   "typing-only-standard-library-import",
@@ -508,116 +580,6 @@ unfixable = [
 
 [tool.ruff.lint.flake8-copyright]
 notice-rgx = "Copyright \\(c\\) \\d{4} \\S[^\\n]*\\. All rights reserved\\."
-
-[tool.ruff.lint.flake8-type-checking]
-runtime-evaluated-base-classes = [
-  "flext_cli.FlextCli",
-  "flext_cli.FlextCliConfig",
-  "flext_cli.m.ArbitraryTypesModel",
-  "flext_cli.m.BaseModel",
-  "flext_cli.m.BaseSettings",
-  "flext_cli.m.ContractModel",
-  "flext_cli.m.FlexibleModel",
-  "flext_cli.m.FrozenModel",
-  "flext_cli.m.ImmutableValueModel",
-  "flext_cli.m.RootModel",
-  "flext_cli.m.Value",
-  "flext_core.FlextService",
-  "flext_core.FlextSettings",
-  "flext_core.m.ArbitraryTypesModel",
-  "flext_core.m.ContractModel",
-  "flext_core.m.FrozenModel",
-  "flext_core.m.RootModel",
-  "flext_core.m.StrictBoundaryModel",
-  "flext_infra.FlextInfraProjectSelectionServiceBase",
-  "flext_infra.FlextInfraServiceBase",
-  "flext_infra._models.FlextInfraModelsBase.FrozenArbitrary",
-  "flext_infra._models.FlextInfraModelsMiseToolchainBase",
-  "flext_infra._models.FlextInfraModelsMixins.AbsoluteFilePathTextMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ErrorDetailMixin",
-  "flext_infra._models.FlextInfraModelsMixins.FilePathMixin",
-  "flext_infra._models.FlextInfraModelsMixins.NestedClassPathMixin",
-  "flext_infra._models.FlextInfraModelsMixins.NonNegativeLineMixin",
-  "flext_infra._models.FlextInfraModelsMixins.PositiveLineMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ProjectEntryNameMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ProjectNameMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ProjectNamesListMixin",
-  "flext_infra._models.FlextInfraModelsMixins.RepositoryRootPathMixin",
-  "flext_infra._models.FlextInfraModelsMixins.RequiredNonNegativeLineMixin",
-  "flext_infra._models.FlextInfraModelsMixins.VersionTagMixin",
-  "flext_infra._models.FlextInfraModelsMixins.WriteMixin",
-  "flext_infra._models._codegen.fix.BulkFixItem",
-  "flext_infra._models._codegen.pipeline.CodegenCommand",
-  "flext_infra._models._config.artifact.CodegenGenerateRequest",
-  "flext_infra._models._config.contexts.MakeCommandContext",
-  "flext_infra._models._config.contexts.MakeRenderContext",
-  "flext_infra._models._config.contract.ConfigContract",
-  "flext_infra._models._config.contract.DocsAuditOverridesSpec",
-  "flext_infra._models._config.contract.FlextInfraConfigModelsContract.ConfigContract",
-  "flext_infra._models._config.external_cache.FlextInfraExternalCacheDirectorySpec",
-  "flext_infra._models._config.workspace.CandidateDependenciesSpec",
-  "flext_infra._models._config.workspace.DependencyGroupDeclarations",
-  "flext_infra._models._config.workspace.FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations",
-  "flext_infra._models.base.FlextInfraModelsBase.FrozenArbitrary",
-  "flext_infra._models.base.FrozenArbitrary",
-  "flext_infra._models.codegen_render.MkdocsRenderContext",
-  "flext_infra._models.gates.GateExecutionFacts",
-  "flext_infra._models.git.GitRemoteRequest",
-  "flext_infra._models.git.GitRepoRequest",
-  "flext_infra._models.mise_toolchain_base.FlextInfraModelsMiseToolchainBase",
-  "flext_infra._models.mixins.FilePathMixin",
-  "flext_infra._models.mixins.PositiveLineMixin",
-  "flext_infra._models.mixins.ScopeMixin",
-  "flext_infra._models.refactor.CensusOptions",
-  "flext_infra._models.scan.ModOccurrence",
-  "flext_infra._models.scan.ModOccurrenceReport",
-  "flext_infra._models.scan.ModScanCounts",
-  "flext_infra._models.scan.ModScanFinding",
-  "flext_infra._models.workspace.NativeImportObservation",
-  "flext_infra.base.s",
-  "flext_infra.codegen.FlextInfraCodegenConform",
-  "flext_infra.codegen.FlextInfraCodegenExecutionBase",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformArtifactRender",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformBeadsRoutes",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformBootstrap",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformContextRender",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformDocsOwnership",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformExecute",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformExecuteDirected",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformExecuteScaffold",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformExistingPlan",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformFilePlans",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformGitignore",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformPyprojectPolicy",
-  "flext_infra.codegen._conform.FlextInfraCodegenConformScaffoldPlan",
-  "flext_infra.codegen._conform.plan.FlextInfraCodegenConformPlan",
-  "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerBase",
-  "flext_infra.docs.FlextInfraDocServiceBase",
-  "flext_infra.m.ArbitraryTypesModel",
-  "flext_infra.m.FrozenModel",
-  "flext_infra.m.ImmutableValueModel",
-  "flext_infra.m.Infra.FrozenArbitrary",
-  "flext_infra.m.Value",
-  "flext_infra.maintenance.FlextInfraSonarcloudClient",
-  "flext_infra.release.FlextInfraReleaseArtifactMixin",
-  "flext_infra.release.FlextInfraReleaseBoundaryMixin",
-  "flext_infra.release.FlextInfraReleaseBuildMixin",
-  "flext_infra.release.FlextInfraReleaseMetadataMixin",
-  "flext_infra.release.FlextInfraReleasePlanMixin",
-  "flext_infra.release.FlextInfraReleaseProjectMixin",
-  "flext_infra.release.FlextInfraReleasePublishMixin",
-  "flext_infra.release.FlextInfraReleaseSourceMixin",
-  "flext_infra.s",
-  "flext_infra.services.FlextInfraCliDispatchService",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerBase",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerCommand",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerExecution",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerReports",
-  "flext_tests.FlextTestsModels.Tests",
-  "flext_tests.FlextTestsServiceBase",
-  "flext_tests.FlextTestsUtilities.Tests",
-  "pydantic.BaseModel",
-]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
@@ -637,83 +599,125 @@ msg = "Use cli.render_table from flext_cli."
 [tool.ruff.lint.flake8-tidy-imports.banned-api.typer]
 msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
 
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+  "flext_cli.FlextCli",
+  "flext_cli.FlextCliConfig",
+  "flext_cli.FlextCliModels",
+  "flext_cli.m.ArbitraryTypesModel",
+  "flext_cli.m.BaseModel",
+  "flext_cli.m.BaseSettings",
+  "flext_cli.m.ContractModel",
+  "flext_cli.m.FlexibleModel",
+  "flext_cli.m.FrozenModel",
+  "flext_cli.m.ImmutableValueModel",
+  "flext_cli.m.RootModel",
+  "flext_cli.m.Value",
+  "flext_core.FlextService",
+  "flext_core.FlextSettings",
+  "flext_core.m.ArbitraryTypesModel",
+  "flext_core.m.ContractModel",
+  "flext_core.m.FrozenModel",
+  "flext_core.m.RootModel",
+  "flext_core.m.StrictBoundaryModel",
+  "flext_infra.FlextInfraModels",
+  "flext_infra.FlextInfraProjectSelectionServiceBase",
+  "flext_infra.FlextInfraServiceBase",
+  "flext_infra._models.FlextInfraModelsBase.FrozenArbitrary",
+  "flext_infra._models.FlextInfraModelsMiseToolchainBase",
+  "flext_infra._models.FlextInfraModelsMixins.AbsoluteFilePathTextMixin",
+  "flext_infra._models.FlextInfraModelsMixins.ErrorDetailMixin",
+  "flext_infra._models.FlextInfraModelsMixins.FilePathMixin",
+  "flext_infra._models.FlextInfraModelsMixins.NestedClassPathMixin",
+  "flext_infra._models.FlextInfraModelsMixins.NonNegativeLineMixin",
+  "flext_infra._models.FlextInfraModelsMixins.PositiveLineMixin",
+  "flext_infra._models.FlextInfraModelsMixins.ProjectEntryNameMixin",
+  "flext_infra._models.FlextInfraModelsMixins.ProjectNameMixin",
+  "flext_infra._models.FlextInfraModelsMixins.ProjectNamesListMixin",
+  "flext_infra._models.FlextInfraModelsMixins.RepositoryRootPathMixin",
+  "flext_infra._models.FlextInfraModelsMixins.RequiredNonNegativeLineMixin",
+  "flext_infra._models.FlextInfraModelsMixins.VersionTagMixin",
+  "flext_infra._models.FlextInfraModelsMixins.WriteMixin",
+  "flext_infra._models._codegen.FlextInfraModelsCodegenTransactionModels.SemanticSourcePlan",
+  "flext_infra._models._codegen.pipeline.CodegenCommand",
+  "flext_infra._models._codegen.pipeline.CodegenSourceReceipt",
+  "flext_infra._models._config.FlextInfraConfigModelsContract.ConfigContract",
+  "flext_infra._models._config.artifact.CodegenGenerateRequest",
+  "flext_infra._models._config.contexts.MakeCommandContext",
+  "flext_infra._models._config.contract.ConfigContract",
+  "flext_infra._models._config.contract.DocsAuditOverridesSpec",
+  "flext_infra._models._config.contract.FlextInfraConfigModelsContract.ConfigContract",
+  "flext_infra._models._config.external_cache.FlextInfraExternalCacheDirectorySpec",
+  "flext_infra._models._config.workspace.CandidateDependenciesSpec",
+  "flext_infra._models._config.workspace.DependencyGroupDeclarations",
+  "flext_infra._models._config.workspace.FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations",
+  "flext_infra._models.base.FrozenArbitrary",
+  "flext_infra._models.codegen_render.MkdocsRenderContext",
+  "flext_infra._models.deps.ProjectDependencyReport",
+  "flext_infra._models.gates.GateExecutionFacts",
+  "flext_infra._models.git.GitRemoteRequest",
+  "flext_infra._models.git.GitRepoRequest",
+  "flext_infra._models.mise_toolchain_base.FlextInfraModelsMiseToolchainBase",
+  "flext_infra._models.mixins.FilePathMixin",
+  "flext_infra._models.mixins.PositiveLineMixin",
+  "flext_infra._models.mixins.ScopeMixin",
+  "flext_infra._models.refactor.CensusOptions",
+  "flext_infra._models.scan.ModOccurrence",
+  "flext_infra._models.scan.ModOccurrenceReport",
+  "flext_infra._models.scan.ModScanCounts",
+  "flext_infra._models.scan.ModScanFinding",
+  "flext_infra._models.workspace.NativeImportObservation",
+  "flext_infra.base.FlextInfraServiceBase",
+  "flext_infra.base.s",
+  "flext_infra.codegen.FlextInfraCodegenConform",
+  "flext_infra.codegen.FlextInfraCodegenExecutionBase",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformBeadsRoutes",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformBootstrap",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformContextRender",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformExistingPlan",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformFilePlans",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformPyprojectPolicy",
+  "flext_infra.codegen._conform.FlextInfraCodegenConformScaffoldPlan",
+  "flext_infra.codegen._conform.artifact_render.FlextInfraCodegenConformArtifactRender",
+  "flext_infra.codegen._conform.editor.FlextInfraCodegenConformEditor",
+  "flext_infra.codegen._conform.execute.FlextInfraCodegenConformExecute",
+  "flext_infra.codegen._conform.execute_directed.FlextInfraCodegenConformExecuteDirected",
+  "flext_infra.codegen._conform.execute_scaffold.FlextInfraCodegenConformExecuteScaffold",
+  "flext_infra.codegen._conform.plan.FlextInfraCodegenConformPlan",
+  "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerBase",
+  "flext_infra.docs.FlextInfraDocServiceBase",
+  "flext_infra.m.ArbitraryTypesModel",
+  "flext_infra.m.FrozenModel",
+  "flext_infra.m.ImmutableValueModel",
+  "flext_infra.m.Infra.CommandContext",
+  "flext_infra.m.Infra.FrozenArbitrary",
+  "flext_infra.m.Value",
+  "flext_infra.maintenance.FlextInfraSonarcloudClient",
+  "flext_infra.release.FlextInfraReleaseArtifactMixin",
+  "flext_infra.release.FlextInfraReleaseBoundaryMixin",
+  "flext_infra.release.FlextInfraReleaseBuildMixin",
+  "flext_infra.release.FlextInfraReleaseMetadataMixin",
+  "flext_infra.release.FlextInfraReleasePlanMixin",
+  "flext_infra.release.FlextInfraReleaseProjectMixin",
+  "flext_infra.release.FlextInfraReleasePublishMixin",
+  "flext_infra.release.FlextInfraReleaseSourceMixin",
+  "flext_infra.s",
+  "flext_infra.services.FlextInfraCliDispatchService",
+  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerBase",
+  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerCommand",
+  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerExecution",
+  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerReports",
+  "flext_tests.FlextTestsModels",
+  "flext_tests.FlextTestsModels.Tests",
+  "flext_tests.FlextTestsServiceBase",
+  "pydantic.BaseModel",
+]
+
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
 known-first-party = ["flext_infra"]
 split-on-trailing-comma = false
-
-[tool.ruff.lint.per-file-ignores]
-"**/.agents/skills/webapp-testing/scripts/with_server.py" = [
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-]
-"**/__init__.py" = ["line-too-long", "non-empty-init-module", "unused-import"]
-"**/_config.py" = ["invalid-function-name"]
-"**/bin/**" = [
-  "docstring-missing-exception",
-  "docstring-missing-returns",
-  "import-outside-top-level",
-  "line-too-long",
-  "magic-value-comparison",
-  "missing-copyright-notice",
-  "print",
-  "type-check-without-type-error",
-  "undocumented-public-method",
-  "unused-class-method-argument",
-]
-"**/docx.py" = ["import-outside-top-level"]
-"**/file_test_helpers.py" = ["line-too-long"]
-"**/flext_core/_models/pydantic.py" = [
-  "any-type",
-  "builtin-argument-shadowing",
-  "too-many-arguments",
-]
-"**/flextcliutilitiesfiletesthelpersmixin_part_03.py" = ["line-too-long"]
-"**/framework.py" = ["banned-api", "import-outside-top-level"]
-"**/pptx.py" = ["import-outside-top-level"]
-"**/test_public_contracts_cov.py" = ["line-too-long"]
-"**/tests/**" = [
-  "boolean-positional-value-in-call",
-  "boolean-type-hint-positional-argument",
-  "compare-to-empty-string",
-  "import-private-name",
-  "magic-value-comparison",
-  "mutable-class-default",
-  "no-self-use",
-  "private-member-access",
-  "pytest-fixture-autouse",
-  "too-many-public-methods",
-]
-"**/xlsx.py" = ["import-outside-top-level"]
-"scripts/**/*.py" = [
-  "commented-out-code",
-  "line-too-long",
-  "typing-only-first-party-import",
-]
-"src/flext_cli/_utilities/processes.py" = [
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-]
-"src/flext_cli/_utilities/runtime.py" = [
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-]
-"src/flext_tests/_utilities/environment.py" = [
-  "start-process-with-partial-path",
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-]
-"tests/**/*.py" = ["assert"]
-"tests/test_snapshot_drill.py" = ["import-private-name"]
-"tests/unit/test_capability_collection.py" = [
-  "line-too-long",
-  "missing-copyright-notice",
-  "start-process-with-partial-path",
-  "subprocess-without-shell-equals-true",
-  "suspicious-subprocess-import",
-  "undocumented-public-method",
-]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -740,10 +744,10 @@ section_whitelines = 1
 whitelines = 1
 
 [tool.uv]
-constraint-dependencies = ["mypy<2.4.0"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
 override-dependencies = [
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@2bf3ad55a32cc117f5321e1467695eba540be97b",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
