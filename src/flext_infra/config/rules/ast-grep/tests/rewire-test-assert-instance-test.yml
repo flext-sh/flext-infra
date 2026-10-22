@@ -1,0 +1,20 @@
+id: rewire-test-assert-instance
+valid:
+  - assert isinstance(value, Entry)
+  - |
+    from tests import tm
+    assert isinstance(self.value, Entry)
+  - |
+    from tests import tm
+    assert isinstance(value, (Entry, Schema))
+  - |
+    from tests import tm
+    assert isinstance(value, Entry), "An entry is required"
+invalid:
+  - |
+    from tests import tm
+    assert isinstance(value, Entry)
+  - |
+    from tests import tm
+    if not (isinstance(cfg, m.AiHub.McpConfig)):
+        raise AssertionError

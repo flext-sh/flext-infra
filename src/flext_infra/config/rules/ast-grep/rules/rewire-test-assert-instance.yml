@@ -1,0 +1,81 @@
+# A type guard on a plain name narrows through the matcher's return value:
+# tm.instance returns T, so rebinding the name keeps the narrowing an assert
+# gave Python type checkers in one statement, without a TRY004 native block.
+# Tuple kinds and attribute subjects keep rewire-test-assert-guard.yml.
+id: rewire-test-assert-instance
+language: Python
+severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - all:
+            - pattern: "assert isinstance($X, $KIND)"
+            - not:
+                has:
+                  nthChild: 2
+        - pattern: |-
+            if not (isinstance($X, $KIND)):
+                raise AssertionError
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  X:
+    kind: identifier
+  KIND:
+    not:
+      kind: tuple
+fix: $X = tm.instance($X, $KIND)
+message: Narrow a name to its type through the tm matcher's returned value.
+---
+id: rewire-test-assert-instance-message
+language: Python
+severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert isinstance($X, $KIND), $MSG"
+        - pattern: |-
+            if not (isinstance($X, $KIND)):
+                raise AssertionError($MSG)
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  X:
+    kind: identifier
+  KIND:
+    not:
+      kind: tuple
+fix: $X = tm.instance($X, $KIND, msg=$MSG)
+message: Narrow a name to its type through the tm matcher's returned value.
