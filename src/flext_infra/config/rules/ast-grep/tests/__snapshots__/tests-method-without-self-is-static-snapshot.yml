@@ -1,0 +1,124 @@
+id: tests-method-without-self-is-static
+snapshots:
+  ? |
+    class TestsSample:
+        @pytest.mark.parametrize("a", [1, 2])
+        def test_marked(self, a: int) -> None:
+            tm.that(a, gt=0)
+  : fixed: |
+      class TestsSample:
+          @pytest.mark.parametrize("a", [1, 2])
+          @staticmethod
+          def test_marked(a: int) -> None:
+              tm.that(a, gt=0)
+    labels:
+    - source: |-
+        def test_marked(self, a: int) -> None:
+                tm.that(a, gt=0)
+      style: primary
+      start: 65
+      end: 128
+    - source: self
+      style: secondary
+      start: 81
+      end: 85
+    - source: self
+      style: secondary
+      start: 81
+      end: 85
+    - source: |-
+        class TestsSample:
+            @pytest.mark.parametrize("a", [1, 2])
+            def test_marked(self, a: int) -> None:
+                tm.that(a, gt=0)
+      style: secondary
+      start: 0
+      end: 128
+    - source: |-
+        @pytest.mark.parametrize("a", [1, 2])
+            def test_marked(self, a: int) -> None:
+                tm.that(a, gt=0)
+      style: secondary
+      start: 23
+      end: 128
+    - source: |-
+        @pytest.mark.parametrize("a", [1, 2])
+            def test_marked(self, a: int) -> None:
+                tm.that(a, gt=0)
+      style: secondary
+      start: 23
+      end: 128
+  ? |
+    class TestsSample:
+        def test_no_parameters(self) -> None:
+            tm.that(1, eq=1)
+  : fixed: |
+      class TestsSample:
+          @staticmethod
+          def test_no_parameters() -> None:
+              tm.that(1, eq=1)
+    labels:
+    - source: |-
+        def test_no_parameters(self) -> None:
+                tm.that(1, eq=1)
+      style: primary
+      start: 23
+      end: 85
+    - source: self
+      style: secondary
+      start: 46
+      end: 50
+    - source: self
+      style: secondary
+      start: 46
+      end: 50
+    - source: |-
+        class TestsSample:
+            def test_no_parameters(self) -> None:
+                tm.that(1, eq=1)
+      style: secondary
+      start: 0
+      end: 85
+    - source: |-
+        def test_no_parameters(self) -> None:
+                tm.that(1, eq=1)
+      style: secondary
+      start: 23
+      end: 85
+  ? |
+    class TestsSample:
+        def test_plain(self, tmp_path: Path) -> None:
+            tm.that(tmp_path.name, ne="")
+  : fixed: |
+      class TestsSample:
+          @staticmethod
+          def test_plain(tmp_path: Path) -> None:
+              tm.that(tmp_path.name, ne="")
+    labels:
+    - source: |-
+        def test_plain(self, tmp_path: Path) -> None:
+                tm.that(tmp_path.name, ne="")
+      style: primary
+      start: 23
+      end: 106
+    - source: self
+      style: secondary
+      start: 38
+      end: 42
+    - source: self
+      style: secondary
+      start: 38
+      end: 42
+    - source: |-
+        class TestsSample:
+            def test_plain(self, tmp_path: Path) -> None:
+                tm.that(tmp_path.name, ne="")
+      style: secondary
+      start: 0
+      end: 106
+    - source: |-
+        def test_plain(self, tmp_path: Path) -> None:
+                tm.that(tmp_path.name, ne="")
+      style: secondary
+      start: 23
+      end: 106
