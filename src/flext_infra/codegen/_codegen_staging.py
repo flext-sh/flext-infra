@@ -9,6 +9,7 @@ from __future__ import annotations
 import stat
 from collections.abc import Callable, MutableMapping
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
@@ -16,8 +17,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, codegen, config, m, r, t, u
 from flext_infra.codegen import (
-    FlextInfraMiseArtifactsFiles as files,
-    FlextInfraMiseArtifactsProcess as process,
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsProcess,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -167,49 +168,8 @@ class FlextInfraCodegenStaging:
             ),
             None,
         )
-        if existing is not None:
-            if existing.version != 1 or not existing.source_query_topology:
-                return result_type.fail(
-                    "candidate preparation receipt has no root authority"
-                )
-            current = FlextInfraMiseArtifactsVerification.states_current(
-                existing.inputs
-            )
-            if current.failure:
-                return result_type.from_failure(current)
-            try:
-                queried = u.Cli.atomic_verify_directory_queries(
-                    existing.source_directories, existing.source_query_topology
-                )
-            except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
-                return result_type.fail(str(exc), exception=exc)
-            if queried.failure:
-                return result_type.from_failure(queried)
-            hashes = dict(existing.prepared_hashes)
-            if set(hashes) != {plan.path for plan in plans} or any(
-                plan.prepared_sources is not existing
-                or plan.source_states != existing.inputs
-                or plan.source_directories != existing.source_directories
-                or plan.source_query_topology != existing.source_query_topology
-                or hashes[plan.path]
-                != (
-                    None
-                    if plan.desired_content is None
-                    else u.Cli.sha256_bytes(plan.desired_content)
-                )
-                or plan.desired_mode != existing.modes.get(plan.path)
-                for plan in plans
-            ):
-                return result_type.fail("prepared source receipt cannot be reopened")
-            if prepare is None:
-                return result_type.ok(plans)
-            if not isinstance(existing, m.Infra.StageSourcePlan):
-                return result_type.fail(
-                    "prepared source receipt is not a stage source plan"
-                )
-            prepared = prepare(existing)
-        else:
-            planned = FlextInfraStagedPackage.plan_sources(
+        if existing is None:
+            prepared = FlextInfraStagedPackage.plan_sources(
                 workspace,
                 {
                     plan.path: (
@@ -232,25 +192,98 @@ class FlextInfraCodegenStaging:
                         item for plan in plans for item in plan.source_query_topology
                     ),
                 ),
-            )
-            if planned.failure:
-                return result_type.from_failure(planned)
-            prepared = (
-                FlextInfraStagedPackage.seal_sources(
-                    planned.value, planned.value.updates
+            ).flat_map(
+                lambda planned: (
+                    FlextInfraStagedPackage.seal_sources(planned, planned.updates)
+                    if prepare is None
+                    else prepare(planned)
                 )
-                if prepare is None
-                else prepare(planned.value)
             )
-        if prepared.failure:
-            return result_type.from_failure(prepared)
-        inputs = u.Infra.unique_states((
-            *sources.value,
-            *prepared.value.inputs,
-        ))
+        else:
+            reopened = cls._reopened_receipt(plans, existing)
+            if reopened.failure:
+                return result_type.from_failure(reopened)
+            if prepare is None:
+                return result_type.ok(plans)
+            if not isinstance(existing, m.Infra.StageSourcePlan):
+                return result_type.fail(
+                    "prepared source receipt is not a stage source plan"
+                )
+            prepared = prepare(existing)
+        return prepared.flat_map(
+            lambda receipt: cls._prepared_plans(plans, sources.value, receipt)
+        )
+
+    @staticmethod
+    def _reopened_receipt(
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        existing: p.Infra.StageSourceReceipt,
+    ) -> p.Result[bool]:
+        """Prove an earlier preparation receipt still describes these plans.
+
+        Args:
+            plans: Plans of the single owning project.
+            existing: The preparation receipt the plans already carry.
+
+        Returns:
+            Success while the receipt's authority, inputs, directory queries and
+            per-plan payload identities are unchanged.
+
+        """
+        if existing.version != 1 or not existing.source_query_topology:
+            return r[bool].fail("candidate preparation receipt has no root authority")
+        current = FlextInfraMiseArtifactsVerification.states_current(existing.inputs)
+        if current.failure:
+            return current
+        try:
+            queried = u.Cli.atomic_verify_directory_queries(
+                existing.source_directories, existing.source_query_topology
+            )
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return r[bool].fail(str(exc), exception=exc)
+        if queried.failure:
+            return r[bool].from_failure(queried)
+        hashes = dict(existing.prepared_hashes)
+        if set(hashes) != {plan.path for plan in plans} or any(
+            plan.prepared_sources is not existing
+            or plan.source_states != existing.inputs
+            or plan.source_directories != existing.source_directories
+            or plan.source_query_topology != existing.source_query_topology
+            or hashes[plan.path]
+            != (
+                None
+                if plan.desired_content is None
+                else u.Cli.sha256_bytes(plan.desired_content)
+            )
+            or plan.desired_mode != existing.modes.get(plan.path)
+            for plan in plans
+        ):
+            return r[bool].fail("prepared source receipt cannot be reopened")
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _prepared_plans(
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
+        prepared: m.Infra.StageSourcePlan,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Bind one project's plans to their sealed preparation receipt.
+
+        Args:
+            plans: Plans of the single owning project.
+            sources: The plans' original source states.
+            prepared: The sealed preparation receipt.
+
+        Returns:
+            Prepared plans with their composed source states, or the failure
+            when the receipt omitted an original input.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        inputs = u.Infra.unique_states((*sources, *prepared.inputs))
         if inputs.failure:
             return result_type.from_failure(inputs)
-        if inputs.value != prepared.value.inputs:
+        if inputs.value != prepared.inputs:
             return result_type.fail("prepared source receipt omitted original inputs")
         return result_type.ok(
             tuple(
@@ -258,14 +291,14 @@ class FlextInfraCodegenStaging:
                     update={
                         "desired_content": (
                             None
-                            if (content := prepared.value.updates[plan.path.resolve()])
+                            if (content := prepared.updates[plan.path.resolve()])
                             is None
                             else content.encode(c.DEFAULT_ENCODING)
                         ),
-                        "source_states": prepared.value.inputs,
-                        "source_directories": prepared.value.source_directories,
-                        "source_query_topology": prepared.value.source_query_topology,
-                        "prepared_sources": prepared.value,
+                        "source_states": prepared.inputs,
+                        "source_directories": prepared.source_directories,
+                        "source_query_topology": prepared.source_query_topology,
+                        "prepared_sources": prepared,
                     }
                 )
                 for plan in plans
@@ -344,9 +377,7 @@ class FlextInfraCodegenStaging:
                     config.Infra.codegen.fleet_worker_memory_gb
                 )
             ) as executor:
-                outcomes = tuple(
-                    executor.map(lambda project: admit(root, project), projects)
-                )
+                outcomes = tuple(executor.map(partial(admit, root), projects))
             return next(
                 (outcome for outcome in outcomes if outcome.failure),
                 r[bool].ok(value=True),
@@ -668,7 +699,7 @@ class FlextInfraCodegenStaging:
             project = next(
                 (
                     item
-                    for item in files.transaction_participants(layout)
+                    for item in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
                     if item.root == file_plan.project
                 ),
                 None,
@@ -677,7 +708,7 @@ class FlextInfraCodegenStaging:
                 return result_type.fail(
                     f"{phase} file has no transaction participant: {file_plan.path}",
                 )
-            current = files.read_state(file_plan.path, required=False)
+            current = FlextInfraMiseArtifactsFiles.read_state(file_plan.path, required=False)
             if current.failure:
                 return result_type.from_failure(current)
             before = current.value
@@ -937,7 +968,7 @@ class FlextInfraCodegenStaging:
         )
         if intent is None or mode is None:
             return result_type.fail("group preimage has no durable intention")
-        original = process.write_new(
+        original = FlextInfraMiseArtifactsProcess.write_new(
             original_path,
             content,
             mode,
@@ -945,7 +976,7 @@ class FlextInfraCodegenStaging:
         )
         if original.failure:
             return result_type.from_failure(original)
-        observed = files.read_state(original_path, required=True)
+        observed = FlextInfraMiseArtifactsFiles.read_state(original_path, required=True)
         if observed.failure:
             return result_type.from_failure(observed)
         return result_type.ok(observed.value)
@@ -979,7 +1010,7 @@ class FlextInfraCodegenStaging:
             return result_type.fail(
                 f"replacement has no durable intention: {staged_path}",
             )
-        staged = process.write_new(
+        staged = FlextInfraMiseArtifactsProcess.write_new(
             staged_path,
             desired_content,
             desired_mode,
@@ -987,7 +1018,7 @@ class FlextInfraCodegenStaging:
         )
         if staged.failure:
             return result_type.from_failure(staged)
-        staged_state = files.read_state(staged_path, required=True)
+        staged_state = FlextInfraMiseArtifactsFiles.read_state(staged_path, required=True)
         if staged_state.failure:
             return result_type.from_failure(staged_state)
         return result_type.ok(staged_state.value)

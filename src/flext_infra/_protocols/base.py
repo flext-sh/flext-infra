@@ -1248,7 +1248,7 @@ class FlextInfraProtocolsBase(Protocol):
         def generate_typing_packages(
             self,
             repository_root: Path,
-            modules: t.StrSequence,
+            projects: t.SequenceOf[Path],
             policy: m.Infra.TypingGenerationPolicy,
         ) -> p.Result[t.VariadicTuple[Path]]:
             """Generate and install PEP 561 packages in the owning environment."""

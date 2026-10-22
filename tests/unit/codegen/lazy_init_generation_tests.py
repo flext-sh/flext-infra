@@ -273,7 +273,7 @@ class TestsFlextInfraCodegenGeneration:
         """A generated singleton map stays valid across formatter and lint gates."""
         export = "FlextCliProtocolsBase"
         package_name = u.Infra.project_package_name(Path.cwd())
-        owner = f"{package_name}._protocols._base_parts.flextcliprotocolsbase_part_05"
+        owner = f"{package_name}._protocols._base.flextcliprotocolsbase_part_05"
         eager = (
             {"__version__": (f"{package_name}.__version__", "__version__")}
             if with_eager_version

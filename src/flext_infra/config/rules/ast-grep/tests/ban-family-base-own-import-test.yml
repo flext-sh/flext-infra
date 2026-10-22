@@ -1,11 +1,11 @@
 id: ban-family-base-own-import
 valid:
   - |
-    from flext_core._models._base_parts.flextmodelsbase_part_03 import FlextModelsBasePart
+    from flext_core._models._base.flextmodelsbase_part_03 import FlextModelsBasePart
   - |
-    import flext_core._models._base_parts.flextmodelsbase_part_03
+    import flext_core._models._base.flextmodelsbase_part_03
   - |
-    import flext_core._models._base_parts.flextmodelsbase_part_03 as model_part
+    import flext_core._models._base.flextmodelsbase_part_03 as model_part
 invalid:
   - |
     if TYPE_CHECKING:

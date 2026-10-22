@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import time
 import traceback
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Generator, MutableMapping
+from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
 from typing import Literal
@@ -29,6 +30,100 @@ from flext_infra.workspace import (
 
 class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     """Conformance planning for existing repositories and governed artifacts."""
+
+    _source_views: (
+        t.Pair[
+            ExitStack,
+            t.MutableMappingKV[
+                t.Pair[Path, frozenset[t.Pair[Path, bytes | None]]],
+                t.Triple[
+                    p.Infra.RopeProject,
+                    Callable[
+                        [],
+                        t.Triple[
+                            tuple[m.Cli.AtomicFileState, ...],
+                            tuple[m.Cli.AtomicDirectoryInventory, ...],
+                            tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                        ],
+                    ],
+                    t.MappingKV[Path, str],
+                ],
+            ],
+        ]
+        | None
+    ) = m.PrivateAttr(default=None)
+
+    @contextmanager
+    def shared_source_views(self) -> Generator[None]:
+        """Keep each distinct source view of one repository plan open once.
+
+        Every planning phase of the repository binds through this scope, so
+        phases whose declared plans carry the same effects share one native
+        Rope project and its inference instead of rebuilding it. Each view
+        verifies its consumed sources when the scope closes.
+
+        Yields:
+            Nothing; the scope is active until the repository plan completes.
+
+        """
+        with ExitStack() as stack:
+            self._source_views = (stack, {})
+            try:
+                yield
+            finally:
+                self._source_views = None
+
+    @contextmanager
+    def _source_view(
+        self,
+        root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+    ) -> Generator[
+        t.Triple[
+            p.Infra.RopeProject,
+            Callable[
+                [],
+                t.Triple[
+                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[m.Cli.AtomicDirectoryInventory, ...],
+                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                ],
+            ],
+            t.MappingKV[Path, str],
+        ]
+    ]:
+        """Bind the source view the declared effects determine, opening it once.
+
+        Plans without an effect equal the physical tree, so only the effective
+        declared payloads distinguish one view from another.
+
+        Yields:
+            The shared native project, original-state reader and planned sources.
+
+        Raises:
+            RuntimeError: If no repository planning scope is open.
+
+        """
+        if self._source_views is None:
+            msg = "source views require an open repository planning scope"
+            raise RuntimeError(msg)
+        stack, opened = self._source_views
+        key = (
+            root,
+            frozenset(
+                (plan.path, plan.desired_content)
+                for plan in declared_files
+                if u.Infra.codegen_file_requires_effect(plan)
+            ),
+        )
+        if key not in opened:
+            opened[key] = stack.enter_context(
+                u.Infra.facade_source_project(
+                    root, source_states=source_states, declared_files=declared_files
+                )
+            )
+        yield opened[key]
 
     def _plan_existing_repository(
         self,
@@ -349,12 +444,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     initial[1],
                 )
             )
+        started = time.monotonic()
         if contract.custom:
             lazy_result = lazy_result.flat_map(
                 lambda initial: self._existing_protocol_sources(root, project, initial)
             )
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
+        u.Cli.info(
+            f"  stage=protocols repository={root.name} "
+            f"elapsed={time.monotonic() - started:.2f}s"
+        )
         cohort = tuple(
             {
                 plan.path: plan
@@ -364,6 +464,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 )
             }.values()
         )
+        started = time.monotonic()
         with u.Infra.facade_source_project(
             root,
             source_states=lazy_result.value[1],
@@ -393,6 +494,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ))
             if custom_inputs.failure:
                 return result_type.from_failure(custom_inputs)
+        u.Cli.info(
+            f"  stage=custom-facades repository={root.name} "
+            f"elapsed={time.monotonic() - started:.2f}s"
+        )
         projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
         exported: t.SequenceOf[m.Infra.CodegenFilePlan] = ()
         projected_inputs = custom_inputs.value
@@ -500,6 +605,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             source_states=initial[1],
             declared_files=tuple(initial[0]),
         ) as binding:
+            started = time.monotonic()
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
                 rope_repository_root=Path(binding[0].root.real_path),
@@ -508,6 +614,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 rendered = FlextInfraCodegenProtocolModels.render_modules(
                     project, workspace
                 )
+            u.Cli.info(
+                f"  stage=protocol-models repository={root.name} "
+                f"elapsed={time.monotonic() - started:.2f}s"
+            )
             if rendered.failure:
                 return result_type.from_failure(rendered)
             states, directories, topology = binding[1]()
@@ -588,10 +698,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
+        started = time.monotonic()
         rendered = self._render_existing_protocol_plans(root, project, initial)
         if rendered.failure:
             return result_type.from_failure(rendered)
         protocols, identities = rendered.value
+        u.Cli.info(
+            f"  stage=protocol-render repository={root.name} "
+            f"protocols={len(protocols)} elapsed={time.monotonic() - started:.2f}s"
+        )
         if not protocols:
             return result_type.ok(initial)
         changed = {plan.path: plan for plan in protocols}

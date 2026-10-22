@@ -63,7 +63,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             )
             if project_result.failure:
                 return r[bool].from_failure(project_result)
-        return self._finalize_run(params, report_model, venv_bin, limits_path)
+        return self._finalize_run(params, report_model, venv_bin, limits_path, projects)
 
     def _finalize_run(
         self,
@@ -71,6 +71,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         report_model: m.Infra.WorkspaceDependencyReport,
         venv_bin: Path,
         limits_path: Path,
+        projects: t.SequenceOf[Path],
     ) -> p.Result[bool]:
         """Publish the typed report and return its actual dependency verdict.
 
@@ -81,12 +82,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         if params.apply and params.apply_typings:
             generated = self._deps.generate_typing_packages(
                 u.Infra.runtime_owner_root(params.repository_root).unwrap(),
-                tuple(
-                    module
-                    for project in report_model.projects.values()
-                    if project.typings is not None
-                    for module in project.typings.untyped_modules
-                ),
+                projects,
                 m.Infra.TypingGenerationPolicy.model_validate(
                     t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                         self._deps.load_dependency_limits(limits_path).get(

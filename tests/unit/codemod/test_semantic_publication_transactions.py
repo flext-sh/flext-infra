@@ -538,19 +538,16 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 raise failure
             return r[bool].fail(str(failure), exception=failure)
 
+        options = m.Infra.SemanticPublicationOptions(validator=reject)
         if raises:
             with pytest.raises(RuntimeError) as raised:
                 publication.publish_semantic_file_plans(
-                    (),
-                    repository_root=mod_workspace,
-                    options=m.Infra.SemanticPublicationOptions(validator=reject),
+                    (), repository_root=mod_workspace, options=options
                 )
             tm.ok(raised.value is failure)
         else:
             rejected = publication.publish_semantic_file_plans(
-                (),
-                repository_root=mod_workspace,
-                options=m.Infra.SemanticPublicationOptions(validator=reject),
+                (), repository_root=mod_workspace, options=options
             )
             tm.fail(rejected, has=str(failure))
             tm.ok(rejected.exception is failure)

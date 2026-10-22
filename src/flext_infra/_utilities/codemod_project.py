@@ -694,9 +694,10 @@ class FlextInfraUtilitiesCodemodProject(
                 admission, condition, source, project, sources
             )
         # One epoch owns one implementation closure per primitive, for every finding.
-        owners = cls._implementation_owner_cache.get()
-        if owners is None:
-            owners = dict[t.VariadicTuple[str], t.Infra.RopeImplementationPaths]()
+        cached = cls._implementation_owner_cache.get()
+        owners: t.MutableMappingKV[
+            t.VariadicTuple[str], t.Infra.RopeImplementationPaths
+        ] = {} if cached is None else cached
         key = tuple(condition.arg)
         if key not in owners:
             owners[key] = cls.implementation_owner_modules(project, condition, sources)
@@ -1720,32 +1721,61 @@ class FlextInfraUtilitiesCodemodProject(
         """
         found: list[t.Infra.RopeResource] = []
         for declared, names in imports:
-            level = 0 if declared is None else len(declared) - len(declared.lstrip("."))
-            module_name = "" if declared is None else declared[level:]
-            targets = names
-            if declared is not None:
-                package = cls._snapshot_imported_resource(
-                    project, folder, module_name, level=level, lookup=lookup
+            if declared is None:
+                found.extend(
+                    cls._snapshot_named_resources(project, folder, names, 0, lookup)
                 )
-                if package is not None:
-                    found.append(package)
-                # ``from M import N`` names a submodule only when M is a package.
-                targets = (
-                    tuple(
-                        f"{module_name}.{name}" if module_name else name
-                        for name in names
-                        if name != "*"
+                continue
+            level = len(declared) - len(declared.lstrip("."))
+            module_name = declared[level:]
+            package = cls._snapshot_imported_resource(
+                project, folder, module_name, level=level, lookup=lookup
+            )
+            if package is None:
+                continue
+            found.append(package)
+            # ``from M import N`` names a submodule only when M is a package.
+            if package.is_folder():
+                found.extend(
+                    cls._snapshot_named_resources(
+                        project,
+                        folder,
+                        tuple(
+                            f"{module_name}.{name}" if module_name else name
+                            for name in names
+                            if name != "*"
+                        ),
+                        level,
+                        lookup,
                     )
-                    if package is not None and package.is_folder()
-                    else ()
                 )
-            for name in targets:
-                imported = cls._snapshot_imported_resource(
+        return found
+
+    @classmethod
+    def _snapshot_named_resources(
+        cls,
+        project: p.Infra.RopeProject,
+        folder: p.Infra.RopeRoot,
+        names: t.StrSequence,
+        level: int,
+        lookup: t.Infra.RopeImportLookup,
+    ) -> list[t.Infra.RopeResource]:
+        """Resolve each imported name in one statement's search scope.
+
+        Returns:
+            The resources Rope finds for the names, in declaration order.
+
+        """
+        return [
+            imported
+            for name in names
+            if (
+                imported := cls._snapshot_imported_resource(
                     project, folder, name, level=level, lookup=lookup
                 )
-                if imported is not None:
-                    found.append(imported)
-        return found
+            )
+            is not None
+        ]
 
     @staticmethod
     def _regular_package(resource: t.Infra.RopeResource | None) -> bool:
@@ -1789,15 +1819,34 @@ class FlextInfraUtilitiesCodemodProject(
         if not level and (top, "", 0) not in lookup:
             owner = project.find_module(top)
             lookup[top, "", 0] = owner if cls._regular_package(owner) else None
-        if level or lookup[top, "", 0] is None:
-            key = (name, folder.real_path, level)
-            if key not in lookup:
-                lookup[key] = (
-                    project.find_relative_module(name, folder, level)
-                    if level
-                    else project.find_module(name, folder)
-                )
-            return lookup[key]
+        if not level and lookup[top, "", 0] is not None:
+            return cls._snapshot_owned_resource(project, folder, name, lookup)
+        key = (name, folder.real_path, level)
+        if key not in lookup:
+            lookup[key] = (
+                project.find_relative_module(name, folder, level)
+                if level
+                else project.find_module(name, folder)
+            )
+        return lookup[key]
+
+    @classmethod
+    def _snapshot_owned_resource(
+        cls,
+        project: p.Infra.RopeProject,
+        folder: p.Infra.RopeRoot,
+        name: str,
+        lookup: t.Infra.RopeImportLookup,
+    ) -> t.Infra.RopeResource | None:
+        """Resolve an absolute name whose top-level module Rope owns globally.
+
+        Each dotted segment resolves inside its regular parent package exactly
+        as Rope's own search does; a namespace parent keeps Rope's full search.
+
+        Returns:
+            The imported module resource, or ``None`` when Rope cannot find it.
+
+        """
         if (name, "", 0) not in lookup:
             head, _, tail = name.rpartition(".")
             parent = cls._snapshot_imported_resource(

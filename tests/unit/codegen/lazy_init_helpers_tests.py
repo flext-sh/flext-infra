@@ -279,7 +279,7 @@ class TestsFlextInfraLazyInitHelpers:
         """Keep even a final implementation facade private below the root."""
         repository_root, package_root = self._workspace(tmp_path)
         models_dir = package_root / "_models"
-        parts_dir = models_dir / "_base_parts"
+        parts_dir = models_dir / "_base"
         parts_dir.mkdir(parents=True)
         for package_dir in (models_dir, parts_dir):
             package_dir.joinpath(c.Infra.INIT_PY).write_text(
@@ -293,7 +293,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.DEFAULT_ENCODING,
         )
         models_dir.joinpath("base.py").write_text(
-            "from ._base_parts.flextdemomodelsbase_part_01 import "
+            "from ._base.flextdemomodelsbase_part_01 import "
             "FlextDemoModelsBase as FlextDemoModelsBasePart01\n\n"
             "class FlextDemoModelsBase(FlextDemoModelsBasePart01):\n"
             '    """Public facade."""\n\n'
@@ -306,7 +306,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(generated, lacks="FlextDemoModelsBase")
         tm.that(generated, lacks="._models.base")
-        tm.that(generated, lacks="._models._base_parts.flextdemomodelsbase_part_01")
+        tm.that(generated, lacks="._models._base.flextdemomodelsbase_part_01")
 
     def test_explicit_all_exports_keep_public_aliases_only(
         self,

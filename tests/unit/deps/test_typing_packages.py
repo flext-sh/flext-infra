@@ -188,6 +188,7 @@ class TestsFlextInfraTypingPackages:
         manifest = root / c.PYPROJECT_FILENAME
         manifest.write_text(
             manifest.read_text(encoding=c.DEFAULT_ENCODING)
+            + f'\n[dependency-groups]\ndev = ["{package.name}"]\n'
             + f"\n[tool.uv.sources]\n{package.name} = "
             + f'{{path = "{package.relative_to(root).as_posix()}"}}\n',
             encoding=c.DEFAULT_ENCODING,
@@ -213,13 +214,32 @@ class TestsFlextInfraTypingPackages:
             ).failure,
             eq=True,
         )
-        # No detected module or installed stub entrypoint nominates this package.
-        refreshed = tm.ok(producer.generate_typing_packages(root, (), policy))
-        tm.that(package in refreshed, eq=True)
-        tm.that(stub.read_bytes(), eq=files[Path("packaging-stubs") / c.Infra.INIT_PYI])
+        stub.write_bytes(files[Path("packaging-stubs") / c.Infra.INIT_PYI])
         cls._validate_local_provenance(root, policy, package)
         cls._reject_corrupt_provenance(
             root, policy, package, files[Path(c.PYPROJECT_FILENAME)]
+        )
+        cls._retire_unimported_package(root, policy, package)
+
+    @staticmethod
+    def _retire_unimported_package(
+        root: Path, policy: m.Infra.TypingGenerationPolicy, package: Path
+    ) -> None:
+        """A declared and installed earlier output never resurrects its root.
+
+        The project imports only typed distributions, so the stale package
+        is retired from the declaration and the tree instead of regenerated,
+        and a second run is a fixed point.
+        """
+        producer = deps.FlextInfraDependencyDetectionService
+        tm.that(tm.ok(producer.generate_typing_packages(root, (root,), policy)), eq=())
+        tm.that(package.exists(), eq=False)
+        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(package.name in manifest, eq=False)
+        tm.that(tm.ok(producer.generate_typing_packages(root, (root,), policy)), eq=())
+        tm.that(
+            (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+            eq=manifest,
         )
 
     @staticmethod

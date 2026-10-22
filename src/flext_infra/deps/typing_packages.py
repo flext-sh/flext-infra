@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import sys
 from importlib.machinery import PathFinder
 from importlib.util import resolve_name
 from pathlib import Path
@@ -39,10 +40,16 @@ class FlextInfraDependencyTypingPackages:
     def generate_typing_packages(
         cls,
         repository_root: Path,
-        modules: t.StrSequence,
+        projects: t.SequenceOf[Path],
         policy: m.Infra.TypingGenerationPolicy,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Refresh generated packages and declare their native path dependencies.
+
+        Only an untyped distribution that first-party sources of ``projects``
+        import now elects a package. A declared or installed package of an
+        earlier run nominates nothing: when its module is no longer elected,
+        its declaration and owned sources are retired, and the environment
+        owner's exact sync removes its install.
 
         Returns:
             Source directories declared for Make's native resolution and install.
@@ -51,70 +58,170 @@ class FlextInfraDependencyTypingPackages:
         document = u.Cli.toml_read_document(
             repository_root / c.PYPROJECT_FILENAME
         ).unwrap()
-        declared = u.Infra.generated_typing_packages(
-            document, root=repository_root, policy=policy, for_generation=True
-        ).unwrap()
         environment = FlextInfraBindingService.consumer_package_environment(
             consumer_root=repository_root,
             python=u.Infra.runtime_python(repository_root),
             packages=(),
         ).unwrap()
-        installed = u.installed_distributions(
-            path=tuple(str(path) for path in environment.metadata_paths)
+        demand = cls._untyped_imports(
+            projects,
+            {
+                package.metadata["Name"]: tuple(
+                    path.parts for path in package.files or ()
+                )
+                for package in u.installed_distributions(
+                    path=tuple(str(path) for path in environment.metadata_paths)
+                )
+                if not canonicalize_name(package.metadata["Name"]).startswith(
+                    canonicalize_name(policy.distribution_prefix)
+                )
+            },
         )
+        stale = tuple(
+            package
+            for package in u.Infra.generated_typing_packages(
+                document, root=repository_root, policy=policy, for_generation=True
+            ).unwrap()
+            if package.module not in demand
+        )
+        if not demand and not stale:
+            return r[t.VariadicTuple[Path]].ok(())
+        with u.Infra.codegen_transaction_lease(
+            repository_root / policy.directory / "packages"
+        ):
+            if stale:
+                cls._run_uv(
+                    repository_root,
+                    "remove",
+                    tuple(package.distribution for package in stale),
+                )
+                for package in stale:
+                    cls._retire_typing_package(package.path)
+            if not demand:
+                return r[t.VariadicTuple[Path]].ok(())
+            u.Cli.info(f"typings: generating {len(demand)} external package(s)")
+            packages = tuple(
+                cls.generate_typing_package(repository_root, module, policy, providers)
+                for module, providers in sorted(demand.items())
+            )
+            cls._run_uv(
+                repository_root,
+                "add",
+                tuple(str(path.relative_to(repository_root)) for path in packages),
+            )
+        return r[t.VariadicTuple[Path]].ok(packages)
+
+    @staticmethod
+    def _untyped_imports(
+        projects: t.SequenceOf[Path],
+        installed: t.MappingKV[str, t.SequenceOf[t.StrSequence]],
+    ) -> t.MappingKV[str, t.StrSequence]:
+        """Elect untyped installed roots from the first-party import graph.
+
+        A root is typed when its distribution marks it ``py.typed`` or another
+        installed distribution publishes its ``-stubs`` package; standard,
+        relative, first-party and uninstalled roots elect nothing.
+
+        Args:
+            projects: First-party project roots whose Python sources import.
+            installed: Installed distribution names with their file path parts,
+                excluding the producer's own generated distributions.
+
+        Returns:
+            Each elected root with the distributions providing it.
+
+        """
         roots = {
             name.split(".", maxsplit=1)[0]
+            for project in projects
+            for path in u.Infra.discover_python_files(
+                project, workspace_excluded_top_dirs=frozenset()
+            )
+            if path.suffix == ".py"
+            for node in ast.walk(ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING)))
             for name in (
-                *modules,
-                *(item.module for item in declared),
-                *(
-                    item.value
-                    for package in installed
-                    for item in package.entry_points
-                    if item.group == c.Infra.TYPING_STUB_ENTRY_POINT_GROUP
-                ),
+                (alias.name for alias in node.names)
+                if isinstance(node, ast.Import)
+                else (node.module or "",)
+                if isinstance(node, ast.ImportFrom) and not node.level
+                else ()
             )
         }
-        if not roots:
-            return r[t.VariadicTuple[Path]].ok(())
-        u.Cli.info(f"typings: generating {len(roots)} external package(s)")
-        destination = repository_root / policy.directory
-        with u.Infra.codegen_transaction_lease(destination / "packages"):
-            packages = tuple(
-                cls.generate_typing_package(
-                    repository_root,
-                    module,
-                    policy,
-                    tuple(
-                        package.metadata["Name"]
-                        for package in installed
-                        if any(
-                            path.parts[0] in {module, f"{module}.py"}
-                            for path in package.files or ()
-                        )
-                    ),
+        elected: dict[str, t.StrSequence] = {}
+        for root in sorted(roots - set(sys.stdlib_module_names) - {""}):
+            providers = tuple(
+                name
+                for name, paths in installed.items()
+                if any(parts[0] in {root, f"{root}.py"} for parts in paths)
+            )
+            if (
+                root.startswith(c.Infra.INTERNAL_PREFIXES)
+                or not providers
+                or any(
+                    parts[0] == f"{root}-stubs"
+                    or tuple(parts) == (root, c.Infra.PY_TYPED)
+                    for paths in installed.values()
+                    for parts in paths
                 )
-                for module in sorted(roots)
-            )
-            installed = u.Cli.run(
-                [
-                    settings.Infra.uv_executable or c.Infra.UV,
-                    "add",
-                    "--project",
-                    str(repository_root),
-                    "--group",
-                    c.Infra.DEV,
-                    "--frozen",
-                    "--no-workspace",
-                    "--",
-                    *(str(path.relative_to(repository_root)) for path in packages),
-                ],
-                cwd=repository_root,
-                timeout=c.Infra.TIMEOUT_MEDIUM,
-            )
-            if installed.failure:
-                return r[t.VariadicTuple[Path]].from_failure(installed)
-        return r[t.VariadicTuple[Path]].ok(packages)
+            ):
+                continue
+            elected[root] = providers
+        return elected
+
+    @staticmethod
+    def _run_uv(root: Path, verb: str, arguments: t.StrSequence) -> None:
+        """Declare or retire producer-owned development sources through native UV.
+
+        Raises:
+            RuntimeError: If UV rejects the declaration change.
+
+        """
+        result = u.Cli.run(
+            [
+                settings.Infra.uv_executable or c.Infra.UV,
+                verb,
+                "--project",
+                str(root),
+                "--group",
+                c.Infra.DEV,
+                "--frozen",
+                "--no-workspace",
+                "--",
+                *arguments,
+            ],
+            cwd=root,
+            timeout=c.Infra.TIMEOUT_MEDIUM,
+        )
+        if result.failure:
+            msg = f"uv {verb} of generated typing packages failed: {result.error}"
+            raise RuntimeError(msg)
+
+    @staticmethod
+    def _retire_typing_package(package_root: Path) -> None:
+        """Delete one retired distribution after proving it owns every file.
+
+        Raises:
+            ValueError: If any file under ``package_root`` is not producer-owned.
+
+        """
+        states = tuple(
+            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            for path in sorted(package_root.rglob("*"))
+            if path.is_file()
+        )
+        for state in states:
+            if state.content is None or not state.content.startswith(
+                c.Infra.TYPING_STUB_HEADER.encode(c.DEFAULT_ENCODING)
+            ):
+                msg = f"typing retirement does not own {state.path}"
+                raise ValueError(msg)
+        for state in states:
+            u.Cli.atomic_delete_binary_file_guarded(state).unwrap()
+        for directory in sorted(
+            (path for path in package_root.rglob("*") if path.is_dir()), reverse=True
+        ):
+            directory.rmdir()
+        package_root.rmdir()
 
     @staticmethod
     def authenticated_typing_sources(

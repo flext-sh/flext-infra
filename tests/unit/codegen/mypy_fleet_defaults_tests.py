@@ -207,8 +207,8 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
 
     @staticmethod
     def test_mypy_path_projection_converges_before_path_sync(tmp_path: Path) -> None:
-        """The table phase retains elected roots before sync and repeated
-        conformance."""
+        """The table phase retains elected roots before sync and repeated conformance.
+        """
         tooling = config.Infra.tooling
         source_dir = tooling.tools.pyrefly.path_rules.source_dir
         package = tmp_path / source_dir / "arbitrary_package"

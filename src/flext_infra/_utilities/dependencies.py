@@ -570,39 +570,61 @@ class FlextInfraUtilitiesDependencies(
         if len(manifests) != len(planned_manifests):
             msg = "workspace declares duplicate planned manifest paths"
             raise ValueError(msg)
-        graph: t.MutableMappingKV[str, t.StrSequence] = {}
-        for name, repository in by_name.items():
-            project = (root / repository.path).resolve()
-            path = project / c.PYPROJECT_FILENAME
-            plan = manifests.get(path)
-            if plan is None:
-                physical = u.Cli.toml_read_json(path)
-                if physical.failure:
-                    raise ValueError(physical.error) from physical.exception
-                payload = physical.value
-            else:
-                if plan.project.resolve() != project or plan.desired_content is None:
-                    msg = f"planned manifest has no owning payload: {path}"
-                    raise ValueError(msg)
-                payload = u.Cli.toml_mapping_from_text(
-                    plan.desired_content.decode(c.DEFAULT_ENCODING),
-                )
-                if payload is None:
-                    msg = f"invalid planned manifest: {path}"
-                    raise ValueError(msg)
-            graph[name] = tuple(
+        graph = {
+            name: tuple(
                 dependency
                 for dependency in cls.project_dependency_names_from_payload(
-                    payload,
+                    cls._workspace_manifest_payload(
+                        (root / repository.path).resolve(), manifests
+                    ),
                 )
                 if dependency in by_name
             )
+            for name, repository in by_name.items()
+        }
         waves = cls.dependency_waves(graph)
         if waves.failure:
             raise ValueError(waves.error)
         return tuple(
             tuple(by_name[name].distribution for name in wave) for wave in waves.value
         )
+
+    @staticmethod
+    def _workspace_manifest_payload(
+        project: Path,
+        manifests: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+    ) -> t.JsonMapping:
+        """Read one project's dependency manifest, planned payload first.
+
+        Args:
+            project: The resolved project root.
+            manifests: Planned manifests indexed by resolved path.
+
+        Returns:
+            The planned manifest payload, or the physical one when unplanned.
+
+        Raises:
+            ValueError: If the manifest cannot be read, or a planned manifest has
+                no owning payload or does not parse.
+
+        """
+        path = project / c.PYPROJECT_FILENAME
+        plan = manifests.get(path)
+        if plan is None:
+            physical = u.Cli.toml_read_json(path)
+            if physical.failure:
+                raise ValueError(physical.error) from physical.exception
+            return physical.value
+        if plan.project.resolve() != project or plan.desired_content is None:
+            msg = f"planned manifest has no owning payload: {path}"
+            raise ValueError(msg)
+        payload = u.Cli.toml_mapping_from_text(
+            plan.desired_content.decode(c.DEFAULT_ENCODING),
+        )
+        if payload is None:
+            msg = f"invalid planned manifest: {path}"
+            raise ValueError(msg)
+        return payload
 
     @staticmethod
     def dependency_waves[NameT: str](

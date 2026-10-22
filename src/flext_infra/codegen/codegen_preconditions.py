@@ -23,14 +23,13 @@ from typing import TYPE_CHECKING
 
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournalRelocation,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.utilities import FlextInfraUtilities as u
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -232,8 +231,7 @@ class FlextInfraCodegenPreconditions:
         return cls._sealed_source_authority(
             names,
             roots,
-            trees,
-            states,
+            (trees, states),
             bootstrap_inputs=owned.value,
             repository_root=repository_root.resolve(),
         ).map(lambda authority: (authority, observed.value))
@@ -669,8 +667,10 @@ class FlextInfraCodegenPreconditions:
         cls,
         names: t.VariadicTuple[m.Infra.SourceClassReference],
         roots: t.MappingKV[str, Path],
-        trees: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
-        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        captured: t.Pair[
+            t.MappingKV[Path, m.Cli.AtomicPhysicalTreeManifest],
+            t.MappingKV[Path, m.Cli.AtomicFileState],
+        ],
         *,
         bootstrap_inputs: t.VariadicTuple[
             t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileReceipt]
@@ -682,8 +682,8 @@ class FlextInfraCodegenPreconditions:
         Args:
             names: The nominated producer selections under authentication.
             roots: Elected namespace roots sealed into the authority.
-            trees: Captured physical tree manifests.
-            states: Captured atomic file states awaiting their receipts.
+            captured: Captured physical tree manifests, and the captured atomic
+                file states awaiting their receipts.
             bootstrap_inputs: Original buffered source candidates and receipts,
                 pending actual import consumption.
             repository_root: The repository being generated, the only one whose
@@ -694,7 +694,7 @@ class FlextInfraCodegenPreconditions:
 
         """
         result_type = r[m.Infra.CodegenSourceAuthority]
-
+        trees, states = captured
         bootstrap_receipts = {receipt.path: receipt for _, receipt in bootstrap_inputs}
         receipts: list[m.Cli.AtomicFileReceipt] = []
         for state in states.values():
@@ -833,12 +833,32 @@ class FlextInfraCodegenPreconditions:
             candidates retain their original buffered identities until consumed.
 
         """
-        result_type = r[bool]
-        bootstrap = cls._bootstrap_source_paths(authority)
-        if bootstrap.failure:
-            return result_type.from_failure(bootstrap)
+        return (
+            cls
+            ._bootstrap_source_paths(authority)
+            .flat_map(
+                lambda bootstrap: cls._authority_receipts_current(authority, bootstrap)
+            )
+            .flat_map(lambda _: cls._authority_trees_current(authority))
+        )
+
+    @staticmethod
+    def _authority_receipts_current(
+        authority: m.Infra.CodegenSourceAuthority,
+        bootstrap: frozenset[Path],
+    ) -> p.Result[bool]:
+        """Re-prove the generated repository's pinned producer receipts.
+
+        Args:
+            authority: The sealed producer authority.
+            bootstrap: Buffered candidates that keep their original identities.
+
+        Returns:
+            Success while every in-repository receipt keeps its physical bytes.
+
+        """
         for expected in authority.inputs:
-            if expected.path in bootstrap.value or not expected.path.is_relative_to(
+            if expected.path in bootstrap or not expected.path.is_relative_to(
                 authority.repository_root
             ):
                 continue
@@ -847,31 +867,45 @@ class FlextInfraCodegenPreconditions:
                 required=expected.device is not None,
             )
             if observed.failure:
-                return result_type.from_failure(observed)
+                return r[bool].from_failure(observed)
             if observed.value != expected:
-                return result_type.fail(
-                    f"cold producer source changed: {expected.path}"
-                )
+                return r[bool].fail(f"cold producer source changed: {expected.path}")
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _authority_trees_current(
+        authority: m.Infra.CodegenSourceAuthority,
+    ) -> p.Result[bool]:
+        """Re-prove the generated repository's captured producer resource trees.
+
+        Args:
+            authority: The sealed producer authority.
+
+        Returns:
+            Success while every in-repository tree keeps its physical inventory.
+
+        """
         for tree in authority.generator_trees:
             if not tree.root.path.is_relative_to(authority.repository_root):
                 continue
             observed = u.Cli.atomic_inventory_physical_tree(tree.root.path)
             if observed.failure:
-                return result_type.from_failure(observed)
-            if observed.value != tree:
-                previous = {entry.path: entry for entry in tree.entries}
-                current = {entry.path: entry for entry in observed.value.entries}
-                changed = sorted(
-                    path
-                    for path in previous.keys() | current.keys()
-                    if previous.get(path) != current.get(path)
-                )
-                return result_type.fail(
-                    f"cold producer resource tree changed: {tree.root.path}; "
-                    f"root_changed={tree.root != observed.value.root} "
-                    f"changed_count={len(changed)} first={changed[:3]}"
-                )
-        return result_type.ok(value=True)
+                return r[bool].from_failure(observed)
+            if observed.value == tree:
+                continue
+            previous = {entry.path: entry for entry in tree.entries}
+            current = {entry.path: entry for entry in observed.value.entries}
+            changed = sorted(
+                path
+                for path in previous.keys() | current.keys()
+                if previous.get(path) != current.get(path)
+            )
+            return r[bool].fail(
+                f"cold producer resource tree changed: {tree.root.path}; "
+                f"root_changed={tree.root != observed.value.root} "
+                f"changed_count={len(changed)} first={changed[:3]}"
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def authority_inputs(
@@ -1128,40 +1162,58 @@ class FlextInfraCodegenPreconditions:
         packages = (
             FlextInfraWorkspaceEnvironmentProvenance.standard_library_package_roots()
         )
-        roots = tuple(root for _, root in authority.generator_modules)
+        providers = tuple(
+            (root.resolve(), root.is_dir()) for _, root in authority.generator_modules
+        )
         pinned = {receipt.path: receipt for receipt in authority.inputs}
         executed: t.MutableMappingKV[Path, m.Cli.AtomicFileReceipt] = {}
         for receipt in receipts:
-            path = receipt.path
-            physical = path.resolve()
-            runtime_source = physical.is_relative_to(standard) and not any(
-                physical.is_relative_to(root) for root in packages
-            )
+            physical = receipt.path.resolve()
             if not (
-                runtime_source
+                (
+                    physical.is_relative_to(standard)
+                    and not any(physical.is_relative_to(root) for root in packages)
+                )
                 or any(
-                    physical.is_relative_to(root.resolve())
-                    if root.is_dir()
-                    else physical == root.resolve()
-                    for root in roots
+                    physical.is_relative_to(root) if directory else physical == root
+                    for root, directory in providers
                 )
             ):
                 return result_type.fail(
-                    f"cold source escaped its elected provider: {path}"
+                    f"cold source escaped its elected provider: {receipt.path}"
                 )
-            if not path.is_relative_to(authority.repository_root):
-                executed[path] = receipt
-                continue
-            previous = executed.get(path, pinned.get(path))
-            if previous is not None and previous != receipt:
-                return result_type.fail(f"cold source input changed: {path}")
-            current = u.Cli.atomic_read_binary_file_receipt(path, required=True)
-            if current.failure:
-                return result_type.from_failure(current)
-            if current.value != receipt:
-                return result_type.fail(f"cold executed source changed: {path}")
-            executed[path] = receipt
+            if receipt.path.is_relative_to(authority.repository_root):
+                current = FlextInfraCodegenPreconditions._executed_receipt_current(
+                    receipt, executed.get(receipt.path, pinned.get(receipt.path))
+                )
+                if current.failure:
+                    return result_type.from_failure(current)
+            executed[receipt.path] = receipt
         return result_type.ok(tuple({**pinned, **executed}.values()))
+
+    @staticmethod
+    def _executed_receipt_current(
+        receipt: m.Cli.AtomicFileReceipt,
+        previous: m.Cli.AtomicFileReceipt | None,
+    ) -> p.Result[bool]:
+        """Prove one generated-repository source unchanged since it executed.
+
+        Args:
+            receipt: The child's pre-execution receipt.
+            previous: The pinned or earlier executed receipt of the same path.
+
+        Returns:
+            Success while the receipt agrees with its pin and its physical bytes.
+
+        """
+        if previous is not None and previous != receipt:
+            return r[bool].fail(f"cold source input changed: {receipt.path}")
+        current = u.Cli.atomic_read_binary_file_receipt(receipt.path, required=True)
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value != receipt:
+            return r[bool].fail(f"cold executed source changed: {receipt.path}")
+        return r[bool].ok(value=True)
 
     @classmethod
     def native_inputs_current(

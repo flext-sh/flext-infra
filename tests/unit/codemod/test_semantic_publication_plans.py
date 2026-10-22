@@ -336,20 +336,17 @@ class TestsFlextInfraSemanticPublicationPlans:
                 raise failure
             return r[bool].fail(str(failure))
 
+        options = m.Infra.SemanticPublicationOptions(validator=reject)
         if raises:
             with pytest.raises(RuntimeError) as raised:
                 transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
-                    plans,
-                    repository_root=mod_workspace,
-                    options=m.Infra.SemanticPublicationOptions(validator=reject),
+                    plans, repository_root=mod_workspace, options=options
                 )
             tm.ok(raised.value is failure)
         else:
             tm.fail(
                 transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
-                    plans,
-                    repository_root=mod_workspace,
-                    options=m.Infra.SemanticPublicationOptions(validator=reject),
+                    plans, repository_root=mod_workspace, options=options
                 ),
                 has=str(failure),
             )
@@ -615,11 +612,10 @@ class TestsFlextInfraSemanticPublicationPlans:
             )
             for index, plan in enumerate(plans)
         )
+        preview = infra.source_preview(mod_workspace)
         with pytest.raises(RuntimeError, match="failed"):
             codemod.FlextInfraCodemodSemanticApply.apply_transaction_paths(
-                mod_workspace,
-                edits,
-                source_preview=infra.source_preview(mod_workspace),
+                mod_workspace, edits, source_preview=preview
             )
         for plan in plans:
             tm.that(plan.path.read_bytes(), eq=plan.before.content)

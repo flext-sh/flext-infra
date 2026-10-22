@@ -97,11 +97,11 @@ rule:
         kind: dotted_name
         pattern: $MODULE
         not:
-          regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+          regex: "\\._[a-z]+\\._base(\\.|$)"
   - kind: dotted_name
     pattern: $MODULE
     not:
-      regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+      regex: "\\._[a-z]+\\._base(\\.|$)"
     any:
     - inside:
         kind: import_statement
