@@ -1,6 +1,5 @@
-# A type guard on a plain name narrows through the matcher's return value:
-# tm.instance returns T, so rebinding the name keeps the narrowing an assert
-# gave Python type checkers in one statement, without a TRY004 native block.
+# Keep the original type predicate and terminate its failing branch. Rebinding
+# a referenced name can otherwise change Python's local/global name election.
 # Tuple kinds and attribute subjects keep rewire-test-assert-guard.yml.
 id: rewire-test-assert-instance
 language: Python
@@ -40,8 +39,10 @@ constraints:
   KIND:
     not:
       kind: tuple
-fix: $X = tm.instance($X, $KIND)
-message: Narrow a name to its type through the tm matcher's returned value.
+fix: |-
+  if not (isinstance($X, $KIND)):
+      tm.reject()
+message: Preserve native type narrowing and name bindings through tm.reject.
 ---
 id: rewire-test-assert-instance-message
 language: Python
@@ -77,5 +78,7 @@ constraints:
   KIND:
     not:
       kind: tuple
-fix: $X = tm.instance($X, $KIND, msg=$MSG)
-message: Narrow a name to its type through the tm matcher's returned value.
+fix: |-
+  if not (isinstance($X, $KIND)):
+      tm.reject($MSG)
+message: Preserve native type narrowing and lazy assertion arguments through tm.reject.

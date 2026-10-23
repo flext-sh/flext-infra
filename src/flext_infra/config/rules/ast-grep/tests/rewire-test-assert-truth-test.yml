@@ -21,6 +21,10 @@ valid:
         assert handled
 invalid:
   - |
+    from flext_tests import tm
+    def check():
+        assert verdict() or unexpected()
+  - |
     from tests import tm
     assert path.is_file()
   - |

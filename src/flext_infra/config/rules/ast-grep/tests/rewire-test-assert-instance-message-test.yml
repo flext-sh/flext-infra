@@ -6,6 +6,11 @@ valid:
     assert isinstance(value, (Entry, Schema)), "An entry is required"
 invalid:
   - |
+    from flext_tests import tm
+    value = 1
+    def check():
+        assert isinstance(value, int), explain()
+  - |
     from tests import tm
     assert isinstance(value, Entry), "An entry is required"
   - |

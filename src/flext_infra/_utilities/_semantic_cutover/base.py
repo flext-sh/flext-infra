@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
@@ -60,6 +61,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
         import_normalizer: p.Infra.SourceImportNormalizer | None = None,
+        codegen: m.Infra.CodegenConfigSpec | None = None,
     ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan one phase without effects; the first exception escapes unchanged.
 
@@ -80,10 +82,27 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         root = rope_workspace.repository_root
         rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
         selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
+        if phase in {
+            c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+        }:
+            if codegen is None:
+                captured = (
+                    FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(root)
+                )
+                if captured.failure:
+                    return r[
+                        t.VariadicTuple[m.Infra.SemanticMigrationEdit]
+                    ].from_failure(captured)
+                codegen = captured.value.spec
+            if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
+                return cls._plan_class_nesting(rope_workspace, sources, codegen)
+            return cls._plan_dynamic_environment(
+                root, sources, selected, rope_workspace=rope_workspace, codegen=codegen
+            )
         match phase:
             case (
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
-                | c.Infra.SemanticCutoverPhase.CLASS_NESTING
                 | c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
                 | c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
@@ -99,8 +118,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     import_normalizer,
                 )
             case (
-                c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
-                | c.Infra.SemanticCutoverPhase.MODULE_END
+                c.Infra.SemanticCutoverPhase.MODULE_END
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
@@ -167,9 +185,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         dispatch = {
             c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION: lambda: (
                 cls._plan_behavior_and_declarations(rope_workspace, sources)
-            ),
-            c.Infra.SemanticCutoverPhase.CLASS_NESTING: lambda: cls._plan_class_nesting(
-                rope_workspace, sources
             ),
             c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS: lambda: (
                 cls._plan_constant_consumers(rope_workspace, sources)
@@ -252,8 +267,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         """
         match phase:
-            case c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT:
-                return cls._plan_dynamic_environment(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.MODULE_END:
                 return cls._plan_module_end(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.NOTICE_LAST:

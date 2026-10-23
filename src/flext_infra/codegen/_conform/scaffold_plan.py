@@ -55,6 +55,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 entry.destination.format(
                     package_name=project.package_name,
                     ns=project.namespace,
+                    **u.Infra.runtime_module_names(
+                        project_name=target.repository.distribution,
+                        codegen=codegen,
+                    ),
                 ),
             )
             for entry in codegen.templates.entries

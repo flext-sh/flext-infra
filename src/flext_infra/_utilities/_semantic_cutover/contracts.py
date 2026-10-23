@@ -516,7 +516,9 @@ class FlextInfraUtilitiesSemanticContracts(
         )
         working.update((path, retirement_sources[path]) for path in working)
         if any(
-            m.Infra.RopeContractRule.model_validate(rule, from_attributes=True).operation
+            m.Infra.RopeContractRule.model_validate(
+                rule, from_attributes=True
+            ).operation
             == "materialize-delegations"
             for rule in rules
         ) and any(working[path] != source for path, source in items):

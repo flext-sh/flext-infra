@@ -5,7 +5,8 @@ snapshots:
     assert result.success, result.error
   : fixed: |
       from tests import tm
-      tm.that(result.success, msg=result.error)
+      if not (result.success):
+          tm.reject(result.error)
     labels:
     - source: assert result.success, result.error
       style: primary
@@ -27,7 +28,8 @@ snapshots:
         raise AssertionError(started.error)
   : fixed: |
       from tests import tm
-      tm.that(started.success, msg=started.error)
+      if not (started.success):
+          tm.reject(started.error)
     labels:
     - source: |-
         if not (started.success):

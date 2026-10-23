@@ -183,6 +183,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         file_path: Path,
         tree: ast.Module,
         policy: m.Infra.NamespaceModulePolicy,
+        *,
+        project_name: str,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> frozenset[str]:
         """Preserve policy-owned native aliases and Python's export protocol.
 
@@ -207,7 +210,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
         aliases: set[str] = set()
         singleton = FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
-            file_path.name
+            file_path.name, project_name=project_name, codegen=codegen
         )
         for node in tree.body:
             target, value = (
@@ -508,6 +511,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         *,
         project: p.Infra.RopeProject,
         pytest_patterns: t.Triple[t.StrTuple, t.StrTuple, t.StrTuple],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.StrMapping]:
         """Map each loose top-level class to the owner Rope's module policy elects.
 
@@ -526,7 +530,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         test_module = any(
             fnmatch(file_path.name, pattern) for pattern in pytest_patterns[0]
         )
-        members = cls._nesting_module_members(project, file_path, tree, convention)
+        members = cls._nesting_module_members(
+            project, file_path, tree, convention, codegen
+        )
         if members.failure:
             return planned.from_failure(members)
         loose = members.value
@@ -595,10 +601,20 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         file_path: Path,
         tree: ast.Module,
         convention: m.Infra.RopeModuleConvention,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.StrTuple]:
         planned = r[t.StrTuple]
         canonical = cls._canonical_module_bindings(
-            project, file_path, tree, convention.module_policy
+            project,
+            file_path,
+            tree,
+            convention.module_policy,
+            project_name=(
+                convention.project_layout.project_name
+                if convention.project_layout is not None
+                else ""
+            ),
+            codegen=codegen,
         )
         # Collect syntax before admitting canonical native bindings.
         loose = tuple(
@@ -1225,6 +1241,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose helper promotion, family flattening, and orphan nesting.
 
@@ -1260,7 +1277,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         prefixed = cls._test_prefix_edits(rope_workspace, proposed)
         for edit in prefixed:
             proposed[edit.file_path] = edit.updated_source
-        nested = cls._plan_orphan_nesting(rope_workspace, proposed)
+        nested = cls._plan_orphan_nesting(rope_workspace, proposed, codegen)
         if nested.failure:
             return planned.from_failure(nested)
         for edit in (*consolidated, *flattened, *prefixed, *nested.value):
@@ -1276,7 +1293,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 else edit.changes,
             )
             proposed[edit.file_path] = edit.updated_source
-        for edit in cls._test_registration_edits(rope_workspace, proposed):
+        for edit in cls._test_registration_edits(rope_workspace, proposed, codegen):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
@@ -1295,6 +1312,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Publish already class-owned plugins as well as newly nested declarations.
 
@@ -1341,11 +1359,18 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     else frozenset(),
                 )
                 final_tree = ast.parse(updated)
+                convention = workspace.convention(path)
                 canonical = cls._canonical_module_bindings(
                     project,
                     path,
                     final_tree,
-                    workspace.convention(path).module_policy,
+                    convention.module_policy,
+                    project_name=(
+                        convention.project_layout.project_name
+                        if convention.project_layout is not None
+                        else ""
+                    ),
+                    codegen=codegen,
                 )
                 outside = tuple(
                     type(node).__name__
@@ -1754,6 +1779,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan all structural nesting and consumer rewrites without effects.
 
@@ -1789,6 +1815,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     *item,
                     project=project,
                     pytest_patterns=pytest_patterns,
+                    codegen=codegen,
                 )
             except Exception:
                 traceback.print_exc()

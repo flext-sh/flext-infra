@@ -2323,11 +2323,11 @@ Infra:
         profiles: [ workspace, standalone ]
         delegate: render
       - source: base/src/_config.py.j2
-        destination: "src/{package_name}/_config.py"
+        destination: "src/{package_name}/{config}.py"
         profiles: [ workspace, standalone ]
         delegate: render
       - source: base/src/_settings.py.j2
-        destination: "src/{package_name}/_settings.py"
+        destination: "src/{package_name}/{settings}.py"
         profiles: [ workspace, standalone ]
         delegate: render
       - source: base/src/py.typed.j2

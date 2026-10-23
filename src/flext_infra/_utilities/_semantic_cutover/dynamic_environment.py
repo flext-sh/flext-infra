@@ -24,6 +24,7 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
+from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -160,6 +161,9 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         root: Path,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence],
+        *,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         selected = {(root / finding.file).resolve() for finding in findings}
 
@@ -177,7 +181,9 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 msg = "dynamic environment reads resolve to competing settings owners"
                 raise ValueError(msg)
             package = next(iter(transformer.packages))
-            cls._require_settings_owner(package, sources)
+            cls._require_settings_owner(
+                package, sources, rope_workspace=rope_workspace, codegen=codegen
+            )
             for node in ast.walk(tree):
                 if "settings" in cls.bound_identifiers(node) and not (
                     isinstance(node, ast.ImportFrom)
@@ -215,7 +221,13 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         )
 
     @staticmethod
-    def _require_settings_owner(package: str, sources: t.MappingKV[Path, str]) -> None:
+    def _require_settings_owner(
+        package: str,
+        sources: t.MappingKV[Path, str],
+        *,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> None:
         """Require the destination settings API to exist in the source inventory.
 
         Raises:
@@ -224,12 +236,21 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 reads.
 
         """
-        owners = [
-            source
-            for path, source in sources.items()
-            if path.name == "_settings.py"
-            and path.parent.name == package.rsplit(".", maxsplit=1)[-1]
-        ]
+        owners: list[str] = []
+        for path, source in sources.items():
+            if path.parent.name != package.rsplit(".", maxsplit=1)[-1]:
+                continue
+            convention = rope_workspace.convention(path)
+            layout = convention.project_layout
+            if (
+                FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
+                    path.name,
+                    project_name=layout.project_name if layout is not None else "",
+                    codegen=codegen,
+                )
+                == "settings"
+            ):
+                owners.append(source)
         if len(owners) != 1:
             msg = (
                 f"dynamic environment migration requires one "

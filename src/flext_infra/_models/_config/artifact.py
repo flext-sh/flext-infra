@@ -7,10 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, p, t
 from flext_infra._constants.config import FlextInfraConstantsConfig
@@ -317,6 +319,47 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
+
+        runtime_module_overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr, Mapping[Literal["config", "settings"], t.NonEmptyStr]
+            ],
+            m.Field(
+                description=(
+                    "Runtime module stems by canonical project distribution and "
+                    "closed singleton role (config/settings); omitted roles retain "
+                    "the fleet module name. Declared stems must be public Python "
+                    "identifiers distinct from root aliases and each other"
+                ),
+            ),
+        ] = m.Field(default_factory=dict)
+
+        @m.field_validator("runtime_module_overrides")
+        @classmethod
+        def validate_runtime_module_overrides(
+            cls,
+            value: Mapping[str, Mapping[Literal["config", "settings"], str]],
+        ) -> Mapping[str, Mapping[Literal["config", "settings"], str]]:
+            """Reject invalid physical owners before any source planning."""
+            for project, roles in value.items():
+                if project != canonicalize_name(project, validate=True):
+                    msg = f"runtime module project identity is not canonical: {project}"
+                    raise ValueError(msg)
+                stems = tuple(roles.values())
+                for stem in stems:
+                    if (
+                        not stem.isidentifier()
+                        or iskeyword(stem)
+                        or stem.startswith("_")
+                        or stem in {"config", "settings"}
+                        or stem in c.Infra.PUBLIC_ROOT_ALIAS_ORDER
+                    ):
+                        msg = f"invalid runtime module stem for {project}: {stem}"
+                        raise ValueError(msg)
+                if len(set(stems)) != len(stems):
+                    msg = f"duplicate runtime module destinations for {project}"
+                    raise ValueError(msg)
+            return value
 
         repository: Annotated[
             FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,

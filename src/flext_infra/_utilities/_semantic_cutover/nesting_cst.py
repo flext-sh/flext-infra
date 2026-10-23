@@ -10,6 +10,8 @@ import ast
 from pathlib import Path
 
 import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor, ImportItem
 from libcst.metadata import (
     MetadataWrapper,
     PositionProvider,
@@ -472,6 +474,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             project.get_module("typing")
         )
         selection = cls._nesting_selection(module, facts, definitions)
+        wrapper = MetadataWrapper(cst.parse_module(source), unsafe_skip_copy=True)
         if any(
             item.category
             in {c.Infra.StatementCategory.ASSIGN, c.Infra.StatementCategory.ANN_ASSIGN}
@@ -479,11 +482,21 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             for selected in selection[0]
             for item in cls._nesting_statement_parts(selected)
         ):
-            source, classvar_name = (
-                FlextInfraUtilitiesRopeRuntimeModules.import_binding(
-                    project, module, "typing", "ClassVar"
-                )
+            classvar_name = FlextInfraUtilitiesRopeRuntimeModules.import_binding(
+                project, module, "typing", "ClassVar"
+            )[1]
+            wrapper = MetadataWrapper(
+                AddImportsVisitor(
+                    CodemodContext(),
+                    imports=(
+                        ImportItem(
+                            "typing", None if "." in classvar_name else "ClassVar"
+                        ),
+                    ),
+                ).transform_module(wrapper.module),
+                unsafe_skip_copy=True,
             )
+            source = wrapper.module.code
             module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project, source, resource=resource
             )
@@ -491,7 +504,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             selection = cls._nesting_selection(module, facts, definitions)
         else:
             classvar_name = ""
-        wrapper = MetadataWrapper(cst.parse_module(source), unsafe_skip_copy=True)
         observed = {
             cls._native_member_name(part)
             for item in selection[0]

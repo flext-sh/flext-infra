@@ -1175,15 +1175,17 @@ does not replace a later first native exception, and secondary failures do not
 replace an earlier native cause. Incomplete operation receipts retain planning and
 publication issues alongside successful batches and cannot qualify as complete.
 
-Input dependency evidence remains fail-closed. In particular, the current lazy-init
-binder retains a repository-wide source snapshot; the executor does not drop those
-guards or exempt `conftest.py` to tolerate concurrent edits. Narrower per-artifact
-provenance requires original-epoch read attribution, negative discovery witnesses
-and cache-dependency replay at the existing Rope capture owner. Until those are
-available, a rejected dependent component remains rejected, while authenticated
-independent components keep their published gains. A fresh canonical invocation
-after repairing the causal input renders from fresh inputs rather than retrying a
-stale candidate inside the failed invocation.
+Input dependency evidence remains fail-closed. A module-selected lazy-init invocation
+plans that package and its descendants, not every package in its source/test surface
+or its production sibling. The shared repository index still authenticates native
+namespace selection and negative discovery witnesses. Prefetched originals are not
+semantic consumption: each artifact retains its actual native reads, transitive
+ancestry and cache-dependency replay, including dependencies outside the target tree.
+The executor never drops those guards or exempts `conftest.py` to tolerate edits.
+A rejected dependent component remains rejected, while authenticated independent
+components keep their published gains. A fresh canonical invocation after repairing
+the causal input renders from fresh inputs rather than retrying a stale candidate
+inside the failed invocation.
 
 Dependency modernization and conformance both consume the project's typed
 `config/workspace.yaml` declaration for distribution roots and packaged data.

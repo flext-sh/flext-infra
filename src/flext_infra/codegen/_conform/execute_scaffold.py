@@ -37,10 +37,14 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
         (workspace, project), planned_present = planned_workspace.value
         if not planned_present or workspace is None or project is None:
             return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].ok(())
+        captured = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        if captured.failure:
+            return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(captured)
         destinations = self._scaffold_destination_directories(
             request,
             workspace,
             project,
+            captured.value.spec,
         )
         if destinations.failure:
             return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(
@@ -102,6 +106,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
         request: m.Infra.CodegenConformRequest,
         workspace: m.Infra.WorkspaceSpec,
         project: m.Infra.ProjectSpec,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Derive the scaffold parent directories from the config template entries.
 
@@ -112,7 +117,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
         profile = workspace.repository.role
         root = request.root.expanduser().resolve()
         directories = {root}
-        for entry in config.Infra.codegen.templates.entries:
+        for entry in codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
             if entry.requires_beads and workspace.beads is None:
@@ -120,6 +125,10 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             destination = entry.destination.format(
                 package_name=project.package_name,
                 ns=project.namespace_attribute,
+                **u.Infra.runtime_module_names(
+                    project_name=workspace.repository.distribution,
+                    codegen=codegen,
+                ),
             )
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:

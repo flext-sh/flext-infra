@@ -35,7 +35,10 @@ class TestsLazyInitScopedSourceElection:
     ) -> None:
         """Select one artifact without planning its unrelated production sibling."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        provider = package / "provider.py"
+        provider_dir = package / "services"
+        provider_dir.mkdir()
+        (provider_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        provider = provider_dir / "provider.py"
         provider.write_text(
             "class Provider: pass\n__all__ = ['Provider']\n",
             encoding=c.DEFAULT_ENCODING,
@@ -49,7 +52,7 @@ class TestsLazyInitScopedSourceElection:
         target.write_text("", encoding=c.DEFAULT_ENCODING)
         (fixtures / "reader.py").write_text(
             (
-                f"from {package.name}.provider import Provider\n"
+                f"from {package.name}.services.provider import Provider\n"
                 "class Reader(Provider): pass\n"
                 if consumed
                 else "class Reader: pass\n"

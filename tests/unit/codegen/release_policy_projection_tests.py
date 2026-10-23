@@ -149,12 +149,9 @@ class TestsFlextInfraReleasePolicyProjection:
         u.Tests.merge_pull_request(standalone, "feat!: opaque historical feature")
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "checkout", "--detach"], cwd=standalone))
         tm.that(u.Tests.run_release_main(standalone, "--phase", "plan"), eq=0)
-        plan = m.Infra.ReleasePlan.model_validate(
-            tm.ok(
-                u.Cli.json_read(
-                    standalone / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME,
-                ),
-            ),
+        report = standalone / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME
+        plan = m.Infra.ReleasePlan.model_validate_json(
+            report.read_text(encoding="utf-8"),
         )
         tm.that(plan.next, eq=f"{line[0]}.{line[1]}.7")
         tm.that(str(plan.bump), eq="patch")
@@ -202,11 +199,8 @@ class TestsFlextInfraReleasePolicyProjection:
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "tag", f"v{version}"], cwd=root))
         u.Tests.merge_pull_request(root, "feat: independent consumer capability")
         tm.that(u.Tests.run_release_main(root, "--phase", "plan"), eq=0)
-        plan = m.Infra.ReleasePlan.model_validate(
-            tm.ok(
-                u.Cli.json_read(
-                    root / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME,
-                ),
-            ),
+        report = root / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME
+        plan = m.Infra.ReleasePlan.model_validate_json(
+            report.read_text(encoding="utf-8"),
         )
         tm.that(str(plan.bump), eq="minor")

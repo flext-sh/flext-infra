@@ -12,6 +12,10 @@ valid:
     assert not isinstance(value, Entry)
 invalid:
   - |
+    from flext_tests import tm
+    def check():
+        assert not verdict()
+  - |
     from tests import tm
     assert not path.exists()
   - |

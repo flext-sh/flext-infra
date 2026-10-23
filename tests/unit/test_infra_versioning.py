@@ -181,7 +181,7 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from flext_infra import codegen
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests import c, m, r, tm, u
+from tests import c, m, p, r, tm, u
 
 runtime_root = Path(sys.argv[1])
 root = u.Tests.git_repository(Path(sys.argv[2]) / "repo")
@@ -196,9 +196,9 @@ producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
 ))
 owner = codegen.FlextInfraCodegenTransaction(repository_root=root, producer=producer)
-receipts = []
+receipts: list[m.Infra.CodegenPhaseOutcome] = []
 
-def publish(file):
+def publish(file: m.Infra.CodegenFilePlan) -> p.Result[m.Infra.CodegenPhaseOutcome]:
     analysis = m.Infra.CodegenPhaseAnalysis(phase=file.phase, files=(file,))
     result = owner.publish_file_phase_locked(
         root,
@@ -210,7 +210,9 @@ def publish(file):
     if result.failure:
         return r[m.Infra.CodegenPhaseOutcome].from_failure(result)
     if len(receipts) != 1:
-        return r[m.Infra.CodegenPhaseOutcome].fail("one native version receipt required")
+        return r[m.Infra.CodegenPhaseOutcome].fail(
+            "one native version receipt required",
+        )
     return r[m.Infra.CodegenPhaseOutcome].ok(receipts[0])
 
 receipt = tm.ok(u.Infra.publish_project_version(root, version, publish))

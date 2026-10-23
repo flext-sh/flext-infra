@@ -46,7 +46,7 @@ class TestsFlextInfraModernizerPackagedManifest:
                 },
             ),
         )
-        authored: t.MutableJsonMapping = {
+        authored: t.JsonDict = {
             "only-include": ["assets"],
             "include": ["assets/**"],
             "exclude": ["**/*.secret"],

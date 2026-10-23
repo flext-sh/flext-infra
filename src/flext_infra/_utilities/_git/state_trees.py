@@ -81,7 +81,12 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         paths: t.SequenceOf[Path],
         entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
     ) -> Generator[Path]:
-        """Select an isolated index containing only the explicit scoped effects."""
+        """Select an isolated index containing only the explicit scoped effects.
+
+        Yields:
+            The native index path for the caller's explicit Git environment.
+
+        """
         repo = cls._repo(root)
         with tempfile.TemporaryDirectory(dir=repo.common_dir) as staging:
             index_path = Path(staging) / "index"

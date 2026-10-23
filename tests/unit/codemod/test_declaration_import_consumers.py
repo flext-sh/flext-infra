@@ -22,6 +22,44 @@ class TestsFlextInfraDeclarationImportConsumers:
     """Keep real external utility behavior, aliases and lexical shadows."""
 
     @staticmethod
+    @pytest.mark.parametrize("entrypoint", ["value", "forwarded"])
+    def test_ordinary_static_calls_do_not_elect_delegation_descriptors(
+        tmp_path: Path,
+        entrypoint: str,
+    ) -> None:
+        """A normal static return chain is not a descriptor argument contract."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "service.py"
+        source = (
+            "class Service:\n"
+            "    @staticmethod\n"
+            "    def value() -> str:\n"
+            "        return str('before')\n"
+            "    @staticmethod\n"
+            "    def second() -> str:\n"
+            "        return Service.value()\n"
+            "    @staticmethod\n"
+            "    def forwarded() -> str:\n"
+            "        return Service.second()\n\n"
+            "class Consumer:\n"
+            f"    VALUE = Service.{entrypoint}()\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+        with infra.rope_workspace(root) as rope:
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                        rope_workspace=rope,
+                        sources={path: source},
+                    )
+                ),
+                empty=True,
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+
+    @staticmethod
     @pytest.mark.parametrize("binding", ["Service", "c"])
     def test_constants_phase_elects_native_roles_without_inventing_facades(
         tmp_path: Path,

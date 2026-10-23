@@ -174,7 +174,24 @@ class FlextInfraUtilitiesCodegenNamespace:
         return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
 
     @staticmethod
-    def runtime_singleton_export(file_name: str) -> str | None:
+    def runtime_module_names(
+        *, project_name: str, codegen: m.Infra.CodegenConfigSpec
+    ) -> t.StrMapping:
+        """Resolve singleton roles to physical stems for exactly one project."""
+        defaults = {
+            Path(module_file).stem.removeprefix("_"): Path(module_file).stem
+            for module_file, *_ in c.Infra.RUNTIME_MODULES
+        }
+        return {**defaults, **codegen.runtime_module_overrides.get(project_name, {})}
+
+    @classmethod
+    def runtime_singleton_export(
+        cls,
+        file_name: str,
+        *,
+        project_name: str,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> str | None:
         """Return the sole public singleton owned by a sanctioned runtime module.
 
         Returns:
@@ -183,9 +200,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         """
         return next(
             (
-                Path(module_file).stem.removeprefix("_")
-                for module_file, *_ in c.Infra.RUNTIME_MODULES
-                if file_name == module_file
+                role
+                for role, module in cls.runtime_module_names(
+                    project_name=project_name, codegen=codegen
+                ).items()
+                if file_name == f"{module}.py"
             ),
             None,
         )

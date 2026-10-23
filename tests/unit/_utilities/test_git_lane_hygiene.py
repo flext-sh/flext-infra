@@ -442,7 +442,7 @@ analysis = m.Infra.CodegenPhaseAnalysis(
         desired_content=payload, phase=phase,
     ),),
 )
-receipts = []
+receipts: list[m.Infra.CodegenPhaseOutcome] = []
 tm.ok(owner.publish_file_phase_locked(
     publication_root,
     owner.capability_roots(phase.value, (publication_root,)),
@@ -489,7 +489,8 @@ else:
 tm.that((root / ".git" / "index").read_bytes(), eq=index)
 tm.that(u.Tests.git_capture(root, "rev-parse", "HEAD").strip(), eq=head)
 tm.that(
-    u.Tests.git_capture(root, "branch", "--show-current").strip(), eq="active-candidate",
+    u.Tests.git_capture(root, "branch", "--show-current").strip(),
+    eq="active-candidate",
 )
 tm.that(foreign.read_bytes(), eq=b"unstaged foreign bytes\\n")
 tm.that(untracked.read_bytes(), eq=b"untracked foreign bytes\\n")

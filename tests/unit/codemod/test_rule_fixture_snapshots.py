@@ -224,6 +224,60 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             _ = ast.parse(fixed)
         tm.fail((tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH).exists())
 
+    @pytest.mark.parametrize(
+        "rule_id",
+        [
+            "rewire-test-assert-truth",
+            "rewire-test-assert-falsity",
+            "rewire-test-assert-not-none-message",
+            "rewire-test-assert-instance-message",
+        ],
+    )
+    @pytest.mark.parametrize("value", [1, None])
+    def test_assert_snapshot_preserves_native_guard_execution(
+        self, rule_id: str, value: int | None
+    ) -> None:
+        """Run native snapshots without rebinding globals or repeating truth."""
+        owner = Path(__file__).resolve().parents[3]
+        snapshot_path = (
+            self._source_catalog(owner)
+            / "tests"
+            / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
+            / f"{rule_id}{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"
+        )
+        source, snapshot = next(
+            (source, snapshot)
+            for source, snapshot in self._snapshots(snapshot_path).items()
+            if "def check():" in source
+        )
+        rewritten = u.type_adapter(str).validate_python(snapshot["fixed"], strict=True)
+        source = source.replace("value = 1", f"value = {value!r}")
+        rewritten = rewritten.replace("value = 1", f"value = {value!r}")
+        prefix = (
+            "events = []\n"
+            "class Verdict:\n"
+            "    def __bool__(self):\n"
+            "        events.append('truth')\n        return True\n"
+            "def verdict():\n    return Verdict()\n"
+            "def unexpected():\n    events.append('unexpected')\n    return False\n"
+            "def explain():\n    events.append('message')\n    return events\n"
+        )
+        suffix = (
+            "\ntry:\n    check()\n"
+            "except AssertionError as error:\n"
+            "    print(('assertion', events, bool(error.args), "
+            "bool(error.args) and error.args[0] is events))\n"
+            "else:\n    print(('ok', events))\n"
+        )
+        original = tm.ok(
+            u.Cli.run_raw((sys.executable, "-c", prefix + source + suffix))
+        )
+        converted = tm.ok(
+            u.Cli.run_raw((sys.executable, "-c", prefix + rewritten + suffix))
+        )
+        tm.that(converted.stdout, eq=original.stdout)
+        tm.that(converted.stderr, eq=original.stderr)
+
     @pytest.mark.slow
     def test_contract_review_fixtures_preserve_assertions_and_syntax(
         self,

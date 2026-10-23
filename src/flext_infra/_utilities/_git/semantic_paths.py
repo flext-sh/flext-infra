@@ -521,6 +521,9 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
 
         """
         try:
+            current = cls._git_publication_current(state)
+            if current.failure:
+                return r[m.Infra.GitOidReport].from_failure(current)
             with cls._state_leases((state.repo_root,)):
                 return cls._git_commit_publications_locked(
                     state, publications, publication_verifier

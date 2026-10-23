@@ -1,15 +1,41 @@
 id: rewire-test-assert-truth
 snapshots:
   ? |
+    from flext_tests import tm
+    def check():
+        assert verdict() or unexpected()
+  : fixed: |
+      from flext_tests import tm
+      def check():
+          if not (verdict() or unexpected()):
+              tm.reject()
+    labels:
+    - source: assert verdict() or unexpected()
+      style: primary
+      start: 44
+      end: 76
+    - source: from flext_tests import tm
+      style: secondary
+      start: 0
+      end: 26
+    - source: |
+        from flext_tests import tm
+        def check():
+            assert verdict() or unexpected()
+      style: secondary
+      start: 0
+      end: 77
+  ? |
     from tests import tm
     assert (
         tm.ok(result) == expected
     )
   : fixed: |
       from tests import tm
-      tm.that((
+      if not ((
           tm.ok(result) == expected
-      ), truth=True)
+      )):
+          tm.reject()
     labels:
     - source: |-
         assert (
@@ -35,7 +61,8 @@ snapshots:
     assert 0 < count < limit
   : fixed: |
       from tests import tm
-      tm.that(0 < count < limit, truth=True)
+      if not (0 < count < limit):
+          tm.reject()
     labels:
     - source: assert 0 < count < limit
       style: primary
@@ -56,7 +83,8 @@ snapshots:
     assert len(lines) == _EXPECTED_LINES
   : fixed: |
       from tests import tm
-      tm.that(len(lines) == _EXPECTED_LINES, truth=True)
+      if not (len(lines) == _EXPECTED_LINES):
+          tm.reject()
     labels:
     - source: assert len(lines) == _EXPECTED_LINES
       style: primary
@@ -77,7 +105,8 @@ snapshots:
     assert path.is_file()
   : fixed: |
       from tests import tm
-      tm.that(path.is_file(), truth=True)
+      if not (path.is_file()):
+          tm.reject()
     labels:
     - source: assert path.is_file()
       style: primary
