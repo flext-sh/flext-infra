@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import FlextInfraConfig, c, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
-from tests import t, tm, u
+from tests import c, t, tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,
@@ -224,7 +224,7 @@ class TestsFlextInfraCodegenLayout:
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         profiles.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext-dbt-ldif'\nversion='0.1.0'\n",
             encoding="utf-8",
         )

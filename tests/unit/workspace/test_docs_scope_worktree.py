@@ -26,7 +26,7 @@ class TestsFlextInfraDocsScopeWorktree:
         package = lane / "src" / "flext_demo"
         package.mkdir(parents=True)
         (package / "__init__.py").write_text("", encoding="utf-8")
-        (lane / "pyproject.toml").write_text(
+        (lane / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-demo"\ndependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )

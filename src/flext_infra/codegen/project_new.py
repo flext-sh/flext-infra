@@ -156,7 +156,7 @@ class FlextInfraCodegenProjectNew(
         derived_namespace = class_stem.removeprefix("Flext")
         project_namespace = self.project_namespace or derived_namespace or class_stem
         alias = u.Infra.package_alias(package_name=package_name)
-        repository_page = origin_url.removesuffix(".git")
+        repository_page = origin_url.removesuffix(c.GIT_DIR_NAME)
         repository = m.Infra.RepositoryRef(
             name=self.name,
             distribution=self.name,

@@ -16,13 +16,9 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import flext_infra
-from tests import c, tm
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t, tm
 
 
 class TestsFlextInfraCustomMakeSurfaceIsDerived:

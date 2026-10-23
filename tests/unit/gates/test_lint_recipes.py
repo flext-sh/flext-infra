@@ -317,82 +317,83 @@ class TestsFlextInfraLintRecipes:
             ),
         )
 
-    def test_summary_docstring_expands_an_inline_protocol_body(self) -> None:
-        """An inline protocol stub is legal Python and receives a summary."""
-        source = (
-            "class Sample:\n"
-            '    """Define the sample."""\n'
-            "\n"
-            "    def __call__(self) -> int: ...\n"
-        )
-
-        repaired = self._apply(
-            source,
-            ("undocumented-public-method", 4, "Missing docstring in public method"),
-        )
-
-        tm.that(
-            repaired,
-            eq=(
+    @pytest.mark.parametrize(
+        ("source", "findings", "expected"),
+        [
+            pytest.param(
+                "class Sample:\n"
+                '    """Define the sample."""\n'
+                "\n"
+                "    def __call__(self) -> int: ...\n",
+                (
+                    (
+                        "undocumented-public-method",
+                        4,
+                        "Missing docstring in public method",
+                    ),
+                ),
                 "class Sample:\n"
                 '    """Define the sample."""\n'
                 "\n"
                 "    def __call__(self) -> int:\n"
                 '        """Provide ``__call__``."""\n'
-                "        ...\n"
+                "        ...\n",
+                id="inline-protocol-suite",
             ),
-        )
-        ast.parse(repaired)
-
-    def test_summary_docstring_expands_a_wrapped_signature_stub(self) -> None:
-        """A stub whose suite shares the signature's last line expands there."""
-        source = (
-            "class Sample:\n"
-            "    def __call__[T](\n"
-            "        self,\n"
-            "        operation: Callable[[], T],\n"
-            "    ) -> T: ...\n"
-        )
-
-        repaired = self._apply(
-            source,
-            ("undocumented-public-method", 2, "Missing docstring in public method"),
-        )
-
-        tm.that(
-            repaired,
-            eq=(
+            pytest.param(
+                "class Sample:\n"
+                "    def __call__[T](\n"
+                "        self,\n"
+                "        operation: Callable[[], T],\n"
+                "    ) -> T: ...\n",
+                (
+                    (
+                        "undocumented-public-method",
+                        2,
+                        "Missing docstring in public method",
+                    ),
+                ),
                 "class Sample:\n"
                 "    def __call__[T](\n"
                 "        self,\n"
                 "        operation: Callable[[], T],\n"
                 "    ) -> T:\n"
                 '        """Provide ``__call__``."""\n'
-                "        ...\n"
+                "        ...\n",
+                id="wrapped-generic-signature",
             ),
-        )
-        ast.parse(repaired)
-
-    def test_summary_docstring_expands_an_inline_body_under_its_class(self) -> None:
-        """A class summary stays before the method its inline body expands into."""
-        source = "class Sample:\n    def __call__(self) -> int: ...\n"
-
-        repaired = self._apply(
-            source,
-            ("undocumented-public-class", 1, "Missing docstring in public class"),
-            ("undocumented-public-method", 2, "Missing docstring in public method"),
-        )
-
-        tm.that(
-            repaired,
-            eq=(
+            pytest.param(
+                "class Sample:\n    def __call__(self) -> int: ...\n",
+                (
+                    (
+                        "undocumented-public-class",
+                        1,
+                        "Missing docstring in public class",
+                    ),
+                    (
+                        "undocumented-public-method",
+                        2,
+                        "Missing docstring in public method",
+                    ),
+                ),
                 "class Sample:\n"
                 '    """Define ``Sample``."""\n'
                 "    def __call__(self) -> int:\n"
                 '        """Provide ``__call__``."""\n'
-                "        ...\n"
+                "        ...\n",
+                id="class-and-inline-suite",
             ),
-        )
+        ],
+    )
+    def test_summary_docstring_expands_declaration_suites(
+        self,
+        source: str,
+        findings: t.VariadicTuple[t.Triple[str, int, str]],
+        expected: str,
+    ) -> None:
+        """Summaries preserve inline suites, generic signatures and class structure."""
+        repaired = self._apply(source, *findings)
+        tm.that(repaired, eq=expected)
         ast.parse(repaired)
 
     def test_copyright_notice_follows_the_module_summary(
@@ -541,7 +542,7 @@ class TestsFlextInfraLintRecipes:
         tmp_path: Path,
     ) -> None:
         """Other recipes repair a project whose manifest declares no author."""
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "sample"\nversion = "1.0.0"\n',
             encoding="utf-8",
         )
@@ -677,22 +678,54 @@ class TestsFlextInfraLintRecipes:
             TestsFlextInfraLintRecipes._unused_receiver(source, "test_note")
 
     @staticmethod
-    def test_static_method_leaves_a_hook_a_subclass_overrides() -> None:
-        """A base method a subclass redefines keeps its receiver."""
-        source = (
-            "class Base:\n"
-            "    def hook(self) -> int:\n"
-            "        return 1\n"
-            "\n"
-            "\n"
-            "class Child(Base):\n"
-            "    def hook(self) -> int:\n"
-            "        return id(self)\n"
-        )
-
+    @pytest.mark.parametrize(
+        ("source", "line", "method"),
+        [
+            pytest.param(
+                "class Base:\n"
+                "    def hook(self) -> int:\n"
+                "        return 1\n"
+                "\n"
+                "\n"
+                "class Child(Base):\n"
+                "    def hook(self) -> int:\n"
+                "        return id(self)\n",
+                2,
+                "hook",
+                id="overridden-base-hook",
+            ),
+            pytest.param(
+                "class Base:\n"
+                "    def hook(self) -> int:\n"
+                "        return id(self)\n"
+                "\n"
+                "\n"
+                "class Child(Base):\n"
+                "    def hook(self) -> int:\n"
+                "        return 1\n",
+                7,
+                "hook",
+                id="parent-method-override",
+            ),
+            pytest.param(
+                "class Sample(Base):\n"
+                "    def run(self) -> int:\n"
+                "        return super().run() + 1\n",
+                2,
+                "run",
+                id="implicit-super-receiver",
+            ),
+        ],
+    )
+    def test_static_method_retains_receiver_contracts(
+        source: str,
+        line: int,
+        method: str,
+    ) -> None:
+        """Overrides and implicit ``super()`` retain their existing instance binding."""
         repaired = TestsFlextInfraLintRecipes._apply(
             source,
-            ("no-self-use", 2, "Method `hook` could be a function"),
+            ("no-self-use", line, f"Method `{method}` could be a function"),
         )
 
         tm.that(repaired, eq=source)
@@ -733,40 +766,3 @@ class TestsFlextInfraLintRecipes:
             recipes=config.Infra.tooling.tools.ruff.lint.fix_recipes,
         )
         tm.that(retained, eq=(findings[0],))
-
-    @staticmethod
-    def test_static_method_leaves_an_override_of_a_parent_method() -> None:
-        """A subclass method that redefines its base method keeps its receiver."""
-        source = (
-            "class Base:\n"
-            "    def hook(self) -> int:\n"
-            "        return id(self)\n"
-            "\n"
-            "\n"
-            "class Child(Base):\n"
-            "    def hook(self) -> int:\n"
-            "        return 1\n"
-        )
-
-        repaired = TestsFlextInfraLintRecipes._apply(
-            source,
-            ("no-self-use", 7, "Method `hook` could be a function"),
-        )
-
-        tm.that(repaired, eq=source)
-
-    @staticmethod
-    def test_static_method_leaves_a_method_that_reads_its_receiver() -> None:
-        """Zero-argument ``super()`` reads the receiver, so the method keeps it."""
-        source = (
-            "class Sample(Base):\n"
-            "    def run(self) -> int:\n"
-            "        return super().run() + 1\n"
-        )
-
-        repaired = TestsFlextInfraLintRecipes._apply(
-            source,
-            ("no-self-use", 2, "Method `run` could be a function"),
-        )
-
-        tm.that(repaired, eq=source)

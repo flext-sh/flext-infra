@@ -14,12 +14,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import u
-from tests import tm
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraReleaseDependencyOrder:
@@ -35,7 +35,7 @@ class TestsFlextInfraReleaseDependencyOrder:
         project = root / name
         project.mkdir(parents=True, exist_ok=True)
         rendered = ", ".join(f'"{dependency}"' for dependency in dependencies)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
             f"dependencies = [{rendered}]\n",
             encoding="utf-8",

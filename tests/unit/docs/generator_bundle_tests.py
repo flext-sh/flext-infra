@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_infra import FlextInfraConfig, c, m
 from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import p, tm, u
+from tests import c, p, tm, u
 
 _DOCS_CONSUMER_SOURCE = r"""sys.path.insert(0, sys.argv[1])
 from flext_infra import FlextInfraConfig, c, m
@@ -23,7 +23,8 @@ from flext_infra.codegen import (
     FlextInfraMisePublication,
 )
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import p, tm, u
+from tests import c, r
+from tests import c, p, tm, u
 from tests.unit.docs.generator_bundle_tests import TestsFlextInfraDocsGeneratorBundle
 tmp_path = Path(sys.argv[2])
 case = TestsFlextInfraDocsGeneratorBundle()
@@ -448,7 +449,7 @@ outside = tmp_path / "outside"
 package = outside / "src/outside"
 package.mkdir(parents=True)
 (package / "__init__.py").write_text("", encoding="utf-8")
-(outside / "pyproject.toml").write_text(
+(outside /  c.PYPROJECT_FILENAME).write_text(
     '[project]\nname = "outside"\nversion = "0.1.0"\n',
     encoding="utf-8",
 )

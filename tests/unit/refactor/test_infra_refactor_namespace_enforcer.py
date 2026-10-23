@@ -14,7 +14,7 @@ import pytest
 from flext_infra import c, m
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -469,7 +469,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
         broken, _broken_pkg = u.Tests.demo_project(workspace, name="broken-proj")
-        _ = (broken / "pyproject.toml").write_text(
+        _ = (broken / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='broken-proj'\n\n"
             "[tool.flext.namespace]\nenabled = 'yes'\n",
             encoding="utf-8",

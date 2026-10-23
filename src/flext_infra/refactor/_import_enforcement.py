@@ -125,12 +125,10 @@ class FlextInfraImportNormalization(
             source = sources[path]
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
-            normalized = cls.normalize_source(
-                project_root=project_root,
-                file_path=path,
+            normalized = cls._normalize_source(
+                location=(project_root, path),
                 source=source,
-                import_graph=import_graph,
-                sources=sources,
+                inputs=(import_graph, sources, snapshot),
             )
             if normalized is None:
                 normalized = source
@@ -185,6 +183,32 @@ class FlextInfraImportNormalization(
             ValueError: If ``root_exports is None``.
 
         """
+        return cls._normalize_source(
+            location=(project_root, file_path),
+            source=source,
+            inputs=(import_graph, sources, None),
+        )
+
+    @classmethod
+    def _normalize_source(
+        cls,
+        *,
+        location: t.Pair[Path, Path],
+        source: str,
+        inputs: t.Triple[
+            t.MappingKV[str, frozenset[str]] | None,
+            t.MappingKV[Path, str] | None,
+            p.Infra.RopeProject | None,
+        ],
+    ) -> str | None:
+        """Normalize against the caller's existing native inventory when supplied.
+
+        Returns:
+            The canonical source, or None at the fixed point.
+
+        """
+        project_root, file_path = location
+        import_graph, sources, rope_project = inputs
         if file_path.name == c.Infra.INIT_PY:
             return None
         located = u.Infra.import_namespace(project_root, file_path, sources=sources)
@@ -232,7 +256,9 @@ class FlextInfraImportNormalization(
                 bindings=cls._module_bindings(tree),
                 root_exports=root_exports,
             )
-            updated = cls._one_pass(state, current, sources=sources)
+            updated = cls._one_pass(
+                state, current, sources=sources, rope_project=rope_project
+            )
             if updated is None:
                 break
             current = updated
@@ -332,6 +358,7 @@ class FlextInfraImportNormalization(
         source: str,
         *,
         sources: t.MappingKV[Path, str] | None = None,
+        rope_project: p.Infra.RopeProject | None = None,
     ) -> str | None:
         """Apply the first rewrite category that changes the module.
 
@@ -351,7 +378,9 @@ class FlextInfraImportNormalization(
             lambda: cls._relative_import_edits(state, lines),
             lambda: cls._guard_edits(state.tree, lines),
             lambda: cls._placement_edits(state, lines),
-            lambda: cls._route_edits(state, lines, sources=sources),
+            lambda: cls._route_edits(
+                state, lines, sources=sources, rope_project=rope_project
+            ),
             lambda: cls._root_alias_binding_edits(state, lines),
             lambda: cls._layer_order_edits(state, lines),
         )

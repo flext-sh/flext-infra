@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles, FlextInfraMisePublication
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraCodegenFilePlanState:
@@ -28,16 +28,13 @@ class TestsFlextInfraCodegenFilePlanState:
         Returns:
             The resulting ``m.Cli.AtomicFileState``.
 
-        Raises:
-            AssertionError: If ``state.failure``.
-
         """
         target = root / "member" / c.PYPROJECT_FILENAME
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
         state = u.Cli.atomic_read_binary_file_state(target, required=True)
         if state.failure:
-            raise AssertionError(state.error)
+            tm.reject(state.error)
         return state.value
 
     @pytest.mark.parametrize("content", [b"", b'name = "demo"\n', b"\xff\n"])
@@ -98,18 +95,13 @@ class TestsFlextInfraCodegenFilePlanState:
 
     @staticmethod
     def test_absent_file_is_not_an_empty_file(tmp_path: Path) -> None:
-        """Test absent file is not an empty file.
-
-        Raises:
-            AssertionError: If ``state.failure``.
-
-        """
+        """Test absent file is not an empty file."""
         state = u.Cli.atomic_read_binary_file_state(
             tmp_path / c.PYPROJECT_FILENAME,
             required=False,
         )
         if state.failure:
-            raise AssertionError(state.error)
+            tm.reject(state.error)
 
         tm.that(
             u.Infra.atomic_file_state_differs(

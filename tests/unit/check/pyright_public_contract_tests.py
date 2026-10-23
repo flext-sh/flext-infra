@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates import FlextInfraPyrightGate
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,7 +57,7 @@ class TestsFlextInfraPyrightPublicContract:
                 encoding="utf-8",
             )
             (tests / "consumer.py").write_text(
-                "from tests import c\n"
+                "from tests import c, r\n"
                 f"def catalog() -> {annotation}:\n"
                 "    return c.Tests.RULES_CATALOG_BASIC\n",
                 encoding="utf-8",
@@ -73,7 +73,7 @@ class TestsFlextInfraPyrightPublicContract:
                     declared_python_dirs_are_complete=True,
                 ),
             )
-            (root / "pyproject.toml").write_text(
+            (root / c.PYPROJECT_FILENAME).write_text(
                 u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
                 encoding="utf-8",
             )
@@ -90,7 +90,7 @@ class TestsFlextInfraPyrightPublicContract:
                     is_root=True, repository_root=project
                 ),
             )
-            (project / "pyproject.toml").write_text(
+            (project / c.PYPROJECT_FILENAME).write_text(
                 u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
                 encoding="utf-8",
             )
@@ -176,7 +176,7 @@ class TestsFlextInfraPyrightPublicContract:
                 declared_python_dirs_are_complete=True,
             ),
         )
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding="utf-8",
         )

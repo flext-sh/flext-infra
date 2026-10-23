@@ -112,7 +112,7 @@ class TestsFlextInfraCodegenHookConformance:
         """Apply materializes files only and never provisions hook shims."""
         root = infra_git_repo
         workspace = self._standalone_workspace(root)
-        hooks_dir = root / ".git" / "hooks"
+        hooks_dir = root / c.GIT_DIR_NAME / "hooks"
 
         _conform(root, workspace, c.Infra.CodegenConformMode.APPLY)
 
@@ -234,7 +234,7 @@ class TestsFlextInfraCodegenHookConformance:
         root = infra_git_repo
         workspace = self._standalone_workspace(root)
         self._render_hooks(root)
-        hooks_dir = root / ".git" / "hooks"
+        hooks_dir = root / c.GIT_DIR_NAME / "hooks"
         foreign = "#!/bin/sh\nexit 0\n"
         for stage in ("pre-commit", "pre-push"):
             (hooks_dir / stage).write_text(foreign, encoding="utf-8")

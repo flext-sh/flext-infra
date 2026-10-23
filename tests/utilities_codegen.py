@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
 
-from flext_infra import codegen, config, r, u, workspace
+from flext_infra import codegen, config, u, workspace
 from tests import (
     TestsFlextInfraUtilitiesGitMixin,
     TestsFlextInfraUtilitiesProjectFixtureMixin,
@@ -21,6 +21,7 @@ from tests import (
     c,
     m,
     p,
+    r,
     t,
     tm,
     utilities_conform,
@@ -135,13 +136,13 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The resulting ``m.Infra.CodegenPlan``.
 
         """
-        workspace = tm.ok(u.Infra.load_workspace(root))
+        metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         for entry in config.Infra.codegen.templates.entries:
             destination = entry.destination.format(
                 package_name="fixture_project",
                 ns="fixture_project",
                 **u.Infra.runtime_module_names(
-                    project_name=workspace.repository.distribution,
+                    project_name=metadata.project.name,
                     codegen=config.Infra.codegen,
                 ),
             )
@@ -501,7 +502,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         changed: tuple[m.Infra.CodegenFilePlan, ...],
         project: Path,
     ) -> None:
-        if not (project / ".git").exists():
+        if not (project / c.GIT_DIR_NAME).exists():
             return
         visible = frozenset(tm.not_none(u.Infra.git_source_scope_paths(project)))
         targets: list[str] = []

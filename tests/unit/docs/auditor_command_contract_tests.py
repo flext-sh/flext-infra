@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -312,7 +312,7 @@ ruff check src
         excluded.parent.mkdir(parents=True, exist_ok=True)
         u.write_file(excluded, "```bash\nruff check src\n```\n")
         u.write_file(
-            infra_test_workspace / "pyproject.toml",
+            infra_test_workspace / c.PYPROJECT_FILENAME,
             (
                 "[project]\nname='infra-pkg'\nversion='0.0.0'\n\n"
                 "[tool.flext.docs]\n"

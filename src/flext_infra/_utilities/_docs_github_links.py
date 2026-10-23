@@ -102,7 +102,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
                 if parsed.hostname != "github.com":
                     continue
                 path = parsed.path.strip("/")
-            pieces = path.removesuffix(".git").split("/")
+            pieces = path.removesuffix(c.GIT_DIR_NAME).split("/")
             if len(pieces) != _GITHUB_REPO_PATH_SEGMENTS or not all(pieces):
                 message = (
                     f"GitHub declaration must name one owner and repository: {url}"

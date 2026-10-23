@@ -13,7 +13,7 @@ import pytest
 from flext_infra import c
 from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -1171,7 +1171,7 @@ class FlextInfraWorkspaceDetector(
         resolved_root = repository_root.expanduser().resolve()
         if not (resolved_root / c.Infra.GITMODULES).is_file():
             return r[t.VariadicTuple[Path]].ok(())
-        if not (resolved_root / ".git").exists():
+        if not (resolved_root / c.GIT_DIR_NAME).exists():
             return r[t.VariadicTuple[Path]].ok(())
         return u.Infra.git_submodule_declarations(resolved_root).map(
             lambda declarations: tuple(

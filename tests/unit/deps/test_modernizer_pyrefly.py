@@ -75,8 +75,10 @@ class TestsFlextInfraModernizerPyrefly:
         child_origin.mkdir()
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=child_origin))
         pyproject_text = "[project]\nname = 'fixture-child'\nversion = '0.1.0'\n"
-        (child_origin / "pyproject.toml").write_text(pyproject_text, encoding="utf-8")
-        tm.ok(u.Cli.run_raw(["git", "add", "pyproject.toml"], cwd=child_origin))
+        (child_origin / c.PYPROJECT_FILENAME).write_text(
+            pyproject_text, encoding="utf-8"
+        )
+        tm.ok(u.Cli.run_raw(["git", "add", c.PYPROJECT_FILENAME], cwd=child_origin))
         tm.ok(
             u.Cli.run_raw(
                 [
@@ -117,7 +119,7 @@ class TestsFlextInfraModernizerPyrefly:
             ),
         )
         for project_dir in (workspace / "attached", linked):
-            pyproject = project_dir / "pyproject.toml"
+            pyproject = project_dir / c.PYPROJECT_FILENAME
             rendered = tm.ok(
                 FlextInfraPyprojectModernizer(
                     repository_root=project_dir,

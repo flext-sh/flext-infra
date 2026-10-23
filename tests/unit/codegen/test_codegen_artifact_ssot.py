@@ -15,7 +15,7 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services._codegen import (
     FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
 )
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenArtifactSsot:

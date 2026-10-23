@@ -16,7 +16,7 @@ import pytest
 
 from flext_infra import c, config, main
 from flext_infra.services import FlextInfraCliRouteService
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenMain:
@@ -37,7 +37,7 @@ class TestsFlextInfraCodegenMain:
         repository = u.Tests.repository_ref(repo.name)
         infra = u.Tests.repository_ref("flext-infra")
         integration = config.Infra.codegen.branch_policy.integration_branch
-        (repo / "pyproject.toml").write_text(
+        (repo / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
             'requires-python = "'
             f'{config.Infra.codegen.toolchain.python_required_version}"\n'
@@ -260,7 +260,7 @@ class TestsFlextInfraCodegenMain:
             """
             TestsFlextInfraCodegenMain._seed_public_conform_checkout(root)
             distribution = u.Tests.repository_ref(config.Infra.name).distribution
-            pyproject = root / "pyproject.toml"
+            pyproject = root / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} governed fixture"\n'

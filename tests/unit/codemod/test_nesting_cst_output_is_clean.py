@@ -195,3 +195,31 @@ class TestsFlextInfraNestingCutoverOutput:
             )
         compile(emitted, str(module), "exec")
         tm.that(emitted, has="# Import-only contract.\nfrom functools")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("declaration", "owner_body"),
+        [
+            ("type Self[Self] = tuple[Self]\n", "    pass\n"),
+            (
+                "type Item = int\ntype conflict[*Item] = tuple[*Item]\n",
+                "    class Conflict:\n        pass\n",
+            ),
+        ],
+    )
+    def test_ambiguous_generic_declaration_scope_fails_before_source_effects(
+        tmp_path: Path, declaration: str, owner_body: str
+    ) -> None:
+        """Never guess a replacement namespace or shadow an alias parameter."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / "generic_scopes.py"
+        source = declaration + "\nclass Holder:\n" + owner_body
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+        with flext_infra.infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module: source},
+            )
+        tm.fail(planned, has="cannot preserve native type parameter scope")
+        tm.that(module.read_text(encoding="utf-8"), eq=source)

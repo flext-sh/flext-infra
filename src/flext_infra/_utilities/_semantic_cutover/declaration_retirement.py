@@ -950,22 +950,24 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         header, (_words, first, last) = cls._retired_base_header(
             module, scope, node, path
         )
+        first_line, _ = module.logical_lines.logical_line_in(node.lineno)
+        header_start = module.lines.get_line_start(first_line)
         arguments = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
-            header.text, first + 1, last - 1, ","
+            header, first + 1, last - 1, ","
         )
         keep = [
-            header.text[left:right]
+            header[left:right]
             for left, right in arguments
             if not any(
-                header.start_offset + left
+                header_start + left
                 <= runtime.source_offset(source, base)
-                < header.start_offset + right
+                < header_start + right
                 for base in removed
             )
         ]
         return m.Infra.SourceRewrite(
-            start=header.start_offset + first + 1,
-            end=header.start_offset + last - 1,
+            start=header_start + first + 1,
+            end=header_start + last - 1,
             text=",".join(keep),
         )
 
@@ -976,7 +978,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         scope: p.Infra.RopeScope,
         node: ast.ClassDef,
         path: Path,
-    ) -> t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]]:
+    ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]]:
         owner = FlextInfraUtilitiesRopeRuntimeModules.expression_name(scope, node.name)
         if owner is None:
             message = f"retiring base has no native declaring class: {path}:{node.name}"

@@ -529,6 +529,12 @@ class FlextInfraModelsGit(
             ),
         ] = None
 
+    class GitIndexScope(m.ContractModel):
+        """One explicitly selected native index in the current request only."""
+
+        repo_root: Path = m.Field(description="Exact repository owning the scope")
+        index_file: Path = m.Field(description="Git owner's isolated native index")
+
     class GitPublicationState(m.ArbitraryTypesModel):
         """Live admission of one owned ref without borrowing the caller's index."""
 

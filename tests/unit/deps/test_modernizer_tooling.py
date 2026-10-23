@@ -483,7 +483,7 @@ class TestsFlextInfraDepsModernizerTooling:
         phase = deps.FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
         )
-        path = project_dir / "pyproject.toml"
+        path = project_dir / c.PYPROJECT_FILENAME
         _ = phase.apply_payload(payload, path=path)
         tm.that(phase.apply_payload(payload, path=path), empty=True)
         return payload, u.Tests.toml_mapping(
@@ -693,7 +693,7 @@ class TestsFlextInfraDepsModernizerTooling:
             "",
             encoding="utf-8",
         )
-        (project_dir / "pyproject.toml").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "demo-migration-tool"\nversion = "0.1.0"\n'
             'dependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",

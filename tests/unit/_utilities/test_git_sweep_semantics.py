@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, m
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraGitSweepSemantics:
@@ -386,7 +386,7 @@ class TestsFlextInfraGitSweepSemantics:
     def test_commit_rejected_by_a_hook_is_a_failure(tmp_path: Path) -> None:
         """A rejecting pre-commit hook yields a failed result, never an exception."""
         repository = u.Tests.git_repository(tmp_path)
-        hook = repository / ".git" / "hooks" / "pre-commit"
+        hook = repository / c.GIT_DIR_NAME / "hooks" / "pre-commit"
         hook.parent.mkdir(parents=True, exist_ok=True)
         hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
         hook.chmod(0o755)

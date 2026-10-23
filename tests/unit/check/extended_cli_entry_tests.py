@@ -64,7 +64,7 @@ class TestsFlextInfraExtendedCliEntry:
         report, so a green run proves the root evaluated only itself.
         """
         workspace = self._workspace(tmp_path)
-        (workspace / "pyproject.toml").write_text(
+        (workspace / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "workspace"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )

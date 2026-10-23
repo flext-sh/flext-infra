@@ -141,10 +141,6 @@ class TestsFlextInfraRopeContractCatalog:
         with pytest.raises(ValueError, match="duplicate Rope contract rule"):
             u.Infra.declared_contract_rules(tmp_path)
 
-
-class TestsFlextInfraRopeDelegationContracts:
-    """Exercise the canonical operation with real native declarations and calls."""
-
     @staticmethod
     @pytest.mark.parametrize("asynchronous", [False, True])
     @pytest.mark.parametrize(
@@ -162,25 +158,39 @@ class TestsFlextInfraRopeDelegationContracts:
         source = (
             "from __future__ import annotations\n"
             "from functools import update_wrapper\n"
-            "from typing import get_type_hints\n"
+            "from collections.abc import Callable\n"
+            "from typing import Concatenate, get_type_hints, overload\n"
+            "from pydantic import ConfigDict\n"
             "import asyncio\n"
             "import inspect\n"
-            "class Binding:\n"
-            "    def __init__(self, operation, prototype):\n"
+            "class Binding[Receiver, Service, **Params, Result]:\n"
+            "    def __init__(self, operation: Callable[[Receiver], "
+            "Callable[Params, Result]], prototype: "
+            "Callable[Concatenate[Service, Params], Result]) -> None:\n"
             "        self.operation = operation\n"
-            "        def invoke(self, *args, **kwargs):\n"
+            "        def invoke(self: Receiver, *args: Params.args, "
+            "**kwargs: Params.kwargs) -> Result:\n"
             "            return operation(self)(*args, **kwargs)\n"
             "        update_wrapper(invoke, prototype)\n"
             "        invoke.__annotations__ = get_type_hints(prototype)\n"
             "        self.unbound = invoke\n"
-            "    def __get__(self, instance, owner=None):\n"
+            "    @overload\n"
+            "    def __get__(self, instance: None, owner: type[Receiver] | None "
+            "= None) -> Callable[Concatenate[Receiver, Params], Result]: ...\n"
+            "    @overload\n"
+            "    def __get__(self, instance: Receiver, owner: type[Receiver] | None "
+            "= None) -> Callable[Params, Result]: ...\n"
+            "    def __get__(self, instance: Receiver | None, "
+            "owner: type[Receiver] | None = None):\n"
             "        if instance is None:\n"
             "            return self.unbound\n"
             "        return self.operation(instance)\n"
             "class Port:\n"
             "    def __init__(self, bias):\n"
             "        self.bias = bias\n"
-            f"    {prefix}def perform(self, item: int, /, extra: int = 0, *values: int, flag: bool = True, **labels: str) -> tuple:\n"
+            f"    {prefix}def perform[Item: int](self, item: Item, /, "
+            "extra: int | None = None, *values: int, "
+            "flag: bool = True, **labels: str) -> tuple:\n"
             "        '''Perform the selected port operation.'''\n"
             "        if item < 0:\n"
             "            raise ValueError('native failure')\n"
@@ -190,8 +200,13 @@ class TestsFlextInfraRopeDelegationContracts:
             "        return item\n"
             "class Application:\n"
             "    port: Port\n"
+            "    model_config = ConfigDict(extra='forbid', "
+            "ignored_types=(Binding, str), frozen=True)\n"
             "    @staticmethod\n"
-            "    def bind(operation, prototype):\n"
+            "    def bind[Service, **Params, Result](operation: "
+            "Callable[[Application], Callable[Params, Result]], "
+            "prototype: Callable[Concatenate[Service, Params], Result]) "
+            "-> Binding[Application, Service, Params, Result]:\n"
             "        return Binding(operation, prototype)\n"
             "    execute = bind(lambda self: self.port.perform, Port.perform)\n"
             "    def __init__(self):\n"
@@ -206,7 +221,12 @@ class TestsFlextInfraRopeDelegationContracts:
             "    complete(application.execute(-1))\n"
             "except ValueError as error:\n"
             "    failure = str(error)\n"
-            "evidence = (first, second, failure, str(inspect.signature(Application.execute)), Application.execute.__doc__)\n"
+            "evidence = (first, second, failure, "
+            "str(inspect.signature(Application.execute)), "
+            "Application.execute.__doc__)\n"
+            "default_identity = inspect.signature(Application.execute)."
+            "parameters['extra'].default is inspect.signature(Port.perform)."
+            "parameters['extra'].default\n"
         )
         if rejected == "callback":
             source = source.replace(
@@ -221,15 +241,17 @@ class TestsFlextInfraRopeDelegationContracts:
                 "return self.operation(instance)", "return self.unbound"
             )
         elif rejected == "default":
-            source = source.replace("extra: int = 0", "extra: int = int()")
+            source = source.replace("extra: int | None = None", "extra: int = int()")
         elif rejected == "decorator":
             source = source.replace(
                 "class Port:",
-                "def decorate(function):\n    return function\nclass Port:",
+                "decorator_events = []\ndef decorate(function):\n"
+                "    decorator_events.append('decorate')\n"
+                "    return function\nclass Port:",
             )
             source = source.replace(
-                f"    {prefix}def perform(self, item: int",
-                f"    @decorate\n    {prefix}def perform(self, item: int",
+                f"    {prefix}def perform[Item: int](self, item: Item",
+                f"    @decorate\n    {prefix}def perform[Item: int](self, item: Item",
             )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         rules = tuple(
@@ -241,24 +263,57 @@ class TestsFlextInfraRopeDelegationContracts:
             == "materialize-delegations"
         )
         tm.that(len(rules), eq=1)
-        if rejected:
-            with pytest.raises(
-                ValueError,
-                match="delegation|descriptor|prototype|port|default|callback",
-            ):
+        if asynchronous and not rejected:
+            with pytest.raises(ValueError, match="async prototype"):
                 u.Infra.plan_contract_rules(workspace, {path: source}, rules)
             tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
             return
+        if rejected:
+            decorated = runpy.run_path(str(path)) if rejected == "decorator" else None
+            if decorated is not None:
+                tm.that(decorated["decorator_events"], eq=["decorate"])
+            with pytest.raises(
+                ValueError,
+                match=r"delegation|descriptor|prototype|port|default|callback|async",
+            ):
+                u.Infra.plan_contract_rules(workspace, {path: source}, rules)
+            if decorated is not None:
+                tm.that(decorated["decorator_events"], eq=["decorate"])
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            return
         before = runpy.run_path(str(path))["evidence"]
-        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        sources = {
+            workspace.repository_root / resource.path: resource.read()
+            for resource in workspace.rope_project.get_python_files()
+        }
+        sources[path] = source
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, sources, rules))
         tm.that(len(edits), eq=1)
         updated = edits[0].updated_source
-        tm.that(updated, contains=f"{prefix}def execute(self, item: int, /,")
+        tm.that(
+            updated, contains=f"{prefix}def execute[Item: int](self, item: Item, /,"
+        )
+        tm.that(updated, contains="ignored_types=(str,)")
+        tm.that(updated, contains="extra='forbid'")
+        tm.that(updated, contains="frozen=True")
+        tm.that("def bind[" in updated, eq=True)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        after = runpy.run_path(str(path))
+        tm.that(after["evidence"], eq=before)
+        tm.that(after["default_identity"], eq=True)
         tm.that(
-            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
+            u.Cli.atomic_verify_binary_file_states(
+                tuple(
+                    m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
+                    for state in edits[0].source_states
+                )
+            ).failure,
+            eq=True,
+        )
+        sources[path] = updated
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, sources, rules)),
             empty=True,
         )
 
@@ -384,6 +439,7 @@ class TestsFlextInfraRopeConstructorContracts:
         """The public constructor preserves native coercion and rejection."""
         source = (
             "from pydantic import TypeAdapter as Parse, ValidationError\n"
+            "from flext_tests import tm\n"
             "def consume():\n"
             "    adapter = Parse(list[int])\n"
             "    accepted = adapter.validate_json('[1, \"2\"]')\n"
@@ -391,7 +447,7 @@ class TestsFlextInfraRopeConstructorContracts:
             "        adapter.validate_python(['invalid'])\n"
             "    except ValidationError as error:\n"
             "        return accepted, tuple(item['type'] for item in error.errors())\n"
-            "    raise AssertionError('invalid input was accepted')\n"
+            "    tm.reject('invalid input was accepted')\n"
             "evidence = consume()\n"
         )
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
@@ -518,6 +574,7 @@ class TestsFlextInfraRopeFieldContracts:
             "from typing import Annotated\n"
             "from flext_core import t\n"
             "from pydantic import BaseModel, Field\n"
+            "from flext_tests import tm\n"
             "class Domain:\n"
             "    class Item(BaseModel):\n"
             "        label: str\n"
@@ -527,7 +584,7 @@ class TestsFlextInfraRopeFieldContracts:
             "    values: list[str] = Field(default_factory=list)\n"
             "deferred = not Domain.Payload.__pydantic_complete__\n"
             "if not deferred:\n"
-            "    raise AssertionError('outer contract resolved during construction')\n"
+            "    tm.reject('outer contract resolved during construction')\n"
             "first, second = Domain.Payload(), Domain.Payload()\n"
             "if isinstance(first.values, dict):\n"
             "    first.values['entry'] = Domain.Item(label='consumer')\n"
@@ -620,6 +677,7 @@ class TestsFlextInfraRopeFieldContracts:
             "from collections.abc import Sequence\n"
             "from typing import Annotated\n"
             "from pydantic import BaseModel, ConfigDict, Field, ValidationError\n"
+            "from flext_tests import tm\n"
             f"{declaration}"
             "class Payload(BaseModel):\n"
             "    model_config = ConfigDict(validate_default=True)\n"
@@ -632,10 +690,10 @@ class TestsFlextInfraRopeFieldContracts:
             "    default = tuple(item['type'] "
             "for item in error.errors())\n"
             f"    if {minimum} == 0 or default != ('too_short',):\n"
-            "        raise AssertionError('default constraint changed')\n"
+            "        tm.reject('default constraint changed')\n"
             "else:\n"
             f"    if {minimum} > 0 or first.values is second.values:\n"
-            "        raise AssertionError('default constraint or freshness lost')\n"
+            "        tm.reject('default constraint or freshness lost')\n"
             "    first.values.append('consumer')\n"
             "    default = (first.values is not second.values, "
             "first.model_dump_json(), second.model_dump_json())\n"
@@ -645,7 +703,7 @@ class TestsFlextInfraRopeFieldContracts:
             "    rejected = tuple((item['type'], item['loc']) "
             "for item in error.errors())\n"
             "else:\n"
-            "    raise AssertionError('element contract was discarded')\n"
+            "    tm.reject('element contract was discarded')\n"
             "evidence = (default, rejected, "
             "Payload.model_fields['values'].default_factory_takes_validated_data)\n"
         )
@@ -658,11 +716,11 @@ class TestsFlextInfraRopeFieldContracts:
             "except ValidationError as error:\n"
             "    rejected_default = tuple(item['type'] for item in error.errors())\n"
             f"    if {minimum} == 0 or rejected_default != ('too_short',):\n"
-            "        raise AssertionError('factory constraint changed')\n"
+            "        tm.reject('factory constraint changed')\n"
             "else:\n"
             f"    if {minimum} > 0 or raw is "
             "Payload.model_fields['values'].get_default(call_default_factory=True):\n"
-            "        raise AssertionError('factory constraint or freshness lost')\n",
+            "        tm.reject('factory constraint or freshness lost')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         runpy.run_path(str(path))
@@ -991,6 +1049,7 @@ class TestsFlextInfraRopeFieldContracts:
             "from typing import Annotated, Literal\n"
             "from annotated_types import MinLen, MaxLen\n"
             "from pydantic import BaseModel, ConfigDict, Field, ValidationError\n"
+            "from flext_tests import tm\n"
             f"{definition}{declaration}"
             "class Payload(BaseModel):\n"
             "    model_config = ConfigDict(validate_default=True)\n"
@@ -1001,7 +1060,7 @@ class TestsFlextInfraRopeFieldContracts:
             "except ValidationError as error:\n"
             "    rejected = tuple(item['type'] for item in error.errors())\n"
             "else:\n"
-            "    raise AssertionError('literal element contract was discarded')\n"
+            "    tm.reject('literal element contract was discarded')\n"
             "evidence = (first.values is not second.values, first.model_dump_json(), "
             "second.model_dump_json(), rejected)\n"
         )

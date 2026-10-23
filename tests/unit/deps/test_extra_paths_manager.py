@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import tm, u
+from tests import c, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraExtraPathsManager:
@@ -36,7 +36,7 @@ class TestsFlextInfraExtraPathsManager:
     @staticmethod
     def test_sync_one_no_tool_section(tmp_path: Path) -> None:
         """Verify sync one no tool section."""
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         doc = u.Cli.toml_document()
         doc["project"] = {"name": "test"}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
@@ -47,7 +47,7 @@ class TestsFlextInfraExtraPathsManager:
     @staticmethod
     def test_sync_one_no_pyright_section(tmp_path: Path) -> None:
         """Verify sync one no pyright section."""
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         doc = u.Cli.toml_document()
         tool = u.Cli.toml_table()
         tool["other"] = u.Cli.toml_table()
@@ -71,7 +71,7 @@ class TestsFlextInfraExtraPathsManager:
         tool_doc: t.MappingKV[str, t.JsonValue],
     ) -> None:
         """Verify sync one success cases."""
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         doc = u.Cli.toml_document()
         doc["tool"] = tool_doc
         pyproject.write_text(doc.as_string(), encoding="utf-8")
@@ -83,7 +83,7 @@ class TestsFlextInfraExtraPathsManager:
     @staticmethod
     def test_sync_one_dry_run(tmp_path: Path) -> None:
         """Verify sync one dry run."""
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         doc = u.Cli.toml_document()
         doc["tool"] = {"pyright": {"extraPaths": ["old"]}}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
@@ -98,7 +98,7 @@ class TestsFlextInfraExtraPathsManager:
     @staticmethod
     def test_sync_one_write_failure(tmp_path: Path) -> None:
         """Verify sync one write failure."""
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         pyproject.write_text('[tool.pyright]\nextraPaths = ["old"]\n', encoding="utf-8")
         pyproject.chmod(0o444)
 

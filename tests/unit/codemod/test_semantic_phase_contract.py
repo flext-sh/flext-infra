@@ -1229,16 +1229,233 @@ class TestsFlextInfraSemanticPhaseContract:
         }
         for path, source in sources.items():
             path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=case) as raised,
+        ):
+            u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
                 rope_workspace=rope,
                 sources=sources,
             )
-        tm.fail(planned, has=case)
-        tm.that(planned.error, has="flext_upstream.c")
+        tm.that(str(raised.value), has="flext_upstream.c")
         for path, source in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("alias", ["c", "constants"])
+    @pytest.mark.parametrize("guarded", [False, True])
+    def test_nonprefixed_constants_qualify_public_owners_without_value_dedupe(
+        tmp_path: Path, alias: str, *, guarded: bool
+    ) -> None:
+        """Published project owners preserve SDK ancestry, domains and lexical scope."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="signal-hub", package_name="signal_hub"
+        )
+        family = package / "_constants"
+        family.mkdir()
+        consumer = package / "consumer.py"
+        private = package / "private_consumer.py"
+        declaration = f"from {package.name} import c"
+        if alias != "c":
+            declaration += f" as {alias}"
+        sources = {
+            family / "base.py": (
+                "from enum import StrEnum\n"
+                "class SignalConstantsBase:\n"
+                "    TOKEN = 'shared-domain-value'\n"
+                "    EXISTING = 'nested-domain-value'\n"
+                "    class Mode(StrEnum):\n"
+                "        READY = 'ready'\n"
+            ),
+            family / "other.py": (
+                "from enum import StrEnum\n"
+                "class SignalConstantsOther:\n"
+                "    OTHER_TOKEN = 'shared-domain-value'\n"
+                "    class OtherMode(StrEnum):\n"
+                "        READY = 'ready'\n"
+            ),
+            package / c.Infra.CONSTANTS_PY: (
+                "from flext_infra import c as upstream\n"
+                f"from {package.name}._constants.base import SignalConstantsBase\n"
+                f"from {package.name}._constants.other import SignalConstantsOther\n"
+                "class SignalHubConstants(upstream):\n"
+                "    class SignalHub:\n"
+                "        EXISTING = 'published-flat-value'\n"
+                "        Base = SignalConstantsBase\n"
+                "        Other = SignalConstantsOther\n"
+                "c = SignalHubConstants\n"
+                "__all__ = ['SignalHubConstants', 'c']\n"
+            ),
+            package / c.Infra.INIT_PY: "from .constants import c\n__all__ = ['c']\n",
+            consumer: (
+                '"""c.SignalHub.TOKEN remains documentation."""\n'
+                "from __future__ import annotations\n"
+                "from pathlib import Path\n"
+                "from typing import TYPE_CHECKING\n"
+                + (
+                    f"if TYPE_CHECKING:\n    {declaration}\n"
+                    if guarded
+                    else f"{declaration}\n"
+                )
+                + f"def accept(value: {alias}.SignalHub.Mode):\n    return value\n"
+                + (
+                    ""
+                    if guarded
+                    else (
+                        f"value = {alias}.SignalHub.Mode.READY\n"
+                        f"published = {alias}.SignalHub.Base.Mode.READY\n"
+                        f"flat = {alias}.SignalHub.EXISTING\n"
+                        f"other = {alias}.SignalHub.OtherMode.READY\n"
+                        f"token = {alias}.SignalHub.TOKEN\n"
+                        f"other_token = {alias}.SignalHub.OTHER_TOKEN\n"
+                        f"sdk = {alias}.Cli.FILE_FORMAT_JSON\n"
+                        f"infra = {alias}.Infra.GIT_OID_HEX_LENGTH_SHA1\n"
+                        f"core = {alias}.PRIMITIVES_TYPES\n"
+                    )
+                )
+                + f"note = '{alias}.SignalHub.TOKEN'\n"
+                + "location = Path(__file__).name\n"
+                + f"# {alias}.SignalHub.TOKEN is not an executable reference.\n"
+                + f"def shadow({alias}):\n    return {alias}.SignalHub.TOKEN\n"
+            ),
+            private: (
+                "from __future__ import annotations\n"
+                "from flext_infra import c\n"
+                f"from {package.name}._constants.base import "
+                "SignalConstantsBase as Internal\n"
+                "value = Internal.Mode.READY\n"
+                "def accept(value: Internal):\n    return value\n"
+                "sdk = c.Cli.FILE_FORMAT_JSON\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in sources
+        )
+        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    phase, rope_workspace=rope, sources=sources
+                )
+            )
+        tm.that({edit.file_path for edit in edits}, eq={consumer, private})
+        tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+        proposed = {**sources, **{edit.file_path: edit.updated_source for edit in edits}}
+        for edit in edits:
+            tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
+        with infra.rope_workspace(root) as rope:
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        phase, rope_workspace=rope, sources=proposed
+                    )
+                ),
+                empty=True,
+            )
+        probe = (
+            "from typing import get_type_hints\n"
+            f"from {package.name} import c, consumer, private_consumer\n"
+            "from flext_infra import c as sdk\n"
+            "class Local:\n    class SignalHub:\n        TOKEN = 'local'\n"
+            "assert consumer.shadow(Local) == 'local'\n"
+            f"assert consumer.location == {consumer.name!r}\n"
+            f"assert consumer.note == '{alias}.SignalHub.TOKEN'\n"
+            "assert consumer.__doc__ == 'c.SignalHub.TOKEN remains documentation.'\n"
+            f"namespace = {{**vars(consumer), '{alias}': c}}\n"
+            "assert get_type_hints(consumer.accept, globalns=namespace)['value'] "
+            "is c.SignalHub.Base.Mode\n"
+            "assert private_consumer.value is c.SignalHub.Base.Mode.READY\n"
+            "assert get_type_hints(private_consumer.accept)['value'] "
+            "is c.SignalHub.Base\n"
+            "assert private_consumer.sdk == sdk.Cli.FILE_FORMAT_JSON\n"
+        )
+        if not guarded:
+            probe += (
+                "assert consumer.value is c.SignalHub.Base.Mode.READY\n"
+                "assert consumer.published is c.SignalHub.Base.Mode.READY\n"
+                "assert consumer.flat == c.SignalHub.EXISTING\n"
+                "assert consumer.flat != c.SignalHub.Base.EXISTING\n"
+                "assert consumer.other is c.SignalHub.Other.OtherMode.READY\n"
+                "assert consumer.value == consumer.other\n"
+                "assert type(consumer.value) is not type(consumer.other)\n"
+                "assert consumer.token == c.SignalHub.Base.TOKEN\n"
+                "assert consumer.other_token == c.SignalHub.Other.OTHER_TOKEN\n"
+                "assert consumer.sdk == sdk.Cli.FILE_FORMAT_JSON\n"
+                "assert consumer.infra == sdk.Infra.GIT_OID_HEX_LENGTH_SHA1\n"
+                "assert consumer.core is sdk.PRIMITIVES_TYPES\n"
+            )
+        output = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", probe),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent)}
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(
+            consumer.read_text(encoding=c.DEFAULT_ENCODING),
+            has=f"# {alias}.SignalHub.TOKEN is not an executable reference.",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("case", ["same-value", "different-value", "identity-depth"])
+    def test_nonprefixed_constants_reject_competing_publications_before_writes(
+        tmp_path: Path, case: str
+    ) -> None:
+        """Neither equal values nor a shorter path elect a competing public owner."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="signal-hub", package_name="signal_hub"
+        )
+        family = package / "_constants"
+        family.mkdir()
+        sources = {
+            family / "base.py": "class Chosen:\n    TOKEN = 'domain-value'\n",
+            package / c.Infra.INIT_PY: "from .constants import c\n__all__ = ['c']\n",
+            package / c.Infra.CONSTANTS_PY: (
+                f"from {package.name}._constants.base import Chosen\n"
+                "class SignalHubConstants:\n"
+                "    class SignalHub:\n"
+                "        Base = Chosen\n"
+                + (
+                    "        class Nested:\n            Published = Chosen\n"
+                    if case == "identity-depth"
+                    else (
+                        "        class Other:\n"
+                        "            TOKEN = "
+                        + ("'domain-value'\n" if case == "same-value" else "'other'\n")
+                    )
+                )
+                + "c = SignalHubConstants\n__all__ = ['SignalHubConstants', 'c']\n"
+            ),
+            package / "consumer.py": (
+                f"from {package.name}._constants.base import Chosen\n"
+                "value = Chosen.TOKEN\n"
+                if case == "identity-depth"
+                else f"from {package.name} import c\nvalue = c.SignalHub.TOKEN\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in sources
+        )
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match="ambiguous public owners"),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod
     def test_annotations_and_nesting_complete_in_one_atomic_cutover(

@@ -209,7 +209,7 @@ class TestsFlextInfraSourceEpochRevalidation:
         provider_root = tmp_path / "upstream-provider"
         provider_package = provider_root / "src" / "upstream_provider"
         provider_package.mkdir(parents=True)
-        (provider_root / "pyproject.toml").write_text(
+        (provider_root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "upstream-provider"\nversion = "0.0.1"\n',
             encoding=c.DEFAULT_ENCODING,
         )

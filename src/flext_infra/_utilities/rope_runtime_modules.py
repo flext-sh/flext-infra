@@ -420,7 +420,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                     )
                     raise TypeError(msg)
                 return cls._class_alias_value(
-                    temporary, declaration, primary, visited=visited | {key}
+                    temporary,
+                    declaration,
+                    primary,
+                    binding=binding,
+                    visited=visited | {key},
                 )
         return binding
 
@@ -566,6 +570,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         declaration: ast.Assign | ast.AnnAssign,
         primary: ast.Name,
         *,
+        binding: p.Infra.RopePyName,
         visited: frozenset[t.Pair[str, int]],
     ) -> p.Infra.RopePyName | None:
         result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
@@ -586,6 +591,14 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 return None
             result = result.get_object().get_attributes().get(attribute)
             result = cls._class_assignment_alias(result, visited=visited)
+        if (
+            result is not None
+            and not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                result.get_object()
+            )
+        ):
+            # Values retain their declaration, including shared enum members.
+            return binding
         return result
 
     @staticmethod

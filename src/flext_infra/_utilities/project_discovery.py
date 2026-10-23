@@ -536,22 +536,22 @@ class FlextInfraUtilitiesProjectDiscovery(
             return ()
         skip_dirs = cls.excluded_parts()
         owned_artifacts = (
-            frozenset(
+            frozenset[str](
                 artifact.name
                 for artifact in config.Infra.codegen.artifacts
                 if artifact.generated_source or artifact.retired_typing_root
             )
             if owned_path_admission
-            else frozenset()
+            else frozenset[str]()
         )
         retired_roots = (
-            frozenset(
+            frozenset[Path](
                 project_dir / artifact.name
                 for artifact in config.Infra.codegen.artifacts
                 if artifact.retired_typing_root
             )
             if owned_path_admission
-            else frozenset()
+            else frozenset[Path]()
         )
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
@@ -609,10 +609,10 @@ class FlextInfraUtilitiesProjectDiscovery(
             raise error
 
         owned_roots = (
-            frozenset(directory / root for root in config.Infra.source_scan.roots)
+            frozenset[Path](directory / root for root in config.Infra.source_scan.roots)
             | retired_roots
             if owned_path_admission
-            else frozenset()
+            else frozenset[Path]()
         )
         artifact_boundaries = frozenset(
             artifact.name

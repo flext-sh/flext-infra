@@ -39,6 +39,11 @@ Use conventional commit messages:
 - Shared fixtures live in `flext-tests` (the `tm` matchers and the `td`/`tf`/`tk` helpers).
 - Tests use the unified `conftest.py` — no per-test setup duplication.
 - Tests assert observable behavior, never implementation details.
+- Follow the shared
+  [workspace assertion standard]({{ flext_git_base_url }}/flext/blob/{{ flext_git_branch }}/docs/guides/using-flext-tests.md#workspace-assertion-standard).
+  Matcher behavior belongs to `flext-tests`; semantic migration rules belong to
+  `flext-infra`. Reexport the canonical `tm` instead of creating local assertion
+  helpers or duplicating conversion rules in this repository.
 
 ```bash
 make test

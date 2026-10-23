@@ -19,7 +19,7 @@ class TestsFlextInfraWorkspaceMain:
     @staticmethod
     def _write_project(project_root: Path, name: str) -> None:
         project_root.mkdir(parents=True, exist_ok=True)
-        (project_root / "pyproject.toml").write_text(
+        (project_root / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 f'name = "{name}"\n'

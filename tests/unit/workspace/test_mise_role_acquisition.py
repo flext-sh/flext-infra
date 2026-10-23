@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, config, p
 from flext_infra.codegen import FlextInfraCodegenMiseToolchainProof
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsMiseRoleAcquisition:

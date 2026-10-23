@@ -136,7 +136,7 @@ class TestsFlextInfraAuditorScope:
             tmp_path,
             origin_url=u.Tests.repository_ref("test-project").url,
         )
-        _ = (tmp_path / "pyproject.toml").write_text(
+        _ = (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "test-project"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )

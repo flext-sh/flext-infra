@@ -11,6 +11,8 @@ from enum import IntEnum, StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -74,7 +76,7 @@ class FlextInfraConstantsSharedInfra:
     INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---
-    PYPROJECT_FILENAME: ClassVar[str] = "pyproject.toml"
+    PYPROJECT_FILENAME: ClassVar[str] = c.PYPROJECT_FILENAME
     MAKEFILE_FILENAME: ClassVar[str] = "Makefile"
     GITMODULES: ClassVar[str] = ".gitmodules"
     GITMODULE_MANAGED_KEY: ClassVar[str] = "flext-managed"
@@ -129,7 +131,7 @@ class FlextInfraConstantsSharedInfra:
     PY_TYPED: ClassVar[str] = "py.typed"
 
     # --- Git constants (was: class Git) ---
-    GIT_DIR: ClassVar[str] = ".git"
+    GIT_DIR: ClassVar[str] = c.GIT_DIR_NAME
     GIT_ORIGIN: ClassVar[str] = "origin"
     GIT_MAIN: ClassVar[str] = "main"
     GIT_HEAD: ClassVar[str] = "HEAD"

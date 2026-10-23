@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import c, p
 from flext_infra.refactor import FlextInfraRefactorCensus
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPayloadCensusSemantics:

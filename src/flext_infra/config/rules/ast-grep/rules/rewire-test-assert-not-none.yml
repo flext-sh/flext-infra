@@ -117,6 +117,8 @@ rule:
           matches: tm-imported-from-flext
           stopBy: end
 fix: |-
-  if not ($COND):
+  if $COND:
+      pass
+  else:
       tm.reject($MSG)
 message: Preserve conditional evaluation and lazy assertion arguments through tm.reject.

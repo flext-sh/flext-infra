@@ -9,12 +9,13 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
 import pytest
 
-from flext_infra import config, infra, r
+from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseArtifacts,
@@ -24,7 +25,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, r, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -566,7 +567,7 @@ class TestsFlextInfraCodegenConform:
 
         """
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
             f"requires-python = "
@@ -632,7 +633,7 @@ class TestsFlextInfraCodegenConform:
         """Repair a committed managed block through the normal apply plan."""
         root = infra_git_repo
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
             f"requires-python = "
@@ -658,7 +659,7 @@ class TestsFlextInfraCodegenConform:
         )
 
         tm.ok(applied)
-        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
+        rendered = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
         addopts = u.Tests.toml_table_at(rendered, "tool", "pytest", "ini_options")[
             "addopts"
@@ -667,7 +668,7 @@ class TestsFlextInfraCodegenConform:
             addopts,
             eq=list(
                 u.Infra.native_tool_setting(
-                    config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence
+                    config.Infra.tooling, "pytest.ini_options", "addopts", Sequence[str]
                 )
             ),
         )
@@ -799,12 +800,12 @@ class TestsFlextInfraCodegenConform:
         (manifest,) = tm.ok(u.Infra.load_workspace_manifest(root))
         tm.that(manifest.name, eq=name)
         tm.ok((root / "config" / "beads.yaml").is_file())
-        tm.ok((root / "pyproject.toml").is_file())
+        tm.ok((root / c.PYPROJECT_FILENAME).is_file())
         tm.ok((root / ".env.example").is_file())
         ruff_lint = config.Infra.tooling.tools.ruff.lint
         runtime_roots = ruff_lint.flake8_type_checking.runtime_evaluated_roots
         rendered_runtime_bases = u.Tests.toml_strings_at(
-            (root / "pyproject.toml").read_text(encoding="utf-8"),
+            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             "tool",
             "ruff",
             "lint",
@@ -827,8 +828,7 @@ class TestsFlextInfraCodegenConform:
             options=m.Cli.ProcessOptions(env={**os.environ, "PYTHONPATH": pythonpath}),
             timeout=c.Infra.TIMEOUT_DEFAULT,
         )
-        tm.ok(process)
-        tm.that(process.value, eq="✅ pong")
+        tm.ok(process, eq="✅ pong")
 
     @staticmethod
     @pytest.mark.slow
@@ -993,7 +993,7 @@ class TestsFlextInfraCodegenConform:
         tm.ok(result)
         tm.that(
             u.Tests.toml_table_at(
-                (root / "pyproject.toml").read_text(encoding="utf-8"),
+                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
                 "tool",
                 "pyrefly",
             )["project-includes"],
@@ -1001,7 +1001,7 @@ class TestsFlextInfraCodegenConform:
         )
         tm.that(
             u.Tests.toml_table_at(
-                (root / "pyproject.toml").read_text(encoding="utf-8"),
+                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
                 "tool",
                 "pyright",
             )["include"],
@@ -1122,7 +1122,7 @@ class TestsFlextInfraCodegenConform:
             addopts,
             eq=list(
                 u.Infra.native_tool_setting(
-                    config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence
+                    config.Infra.tooling, "pytest.ini_options", "addopts", Sequence[str]
                 )
             ),
         )

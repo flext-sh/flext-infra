@@ -20,7 +20,7 @@ from flext_infra.codemod import (
     FlextInfraNamespaceRelocationPhase,
 )
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import tm, u
+from tests import c, tm, u
 
 _SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
 _REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]

@@ -16,7 +16,7 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
+from tests import m
 
 
 class TestsFlextInfraSkillValidator:

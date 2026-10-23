@@ -15,7 +15,7 @@ from flext_infra import c, m
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -194,7 +194,7 @@ class TestsFlextInfraRealGateRunners:
         (project_dir / "tests").mkdir()
         nested = project_dir / ".claude" / "worktrees" / "nested"
         nested.mkdir(parents=True)
-        (nested / "pyproject.toml").write_text(
+        (nested / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='nested'\n",
             encoding="utf-8",
         )

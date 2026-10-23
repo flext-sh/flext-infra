@@ -31,7 +31,7 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import c, config, m, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
@@ -39,6 +39,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -49,8 +52,6 @@ from flext_infra._utilities._semantic_cutover import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverFacadeBases(
@@ -931,7 +932,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             return target
 
         if not lineages and not (model_source and utility_imports):
-            return cls._behavior_consumer_outcome(request, source, ())
+            return cls._behavior_consumer_outcome(
+                request, source, (), project=native_project
+            )
         return cls._rewrite_behavior_references(
             request, tree, resolve, obsolete, project=native_project
         )
@@ -966,7 +969,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
         )
         if not obsolete:
-            return cls._behavior_consumer_outcome(request, request.source, ())
+            return cls._behavior_consumer_outcome(
+                request, request.source, (), project=project
+            )
         cls._remove_obsolete_behavior_imports(context, tree, obsolete)
         updated = AddImportsVisitor(context).transform_module(updated)
         updated = RemoveImportsVisitor(context).transform_module(updated)
@@ -974,6 +979,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             request,
             updated.code,
             ("rebound relocated behavior to declared utility owners",),
+            project=project,
         )
 
     @staticmethod
@@ -1077,11 +1083,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             == effective
         )
 
-    @staticmethod
+    @classmethod
     def _behavior_consumer_outcome(
+        cls,
         request: m.Infra.SemanticBehaviorRewriteRequest,
         source: str,
         changes: t.StrSequence,
+        *,
+        project: p.Infra.RopeProject,
     ) -> t.Infra.TransformResult:
         """Require elected self imports to resolve before returning candidate bytes.
 
@@ -1092,14 +1101,26 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             ValueError: If a self-facade import has no lower callable binding.
 
         """
-        if any(
-            isinstance(node, ast.ImportFrom)
-            and node.module is not None
-            and any(
-                (node.module, alias.name) in request.utility_imports
-                for alias in node.names
-            )
+        remaining = tuple(
+            (node.module, alias.name, alias.asname or alias.name)
             for node in ast.parse(source, filename=str(request.path)).body
+            if isinstance(node, ast.ImportFrom) and node.module is not None
+            for alias in node.names
+            if (node.module, alias.name) in request.utility_imports
+        )
+        if not remaining:
+            return source, changes
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        module = runtime.build_string_module(
+            project,
+            source,
+            resource=project.get_resource(
+                request.path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        )
+        if not all(
+            cls._behavior_composition_references(module, identity, project=project)
+            for identity in remaining
         ):
             msg = (
                 "self-facade reference has no declared callable binding: "
@@ -1107,6 +1128,56 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
             raise ValueError(msg)
         return source, changes
+
+    @staticmethod
+    def _behavior_composition_references(
+        module: p.Infra.RopeSourceModule,
+        identity: t.Triple[str, str, str],
+        *,
+        project: p.Infra.RopeProject,
+    ) -> bool:
+        """Prove every remaining receiver use is a direct native superclass.
+
+        Returns:
+            Whether the imported class is used exclusively for composition.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        imported_module, imported_name, local = identity
+        qualified = f"{imported_module}.{imported_name}"
+        binding = runtime.qualified_name(project, qualified)
+        receiver = binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(receiver) or not (
+            runtime.same_name(binding, runtime.resolve_symbol(module.get_scope(), local))
+        ):
+            return False
+        references = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+            module, "${receiver}", arguments={"receiver": f"name={qualified}"}
+        )
+        bases: set[t.Pair[int, int]] = set()
+        pending = list(module.get_scope().get_scopes())
+        while pending:
+            scope = pending.pop()
+            pending.extend(scope.get_scopes())
+            if (
+                scope.get_kind() != c.Infra.RopeScopeKind.CLASS
+                or receiver not in scope.pyobject.get_superclasses()
+                or not isinstance(scope.pyobject, p.Infra.RopeSourceDefinition)
+            ):
+                continue
+            declaration = scope.pyobject.get_ast()
+            if not isinstance(declaration, ast.ClassDef):
+                continue
+            for base in declaration.bases:
+                if not isinstance(base, ast.Name):
+                    continue
+                start = runtime.source_offset(module.source_code, base)
+                lexical = runtime.scope_at(
+                    module, start, declaration_line=declaration.lineno
+                )
+                if runtime.same_name(binding, runtime.resolve_symbol(lexical, base.id)):
+                    bases.add((start, start + len(base.id)))
+        return bool(references) and set(references) <= bases
 
     @staticmethod
     def _remove_obsolete_behavior_imports(

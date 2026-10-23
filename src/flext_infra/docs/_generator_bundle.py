@@ -823,7 +823,10 @@ class FlextInfraDocGeneratorBundleMixin:
             page = u.Infra.validate_git_remote_url(origin)
             if page.failure:
                 return result_type.from_failure(page)
-            if page.value.rstrip("/").removesuffix(".git") == c.Infra.GITHUB_REPO_URL:
+            if (
+                page.value.rstrip("/").removesuffix(c.GIT_DIR_NAME)
+                == c.Infra.GITHUB_REPO_URL
+            ):
                 branch = u.Infra.resolve_integration_branch(
                     repository_root,
                     policy_branch=inputs.spec.branch_policy.integration_branch,

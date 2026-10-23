@@ -1147,7 +1147,9 @@ class TestsFlextInfraRepositoryLocalTopology:
     def test_detected_provider_identity_normalizes_the_git_suffix() -> None:
         """Accept equivalent provider URLs with or without the clone suffix."""
         suffixed = u.Tests.repository_ref("fixture-project")
-        bare = suffixed.model_copy(update={"url": suffixed.url.removesuffix(".git")})
+        bare = suffixed.model_copy(
+            update={"url": suffixed.url.removesuffix(c.GIT_DIR_NAME)}
+        )
 
         first = tm.ok(u.Infra.repository_provider(suffixed))
         second = tm.ok(u.Infra.repository_provider(bare))

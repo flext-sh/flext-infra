@@ -308,6 +308,7 @@ class FlextInfraUtilitiesVersioning:
                 before=captured.value,
                 desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
                 desired_mode=captured.value.mode,
+                source_states=(captured.value,),
             )
         )
 

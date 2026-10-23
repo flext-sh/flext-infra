@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, config, gates, m, u
-from tests import tm
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

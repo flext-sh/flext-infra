@@ -62,7 +62,7 @@ class FlextInfraUtilitiesDocsRender:
             ValueError: If repository URL does not identify owner/repository.
 
         """
-        normalized = repo_url.strip().rstrip("/").removesuffix(".git")
+        normalized = repo_url.strip().rstrip("/").removesuffix(c.GIT_DIR_NAME)
         if not normalized:
             return c.Infra.GITHUB_REPO_NAME
         if "://" in normalized:
@@ -236,7 +236,7 @@ class FlextInfraUtilitiesDocsRender:
                 .validate_git_remote_url(governance_source.url)
                 .unwrap()
                 .rstrip("/")
-                .removesuffix(".git")
+                .removesuffix(c.GIT_DIR_NAME)
             )
             if normalized != prefix.rstrip("/"):
                 msg = "governance link differs from its captured owner"

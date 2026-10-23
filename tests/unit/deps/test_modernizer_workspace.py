@@ -56,17 +56,17 @@ class TestsFlextInfraDepsModernizerWorkspace:
         formatted = tm.ok(
             formatter(
                 source,
-                path=tmp_path / "first" / "pyproject.toml",
+                path=tmp_path / "first" / c.PYPROJECT_FILENAME,
                 toolchain_root=tmp_path,
                 taplo_version=taplo_version,
                 process_timeout_seconds=process_timeout_seconds,
             ),
         )
-        config_path.write_text('include = ["pyproject.toml"]\n', encoding="utf-8")
+        config_path.write_text("include = [ c.PYPROJECT_FILENAME]\n", encoding="utf-8")
         reformatted = tm.ok(
             formatter(
                 source,
-                path=tmp_path / "first" / "pyproject.toml",
+                path=tmp_path / "first" / c.PYPROJECT_FILENAME,
                 toolchain_root=tmp_path,
                 taplo_version=taplo_version,
                 process_timeout_seconds=process_timeout_seconds,
@@ -88,7 +88,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         formatted = tm.ok(
             u.Infra.format_toml_source(
                 'name="demo"\n',
-                path=future_root / "pyproject.toml",
+                path=future_root / c.PYPROJECT_FILENAME,
                 toolchain_root=future_root,
                 taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
                 process_timeout_seconds=(
@@ -113,7 +113,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         (tmp_path / c.Infra.MISE_LOCK_FILENAME).unlink()
         formatted = u.Infra.format_toml_source(
             'name="demo"\n',
-            path=tmp_path / "pyproject.toml",
+            path=tmp_path / c.PYPROJECT_FILENAME,
             toolchain_root=tmp_path,
             taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
             process_timeout_seconds=(

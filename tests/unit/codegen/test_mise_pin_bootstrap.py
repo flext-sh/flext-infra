@@ -19,7 +19,7 @@ import pytest
 from packaging.version import Version
 
 from flext_infra import c, config, m
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:

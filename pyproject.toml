@@ -416,7 +416,7 @@ exclude = [
   "**/venv/**",
 ]
 extraPaths = ["src", "."]
-include = ["conftest.py", "src", "tests"]
+include = ["src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportCallIssue = "error"

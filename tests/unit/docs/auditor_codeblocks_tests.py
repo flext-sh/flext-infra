@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +29,7 @@ class TestsFlextInfraAuditorCodeblocks:
         imports = {"flext_infra": "m", "pydantic": "BaseModel"}
         third_party = next(name for name in imports if name != first_party)
         u.Tests.standalone_workspace(tmp_path)
-        with (tmp_path / "pyproject.toml").open("a", encoding="utf-8") as manifest:
+        with (tmp_path / c.PYPROJECT_FILENAME).open("a", encoding="utf-8") as manifest:
             manifest.write(
                 '[tool.ruff.lint]\nselect = ["I"]\n'
                 "[tool.ruff.lint.isort]\n"

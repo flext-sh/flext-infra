@@ -6,12 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import FlextInfraGitLanes, m, s, u
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from flext_infra import p, t
 
 
@@ -108,6 +111,18 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
 
         """
         return u.Infra.git_prepare_publication(request)
+
+    @staticmethod
+    @contextmanager
+    def publication_scope(state: m.Infra.GitPublicationState) -> Generator[None]:
+        """Keep the selected producer's native index effects in its private view.
+
+        Yields:
+            Control under the original admitted request scope.
+
+        """
+        with u.Infra.git_publication_scope(state):
+            yield
 
     @staticmethod
     def commit_publications(

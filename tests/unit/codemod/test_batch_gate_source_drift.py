@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, m, t
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraBatchGateSourceDrift:
@@ -45,7 +45,7 @@ class TestsFlextInfraBatchGateSourceDrift:
 
     @staticmethod
     def _repository(path: Path) -> None:
-        policy = path / "pyproject.toml"
+        policy = path / c.PYPROJECT_FILENAME
         if not policy.exists():
             policy.write_text(
                 "[project]\nname = 'sample'\nversion = '1.0.0'\n"

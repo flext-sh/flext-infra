@@ -67,7 +67,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
     def _create_member_origin(tmp_path: Path) -> Path:
         member = tmp_path / "member-source"
         member.mkdir()
-        (member / "pyproject.toml").write_text(
+        (member / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'flext-core'\nversion = '0.1.0'\n"
             'requires-python = "'
             f"{config.Infra.codegen.toolchain.python_required_version}"
@@ -110,7 +110,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         source = tmp_path / "workspace-source"
         source.mkdir()
         (source / "Makefile").write_text(makefile, encoding="utf-8")
-        (source / "pyproject.toml").write_text(
+        (source / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'flext'\nversion = '0.1.0'\n"
             "[tool.uv.workspace]\nmembers = ['flext-core']\n",
             encoding="utf-8",
@@ -218,7 +218,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
 
         tm.ok(u.Cli.process_succeeded(process.outcome))
         tm.that(
-            (workspace / "flext-core" / "pyproject.toml").is_file(),
+            (workspace / "flext-core" / c.PYPROJECT_FILENAME).is_file(),
             eq=True,
         )
         declarations = tm.ok(u.Infra.git_submodule_declarations(workspace))
@@ -254,7 +254,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
 
         tm.fail(u.Cli.process_succeeded(process.outcome))
         tm.ok(bool(process.stderr))
-        tm.fail((workspace / "flext-core" / ".git").exists())
+        tm.fail((workspace / "flext-core" / c.GIT_DIR_NAME).exists())
 
     def test_make_setup_initializes_once_then_only_validates_present_checkout(
         self,
@@ -277,7 +277,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             ]
             pytest.fail(f"{process.stdout}{process.stderr}\n{excerpt}")
         tm.ok(u.Cli.process_succeeded(process.outcome))
-        tm.ok((workspace / "flext-core" / "pyproject.toml").is_file())
+        tm.ok((workspace / "flext-core" / c.PYPROJECT_FILENAME).is_file())
         child = workspace / "flext-core"
         state = self._git_state(child)
         gitlink = self._git_stdout(workspace, "rev-parse", "HEAD:flext-core")
@@ -395,7 +395,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             self._git_stdout(source, "push", c.Infra.GIT_ORIGIN, "HEAD")
         self._git_stdout(workspace, "submodule", "init")
         checkout = workspace / member
-        git_dir = workspace / ".git" / "modules" / member
+        git_dir = workspace / c.GIT_DIR_NAME / "modules" / member
         git_dir.parent.mkdir(parents=True)
         self._git_stdout(
             workspace,
@@ -445,7 +445,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
                 msg=process.stdout + process.stderr,
             )
             tm.that(self._git_stdout(checkout, "rev-parse", "HEAD"), eq=pin)
-            tm.ok((checkout / "pyproject.toml").is_file())
+            tm.ok((checkout / c.PYPROJECT_FILENAME).is_file())
             tm.ok(index.is_file())
             second = self._run_setup(workspace, env)
             tm.that(
@@ -514,7 +514,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.that(process.outcome.raw_return_code, eq=2)
         tm.that(process.stderr, has=str(missing_origin))
         tm.that(process.stdout + process.stderr, lacks=credential)
-        tm.fail((workspace / "flext-core" / ".git").exists())
+        tm.fail((workspace / "flext-core" / c.GIT_DIR_NAME).exists())
 
     def test_setup_environment_provisions_members_before_the_environment(
         self,
@@ -550,7 +550,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
             ),
         )
 
-        tm.ok((workspace / "flext-core" / "pyproject.toml").is_file())
+        tm.ok((workspace / "flext-core" / c.PYPROJECT_FILENAME).is_file())
         gitlink = self._git_stdout(workspace, "rev-parse", "HEAD:flext-core")
         tm.that(self._git_state(workspace / "flext-core"), eq=("", gitlink))
         output = process.stdout + process.stderr

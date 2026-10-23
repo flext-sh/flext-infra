@@ -858,7 +858,7 @@ class TestsFlextInfraReleaseProtocol:
                     cwd=workspace,
                 ),
             )
-            tm.that(committed, has=["pyproject.toml", "docs/index.md"])
+            tm.that(committed, has=[c.PYPROJECT_FILENAME, "docs/index.md"])
             for lock, before in locks:
                 tm.that(lock.read_text(encoding="utf-8"), eq=before)
                 tm.that(committed, lacks=lock.relative_to(workspace).as_posix())

@@ -446,7 +446,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         script = (
             "from pathlib import Path\n"
             "from flext_infra import config, u\n"
-            "from tests import tm, u as test_u\n"
+            "from tests import c, r, tm, u as test_u\n"
             f"root = Path({str(root)!r})\n"
             f"package = Path({str(package)!r})\n"
             f"facade = Path({str(facade)!r})\n"
@@ -509,7 +509,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "-c",
                     (
                         "from importlib import import_module\n"
-                        "from tests import tm\n"
+                        "from tests import c, r, tm\n"
                         f"from {package.name} import u\n"
                         f"barrel = import_module({barrel_name!r})\n"
                         f"leaf = import_module({owner_module!r})\n"
@@ -593,7 +593,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         path.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(path, source))
         root = next(
-            (parent for parent in path.parents if (parent / ".git").exists()),
+            (parent for parent in path.parents if (parent / c.GIT_DIR_NAME).exists()),
             None,
         )
         if root is not None:
@@ -1323,7 +1323,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         first_contract = (
             "try:\n    consumer.first_call()\n"
             "except AttributeError:\n    print('unavailable')\n"
-            "else:\n    raise AssertionError('foreign behavior adopted')\n"
+            "else:\n    tm.reject('foreign behavior adopted')\n"
             if relation == "foreign-only"
             else f"assert consumer.first_call() == "
             f"{'7' if relation == 'isolated' else repr('7')}\n"
@@ -1333,7 +1333,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 (
                     sys.executable,
                     "-c",
-                    "import consumer\n"
+                    "import consumer\nfrom flext_tests import tm\n"
                     + first_contract
                     + "assert consumer.second_call() == '7'\n"
                     + (
@@ -1548,10 +1548,11 @@ class TestsFlextInfraUtilityFacadeProjection:
                         f"from {package.name} import u; "
                         f"import runpy; runpy.run_path({str(consumer)!r}); "
                         "from pydantic import ValidationError; "
+                        "from flext_tests import tm; "
                         + closing_checks
                         + "try:\n    u.parse([])\n"
                         "except ValidationError:\n    print('rejected')\n"
-                        "else:\n    raise AssertionError('invalid payload accepted')\n"
+                        "else:\n    tm.reject('invalid payload accepted')\n"
                     ),
                 ),
                 cwd=root,
@@ -1922,7 +1923,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         ):
             project = u.Tests.project_spec(distribution)
             self._write(
-                directory / "pyproject.toml",
+                directory / c.PYPROJECT_FILENAME,
                 f'[project]\nname = "{distribution}"\nversion = "1.0.0"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n'

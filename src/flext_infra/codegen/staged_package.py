@@ -320,6 +320,7 @@ class FlextInfraStagedPackage:
         root = u.Cli.atomic_plan_directory_chain(workspace)
         if root.failure:
             return result_type.from_failure(root)
+        errors: t.VariadicTuple[type[Exception]] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
             with u.Infra.facade_source_project(
                 workspace,
@@ -336,7 +337,7 @@ class FlextInfraStagedPackage:
                 return cls._source_plan_project(
                     workspace, updates, options, source_project, root.value
                 )
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except errors as exc:
             return result_type.fail(str(exc), exception=exc)
 
     @classmethod

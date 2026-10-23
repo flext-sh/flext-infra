@@ -120,7 +120,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             text = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for line_number, line in enumerate(text.splitlines(), start=1):
                 for match in c.Infra.MACHINE_PATH_RE.finditer(line):
-                    user = match.group("user")
+                    user = match.group(c.ContextScope.USER)
                     if user in container_identities:
                         continue
                     if FlextInfraUtilitiesDocsAuditDetectorsMixin._path_inside_root(

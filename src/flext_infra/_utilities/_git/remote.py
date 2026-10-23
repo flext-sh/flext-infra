@@ -73,7 +73,7 @@ class FlextInfraUtilitiesGitRemote:
             parsed.scheme in {"git", "git+ssh", "http", "https", "ssh"}
             and parsed.netloc
         ):
-            path = parsed.path.rstrip("/").removesuffix(".git")
+            path = parsed.path.rstrip("/").removesuffix(c.GIT_DIR_NAME)
             return urlunsplit((
                 parsed.scheme,
                 parsed.netloc,
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesGitRemote:
                 parsed.fragment,
             ))
         if "@" in value.partition(":")[0]:
-            return value.rstrip("/").removesuffix(".git")
+            return value.rstrip("/").removesuffix(c.GIT_DIR_NAME)
         return value
 
 

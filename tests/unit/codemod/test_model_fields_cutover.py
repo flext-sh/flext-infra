@@ -40,6 +40,7 @@ class TestsFlextInfraModelFieldsCutover:
         path = package / "validation.py"
         source = (
             "from flext_core import m\n"
+            "from flext_tests import tm\n"
             "def inspect_definition(candidate: object, *, label: str) -> None:\n"
             f"    fields = {access}\n"
             "    if not isinstance(fields, dict) or not fields:\n"
@@ -61,7 +62,7 @@ class TestsFlextInfraModelFieldsCutover:
             "    except ValueError as error:\n"
             "        assert str(error) == 'original boundary error'\n"
             "    else:\n"
-            "        raise AssertionError('invalid model was accepted')\n"
+            "        tm.reject('invalid model was accepted')\n"
         )
         with infra.rope_workspace(root) as rope:
             edits = tm.ok(

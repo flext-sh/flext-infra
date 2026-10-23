@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, t
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCiDeclaredSecretsContract:

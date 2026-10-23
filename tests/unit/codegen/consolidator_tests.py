@@ -13,7 +13,7 @@ from flext_cli import m as cli_m
 
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -65,14 +65,14 @@ class TestsFlextInfraCodegenConsolidator:
         """
         repository_root = tmp_path / "workspace"
         repository_root.mkdir(parents=True)
-        (repository_root / "pyproject.toml").write_text(
+        (repository_root / c.PYPROJECT_FILENAME).write_text(
             '[tool.uv.workspace]\nmembers = ["flext-demo"]\n',
             encoding="utf-8",
         )
         project_root = repository_root / "flext-demo"
         package_dir = project_root / "src" / "flext_demo"
         package_dir.mkdir(parents=True)
-        (project_root / "pyproject.toml").write_text(
+        (project_root / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext-demo'\nversion='0.1.0'\n"
             "\n"
             "[tool.mypy]\n"

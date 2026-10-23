@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import FlextInfraGate
+from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -47,27 +48,74 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet
         scan = self._scan_project(project_dir, fleet_enabled=fleet_enabled)
-        parsed = self._issues_from_report(scan, project_dir)
+        report: m.Infra.JscpdReport | None = None
+        try:
+            if scan.stdout.strip():
+                report = FlextInfraDuplicationEvidence.parse(scan.stdout)
+            parsed = self._issues_from_report(scan, project_dir, report=report)
+        except ValueError as exc:
+            parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and scan.outcome.raw_return_code not in {0, 1}:
-            issues = (self._tool_failure_issue(scan),)
+        if (
+            scan.outcome.raw_return_code not in {0, 1}
+            or scan.outcome.timed_out
+            or scan.outcome.forwarded_signal is not None
+            or (
+                scan.outcome.raw_return_code == 1
+                and report is not None
+                and report.statistics.total.clones == 0
+            )
+        ):
+            issues = (*issues, self._tool_failure_issue(scan))
         not_executed = (
             "jscpd semantic pass NOT EXECUTED: the CI context has no embeddings host"
             if self.semantic_not_executed()
             else ""
         )
+        evidence = self._publish_raw_receipt(
+            ctx,
+            "\n".join(
+                part for part in (scan.stdout, scan.stderr, not_executed) if part
+            ),
+        )
+        if report is not None and overrides.success:
+            try:
+                assessment = FlextInfraDuplicationEvidence().assess(
+                    report,
+                    project_dir,
+                    overrides.value,
+                    raw_receipt=evidence.raw_output,
+                    execution=(
+                        f"return_code={scan.outcome.raw_return_code}; "
+                        f"timed_out={scan.outcome.timed_out}; "
+                        f"signal={scan.outcome.forwarded_signal}; {not_executed}"
+                    ),
+                )
+            except (OSError, ValueError) as exc:
+                issues = (
+                    *issues,
+                    self._failure_issue(f"duplication assessment: {exc}"),
+                )
+            else:
+                u.Cli.atomic_write_text_file(
+                    evidence.path.with_suffix(".assessment.json"),
+                    assessment.model_dump_json(indent=2),
+                ).unwrap()
+                if assessment.counts.get("analysis_error", 0):
+                    issues = (
+                        *issues,
+                        self._failure_issue(
+                            "duplication assessment contains source analysis errors; "
+                            "see assessment receipt",
+                        ),
+                    )
         return self._build_check_gate_execution(
             project_dir,
             passed=not issues,
             issues=issues,
-            evidence=self._publish_raw_receipt(
-                ctx,
-                "\n".join(
-                    part for part in (scan.stdout, scan.stderr, not_executed) if part
-                ),
-            ),
+            evidence=evidence,
             started=started,
         )
 
@@ -254,7 +302,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             The resulting ``p.Result[m.Infra.ProjectDuplicationOverrides]``.
 
         """
-        pyproject_path = project_dir / "pyproject.toml"
+        pyproject_path = project_dir / c.PYPROJECT_FILENAME
         if not pyproject_path.is_file():
             return r[m.Infra.ProjectDuplicationOverrides].ok(
                 m.Infra.ProjectDuplicationOverrides(),
@@ -458,6 +506,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         cls,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
+        *,
+        report: m.Infra.JscpdReport | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per clone side that falls inside ``project_dir``.
 
@@ -473,10 +523,12 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 f"duplication scan produced no report for project "
                 f"{project_dir.name}: the scanned scope is empty",
             )
-        parsed = u.Cli.json_parse(scan.stdout)
-        if parsed.failure:
-            return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
-        data = u.Cli.json_as_mapping(parsed.value)
+        if report is None:
+            try:
+                report = FlextInfraDuplicationEvidence.parse(scan.stdout)
+            except ValueError as exc:
+                return r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
+        data = u.Cli.json_as_mapping(report.model_dump(mode="json", by_alias=True))
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         seen_clones: set[str] = set()
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):

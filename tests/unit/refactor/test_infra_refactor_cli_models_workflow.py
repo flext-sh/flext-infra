@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, m, main
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -341,7 +341,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         source_file = scripts_dir / "sample.py"
         source_file.write_text(
-            "from tests import c\n"
+            "from tests import c, r\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = c.Core.Tests.ERR_OK_FAILED\n",
@@ -375,7 +375,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         scripts_dir.mkdir(parents=True)
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (scripts_dir / "sample.py").write_text(
-            "from tests import m\n"
+            "from tests import c, m, r\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = m.Core.Tests.Testobject\n",
@@ -408,7 +408,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         source_file = scripts_dir / "sample.py"
         source_file.write_text(
-            "from tests import t\n"
+            "from tests import c, r, t\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = t.Core.Tests.Testobject\n",
@@ -425,6 +425,6 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
 
         tm.that(result, eq=0)
         updated = source_file.read_text(encoding="utf-8")
-        tm.that(updated, has="from tests import t")
+        tm.that(updated, has="from tests import c, r, t")
         tm.that(updated, has="t.Tests.Testobject")
         tm.that(updated, lacks="Core.Tests")

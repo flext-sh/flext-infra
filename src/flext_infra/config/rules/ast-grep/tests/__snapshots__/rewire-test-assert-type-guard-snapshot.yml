@@ -2,7 +2,9 @@ id: rewire-test-assert-type-guard
 snapshots:
   assert isinstance(self.value, Entry):
     fixed: |-
-      if not (isinstance(self.value, Entry)):
+      if isinstance(self.value, Entry):
+          pass
+      else:
           tm.reject()
     labels:
     - source: assert isinstance(self.value, Entry)
@@ -15,7 +17,9 @@ snapshots:
       end: 36
   assert isinstance(value, (Entry, Schema)):
     fixed: |-
-      if not (isinstance(value, (Entry, Schema))):
+      if isinstance(value, (Entry, Schema)):
+          pass
+      else:
           tm.reject()
     labels:
     - source: assert isinstance(value, (Entry, Schema))
@@ -30,7 +34,9 @@ snapshots:
     if not (isinstance(self.value, Entry)):
         raise AssertionError
   : fixed: |
-      if not (isinstance(self.value, Entry)):
+      if isinstance(self.value, Entry):
+          pass
+      else:
           tm.reject()
     labels:
     - source: |-
@@ -47,7 +53,9 @@ snapshots:
     if not (isinstance(value, (Entry, Schema))):
         raise AssertionError
   : fixed: |
-      if not (isinstance(value, (Entry, Schema))):
+      if isinstance(value, (Entry, Schema)):
+          pass
+      else:
           tm.reject()
     labels:
     - source: |-

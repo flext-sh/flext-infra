@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator

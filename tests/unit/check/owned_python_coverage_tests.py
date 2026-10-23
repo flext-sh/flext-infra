@@ -14,7 +14,7 @@ from flext_infra import m
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests import tm
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,7 +41,7 @@ class TestsFlextInfraOwnedPythonCoverage:
     ) -> None:
         """A clean conventional root cannot hide a defect in another owned target."""
         project = real_python_package
-        pyproject = project / "pyproject.toml"
+        pyproject = project / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8")
             + '\n[tool.mypy]\n[tool.pyrefly]\nproject-includes = ["src"]\n',

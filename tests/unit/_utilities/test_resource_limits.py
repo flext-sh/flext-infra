@@ -287,7 +287,9 @@ class TestsFlextInfraUtilitiesResourceLimits:
         """A hostile request cannot turn the supervisor into an arbitrary executor."""
         project = u.Tests.mypy_workload(tmp_path)
         command = u.Infra.mypy_limited_command(project, host_system="Darwin")
-        injected = project.model_dump_json()[:-1] + ',"command":["/bin/sh"]}'
+        injected = (
+            project.model_dump_json()[:-1] + ',c.HandlerMode.COMMAND:["/bin/sh"]}'
+        )
         result = u.Cli.run_raw(
             (*command[:-1], injected),
             timeout=u.Infra.mypy_runner_timeout(),

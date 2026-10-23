@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t
+from flext_infra._constants import FlextInfraConstantsCodegenProject
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 if TYPE_CHECKING:
@@ -226,7 +227,8 @@ class FlextInfraMiseArtifactsVerificationTopology:
         if directory.disposition == "temporary":
             transaction_root = project.transaction_root
             if (
-                directory.phase != "transaction"
+                directory.phase
+                != FlextInfraConstantsCodegenProject.CodegenStagedFilePhase.TRANSACTION
                 or transaction_root is None
                 or not (
                     transaction_root.is_relative_to(resolved_target)

@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 import tests
-from tests import conftest
+from tests import c, conftest
 
 
 class TestsPytestProjectContext:
@@ -29,5 +29,5 @@ class TestsPytestProjectContext:
             package_file,
             eq=pytestconfig.rootpath / tests.__name__ / "__init__.py",
         )
-        tm.that((infra_git_repo / ".git").is_dir(), eq=True)
+        tm.that((infra_git_repo / c.GIT_DIR_NAME).is_dir(), eq=True)
         tm.that(pytestconfig.pluginmanager.is_registered(conftest), eq=True)

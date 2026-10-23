@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, deps
-from tests import e, m, t, tm, u
+from tests import c, e, m, t, tm, u
 
 
 class TestsFlextInfraMypyFleetMandatoryDefaults:
@@ -217,7 +217,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         package = tmp_path / source_dir / "arbitrary_package"
         package.mkdir(parents=True)
         (package / "__init__.py").write_text("", encoding="utf-8")
-        path = tmp_path / "pyproject.toml"
+        path = tmp_path / c.PYPROJECT_FILENAME
         source = (
             '[project]\nname = "arbitrary-project"\ndependencies = []\n'
             '[tool.mypy]\nmypy_path = ["retired-root"]\n'

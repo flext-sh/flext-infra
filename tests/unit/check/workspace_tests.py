@@ -131,8 +131,7 @@ class TestsFlextInfraWorkspaceChecker:
             "mypy",
             "pyright",
         ])
-        tm.ok(result)
-        tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
+        tm.ok(result, eq=["lint", "pyrefly", "mypy", "pyright"])
 
     @staticmethod
     def test_resolve_gates_rejects_a_repeated_gate() -> None:

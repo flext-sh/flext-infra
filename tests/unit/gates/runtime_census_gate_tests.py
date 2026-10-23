@@ -17,14 +17,14 @@ from flext_infra import m, p, r, t
 from flext_infra.codegen import FlextInfraCodegenTransaction, FlextInfraStagedPackage
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
-from tests import tm, u
+from tests import c, r, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
 _MIXED_SOURCES: t.MappingKV[str, str] = {
-    "pyproject.toml": '[project]\nname = "fixturecensusmixed"\nversion = "0.1.0"\n',
+    c.PYPROJECT_FILENAME: '[project]\nname = "fixturecensusmixed"\nversion = "0.1.0"\n',
     "src/fixturecensusmixed/__init__.py": (
         '"""Fixture package tripping several census rule families."""\n'
         "\n"
@@ -42,7 +42,9 @@ _MIXED_SOURCES: t.MappingKV[str, str] = {
     ),
 }
 _GENUINE_SOURCES: t.MappingKV[str, str] = {
-    "pyproject.toml": ('[project]\nname = "fixturecensusgenuine"\nversion = "0.1.0"\n'),
+    c.PYPROJECT_FILENAME: (
+        '[project]\nname = "fixturecensusgenuine"\nversion = "0.1.0"\n'
+    ),
     "src/fixturecensusgenuine/__init__.py": (
         '"""Fixture package whose only census violation is a genuine rule."""\n'
         "\n"
@@ -92,7 +94,7 @@ def broken_export_project(tmp_path: Path) -> Iterator[Path]:
 
     """
     sources = {
-        "pyproject.toml": (
+        c.PYPROJECT_FILENAME: (
             '[project]\nname = "fixturecensusbroken"\nversion = "0.1.0"\n'
         ),
         "src/fixturecensusbroken/__init__.py": (
@@ -163,7 +165,7 @@ class TestRuntimeCensusSelection:
         _write_project(
             root,
             {
-                "pyproject.toml": (
+                c.PYPROJECT_FILENAME: (
                     '[project]\nname = "fixturecensussealed"\nversion = "0.1.0"\n'
                 ),
                 "src/fixturecensussealed/__init__.py": (

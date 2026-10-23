@@ -18,7 +18,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraModTextGateEngine
-from tests import tm, u
+from tests import c, r, tm, u
 
 
 class TestsFlextInfraModTextGateEngine:

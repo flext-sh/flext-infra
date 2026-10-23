@@ -232,7 +232,7 @@ class TestsFlextInfraLazyInitRuntime:
         nested = testing / "unit"
         nested.mkdir()
         nested.joinpath("provider.py").write_text(
-            "from tests import c\n"
+            "from tests import c, r\n"
             f"class Tests{layout.class_stem}Provider(c):\n"
             f"    __all__ = ('Tests{layout.class_stem}Provider',)\n",
             encoding=c.DEFAULT_ENCODING,

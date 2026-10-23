@@ -176,6 +176,7 @@ from typing import get_protocol_members, get_type_hints, is_protocol
 from flext_cli import FlextCliConfig, u
 from flext_core import c
 from flext_demo import FlextDemo, FlextDemoConfig, config, m, p, settings
+from flext_tests import tm
 
 assert FlextDemoConfig.fetch_global() is config
 assert FlextCliConfig.fetch_global() is not config
@@ -200,7 +201,7 @@ try:
 except m.ValidationError as error:
     assert all(item["type"] == "frozen_instance" for item in error.errors())
 else:
-    raise AssertionError("Generated config is mutable")
+    tm.reject("Generated config is mutable")
 adjusted = settings.clone(debug=not settings.debug)
 assert adjusted.debug != settings.debug
 assert config.model_dump() == before
@@ -224,7 +225,7 @@ try:
 except m.ValidationError as error:
     assert all(item["type"] == "missing" for item in error.errors())
 else:
-    raise AssertionError("Generated service accepts missing dependency ports")
+    tm.reject("Generated service accepts missing dependency ports")
 message = f"  {config.Demo.ping_reply}\\n"
 reply = m.Demo.PingResult(message=message)
 assert reply.message == message
@@ -241,7 +242,7 @@ for schema, payload in (
     except m.ValidationError as error:
         assert all(item["type"] == "extra_forbidden" for item in error.errors())
     else:
-        raise AssertionError(f"Generated schema accepts undeclared input: {schema}")
+        tm.reject(f"Generated schema accepts undeclared input: {schema}")
 for schema, payload, error_type in (
     (m.Demo.PingResult, {"message": message.encode()}, "string_type"),
     (m.Demo.SettingsNamespace, {"enabled": "false"}, "bool_type"),
@@ -251,7 +252,7 @@ for schema, payload, error_type in (
     except m.ValidationError as error:
         assert all(item["type"] == error_type for item in error.errors())
     else:
-        raise AssertionError(
+        tm.reject(
             f"Generated schema coerces an incompatible input: {schema}"
         )
 enabled = not settings.Demo.enabled

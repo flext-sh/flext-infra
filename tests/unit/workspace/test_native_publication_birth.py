@@ -30,6 +30,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, tm, u
 root = u.Tests.git_repository(Path(sys.argv[2]))
 transport = sys.argv[3]
@@ -88,6 +89,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, tm, u
 root = u.Tests.git_repository(Path(sys.argv[2]))
 external_drift = sys.argv[3] == "True"
@@ -181,6 +183,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, tm, u
 root = u.Tests.git_repository(Path(sys.argv[2]))
 transport = sys.argv[3]

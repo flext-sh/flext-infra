@@ -17,7 +17,7 @@ from flext_core import r
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, m, tm, u
+from tests import c, m, r, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -676,7 +676,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             candidate_kind: Literal["git", "unversioned"] = "unversioned"
             # A scaffold does not inherit its containing checkout's identity.
             # Existing Git metadata must still expose its original identity failure.
-            if probe.value.value or (project_root / ".git").exists():
+            if probe.value.value or (project_root / c.GIT_DIR_NAME).exists():
                 identity = u.Infra.git_identity(
                     m.Infra.GitRepoRequest(repo_root=project_root),
                 )

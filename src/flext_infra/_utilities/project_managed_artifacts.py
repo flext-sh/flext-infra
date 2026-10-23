@@ -29,8 +29,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         repository_root: Path,
         *,
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.CodegenInputs]:
         """Load one root's full policy through the ordered strict YAML source.
+
+        An injected source authority owns the same file observations and race
+        receipts as its consumer, including read-only dependency projects.
 
         Returns:
             The effective codegen declaration and exact consulted file snapshots.
@@ -41,6 +45,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             repository_root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             projections=projections,
+            source_project=source_project,
         )
         if document.failure:
             return result_type.from_failure(document)
@@ -49,9 +54,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = cls._verify_unchanged_snapshots(document.value.sources)
-        if verified.failure:
-            return result_type.from_failure(verified)
+        if source_project is None:
+            verified = cls._verify_unchanged_snapshots(document.value.sources)
+            if verified.failure:
+                return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.CodegenInputs(
                 spec=loaded.value,

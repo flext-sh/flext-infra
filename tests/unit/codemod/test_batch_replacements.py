@@ -14,7 +14,7 @@ import pytest
 from flext_infra import c, m, main, t
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraBatchReplacements:
@@ -174,7 +174,7 @@ class TestsFlextInfraBatchReplacements:
         replacement: bytes = b"after",
         matched: bytes = b"before",
     ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
-        policy = path.parent / "pyproject.toml"
+        policy = path.parent / c.PYPROJECT_FILENAME
         if not policy.exists():
             policy.write_text(
                 "[project]\nname = 'sample'\nversion = '1.0.0'\n"
@@ -442,7 +442,7 @@ class TestsFlextInfraBatchReplacements:
     ) -> None:
         """Rule reductions and line shifts pass; new occurrence identities fail."""
         root = u.Tests.git_repository(tmp_path)
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             "[tool.ruff.lint]\nselect = ['F821']\n",
         )
         path = root / "subject.py"
@@ -494,7 +494,7 @@ class TestsFlextInfraBatchReplacements:
         """
         root = u.Tests.git_repository(tmp_path)
         path = root / "tests" / "unit" / "test_demo.py"
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'sample'\nversion = '1.0.0'\n"
             "[tool.ruff.lint]\nselect = ['F401', 'F821']\n",
         )

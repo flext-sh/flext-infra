@@ -10,7 +10,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_infra import c, p
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

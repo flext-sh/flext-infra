@@ -665,6 +665,7 @@ class TestsNativeCompilerAdmission:
         )
         consumer = (
             "import dataclasses, importlib, sys\n"
+            "from flext_tests import tm\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('frozen_provider')\n"
             "values = tuple(range(int(sys.argv[2])))\n"
@@ -675,7 +676,7 @@ class TestsNativeCompilerAdmission:
             "except dataclasses.FrozenInstanceError:\n"
             "    pass\n"
             "else:\n"
-            "    raise AssertionError('Frozen consumer allowed field deletion')\n"
+            "    tm.reject('Frozen consumer allowed field deletion')\n"
             "descriptor = module.Payload.__delattr__\n"
             "defect = sys.argv[3]\n"
             "if defect == 'code':\n"
@@ -903,6 +904,10 @@ class TestsNativeCompilerAdmission:
             str(tmp_path),
         )
 
+
+class TestsNativeCompilerDiagnostics:
+    """Preserve native cold-import diagnostics and original failures."""
+
     @staticmethod
     @pytest.mark.parametrize("unexpected_stderr", ["", "unexpected native stderr\n"])
     def test_cold_diagnostics_preserve_provenance_and_stderr_rejection(
@@ -947,10 +952,12 @@ class TestsNativeCompilerAdmission:
             "    assert 'native-cold phase=json event=end' in observed.error\n"
             "else:\n"
             "    reference = observed.unwrap()\n"
-            "    assert any(item.path == source for item in reference.executed_sources)\n"
+            "    assert any(item.path == source "
+            "for item in reference.executed_sources)\n"
             "    for phase in ('bootstrap', 'capture', 'receipts', 'json'):\n"
             "        for event in ('start', 'end'):\n"
-            "            assert f'native-cold phase={phase} event={event} ' in evidence\n",
+            "            assert f'native-cold phase={phase} event={event} ' "
+            "in evidence\n",
             str(tmp_path),
             unexpected_stderr,
         )
@@ -1011,6 +1018,7 @@ class TestsNativeCompilerAdmission:
             "    return 'native'\n",
         )
         native_consumer(
+            "from flext_tests import tm\n"
             "sys.path.insert(0, sys.argv[1])\n"
             "module = importlib.import_module('stdout_provider')\n"
             "try:\n"
@@ -1021,10 +1029,11 @@ class TestsNativeCompilerAdmission:
             "    evidence = '\\n'.join(error.__notes__)\n"
             "    assert 'cold native source import evidence:' in evidence\n"
             "    assert 'stdout:\\nunstructured child output\\n' in evidence\n"
-            "    assert 'stderr:\\nnative-cold phase=bootstrap event=start' in evidence\n"
+            "    assert 'stderr:\\nnative-cold phase=bootstrap event=start' "
+            "in evidence\n"
             "    assert 'native-cold phase=json event=end' in evidence\n"
             "else:\n"
-            "    raise AssertionError('malformed stdout was accepted')\n"
+            "    tm.reject('malformed stdout was accepted')\n"
             "assert module.operation() == 'native'\n",
             str(tmp_path),
         )

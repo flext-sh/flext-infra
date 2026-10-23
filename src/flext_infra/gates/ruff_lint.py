@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
@@ -14,7 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
 from flext_infra.gates import FlextInfraGate
-from flext_infra.gates._readonly_namespace import FlextInfraReadonlyNamespace
+from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
 from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
@@ -145,6 +144,12 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if not occurrences:
             msg = "Readonly namespace probe requires explicit occurrence identities"
             raise ValueError(msg)
+        occurrences = tuple(
+            m.Infra.RuffReadonlyNamespaceOccurrence.model_validate(
+                occurrence.model_dump(by_alias=True)
+            )
+            for occurrence in occurrences
+        )
         manifest = self.readonly_namespace_sources(project_dir, ctx, targets=targets)
         authenticator = FlextInfraReadonlyNamespace(manifest)
         expected = {
@@ -171,61 +176,28 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     / path.relative_to(project_dir.resolve()),
                 }
             )
-            ignores = self._readonly_namespace_ignore_names(project_dir, file_ctx, path)
-            result = self._run(
-                self._lint_command(
-                    ctx,
-                    (str(path),),
-                    (
-                        "--no-fix",
-                        "--config",
-                        "lint.pep8-naming.ignore-names="
-                        + json.dumps([name for name in ignores if name not in names]),
-                        "--config",
-                        "lint.pep8-naming.extend-ignore-names=[]",
-                    ),
-                ),
-                project_dir,
-                timeout=self._check_timeout(project_dir, ctx),
-                env=self._check_env(project_dir, ctx),
-                remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
+            output, findings = self._readonly_namespace_diagnostics(
+                project_dir, file_ctx, path, names
             )
-            evidence = self._publish_raw_receipt(file_ctx, self._raw_output(result))
-            raw.append(evidence.raw_output)
-            if (
-                result.outcome.raw_return_code not in {0, *self._findings_exit_codes()}
-                or result.stderr.strip()
-            ):
-                msg = f"Readonly namespace baseline is unavailable; receipt: {evidence.path}"
-                raise ValueError(msg)
-            report = u.Cli.json_parse(result.stdout).unwrap()
-            if not isinstance(report, list):
-                msg = "Readonly namespace baseline is not a native diagnostic list"
-                raise ValueError(msg)
-            for entry in report:
-                if not isinstance(entry, Mapping):
-                    msg = "Readonly namespace baseline contains malformed diagnostics"
-                    raise ValueError(msg)
-                code = u.Cli.json_pick_str(entry, "code")
-                filename = u.Cli.json_pick_str(entry, "filename")
-                line = u.Cli.json_nested_int(entry, "location", "row")
-                column = u.Cli.json_nested_int(entry, "location", "column")
-                identity = (filename, line, column)
-                if code == "N802" and identity in expected:
+            raw.append(output)
+            for issue in findings:
+                identity = (issue.file, issue.line, issue.column)
+                if issue.code == "N802" and identity in expected:
                     expected.remove(identity)
-                elif code.startswith("N"):
-                    issues.append(
-                        m.Infra.Issue(
-                            file=filename,
-                            line=line,
-                            column=column,
-                            code=u.Cli.json_pick_str(entry, "name"),
-                            message=u.Cli.json_pick_str(entry, "message"),
-                            severity=c.Infra.GateSeverity.ERROR.value,
-                        )
-                    )
+                elif issue.code.startswith("N"):
+                    issues.append(issue)
         if expected:
-            msg = f"Readonly namespace baseline did not report every authenticated getter: {sorted(expected)}"
+            msg = (
+                "Readonly namespace baseline did not report every "
+                "authenticated getter: "
+                f"{sorted(expected)}"
+            )
+            raise ValueError(msg)
+        authenticator.require_unchanged_sources()
+        if manifest != self.readonly_namespace_sources(
+            project_dir, ctx, targets=targets
+        ):
+            msg = "Readonly namespace native scope changed during authentication"
             raise ValueError(msg)
         return self._build_check_gate_execution(
             project_dir,
@@ -235,13 +207,89 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             started=started,
         )
 
+    def _readonly_namespace_diagnostics(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        path: Path,
+        names: frozenset[str],
+    ) -> tuple[str, tuple[m.Infra.Issue, ...]]:
+        """Preserve exact probe output separately from the primary lint report.
+
+        Returns:
+            Raw native output and its unnormalized diagnostic codes.
+
+        Raises:
+            ValueError: If the diagnostic subprocess fails.
+            TypeError: If native diagnostics have an unavailable schema.
+
+        """
+        ignores = self._readonly_namespace_ignore_names(project_dir, ctx, path)
+        result = self._run(
+            self._lint_command(
+                ctx,
+                (str(path),),
+                (
+                    "--no-fix",
+                    "--config",
+                    "lint.pep8-naming.ignore-names="
+                    + u.Cli.json_dumps([
+                        name for name in ignores if name not in names
+                    ]).unwrap(),
+                    "--config",
+                    "lint.pep8-naming.extend-ignore-names=[]",
+                ),
+            ),
+            project_dir,
+            timeout=self._check_timeout(project_dir, ctx),
+            env=self._check_env(project_dir, ctx),
+            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
+        )
+        evidence = self._publish_raw_receipt(ctx, self._raw_output(result))
+        if (
+            result.outcome.raw_return_code not in {0, *self._findings_exit_codes()}
+            or result.stderr.strip()
+        ):
+            msg = (
+                f"Readonly namespace baseline is unavailable; receipt: {evidence.path}"
+            )
+            raise ValueError(msg)
+        report = u.Cli.json_parse(result.stdout).unwrap()
+        if not isinstance(report, list):
+            msg = "Readonly namespace baseline is not a native diagnostic list"
+            raise TypeError(msg)
+        issues: list[m.Infra.Issue] = []
+        for entry in report:
+            if not isinstance(entry, Mapping):
+                msg = "Readonly namespace baseline contains malformed diagnostics"
+                raise TypeError(msg)
+            issues.append(
+                m.Infra.Issue(
+                    file=u.Cli.json_pick_str(entry, "filename"),
+                    line=u.Cli.json_nested_int(entry, "location", "row"),
+                    column=u.Cli.json_nested_int(entry, "location", "column"),
+                    code=u.Cli.json_pick_str(entry, "code"),
+                    message=u.Cli.json_pick_str(entry, "message"),
+                    severity=c.Infra.GateSeverity.ERROR.value,
+                )
+            )
+        return evidence.raw_output, tuple(issues)
+
     def _readonly_namespace_ignore_names(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
         path: Path,
     ) -> tuple[str, ...]:
-        """Read merged native ignore-name metadata without guessing defaults."""
+        """Read merged native ignore-name metadata without guessing defaults.
+
+        Returns:
+            Every effective native ignore pattern, including extended defaults.
+
+        Raises:
+            ValueError: If native metadata is missing, ambiguous, or unsupported.
+
+        """
         result = self._run(
             self._lint_command(ctx, (str(path),), ("--show-settings", "--no-fix")),
             project_dir,
@@ -485,7 +533,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     project_dir,
                     before,
                     issues,
-                    recipes,
                     import_graph=import_graph,
                     tooling=tooling,
                 )
@@ -528,7 +575,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         project_dir: Path,
         before: m.Cli.AtomicFileState,
         issues: t.SequenceOf[p.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         *,
         import_graph: t.MappingKV[str, frozenset[str]],
         tooling: m.Infra.ToolConfigDocument,
@@ -550,6 +596,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             raise FileNotFoundError(before.path)
         path = before.path
         source = before.content.decode(c.DEFAULT_ENCODING)
+        recipes = tooling.tools.ruff.lint.fix_recipes
         owned = {issue.code: recipes[issue.code] for issue in issues}
         if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
             source = (

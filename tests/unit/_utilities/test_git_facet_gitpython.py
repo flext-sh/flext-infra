@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, FlextInfraWorktreeService, c, m, main, t
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraGitFacet:
@@ -182,7 +182,7 @@ class TestsFlextInfraGitFacet:
         )
         tm.that(self._lane_bytes(repository), eq=before)
 
-    @pytest.mark.parametrize("operation", ["verify", "create", "retire"])
+    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["verify", "create", "retire"])
     def test_verify_lane_refuses_legacy_stash_ref_without_effects(
         self,
         tmp_path: Path,
@@ -479,7 +479,7 @@ class TestsFlextInfraGitFacet:
         tmp_path: Path,
     ) -> None:
         repository = u.Tests.git_repository(tmp_path)
-        (repository / ".git" / "index").write_bytes(b"invalid index")
+        (repository / c.GIT_DIR_NAME / "index").write_bytes(b"invalid index")
 
         with pytest.raises(Exception, match="index"):
             u.Infra.git_tracked_scope_paths(repository)
@@ -497,7 +497,7 @@ class TestsFlextInfraGitFacet:
 
         tm.fail(unborn)
         tm.that(unborn.error_code, eq=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
-        branch_ref = repository / ".git" / "refs" / "heads" / "initial"
+        branch_ref = repository / c.GIT_DIR_NAME / "refs" / "heads" / "initial"
         branch_ref.write_text("invalid object identifier\n", encoding="utf-8")
 
         corrupted = u.Infra.git_identity(request)
@@ -509,7 +509,7 @@ class TestsFlextInfraGitFacet:
     @staticmethod
     def test_identity_index_failure_is_not_unborn(tmp_path: Path) -> None:
         repository = u.Tests.git_repository(tmp_path)
-        (repository / ".git" / "index").write_bytes(b"invalid index")
+        (repository / c.GIT_DIR_NAME / "index").write_bytes(b"invalid index")
 
         result = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=repository))
 
@@ -600,7 +600,7 @@ class TestsFlextInfraGitFacet:
         repository = u.Tests.git_repository(tmp_path)
         project = repository / "project"
         project.mkdir()
-        (project / ".git").mkdir()
+        (project / c.GIT_DIR_NAME).mkdir()
         source = project / "src" / "package"
         source.mkdir(parents=True)
         created = source / "module.py"

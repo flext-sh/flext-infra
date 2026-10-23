@@ -1747,7 +1747,9 @@ class FlextInfraUtilitiesCodemodProject(
         digest = u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING))
         if digest not in cls._import_targets:
             cls._import_targets[digest] = (
-                FlextInfraUtilitiesRopeImports.source_import_targets(project, source)
+                FlextInfraUtilitiesRopeImports.source_import_targets(
+                    project, source, resource=resource
+                )
             )
         return path, tuple(
             (imported.real_path, imported)

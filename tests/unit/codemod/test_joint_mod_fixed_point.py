@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import c, main, u
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import tm
+from tests import c, tm
 
 
 @pytest.mark.slow

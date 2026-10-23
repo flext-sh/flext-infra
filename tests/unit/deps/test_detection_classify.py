@@ -6,13 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import tm
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import t, tm
 
 
 class TestsFlextInfraDepsDetectionClassify:

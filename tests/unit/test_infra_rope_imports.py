@@ -140,5 +140,4 @@ class TestsFlextInfraRopeImports:
             resource = tm.not_none(resource)
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
-        tm.ok(result)
-        tm.that(result.value, eq=expected_change)
+        tm.ok(result, eq=expected_change, is_=bool)

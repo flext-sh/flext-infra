@@ -98,6 +98,7 @@ class TestsFlextInfraPytestProfile:
         output = tmp_path / "checkpoint.pstats"
         script = (
             c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal, sys, pstats\n"
+            "from flext_tests import tm\n"
             "output = Path(sys.argv[1])\n"
             "sum(range(10))\n"
             "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
@@ -113,7 +114,7 @@ class TestsFlextInfraPytestProfile:
             "except KeyboardInterrupt:\n"
             "    pass\n"
             "else:\n"
-            "    raise AssertionError('native SIGINT did not escape publication')\n"
+            "    tm.reject('native SIGINT did not escape publication')\n"
             "assert output.read_bytes() == before\n"
             "assert output.stat().st_mtime_ns == before_modified\n"
             "assert pstats.Stats(str(output)).get_stats_profile().func_profiles\n"
@@ -814,7 +815,7 @@ class TestsFlextInfraPytestProfile:
             pytest.fail("profile did not bind its run directory")
         processes = directory / policy.profile_process_directory
         profiles = list(processes.glob("*.pstats"))
-        tm.ok(len(profiles) >= 2)
+        tm.that(len(profiles), gte=2)
         for child in profiles:
             functions = pstats.Stats(str(child)).get_stats_profile().func_profiles
             startup_functions = tuple(

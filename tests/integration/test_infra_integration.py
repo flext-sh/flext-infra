@@ -15,10 +15,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, infra, m
+from flext_infra import infra, m
 from flext_infra.gates import FlextInfraMarkdownGate
 from flext_infra.refactor import FlextInfraRefactorCensus
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -486,5 +486,4 @@ class TestsFlextInfraIntegrationInfraIntegration:
     def test_command_runner_capture_executes_real_command() -> None:
         """Test u.Cli.capture with a real external command."""
         capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])
-        tm.ok(capture_result)
-        tm.that(capture_result.value, eq="infra-ok")
+        tm.ok(capture_result, eq="infra-ok")

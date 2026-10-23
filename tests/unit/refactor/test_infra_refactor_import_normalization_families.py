@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 from typing import TYPE_CHECKING
 
@@ -13,7 +14,7 @@ import pytest
 
 from flext_infra import c, m
 from flext_infra.refactor import FlextInfraImportNormalization
-from tests import tm, u
+from tests import c, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
@@ -65,12 +66,12 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
         (tier / "models.py").write_text(
             "from flext_tests import FlextTestsModels\n\n"
-            "class LocalModels(FlextTestsModels):\n"
+            "class TestsLocalModels(FlextTestsModels):\n"
             "    class Tests(FlextTestsModels.Tests):\n"
             "        class User(FlextTestsModels.Tests.User):\n"
             "            local: bool = FlextTestsModels.Field("
             "default=True, description='Local consumer field')\n\n"
-            "m = LocalModels\n__all__ = ['LocalModels', 'm']\n",
+            "m = TestsLocalModels\n__all__ = ['TestsLocalModels', 'm']\n",
             encoding="utf-8",
         )
         module = tier / "consumer.py"
@@ -348,6 +349,127 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
         tm.that(normalized, lacks="TestsDemoConstants")
         tm.that(normalized, lacks="TestsDemoUtilities")
+
+    @classmethod
+    @pytest.mark.parametrize("namespace", ["primary_pkg", "secondary_pkg"])
+    @pytest.mark.parametrize(
+        "relative", ["consumer.py", "_models/record.py", "_constants/value.py", "constants.py", "domain_records.py"]
+    )
+    @pytest.mark.parametrize("guarded", [False, True])
+    def test_native_facade_role_and_identity_are_project_independent(
+        cls, tmp_path: Path, namespace: str, relative: str, *, guarded: bool
+    ) -> None:
+        """Only consumers converge on an identical public alias; producers do not."""
+        project = tmp_path / namespace
+        package = u.Tests.src_package(
+            project, namespace,
+            pyproject=f"[project]\nname='{namespace}'\nversion='1.0.0'\n",
+        )
+        parent = package.parent / "ancestor_pkg"
+        cls._lazy_init(parent, {"c": ".constants", "r": ".result"})
+        (parent / "constants.py").write_text(
+            "class AncestorConstants:\n    marker = 'native'\n\nc = AncestorConstants\n__all__ = ['c']\n",
+            encoding="utf-8",
+        )
+        (parent / "result.py").write_text(
+            "class Result:\n    pass\n\nr = Result\n__all__ = ['r']\n",
+            encoding="utf-8",
+        )
+        producer = relative in {"_constants/value.py", "constants.py", "domain_records.py"}
+        provider = relative[:-3].replace("/", ".") if producer else "facade"
+        cls._lazy_init(package, {"c": f".{provider}", "r": "ancestor_pkg"})
+        if not producer:
+            (package / "facade.py").write_text(
+                "from ancestor_pkg import c\n__all__ = ['c']\n", encoding="utf-8"
+            )
+        module = package / relative
+        cls._lazy_init(module.parent, {}) if module.parent != package else None
+        statement = "from ancestor_pkg import c, r\n"
+        source = (
+            "from __future__ import annotations\nfrom typing import TYPE_CHECKING\n"
+            + (f"if TYPE_CHECKING:\n    {statement}" if guarded else statement)
+            + ("\nc = c\n__all__ = ['c']\n" if producer else "\ndef read() -> c:\n    return r\n")
+        )
+        module.write_text(source, encoding="utf-8")
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project, file_path=module, source=source
+        ) or source
+        module.write_text(normalized, encoding="utf-8")
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=normalized
+            ), eq=None,
+        )
+        imports = [
+            node.module for node in ast.walk(ast.parse(normalized))
+            if isinstance(node, ast.ImportFrom) and any(alias.name == "c" for alias in node.names)
+        ]
+        tm.that(imports, eq=["ancestor_pkg" if producer else namespace])
+        if guarded:
+            normalized = normalized.replace("if TYPE_CHECKING:", "if True:")
+            module.write_text(normalized, encoding="utf-8")
+        outcome = tm.ok(u.Cli.run_raw(
+            (sys.executable, "-c", f"from {namespace}.{relative[:-3].replace('/', '.')} import c, r; from ancestor_pkg import c as original_c, r as original_r; assert c is original_c; assert r is original_r"),
+            cwd=project,
+            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+        ))
+        tm.that(outcome.exit_code, eq=0)
+        tm.that(outcome.stderr, eq="")
+
+    @classmethod
+    @pytest.mark.parametrize("namespace", ["first_pkg", "second_pkg"])
+    @pytest.mark.parametrize("distinct", [False, True])
+    @pytest.mark.parametrize("guarded", [False, True])
+    def test_native_alias_collision_requires_identity_before_effects(
+        cls, tmp_path: Path, namespace: str, *, distinct: bool, guarded: bool
+    ) -> None:
+        """Inherited operational aliases deduplicate; independent classes reject."""
+        project = tmp_path / namespace
+        package = u.Tests.src_package(
+            project, namespace,
+            pyproject=f"[project]\nname='{namespace}'\nversion='1.0.0'\n",
+        )
+        parent = package.parent / "ancestor_pkg"
+        cls._lazy_init(parent, {"r": ".result"})
+        (parent / "result.py").write_text(
+            "class Result:\n    pass\n\nr = Result\n__all__ = ['r']\n", encoding="utf-8"
+        )
+        cls._lazy_init(package, {"r": ".result" if distinct else "ancestor_pkg"})
+        if distinct:
+            (package / "result.py").write_text(
+                "from ancestor_pkg import r\nclass LocalResult(r):\n    pass\nr = LocalResult\n__all__ = ['r']\n", encoding="utf-8"
+            )
+        module = package / "consumer.py"
+        source = (
+            "from typing import TYPE_CHECKING\n"
+            f"from {namespace} import r\n"
+            + ("if TYPE_CHECKING:\n    from ancestor_pkg import r\n" if guarded else "from ancestor_pkg import r\n")
+            + "value = r\n"
+        )
+        module.write_text(source, encoding="utf-8")
+        if distinct:
+            with pytest.raises(ValueError, match="ambiguous facade binding"):
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project, file_path=module, source=source
+                )
+            tm.that(module.read_text(encoding="utf-8"), eq=source)
+            return
+        normalized = cls._normalize(project, module, source)
+        module.write_text(normalized, encoding="utf-8")
+        tm.that(FlextInfraImportNormalization.normalize_source(
+            project_root=project, file_path=module, source=normalized
+        ), eq=None)
+        tm.that(sum(
+            alias.name == "r" for node in ast.walk(ast.parse(normalized))
+            if isinstance(node, ast.ImportFrom) for alias in node.names
+        ), eq=1)
+        outcome = tm.ok(u.Cli.run_raw(
+            (sys.executable, "-c", f"from {namespace}.consumer import r, value; from ancestor_pkg import r as native; assert r is native; assert value is native"),
+            cwd=project,
+            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+        ))
+        tm.that(outcome.exit_code, eq=0)
+        tm.that(outcome.stderr, eq="")
 
     @classmethod
     def test_settings_config_modules_keep_upstream_contracts(

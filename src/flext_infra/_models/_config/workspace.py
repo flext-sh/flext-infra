@@ -98,7 +98,9 @@ class FlextInfraConfigModelsWorkspace:
 
         @m.model_validator(mode="after")
         def _validate_source(self) -> Self:
-            if not self.url.startswith("https://") or not self.url.endswith(".git"):
+            if not self.url.startswith("https://") or not self.url.endswith(
+                c.GIT_DIR_NAME
+            ):
                 msg = "dependency commit source URL must be canonical HTTPS Git"
                 raise ValueError(msg)
             if c.Infra.GIT_COMMIT_OID_RE.fullmatch(self.commit) is None:

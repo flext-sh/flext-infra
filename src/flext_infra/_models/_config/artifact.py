@@ -11,11 +11,12 @@ from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
+import flext_core
 from flext_cli import m
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
 from flext_infra import c, p, t
-from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -332,7 +333,17 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                     "identifiers distinct from root aliases and each other"
                 ),
             ),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(
+            default_factory=flext_core.u.empty(
+                TypeForm(
+                    Mapping[
+                        t.NonEmptyStr,
+                        Mapping[Literal["config", "settings"], t.NonEmptyStr],
+                    ]
+                )
+            ),
+            validate_default=True,
+        )
 
         @m.field_validator("runtime_module_overrides")
         @classmethod
@@ -340,7 +351,15 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             cls,
             value: Mapping[str, Mapping[Literal["config", "settings"], str]],
         ) -> Mapping[str, Mapping[Literal["config", "settings"], str]]:
-            """Reject invalid physical owners before any source planning."""
+            """Reject invalid physical owners before any source planning.
+
+            Returns:
+                The same validated project-to-runtime-module declarations.
+
+            Raises:
+                ValueError: If a project identity or module destination is invalid.
+
+            """
             for project, roles in value.items():
                 if project != canonicalize_name(project, validate=True):
                     msg = f"runtime module project identity is not canonical: {project}"
@@ -1446,7 +1465,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(description="Repository this task plans"),
         ]
         surface: Annotated[
-            FlextInfraConstantsConfig.CodegenConformSurface,
+            c.Infra.CodegenConformSurface,
             m.Field(
                 description="Requested surface resolved against each target policy"
             ),

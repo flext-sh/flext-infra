@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -21,10 +20,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
-from tests import m, tm, u
-
-if TYPE_CHECKING:
-    from tests import p, t
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraArtifactRenderEmptyGuard:

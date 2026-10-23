@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, infra, m
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenConformProgress:

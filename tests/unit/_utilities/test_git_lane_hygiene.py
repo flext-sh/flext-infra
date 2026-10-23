@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, c, config, m, main, workspace
-from tests import p, tm, u
+from flext_infra import FlextInfraGitService, config, m, main, workspace
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraGitLaneHygiene:
@@ -213,7 +213,7 @@ class TestsFlextInfraGitLaneHygiene:
         u.Tests.git_run(root, "add", "README.md")
         (root / "README.md").write_text("unstaged ownership\n", encoding="utf-8")
         (root / "untracked.txt").write_text("independent work\n", encoding="utf-8")
-        index = (root / ".git" / "index").read_bytes()
+        index = (root / c.GIT_DIR_NAME / "index").read_bytes()
         before = tm.ok(
             u.Infra.git_snapshot_worktree_state(
                 m.Infra.GitWorktreeStateRequest(repo_root=root, paths=(Path(),)),
@@ -242,7 +242,7 @@ class TestsFlextInfraGitLaneHygiene:
         tm.that(
             m.Infra.GitLaneOwnershipReceipt.model_validate_json(encoded), eq=receipt
         )
-        tm.that((root / ".git" / "index").read_bytes(), eq=index)
+        tm.that((root / c.GIT_DIR_NAME / "index").read_bytes(), eq=index)
         tm.that(
             tm.ok(
                 u.Infra.git_snapshot_worktree_state(
@@ -365,6 +365,7 @@ class TestsFlextInfraGitLaneHygiene:
         [
             "owned",
             "integrated",
+            "runtime",
             "overlap",
             "forged",
             "copied",
@@ -385,9 +386,9 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from flext_infra import FlextInfraGitService, codegen
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from tests import c, r
 from tests import c, m, tm, u
 
-runtime_root = Path(sys.argv[1])
 root = Path(sys.argv[2])
 checkpoint = sys.argv[3]
 mode = sys.argv[4]
@@ -417,67 +418,83 @@ state = tm.ok(FlextInfraGitService.prepare_publication(
         ownership=ownership,
     ),
 ))
-index = (root / ".git" / "index").read_bytes()
+index_path = state.index_before.path
+index = index_path.read_bytes()
 head = u.Tests.git_capture(root, "rev-parse", "HEAD").strip()
 if mode == "outside":
     publication_root = u.Tests.git_repository(root.parent / "outside")
     target = publication_root / "README.md"
 else:
     publication_root = root
-producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
-    runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
-))
-owner = codegen.FlextInfraCodegenTransaction(
-    repository_root=publication_root, producer=producer,
-)
-before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-if before.content is None:
-    raise AssertionError("the tracked owned fixture needs its real preimage")
-payload = before.content + b"owned native change\\n"
-phase = c.Infra.MiseSyncPhase.INFRA
-analysis = m.Infra.CodegenPhaseAnalysis(
-    phase=phase,
-    files=(m.Infra.CodegenFilePlan(
-        project=publication_root, path=target, before=before,
-        desired_content=payload, phase=phase,
-    ),),
-)
-receipts: list[m.Infra.CodegenPhaseOutcome] = []
-tm.ok(owner.publish_file_phase_locked(
-    publication_root,
-    owner.capability_roots(phase.value, (publication_root,)),
-    analysis,
-    policy=m.Infra.CodegenPhasePublicationPolicy(directories=()),
-    publication_receipts=receipts,
-))
-if mode == "forged":
-    publications = tuple(receipt.model_copy() for receipt in receipts)
-else:
-    publications = tuple(receipts)
-if mode == "copied":
-    state = state.model_copy()
-if mode == "tip":
-    tree = u.Tests.git_capture(root, "rev-parse", "HEAD^{tree}").strip()
-    oid = u.Tests.git_capture(
-        root, "commit-tree", tree, "-p", head, "-m", "advance integration",
-    ).strip()
-    u.Tests.git_run(root, "push", remote, f"{oid}:refs/heads/{base}")
-if mode == "hook":
-    hook = root / ".git" / "hooks" / "pre-commit"
-    hook.write_text("#!/bin/sh\\ngit add -- foreign.txt\\n", encoding="utf-8")
-    hook.chmod(0o755)
-result = FlextInfraGitService.commit_publications(
-    state, publications,
-    publication_verifier=codegen.FlextInfraMiseArtifactsVerification,
-)
-if mode in {"owned", "integrated"}:
+with FlextInfraGitService.publication_scope(state):
+    producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
+        runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
+    ))
+    owner = codegen.FlextInfraCodegenTransaction(
+        codegen.FlextInfraCodegenMiseArtifacts(repository_root=publication_root),
+        producer=producer,
+    )
+    before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+    if before.content is None:
+        tm.reject("the tracked owned fixture needs its real preimage")
+    payload = before.content + b"owned native change\\n"
+    retired = (
+        tm.ok(u.Infra.git_capture_index_file(m.Infra.GitRelativePathRequest(
+            repo_root=root, relative_path=target.relative_to(root).as_posix(),
+        ))).entry if mode == "runtime" else None
+    )
+    analysis = m.Infra.CodegenPhaseAnalysis(
+        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+        inputs=(before,),
+        files=(m.Infra.CodegenFilePlan(
+            project=publication_root, path=target, before=before,
+            desired_content=payload, desired_mode=before.mode, source_states=(before,),
+            tracking="runtime-local" if mode == "runtime" else "versioned",
+            index_before=retired,
+        ),),
+    )
+    receipts: list[m.Infra.CodegenPhaseOutcome] = []
+    roots = {"@owned": publication_root}
+    tm.ok(owner.run_files_locked(
+        roots,
+        lambda scope_root: owner.publish_file_phase_locked(
+            scope_root, roots, analysis,
+            m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            publication_receipts=receipts,
+        ),
+    ))
+    if mode == "forged":
+        publications = tuple(receipt.model_copy() for receipt in receipts)
+    else:
+        publications = tuple(receipts)
+    if mode == "copied":
+        state = state.model_copy()
+    if mode == "tip":
+        tree = u.Tests.git_capture(root, "rev-parse", "HEAD^{tree}").strip()
+        oid = u.Tests.git_capture(
+            root, "commit-tree", tree, "-p", head, "-m", "advance integration",
+        ).strip()
+        u.Tests.git_run(root, "push", remote, f"{oid}:refs/heads/{base}")
+    if mode == "hook":
+        hook = root / c.GIT_DIR_NAME / "hooks" / "pre-commit"
+        hook.write_text("#!/bin/sh\\ngit add -- foreign.txt\\n", encoding="utf-8")
+        hook.chmod(0o755)
+    result = FlextInfraGitService.commit_publications(
+        state, publications,
+        publication_verifier=codegen.FlextInfraMiseArtifactsVerification,
+    )
+if mode in {"owned", "integrated", "runtime"}:
     committed = tm.ok(result)
     names = u.Tests.git_capture(
         root, "diff-tree", "--no-commit-id", "--name-only", "-r", committed.oid,
     ).splitlines()
     tm.that(names, eq=["README.md"])
-    actual = u.Tests.git_capture(root, "show", f"{committed.oid}:README.md")
-    tm.that(actual, eq=payload.decode("utf-8"))
+    if mode == "runtime":
+        actual = u.Tests.git_capture(root, "ls-tree", committed.oid, "--", "README.md")
+        tm.that(actual, eq="")
+    else:
+        actual = u.Tests.git_capture(root, "show", f"{committed.oid}:README.md")
+        tm.that(actual, eq=payload.decode("utf-8"))
 else:
     tm.fail(result)
     if mode == "overlap":
@@ -486,7 +503,7 @@ else:
         root, "for-each-ref", "--format=%(refname)", "refs/heads/owned-publication",
     )
     tm.that(refs, eq="")
-tm.that((root / ".git" / "index").read_bytes(), eq=index)
+tm.that(index_path.read_bytes(), eq=index)
 tm.that(u.Tests.git_capture(root, "rev-parse", "HEAD").strip(), eq=head)
 tm.that(
     u.Tests.git_capture(root, "branch", "--show-current").strip(),
@@ -497,6 +514,7 @@ tm.that(untracked.read_bytes(), eq=b"untracked foreign bytes\\n")
 """
         native_consumer(
             script,
+            str(Path(__file__).resolve().parents[3]),
             str(request.repo_root),
             request.checkpoint_ref,
             mode,

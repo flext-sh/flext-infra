@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import main
 from flext_infra.deps import FlextInfraExtraPathsManager
-from tests import t, tf, tm, u
+from tests import c, t, tf, tm, u
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
@@ -57,7 +57,7 @@ class TestsFlextInfraDepsExtraPathsSync:
     def _create_pyproject(directory: Path, content: str) -> Path:
         pyproject_path: Path = tf(base_dir=directory).create(
             content=content,
-            name="pyproject.toml",
+            name=c.PYPROJECT_FILENAME,
         )
         return pyproject_path
 
@@ -136,8 +136,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         project = tmp_path / "proj"
         project.mkdir()
         result = self._manager(tmp_path).sync_extra_paths(project_dirs=[project])
-        tm.ok(result)
-        tm.that(result.value, eq=0)
+        tm.ok(result, eq=0)
 
     @pytest.mark.parametrize(
         ("mode", "argv", "expected_exit"),

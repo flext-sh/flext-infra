@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_infra import c, config, t
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenSonarcloudWorkspaceScope:

@@ -15,13 +15,13 @@ from shlex import quote
 import pytest
 from flext_cli import u as cli_u
 
-from flext_infra import c, config, m, p
+from flext_infra import config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
@@ -101,7 +101,7 @@ class TestsFlextInfraGithubGateAttestation:
         # Resolver inputs remain untracked: execution proof binds their live bytes.
         context = TestsFlextInfraGithubGateAttestation._context(root)
         context.resolution_root.mkdir(parents=True, exist_ok=True)
-        context.pyproject_path.write_bytes((root / "pyproject.toml").read_bytes())
+        context.pyproject_path.write_bytes((root / c.PYPROJECT_FILENAME).read_bytes())
         context.lock_path.write_text("version = 1\n", encoding="utf-8")
         tm.ok(
             u.Infra.git_add_paths(
@@ -109,7 +109,7 @@ class TestsFlextInfraGithubGateAttestation:
                     repo_root=root,
                     paths=(
                         "Makefile",
-                        "pyproject.toml",
+                        c.PYPROJECT_FILENAME,
                         "tracked.txt",
                         c.Infra.DEFAULT_SRC_DIR,
                     ),
@@ -282,12 +282,7 @@ class TestsFlextInfraGithubGateAttestation:
         literal_prefix: str,
         corruption: str,
     ) -> None:
-        """Native literal prefixes never send malformed public text into a Path.
-
-        Raises:
-            AssertionError: If a corruption variant is not parametrized.
-
-        """
+        """Native literal prefixes never send malformed public text into a Path."""
         signed_repository_factory(tmp_path)
         public = (tmp_path / "signing_key.pub").read_text(encoding="utf-8").strip()
         kind, encoded, *_ = public.split(maxsplit=2)
@@ -303,7 +298,7 @@ class TestsFlextInfraGithubGateAttestation:
             case "truncated":
                 payload = f"{kind} {encoded[:4]}"
             case _:
-                raise AssertionError(corruption)
+                tm.reject(corruption)
         u.Tests.git_bootstrap(
             tmp_path,
             ("config", "user.signingkey", literal_prefix + payload),
@@ -426,7 +421,7 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Malformed physical fixture config remains a native Git failure."""
         signed_repository_factory(tmp_path)
-        configuration = tmp_path / ".git" / "config"
+        configuration = tmp_path / c.GIT_DIR_NAME / "config"
         configuration.write_text(
             configuration.read_text(encoding="utf-8") + "\n[broken\n",
             encoding="utf-8",
@@ -779,7 +774,12 @@ class TestsFlextInfraGithubGateAttestation:
             ).text
             u.Tests.git_bootstrap(
                 tmp_path,
-                ("remote", "set-url", c.Infra.GIT_ORIGIN, remote.removesuffix(".git")),
+                (
+                    "remote",
+                    "set-url",
+                    c.Infra.GIT_ORIGIN,
+                    remote.removesuffix(c.GIT_DIR_NAME),
+                ),
             )
         elif change == "commit":
             selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")

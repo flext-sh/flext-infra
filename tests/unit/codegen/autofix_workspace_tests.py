@@ -9,15 +9,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from tests import m
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenAutofixWorkspace:
@@ -42,7 +38,7 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         external_project = tmp_path / "external-project"
         external_project.mkdir()
         (external_project / "Makefile").touch()
-        (external_project / ".git").mkdir()
+        (external_project / c.GIT_DIR_NAME).mkdir()
         pkg = external_project / "src" / "external_project"
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").touch()
@@ -72,8 +68,8 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         project = tmp_path / "no-src-proj"
         project.mkdir()
         (project / "Makefile").touch()
-        (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
-        (project / ".git").mkdir()
+        (project / c.PYPROJECT_FILENAME).write_text("[project]\nname='no-src-proj'\n")
+        (project / c.GIT_DIR_NAME).mkdir()
         fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
         [result] = fixer.fix_workspace(
             projects=[self._project_info(project, package_name="")],

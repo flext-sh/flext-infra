@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, r
-from tests import c, m, tm, u
+from tests import c, m, r, tm, u
 
 pytestmark = pytest.mark.slow
 

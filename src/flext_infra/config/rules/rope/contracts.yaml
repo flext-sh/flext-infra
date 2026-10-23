@@ -3,12 +3,6 @@
 # (config/rules/rope/contracts.yaml under its root), never here: a packaged
 # rule naming a project identity fails every consumer that cannot import it.
 rules:
-  - id: native-explicit-delegation-methods
-    operation: materialize-delegations
-    phase: contract-normalization
-    pattern: '${receiver} = ${factory}(${callback}, ${prototype})'
-    goal: '${receiver} = ${factory}(${callback}, ${prototype})'
-    arguments: {}
   # Factory migration retains named/bound logger receivers. Direct u.* collapse
   # needs separate runtime equivalence proof and is deliberately not elected.
   - id: stdlib-module-logger-factory
@@ -268,3 +262,9 @@ rules:
     bindings: *empty_bindings
     arguments:
       field: *pydantic_field_bindings
+  - id: native-explicit-delegation-methods
+    operation: materialize-delegations
+    phase: contract-normalization
+    pattern: '${receiver} = ${factory}(${callback}, ${prototype})'
+    goal: '${receiver} = ${factory}(${callback}, ${prototype})'
+    arguments: {}

@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import c
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -119,7 +119,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(evidence.outcomes[0].candidate_kind, eq="unversioned")
         tm.that(evidence.outcomes[0].candidate_sha, eq=None)
         tm.that(evidence.outcomes[0].candidate_dirty, eq=None)
-        tm.fail((root / ".git").exists())
+        tm.fail((root / c.GIT_DIR_NAME).exists())
         if surface is c.Infra.CodegenConformSurface.PYPROJECT:
             policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
             destinations = {
@@ -153,6 +153,6 @@ class TestsFlextInfraManagedMaintenanceHeaders:
     def test_scaffold_preserves_original_git_failure(tmp_path: Path) -> None:
         """Malformed destination Git metadata remains an identity failure."""
         root = tmp_path / "fixture-project"
-        (root / ".git").mkdir(parents=True)
+        (root / c.GIT_DIR_NAME).mkdir(parents=True)
         with pytest.raises(OSError, match="cannot open git repository"):
             u.Tests.scaffold_plan(root, what=c.Infra.CodegenConformSurface.MAKEFILE)

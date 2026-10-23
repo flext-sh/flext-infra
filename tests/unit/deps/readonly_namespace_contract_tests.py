@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, gates
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -144,7 +144,9 @@ class TestsFlextInfraReadonlyNamespaceContract:
         )
         tm.that(
             gate.readonly_namespace_sources(project, context, targets=(".",)),
-            eq=tuple(sorted(project / name for name in (*relative, "pyproject.toml"))),
+            eq=tuple(
+                sorted(project / name for name in (*relative, c.PYPROJECT_FILENAME))
+            ),
         )
         tm.that(
             gate.readonly_namespace_sources(
@@ -236,7 +238,8 @@ class TestsFlextInfraReadonlyNamespaceContract:
             "from pydantic import BaseModel, Field\n\n"
             "class RuntimeSettings(BaseModel):\n"
             "    class BranchSettings(BaseModel):\n"
-            "        encoding: Annotated[str, Field(description='Encoding')] = 'utf-8'\n\n"
+            "        encoding: Annotated[str, Field(description='Encoding')]"
+            " = 'utf-8'\n\n"
             "    Branch: BranchSettings = Field(default_factory=BranchSettings)\n",
             encoding="utf-8",
         )
@@ -264,9 +267,17 @@ class TestsFlextInfraReadonlyNamespaceContract:
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
-        result = gates.FlextInfraRuffLintGate(tmp_path).check_readonly_namespaces(
-            project, context, (occurrence,)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
+        primary_context = context.model_copy(
+            update={
+                "reports_dir": context.reports_dir / "primary",
+            }
         )
+        before = gate.check(project, primary_context)
+        result = gate.check_readonly_namespaces(project, context, (occurrence,))
+        after = gate.check(project, primary_context)
+        tm.that(before.raw_output, eq=after.raw_output)
+        tm.that(before.result.passed, eq=after.result.passed)
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())
         tm.that(result.raw_receipt is not None, eq=True)
@@ -294,6 +305,13 @@ class TestsFlextInfraReadonlyNamespaceContract:
             "rebinding",
             "masked-baseline",
             "duplicate-registry",
+            "producer-no-model",
+            "field-shadow",
+            "factory-mismatch",
+            "protocol-shadow",
+            "ambiguous-module",
+            "empty-registry",
+            "non-protocol-base",
         ],
     )
     def test_semantic_invalid_occurrences_fail_closed(
@@ -321,6 +339,14 @@ class TestsFlextInfraReadonlyNamespaceContract:
                 "        @alias\n        def Branch",
             ),
             "false-protocol": ("class Settings(Protocol):", "class Settings:"),
+            "non-protocol-base": (
+                "class Settings(Protocol):",
+                "class Settings(object, Protocol):",
+            ),
+            "protocol-shadow": (
+                "class Contracts:",
+                "Protocol = object\nclass Contracts:",
+            ),
             "return-owner": ("-> Contracts.BranchSettings:", "-> int:"),
             "other-class": (
                 "class Settings(Protocol):",
@@ -338,43 +364,57 @@ class TestsFlextInfraReadonlyNamespaceContract:
             text += "\nContracts.Settings.Branch = property(lambda self: None)\n"
         source.write_text(text, encoding="utf-8")
         producer = project / "src" / "sample" / "settings.py"
-        if mutation == "producer-removed":
-            producer.write_text(
-                producer.read_text(encoding="utf-8").replace(
-                    "    Branch: BranchSettings = Field(default_factory=BranchSettings)\n",
-                    "",
+        producer_replacements = {
+            "producer-removed": (
+                (
+                    "    Branch: BranchSettings = "
+                    "Field(default_factory=BranchSettings)\n"
                 ),
+                "",
+            ),
+            "producer-type": ("Annotated[str,", "Annotated[int,"),
+            "producer-no-model": (
+                "RuntimeSettings(BaseModel)",
+                "RuntimeSettings(object)",
+            ),
+            "factory-mismatch": (
+                "default_factory=BranchSettings",
+                "default_factory=dict",
+            ),
+            "field-shadow": (
+                "class RuntimeSettings",
+                "def Field(**kwargs: object) -> None: ...\n\nclass RuntimeSettings",
+            ),
+        }
+        if mutation in producer_replacements:
+            before, after = producer_replacements[mutation]
+            producer.write_text(
+                producer.read_text(encoding="utf-8").replace(before, after),
                 encoding="utf-8",
             )
-        if mutation == "producer-type":
-            producer.write_text(
-                producer.read_text(encoding="utf-8").replace(
-                    "Annotated[str,", "Annotated[int,"
-                ),
-                encoding="utf-8",
-            )
+        if mutation == "ambiguous-module":
+            source.with_suffix(".pyi").write_text(text, encoding="utf-8")
         if mutation == "stale-file":
             occurrence = m.Infra.RuffReadonlyNamespaceOccurrence.model_validate({
                 **occurrence.model_dump(by_alias=True),
                 "path": "src/sample/missing.py",
             })
         if mutation == "masked-baseline":
-            policy = project / "pyproject.toml"
+            policy = project / c.PYPROJECT_FILENAME
             policy.write_text(
                 policy.read_text(encoding="utf-8").replace(
                     '["Branch", "setUp"]', '["Branch", "setUp", "B*"]'
                 ),
                 encoding="utf-8",
             )
-        occurrences = (
-            (occurrence, occurrence)
-            if mutation == "duplicate-registry"
-            else (occurrence,)
-        )
+        occurrences = {
+            "duplicate-registry": (occurrence, occurrence),
+            "empty-registry": (),
+        }.get(mutation, (occurrence,))
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, TypeError), match=r"(?i)(readonly|registered)"):
             gates.FlextInfraRuffLintGate(tmp_path).check_readonly_namespaces(
                 project, context, occurrences
             )
@@ -383,33 +423,33 @@ class TestsFlextInfraReadonlyNamespaceContract:
     @pytest.mark.parametrize(
         ("filename", "source", "rule"),
         [
-            ("other.py", "def Branch() -> None: ...\n", "invalid-function-name"),
-            ("other.py", "async def Branch() -> None: ...\n", "invalid-function-name"),
+            ("other.py", "def Branch() -> None: ...\n", "N802"),
+            ("other.py", "async def Branch() -> None: ...\n", "N802"),
             (
                 "other.py",
                 "class Other:\n    def Branch(self) -> None: ...\n",
-                "invalid-function-name",
+                "N802",
             ),
-            ("other.pyi", "def Branch() -> None: ...\n", "invalid-function-name"),
+            ("other.pyi", "def Branch() -> None: ...\n", "N802"),
             (
                 "other.py",
                 "def consume(Branch: int) -> None: ...\n",
-                "invalid-argument-name",
+                "N803",
             ),
             (
                 "other.py",
                 "def consume() -> None:\n    Branch = 1\n",
-                "non-lowercase-variable-in-function",
+                "N806",
             ),
             (
                 "other.py",
                 "class Branch(Exception): ...\n",
-                "error-suffix-on-exception-name",
+                "N818",
             ),
             (
                 "other.py",
                 "def OtherBrokenName() -> None: ...\n",
-                "invalid-function-name",
+                "N802",
             ),
         ],
     )
@@ -450,15 +490,16 @@ class TestsFlextInfraReadonlyNamespaceContract:
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
         checker = gates.FlextInfraPyreflyGate(tmp_path)
-        accepted = checker.check_files(project, context, files=(proof,))
-        tm.that(accepted.result.passed, eq=True)
+        accepted = checker.check_files((proof,), project, context)
+        tm.that(accepted.result.passed, eq=True, msg=accepted.raw_output)
         proof.write_text(
-            proof.read_text(encoding="utf-8")
-            + "\ndef forbidden(value: Contracts.Settings, branch: Contracts.BranchSettings) -> None:\n"
+            proof.read_text(encoding="utf-8") + "\ndef forbidden(\n"
+            "    value: Contracts.Settings, branch: Contracts.BranchSettings\n"
+            ") -> None:\n"
             "    value.Branch = branch\n",
             encoding="utf-8",
         )
-        rejected = checker.check_files(project, context, files=(proof,))
+        rejected = checker.check_files((proof,), project, context)
         tm.that(rejected.result.passed, eq=False)
         tm.that(
             any("read-only" in issue.message.lower() for issue in rejected.issues),

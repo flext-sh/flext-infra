@@ -13,7 +13,7 @@ import pytest
 from flext_infra import FlextInfraConfig, c, config, infra, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import t, tm, u
+from tests import c, t, tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,

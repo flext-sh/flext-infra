@@ -247,7 +247,7 @@ class TestsFlextInfraReleaseDag:
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
             project = workspace / project_name
-            pyproject = project / "pyproject.toml"
+            pyproject = project / c.PYPROJECT_FILENAME
             content = pyproject.read_text(encoding="utf-8")
             pyproject.write_text(
                 content.split("[tool.hatch.build.targets.sdist]", maxsplit=1)[0],
@@ -279,7 +279,7 @@ class TestsFlextInfraReleaseDag:
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
             project = workspace / project_name
-            pyproject = project / "pyproject.toml"
+            pyproject = project / c.PYPROJECT_FILENAME
             content = pyproject.read_text(encoding="utf-8")
             header = f"[tool.hatch.build.targets.{target}]\n"
             replacement = header + 'exclude = ["/src/flext_a/**"]\n'
@@ -311,7 +311,7 @@ class TestsFlextInfraReleaseDag:
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
             project = workspace / project_name
-            pyproject = project / "pyproject.toml"
+            pyproject = project / c.PYPROJECT_FILENAME
             content = pyproject.read_text(encoding="utf-8")
             header = "[tool.hatch.metadata]\n"
             forced = (

@@ -35,7 +35,7 @@ class TestsFlextInfraDocsGeneratorPlan:
         """Plan arbitrary nested target parents without materializing any directory."""
         project = tmp_path / "project"
         project.mkdir()
-        source = project / "pyproject.toml"
+        source = project / c.PYPROJECT_FILENAME
         source.write_text("[project]\nname = 'docs-fixture'\n", encoding="utf-8")
         target = project / "docs/api-reference/generated/modules/api/v1/public.md"
         sibling = project / "docs/api-reference/generated/modules/api/v1/private.md"

@@ -16,6 +16,8 @@ import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -86,7 +88,7 @@ class FlextInfraConstantsRelease:
     })
     "Casefolded basenames a release accepts as the project's single license."
     RELEASE_OPERATIONAL_ROOTS: ClassVar[frozenset[str]] = frozenset({
-        ".git",
+        c.GIT_DIR_NAME,
         ".github",
         ".reports",
     })
@@ -116,7 +118,7 @@ class FlextInfraConstantsRelease:
         "agents.md",
         "claude.md",
         "pkg-info",
-        "pyproject.toml",
+        c.PYPROJECT_FILENAME,
     })
     "The public sdist boundary besides the license and README files."
 

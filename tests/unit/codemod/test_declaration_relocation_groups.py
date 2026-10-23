@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, p, r
+from flext_infra import infra, p
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
@@ -20,7 +20,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import c, m, t, tm, u
+from tests import c, m, r, t, tm, u
 from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
 )
@@ -676,11 +676,12 @@ class TestsFlextInfraDeclarationRelocationGroups:
                     (
                         f"from {target.parent.parent.name} import m; "
                         "from pydantic import ValidationError; "
+                        "from flext_tests import tm; "
                         "assert m.Payload.model_validate({'value': 'consumer'}).value "
                         "== 'consumer'\n"
                         "try:\n    m.Payload.model_validate({'value': []})\n"
                         "except ValidationError:\n    print('rejected')\n"
-                        "else:\n    raise AssertionError('invalid payload accepted')\n"
+                        "else:\n    tm.reject('invalid payload accepted')\n"
                     ),
                 ),
                 cwd=root,

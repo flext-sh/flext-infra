@@ -30,6 +30,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, tm, u
 from flext_infra import config
 root, _package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
@@ -121,6 +122,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
 )
+from tests import c, r
 from tests import c, m, r, tm, u
 root, _package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
 owned_parent = sys.argv[3] == "True"
@@ -206,6 +208,7 @@ from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, tm, u
 root, _package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
 change = None if sys.argv[3] == "None" else sys.argv[3]

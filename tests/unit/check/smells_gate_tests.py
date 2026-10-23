@@ -14,7 +14,7 @@ from flext_infra import c
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.smells import FlextInfraSmellsGate
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 @pytest.fixture

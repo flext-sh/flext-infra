@@ -108,23 +108,28 @@ class TestsFlextInfraCodegenGeneration:
         (domain / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (domain / "provider.py").write_text(
             f"{'async ' if asynchronous else ''}def encode(value: str) -> str:\n"
-            "    return value\n\n__all__ = ['encode']\n",
+            "    return value\n\n"
+            "class PublishedContract:\n    pass\n\n"
+            "__all__ = ['PublishedContract', 'encode']\n",
             encoding=c.DEFAULT_ENCODING,
         )
 
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        generated = (domain / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(max(map(len, generated.splitlines())), lte=width)
         namespace = f"{package.name}.{domain.name}"
         tm.that(
             u.Tests.run_lazy_init_probe(
                 "import typing\nimport flext_core.lazy\n"
                 "typing.TYPE_CHECKING = True\n"
                 f"import {namespace} as public\n"
-                f"from {namespace}.provider import encode\n"
-                "print(public.encode is encode)\n",
+                f"from {namespace}.provider import PublishedContract, encode\n"
+                "print(public.encode is encode)\n"
+                "print(public.PublishedContract is PublishedContract)\n",
                 python_paths=(str(package.parent),),
                 cwd=repository,
             ),
-            eq=["True"],
+            eq=["True", "True"],
         )
         tm.that(u.Tests.run_lazy_init(repository, check_only=True), eq=0)
 
@@ -362,7 +367,7 @@ class TestsFlextInfraCodegenGeneration:
             "ruff",
             "format",
             "--config",
-            str(Path.cwd() / "pyproject.toml"),
+            str(Path.cwd() / c.PYPROJECT_FILENAME),
             str(target),
         ])
         tm.that(formatted.success, truth=True, msg=formatted.error)
@@ -393,7 +398,7 @@ class TestsFlextInfraCodegenGeneration:
         rendered = FlextInfraCodegenGeneration.render_init(plan)
         target = tmp_path / "__init__.py"
         target.write_text(rendered, encoding="utf-8")
-        project_config = str(Path.cwd() / "pyproject.toml")
+        project_config = str(Path.cwd() / c.PYPROJECT_FILENAME)
 
         formatted = u.Cli.run([
             "ruff",

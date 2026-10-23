@@ -12,12 +12,122 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, settings
+from flext_infra import FlextInfraConfig, config, infra, settings
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDynamicEnvironmentCutover:
     """Preserve unset, empty, and populated values without default normalization."""
+
+    @pytest.mark.parametrize("declared_owner_present", [False, True])
+    def test_declared_settings_owner_is_required_without_legacy_fallback(
+        self, tmp_path: Path, *, declared_owner_present: bool
+    ) -> None:
+        """The public planner requires the declared owner, not an old filename."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        access = (
+            "os.environ.get(str(config.Infra.codegen.make.mypy_cache."
+            "data_home_environment_variable))"
+        )
+        current_owner = Path(inspect.getfile(type(settings)))
+        supplier = tm.not_none(u.Infra.project_root(current_owner))
+        supplier_name = u.Infra.project_name_from_payload(
+            supplier, u.Infra.pyproject_payload(supplier / c.PYPROJECT_FILENAME)
+        )
+        project_layer = FlextInfraConfig.config_layer_paths_for_repository(
+            supplier, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )[1]
+        declared = tm.ok(
+            u.Infra.project_codegen_inputs(
+                supplier,
+                tm.ok(u.Infra.load_codegen_inputs(supplier)),
+                projections=(
+                    m.Infra.CodegenLayerProjection(
+                        path=project_layer,
+                        values={
+                            "Infra": {
+                                "codegen": {
+                                    "runtime_module_overrides": {
+                                        supplier_name: {"settings": "runtime_settings"},
+                                    }
+                                }
+                            }
+                        },
+                    ),
+                ),
+            )
+        )
+        names = u.Infra.runtime_module_names(
+            project_name=supplier_name, codegen=declared.spec
+        )
+        owner = (
+            current_owner.with_name(f"{names['settings']}.py")
+            if declared_owner_present
+            else current_owner
+        )
+        sources = {
+            path: (
+                "import os\nfrom flext_infra import config\n"
+                "def read_value():\n"
+                f"    return {access}\n"
+            ),
+            owner: current_owner.read_text(encoding="utf-8"),
+        }
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(owner, required=False))
+        if declared_owner_present:
+            tm.that(before.content, eq=None)
+        with infra.rope_workspace(root) as rope:
+            if not declared_owner_present:
+                with pytest.raises(ValueError, match="declared settings owner"):
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                        rope_workspace=rope,
+                        sources=sources,
+                        findings=(self._finding(path.relative_to(root), access),),
+                        dependency_codegen={supplier: declared},
+                    )
+                tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+                return
+            with pytest.raises(ValueError, match="policy belongs to another root"):
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                    rope_workspace=rope,
+                    sources=sources,
+                    findings=(self._finding(path.relative_to(root), access),),
+                    dependency_codegen={
+                        supplier: tm.ok(u.Infra.load_codegen_inputs(root))
+                    },
+                )
+            with rope.rope_project.source_consumption() as consumption:
+                edits = tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                        rope_workspace=rope,
+                        sources=sources,
+                        findings=(self._finding(path.relative_to(root), access),),
+                        dependency_codegen={supplier: declared},
+                    )
+                )
+            inputs = {state.path: state for state in consumption.receipt().inputs}
+            tm.ok(supplier / c.PYPROJECT_FILENAME in inputs)
+            for state in declared.sources:
+                tm.that(inputs[state.path], eq=state)
+            tm.that(len(edits), eq=1)
+            sources[path] = edits[0].updated_source
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                        rope_workspace=rope,
+                        sources=sources,
+                        findings=(self._finding(path.relative_to(root), access),),
+                        dependency_codegen={supplier: declared},
+                    )
+                ),
+                eq=(),
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
 
     @pytest.mark.parametrize("value", [None, "", "literal value"])
     @pytest.mark.parametrize("required", [False, True])
@@ -38,6 +148,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         )
         source = (
             "import os\nimport sys\nfrom flext_infra import config\n"
+            "from flext_tests import tm\n"
             "def read_value():\n"
             "    policy = config.Infra.codegen.make.mypy_cache\n"
             f"    return {access}\n"
@@ -48,7 +159,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             "        assert error.args == (str(config.Infra.codegen.make.mypy_cache"
             ".data_home_environment_variable),)\n"
             "    else:\n"
-            "        raise AssertionError('required key was defaulted')\n"
+            "        tm.reject('required key was defaulted')\n"
             "else:\n"
             "    print(repr(read_value()))\n"
         )

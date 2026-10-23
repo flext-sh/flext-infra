@@ -21,7 +21,7 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:

@@ -8,16 +8,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from tests import tf, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from tests import p, t
+from tests import c, p, t, tf, tm, u
 
 
 class TestsFlextInfraInfraVersioning:
@@ -130,7 +125,7 @@ class TestsFlextInfraInfraVersioning:
     ) -> None:
         """Read only the declared project version from a repository root."""
         if content is not None:
-            tf(base_dir=tmp_path).create(content, "pyproject.toml")
+            tf(base_dir=tmp_path).create(content, c.PYPROJECT_FILENAME)
         result = u.Infra.current_workspace_version(tmp_path)
         if expected:
             tm.ok(result, eq=expected)
@@ -158,7 +153,7 @@ class TestsFlextInfraInfraVersioning:
     ) -> None:
         """Atomically replace only a canonical project version declaration."""
         if content is not None:
-            tf(base_dir=tmp_path).create(content, "pyproject.toml")
+            tf(base_dir=tmp_path).create(content, c.PYPROJECT_FILENAME)
         result = u.Infra.replace_project_version(tmp_path, "2.0.0")
         if error:
             tm.fail(result, has=error)
@@ -181,9 +176,9 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from flext_infra import codegen
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from tests import c, r
 from tests import c, m, p, r, tm, u
 
-runtime_root = Path(sys.argv[1])
 root = u.Tests.git_repository(Path(sys.argv[2]) / "repo")
 pyproject = u.Tests.WorktreeFixture.write_python_project(root, root.name)
 current = tm.ok(u.Infra.current_workspace_version(root))
@@ -195,17 +190,24 @@ tm.that(pyproject.read_bytes(), eq=original)
 producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
 ))
-owner = codegen.FlextInfraCodegenTransaction(repository_root=root, producer=producer)
+owner = codegen.FlextInfraCodegenTransaction(
+    codegen.FlextInfraCodegenMiseArtifacts(repository_root=root), producer=producer,
+)
 receipts: list[m.Infra.CodegenPhaseOutcome] = []
+roots = {"@version": root}
 
 def publish(file: m.Infra.CodegenFilePlan) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-    analysis = m.Infra.CodegenPhaseAnalysis(phase=file.phase, files=(file,))
-    result = owner.publish_file_phase_locked(
-        root,
-        owner.capability_roots(file.phase.value, (root,)),
-        analysis,
-        policy=m.Infra.CodegenPhasePublicationPolicy(directories=()),
-        publication_receipts=receipts,
+    analysis = m.Infra.CodegenPhaseAnalysis(
+        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+        inputs=file.source_states, files=(file,),
+    )
+    result = owner.run_files_locked(
+        roots,
+        lambda scope_root: owner.publish_file_phase_locked(
+            scope_root, roots, analysis,
+            m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            publication_receipts=receipts,
+        ),
     )
     if result.failure:
         return r[m.Infra.CodegenPhaseOutcome].from_failure(result)
@@ -221,4 +223,4 @@ tm.that(receipt.written_files, eq=(pyproject,))
 tm.ok(codegen.FlextInfraMiseArtifactsVerification.publication_birth_current(receipt))
 tm.ok(u.Infra.current_workspace_version(root), eq=version)
 """
-        native_consumer(script, str(tmp_path))
+        native_consumer(script, str(Path(__file__).resolve().parents[2]), str(tmp_path))

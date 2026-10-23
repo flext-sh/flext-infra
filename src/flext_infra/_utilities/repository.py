@@ -422,7 +422,7 @@ class FlextInfraUtilitiesRepository:
         # The detected source arrives in either canonical form (with or
         # without the .git suffix — GitHub checkouts omit it); normalize
         # before comparing so URL spelling never fails the line detection.
-        normalized_url = url.removesuffix(".git")
+        normalized_url = url.removesuffix(c.GIT_DIR_NAME)
         suffix = f"/{distribution}"
         if not normalized_url.endswith(suffix):
             return r[m.Infra.WorkspaceIntegrationSpec].fail(
@@ -678,7 +678,9 @@ class FlextInfraUtilitiesRepository:
                     canonicalize_name(declaration.name),
                     str(declaration.marker or ""),
                 )
-                providers.add(parsed.value[0].removesuffix(".git").rsplit("/", 1)[0])
+                providers.add(
+                    parsed.value[0].removesuffix(c.GIT_DIR_NAME).rsplit("/", 1)[0]
+                )
                 if len(providers) > 1 or (key in lines and lines[key] != parsed.value):
                     return r[
                         t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]
@@ -841,7 +843,7 @@ class FlextInfraUtilitiesRepository:
             return r[t.Pair[str, str]].fail(
                 f"declared internal dependency provenance must be HTTPS: {requirement}",
             )
-        repo_slug = url.removesuffix(".git").rsplit("/", 1)[-1]
+        repo_slug = url.removesuffix(c.GIT_DIR_NAME).rsplit("/", 1)[-1]
         if repo_slug.replace("_", "-") != name:
             return r[t.Pair[str, str]].fail(
                 f"internal dependency source must be the {name} repository: "
@@ -929,7 +931,7 @@ class FlextInfraUtilitiesRepository:
             m.Infra.ProviderIdentitySpec(
                 name=repository.provider,
                 organization=organization,
-                base_url=url.removesuffix(".git").rsplit("/", 1)[0],
+                base_url=url.removesuffix(c.GIT_DIR_NAME).rsplit("/", 1)[0],
             ),
         )
 

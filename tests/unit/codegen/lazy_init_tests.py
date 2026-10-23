@@ -58,7 +58,7 @@ def governed_project(tmp_path: Path) -> Path:
         The resulting ``Path``.
 
     """
-    (tmp_path / "pyproject.toml").write_text(
+    (tmp_path / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "test-helpers"\nversion = "0.1.0"\n'
         f'license = "{u.Tests.project_spec("test-helpers").license}"\n'
         'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
@@ -307,10 +307,10 @@ class TestsFlextInfraCodegenLazyInit:
                 '__all__: list[str] = ["MyModel"]\n'
             )
             # Each run plans one repository, so each owns the project manifest.
-            manifest = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
+            manifest = (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
             for repository in ("a", "b"):
                 (tmp_path / repository).mkdir()
-                (tmp_path / repository / "pyproject.toml").write_text(
+                (tmp_path / repository / c.PYPROJECT_FILENAME).write_text(
                     manifest,
                     encoding="utf-8",
                 )

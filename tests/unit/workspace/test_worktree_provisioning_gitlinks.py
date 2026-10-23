@@ -35,7 +35,7 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
     ) -> t.Triple[Path, Path, str]:
         lane = tmp_path / "lane"
         lane.mkdir()
-        (lane / "pyproject.toml").write_text(
+        (lane / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
@@ -143,13 +143,15 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
 
         tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
-        tm.fail((lane / "member" / ".git").exists())
+        tm.fail((lane / "member" / c.GIT_DIR_NAME).exists())
 
     def test_symlinked_git_marker_is_rejected(self, tmp_path: Path) -> None:
         """Test symlinked git marker is rejected."""
         lane, _source_root, _recorded = self._lane(tmp_path)
-        marker = lane / "member" / ".git"
+        marker = lane / "member" / c.GIT_DIR_NAME
         marker.unlink()
         marker.symlink_to(tmp_path / "foreign-git")
 
-        tm.fail(FlextInfraWorktreeService.setup_lane(lane), has=["member", ".git"])
+        tm.fail(
+            FlextInfraWorktreeService.setup_lane(lane), has=["member", c.GIT_DIR_NAME]
+        )

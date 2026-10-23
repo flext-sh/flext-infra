@@ -13,11 +13,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, p, r
+from flext_infra import config, m, p
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from tests import tm, u
+from tests import c, r, tm, u
 
 if TYPE_CHECKING:
     from multiprocessing.process import BaseProcess
@@ -103,6 +103,7 @@ class TestsFlextInfraTransactionLease:
             "from pathlib import Path\n"
             "from flext_infra import m, u\n"
             "from flext_infra.codegen import FlextInfraMiseWorkspacePlanner\n"
+            "from flext_tests import tm\n"
             "root = Path(sys.argv[1])\n"
             "identity = u.Infra.git_identity("
             "m.Infra.GitRepoRequest(repo_root=root)).unwrap()\n"
@@ -121,7 +122,7 @@ class TestsFlextInfraTransactionLease:
             "    assert failure.errno == errno.EPERM\n"
             "    assert failure.__traceback__ is not None\n"
             "else:\n"
-            "    raise AssertionError("
+            "    tm.reject("
             "'denied lease did not escape the public boundary')\n"
             "assert not journal.exists()\n"
             "lock = journal.with_name(journal.name + '.lock')\n"

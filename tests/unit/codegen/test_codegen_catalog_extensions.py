@@ -200,7 +200,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         provider = u.Tests.provider()
         root = tmp_path / "infra-checkout"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             "dependencies = []\n"
             "[dependency-groups]\n"
@@ -228,7 +228,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         branch = u.Tests.provider_branch()
         root = tmp_path / "other-org-consumer"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             f'dependencies = ["flext-core @ git+{provider.base_url}/flext-core.git@'
             f'{branch}"]\n'
@@ -457,7 +457,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         branch = u.Tests.provider_branch()
         root = tmp_path / "split-consumer"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             f'dependencies = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
             f'{branch}"]\n'
@@ -529,7 +529,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         codegen = config.Infra.codegen
         root = tmp_path / "undeclared-checkout"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\ndependencies = []\n',
             encoding="utf-8",
         )

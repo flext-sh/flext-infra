@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor, ImportItem
 from libcst.metadata import (
     Assignment,
     CodePosition,
@@ -767,7 +769,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             transformer.type_reference,
         )
         transformer.quoted.update(((edit.start, edit.end), edit) for edit in edits)
-        updated = MetadataWrapper(cst.parse_module(source)).visit(transformer).code
+        updated = MetadataWrapper(cst.parse_module(source)).visit(transformer)
         if transformer.quoted:
             msg = f"unmatched native nesting quote ranges: {sorted(transformer.quoted)}"
             raise ValueError(msg)
@@ -781,10 +783,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 resource=native[1],
             ),
         )
-        imports = runtime.module_imports_for_pymodule(
-            native[0],
-            runtime.build_string_module(native[0], updated, resource=native[1]),
-        )
+        insertions: list[ImportItem] = []
         for statement in elected.imports:
             info = statement.import_info
             previous = [
@@ -806,12 +805,24 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 if not any(pair in old.names_and_aliases for old in previous)
             ]
             if added:
-                imports.add_import(
-                    runtime.from_import(info.module_name, info.level, added)
+                insertions.extend(
+                    ImportItem(
+                        module_name=info.module_name,
+                        obj_name=name,
+                        alias=alias,
+                        relative=info.level,
+                    )
                     if isinstance(info, p.Infra.RopeFromImport)
-                    else runtime.normal_import(added),
+                    else ImportItem(module_name=name, alias=alias)
+                    for name, alias in added
                 )
-        return imports.get_changed_source()
+        if not insertions:
+            return updated.code
+        return (
+            AddImportsVisitor(CodemodContext(), imports=insertions)
+            .transform_module(updated)
+            .code
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverNestingReferences"]

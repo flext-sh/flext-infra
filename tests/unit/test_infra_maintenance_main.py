@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING, override
 
 from flext_infra import main
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraInfraMaintenanceMain:
@@ -41,9 +41,9 @@ class TestsFlextInfraInfraMaintenanceMain:
 
         """
         root.mkdir(exist_ok=True)
-        (root / ".git").mkdir(exist_ok=True)
+        (root / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         (root / "Makefile").touch()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             f'requires-python = ">=3.{python_minor}"\n',
             encoding="utf-8",
         )
@@ -161,11 +161,11 @@ class TestsFlextInfraInfraMaintenanceMain:
         )
         project = workspace / "project-a"
         project.mkdir()
-        (project / ".git").mkdir()
+        (project / c.GIT_DIR_NAME).mkdir()
         (project / "Makefile").touch()
         (project / "src").mkdir()
         mismatched = sys.version_info.minor + 1
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'project-a'\n"

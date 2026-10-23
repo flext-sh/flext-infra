@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import c, m
 from flext_infra.check import FlextInfraGateRegistry
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraConflictMarkerGate:

@@ -10,15 +10,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import c, tm, u
-
-if TYPE_CHECKING:
-    from tests import m
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenScaffolder:

@@ -7,16 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import tm
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t, tm
 
 
 class TestsFlextInfraProjectGitignorePatterns:

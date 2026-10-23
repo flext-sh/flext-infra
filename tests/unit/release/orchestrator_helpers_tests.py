@@ -458,7 +458,7 @@ class TestsFlextInfraReleaseHelpers:
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
             project = workspace / project_name
-            pyproject = project / "pyproject.toml"
+            pyproject = project / c.PYPROJECT_FILENAME
             wheel_target = "[tool.hatch.build.targets.sdist]"
             pyproject.write_text(
                 pyproject.read_text(encoding="utf-8").replace(
@@ -538,8 +538,7 @@ source = { registry = "https://pypi.org/simple" }
 
             result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
 
-            tm.ok(result)
-            tm.that(result.value, eq={"flext-api": "0.12.0"})
+            tm.ok(result, eq={"flext-api": "0.12.0"})
 
         @staticmethod
         def test_missing_lock_fails_loud(tmp_path: Path) -> None:

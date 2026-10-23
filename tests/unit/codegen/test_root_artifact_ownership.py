@@ -126,7 +126,7 @@ class TestsFlextInfraRootArtifactOwnership:
         tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
+                root / c.PYPROJECT_FILENAME,
                 (
                     "[project]\n"
                     'name = "flext-demo"\n'
@@ -190,7 +190,7 @@ class TestsFlextInfraRootArtifactOwnership:
             u.Tests.write_project_beads_config(root, dist)
             tm.ok(
                 u.Cli.atomic_write_text_file(
-                    root / "pyproject.toml",
+                    root / c.PYPROJECT_FILENAME,
                     f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
                     f'description = "{dist} governed fixture"\n'
                     'requires-python = "'

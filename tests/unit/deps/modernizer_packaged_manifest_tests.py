@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, main
-from tests import tm, u
+from flext_infra import m, main
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +52,12 @@ class TestsFlextInfraModernizerPackagedManifest:
             "exclude": ["**/*.secret"],
             "force-include": {"notice.txt": "notice.txt"},
         }
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                infra_git_repo / "assets/data.yaml", "item: true\n"
+            )
+        )
+        tm.ok(u.Cli.atomic_write_text_file(infra_git_repo / "notice.txt", "Notice\n"))
         manifest = infra_git_repo / c.PYPROJECT_FILENAME
         additions: t.MutableJsonMapping = {
             "tool": {
@@ -115,3 +121,37 @@ class TestsFlextInfraModernizerPackagedManifest:
             ),
             eq=source,
         )
+        tm.that(
+            main([
+                "codegen",
+                "conform",
+                "--root",
+                str(infra_git_repo),
+                "--what",
+                "pyproject",
+                "--scope",
+                "self",
+                "--mode",
+                "apply",
+            ]),
+            eq=0,
+        )
+        source = (infra_git_repo / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        for target in ("wheel", "sdist"):
+            selected = u.Tests.toml_table_at(
+                source,
+                c.Infra.TOOL,
+                "hatch",
+                "build",
+                "targets",
+                target,
+            )
+            tm.that(selected["include"], eq=authored["include"])
+            tm.that(u.Tests.toml_list(selected["exclude"]), has="**/*.secret")
+            tm.that(u.Tests.toml_list(selected["only-include"]), has="assets")
+            tm.that(
+                u.Tests.toml_mapping(selected["force-include"])["notice.txt"],
+                eq="notice.txt",
+            )

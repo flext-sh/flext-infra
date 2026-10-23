@@ -15,7 +15,7 @@ import pytest
 
 from flext_infra import c, config, m, u
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import t, tm
+from tests import c, t, tm
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
@@ -42,7 +42,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         # marker registry exactly as generated projects do, so collection and
         # the runner's ownership check read the same declarations.
         pytest_settings = config.Infra.tooling.tools.pytest
-        (project_root / "pyproject.toml").write_text(
+        (project_root / c.PYPROJECT_FILENAME).write_text(
             u.Cli.toml_dumps(
                 u.Cli.toml_document_from_mapping({
                     "tool": {

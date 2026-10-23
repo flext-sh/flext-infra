@@ -15,7 +15,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra import c, config
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraRootMakefileSingleOwner:

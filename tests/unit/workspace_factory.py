@@ -16,7 +16,7 @@ from tests import c
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraWorkspaceFactory:
@@ -92,7 +92,7 @@ class TestsFlextInfraWorkspaceFactory:
             '"description" = "Generated workspace fixture"\n'
             '"authors" = ["FLEXT Tests <tests@flext.dev>"]\n'
         )
-        (repository_root / "pyproject.toml").write_text(
+        (repository_root / c.PYPROJECT_FILENAME).write_text(
             workspace_pyproject,
             encoding=self.encoding,
         )
@@ -128,7 +128,7 @@ class TestsFlextInfraWorkspaceFactory:
         tests_dir: Path = project_root / "tests"
         package_dir.mkdir(parents=True, exist_ok=True)
         tests_dir.mkdir(parents=True, exist_ok=True)
-        (project_root / "pyproject.toml").write_text(
+        (project_root / c.PYPROJECT_FILENAME).write_text(
             self._project_pyproject(name=name, deps=deps),
             encoding=self.encoding,
         )

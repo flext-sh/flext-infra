@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import c
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraModRuleFixtureStaging:
@@ -51,8 +51,10 @@ class TestsFlextInfraModRuleFixtureStaging:
         poison.mkdir()
         (poison / "recursive").symlink_to(poison, target_is_directory=True)
         (owner / ".agents").symlink_to(tmp_path / "absent", target_is_directory=True)
-        (owner / ".git").mkdir()
-        (owner / ".git" / "unrelated").write_text("do not copy", encoding="utf-8")
+        (owner / c.GIT_DIR_NAME).mkdir()
+        (owner / c.GIT_DIR_NAME / "unrelated").write_text(
+            "do not copy", encoding="utf-8"
+        )
         staged = tmp_path / "staged"
 
         FlextInfraModGateEngine.stage_rule_fixture_root(
@@ -76,7 +78,7 @@ class TestsFlextInfraModRuleFixtureStaging:
         )
         tm.that((staged / ".venv").exists(), truth=False)
         tm.that((staged / ".agents").is_symlink(), truth=False)
-        tm.that((staged / ".git").exists(), truth=False)
+        tm.that((staged / c.GIT_DIR_NAME).exists(), truth=False)
 
     @staticmethod
     @pytest.mark.parametrize("declaration", [".", "../outside", "/outside"])

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra.refactor import FlextInfraImportNormalization
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

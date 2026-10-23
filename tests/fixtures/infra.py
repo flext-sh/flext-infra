@@ -476,7 +476,7 @@ _FLEET_PROVISION = partial(
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=c.ContextScope.SESSION)
 def fleet_session_runtime(
     tmp_path_factory: pytest.TempPathFactory,
     run_namespace: m.Tests.TestNamespace,
@@ -803,7 +803,7 @@ def _ensure_provisioned(
                 _provision_infra_checkout(run_root, key)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=c.ContextScope.SESSION)
 def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMapping:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
@@ -835,7 +835,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
     return u.Tests.hermetic_git_environment(mirrors)
 
 
-@pytest.fixture(scope="session", params=tuple(c.Infra.MakeProfile))
+@pytest.fixture(scope=c.ContextScope.SESSION, params=tuple(c.Infra.MakeProfile))
 def generated_make_template(
     request: pytest.FixtureRequest,
     tmp_path_factory: pytest.TempPathFactory,
@@ -855,7 +855,7 @@ def generated_make_template(
     return profile, root
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=c.ContextScope.SESSION)
 def resolved_make_templates(
     session_runtime: p.Tests.SessionRuntime,
     hermetic_git_environment: t.StrMapping,
@@ -1016,7 +1016,7 @@ version = "0.1.0"
 description = "Test project"
 authors = [{name = "Test", email = "test@example.com"}]
 """
-    (project_root / "pyproject.toml").write_text(pyproject_content)
+    (project_root / c.PYPROJECT_FILENAME).write_text(pyproject_content)
     return project_root
 
 
@@ -1072,7 +1072,7 @@ def real_python_package(tmp_path: Path) -> Path:
         '    return "::".join(normalized).casefold()\n',
         encoding="utf-8",
     )
-    (project_root / "pyproject.toml").write_text(
+    (project_root / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n',
     )
     return project_root
@@ -1149,7 +1149,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     tests_root.mkdir(parents=True)
     # The ini value is an arbitrary non-production budget owned by this probe.
-    (project_root / "pyproject.toml").write_text(
+    (project_root / c.PYPROJECT_FILENAME).write_text(
         '[tool.pytest.ini_options]\nflext_slow_timeout_seconds = "30"\n',
         encoding="utf-8",
     )
@@ -1165,7 +1165,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
     return project_root
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=c.ContextScope.SESSION)
 def mod_workspace_artifact(
     session_runtime: p.Tests.SessionRuntime,
 ) -> t.Pair[Path, Path]:
@@ -1320,13 +1320,13 @@ def real_workspace(tmp_path: Path) -> Path:
     (repository_root / "Makefile").write_text(
         ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n",
     )
-    (repository_root / "pyproject.toml").write_text(
+    (repository_root / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "workspace"\nversion = "0.1.0"\n',
     )
     for i in range(1, 4):
         project_dir = repository_root / f"project_{i}"
         project_dir.mkdir()
-        (project_dir / "pyproject.toml").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n',
         )
         src_dir = project_dir / "src" / f"project_{i}"
@@ -1418,7 +1418,7 @@ def real_docs_project(tmp_path: Path) -> Path:
     (docs_dir / "README.md").write_text("# Documentation\n")
     (docs_dir / "index.md").write_text("# Index\n")
     (project_root / "README.md").write_text("# Project\n")
-    (project_root / "pyproject.toml").write_text(
+    (project_root / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "docs-project"\nversion = "0.1.0"\n',
     )
     return project_root

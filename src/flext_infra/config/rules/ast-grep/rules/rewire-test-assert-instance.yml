@@ -40,7 +40,9 @@ constraints:
     not:
       kind: tuple
 fix: |-
-  if not (isinstance($X, $KIND)):
+  if isinstance($X, $KIND):
+      pass
+  else:
       tm.reject()
 message: Preserve native type narrowing and name bindings through tm.reject.
 ---
@@ -79,6 +81,8 @@ constraints:
     not:
       kind: tuple
 fix: |-
-  if not (isinstance($X, $KIND)):
+  if isinstance($X, $KIND):
+      pass
+  else:
       tm.reject($MSG)
 message: Preserve native type narrowing and lazy assertion arguments through tm.reject.

@@ -59,7 +59,7 @@ class TestsFlextInfraDepsGate:
     def _project(tmp_path: Path, dependencies: str, imports: str) -> Path:
         root = tmp_path / "repository"
         (root / "src" / "fixturepkg").mkdir(parents=True)
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n'
             f"dependencies = [{dependencies}]\n"
             '[tool.deptry]\nknown_first_party = ["fixturepkg"]\n',
@@ -680,7 +680,7 @@ class TestsFlextInfraDepsGate:
         report = tmp_path / "deptry.json"
         report.write_text(
             '[{"error":{"code":"DEP002","message":"dependency is unused"},'
-            '"module":"unused","location":{"file":"pyproject.toml",'
+            '"module":"unused","location":{"file": c.PYPROJECT_FILENAME,'
             '"line":null,"column":null}}]',
             encoding="utf-8",
         )

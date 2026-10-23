@@ -62,12 +62,15 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
         import_normalizer: p.Infra.SourceImportNormalizer | None = None,
         codegen: m.Infra.CodegenConfigSpec | None = None,
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None = None,
     ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan one phase without effects; the first exception escapes unchanged.
 
         ``rope_workspace`` supplies the repository root that reported findings
         are relative to and, for class nesting, the module ownership policy.
         Finding-driven phases select their own rule findings from ``findings``.
+        ``dependency_codegen`` supplies explicitly projected, captured policy by
+        owning project root; absent entries are captured through source authority.
 
         Returns:
             The immutable result view of the selected phase's source edits.
@@ -88,7 +91,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         }:
             if codegen is None:
                 captured = (
-                    FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(root)
+                    FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                        root, source_project=rope_workspace.rope_project
+                    )
                 )
                 if captured.failure:
                     return r[
@@ -98,7 +103,12 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
                 return cls._plan_class_nesting(rope_workspace, sources, codegen)
             return cls._plan_dynamic_environment(
-                root, sources, selected, rope_workspace=rope_workspace, codegen=codegen
+                root,
+                sources,
+                selected,
+                rope_workspace=rope_workspace,
+                codegen=codegen,
+                dependency_codegen=dependency_codegen,
             )
         match phase:
             case (
@@ -122,6 +132,8 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
+        message = f"unsupported semantic cutover phase: {phase}"
+        raise ValueError(message)
 
     @classmethod
     def _plan_behavior_and_declarations(

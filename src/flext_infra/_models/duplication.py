@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_core import m
 
@@ -337,6 +337,103 @@ class FlextInfraModelsDuplication:
                             f"jscpd reported a non-absolute source path: {source.name}"
                         )
                         raise ValueError(msg)
+            return self
+
+    class DuplicationSpanMeasure(m.ContractModel):
+        """Structural measurement, never a semantic exemption or oracle proof."""
+
+        source: str = m.Field(description="Physical source path")
+        sha256: str = m.Field(description="Digest of the complete bytes read")
+        lines: t.NonNegativeInt = m.Field(
+            description="Physical lines with retained tokens"
+        )
+        tokens: t.NonNegativeInt = m.Field(description="Retained Python lexical tokens")
+        runs: tuple[tuple[int, int, int], ...] = m.Field(
+            description="Contiguous retained line runs: start, end, token count",
+        )
+        removed: tuple[str, ...] = m.Field(description="Removed structural categories")
+        uncertainty: str = m.Field(description="Unproven import or annotation effects")
+
+    class DuplicationClassification(m.ContractModel):
+        """Typed disposition vocabulary with a mandatory evidence reason."""
+
+        disposition: Literal[
+            "non_behavioral_only",
+            "below_existing_behavior_floor",
+            "behavioral_candidate",
+            "authority_data_candidate",
+            "unresolved",
+            "analysis_error",
+        ] = m.Field(description="Conservative explanation, not a gate exemption")
+        reason: t.NonEmptyStr = m.Field(
+            description="Evidence or causal analysis failure"
+        )
+
+    class DuplicationCandidateEvidence(DuplicationClassification):
+        """One immutable-index link to every scanner candidate, including mirrors."""
+
+        index: t.NonNegativeInt = m.Field(description="Zero-based raw inventory index")
+        canonical_index: t.NonNegativeInt = m.Field(
+            description="First unordered span pair index"
+        )
+        candidate: FlextInfraModelsDuplication.JscpdDuplicate = m.Field(
+            description="Unmodified typed scanner candidate",
+        )
+        owned: bool = m.Field(description="At least one side belongs to the project")
+        self_span: bool = m.Field(description="Both sides name the identical span")
+        measures: tuple[FlextInfraModelsDuplication.DuplicationSpanMeasure, ...] = (
+            m.Field(
+                description="Both measured spans when analysis succeeds",
+            )
+        )
+
+    class DuplicationAssessment(m.ContractModel):
+        """Lossless sidecar; raw-hard remains the only acceptance contract."""
+
+        policy: Literal["structural-evidence-v1-raw-hard"] = m.Field(
+            description="Versioned non-promoting policy"
+        )
+        raw_sha256: str = m.Field(description="Digest of the exact published receipt")
+        report: FlextInfraModelsDuplication.JscpdReport = m.Field(
+            description="Complete raw typed inventory and counters"
+        )
+        candidates: tuple[
+            FlextInfraModelsDuplication.DuplicationCandidateEvidence, ...
+        ] = m.Field(description="One explanation per raw candidate")
+        min_lines: t.PositiveInt = m.Field(description="Selected existing line floor")
+        min_tokens: t.PositiveInt = m.Field(description="Selected existing token floor")
+        duration_seconds: float = m.Field(
+            ge=0, description="Measured analysis wall time"
+        )
+        source_count: t.NonNegativeInt = m.Field(
+            description="Unique complete sources read"
+        )
+        counts: t.MappingKV[str, int] = m.Field(
+            description="Disposition and ownership counters"
+        )
+        execution: str = m.Field(
+            description="Scanner status, timeout, signal and pass availability"
+        )
+        source_provenance: str = m.Field(
+            description="Limits of source binding to the scanner snapshot",
+        )
+        budget_status: str = m.Field(
+            description="Budget verification status; absence never authorizes promotion"
+        )
+
+        @m.model_validator(mode="after")
+        def _validate_inventory(self) -> Self:
+            if tuple(item.index for item in self.candidates) != tuple(
+                range(len(self.report.duplicates))
+            ):
+                msg = "assessment must preserve every raw candidate in order"
+                raise ValueError(msg)
+            if any(
+                item.candidate != self.report.duplicates[item.index]
+                for item in self.candidates
+            ):
+                msg = "assessment candidate differs from raw inventory"
+                raise ValueError(msg)
             return self
 
     class JscpdScan(m.ContractModel):

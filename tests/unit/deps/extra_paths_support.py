@@ -7,13 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
@@ -71,9 +68,9 @@ class TestsFlextInfraExtraPathsSupport:
         (project / "src" / package).mkdir(parents=True)
         (project / "src" / package / "__init__.py").write_text("", encoding="utf-8")
         if with_git:
-            (project / ".git").mkdir()
+            (project / c.GIT_DIR_NAME).mkdir()
         (project / "Makefile").write_text("", encoding="utf-8")
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             f"[project]\nname = '{name}'\n",
             encoding="utf-8",
         )
@@ -92,11 +89,11 @@ class TestsFlextInfraExtraPathsSupport:
             The resulting ``t.Pair[Path, Path]``.
 
         """
-        (root / ".git").mkdir()
+        (root / c.GIT_DIR_NAME).mkdir()
         (root / "src").mkdir()
         pyproject = "[project]\nname = 'flext'\ndependencies = ['flext-core']\n"
         if uv_workspace:
             pyproject += "[tool.uv.workspace]\nmembers = ['flext-core']\n"
-        (root / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+        (root / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
         dep_root = cls.project(root, "flext-core", "flext_core")
         return root, dep_root

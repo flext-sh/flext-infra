@@ -16,7 +16,7 @@ import pytest
 
 from flext_infra import infra, m, main, r
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import t, tm, u
+from tests import c, r, t, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -259,7 +259,7 @@ class TestsFlextInfraRefactorMainCli:
     @staticmethod
     def _write_workspace_pyproject(workspace: Path) -> None:
         TestsFlextInfraRefactorMainCli._write(
-            workspace / "pyproject.toml",
+            workspace / c.PYPROJECT_FILENAME,
             "[project]\n"
             'name = "sample-pkg"\n'
             'version = "0.1.0"\n\n'

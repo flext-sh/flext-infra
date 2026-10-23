@@ -12,13 +12,21 @@ from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import c, m, p, t
+    from flext_cli import p
+
+    from flext_infra._protocols.check import FlextInfraProtocolsCheck
+    from flext_infra._protocols.rope import FlextInfraProtocolsRope
+    from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
+    from flext_infra.constants import FlextInfraConstants as c
+    from flext_infra.models import FlextInfraModels as m
+    from flext_infra.typings import FlextInfraTypes as t
 
 
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
+    @runtime_checkable
     class ProjectionManifestEntry(Protocol):
         """Projected-file ordering consumed by the manifest planner."""
 
@@ -186,7 +194,7 @@ class FlextInfraProtocolsBase(Protocol):
         def completed(self) -> bool: ...
 
         @property
-        def issues(self) -> t.VariadicTuple[p.Infra.Issue]: ...
+        def issues(self) -> t.VariadicTuple[FlextInfraProtocolsCheck.Issue]: ...
 
         @property
         def exception(self) -> BaseException | None: ...
@@ -250,6 +258,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Close the descriptor and remove only its unpublished lock."""
             ...
 
+    @runtime_checkable
     class GitPublicationVerifier(Protocol):
         """The native publication authority consumed by the scoped Git writer."""
 
@@ -396,10 +405,10 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only structural contract for binding-chain declaration inputs."""
 
         @property
-        def project(self) -> p.Infra.RopeProject: ...
+        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @property
-        def holder(self) -> p.Infra.RopePyModule: ...
+        def holder(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         @property
         def holder_text(self) -> str: ...
@@ -411,7 +420,7 @@ class FlextInfraProtocolsBase(Protocol):
         def holder_offset(self) -> int: ...
 
         @property
-        def holder_scope(self) -> p.Infra.RopeScope: ...
+        def holder_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         @property
         def expression(self) -> str: ...
@@ -435,10 +444,12 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             repository_root: Path | None = None,
             rope_repository_root: Path | None = None,
-        ) -> p.Infra.RopeWorkspaceDsl: ...
+        ) -> FlextInfraProtocolsRope.RopeWorkspaceDsl: ...
 
         @staticmethod
-        def source_preview(repository_root: Path) -> p.Infra.SourcePreview: ...
+        def source_preview(
+            repository_root: Path,
+        ) -> FlextInfraProtocolsBase.SourcePreview: ...
 
     @runtime_checkable
     class ModLoopPhase(Protocol):
@@ -456,7 +467,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             preflight: m.Infra.ModScanReport,
-            rope_workspace: p.Infra.RopeWorkspaceDsl,
+            rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
             *,
             sources: t.MappingKV[Path, str],
             receipt: m.Infra.CodegenPhaseAnalysis,
@@ -466,7 +477,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             preflight: m.Infra.ModScanReport,
-            rope_workspace: p.Infra.RopeWorkspaceDsl,
+            rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
         ) -> p.Result[bool]: ...
 
     @runtime_checkable
@@ -731,7 +742,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def issues(self) -> t.SequenceOf[p.Infra.Issue]:
+        def issues(self) -> t.SequenceOf[FlextInfraProtocolsCheck.Issue]:
             """Complete native diagnostics."""
             ...
 

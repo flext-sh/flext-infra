@@ -249,7 +249,7 @@ class TestsFlextInfraApplyRenames:
     @pytest.mark.parametrize(
         "authority", ["workspace", "member", "standalone", "external"]
     )
-    @pytest.mark.parametrize("operation", ["class", "module"])
+    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["class", "module"])
     def test_provider_rename_reaches_all_native_consumer_scopes(
         tmp_path: Path,
         authority: str,
@@ -784,6 +784,58 @@ class TestsFlextInfraApplyRenames:
         second = tm.ok(FlextInfraApplyRenames.run(request))
         tm.that(second.files_changed, eq=0)
         tm.that(second.occurrences, eq=0)
+
+    @staticmethod
+    def test_enum_constant_owner_preserves_value_and_quoted_class_identity(
+        mod_workspace: Path,
+    ) -> None:
+        """A value assignment keeps its owner while facade aliases expose classes."""
+        driver = mod_workspace / "renames.csv"
+        driver.write_text(
+            "old,new\nc.AiHub.CLI_COMMAND_BD,c.AiHub.Base.CLI_COMMAND_BD\n",
+            encoding="utf-8",
+        )
+        (mod_workspace / "definer.py").write_text(
+            "from enum import StrEnum\n"
+            "from typing import Final\n"
+            "class OwnerBase:\n"
+            "    class Command(StrEnum):\n        BD = 'bd'\n"
+            "    CLI_COMMAND_BD: Final[Command] = Command.BD\n"
+            "class Public:\n"
+            "    class AiHub:\n        Base = OwnerBase\n",
+            encoding="utf-8",
+        )
+        consumer = mod_workspace / "external_consumer.py"
+        consumer.write_text(
+            "from definer import Public as c\n"
+            "from typing import get_type_hints\n"
+            "def read() -> 'c.AiHub.Base.Command':\n"
+            "    return c.AiHub.CLI_COMMAND_BD\n"
+            "value = read()\n"
+            "print(value is c.AiHub.Base.Command.BD, "
+            "type(value) is get_type_hints(read)['return'], str(value))\n",
+            encoding="utf-8",
+        )
+        original = consumer.read_bytes()
+        request = m.Infra.ApplyRenamesInput(
+            csv=str(driver),
+            roots=(str(mod_workspace),),
+            bindings={"c": ("definer.Public",)},
+        )
+        preview = tm.ok(FlextInfraApplyRenames.run(request))
+        tm.that(preview.files_changed, eq=0)
+        tm.that(preview.occurrences, eq=1)
+        tm.that(consumer.read_bytes(), eq=original)
+        report = tm.ok(
+            FlextInfraApplyRenames.run(request.model_copy(update={"apply": True}))
+        )
+        tm.that(report.files_changed, eq=1)
+        tm.that(report.occurrences, eq=0)
+        output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
+        tm.that(output.stdout, eq="True True bd\n")
+        again = tm.ok(FlextInfraApplyRenames.run(request))
+        tm.that(again.files_changed, eq=0)
+        tm.that(again.occurrences, eq=0)
 
     def test_missing_public_destination_prevents_text_publication(
         self,

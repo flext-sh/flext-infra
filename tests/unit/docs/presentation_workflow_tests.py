@@ -56,14 +56,9 @@ class TestsFlextInfraPresentationWorkflow:
 
     @staticmethod
     def _unused_planner() -> Never:
-        """Reject selecting an unrelated code-generation capability.
-
-        Raises:
-            AssertionError: Always, because docs must not select this factory.
-
-        """
+        """Reject selecting an unrelated code-generation capability."""
         msg = "documentation selected a Python generation factory"
-        raise AssertionError(msg)
+        tm.reject(msg)
 
     @pytest.mark.parametrize("projection", [None, "en", "pt-BR"])
     def test_generate_projects_metadata_and_portuguese_docs_in_one_publication(
@@ -158,7 +153,7 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(tuple(target.read_bytes() for target in targets), eq=before)
 
     @pytest.mark.parametrize(
-        "changed_source", ["pyproject.toml", "src/flext_a/__init__.py"]
+        "changed_source", [c.PYPROJECT_FILENAME, "src/flext_a/__init__.py"]
     )
     def test_projection_source_race_prevents_metadata_and_document_publication(
         self, tmp_path: Path, changed_source: str
@@ -270,7 +265,7 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(captured.out, lacks='"desired_content"')
         tm.that(captured.out, lacks='"source_states"')
 
-    @pytest.mark.parametrize("entry", ["generate", "request", "execute"])
+    @pytest.mark.parametrize("entry", ["generate", c.ContextScope.REQUEST, "execute"])
     @pytest.mark.parametrize("failed_project", ["flext-a", "flext-b"])
     def test_terminal_failure_retains_only_preceding_committed_effects(
         self, tmp_path: Path, entry: str, failed_project: str
@@ -293,7 +288,7 @@ class TestsFlextInfraPresentationWorkflow:
             projects=["flext-a", "flext-b"],
             include_root=False,
         )
-        if entry == "request":
+        if entry == c.ContextScope.REQUEST:
             result = docs.FlextInfraDocGenerator.execute_request(request)
         elif entry == "execute":
             result = generator.execute()
@@ -343,7 +338,7 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(encoded, lacks='"desired_content"')
         tm.that(encoded, lacks='"source_states"')
 
-    @pytest.mark.parametrize("entry", ["request", "execute"])
+    @pytest.mark.parametrize("entry", [c.ContextScope.REQUEST, "execute"])
     def test_service_success_retains_the_existing_report_collection(
         self, tmp_path: Path, entry: str
     ) -> None:
@@ -357,7 +352,7 @@ class TestsFlextInfraPresentationWorkflow:
         )
         result = (
             docs.FlextInfraDocGenerator.execute_request(request)
-            if entry == "request"
+            if entry == c.ContextScope.REQUEST
             else generator.execute()
         )
         reports = tm.ok(result).root

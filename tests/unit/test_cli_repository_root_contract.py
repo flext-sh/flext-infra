@@ -56,7 +56,7 @@ class TestsFlextInfraCliRepositoryRootContract:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("group", "command", "generated_command"),
+        ("group", c.HandlerMode.COMMAND, "generated_command"),
         [
             (c.Infra.CLI_GROUP_CHECK, c.Infra.VERB_RUN, c.Infra.VERB_RUN),
             (c.Infra.CLI_GROUP_DEPS, "modernize", "modernize"),

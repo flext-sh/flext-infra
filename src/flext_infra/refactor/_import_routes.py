@@ -8,13 +8,17 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
+from contextlib import ExitStack
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
 from flext_infra.refactor import FlextInfraImportNormalizationAstMixin
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraImportNormalizationRoutesMixin(
@@ -73,6 +77,7 @@ class FlextInfraImportNormalizationRoutesMixin(
         lines: t.StrSequence,
         *,
         sources: t.MappingKV[Path, str] | None = None,
+        rope_project: p.Infra.RopeProject | None = None,
     ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
         """Rewrite each ``from`` import onto its canonical lazy source.
 
@@ -80,8 +85,56 @@ class FlextInfraImportNormalizationRoutesMixin(
             The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
 
         """
+        with ExitStack() as stack:
+            return cls._native_route_edits(
+                state, lines, stack, sources=sources, rope_project=rope_project
+            )
+
+    @classmethod
+    def _native_route_edits(
+        cls,
+        state: m.Infra.ImportLawPass,
+        lines: t.StrSequence,
+        stack: ExitStack,
+        *,
+        sources: t.MappingKV[Path, str] | None,
+        rope_project: p.Infra.RopeProject | None,
+    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        """Route aliases only when the declared native bindings are identical.
+
+        Returns:
+            Import edits with one provider per lexical facade binding.
+
+        Raises:
+            ValueError: If competing providers do not prove the same identity.
+
+        """
         edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
-        for node in cls._iter_imports(state.tree):
+        bindings: dict[tuple[int, str], tuple[str, str]] = {}
+
+        def resolve(module: str, name: str) -> p.Infra.RopePyName | None:
+            nonlocal rope_project
+            if rope_project is None:
+                rope_project = stack.enter_context(
+                    u.Infra.open_import_project(state.scope.project_root)
+                )
+                if sources is not None:
+                    rope_project = u.Infra.snapshot_project(rope_project, sources)
+                    stack.callback(rope_project.close)
+            return u.Infra.resolve_declared_binding(
+                rope_project,
+                module,
+                name,
+                state.scope.project_root,
+                sources if sources is not None else {},
+            )
+
+        # A runtime provider wins over an identical typing-only declaration.
+        imports = sorted(
+            cls._iter_imports(state.tree),
+            key=lambda node: cls._inside_type_checking(node, state.parents),
+        )
+        for node in imports:
             if not isinstance(node, ast.ImportFrom) or node.level or not node.module:
                 continue
             routed: MutableMapping[str, list[str]] = {}
@@ -96,18 +149,27 @@ class FlextInfraImportNormalizationRoutesMixin(
                     continue
                 root = cls._root_alias_source(state, node.module, alias)
                 if root is not None:
-                    # The root publishes the alias under its bound name, so the
-                    # long class spelling (``TestsFooConstants as c``) collapses
-                    # to the published letter.
-                    routed.setdefault(root, []).append(alias.asname or alias.name)
+                    original = resolve(node.module, alias.name)
+                    published = resolve(root, alias.asname or alias.name)
+                    if original is None or not u.Infra.same_name(original, published):
+                        root = None
+                if cls._duplicate_alias(state, (node, alias), bindings, resolve):
                     continue
-                source = cls.lazy_source(
-                    state.scope, node.module, alias.name, sources=sources
+                routed.setdefault(
+                    root
+                    or cls.lazy_source(
+                        state.scope, node.module, alias.name, sources=sources
+                    )
+                    or node.module,
+                    [],
+                ).append(
+                    alias.asname or alias.name
+                    if root is not None
+                    else cls._clause(alias)
                 )
-                routed.setdefault(source or node.module, []).append(
-                    cls._clause(alias),
-                )
-            if list(routed) == [node.module]:
+            if list(routed) == [node.module] and routed[node.module] == [
+                cls._clause(alias) for alias in node.names
+            ]:
                 continue
             indent = cls._line_indent(lines[node.lineno - 1])
             edits.append(
@@ -117,10 +179,51 @@ class FlextInfraImportNormalizationRoutesMixin(
                     tuple(
                         f"{indent}from {module} import {', '.join(clauses)}"
                         for module, clauses in routed.items()
+                    )
+                    or (
+                        (f"{indent}pass",)
+                        if cls._sole_body_statement(node, state.parents)
+                        else ()
                     ),
                 ),
             )
         return edits
+
+    @classmethod
+    def _duplicate_alias(
+        cls,
+        state: m.Infra.ImportLawPass,
+        imported: t.Pair[ast.ImportFrom, ast.alias],
+        bindings: t.MutableMappingKV[t.Pair[int, str], t.Pair[str, str]],
+        resolve: Callable[[str, str], p.Infra.RopePyName | None],
+    ) -> bool:
+        """Reject competing native identities before eliminating a duplicate.
+
+        Returns:
+            Whether the alias already has the same native lexical provider.
+
+        Raises:
+            ValueError: If one facade binding names different or unknown objects.
+
+        """
+        node, alias = imported
+        bound = alias.asname or alias.name
+        if bound not in c.Infra.ALIAS_NAMES | c.Infra.IMPORT_LAW_ROOT_SINGLETONS:
+            return False
+        key = id(cls._enclosing_scope(node, state.parents)), bound
+        current = node.module or "", alias.name
+        previous = bindings.get(key)
+        if previous is None:
+            bindings[key] = current
+            return False
+        binding = resolve(*current)
+        if binding is None or not u.Infra.same_name(binding, resolve(*previous)):
+            msg = (
+                f"{state.scope.file_path}: ambiguous facade binding {bound}: "
+                f"{previous} and {current}"
+            )
+            raise ValueError(msg)
+        return True
 
     @classmethod
     def _root_alias_binding_edits(
@@ -353,16 +456,10 @@ class FlextInfraImportNormalizationRoutesMixin(
         )
         if renamed_external or different_provider:
             return None
-        external_family = (
-            scope.family_letter is not None
-            and bound in c.Infra.ALIAS_NAMES
-            and not module.startswith(f"{scope.namespace}.")
-        )
         if (
             bound in scope.own_exports
             or bound == scope.family_letter
             or bound in scope.facade_dependencies
-            or external_family
             or any(
                 isinstance(reference, ast.Name) and reference.id == bound
                 for declaration in state.tree.body

@@ -15,12 +15,12 @@ from flext_infra.gates.direnv import FlextInfraDirenvGate
 from flext_infra.workspace.environment_contracts import (
     FlextInfraWorkspaceEnvironmentContracts,
 )
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraDirenvGate:

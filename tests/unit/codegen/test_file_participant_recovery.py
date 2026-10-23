@@ -714,7 +714,7 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.ok(session.journal_state.path.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("operation", ["replace", "create", "delete"])
+    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["replace", "create", "delete"])
     @pytest.mark.parametrize("drift", ["none", "published-inode", "pending-inode"])
     def test_interrupted_group_retirement_preserves_exact_current_destinations(
         tmp_path: Path,

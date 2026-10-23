@@ -14,7 +14,7 @@ import pytest
 from flext_infra import r, settings
 from flext_infra.codegen import FlextInfraCodegenMiseToolchainProof
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from tests import c, m, r, t, tm, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
 

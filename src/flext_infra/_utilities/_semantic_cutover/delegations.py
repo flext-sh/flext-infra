@@ -152,7 +152,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             if origin is not module or not isinstance(wrapper, ast.FunctionDef):
                 continue
             rewrite = cls._retire_wrapper(
-                project, module, binding, (wrapper, context[1], sources)
+                project, module, binding, (wrapper, context[1], sources, context[0])
             )
             if rewrite is not None and not any(
                 item.start == rewrite.start for item in selected
@@ -167,10 +167,13 @@ class FlextInfraUtilitiesSemanticDelegations(
         module: p.Infra.RopePyModule,
         binding: p.Infra.RopePyName,
         context: tuple[
-            ast.FunctionDef, list[p.Infra.SourceRewrite], t.MappingKV[Path, str]
+            ast.FunctionDef,
+            list[p.Infra.SourceRewrite],
+            t.MappingKV[Path, str],
+            ast.ClassDef,
         ],
     ) -> p.Infra.SourceRewrite | None:
-        wrapper, rewrites, sources = context
+        wrapper, rewrites, sources, owner = context
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         resource = module.get_resource()
         if resource is None:
@@ -185,6 +188,28 @@ class FlextInfraUtilitiesSemanticDelegations(
             for occurrence in finder.find_occurrences(resource=resource)
         ):
             return None
+        owner_binding = runtime.resolve_symbol(
+            runtime.scope_at(module, runtime.source_offset(module.source_code, owner)),
+            ast.Name(id=owner.name, ctx=ast.Load()),
+        )
+        if owner_binding is None:
+            msg = "wrapper retirement lost its native declaring owner"
+            raise ValueError(msg)
+        owner_finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
+            project, owner.name, owner_binding, imports=False, in_hierarchy=False
+        )
+        # A carrier outside the class can dynamically select this still-shipped
+        # factory. Leave it intact unless the existing retirement proof is admissible.
+        if any(
+            not occurrence.is_defined()
+            and not (
+                owner.lineno
+                <= module.source_code.count("\n", 0, occurrence.offset) + 1
+                <= (owner.end_lineno or owner.lineno)
+            )
+            for occurrence in owner_finder.find_occurrences(resource=resource)
+        ):
+            return None
         cls._prove_contract_retirement(
             project,
             sources,
@@ -192,11 +217,13 @@ class FlextInfraUtilitiesSemanticDelegations(
             destinations=(),
             span=(
                 Path(resource.real_path),
-                wrapper.lineno,
-                wrapper.end_lineno or wrapper.lineno,
+                owner.lineno,
+                owner.end_lineno or owner.lineno,
             ),
         )
-        first = min((wrapper, *wrapper.decorator_list), key=lambda node: node.lineno)
+        first: ast.expr | ast.FunctionDef = wrapper
+        if wrapper.decorator_list:
+            first = wrapper.decorator_list[0]
         start = runtime.source_offset(module.source_code, first)
         if first is not wrapper:
             start -= len("@")
@@ -207,17 +234,15 @@ class FlextInfraUtilitiesSemanticDelegations(
         end = runtime.source_offset(module.source_code, wrapper) + len(segment)
         return m.Infra.SourceRewrite(start=start, end=end, text="")
 
-    @staticmethod
+    @classmethod
     def _ignored_types(
+        cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         owner: ast.ClassDef,
         rewrites: list[p.Infra.SourceRewrite],
     ) -> list[p.Infra.SourceRewrite]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        scope = runtime.scope_at(
-            module, runtime.source_offset(module.source_code, owner)
-        )
         descriptors: list[p.Infra.RopePyName] = []
         for statement in owner.body:
             if not isinstance(statement, ast.Assign) or not isinstance(
@@ -235,6 +260,19 @@ class FlextInfraUtilitiesSemanticDelegations(
                     descriptors.append(descriptor)
         if not descriptors:
             return []
+        return cls._ignored_type_elements(project, module, owner, descriptors)
+
+    @staticmethod
+    def _ignored_type_elements(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        owner: ast.ClassDef,
+        descriptors: list[p.Infra.RopePyName],
+    ) -> list[p.Infra.SourceRewrite]:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope = runtime.scope_at(
+            module, runtime.source_offset(module.source_code, owner)
+        )
         selected: list[p.Infra.SourceRewrite] = []
         for statement in owner.body:
             if not isinstance(statement, ast.AnnAssign | ast.Assign) or not isinstance(
@@ -293,10 +331,10 @@ class FlextInfraUtilitiesSemanticDelegations(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         start = runtime.source_offset(module.source_code, statement)
         scope = runtime.scope_at(module, start)
-        descriptor, arguments = cls._factory(project, scope, statement.value)
-        if descriptor is None:
-            return None
         try:
+            descriptor, arguments = cls._factory(project, scope, statement.value)
+            if descriptor is None:
+                return None
             cls._require_deferred(module)
             cls._prove_descriptor(project, descriptor)
             text, imports = cls._method(project, scope, owner, statement, arguments)
@@ -338,7 +376,10 @@ class FlextInfraUtilitiesSemanticDelegations(
         if not isinstance(value, p.Infra.RopeSourceDefinition):
             return None
         node = value.get_ast()
-        module = value.get_module()
+        location = FlextInfraUtilitiesRopeRuntimeModules.definition_location(binding)
+        if location is None:
+            return None
+        module = location[0]
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
             module
         ) or not isinstance(
@@ -367,19 +408,17 @@ class FlextInfraUtilitiesSemanticDelegations(
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = runtime.resolve_symbol(scope, call.func)
-        if binding is None or any(
-            runtime.same_name(binding, previous) for previous in ancestors
-        ):
-            return None, ()
         definition = cls._definition(binding)
-        if definition is None:
+        if (
+            definition is None
+            or binding is None
+            or any(runtime.same_name(binding, previous) for previous in ancestors)
+        ):
             return None, ()
         module, node = definition
         if isinstance(node, ast.ClassDef):
             # Python protocol members, not a project-specific descriptor identifier.
-            if {"__init__", "__get__"}.issubset({
-                part.name for part in node.body if isinstance(part, ast.FunctionDef)
-            }):
+            if cls._descriptor_elected(project, module, node):
                 operands = cls._descriptor_arguments(call)
                 if len(ancestors) > len(operands):
                     msg = "delegation factory exceeds two proven static wrappers"
@@ -412,6 +451,41 @@ class FlextInfraUtilitiesSemanticDelegations(
         if descriptor is None:
             return None, ()
         return descriptor, cls._factory_arguments(node, call, body[0].value, selected)
+
+    @staticmethod
+    def _descriptor_elected(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        node: ast.ClassDef,
+    ) -> bool:
+        if not {"__init__", "__get__"}.issubset({
+            part.name for part in node.body if isinstance(part, ast.FunctionDef)
+        }):
+            return False
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        calls = [
+            expression
+            for part in node.body
+            if isinstance(part, ast.FunctionDef) and part.name == "__init__"
+            for expression in ast.walk(part)
+            if isinstance(expression, ast.Call)
+        ]
+        return all(
+            any(
+                runtime.same_name(
+                    runtime.qualified_name(project, identity),
+                    runtime.resolve_symbol(
+                        runtime.scope_at(
+                            module,
+                            runtime.source_offset(module.source_code, expression),
+                        ),
+                        expression.func,
+                    ),
+                )
+                for expression in calls
+            )
+            for identity in ("functools.update_wrapper", "typing.get_type_hints")
+        )
 
     @staticmethod
     def _descriptor_arguments(call: ast.Call) -> tuple[ast.expr, ast.expr]:
@@ -451,6 +525,11 @@ class FlextInfraUtilitiesSemanticDelegations(
 
         """
         parameters = node.args.posonlyargs + node.args.args
+        if len(call.args) > len(parameters) or any(
+            isinstance(arg, ast.Starred) for arg in call.args
+        ):
+            msg = "delegation wrapper has expanded or excess positional arguments"
+            raise ValueError(msg)
         if (
             len(parameters) != len(selected)
             or node.args.defaults
@@ -462,7 +541,11 @@ class FlextInfraUtilitiesSemanticDelegations(
             raise ValueError(msg)
         supplied = dict(zip((item.arg for item in parameters), call.args, strict=False))
         for keyword in call.keywords:
-            if keyword.arg is None or keyword.arg in supplied:
+            if (
+                keyword.arg is None
+                or keyword.arg in supplied
+                or keyword.arg in {arg.arg for arg in node.args.posonlyargs}
+            ):
                 msg = "delegation wrapper has expanded or repeated arguments"
                 raise ValueError(msg)
             supplied[keyword.arg] = keyword.value
@@ -492,7 +575,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         module, owner = definition
         if not isinstance(owner, ast.ClassDef):
             msg = "descriptor has no native class declaration"
-            raise ValueError(msg)
+            raise TypeError(msg)
         if owner.bases or owner.keywords or owner.decorator_list:
             msg = "descriptor inheritance or decorators change binding semantics"
             raise ValueError(msg)
@@ -562,8 +645,10 @@ class FlextInfraUtilitiesSemanticDelegations(
         fields = (stored.targets[0].attr, unbound.targets[0].attr)
         native = ast.parse(
             f"{parameters[0]}.{fields[0]} = {parameters[1]}\n"
-            f"def {invoke.name}({invoke.args.args[0].arg}, *{invoke.args.vararg.arg}, **{invoke.args.kwarg.arg}):\n"
-            f"    return {parameters[1]}({invoke.args.args[0].arg})(*{invoke.args.vararg.arg}, **{invoke.args.kwarg.arg})\n"
+            f"def {invoke.name}({invoke.args.args[0].arg}, "
+            f"*{invoke.args.vararg.arg}, **{invoke.args.kwarg.arg}):\n"
+            f"    return {parameters[1]}({invoke.args.args[0].arg})("
+            f"*{invoke.args.vararg.arg}, **{invoke.args.kwarg.arg})\n"
             f"wrap({invoke.name}, {parameters[2]})\n"
             f"{invoke.name}.__annotations__ = hints({parameters[2]})\n"
             f"{parameters[0]}.{fields[1]} = {invoke.name}\n"
@@ -606,8 +691,8 @@ class FlextInfraUtilitiesSemanticDelegations(
         expressions: tuple[ast.Call, ast.Call],
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        scope = binding.get_object().get_scope()
-        if scope is None:
+        module = binding.get_object().get_module()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             msg = "descriptor has no native lexical scope"
             raise ValueError(msg)
         for expression, identity in zip(
@@ -617,7 +702,12 @@ class FlextInfraUtilitiesSemanticDelegations(
         ):
             if not runtime.same_name(
                 runtime.qualified_name(project, identity),
-                runtime.resolve_symbol(scope, expression.func),
+                runtime.resolve_symbol(
+                    runtime.scope_at(
+                        module, runtime.source_offset(module.source_code, expression)
+                    ),
+                    expression.func,
+                ),
             ):
                 msg = "descriptor signature metadata has an unproven native origin"
                 raise ValueError(msg)
@@ -709,7 +799,10 @@ class FlextInfraUtilitiesSemanticDelegations(
             and isinstance(callback.body.value.value, ast.Name)
             and callback.body.value.value.id == callback.args.args[0].arg
         ):
-            msg = "callback must select its receiver's current port method without effects"
+            msg = (
+                "callback must select its receiver's current port method "
+                "without effects"
+            )
             raise ValueError(msg)
         return callback.args.args[0].arg, callback.body.value.attr, callback.body.attr
 
@@ -720,7 +813,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         scope: p.Infra.RopeScope,
         owner: ast.ClassDef,
         operands: tuple[ast.expr, tuple[str, str, str]],
-    ) -> tuple[p.Infra.RopePyName, ast.FunctionDef | ast.AsyncFunctionDef]:
+    ) -> tuple[p.Infra.RopePyName, ast.FunctionDef]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = runtime.resolve_symbol(scope, operands[0])
         definition = cls._definition(binding)
@@ -731,13 +824,42 @@ class FlextInfraUtilitiesSemanticDelegations(
         cls._require_deferred(origin)
         if not isinstance(native, ast.FunctionDef | ast.AsyncFunctionDef):
             msg = "prototype has no native function declaration"
+            raise TypeError(msg)
+        if isinstance(native, ast.AsyncFunctionDef):
+            msg = (
+                "async prototype cannot retain call-time port selection with a native "
+                "async signature; materialize its declaring owner explicitly"
+            )
+            raise TypeError(msg)
+        tree = origin.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = "prototype has no native lexical inventory"
+            raise TypeError(msg)
+        if any(
+            sum(
+                isinstance(part, ast.FunctionDef | ast.AsyncFunctionDef)
+                and part.name == native.name
+                for part in declaration.body
+            )
+            != 1
+            for declaration in ast.walk(tree)
+            if isinstance(declaration, ast.Module | ast.ClassDef)
+            and native in declaration.body
+        ):
+            msg = f"prototype {native.name} has overloads or repeated declarations"
             raise ValueError(msg)
         # The existing retirement owner rejects callable defaults before effects.
         cls._native_contract_signature(binding)
+        cls._default_identity(origin, scope, native)
         if any(
             not runtime.same_name(
                 runtime.qualified_name(project, "typing.override"),
-                runtime.resolve_symbol(scope, decorator),
+                runtime.resolve_symbol(
+                    runtime.scope_at(
+                        origin, runtime.source_offset(origin.source_code, native)
+                    ),
+                    decorator,
+                ),
             )
             for decorator in native.decorator_list
         ):
@@ -765,25 +887,46 @@ class FlextInfraUtilitiesSemanticDelegations(
             if port_type is not None
             else None
         )
-        if binding is None or not runtime.same_name(binding, actual):
+        if not runtime.same_name(binding, actual):
             msg = f"port {port} and prototype select different native operations"
             raise ValueError(msg)
         return binding, native
 
     @staticmethod
+    def _default_identity(
+        origin: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        native: ast.FunctionDef,
+    ) -> None:
+        if scope.pyobject.get_module() is origin:
+            return
+        if any(
+            isinstance(default, ast.Constant)
+            and default.value is not None
+            and default.value is not True
+            and default.value is not False
+            and default.value is not Ellipsis
+            for default in (*native.args.defaults, *native.args.kw_defaults)
+        ):
+            msg = (
+                "cross-module default identity requires a native shared binding; "
+                "copying a literal only proves equality, not object identity"
+            )
+            raise ValueError(msg)
+
+    @staticmethod
     def _forward(
-        native: ast.FunctionDef | ast.AsyncFunctionDef,
+        native: ast.FunctionDef,
         name: str,
         selection: tuple[str, str, str],
-    ) -> ast.FunctionDef | ast.AsyncFunctionDef:
+    ) -> ast.FunctionDef:
         rendered = deepcopy(native)
         rendered.name = name
         rendered.decorator_list = []
         positional = rendered.args.posonlyargs + rendered.args.args
-        if not positional or positional[0].arg != selection[0]:
-            msg = "prototype and callback receiver names differ"
+        if not positional:
+            msg = "prototype has no native receiver parameter"
             raise ValueError(msg)
-        positional[0].annotation = None
         if rendered.args.defaults and len(rendered.args.defaults) == len(positional):
             msg = "prototype receiver cannot have a default"
             raise ValueError(msg)
@@ -810,7 +953,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         invocation = ast.Call(
             func=ast.Attribute(
                 value=ast.Attribute(
-                    value=ast.Name(id=selection[0], ctx=ast.Load()),
+                    value=ast.Name(id=positional[0].arg, ctx=ast.Load()),
                     attr=selection[1],
                     ctx=ast.Load(),
                 ),
@@ -820,11 +963,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             args=forwarded,
             keywords=keywords,
         )
-        returned = ast.Return(
-            value=ast.Await(value=invocation)
-            if isinstance(native, ast.AsyncFunctionDef)
-            else invocation
-        )
+        returned = ast.Return(value=invocation)
         rendered.body = (
             [deepcopy(native.body[0])] if ast.get_docstring(native) is not None else []
         ) + [returned]
@@ -836,7 +975,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopePyName,
         scope: p.Infra.RopeScope,
-        rendered: ast.FunctionDef | ast.AsyncFunctionDef,
+        rendered: ast.FunctionDef,
     ) -> tuple[p.Infra.RopeImportInfo, ...]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         definition = cls._definition(binding)
@@ -856,11 +995,10 @@ class FlextInfraUtilitiesSemanticDelegations(
             msg = "prototype has no native annotation scope"
             raise ValueError(msg)
         required: list[p.Infra.RopeImportInfo] = []
+        relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
         imported = {
             alias or name.split(".")[0]: information
-            for information in FlextInfraUtilitiesSemanticDeclarationRelocation.native_import_infos(
-                project, origin
-            )
+            for information in relocation.native_import_infos(project, origin)
             for name, alias in information.names_and_aliases
         }
         for name in cls._signature_names(project, native_scope, signature) - generics:
@@ -882,7 +1020,10 @@ class FlextInfraUtilitiesSemanticDelegations(
                     and information.level
                 )
             ):
-                msg = f"signature binding {name} has no unambiguous native import from {origin.get_name()}"
+                msg = (
+                    f"signature binding {name} has no unambiguous native import "
+                    f"from {origin.get_name()}"
+                )
                 raise ValueError(msg)
             aliases = tuple(
                 (imported_name, alias)
@@ -912,12 +1053,15 @@ class FlextInfraUtilitiesSemanticDelegations(
     def _signature_names(
         project: p.Infra.RopeProject,
         scope: p.Infra.RopeScope,
-        signature: ast.FunctionDef | ast.AsyncFunctionDef,
+        signature: ast.FunctionDef,
     ) -> set[str]:
         names: set[str] = set()
+        roots: set[str] = set()
 
         def collect(_scope: p.Infra.RopeScope, expression: str) -> None:
-            names.add(expression.partition(".")[0])
+            root = expression.partition(".")[0]
+            if root in roots:
+                names.add(root)
 
         expressions = [
             node.annotation
@@ -931,10 +1075,33 @@ class FlextInfraUtilitiesSemanticDelegations(
             for node in signature.type_params
             if isinstance(node, ast.TypeVar) and node.bound is not None
         )
+        expressions.extend(
+            node.default_value
+            for node in signature.type_params
+            if isinstance(node, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec)
+            and node.default_value is not None
+        )
         for expression in expressions:
             if any(isinstance(node, ast.Call) for node in ast.walk(expression)):
                 msg = "signature annotations cannot execute authored calls twice"
                 raise ValueError(msg)
+            roots = {
+                node.id for node in ast.walk(expression) if isinstance(node, ast.Name)
+            }
+            names.update(roots)
+            for node in ast.walk(expression):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    quoted = ast.parse(node.value, mode="eval")
+                    if any(isinstance(part, ast.Call) for part in ast.walk(quoted)):
+                        msg = (
+                            "quoted signature annotations cannot execute authored calls"
+                        )
+                        raise ValueError(msg)
+                    roots.update(
+                        part.id
+                        for part in ast.walk(quoted)
+                        if isinstance(part, ast.Name)
+                    )
             FlextInfraUtilitiesSemanticFamilyTypeReferences.rewrite_type_source(
                 ast.unparse(expression), project, scope, collect
             )

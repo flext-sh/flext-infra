@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, codegen, config, infra, m, main, workspace
-from tests import tm, u
+from tests import c, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 

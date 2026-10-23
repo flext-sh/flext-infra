@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -81,17 +81,16 @@ class TestsFlextInfraConfigFixer:
     def test_process_file_with_valid_toml(tmp_path: Path) -> None:
         """Test that process_file handles valid TOML without pyrefly section."""
         fixer = FlextInfraConfigFixer(repository_root=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         pyproject.write_text("[tool]\nother = true\n")
         result = fixer.process_file(pyproject)
-        tm.ok(result)
-        tm.that(result.value, eq=())
+        tm.ok(result, eq=())
 
     @staticmethod
     def test_process_file_with_invalid_toml(tmp_path: Path) -> None:
         """Test that process_file handles invalid TOML gracefully."""
         fixer = FlextInfraConfigFixer(repository_root=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         pyproject.write_text("[invalid toml")
         result = fixer.process_file(pyproject)
         tm.fail(result)
@@ -102,7 +101,7 @@ class TestsFlextInfraConfigFixer:
     def test_process_file_with_dry_run(tmp_path: Path) -> None:
         """Test that process_file with dry_run doesn't modify file."""
         fixer = FlextInfraConfigFixer(repository_root=tmp_path)
-        pyproject = tmp_path / "pyproject.toml"
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         original_content = "[tool]\nother = true\n"
         pyproject.write_text(original_content)
         result = fixer.process_file(pyproject, dry_run=True)

@@ -186,7 +186,7 @@ class TestsFlextInfraDocumentationLanguage:
         ):
             root = tmp_path / name
             root.mkdir()
-            path = root / "pyproject.toml"
+            path = root / c.PYPROJECT_FILENAME
             path.write_text(
                 f'[project]\nname = "{name}"\nversion = "1.0"\n'
                 '[tool.flext.docs]\npackage_name = "sample"\n' + declaration,

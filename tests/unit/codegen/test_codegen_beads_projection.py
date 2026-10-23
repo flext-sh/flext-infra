@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, codegen, config, workspace
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenBeadsProjection:

@@ -68,7 +68,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         )
         source = TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source
         spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec("workspace")
-        (workspace / "pyproject.toml").write_text(
+        (workspace / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 'name = "workspace"\n'
@@ -119,7 +119,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             project = workspace / name
             project.mkdir(parents=True, exist_ok=True)
             package_name = name.replace("-", "_")
-            (project / "pyproject.toml").write_text(
+            (project / c.PYPROJECT_FILENAME).write_text(
                 (
                     "[build-system]\n"
                     'build-backend = "hatchling.build"\n'
@@ -188,7 +188,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         if initialize_root_git:
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace)
         else:
-            (workspace / ".git").mkdir(exist_ok=True)
+            (workspace / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         if initialize_project_git:
             for name in project_names:
                 TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace / name)

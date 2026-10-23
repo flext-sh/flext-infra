@@ -20,20 +20,33 @@ class TestsFlextInfraRenamePreflight:
     """Observe real native rename events without replacing publication owners."""
 
     @staticmethod
+    @pytest.mark.parametrize("enum_value", [False, True])
     def test_target_override_rejects_the_campaign_before_text_publication(
         mod_workspace: Path,
+        *,
+        enum_value: bool,
     ) -> None:
         """Test target override rejects the campaign before text publication."""
         driver = mod_workspace / "renames.csv"
         driver.write_text("old,new\nOld,New\n", encoding="utf-8")
         (mod_workspace / "definer.py").write_text(
-            "class Public:\n    New = 37\n",
+            (
+                "from enum import StrEnum\n"
+                "from typing import Final\n"
+                "class Command(StrEnum):\n    BD = 'bd'\n"
+                "class Public:\n    New: Final[Command] = Command.BD\n"
+                if enum_value
+                else "class Public:\n    New = 37\n"
+            ),
             encoding="utf-8",
         )
         consumer = mod_workspace / "consumer.py"
         original = (
-            "from definer import Public\nclass Derived(Public):\n    New = 99\n"
-            "value = Derived.Old\n"
+            "from definer import Public\n"
+            + ("from definer import Command\n" if enum_value else "")
+            + "class Derived(Public):\n"
+            + ("    New = Command.BD\n" if enum_value else "    New = 99\n")
+            + "value = Derived.Old\n"
         )
         consumer.write_text(original, encoding="utf-8")
         guide = mod_workspace / "guide.md"

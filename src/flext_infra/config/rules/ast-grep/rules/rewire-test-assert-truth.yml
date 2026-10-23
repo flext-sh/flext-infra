@@ -39,7 +39,9 @@ rule:
           matches: tm-imported-from-flext
           stopBy: end
 fix: |-
-  if not ($COND):
+  if $COND:
+      pass
+  else:
       tm.reject()
 message: Preserve native conditional evaluation and fail through tm.reject.
 ---

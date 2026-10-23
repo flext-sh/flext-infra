@@ -95,7 +95,7 @@ class TestsFlextInfraConformSupport:
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
                 if path.is_file()
-                and ".git" not in path.relative_to(root).parts
+                and c.GIT_DIR_NAME not in path.relative_to(root).parts
                 and ".infra-baseline" not in path.relative_to(root).parts
                 and c.Infra.TRANSACTION_STATE_DIRNAME
                 not in path.relative_to(root).parts
@@ -148,7 +148,7 @@ class TestsFlextInfraConformSupport:
         dist = u.Tests.repository_ref(config.Infra.name).distribution
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
+                root / c.PYPROJECT_FILENAME,
                 f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
                 'description = "Existing repository fixture"\n'
                 f"requires-python = "
@@ -186,7 +186,7 @@ class TestsFlextInfraConformSupport:
             repository,
             project=u.Tests.project_spec(repository.name),
         )
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
             encoding="utf-8",
         )

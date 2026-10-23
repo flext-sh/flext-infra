@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import tm
+from tests import c, tm
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ class TestsFlextInfraExtraPathsArePure:
             "flext-ldap",
             "flext_ldap",
         )
-        consumer.joinpath("pyproject.toml").write_text(
+        consumer.joinpath(c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'flext-ldap'\n"

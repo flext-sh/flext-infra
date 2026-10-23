@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests import tm
+from tests import c, tm
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -72,10 +72,10 @@ class TestsFlextInfraExtraPathsSearchPaths:
         """Keep project-local roots when dependencies are development-only."""
         consumer = tmp_path / "flext-core"
         consumer.mkdir()
-        (consumer / ".git").mkdir()
+        (consumer / c.GIT_DIR_NAME).mkdir()
         (consumer / "src").mkdir()
         (consumer / "Makefile").write_text("", encoding="utf-8")
-        (consumer / "pyproject.toml").write_text(
+        (consumer / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'flext-core'\n"
@@ -90,11 +90,11 @@ class TestsFlextInfraExtraPathsSearchPaths:
         ):
             dep_root = tmp_path / dep_name
             dep_root.mkdir()
-            (dep_root / ".git").mkdir()
+            (dep_root / c.GIT_DIR_NAME).mkdir()
             (dep_root / "Makefile").write_text("", encoding="utf-8")
             dep_src = dep_root / "src" / package_name
             dep_src.mkdir(parents=True)
-            (dep_root / "pyproject.toml").write_text(
+            (dep_root / c.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname = '{dep_name}'\n",
                 encoding="utf-8",
             )
@@ -115,11 +115,11 @@ class TestsFlextInfraExtraPathsSearchPaths:
         """Importable tests retain only the configured import identities."""
         consumer = tmp_path / "flext-infra"
         consumer.mkdir()
-        (consumer / ".git").mkdir()
+        (consumer / c.GIT_DIR_NAME).mkdir()
         (consumer / "src").mkdir()
         (consumer / "tests").mkdir()
         (consumer / "Makefile").write_text("", encoding="utf-8")
-        (consumer / "pyproject.toml").write_text(
+        (consumer / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'flext-infra'\n",
             encoding="utf-8",
         )
@@ -156,11 +156,11 @@ class TestsFlextInfraExtraPathsSearchPaths:
         tmp_path: Path,
     ) -> None:
         """Keep declared workspace projects out of the root's search path."""
-        (tmp_path / ".git").mkdir()
+        (tmp_path / c.GIT_DIR_NAME).mkdir()
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'flext'\n"
@@ -176,9 +176,9 @@ class TestsFlextInfraExtraPathsSearchPaths:
         ):
             dep_root = tmp_path / dep_name
             dep_root.mkdir()
-            (dep_root / ".git").mkdir()
+            (dep_root / c.GIT_DIR_NAME).mkdir()
             (dep_root / "Makefile").write_text("", encoding="utf-8")
-            (dep_root / "pyproject.toml").write_text(
+            (dep_root / c.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname = '{dep_name}'\n",
                 encoding="utf-8",
             )

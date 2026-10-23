@@ -6,15 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 
 from flext_infra import config
-from tests import c, m, tm
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, m, t, tm
 
 
 def _spec_payload(**overrides: t.JsonValue) -> t.MutableJsonMapping:

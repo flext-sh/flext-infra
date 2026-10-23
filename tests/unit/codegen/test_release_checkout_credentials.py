@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, t
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraReleaseCheckoutCredentials:
@@ -194,7 +194,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         root = u.Tests.git_repository(tmp_path / "repo")
         u.Tests.git_run(root, "tag", "fixture-release")
         candidate = u.Tests.git_capture(root, "rev-parse", "HEAD").strip()
-        index = (root / ".git" / "index").read_bytes()
+        index = (root / c.GIT_DIR_NAME / "index").read_bytes()
         output = tmp_path / "github-output"
         tag, checkpoint = selection
         with u.Tests.env_vars_context({
@@ -212,7 +212,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             tm.that(f"ref={candidate}" in lines, eq=True)
             tm.that(f"release_commit={str(release).lower()}" in lines, eq=True)
         tm.that(u.Tests.git_capture(root, "rev-parse", "HEAD").strip(), eq=candidate)
-        tm.that((root / ".git" / "index").read_bytes(), eq=index)
+        tm.that((root / c.GIT_DIR_NAME / "index").read_bytes(), eq=index)
         tm.that((root / "injected").exists(), eq=False)
 
     def test_generated_version_head_gets_direct_ci_without_publication(self) -> None:

@@ -271,8 +271,7 @@ class TestsFlextInfraCodemodGate:
         }
         prefix = type(config).model_config.get("env_prefix")
         if prefix is None:
-            msg = "The config owner must declare its environment prefix"
-            raise AssertionError(msg)
+            tm.reject("The config owner must declare its environment prefix")
         try:
             with u.Tests.env_vars_context({
                 f"{prefix}Infra": tm.ok(
@@ -564,7 +563,7 @@ class TestsFlextInfraCodemodGate:
         receipt = result.gates["codemod"].raw_receipt
         if receipt is None:
             msg = "A failed codemod gate must retain its native receipt"
-            raise AssertionError(msg)
+            tm.reject(msg)
         reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",

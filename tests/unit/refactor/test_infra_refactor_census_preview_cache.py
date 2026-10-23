@@ -12,7 +12,7 @@ import pytest
 
 import flext_infra
 from flext_infra import c, m
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

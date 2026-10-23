@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.deps import FlextInfraToolTablesPhase
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -81,7 +81,7 @@ class TestsFlextInfraPytestFailClosedConfig:
             ),
         )
         phase = FlextInfraToolTablesPhase(tooling)
-        pyproject = tmp_path / "flext-sample" / "pyproject.toml"
+        pyproject = tmp_path / "flext-sample" / c.PYPROJECT_FILENAME
 
         first_changes = phase.apply_payload(payload, path=pyproject)
         second_changes = phase.apply_payload(payload, path=pyproject)

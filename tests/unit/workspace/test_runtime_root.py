@@ -372,7 +372,7 @@ class TestsFlextInfraRuntimeRoot:
         ):
             root = tmp_path / repository.path
             root.mkdir()
-            (root / "pyproject.toml").write_text(
+            (root / c.PYPROJECT_FILENAME).write_text(
                 "[project]\n"
                 f'name = "{repository.distribution}"\n'
                 'version = "1.0.0"\n'

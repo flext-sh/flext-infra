@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,7 +40,7 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
                     layer,
                 ),
             )
-        pyproject_path = project_root / "pyproject.toml"
+        pyproject_path = project_root / c.PYPROJECT_FILENAME
         pyproject_path.write_text(content.strip() + "\n", encoding="utf-8")
 
     def test_classify_reads_internal_dependencies_from_pep621(

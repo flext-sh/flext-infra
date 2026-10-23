@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import c, config, m
-from tests import tm, u
+from flext_infra import config, m
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenDocsWorkflowProfile:
@@ -32,15 +32,12 @@ class TestsFlextInfraCodegenDocsWorkflowProfile:
         Returns:
             The declared render artifact for one destination.
 
-        Raises:
-            AssertionError: If artifact is not declared.
-
         """
         for entry in config.Infra.codegen.templates.entries:
             if entry.destination == destination:
                 return entry
         msg = f"artifact is not declared: {destination}"
-        raise AssertionError(msg)
+        return tm.reject(msg)
 
     def test_docs_workflow_reaches_every_profile_that_ci_reaches(self) -> None:
         """The docs workflow is projected wherever the CI workflow is."""

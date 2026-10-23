@@ -7,7 +7,9 @@ snapshots:
   : fixed: |
       from flext_tests import tm
       def check():
-          if not (verdict() or unexpected()):
+          if verdict() or unexpected():
+              pass
+          else:
               tm.reject()
     labels:
     - source: assert verdict() or unexpected()
@@ -32,9 +34,11 @@ snapshots:
     )
   : fixed: |
       from tests import tm
-      if not ((
+      if (
           tm.ok(result) == expected
-      )):
+      ):
+          pass
+      else:
           tm.reject()
     labels:
     - source: |-
@@ -61,7 +65,9 @@ snapshots:
     assert 0 < count < limit
   : fixed: |
       from tests import tm
-      if not (0 < count < limit):
+      if 0 < count < limit:
+          pass
+      else:
           tm.reject()
     labels:
     - source: assert 0 < count < limit
@@ -83,7 +89,9 @@ snapshots:
     assert len(lines) == _EXPECTED_LINES
   : fixed: |
       from tests import tm
-      if not (len(lines) == _EXPECTED_LINES):
+      if len(lines) == _EXPECTED_LINES:
+          pass
+      else:
           tm.reject()
     labels:
     - source: assert len(lines) == _EXPECTED_LINES
@@ -105,7 +113,9 @@ snapshots:
     assert path.is_file()
   : fixed: |
       from tests import tm
-      if not (path.is_file()):
+      if path.is_file():
+          pass
+      else:
           tm.reject()
     labels:
     - source: assert path.is_file()

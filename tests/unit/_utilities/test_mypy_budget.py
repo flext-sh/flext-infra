@@ -12,6 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import config, gates, m, u
+from tests import c
 
 
 class TestsFlextInfraMypyBudget:
@@ -59,7 +60,7 @@ class TestsFlextInfraMypyBudget:
     ) -> None:
         """A real checker run records its project policy and native inventory."""
         project = real_python_package
-        pyproject = project / "pyproject.toml"
+        pyproject = project / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8") + "\n[tool.mypy]\n",
             encoding="utf-8",

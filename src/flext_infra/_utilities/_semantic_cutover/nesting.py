@@ -1826,7 +1826,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             project.close()
             return planned_edits.from_failure(planned)
         definitions_by_file = {
-            path: definitions
+            path: cls._nesting_declaration_destinations(
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    project,
+                    project.get_resource(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    ),
+                ),
+                definitions,
+            )
             for (path, _source), definitions in zip(owned, planned.value, strict=True)
             if definitions
         }

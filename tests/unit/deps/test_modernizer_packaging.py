@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import c, main
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerPackaging:

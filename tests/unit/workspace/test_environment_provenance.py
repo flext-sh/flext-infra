@@ -25,7 +25,7 @@ from tests import c, m, tm, u
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from tests import p, t
+from tests import p, t
 
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:

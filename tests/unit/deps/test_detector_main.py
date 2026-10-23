@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, deps, m, main
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraDepsDetectorMain:
@@ -20,15 +20,15 @@ class TestsFlextInfraDepsDetectorMain:
     @staticmethod
     @pytest.mark.slow
     @pytest.mark.remote
-    @pytest.mark.parametrize("entrypoint", ["cli", "request"])
+    @pytest.mark.parametrize("entrypoint", ["cli", c.ContextScope.REQUEST])
     def test_run_reports_without_mutating_the_project(
         real_detector_project: Path,
         entrypoint: str,
     ) -> None:
         """CLI and typed service requests retain the same report behavior."""
         root = real_detector_project
-        before = (root / "pyproject.toml").read_bytes()
-        if entrypoint == "request":
+        before = (root / c.PYPROJECT_FILENAME).read_bytes()
+        if entrypoint == c.ContextScope.REQUEST:
             params = m.Infra.DetectCommand(repository_root=root, no_pip_check=True)
             before_request = params.model_dump()
             tm.that(
@@ -43,7 +43,7 @@ class TestsFlextInfraDepsDetectorMain:
                 eq=True,
                 msg=f"{outcome.stdout}\n{outcome.stderr}",
             )
-        tm.that((root / "pyproject.toml").read_bytes(), eq=before)
+        tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
         report = m.Infra.WorkspaceDependencyReport.model_validate_json(
             (
                 root / ".reports/dependencies/detect-runtime-dev-latest.json"
@@ -98,8 +98,8 @@ class TestsFlextInfraDepsDetectorMain:
             encoding="utf-8",
         )
         u.Tests.initialize_git_repo(member)
-        parent_before = (root / "pyproject.toml").read_bytes()
-        member_before = (member / "pyproject.toml").read_bytes()
+        parent_before = (root / c.PYPROJECT_FILENAME).read_bytes()
+        member_before = (member / c.PYPROJECT_FILENAME).read_bytes()
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -111,5 +111,5 @@ class TestsFlextInfraDepsDetectorMain:
         tm.fail(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout + outcome.stderr, has="Deptry executable not found")
         tm.fail((member / ".venv").exists())
-        tm.that((root / "pyproject.toml").read_bytes(), eq=parent_before)
-        tm.that((member / "pyproject.toml").read_bytes(), eq=member_before)
+        tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=parent_before)
+        tm.that((member / c.PYPROJECT_FILENAME).read_bytes(), eq=member_before)

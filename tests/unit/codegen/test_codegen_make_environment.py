@@ -409,7 +409,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             # .venv even when --project names the member checkout.
             tm.ok(
                 u.Cli.atomic_write_text_file(
-                    project_root.parent / "pyproject.toml",
+                    project_root.parent / c.PYPROJECT_FILENAME,
                     f'[tool.uv.workspace]\nmembers = ["{project_root.name}"]\n',
                 ),
             )
@@ -918,7 +918,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             c.Infra.MakeProfile.WORKSPACE,
             bootstrap=True,
         )
-        rendered = (project_root / "pyproject.toml").read_text(encoding="utf-8")
+        rendered = (project_root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
         requirements = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
         external = tuple(
             requirement

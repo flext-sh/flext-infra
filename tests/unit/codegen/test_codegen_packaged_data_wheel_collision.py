@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, infra, m, main
-from tests import t, tm, u
+from flext_infra import config, infra, m, main
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

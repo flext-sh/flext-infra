@@ -27,7 +27,7 @@ class TestsFlextInfraCandidateDependencyLine:
         url = f"https://example.test/fixture/{distribution}.git"
         commit = "a" * 40
         u.Tests.initialize_git_repo(tmp_path)
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "candidate-consumer"\n'
             f'version = "{c.Tests.RELEASE_VERSION_BASE}"\n'
             f'dependencies = ["{distribution} @ git+{url}@{commit}"]\n',

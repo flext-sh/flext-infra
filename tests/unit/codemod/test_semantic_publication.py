@@ -8,15 +8,11 @@ from __future__ import annotations
 
 import stat
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import codegen, codemod, infra, refactor, services, transformers
-from tests import c, m, tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraSemanticPublication:
@@ -494,7 +490,7 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / ".git" / "persisted-plan-metadata", "metadata\n"
+                root / c.GIT_DIR_NAME / "persisted-plan-metadata", "metadata\n"
             )
         )
         with infra.rope_workspace(root) as workspace:
@@ -628,7 +624,7 @@ class TestsFlextInfraSemanticPublication:
         root = (artifact.candidate.workspaces or (artifact.candidate.workspace,))[0]
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / ".git" / "persisted-plan-metadata", "metadata\n"
+                root / c.GIT_DIR_NAME / "persisted-plan-metadata", "metadata\n"
             )
         )
         source = next(

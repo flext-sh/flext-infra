@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,8 +39,7 @@ class TestsFlextInfraExtendedConfigFixerErrors:
 
         result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(file_path)
 
-        tm.ok(result)
-        tm.that(result.value, eq=())
+        tm.ok(result, eq=())
 
     @staticmethod
     def test_run_returns_verbose_messages_for_selected_project(
@@ -75,7 +74,7 @@ class TestsFlextInfraExtendedConfigFixerErrors:
             "project1",
             pyproject="[tool.pyrefly]\nsearch-path = []\n",
         )
-        pyproject = project_dir / "pyproject.toml"
+        pyproject = project_dir / c.PYPROJECT_FILENAME
         original = pyproject.read_text(encoding="utf-8")
 
         result = FlextInfraConfigFixer(repository_root=tmp_path).run(

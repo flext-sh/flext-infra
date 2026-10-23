@@ -21,7 +21,7 @@ import pytest
 
 from flext_infra import config, r
 from flext_infra.docs.server import FlextInfraDocServer
-from tests import tm
+from tests import r, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

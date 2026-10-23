@@ -198,7 +198,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         repository_root = tmp_path
         non_git_dir = repository_root / "non_git_project"
         non_git_dir.mkdir()
-        (non_git_dir / "pyproject.toml").write_text(
+        (non_git_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='non_git_project'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
@@ -212,8 +212,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         service = u.Infra()
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.find_all_pyproject_files(nonexistent)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.ok(result, eq=[])
 
     @staticmethod
     def test_standalone_pyproject_scan_never_reads_parent_or_sibling(
@@ -225,10 +224,10 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         sibling = tmp_path / "sibling"
         child.mkdir()
         sibling.mkdir()
-        own_pyproject = child / "pyproject.toml"
+        own_pyproject = child / c.PYPROJECT_FILENAME
         own_pyproject.touch()
-        (tmp_path / "pyproject.toml").touch()
-        (sibling / "pyproject.toml").touch()
+        (tmp_path / c.PYPROJECT_FILENAME).touch()
+        (sibling / c.PYPROJECT_FILENAME).touch()
 
         result = service.find_all_pyproject_files(child)
 
@@ -241,7 +240,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     ) -> None:
         """Test find all pyproject files with permission error."""
         service = u.Infra()
-        (tmp_path / "pyproject.toml").touch()
+        (tmp_path / c.PYPROJECT_FILENAME).touch()
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
         tm.ok(len(result.value) >= 1)
@@ -255,7 +254,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         repository_root = tmp_path
         proj = repository_root / "incomplete_project"
         proj.mkdir()
-        (proj / "pyproject.toml").write_text(
+        (proj / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='incomplete_project'\n",
             encoding="utf-8",
         )
@@ -271,7 +270,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         service = u.Infra()
         blocked_dir = tmp_path / "blocked"
         blocked_dir.mkdir()
-        (blocked_dir / "pyproject.toml").write_text(
+        (blocked_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='blocked'\n",
             encoding="utf-8",
         )
@@ -280,5 +279,4 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             result = service.find_all_pyproject_files(tmp_path)
         finally:
             blocked_dir.chmod(0o755)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.ok(result, eq=[])

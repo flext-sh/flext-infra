@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from tests import u
+from tests import c, u
 
 
 def build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
@@ -26,7 +26,7 @@ def build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
     # The project's identity is its declared [project].name, so the fixture
     # declares the name it was asked for — never a directory-derived guess.
-    (project / "pyproject.toml").write_text(
+    (project / c.PYPROJECT_FILENAME).write_text(
         f"[project]\nname='{name}'\nversion='0.1.0'\n",
         encoding="utf-8",
     )
@@ -59,12 +59,12 @@ def layout_engine(
         The resulting ``FlextInfraCodegenLayout``.
 
     """
-    if not (repository_root / ".git").exists():
+    if not (repository_root / c.GIT_DIR_NAME).exists():
         provider = u.Tests.provider()
         governed_url = f"{provider.base_url.rstrip('/')}/{repository_root.name}.git"
         u.Tests.initialize_git_repo(repository_root, origin_url=governed_url)
         u.Tests.write_project_beads_config(repository_root, repository_root.name)
-        root_pyproject = repository_root / "pyproject.toml"
+        root_pyproject = repository_root / c.PYPROJECT_FILENAME
         if not root_pyproject.is_file():
             root_pyproject.write_text(
                 f"[project]\nname='{repository_root.name}'\nversion='0.1.0'\n",

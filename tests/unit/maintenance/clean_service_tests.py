@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra.maintenance import FlextInfraCleanService
-from tests import tm
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

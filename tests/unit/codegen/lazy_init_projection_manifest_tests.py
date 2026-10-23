@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenLazyInitProjectionManifest
-from tests import tm, u
+from tests import c, tm, u
 
 
 def _plan(

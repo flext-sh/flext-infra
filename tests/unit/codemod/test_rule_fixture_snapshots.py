@@ -16,7 +16,7 @@ from typing_extensions import TypeForm
 from flext_infra import c, main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraModRuleFixtureSnapshots:

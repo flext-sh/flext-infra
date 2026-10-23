@@ -5,7 +5,9 @@ snapshots:
     assert isinstance(value, Entry)
   : fixed: |
       from tests import tm
-      if not (isinstance(value, Entry)):
+      if isinstance(value, Entry):
+          pass
+      else:
           tm.reject()
     labels:
     - source: assert isinstance(value, Entry)
@@ -28,7 +30,9 @@ snapshots:
         raise AssertionError
   : fixed: |
       from tests import tm
-      if not (isinstance(cfg, m.AiHub.McpConfig)):
+      if isinstance(cfg, m.AiHub.McpConfig):
+          pass
+      else:
           tm.reject()
     labels:
     - source: |-

@@ -273,7 +273,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             member,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         relative = member.relative_to(root).as_posix()
         document = u.Tests.toml_doc(
@@ -709,7 +711,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             project,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, seed))
         native_options = m.Cli.ProcessOptions(
@@ -794,7 +798,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             project,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         u.Tests.initialize_git_repo(
             project,
@@ -875,7 +881,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             member,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         if associated_clone:
             u.Tests.initialize_git_repo(

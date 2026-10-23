@@ -111,7 +111,7 @@ class TestsFlextInfraTypeGates:
             The resulting ``m.Infra.GateContext``.
 
         """
-        pyproject = real_python_package / "pyproject.toml"
+        pyproject = real_python_package / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8")
             + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
@@ -145,7 +145,7 @@ class TestsFlextInfraTypeGates:
             "    return Plugin\n",
             encoding="utf-8",
         )
-        pyproject = project / "pyproject.toml"
+        pyproject = project / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8").replace(
                 "[tool.mypy]\n",
@@ -373,7 +373,7 @@ class TestsFlextInfraTypeGates:
     ) -> None:
         """Test real warning is red."""
         project = real_python_package
-        pyproject = project / "pyproject.toml"
+        pyproject = project / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8") + "\n" + config_text,
             encoding="utf-8",
@@ -401,7 +401,7 @@ class TestsFlextInfraTypeGates:
     ) -> None:
         """Test failed pyrefly cannot reuse previous report."""
         project = checker_context.repository_root
-        pyproject = project / "pyproject.toml"
+        pyproject = project / c.PYPROJECT_FILENAME
         reports = checker_context.reports_dir
         gate = gates.FlextInfraPyreflyGate(project)
         first = gate.check(project, checker_context)

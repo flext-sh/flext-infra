@@ -78,6 +78,7 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             return result.fail("Git publication requires its exact admitted repository")
         ref = f"refs/heads/{request.branch}"
         repo.git.check_ref_format(ref)
+        cls._git_publication_branch_current(root, request.branch)
         integration_ref = f"refs/remotes/{declared.remote}/{declared.branch}"
         repo.git.check_ref_format(integration_ref)
         previous = next(

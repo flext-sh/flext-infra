@@ -78,6 +78,7 @@ class TestsFlextInfraLiteralEnums:
                         "import json\n"
                         "from typing import get_args\n"
                         "from pydantic import ValidationError\n"
+                        "from flext_tests import tm\n"
                         f"from {package.name} import c\n"
                         f"from {package.name}.consumer import "
                         "Alpha, Beta, Envelope, Defaults, value\n"
@@ -102,7 +103,7 @@ class TestsFlextInfraLiteralEnums:
                         "except ValidationError:\n"
                         "    pass\n"
                         "else:\n"
-                        "    raise AssertionError('invalid discriminator accepted')\n"
+                        "    tm.reject('invalid discriminator accepted')\n"
                     ),
                 ),
                 cwd=root,

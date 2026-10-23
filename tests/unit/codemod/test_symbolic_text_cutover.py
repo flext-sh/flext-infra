@@ -18,7 +18,7 @@ from flext_infra import c, m
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import tm, u
+from tests import c, tm, u
 
 if typing.TYPE_CHECKING:
     from tests import p, t
@@ -287,7 +287,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "Holder = observed()\n"
             "print(Holder.Alias.ERROR)\n",
             expression="Holder.Alias.ERROR",
-            proof=("First.ERROR", "global"),
+            proof=("First.ERROR", c.ContextScope.GLOBAL),
             scope_name="observed",
         )
 
@@ -307,7 +307,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "    Alias = Chosen\n"
             "print(Holder.Alias.ERROR)\n",
             expression="Holder.Alias.ERROR",
-            proof=(None, "global"),
+            proof=(None, c.ContextScope.GLOBAL),
         )
 
     @classmethod
@@ -656,9 +656,9 @@ class TestsFlextInfraSymbolicTextCutover:
         )
         consumer = codegen / "consumer.py"
         imports = (
-            "from tests import u, utilities\n"
+            "from tests import c, r, u, utilities\n"
             if binding == "same"
-            else "from tests import utilities\n"
+            else "from tests import c, r, u, utilities\n"
         )
         separate = (
             "class SeparateFacade:\n    pass\nu = SeparateFacade\n"

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import c
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraReleaseSdistGovernanceRoot:

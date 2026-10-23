@@ -52,11 +52,11 @@ class TestsFlextInfraCodemodContextOwnPackage:
             own, member = expected
             root = u.Tests.mk_project(
                 tmp_path,
-                "application",
+                c.ContextScope.APPLICATION,
                 with_src=True,
-                pyproject='[project]\nname = "application"\nversion = "1.0.0"\n',
+                pyproject='[project]\nname = c.ContextScope.APPLICATION\nversion = "1.0.0"\n',
             )
-            declaration = u.Tests.project_spec("application").model_copy(
+            declaration = u.Tests.project_spec(c.ContextScope.APPLICATION).model_copy(
                 update={"repository_namespace_packages": (namespace,)}
             )
             tm.ok(
@@ -1205,7 +1205,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                         m.Infra.CodemodContextCondition(
                             variable="GETENV",
                             predicate=c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
-                            arg=(f"{namespace}.producer", "command"),
+                            arg=(f"{namespace}.producer", c.HandlerMode.COMMAND),
                             holds=False,
                         ),
                     ),

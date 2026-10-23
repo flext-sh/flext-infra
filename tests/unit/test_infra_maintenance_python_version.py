@@ -12,7 +12,7 @@ import sys
 from typing import TYPE_CHECKING, override
 
 from flext_infra.maintenance import FlextInfraPythonVersionEnforcer
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,9 +33,9 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         """
         resolved_minor = self._MINOR if minor is None else minor
         root.mkdir(exist_ok=True)
-        (root / ".git").mkdir(exist_ok=True)
+        (root / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         (root / "Makefile").touch()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 'name = "workspace"\n'
@@ -51,10 +51,10 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         resolved_minor = self._MINOR if minor is None else minor
         proj = root / name
         proj.mkdir(exist_ok=True)
-        (proj / ".git").mkdir(exist_ok=True)
+        (proj / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         (proj / "Makefile").touch()
         (proj / "src").mkdir(exist_ok=True)
-        (proj / "pyproject.toml").write_text(
+        (proj / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 f'name = "{name}"\n'

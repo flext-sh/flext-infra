@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 
 from flext_cli import u as cli_u
@@ -124,7 +126,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         """
         result_type = r[m.Infra.GitBoolReport]
         relative = cls._retirable_relative_path(request)
-        index_path = Path(cls._repo(request.repo_root).index.path)
+        index_path = cls._git_index_path(request.repo_root)
         entries = FlextInfraUtilitiesGitStateTreesMixin.state_snapshot_index(
             request.repo_root,
             (relative,),
@@ -358,6 +360,10 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
 
         """
         try:
+            if cls._publication_index.get() is not None:
+                return r[m.Infra.GitBoolReport].fail(
+                    "publication producers must emit native effects, not stage paths"
+                )
             repo = cls._repo(request.repo_root)
             repo.git.add("--force", "--", *request.paths)
         except GitCommandError as exc:
@@ -407,6 +413,10 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
 
         """
         try:
+            if cls._publication_index.get() is not None:
+                return r[m.Infra.GitOidReport].fail(
+                    "publication producers cannot commit the shared index"
+                )
             repo = cls._repo(request.repo_root)
             commit = repo.index.commit(request.message)
         except (GitCommandError, HookExecutionError) as exc:
@@ -447,15 +457,44 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         return cli_u.Cli.atomic_verify_binary_file_states((state.index_before,))
 
     @classmethod
-    def _git_publication_preimages(
+    @contextmanager
+    def git_publication_scope(
+        cls, state: m.Infra.GitPublicationState
+    ) -> Generator[None]:
+        """Route the selected producer's Git index effects to an owned view.
+
+        Yields:
+            Control under the native request-local index environment.
+
+        """
+        cls._git_publication_current(state).unwrap()
+        if cls._publication_index.get() is not None:
+            msg = "a native Git publication index is already selected"
+            raise ValueError(msg)
+        with cls.state_publication_index(
+            state.repo_root, state.base_oid, (), ()
+        ) as index_file:
+            token = cls._publication_index.set(
+                m.Infra.GitIndexScope(
+                    repo_root=state.repo_root,
+                    index_file=index_file,
+                )
+            )
+            try:
+                yield
+            finally:
+                cls._publication_index.reset(token)
+
+    @classmethod
+    def _git_publication_targets(
         cls,
         root: Path,
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
+    ) -> t.VariadicTuple[m.Infra.CodegenStagedFile]:
         if not publications:
             msg = "Git publication requires actual native output receipts"
             raise ValueError(msg)
-        inputs: dict[Path, m.Cli.AtomicFileState] = {}
+        targets: dict[Path, m.Infra.CodegenStagedFile] = {}
         pending = list(reversed(publications))
         while pending:
             publication = pending.pop()
@@ -472,8 +511,6 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
                 raise ValueError(msg)
             pending.extend(reversed(publication.batches))
             for published in publication.published_files:
-                if published.tracking == "runtime-local":
-                    continue
                 before = published.before
                 if (
                     published.project != root
@@ -484,8 +521,13 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
                     raise ValueError(msg)
                 relative = before.path.relative_to(root)
                 cls._state_pathspecs((relative,))
-                inputs.setdefault(before.path, before)
-        return tuple(inputs.values())
+                original = targets.setdefault(before.path, published)
+                if original.tracking != published.tracking:
+                    msg = (
+                        f"native Git tracking changed within publication: {before.path}"
+                    )
+                    raise ValueError(msg)
+        return tuple(targets.values())
 
     @classmethod
     def _git_publication_entry(
@@ -535,11 +577,11 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     def _git_publication_entries(
         cls,
         state: m.Infra.GitPublicationState,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        targets: t.VariadicTuple[m.Infra.CodegenStagedFile],
         outputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]]:
         result = r[t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]]
-        paths = tuple(item.path.relative_to(state.repo_root) for item in inputs)
+        paths = tuple(item.before.path.relative_to(state.repo_root) for item in targets)
         baseline = {
             entry.path: entry
             for entry in cls._state_tree_entries(state.repo_root, state.base_oid, paths)
@@ -547,22 +589,39 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         staged = (
             {
                 entry.path: entry
-                for entry in cls.state_snapshot_index(state.repo_root, paths)
+                for entry in cls.state_snapshot_index(
+                    state.repo_root, paths, index_file=state.index_before.path
+                )
             }
             if paths
             else {}
         )
-        for before in inputs:
-            path = before.path.relative_to(state.repo_root)
-            preimage = cls._git_publication_entry(state.repo_root, before, write=False)
-            if baseline.get(path) != preimage or staged.get(path) != preimage:
+        for target in targets:
+            path = target.before.path.relative_to(state.repo_root)
+            preimage = (
+                target.index_before
+                if target.tracking == "runtime-local"
+                else cls._git_publication_entry(
+                    state.repo_root, target.before, write=False
+                )
+            )
+            if baseline.get(path) != preimage or (
+                (target.tracking == "versioned" or preimage is not None)
+                and staged.get(path) != preimage
+            ):
                 return result.fail(
                     f"owned output overlaps pre-existing changes: {path}"
                 )
+        retired = {
+            target.before.path
+            for target in targets
+            if target.tracking == "runtime-local"
+        }
         return result.ok(
             tuple(
                 entry
                 for after in outputs
+                if after.path not in retired
                 if (
                     entry := cls._git_publication_entry(
                         state.repo_root, after, write=True
@@ -583,11 +642,12 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         current = cls._git_publication_current(state)
         if current.failure:
             return result.from_failure(current)
-        inputs = cls._git_publication_preimages(state.repo_root, publications)
+        targets = cls._git_publication_targets(state.repo_root, publications)
+        inputs = tuple(target.before for target in targets)
         observed = publication_verifier.publication_input_states(inputs, publications)
         if observed.failure:
             return result.from_failure(observed)
-        entries = cls._git_publication_entries(state, inputs, observed.value)
+        entries = cls._git_publication_entries(state, targets, observed.value)
         if entries.failure:
             return result.from_failure(entries)
         repo = cls._repo(state.repo_root)
@@ -657,7 +717,16 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         return result.ok(m.Infra.GitOidReport(oid=oid))
 
     @classmethod
+    def _git_publication_branch_current(cls, root: Path, branch: str) -> None:
+        repo = cls._repo(root)
+        entries = cls._worktree_registry(repo, repo.git.worktree("list", "--porcelain"))
+        if any(entry.branch == branch and entry.path != root for entry in entries):
+            msg = f"owned candidate is active in another checkout: {branch}"
+            raise ValueError(msg)
+
+    @classmethod
     def _git_publication_ref(cls, state: m.Infra.GitPublicationState, oid: str) -> None:
+        cls._git_publication_branch_current(state.repo_root, state.branch)
         owned = f"refs/heads/{state.branch}"
         previous = (
             state.previous_oid if state.previous_oid is not None else "0" * len(oid)

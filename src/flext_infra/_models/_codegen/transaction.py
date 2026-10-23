@@ -389,7 +389,7 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             if self.state == "staging" and any(
                 directory.disposition == "generated"
-                and directory.phase == "transaction"
+                and directory.phase == c.Infra.CodegenStagedFilePhase.TRANSACTION
                 for directory in self.directories
             ):
                 # A staging journal authorizes no live transition — that is the

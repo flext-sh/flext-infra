@@ -84,7 +84,7 @@ class TestsFlextInfraFamilyFlatten:
         )
         consumer = tier / "consumer.py"
         consumer.write_text(
-            "from tests import u\n\n"
+            "from tests import c, r, u\n\n"
             "class Consumer(u.Support):\n    pass\n"
             "VALUE = u.Support.Entity.VALUE\n",
             encoding="utf-8",

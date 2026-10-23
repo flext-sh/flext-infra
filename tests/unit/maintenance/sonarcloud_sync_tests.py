@@ -19,10 +19,7 @@ import pytest
 
 from flext_infra import c, config, m
 from flext_infra.maintenance import FlextInfraSonarcloudSettingsSync
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

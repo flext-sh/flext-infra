@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config
-from tests import p, t, tm, u
+from tests import c, p, t, tm, u
 
 # The run-scoped template resolves a real toolchain through Make upg before any
 # item starts; each scenario provisions its own physical environment frozen

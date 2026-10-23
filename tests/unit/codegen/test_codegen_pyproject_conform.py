@@ -272,7 +272,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         parent = tmp_path / "parent"
         root = parent / "member"
         root.mkdir(parents=True)
-        (parent / "pyproject.toml").write_text(
+        (parent / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "parent"\nversion = "1.0"\n'
             "dependencies = []\n"
             '[tool.uv.workspace]\nmembers = ["member"]\n',
@@ -290,7 +290,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
             ),
         )
-        (root / "pyproject.toml").write_text(rendered, encoding="utf-8")
+        (root / c.PYPROJECT_FILENAME).write_text(rendered, encoding="utf-8")
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -302,7 +302,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                     "--python",
                     sys.executable,
                     "-r",
-                    str(root / "pyproject.toml"),
+                    str(root / c.PYPROJECT_FILENAME),
                 ],
                 cwd=parent,
             ),

@@ -32,7 +32,9 @@ class TestsFlextInfraCodegenManifestlessExisting:
             The written manifest source text.
 
         """
-        pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
+        pyproject_source = tm.ok(
+            u.Cli.files_read_text(Path.cwd() / c.PYPROJECT_FILENAME)
+        )
         # An external CUSTOM requirement: a FLEXT-family name without a direct
         # Git source is a source-less internal dependency, which conform
         # refuses loudly by design.
@@ -51,7 +53,9 @@ class TestsFlextInfraCodegenManifestlessExisting:
         pyproject_source = u.Cli.toml_dumps(
             u.Cli.toml_document_from_mapping(pyproject_payload),
         )
-        tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
+        tm.ok(
+            u.Cli.atomic_write_text_file(root / c.PYPROJECT_FILENAME, pyproject_source)
+        )
         package_name = u.Infra.project_package_name(Path.cwd())
         package_init = root / c.Infra.DEFAULT_SRC_DIR / package_name / "__init__.py"
         package_init.parent.mkdir(parents=True)
@@ -173,10 +177,12 @@ class TestsFlextInfraCodegenManifestlessExisting:
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
         }
         tm.that(
-            sum(file.path == root / "pyproject.toml" for file in initial_plan.files),
+            sum(
+                file.path == root / c.PYPROJECT_FILENAME for file in initial_plan.files
+            ),
             eq=1,
         )
-        tm.fail(u.Infra.codegen_file_requires_effect(plans["pyproject.toml"]))
+        tm.fail(u.Infra.codegen_file_requires_effect(plans[c.PYPROJECT_FILENAME]))
 
         # Why: .env.example carries no managed_files entry, so it is never
         # planned for an existing (manifestless) checkout.
@@ -253,7 +259,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
+                root / c.PYPROJECT_FILENAME,
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} root fixture"\n'
                 f"requires-python = "
@@ -313,7 +319,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
             manifestless.plan_surface(root, c.Infra.CodegenConformSurface.PYPROJECT),
         )
         rendered = u.Tests.codegen_file_text(
-            next(file for file in plan.files if file.path.name == "pyproject.toml"),
+            next(file for file in plan.files if file.path.name == c.PYPROJECT_FILENAME),
         )
         tm.that(
             u.Tests.toml_strings_at(rendered, "project", "dependencies"),
@@ -337,7 +343,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
             manifestless.plan_surface(root, c.Infra.CodegenConformSurface.ALL),
         )
         rendered = u.Tests.codegen_file_text(
-            next(file for file in plan.files if file.path.name == "pyproject.toml"),
+            next(file for file in plan.files if file.path.name == c.PYPROJECT_FILENAME),
         )
         tm.that(
             u.Cli.json_walk_path(

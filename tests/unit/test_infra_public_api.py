@@ -8,13 +8,38 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import flext_infra
 from flext_infra import codegen
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraPublicApi:
     """Exercise the root public package metadata against its pyproject."""
+
+    @staticmethod
+    def test_codegen_directory_disposition_uses_codegen_phase_vocabulary() -> None:
+        """Every public codegen phase validates its own directory lifecycle."""
+        for phase in flext_infra.c.Infra.CodegenStagedFilePhase:
+            temporary = phase is flext_infra.c.Infra.CodegenStagedFilePhase.TRANSACTION
+            directory = flext_infra.m.Infra.CodegenJournalDirectory(
+                phase=phase,
+                project=".",
+                path="generated/staging",
+                disposition="temporary" if temporary else "generated",
+            )
+            tm.that(directory.phase, eq=phase.value)
+            with pytest.raises(
+                ValueError,
+                match="transaction phase and temporary disposition must coincide",
+            ):
+                flext_infra.m.Infra.CodegenJournalDirectory(
+                    phase=phase,
+                    project=".",
+                    path="generated/staging",
+                    disposition="generated" if temporary else "temporary",
+                )
 
     @staticmethod
     def test_public_runtime_metadata_matches_public_constants() -> None:
@@ -54,8 +79,8 @@ class TestsFlextInfraPublicApi:
         first.planning_issues.append(issue)
         first.planning_exception = ValueError(issue.message)
 
-        assert first.ports is ports
-        assert second.ports is ports
+        tm.that(first.ports is ports, truth=True)
+        tm.that(second.ports is ports, truth=True)
         tm.that(first.planning_issues, eq=[issue])
         tm.that(second.planning_issues, empty=True)
         tm.that(second.planning_exception, none=True)
@@ -85,7 +110,7 @@ class TestsFlextInfraPublicApi:
             tm.fail(conformed)
             tm.that(root.exists(), truth=False)
         tm.that(tm.ok(api.execute()), eq=before)
-        tm.that(hasattr(api, "request"), truth=False)
+        tm.that(hasattr(api, c.ContextScope.REQUEST), truth=False)
         tm.that(hasattr(api, "planning_issues"), truth=False)
 
     @staticmethod
@@ -123,15 +148,15 @@ class TestsFlextInfraPublicApi:
         )
         first, second = engines
         for engine in engines:
-            assert engine.state.ports is ports
-            assert engine.runtime_settings is runtime_settings
-            assert engine.initial_context is initial_context
-            assert engine.settings is runtime_settings
-            assert engine.context is initial_context
+            tm.that(engine.state.ports is ports, truth=True)
+            tm.that(engine.runtime_settings is runtime_settings, truth=True)
+            tm.that(engine.initial_context is initial_context, truth=True)
+            tm.that(engine.settings is runtime_settings, truth=True)
+            tm.that(engine.context is initial_context, truth=True)
             tm.that(engine.state.request, none=False)
             tm.that(engine.state.repository_root, eq=engine.state.request.root)
-        assert first is not second
-        assert first.state.request is not second.state.request
+        tm.that(first is not second, truth=True)
+        tm.that(first.state.request is not second.state.request, truth=True)
         first.state.planning_exception = ValueError("First invocation failure")
         tm.that(second.state.planning_exception, none=True)
         tm.that(second.state.planning_issues, empty=True)

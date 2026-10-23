@@ -1459,7 +1459,7 @@ Infra:
       - tool.tomlsort
       - tool.yamlfix
       - tool.deptry
-      - tool.hatch
+      - tool.hatch.version
       - tool.pydantic-mypy
       - tool.vulture
       # Written by the conform pipeline from the project SSOT

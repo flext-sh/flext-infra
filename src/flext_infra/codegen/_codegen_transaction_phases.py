@@ -517,7 +517,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         if directories.failure:
             return result_type.from_failure(directories)
         materialized = self._persist_directories(
-            session, "transaction", directories.value
+            session, c.Infra.CodegenStagedFilePhase.TRANSACTION, directories.value
         )
         if materialized.failure:
             return result_type.from_failure(materialized)
@@ -698,7 +698,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 layout,
                 journal,
                 journal_state,
-                "transaction",
+                c.Infra.CodegenStagedFilePhase.TRANSACTION,
                 planned.value,
             )
             if recorded.failure:

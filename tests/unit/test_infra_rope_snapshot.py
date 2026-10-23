@@ -282,6 +282,7 @@ class TestsFlextInfraRopeSnapshot:
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
 import pytest
+from tests import c, r
 from tests import c, m, tm, u
 root, package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
 layout = tm.not_none(u.Infra.layout(root))

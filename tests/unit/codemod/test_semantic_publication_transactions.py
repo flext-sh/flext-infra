@@ -10,15 +10,11 @@ import sys
 import threading
 from pathlib import Path
 from types import FrameType
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import codemod, infra, refactor, transformers, workspace
-from tests import c, m, p, r, tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraSemanticPublicationTransactions:

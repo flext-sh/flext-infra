@@ -9,7 +9,9 @@ snapshots:
       from flext_tests import tm
       value = 1
       def check():
-          if not (isinstance(value, int)):
+          if isinstance(value, int):
+              pass
+          else:
               tm.reject(explain())
     labels:
     - source: assert isinstance(value, int), explain()
@@ -33,7 +35,9 @@ snapshots:
     assert isinstance(value, Entry), "An entry is required"
   : fixed: |
       from tests import tm
-      if not (isinstance(value, Entry)):
+      if isinstance(value, Entry):
+          pass
+      else:
           tm.reject("An entry is required")
     labels:
     - source: assert isinstance(value, Entry), "An entry is required"
@@ -56,7 +60,9 @@ snapshots:
         raise AssertionError(report)
   : fixed: |
       from tests import tm
-      if not (isinstance(value, Entry)):
+      if isinstance(value, Entry):
+          pass
+      else:
           tm.reject(report)
     labels:
     - source: |-

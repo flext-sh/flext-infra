@@ -709,7 +709,7 @@ class TestsFlextInfraPytestRunner:
         marker_lines = "".join(
             f'  "{marker}",\n' for marker in pytest_policy.standard_markers
         )
-        (cached_runner_project / "pyproject.toml").write_text(
+        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
             "[tool.pytest.ini_options]\n"
             f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
             f"markers = [\n{marker_lines}]\n",
@@ -766,7 +766,7 @@ class TestsFlextInfraPytestRunner:
         )
         tm.that(markers, has=policy.slow_marker)
         marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
-        (cached_runner_project / "pyproject.toml").write_text(
+        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
             "[tool.pytest.ini_options]\n"
             f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
             f"markers = [\n{marker_lines}]\n",
@@ -925,7 +925,7 @@ class TestsFlextInfraPytestRunner:
         existing = set(reports_root.glob("*/run-context.json"))
         runner = bounded.model_copy(update={"unbounded": unbounded})
         (cached_runner_project / runner.target / "test_unbounded_policy.py").write_text(
-            "import pytest\nfrom flext_infra import config\nfrom tests import c, tm\n\n"
+            "import pytest\nfrom flext_infra import config\nfrom tests import c, r, tm\n\n"
             f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
             "def test_unbounded_policy(pytestconfig, request):\n"
             "    tm.that(pytestconfig.getoption('timeout'),\n"

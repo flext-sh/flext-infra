@@ -26,10 +26,11 @@ class TestsFlextInfraCProfileInterruption:
     def test_sigterm_cleanup_preserves_replaced_staging_identity(
         tmp_path: Path,
     ) -> None:
-        """A native handler failure stays primary and cleanup never deletes a new inode."""
+        """Keep the handler failure primary without deleting a new cleanup inode."""
         output = tmp_path / "profile.pstats"
         script = (
             c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal\n"
+            "from flext_tests import tm\n"
             "output = Path(sys.argv[1])\n"
             "sum(range(3))\n"
             "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
@@ -51,9 +52,10 @@ class TestsFlextInfraCProfileInterruption:
             "    clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
             "except RuntimeError as failure:\n"
             "    assert str(failure) == 'original native failure'\n"
-            "    assert 'profile staging cleanup failed' in '\\n'.join(failure.__notes__)\n"
+            "    assert 'profile staging cleanup failed' "
+            "in '\\n'.join(failure.__notes__)\n"
             "else:\n"
-            "    raise AssertionError('native failure was lost')\n"
+            "    tm.reject('native failure was lost')\n"
             "assert len(staging) == 1, staging\n"
             "assert staging[0].read_bytes() == b'foreign inode'\n"
             "assert output.read_bytes() == before\n"

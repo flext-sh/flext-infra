@@ -15,7 +15,7 @@ import pytest
 from flext_infra import FlextInfraGitService, c, config, infra, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import tm, u
+from tests import c, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow

@@ -20,7 +20,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
     @staticmethod
     def _write_pyproject(root: Path) -> None:
         root.mkdir(parents=True, exist_ok=True)
-        _ = (root / "pyproject.toml").write_text(
+        _ = (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "workspace"\nversion = "0.1.0"\n'
             'requires-python = ">=3.13"\n',
             encoding="utf-8",
@@ -228,7 +228,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace),
         )
         tm.ok(setup)
-        (workspace / "pyproject.toml").unlink()
+        (workspace / c.PYPROJECT_FILENAME).unlink()
         result = infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace),
         )

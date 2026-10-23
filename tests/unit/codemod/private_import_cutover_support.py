@@ -10,7 +10,7 @@ import dataclasses
 from pathlib import Path
 
 from flext_infra import c, infra, m, p, t, u
-from tests import tm
+from tests import c, tm
 
 
 @dataclasses.dataclass(frozen=True)

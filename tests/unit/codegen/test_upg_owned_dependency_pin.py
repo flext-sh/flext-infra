@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, p, t
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraUpgOwnedDependencyPin:

@@ -33,6 +33,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, p, t, tm, u
 tmp_path = Path(sys.argv[2])
 valid_payload = sys.argv[3] == "True"
@@ -128,6 +129,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.docs import FlextInfraDocGenerator
+from tests import c, r
 from tests import c, m, tm, u
 tmp_path = Path(sys.argv[2])
 mutation = sys.argv[3]
@@ -275,6 +277,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from tests import c, r
 from tests import c, m, p, t, tm, u
 tmp_path = Path(sys.argv[2])
 external_drift = sys.argv[3] == "True"

@@ -87,7 +87,7 @@ class TestsFlextInfraWorktreeBinding:
         provider = u.Tests.provider()
         consumer = tmp_path / "consumer"
         consumer.mkdir()
-        (consumer / "pyproject.toml").write_text(
+        (consumer / c.PYPROJECT_FILENAME).write_text(
             "[project]\n"
             'name = "consumer"\n'
             'version = "0.1.0"\n'
@@ -249,7 +249,7 @@ class TestsFlextInfraWorktreeBinding:
         """An explicit request cannot succeed without selecting a supplier."""
         consumer = tmp_path / "plain"
         consumer.mkdir()
-        (consumer / "pyproject.toml").write_text(
+        (consumer / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "plain"\nversion = "0.1.0"\n'
             'requires-python = ">=3.13"\ndependencies = ["httpx>=0.27"]\n',
             encoding="utf-8",

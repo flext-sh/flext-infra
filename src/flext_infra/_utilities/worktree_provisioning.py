@@ -30,7 +30,7 @@ class FlextInfraWorktreeProvisioning:
     def _ensure_gitlink_checkout(lane: Path, member_path: Path) -> p.Result[bool]:
 
         reference = member_path.as_posix()
-        git_marker = lane / member_path / ".git"
+        git_marker = lane / member_path / c.GIT_DIR_NAME
         if git_marker.is_symlink() or (
             git_marker.exists() and not git_marker.is_file()
         ):

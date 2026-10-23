@@ -19,7 +19,7 @@ from tests import c, m, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import p, t
+from tests import p, t
 
 
 @pytest.mark.slow

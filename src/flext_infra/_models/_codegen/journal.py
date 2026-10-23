@@ -14,6 +14,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import t
+from flext_infra._constants import FlextInfraConstantsCodegenProject
 from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
 
@@ -211,7 +212,10 @@ class FlextInfraModelsCodegenJournalModels:
                     manifest differs from created directory.
 
             """
-            if (self.phase == "transaction") != (self.disposition == "temporary"):
+            if (
+                self.phase
+                == FlextInfraConstantsCodegenProject.CodegenStagedFilePhase.TRANSACTION
+            ) != (self.disposition == "temporary"):
                 msg = "transaction phase and temporary disposition must coincide"
                 raise ValueError(msg)
             if self.before is not None and self.before.exists:

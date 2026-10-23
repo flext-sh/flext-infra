@@ -99,14 +99,14 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         """
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
-        (project_dir / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+        (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
         if with_src:
             package_dir = project_dir / "src" / name.replace("-", "_")
             package_dir.mkdir(parents=True, exist_ok=True)
             # FLEXT: with_src means a discoverable package, not an empty marker.
             (package_dir / "__init__.py").write_text("", encoding="utf-8")
         if with_git:
-            (project_dir / ".git").mkdir(exist_ok=True)
+            (project_dir / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project_dir,
             name,
@@ -124,7 +124,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project = root / name
         package_dir = project / "src" / name.replace("-", "_")
         package_dir.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             f"[project]\nname='{name}'\n",
             encoding="utf-8",
         )
@@ -147,7 +147,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         package_dir = project_dir / "src" / package_name
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+        (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
         return package_dir
 
     @staticmethod
@@ -349,7 +349,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         package_root.mkdir(parents=True, exist_ok=True)
         (package_root / "__init__.py").write_text("", encoding="utf-8")
         project_spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)
-        (project_dir / "pyproject.toml").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\n"
             f'name = "{name}"\n'
             f'authors = [{{name = "{project_spec.author_name}", '
@@ -445,7 +445,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project.mkdir()
         (project / "Makefile").touch()
         spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             (
                 f"[project]\nname='{name}'\nversion='0.1.0'\n"
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
@@ -498,11 +498,11 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project = tmp_path / "test-project"
         project.mkdir()
         (project / "Makefile").touch()
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             ("[project]\nname='test-project'\ndependencies=['flext-core>=0.1.0']\n"),
             encoding="utf-8",
         )
-        (project / ".git").mkdir()
+        (project / c.GIT_DIR_NAME).mkdir()
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project,
             "test-project",
@@ -730,7 +730,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             repository = tmp_path / "repository"
             repository.mkdir()
             (repository / "README.md").write_text("fixture\n", encoding="utf-8")
-            (repository / "pyproject.toml").write_text(
+            (repository / c.PYPROJECT_FILENAME).write_text(
                 '[project]\nname = "fixture"\nversion = "0.1.0"\n'
                 'description = "A standard PEP 621 description string"\n',
                 encoding="utf-8",
@@ -802,7 +802,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             """Commit one deliberate fixture mutation."""
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "add", "Makefile", "pyproject.toml", "config"],
+                    [c.Infra.GIT, "add", "Makefile", c.PYPROJECT_FILENAME, "config"],
                     cwd=repository,
                 ),
             )
@@ -868,7 +868,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
 
             """
             root.mkdir(parents=True, exist_ok=True)
-            pyproject = root / "pyproject.toml"
+            pyproject = root / c.PYPROJECT_FILENAME
             repository_url = cls.governed_repository_url(distribution)
             provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
             internal_source = (

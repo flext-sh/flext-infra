@@ -20,7 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenCiCustomSteps:

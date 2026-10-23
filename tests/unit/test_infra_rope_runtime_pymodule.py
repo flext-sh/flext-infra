@@ -317,12 +317,7 @@ class TestsFlextInfraRopeRuntimePymodule:
     def test_declared_package_root_resolves_its_qualified_name(
         tmp_path: Path,
     ) -> None:
-        """A declared package folder exposes its real qualified import.
-
-        Raises:
-            AssertionError: If declared package root did not resolve its qualified name.
-
-        """
+        """A declared package folder exposes its real qualified import."""
         package = tmp_path / "qualified_package"
         initializer = package / c.Infra.INIT_PY
         source = "class PublishedContract:\n    pass\n"
@@ -345,7 +340,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             tm.that(resource, none=False)
             if resource is None:
                 msg = "declared package root did not resolve its qualified name"
-                raise AssertionError(msg)
+                tm.reject(msg)
             module = u.Infra.resolve_pymodule(project, resource)
             tm.that(
                 module.get_attribute("PublishedContract").get_object().get_name(),
@@ -360,12 +355,7 @@ class TestsFlextInfraRopeRuntimePymodule:
         *,
         regular_package: bool,
     ) -> None:
-        """Python source wins over a data directory, not an initialized package.
-
-        Raises:
-            AssertionError: If Native Rope finder did not resolve the fixture module.
-
-        """
+        """Python source wins over a data directory, not an initialized package."""
         root = tmp_path / "consumer"
         source = root / "src"
         source.mkdir(parents=True)
@@ -385,7 +375,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             tm.that(resource, none=False)
             if resource is None:
                 message = "Native Rope finder did not resolve the fixture module"
-                raise AssertionError(message)
+                tm.reject(message)
             module = u.Infra.resolve_pymodule(workspace.rope_project, resource)
             expected = "PackageContract" if regular_package else "ModuleContract"
             tm.that(module.get_attribute(expected).get_object().get_name(), eq=expected)

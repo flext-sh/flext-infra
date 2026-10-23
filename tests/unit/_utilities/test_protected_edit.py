@@ -234,7 +234,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         project_config, py_file, original, updated = _provision_edited_sample(tmp_path)
 
         def invalidate_configuration() -> None:
-            (tmp_path / "pyproject.toml").write_text(
+            (tmp_path / c.PYPROJECT_FILENAME).write_text(
                 project_config + "[tool.ruff]\nline-length = 'invalid'\n",
                 encoding=c.DEFAULT_ENCODING,
             )
@@ -359,7 +359,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         project = tmp_path / "project"
         source = project / "src" / "sample"
         source.mkdir(parents=True)
-        config_path = project / "pyproject.toml"
+        config_path = project / c.PYPROJECT_FILENAME
         config_path.write_text(
             "[project]\nname = 'sample'\nversion = '1.0.0'\n",
             encoding="utf-8",
@@ -430,8 +430,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         if observed.failure:
             state = tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME
             u.Cli.info(f"native preview state effects: {tuple(state.rglob('*'))}")
-        tm.ok(observed)
-        tm.that(observed.value, eq=(updated, original, before_modified_ns))
+        tm.ok(observed, eq=(updated, original, before_modified_ns))
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 
@@ -477,8 +476,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             parse_candidate,
             options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
         )
-        tm.ok(fresh)
-        tm.that(fresh.value, eq="VALUE = 2\n")
+        tm.ok(fresh, eq="VALUE = 2\n")
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 

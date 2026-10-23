@@ -19,13 +19,13 @@ from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import t
-    from tests import p
+from tests import p
 
 _SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
 _REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]
@@ -259,7 +259,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         _ = u.Tests.src_package(
             project,
             package.name,
-            pyproject=(project / "pyproject.toml").read_text(
+            pyproject=(project / c.PYPROJECT_FILENAME).read_text(
                 encoding=c.DEFAULT_ENCODING
             )
             + "dependencies=['flext-infra']\n",
@@ -863,7 +863,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         implementation = u.Tests.src_package(
             project,
             f"flext_core/_{family.module}",
-            pyproject=(project / "pyproject.toml").read_text(encoding="utf-8"),
+            pyproject=(project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
         )
         owned_file = implementation / "owned.py"
         source = (

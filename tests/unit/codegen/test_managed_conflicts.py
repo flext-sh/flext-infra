@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, m, u
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraManagedConflictRecovery:

@@ -108,7 +108,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         item: m.Infra.LogicalStatement,
         body: str,
         native: t.Pair[p.Infra.RopePyModule, p.Infra.RopeSemanticModule],
-        classvar_name: str,
+        rendering: t.Triple[str, t.StrMapping, int],
     ) -> str:
         """Render the original member category through its real native annotation.
 
@@ -120,11 +120,25 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             return "@staticmethod\n" + body
         members = cls._nesting_statement_parts(item)
         if len(members) > 1:
+            if any(
+                "." in rendering[1][cls._native_member_name(part)] for part in members
+            ):
+                return "\n".join(
+                    cls._nested_member_body(
+                        part,
+                        FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
+                            part.text + "\n", 0
+                        ),
+                        native,
+                        rendering,
+                    )
+                    for part in members
+                )
             for part in reversed(members):
                 first = part.start_offset - item.start_offset
                 last = part.end_offset - item.start_offset
                 rendered = cls._nested_member_body(
-                    part, part.text, native, classvar_name
+                    part, part.text, native, rendering
                 ).rstrip("\n")
                 body = body[:first] + rendered + body[last:]
             return body
@@ -136,7 +150,26 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             value = item.text[parts[-1][0] : parts[-1][1]]
             return (
                 f"{cls._native_member_name(item)}: "
-                f"{classvar_name}[{annotation}] = {value}\n"
+                f"{rendering[0]}[{annotation}] = {value}\n"
+            )
+        return cls._nested_declaration_scope(
+            body, rendering[1][cls._native_member_name(item)], rendering[2]
+        )
+
+    @staticmethod
+    def _nested_declaration_scope(body: str, destination: str, indentation: int) -> str:
+        """Place a declaration directly in its elected lexical class scope.
+
+        Returns:
+            The original declaration body inside its real destination hierarchy.
+
+        """
+        for name in reversed(destination.split(".")[1:]):
+            body = f"class {name}:\n" + (
+                FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
+                    '"""Native generic declaration scope."""\n' + body,
+                    indentation,
+                )
             )
         return body
 
@@ -148,7 +181,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         typing: p.Infra.RopeSemanticModule,
         selection: t.Triple[
             t.SequenceOf[m.Infra.LogicalStatement],
-            t.MappingKV[str, p.Infra.RopeScope],
+            t.StrMapping,
             str,
         ],
         indentation: int,
@@ -182,7 +215,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     (
                         source[begin:code_start]
                         + cls._nested_member_body(
-                            item, source[code_start:end], (module, typing), selection[2]
+                            item,
+                            source[code_start:end],
+                            (module, typing),
+                            (selection[2], selection[1], indentation),
                         )
                     ).rstrip()
                     + "\n",
@@ -461,7 +497,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     ) -> str:
         if not definitions:
             return source
-        owners = frozenset(definitions.values())
+        owners = frozenset(
+            destination.partition(".")[0] for destination in definitions.values()
+        )
         if len(owners) != 1:
             msg = f"class-nesting file has multiple owners: {sorted(owners)}"
             raise ValueError(msg)
@@ -522,7 +560,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = "native Rope project has no positive indentation policy"
             raise TypeError(msg)
         edits, nested = cls._nested_member_edits(
-            source, (module, wrapper), typing, (*selection, classvar_name), indentation
+            source,
+            (module, wrapper),
+            typing,
+            (selection[0], definitions, classvar_name),
+            indentation,
         )
         edits = cls._owner_nesting_edits(
             source,

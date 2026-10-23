@@ -11,15 +11,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import c, codemod, m
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from tests import p
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraRuleBindingInputs:

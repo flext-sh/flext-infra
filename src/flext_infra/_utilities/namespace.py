@@ -17,6 +17,7 @@ from typing import ClassVar
 
 import flext_core
 from flext_cli import u
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -182,7 +183,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             Path(module_file).stem.removeprefix("_"): Path(module_file).stem
             for module_file, *_ in c.Infra.RUNTIME_MODULES
         }
-        return {**defaults, **codegen.runtime_module_overrides.get(project_name, {})}
+        return {
+            **defaults,
+            **codegen.runtime_module_overrides.get(canonicalize_name(project_name), {}),
+        }
 
     @classmethod
     def runtime_singleton_export(

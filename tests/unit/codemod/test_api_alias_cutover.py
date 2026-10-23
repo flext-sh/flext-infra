@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, t
+from flext_infra import infra, m, t
 from flext_infra.refactor import FlextInfraImportNormalization
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraApiAliasCutover:
@@ -349,8 +349,7 @@ class TestsFlextInfraApiAliasCutover:
                 sources=rewritten,
                 findings=(finding,),
             )
-        tm.ok(converged)
-        tm.that(converged.value, eq=())
+        tm.ok(converged, eq=())
 
     @staticmethod
     @pytest.mark.parametrize(

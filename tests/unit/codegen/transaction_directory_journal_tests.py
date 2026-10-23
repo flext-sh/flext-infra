@@ -932,7 +932,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.fail(target.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("operation", ["append", "commit"])
+    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["append", "commit"])
     def test_same_content_journal_replacement_is_not_adopted(
         tmp_path: Path,
         operation: str,

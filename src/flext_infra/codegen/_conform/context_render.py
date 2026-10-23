@@ -276,7 +276,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectSpec].fail(
                 f"existing pyproject is missing author email: {repository_root}",
             )
-        homepage = pep621.urls.homepage or repository.url.removesuffix(".git")
+        homepage = pep621.urls.homepage or repository.url.removesuffix(c.GIT_DIR_NAME)
         documentation = pep621.urls.documentation or homepage
         runtime_names = {
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))

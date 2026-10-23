@@ -87,7 +87,7 @@ class TestsFlextInfraRopeSignaturePatch:
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             objects = rope.objects(module_path)
 
-        tm.that([item.name for item in objects], has="command")
+        tm.that([item.name for item in objects], has=c.HandlerMode.COMMAND)
 
     @staticmethod
     def test_objects_walk_full_signature_shapes(tmp_path: Path) -> None:
@@ -150,12 +150,7 @@ class TestsFlextInfraRopeSignaturePatch:
 
     @staticmethod
     def test_rename_writes_pep701_nested_quote_expression(tmp_path: Path) -> None:
-        """Rope preserves f-string fragments while writing a renamed AST child.
-
-        Raises:
-            AssertionError: If Rope did not resolve the PEP 701 regression resource.
-
-        """
+        """Rope preserves f-string fragments while writing a renamed AST child."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
@@ -176,7 +171,7 @@ class TestsFlextInfraRopeSignaturePatch:
             resource = rope.resource(module_path)
             if resource is None:
                 msg = "Rope did not resolve the PEP 701 regression resource"
-                raise AssertionError(msg)
+                tm.reject(msg)
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -191,12 +186,7 @@ class TestsFlextInfraRopeSignaturePatch:
 
     @staticmethod
     def test_rename_writes_generator_inside_format_spec(tmp_path: Path) -> None:
-        """Rope patches generator scopes nested in an f-string format spec.
-
-        Raises:
-            AssertionError: If Rope did not resolve the format-spec regression resource.
-
-        """
+        """Rope patches generator scopes nested in an f-string format spec."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
@@ -217,7 +207,7 @@ class TestsFlextInfraRopeSignaturePatch:
             resource = rope.resource(module_path)
             if resource is None:
                 msg = "Rope did not resolve the format-spec regression resource"
-                raise AssertionError(msg)
+                tm.reject(msg)
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,
@@ -232,12 +222,7 @@ class TestsFlextInfraRopeSignaturePatch:
 
     @staticmethod
     def test_rename_keeps_nested_generator_bindings(tmp_path: Path) -> None:
-        """Native rename follows the iterable without changing the generator local.
-
-        Raises:
-            AssertionError: If Rope did not resolve the nested generator resource.
-
-        """
+        """Native rename follows the iterable without changing the generator local."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "nested_generator.py"
         source = 'widths = (1, 2)\nrendered = f"{next(width for width in widths)}"\n'
@@ -247,7 +232,7 @@ class TestsFlextInfraRopeSignaturePatch:
             resource = rope.resource(module_path)
             if resource is None:
                 msg = "Rope did not resolve the nested generator resource"
-                raise AssertionError(msg)
+                tm.reject(msg)
             changes = u.Infra.rename_changes(
                 rope.rope_project,
                 resource,

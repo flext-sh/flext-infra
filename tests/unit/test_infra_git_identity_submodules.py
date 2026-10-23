@@ -199,10 +199,10 @@ class TestsFlextInfraGitIdentitySubmodules:
             f"[submodule 'member']\n\tpath = apps/member\n\turl = {child.as_uri()}\n",
             encoding="utf-8",
         )
-        head = (member / ".git" / "HEAD").read_text(encoding="utf-8").strip()
+        head = (member / c.GIT_DIR_NAME / "HEAD").read_text(encoding="utf-8").strip()
         if head.startswith("ref:"):
             ref = head.split(" ", 1)[1].strip()
-            oid = (member / ".git" / ref).read_text(encoding="utf-8").strip()
+            oid = (member / c.GIT_DIR_NAME / ref).read_text(encoding="utf-8").strip()
         else:
             oid = head
         tm.ok(u.Cli.run_checked(["git", "-C", str(parent), "add", ".gitmodules"]))
@@ -228,7 +228,7 @@ class TestsFlextInfraGitIdentitySubmodules:
                 "absorb member",
             ]),
         )
-        tm.ok((member / ".git").is_dir())
+        tm.ok((member / c.GIT_DIR_NAME).is_dir())
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)))
         tm.that(identity.superproject_root, eq=parent.resolve())
         tm.ok(identity.is_submodule)
@@ -259,9 +259,11 @@ class TestsGitTopology(TestsFlextInfraGitIdentitySubmodules):
     def test_evidence_root_does_not_read_mutable_index(self, tmp_path: Path) -> None:
         """Control storage survives inventory failure without hiding that failure."""
         root = self._repo(tmp_path / "repo")
-        (root / ".git" / "index").write_bytes(b"invalid index")
+        (root / c.GIT_DIR_NAME / "index").write_bytes(b"invalid index")
 
-        tm.that(tm.ok(u.Infra.refactor_report_evidence_root(root)), eq=root / ".git")
+        tm.that(
+            tm.ok(u.Infra.refactor_report_evidence_root(root)), eq=root / c.GIT_DIR_NAME
+        )
         identity = u.Infra.exact_worktree_root(root)
         tm.fail(identity)
         tm.not_none(identity.exception)
@@ -307,7 +309,7 @@ class TestsGitTopology(TestsFlextInfraGitIdentitySubmodules):
         unborn = u.Infra.refactor_report_evidence_root(root)
         tm.fail(unborn)
         tm.that(unborn.error_code, eq=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
-        (root / ".git" / "refs" / "heads" / "initial").write_text(
+        (root / c.GIT_DIR_NAME / "refs" / "heads" / "initial").write_text(
             "invalid object identifier\n", encoding="utf-8"
         )
         corrupt = u.Infra.refactor_report_evidence_root(root)

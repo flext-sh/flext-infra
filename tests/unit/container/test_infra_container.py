@@ -17,7 +17,7 @@ from pathlib import Path
 
 from flext_core import FlextContainer
 
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraContainerInfraContainer:
@@ -76,7 +76,7 @@ class TestsFlextInfraContainerInfraContainer:
         service = u.Infra()
         member = tmp_path / "demo_source"
         member.mkdir()
-        (member / "pyproject.toml").write_text(
+        (member / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='demo_source'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )

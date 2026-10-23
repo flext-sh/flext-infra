@@ -1205,7 +1205,7 @@ class FlextInfraUtilitiesRefactor:
             "binding_graphs": tuple(graphs),
             "native_artifacts": report.native_artifacts,
             "inputs": FlextInfraUtilitiesRefactor.mod_scan_inputs(report),
-            "command": publication.command,
+            c.HandlerMode.COMMAND: publication.command,
             "root": root.resolve(),
             "scope": tuple(publication.scope),
             "totals_by_class": class_totals,

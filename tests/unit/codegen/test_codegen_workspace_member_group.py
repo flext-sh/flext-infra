@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import c, config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenWorkspaceMemberGroup:

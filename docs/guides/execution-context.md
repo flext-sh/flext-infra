@@ -60,6 +60,19 @@ staged, unstaged, or untracked work. A checkpoint from a different repository
 identity, an unpublished capture, or an unintegrated capture is refused. Receipt
 production does not waive the separate lane-creation or produced-path admission
 contracts; shared-WIP publication still requires authenticated producer outputs.
+The scoped Git API separates `prepare_publication`, `publication_scope`, and
+`commit_publications`. Its live admission binds the prior ownership, integration
+tip, caller ref and exact original index. Native producers retain their original
+`CodegenPhaseOutcome` objects; the existing publication authority verifies their
+before/after lineage before the Git owner consumes any output. Only declared
+effects enter the alternate index. A versioned target whose original file or
+staged entry differs from the selected base is an affected-path conflict, not
+permission to publish the whole pre-existing file. Runtime-local index retirement
+also uses the scoped index and an explicit native `index_before` witness; it does
+not ignore a path by name or modify the shared index. The owned ref is published
+through a native ref transaction after hook, original-index and fresh-tip checks,
+without switching the caller's checkout. New or copied admission/receipt models
+cannot replace the original live authority.
 The release workflow dispatch selects exactly one `tag` or `checkpoint_ref`.
 Tag dispatch retains the existing publication path. Checkpoint dispatch validates
 the event's exact SHA through canonical CI, then runs versioning only, with the

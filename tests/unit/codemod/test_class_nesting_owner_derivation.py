@@ -1057,6 +1057,9 @@ __all__: list[str] = ["LIMIT", "write"]
             "            is Items.__type_params__[0],\n"
             "            get_args(Callback.__value__)[0]\n"
             "            is Callback.__type_params__[0],\n"
+            '            Box.__type_params__[0].__name__ == "Item",\n'
+            '            Items.__type_params__[0].__name__ == "Item",\n'
+            '            Callback.__type_params__[0].__name__ == "Item",\n'
             '            get_args(Quoted.__value__)[0] == "Item",\n'
             "            Defaults.__type_params__[0].__bound__ is Leaf,\n"
             "            Defaults.__type_params__[0].__default__ is str,\n"

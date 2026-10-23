@@ -16,7 +16,7 @@ import pytest
 
 from flext_infra import config, infra, r, settings
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from tests import c, m, r, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -799,7 +799,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             template,
             member,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".venv", ".git"),
+            ignore=shutil.ignore_patterns(".venv", c.GIT_DIR_NAME),
         )
         u.Tests.initialize_git_repo(member)
         workspace_lock = workspace / c.Infra.UV_LOCK_FILENAME
@@ -853,7 +853,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 generated_make_templates[profile],
                 destination,
                 symlinks=True,
-                ignore=shutil.ignore_patterns(".venv", ".git"),
+                ignore=shutil.ignore_patterns(".venv", c.GIT_DIR_NAME),
                 dirs_exist_ok=True,
             )
             u.Tests.initialize_git_repo(destination)
@@ -968,7 +968,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
             "\t@$(UV_RUN) python -c 'import importlib.metadata; "
             "from pathlib import Path; import tomllib; "
-            'project = tomllib.loads(Path("pyproject.toml").read_text())["project"]; '
+            'project = tomllib.loads(Path( c.PYPROJECT_FILENAME).read_text())["project"]; '
             'assert importlib.metadata.version(project["name"]) == project["version"]'
             "'\n"
             "\t@printf '%s\\n' 'root-runtime-reconciled'\n",

@@ -717,6 +717,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(
             u.Tests.run_lazy_init_probe(
                 "import ai_hub\nimport flext_infra\n"
+                "from flext_tests import tm\n"
                 f"for name in {tuple(sorted(inherited_aliases))!r}:\n"
                 "    assert getattr(ai_hub, name) is getattr(flext_infra, name)\n"
                 "assert ai_hub.c is ai_hub.AiHubConstants\n"
@@ -726,7 +727,7 @@ class TestsFlextInfraLazyInitHelpers:
                 "assert 'tc' not in ai_hub.__all__\n"
                 "try:\n    from ai_hub import tc\n"
                 "except ImportError:\n    print('undeclared alias rejected')\n"
-                "else:\n    raise AssertionError('tc has no public owner')\n"
+                "else:\n    tm.reject('tc has no public owner')\n"
                 "print('published alias identities preserved')\n",
                 python_paths=(str(repository_root / "src"), *sys.path),
                 cwd=repository_root,
@@ -762,7 +763,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, has='"FlextDemoGitService"')
         tm.that(generated, has='"FlextDemoWorkService"')
         entries, _refs = u.Infra.lazy_import_mapping_source(exports)
-        tm.that(dict(entries).get(".git", ()), has="FlextDemoGitService")
+        tm.that(dict(entries).get(c.GIT_DIR_NAME, ()), has="FlextDemoGitService")
         tm.that(dict(entries).get(".work", ()), has="FlextDemoWorkService")
 
     def test_nested_tests_namespace_uses_public_test_facades(
@@ -858,12 +859,13 @@ class TestsFlextInfraLazyInitHelpers:
                     "from flext_demo.services.http import FlextDemoHttpTransport\n"
                     "from flext_demo.services.http.transport import "
                     "FlextDemoHttpTransport as owner\n"
+                    "from flext_tests import tm\n"
                     "assert services is flext_demo.services\n"
                     "assert http is services.http\n"
                     "assert FlextDemoHttpTransport is owner\n"
                     "try:\n    from flext_demo import FlextDemoHttpTransport\n"
                     "except ImportError:\n    print('deep root export rejected')\n"
-                    "else:\n    raise AssertionError('deep owner widened root API')\n"
+                    "else:\n    tm.reject('deep owner widened root API')\n"
                     "print('owning package identity preserved')\n",
                     python_paths=(str(repository_root / "src"), *sys.path),
                     cwd=repository_root,
@@ -1078,6 +1080,7 @@ class TestsFlextInfraLazyInitHelpers:
             tm.that(
                 u.Tests.run_lazy_init_probe(
                     f"import {package.name} as public\n"
+                    "from flext_tests import tm\n"
                     "print(public.RuntimeFacade.Record.marker)\n"
                     "print(public.encode('payload'))\n"
                     "print(public.encode.__module__ == "
@@ -1090,7 +1093,7 @@ class TestsFlextInfraLazyInitHelpers:
                     f"    from {package.name}._runtime import RecordOwner\n"
                     "except ImportError:\n    print('implementation not published')\n"
                     "else:\n"
-                    "    raise AssertionError('implicit implementation export')\n",
+                    "    tm.reject('implicit implementation export')\n",
                     python_paths=(str(package.parent),),
                     cwd=repository,
                 ),

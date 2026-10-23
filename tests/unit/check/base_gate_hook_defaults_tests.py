@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 import pytest
 
 from flext_infra import c, config, gates, m, u
-from tests import tm
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -387,7 +387,7 @@ class TestsFlextInfraGateHookDefaults:
         tm.that(execution.result.duration, lt=10)
 
     @pytest.mark.parametrize(
-        "operation", ["check", "skip", "preview", "fix", "failed-fix"]
+        c.ContextScope.OPERATION, ["check", "skip", "preview", "fix", "failed-fix"]
     )
     def test_returned_execution_already_has_its_native_receipt(
         self, tmp_path: Path, operation: str

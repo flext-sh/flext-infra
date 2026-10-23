@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, infra
+from flext_infra import config, infra
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCodegenProjectNewValidation:
@@ -92,8 +92,7 @@ class TestsFlextInfraCodegenProjectNewValidation:
         canonical = u.Infra.validate_git_remote_url(
             "git@github.com:flext-sh/flext-demo.git",
         )
-        tm.ok(canonical)
-        tm.that(canonical.value, eq="https://github.com/flext-sh/flext-demo.git")
+        tm.ok(canonical, eq="https://github.com/flext-sh/flext-demo.git")
 
     @staticmethod
     def test_surrounding_whitespace_is_stripped_before_validation() -> None:

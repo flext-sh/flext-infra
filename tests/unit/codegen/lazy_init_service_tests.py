@@ -16,7 +16,7 @@ from tests import c, tm, u
 
 if TYPE_CHECKING:
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-    from tests import p, t
+from tests import p, t
 
 
 def expect_read_only_drift(

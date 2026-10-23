@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +53,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         project = tmp_path / "flext-demo"
         package = project / "src" / "flext_demo"
         package.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
