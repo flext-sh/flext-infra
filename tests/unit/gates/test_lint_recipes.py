@@ -141,6 +141,104 @@ class TestsFlextInfraLintRecipes:
             ),
         )
 
+    def test_extraneous_raises_leaves_only_its_own_entry(self) -> None:
+        """An exception the body no longer raises loses only its Raises entry."""
+        source = (
+            "def load(path: str) -> str:\n"
+            '    """Load one source.\n'
+            "\n"
+            "    Raises:\n"
+            "        AssertionError: If ``not path``.\n"
+            "        ValueError: If source path is empty.\n"
+            '    """\n'
+            "    if not path:\n"
+            '        raise ValueError("source path is empty")\n'
+            "    return path\n"
+        )
+
+        repaired = self._apply(
+            source,
+            (
+                "docstring-extraneous-exception",
+                2,
+                "Raised exception is not explicitly raised: `AssertionError`",
+            ),
+        )
+
+        tm.that(
+            repaired,
+            eq=source.replace("        AssertionError: If ``not path``.\n", ""),
+        )
+
+    def test_extraneous_raises_drops_the_emptied_section(self) -> None:
+        """The last removed entry takes its header and separator with it."""
+        source = (
+            "def check(value: int) -> None:\n"
+            '    """Check one value.\n'
+            "\n"
+            "    Raises:\n"
+            "        AssertionError: If ``not (value > 0)``; or if the value\n"
+            "            is unbounded.\n"
+            "\n"
+            '    """\n'
+            "    tm.that(value > 0, truth=True)\n"
+        )
+
+        repaired = self._apply(
+            source,
+            (
+                "docstring-extraneous-exception",
+                2,
+                "Raised exception is not explicitly raised: `AssertionError`",
+            ),
+        )
+
+        tm.that(
+            repaired,
+            eq=(
+                "def check(value: int) -> None:\n"
+                '    """Check one value."""\n'
+                "    tm.that(value > 0, truth=True)\n"
+            ),
+        )
+
+    def test_extraneous_raises_keeps_the_following_section(self) -> None:
+        """An emptied section before another keeps one separator between them."""
+        source = (
+            "def name_of(path: str) -> str:\n"
+            '    """Return the module name for a file.\n'
+            "\n"
+            "    Raises:\n"
+            "        AssertionError: If ``not path``.\n"
+            "\n"
+            "    Returns:\n"
+            "        The module name for a file.\n"
+            '    """\n'
+            "    return path\n"
+        )
+
+        repaired = self._apply(
+            source,
+            (
+                "docstring-extraneous-exception",
+                2,
+                "Raised exception is not explicitly raised: `AssertionError`",
+            ),
+        )
+
+        tm.that(
+            repaired,
+            eq=(
+                "def name_of(path: str) -> str:\n"
+                '    """Return the module name for a file.\n'
+                "\n"
+                "    Returns:\n"
+                "        The module name for a file.\n"
+                '    """\n'
+                "    return path\n"
+            ),
+        )
+
     def test_raises_condition_with_quotes_keeps_the_literal_intact(self) -> None:
         """A derived condition holding triple quotes stays inside the docstring."""
         source = (
@@ -625,9 +723,12 @@ class TestsFlextInfraLintRecipes:
                 line=line,
                 column=1,
                 code="no-self-use",
-                message="The receiver is not read",
+                message=(
+                    f"Method `{name}` could be a function, class method, "
+                    "or static method"
+                ),
             )
-            for line in (2, 6)
+            for line, name in ((2, "send"), (6, "size"))
         )
         retained = u.Infra.service_operation_findings(
             source,

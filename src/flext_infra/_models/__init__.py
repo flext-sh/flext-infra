@@ -81,7 +81,6 @@ if TYPE_CHECKING:
     from flext_infra._models.deps_tool_config_type_checkers import (
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
-    from flext_infra._models.deps_typings import FlextInfraModelsDepsTypings
     from flext_infra._models.docs import FlextInfraModelsDocs
     from flext_infra._models.docs_collection import FlextInfraModelsDocsCollection
     from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
@@ -162,7 +161,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigProjectGitignore",
     "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
-    "FlextInfraModelsDepsTypings",
     "FlextInfraModelsDocs",
     "FlextInfraModelsDocsCollection",
     "FlextInfraModelsDocsGeneration",
@@ -249,7 +247,6 @@ install_lazy_exports(
         ),
         "FlextInfraModelsDepsToolConfigProjectMise": ".deps_tool_config_project_mise",
         "FlextInfraModelsDepsToolConfigTypeCheckers": ".deps_tool_config_type_checkers",
-        "FlextInfraModelsDepsTypings": ".deps_typings",
         "FlextInfraModelsDocs": ".docs",
         "FlextInfraModelsDocsCollection": ".docs_collection",
         "FlextInfraModelsDocsGeneration": ".docs_generation",

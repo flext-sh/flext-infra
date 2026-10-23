@@ -77,10 +77,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
                 bool,
             ]
         ]
-        if (
-            request.mode
-            is not c.Infra.CodegenConformMode.APPLY
-        ):
+        if request.mode is not c.Infra.CodegenConformMode.APPLY:
             return result_type.ok(((None, None), False))
         scaffolding = self.state.initial_workspace
         workspace = scaffolding
@@ -151,7 +148,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
                 return result_type.from_failure(planned)
             materialized = u.Cli.atomic_create_directory_chain_guarded(
                 planned.value,
-                permission_mode=0o755,
+                permission_mode=config.Infra.codegen.modes.directory_generated,
             )
             if materialized.failure:
                 return result_type.from_failure(materialized)

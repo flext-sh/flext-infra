@@ -16,13 +16,13 @@ from flext_cli import m, t
 
 from flext_infra import c
 from flext_infra._config_make_contract import FlextInfraMakeContract
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
     FlextInfraExternalCacheDirectorySpec,
 )
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
-from flext_infra._constants.config import FlextInfraConstantsConfig
 
 
 @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
@@ -1152,7 +1152,12 @@ class FlextInfraConfigModelsMake(
         @m.computed_field
         @property
         def check_gates_default(self) -> t.VariadicTuple[str]:
-            """Active default gates, shared by local, CI, hooks, and project gates."""
+            """Active default gates, shared by local, CI, hooks, and project gates.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
             excluded = frozenset(self.standalone_check_gates.values())
             return tuple(
                 gate for gate in self.check_gates_allowed if gate not in excluded

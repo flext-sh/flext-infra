@@ -86,14 +86,14 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_dir: str,
         member_src_paths: t.SequenceOf[str] = (),
     ) -> t.StrSequence:
-        """``src/`` owns only its path; other dirs also import from src + root.
+        """Resolve owned source packages before installed distributions.
 
         Returns:
             The resulting ``t.StrSequence``.
 
         """
         if env_dir == source_dir:
-            paths = [source_path]
+            paths = list(dict.fromkeys((source_path, project_root)))
         elif source_path != project_root:
             paths = [project_root, source_path]
         else:
@@ -174,8 +174,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
+    @staticmethod
     def _workspace_member_roots(
-        self, repository_root: Path
+        repository_root: Path,
     ) -> t.SequenceOf[t.Pair[str, t.StrSequence]]:
         """Discover each declared member's owned Python roots independently.
 
@@ -383,52 +384,18 @@ class FlextInfraEnsurePyrightConfigPhase:
             *provided_exclusions,
         })
 
-    @staticmethod
-    def _existing_paths(
-        base_dir: Path | None,
-        configured_paths: t.StrSequence,
-    ) -> t.StrSequence:
-        """Existing paths.
+    def _expected_ignores(self) -> t.StrSequence:
+        """Ignore the configured diagnostic globs, each once.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The configured ignore globs in declaration order.
 
         """
-        if base_dir is None:
-            return ()
-        existing: t.StrSequence = [
-            relative_path
-            for relative_path in configured_paths
-            if (base_dir / relative_path).is_dir()
-        ]
-        return existing
-
-    def _expected_ignores(
-        self,
-        *,
-        is_root: bool,
-        repository_root: Path | None,
-        project_dir: Path | None,
-    ) -> t.StrSequence:
-        """Ignore typings and stub diagnostics.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        rules = self._tool_config.tools.pyright.path_rules
-        ignores: t.MutableSequenceOf[str] = []
-        if is_root:
-            root_dir = repository_root or project_dir
-            ignores.extend(self._existing_paths(root_dir, rules.root_typings_paths))
-        else:
-            ignores.extend(
-                self._existing_paths(project_dir, rules.project_typings_paths),
+        return list(
+            dict.fromkeys(
+                self._tool_config.tools.pyright.path_rules.ignored_diagnostic_globs
             )
-        for pattern in rules.ignored_diagnostic_globs:
-            if pattern not in ignores:
-                ignores.append(pattern)
-        return list(ignores)
+        )
 
     def _expected_project_roots(
         self,
@@ -498,18 +465,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         repository_root, project_dir = context.repository_root, context.project_dir
         project_root = repository_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root, analysis_exclusions)
-        expected_ignores = self._expected_ignores(
-            is_root=is_root,
-            repository_root=repository_root,
-            project_dir=project_dir,
-        )
+        expected_ignores = self._expected_ignores()
         expected_roots = self._expected_project_roots(
             context=context,
             paths_manager=paths_manager,
         )
         # Include every Python target owned by the selected project manifest.
         expected_includes = list(expected_roots)
-        stub_rules = self._tool_config.tools.pyright.path_rules
         if (
             is_root
             and repository_root is not None
@@ -520,15 +482,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                 for member, roots in self._workspace_member_roots(repository_root)
                 for root in roots
             )
-        expected_stub_path: str | None = (
-            stub_rules.root_typings_paths[0]
-            if is_root and stub_rules.root_typings_paths
-            else (
-                stub_rules.project_typings_paths[0]
-                if stub_rules.project_typings_paths
-                else None
-            )
-        )
         expected_envs = self._expected_envs(
             is_root=is_root,
             repository_root=repository_root,
@@ -563,14 +516,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     ),
                 ),
             )
-        if expected_stub_path is not None:
-            existing = project_root / expected_stub_path if project_root else None
-            if existing is not None and existing.is_dir():
-                operations.append(toml.SetOp(key="stubPath", value=expected_stub_path))
-            else:
-                operations.append(toml.RemoveOp(key="stubPath"))
-        else:
-            operations.append(toml.RemoveOp(key="stubPath"))
+        operations.append(toml.RemoveOp(key="stubPath"))
         # Make and the editor bind their interpreter at execution time. A tracked
         # analyzer manifest must not depend on the generating checkout's venv.
         operations.extend((toml.RemoveOp(key="venv"), toml.RemoveOp(key="venvPath")))
@@ -608,6 +554,9 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         Returns:
             The resulting ``t.StrSequence``.
+
+        Raises:
+            ValueError: When the pyright owner produces no native table.
 
         """
         desired: t.MutableJsonMapping = {

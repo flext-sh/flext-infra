@@ -10,10 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
-from flext_infra.deps import (
-    FlextInfraDependencyDetectionService,
-    FlextInfraPyprojectModernizer,
-)
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
@@ -291,16 +288,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return result_type.from_failure(combined_sources)
         source_states: list[m.Cli.AtomicFileState] = list(combined_sources.value)
         if render_inputs is not None:
-            typing_policy = (
-                FlextInfraDependencyDetectionService().load_typing_generation_policy()
-            )
-            typing_sources = cls._retained_typing_source_overlay(
-                repository_root, composed_rendered, typing_policy
-            )
-            if typing_sources.failure:
-                return result_type.from_failure(typing_sources)
-            composed_rendered = typing_sources.value.rendered
-            source_states.extend(typing_sources.value.source_states)
             collected = cls._member_declaration_states(
                 repository_root, render_inputs.workspace
             )
@@ -310,7 +297,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
                 render_inputs,
-                typing_policy=typing_policy,
                 member_declarations=collected.value[1],
             )
             if conformed.failure:
@@ -345,51 +331,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 source_states=tuple(source_states),
             ),
-        )
-
-    @staticmethod
-    def _retained_typing_source_overlay(
-        root: Path,
-        rendered: str,
-        policy: m.Infra.TypingGenerationPolicy,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
-        """Retain authenticated local producer inputs across metadata rendering.
-
-        Returns:
-            The render with validated relative sources and their original states.
-
-        """
-        result_type = r[m.Infra.CodegenArtifactComposition]
-        captured = u.Cli.atomic_read_binary_file_state(root / c.PYPROJECT_FILENAME)
-        if captured.failure:
-            return result_type.from_failure(captured)
-        content = captured.value.content
-        if content is None:
-            return result_type.ok(m.Infra.CodegenArtifactComposition(rendered=rendered))
-        document = u.Cli.toml_parse_text(content.decode(c.DEFAULT_ENCODING))
-        if document is None:
-            return result_type.fail(f"invalid live typing source metadata: {root}")
-        packages = u.Infra.generated_typing_packages(document, root=root, policy=policy)
-        if packages.failure:
-            return result_type.from_failure(packages)
-        if not packages.value:
-            return result_type.ok(m.Infra.CodegenArtifactComposition(rendered=rendered))
-        desired = u.Cli.toml_parse_text(rendered)
-        if desired is None:
-            return result_type.fail(f"invalid rendered typing source metadata: {root}")
-        sources = u.Cli.toml_ensure_path(desired, ("tool", "uv", "sources"))
-        for package in packages.value:
-            sources[package.distribution] = {
-                "path": package.path.relative_to(root).as_posix()
-            }
-        return result_type.ok(
-            m.Infra.CodegenArtifactComposition(
-                rendered=u.Cli.toml_dumps(desired),
-                source_states=(
-                    captured.value,
-                    *(state for package in packages.value for state in package.inputs),
-                ),
-            )
         )
 
     @classmethod

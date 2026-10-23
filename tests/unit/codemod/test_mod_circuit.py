@@ -76,7 +76,7 @@ class TestsFlextInfraModCliRoute:
                 "    assert left == right\n",
             )
         )
-        rules = ("rewire-test-assert-eq", "test-assert-tm-binding-required")
+        rules = ("rewire-test-assert-truth", "test-assert-tm-binding-required")
         exit_code = main([
             "refactor",
             "ast",

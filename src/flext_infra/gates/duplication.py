@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import time
-from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -33,10 +31,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     can_fix: ClassVar[bool] = False
     scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
 
-    _python_behavior_cache: ClassVar[
-        MutableMapping[t.Triple[str, int, int], t.VariadicTuple[t.Pair[int, int]]]
-    ] = {}
-
     @override
     def check(
         self,
@@ -60,11 +54,18 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
         if not issues and scan.outcome.raw_return_code not in {0, 1}:
             issues = (self._tool_failure_issue(scan),)
+        not_executed = (
+            "jscpd semantic pass NOT EXECUTED: the CI context has no embeddings host"
+            if self.semantic_not_executed()
+            else ""
+        )
         return self._build_check_gate_execution(
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output="\n".join(part for part in (scan.stdout, scan.stderr) if part),
+            raw_output="\n".join(
+                part for part in (scan.stdout, scan.stderr, not_executed) if part
+            ),
             started=started,
         )
 
@@ -305,7 +306,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if project_config.failure:
             return r[Path].from_failure(project_config)
         overrides = project_config.value
-
+        passes = config.Infra.tooling.tools.jscpd
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
             formatsExts={
@@ -320,6 +321,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             noTips=True,
             reporters=(c.Infra.OUTPUT_JSON,),
             threshold=overrides.threshold_percent,
+            similarity=passes.similarity,
+            semantic=None if self.semantic_not_executed() else passes.semantic,
         )
         config_path = (
             self._repository_root
@@ -327,9 +330,24 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             / c.Infra.JSCPD_CONFIG_FILENAME
         )
         u.Cli.ensure_dir(config_path.parent).unwrap()
-        rendered = jscpd_config.model_dump_json(by_alias=True)
+        rendered = jscpd_config.model_dump_json(by_alias=True, exclude_none=True)
         u.Cli.atomic_write_text_file(config_path, rendered).unwrap()
         return r[Path].ok(config_path)
+
+    @staticmethod
+    def semantic_not_executed() -> bool:
+        """Whether the embedding pass is NOT EXECUTED in this context.
+
+        The CI context has no embeddings host, so the pass is typed NOT
+        EXECUTED there with its reason in the gate output; it is never a
+        green result and never replaced by another classifier.
+
+        Returns:
+            Whether the invocation runs in the declared CI context.
+
+        """
+        ci = config.Infra.codegen.make.ci
+        return (u.Infra.env_lookup(ci.variable) or "").strip() == ci.value
 
     def _derived_ignore_patterns(self) -> t.StrSequence:
         """Derive the complete jscpd ignore list from declared owners.
@@ -464,11 +482,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
             first_name = cls.report_file_name(first)
             second_name = cls.report_file_name(second)
-            # The semantic classifier owns the verdict in both scopes: the
-            # fleet union only widens WHICH clones are visible, never what
-            # counts as one.
-            if not cls.semantic_clone(duplicate, first, second):
-                continue
             first_span = cls.side_span_key(first)
             second_span = cls.side_span_key(second)
             # The two sides of a clone are the same span only when the same
@@ -516,34 +529,19 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
 
     @staticmethod
-    def _report_name_parts(side: t.JsonMapping) -> tuple[str, str | None]:
-        """Return one jscpd clone side's file name and virtual language.
+    def report_file_name(side: t.JsonMapping) -> str:
+        """Return one jscpd clone side's on-disk file name.
 
         jscpd names markdown-embedded code blocks ``<file>:<language>``; the
-        range belongs to that embedded block, not to a file of that literal
-        name. The parts feed ownership (the real file) and the behavioral
-        probe (the embedded language).
-
-        Returns:
-            The on-disk file name and the embedded language, or ``None``
-            when the side names a real file.
-
-        """
-        raw = u.Cli.json_pick_str(side, "name")
-        file_name, separator, language = raw.rpartition(":")
-        if separator and file_name and "." in file_name:
-            return file_name, language
-        return raw, None
-
-    @classmethod
-    def report_file_name(cls, side: t.JsonMapping) -> str:
-        """Return one jscpd clone side's on-disk file name.
+        range belongs to that embedded block, and ownership to the real file.
 
         Returns:
             The clone side's file name without any virtual suffix.
 
         """
-        return cls._report_name_parts(side)[0]
+        raw = u.Cli.json_pick_str(side, "name")
+        file_name, separator, _language = raw.rpartition(":")
+        return file_name if separator and file_name and "." in file_name else raw
 
     @classmethod
     def side_span_key(cls, side: t.JsonMapping) -> str:
@@ -585,121 +583,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 f"— extend one owner, rewire consumers, delete the duplicate"
             ),
             severity=str(c.Infra.GateSeverity.ERROR.value),
-        )
-
-    @classmethod
-    def semantic_clone(
-        cls,
-        duplicate: t.JsonMapping,
-        first: t.JsonMapping,
-        second: t.JsonMapping,
-    ) -> bool:
-        """Require executable Python behavior on both sides of a clone.
-
-        jscpd is the candidate detector, not the semantic authority. Python
-        module licenses, docstrings, imports, ``TYPE_CHECKING`` blocks, class
-        shells, function signatures, and declaration-only assignments are
-        intentionally repeated language structure rather than competing
-        implementations. A candidate remains blocking when both source ranges
-        contain an executable statement. Unreadable or unparsable input stays
-        blocking because absence of semantic proof can never produce green.
-        Non-Python formats likewise remain blocking until their own semantic
-        classifier exists.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        if u.Cli.json_pick_str(duplicate, "format") != "python":
-            return True
-        return cls._range_has_python_behavior(first) and cls._range_has_python_behavior(
-            second,
-        )
-
-    @classmethod
-    def _range_has_python_behavior(cls, side: t.JsonMapping) -> bool:
-        """Return whether one jscpd source range encloses executable behavior.
-
-        Returns:
-            Whether one jscpd source range encloses executable behavior.
-
-        """
-        file_name, virtual_language = cls._report_name_parts(side)
-        if virtual_language is not None:
-            # An embedded markdown code block is executable exactly when it
-            # is the python block jscpd tokenized; other languages never
-            # enclose python behavior.
-            return virtual_language == "python"
-        path = Path(file_name)
-        identity = path.stat()
-        key = (file_name, identity.st_mtime_ns, identity.st_size)
-        ranges = cls._python_behavior_cache.get(key)
-        if ranges is None:
-            ranges = cls._python_behavior_ranges(path)
-            cls._python_behavior_cache[key] = ranges
-        start = u.Cli.json_nested_int(side, "startLoc", "line", default=1)
-        end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
-        return any(
-            start <= node_start and node_end <= end for node_start, node_end in ranges
-        )
-
-    @staticmethod
-    def _python_behavior_ranges(path: Path) -> t.VariadicTuple[t.Pair[int, int]]:
-        """Parse one module into ranges for statements with runtime behavior.
-
-        Returns:
-            The resulting ``t.VariadicTuple[t.Pair[int, int]]``.
-
-        """
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        parents = {
-            child: parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
-
-        def inside_function(node: ast.AST) -> bool:
-            parent = parents.get(node)
-            while parent is not None:
-                if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    return True
-                parent = parents.get(parent)
-            return False
-
-        def is_declaration(node: ast.stmt) -> bool:
-            if isinstance(
-                node,
-                (
-                    ast.ClassDef,
-                    ast.FunctionDef,
-                    ast.AsyncFunctionDef,
-                    ast.Import,
-                    ast.ImportFrom,
-                    ast.Pass,
-                    ast.Global,
-                    ast.Nonlocal,
-                ),
-            ):
-                return True
-            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
-                return True
-            if (
-                isinstance(node, ast.If)
-                and isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
-            ):
-                return True
-            return isinstance(
-                node,
-                (ast.Assign, ast.AnnAssign),
-            ) and not inside_function(node)
-
-        return tuple(
-            (node.lineno, node.end_lineno)
-            for node in ast.walk(tree)
-            if isinstance(node, ast.stmt)
-            and node.end_lineno is not None
-            and not is_declaration(node)
         )
 
 

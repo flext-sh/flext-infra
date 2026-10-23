@@ -103,7 +103,12 @@ class FlextInfraPytestProfile:
         outcome: int | None = None
 
         def terminate(signum: int, _frame: FrameType | None) -> None:
-            """Unwind through receipt publication between owned child lifetimes."""
+            """Unwind through receipt publication between owned child lifetimes.
+
+            Raises:
+                SystemExit: Always, with the recorded outcome or 128 plus the signal.
+
+            """
             del _frame
             raise SystemExit(outcome or 128 + signum)
 
@@ -162,7 +167,13 @@ class FlextInfraPytestProfile:
         failure: BaseException | None,
         outcome: int | None,
     ) -> None:
-        """Raise a publication failure of a clean run; attach it to a failed one."""
+        """Raise a publication failure of a clean run; attach it to a failed one.
+
+        Raises:
+            SystemExit: When the failure report cannot be written to the diagnostic
+                stream, preserving the failed child's status.
+
+        """
         if failure is None and outcome in {None, 0}:
             raise publication_failure
         if failure is not None:

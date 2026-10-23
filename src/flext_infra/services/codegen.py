@@ -7,10 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import p
-from flext_infra.codegen import (
-    FlextInfraCodegenConform,
-    FlextInfraCodegenProtocolModels,
-)
+from flext_infra.codegen import FlextInfraCodegenConform
 
 
 class FlextInfraCodegenHandlers:
@@ -51,24 +48,6 @@ class FlextInfraCodegenHandlers:
             initial_workspace,
             execution_context=self,
         )
-
-    def codegen_protocol_models(
-        self: p.Infra.CodegenHandlerContext,
-        request: p.Infra.CommandPayloadContext,
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Bind protocol projection to this API's native conformance handler.
-
-        Returns:
-            The unchanged service result, including any publication failure.
-
-        """
-        return FlextInfraCodegenProtocolModels(
-            repository_root=request.repository_root,
-            apply_changes=request.apply_changes,
-            check_only=request.check_only,
-            dry_run=request.dry_run,
-            conform=self.codegen_conform,
-        ).execute()
 
 
 __all__: list[str] = ["FlextInfraCodegenHandlers"]

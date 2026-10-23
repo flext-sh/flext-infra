@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, deps, m, main
-from tests import c, tm, u
+from tests import tm, u
 
 
 class TestsFlextInfraDepsDetectorMain:
@@ -21,7 +21,7 @@ class TestsFlextInfraDepsDetectorMain:
     @pytest.mark.slow
     @pytest.mark.remote
     @pytest.mark.parametrize("entrypoint", ["cli", "request"])
-    def test_run_without_typings_skips_typings_detection(
+    def test_run_reports_without_mutating_the_project(
         real_detector_project: Path,
         entrypoint: str,
     ) -> None:
@@ -49,101 +49,7 @@ class TestsFlextInfraDepsDetectorMain:
                 root / ".reports/dependencies/detect-runtime-dev-latest.json"
             ).read_bytes(),
         )
-        tm.that(report.projects[root.name].typings, eq=None)
-
-    @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.remote
-    @pytest.mark.parametrize(
-        "real_detector_project",
-        c.Tests.DETECTOR_MODULE_SCENARIOS[1:],
-        indirect=True,
-    )
-    def test_apply_typings_follows_governed_policy_and_preserves_source(
-        real_detector_project: Path,
-    ) -> None:
-        """Test apply typings follows governed policy and preserves source."""
-        root = real_detector_project
-        before = u.Tests.toml_payload((root / "pyproject.toml").read_text())
-        lock_before = (root / "uv.lock").read_bytes()
-        expected = {"pytz": "types-pytz", "six": "types-six"}
-        declared_dev = {
-            u.Infra.dep_name(item)
-            for item in u.Tests.toml_strings(
-                u.Tests.toml_mapping(before["dependency-groups"])["dev"],
-            )
-        }
-        tm.that(declared_dev & set(expected.values()), empty=True)
-        outcome = tm.ok(
-            u.Tests.run_real_detector(
-                root,
-                "--apply-typings",
-                "--apply",
-                "--no-pip-check",
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(outcome.outcome),
-            eq=True,
-            msg=f"{outcome.stdout}\n{outcome.stderr}",
-        )
-        after = u.Tests.toml_payload((root / "pyproject.toml").read_text())
-        requirements = [
-            item
-            for item in u.Infra.project_dependency_names_from_payload(before)
-            if item in expected
-        ]
-        added = {expected[item] for item in requirements}
-        typing_specs = u.Tests.toml_strings(
-            u.Tests.toml_mapping(after["dependency-groups"])["dev"],
-        )
-        tm.that(
-            {u.Infra.dep_name(item) for item in typing_specs},
-            eq=declared_dev | added,
-            msg=(
-                f"{outcome.outcome}\n{outcome.stdout}\n{outcome.stderr}\n"
-                + (
-                    root / ".reports/dependencies/detect-runtime-dev-latest.json"
-                ).read_text(encoding="utf-8")
-            ),
-        )
-        tm.that(after["project"], eq=before["project"])
-        tm.that((root / "uv.lock").read_bytes(), eq=lock_before)
-        snapshot = (root / "pyproject.toml").read_bytes()
-        repeated = tm.ok(
-            u.Tests.run_real_detector(
-                root,
-                "--apply-typings",
-                "--apply",
-                "--no-pip-check",
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(repeated.outcome),
-            eq=True,
-            msg=f"{repeated.stdout}\n{repeated.stderr}",
-        )
-        tm.that((root / "pyproject.toml").read_bytes(), eq=snapshot)
-
-    @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.remote
-    def test_apply_typings_dry_run_preserves_source_and_lock(
-        real_detector_project: Path,
-    ) -> None:
-        """Test apply typings dry run preserves source and lock."""
-        root = real_detector_project
-        paths = (root / "pyproject.toml", root / "uv.lock")
-        before = tuple(path.read_bytes() for path in paths)
-        outcome = tm.ok(
-            u.Tests.run_real_detector(root, "--apply-typings", "--no-pip-check"),
-        )
-        tm.that(
-            u.Cli.process_succeeded(outcome.outcome),
-            eq=True,
-            msg=f"{outcome.stdout}\n{outcome.stderr}",
-        )
-        tm.that(tuple(path.read_bytes() for path in paths), eq=before)
+        tm.that(root.name in report.projects, eq=True)
 
     @staticmethod
     def test_main_preserves_repository_failure(tmp_path: Path) -> None:
@@ -157,9 +63,6 @@ class TestsFlextInfraDepsDetectorMain:
                 "--no-pip-check",
             ])
 
-    # Why: `requests` ships inline types now and never needs a stub add;
-    # `pyyaml` still lacks inline types, so it is what actually exercises
-    # the member's own typings-group installation below.
     # Why: commit ec3b159c7 (bead X-17, "detector venv from root") retired
     # ambient `UV_PROJECT_ENVIRONMENT`/`VIRTUAL_ENV` resolution from
     # `detector_runtime.run` on purpose — "an ambient UV_PROJECT_ENVIRONMENT
@@ -200,7 +103,6 @@ class TestsFlextInfraDepsDetectorMain:
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root,
-                "--apply-typings",
                 "--apply",
                 "--no-pip-check",
                 repository_root=member,

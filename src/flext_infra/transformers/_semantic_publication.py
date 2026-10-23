@@ -633,6 +633,15 @@ class FlextInfraSemanticPublication:
         options = publication[1]
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
+            """Guard the sources, begin the locked files scope and apply.
+
+            Args:
+                scope_root: Elected scope root of the locked publication.
+
+            Returns:
+                The committed published paths, or the first phase failure.
+
+            """
             guarded = cls._guard_source_inputs(options.source_guard)
             if guarded.failure:
                 return r[tuple[Path, ...]].from_failure(guarded)

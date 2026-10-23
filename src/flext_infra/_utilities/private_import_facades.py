@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesPrivateImportFacades:
-    """Derive public paths from live facade inheritance, never a registry."""
+    """Derive public paths from live facade classes and reexports, never a registry."""
 
     @staticmethod
     def source_modules(
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     def declared_exports(
         sources: t.MappingKV[str, t.Pair[str, bool]],
     ) -> t.Pair[MutableMapping[str, set[str]], MutableMapping[str, set[str]]]:
-        """Index declared public exports and module-scope import identities.
+        """Index declared public exports and module/class binding identities.
 
         Returns:
             The resulting ``t.Pair[MutableMapping[str, set[str]], MutableMapping[str,
@@ -260,12 +260,14 @@ class FlextInfraUtilitiesPrivateImportFacades:
             module: str,
             lazy_exports: t.StrSequence,
             lazy_name: str,
+            scope: str | None = None,
         ) -> None:
             self.bindings = bindings
             self.package = package
             self.module = module
             self.lazy_exports = lazy_exports
             self.lazy_name = lazy_name
+            self.scope = scope or module
 
         def collect(self, statements: t.SequenceOf[ast.stmt]) -> None:
             """Index every binding one statement suite declares."""
@@ -292,7 +294,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             for imported in node.names:
                 if imported.name != "*":
                     self.bindings.setdefault(
-                        f"{self.module}.{imported.asname or imported.name}",
+                        f"{self.scope}.{imported.asname or imported.name}",
                         set(),
                     ).add(f"{imported_module}.{imported.name}")
 
@@ -306,25 +308,45 @@ class FlextInfraUtilitiesPrivateImportFacades:
             same module. Keeping both fabricated an ambiguity for the
             canonical ``from upstream import u; u = Facade`` shape.
             """
-            identity = f"{self.module}.{node.name}"
+            identity = f"{self.scope}.{node.name}"
             self.bindings[identity] = {identity}
+            if isinstance(node, ast.ClassDef):
+                FlextInfraUtilitiesPrivateImportFacades._ExportBindingCollector(
+                    self.bindings,
+                    package=self.package,
+                    module=self.module,
+                    lazy_exports=self.lazy_exports,
+                    lazy_name=self.lazy_name,
+                    scope=identity,
+                ).collect(node.body)
 
         def _bind_assignment(self, node: ast.Assign | ast.AnnAssign) -> None:
-            """Bind one module-level assignment to its last declaration.
+            """Bind one module or class assignment to its last declaration.
 
-            Module assignments are runtime rebinding, not an additional
+            Assignments are runtime rebinding, not an additional
             possible source: the last declaration is the single Python
             authority for the public name.
             """
+            if node.value is None:
+                return
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             for target in targets:
                 if isinstance(target, ast.Name):
-                    identity = f"{self.module}.{target.id}"
-                    destination = (
-                        f"{self.module}.{node.value.id}"
-                        if isinstance(node.value, ast.Name)
-                        else identity
-                    )
+                    identity = f"{self.scope}.{target.id}"
+                    value = node.value
+                    parts: list[str] = []
+                    while isinstance(value, ast.Attribute):
+                        parts.insert(0, value.attr)
+                        value = value.value
+                    destination = identity
+                    if isinstance(value, ast.Name):
+                        local = f"{self.scope}.{value.id}"
+                        root = (
+                            local
+                            if local in self.bindings
+                            else f"{self.module}.{value.id}"
+                        )
+                        destination = ".".join((root, *parts))
                     self.bindings[identity] = {destination}
 
         def _collect_branches(self, node: ast.If) -> None:
@@ -575,7 +597,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         bindings: t.MappingKV[str, set[str]],
         class_bases: t.MappingKV[str, t.VariadicTuple[str]],
     ) -> str | None:
-        """Resolve one imported binding to exactly one inherited facade path.
+        """Resolve one imported binding to exactly one public facade path.
 
         Returns:
             The resulting ``str | None``.
@@ -693,7 +715,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         public_path: str,
         identity: str,
     ) -> None:
-        """Add every nested class inheriting the private class to references.
+        """Add nested classes and class reexports exposing the private class.
 
         ``resolvers`` carries ``(bindings, class_bases, qualified)``.
         """
@@ -706,7 +728,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             frozenset(),
         ) or any(
             cls._inherits_facade(bindings, class_bases, qualified, base, frozenset())
-            for base in class_bases[identity]
+            for base in class_bases.get(identity, ())
         ):
             references.add(public_path)
         for child in node.body:
@@ -718,6 +740,23 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     f"{public_path}.{child.name}",
                     f"{identity}.{child.name}",
                 )
+            elif isinstance(child, ast.Assign | ast.AnnAssign):
+                targets = (
+                    child.targets if isinstance(child, ast.Assign) else [child.target]
+                )
+                for target in targets:
+                    if (
+                        isinstance(target, ast.Name)
+                        and not target.id.startswith("_")
+                        and cls._inherits_facade(
+                            bindings,
+                            class_bases,
+                            qualified,
+                            f"{identity}.{target.id}",
+                            frozenset(),
+                        )
+                    ):
+                        references.add(f"{public_path}.{target.id}")
 
     @staticmethod
     def facade_alias_binding(

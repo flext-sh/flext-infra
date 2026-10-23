@@ -139,12 +139,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         ctx: p.Cli.PipelineStageContext,
         /,
     ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Conform dependencies to reality via deptry + typing-stub detection.
+        """Conform dependencies to reality via deptry.
 
-        Reuses ``FlextInfraRuntimeDevDependencyDetector`` (deptry DEP001-004 +
-        ``types-*`` stub hints). Apply declares missing requirements in CUSTOM
-        ``project.optional-dependencies.typings`` and installs them through UV;
-        dry-run reports only. Mutation failures remain stage failures.
+        Reuses ``FlextInfraRuntimeDevDependencyDetector`` (deptry DEP001-004).
+        Apply publishes the runtime dependency plan; dry-run reports only.
+        Mutation failures remain stage failures.
 
         Returns:
             The resulting ``p.Result[m.Cli.PipelineStageResult]``.
@@ -159,7 +158,6 @@ class FlextInfraCodegenPipelineStagesMixin:
                 m.Infra.DetectCommand(
                     repository_root=ctx.repository_root,
                     apply=not dry_run,
-                    apply_typings=not dry_run,
                     projects=selected,
                 ),
             )

@@ -136,7 +136,7 @@ class FlextInfraStagedPackage:
     def _prepared_candidate_updates(
         plan: m.Infra.StageSourcePlan,
         candidates: t.MappingKV[Path, Path],
-    ) -> p.Result[dict[Path, str | None]]:
+    ) -> p.Result[t.MutableMappingKV[Path, str | None]]:
         """Read the prepared candidate bytes back as updated live sources.
 
         Args:
@@ -484,7 +484,7 @@ class FlextInfraStagedPackage:
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         updates: t.MappingKV[Path, str | None],
         modes: t.MappingKV[Path, int] | None,
-    ) -> p.Result[dict[Path, int]]:
+    ) -> p.Result[t.MutableMappingKV[Path, int]]:
         """Validate declared file effects and merge their pinned modes.
 
         Args:
@@ -571,7 +571,7 @@ class FlextInfraStagedPackage:
             if planned.failure:
                 return result_type.from_failure(planned)
             plans.append(planned.value)
-        packages: dict[str, Path] = {}
+        packages: t.MutableMappingKV[str, Path] = {}
         for plan in plans:
             for layout in plan.layouts:
                 if (
@@ -624,7 +624,10 @@ class FlextInfraStagedPackage:
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
         source_project: p.Infra.RopeProject,
     ) -> p.Result[
-        t.Pair[list[m.Infra.RopeProjectLayout], dict[Path, m.Cli.AtomicFileState]]
+        t.Pair[
+            list[m.Infra.RopeProjectLayout],
+            t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        ]
     ]:
         """Extend the open closure without replacing an authenticated original.
 
@@ -646,7 +649,7 @@ class FlextInfraStagedPackage:
             ]
         ]
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: dict[Path, m.Cli.AtomicFileState] = {
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
             state.path: state for state in inputs
         }
         source_paths = dict.fromkeys((
@@ -766,7 +769,7 @@ class FlextInfraStagedPackage:
     def _normalized_updates(
         workspace: Path,
         updates: t.MappingKV[Path, str | None],
-    ) -> p.Result[dict[Path, str | None]]:
+    ) -> p.Result[t.MutableMappingKV[Path, str | None]]:
         """Elect one contained physical destination per desired source.
 
         Every desired destination must be a contained, physical, unambiguous
@@ -777,7 +780,7 @@ class FlextInfraStagedPackage:
 
         """
         result_type = r[dict[Path, str | None]]
-        normalized: dict[Path, str | None] = {}
+        normalized: t.MutableMappingKV[Path, str | None] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):
                 return result_type.fail(f"candidate source is a symlink: {path}")
@@ -840,7 +843,7 @@ class FlextInfraStagedPackage:
                 "candidate project has no original source authority"
             )
         originals = {state.path: state for state in plan.inputs}
-        replayed: dict[Path, m.Cli.AtomicFileState] = {}
+        replayed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         pinned = cls._pin_closure(
             local,
             layouts,
@@ -924,7 +927,12 @@ class FlextInfraStagedPackage:
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         if identity.failure:
             return r[Path].from_failure(identity)
-        return r[Path].ok(identity.value.superproject_root or identity.value.repo_root)
+        if identity.value.is_attached_submodule:
+            superproject = identity.value.superproject_root
+            if superproject is None:
+                return r[Path].fail("attached candidate has no superproject root")
+            return r[Path].ok(superproject)
+        return r[Path].ok(identity.value.repo_root)
 
     @classmethod
     def plan(
@@ -1339,7 +1347,7 @@ class FlextInfraStagedPackage:
             name = queue.pop(0)
             layout = layouts[name]
             selected.append(layout)
-            owned: dict[Path, str | None] | None = None
+            owned: t.MutableMappingKV[Path, str | None] | None = None
             if updates is not None:
                 owned = {}
                 for path, content in updates.items():

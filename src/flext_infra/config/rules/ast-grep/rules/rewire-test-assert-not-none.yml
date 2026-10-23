@@ -1,0 +1,117 @@
+# A non-None guard on a plain name narrows through the matcher's return value:
+# tm.not_none returns T, so rebinding the name keeps the narrowing a native
+# assert gave Python type checkers, in one statement instead of a guard block.
+id: rewire-test-assert-not-none
+language: Python
+severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - all:
+            - pattern: "assert $X is not None"
+            - not:
+                has:
+                  nthChild: 2
+        - pattern: |-
+            if not ($X is not None):
+                raise AssertionError
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  X:
+    kind: identifier
+fix: $X = tm.not_none($X)
+message: Narrow a non-None name through the tm matcher's returned value.
+---
+id: rewire-test-assert-not-none-message
+language: Python
+severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert $X is not None, $MSG"
+        - pattern: |-
+            if not ($X is not None):
+                raise AssertionError($MSG)
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+constraints:
+  X:
+    kind: identifier
+fix: $X = tm.not_none($X, msg=$MSG)
+message: Narrow a non-None name through the tm matcher's returned value.
+---
+# A message-bearing check that narrows nothing is a plain boolean observation.
+id: rewire-test-assert-message-observation
+language: Python
+severity: error
+metadata:
+  context:
+    COND:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert $COND, $MSG"
+        - pattern: |-
+            if not ($COND):
+                raise AssertionError($MSG)
+    - not:
+        any:
+          - has:
+              pattern: "$VALUE is None"
+              stopBy: end
+          - has:
+              pattern: "$VALUE is not None"
+              stopBy: end
+          - has:
+              pattern: "isinstance($VALUE, $TYPE)"
+              stopBy: end
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($COND, msg=$MSG)
+message: Observe a non-narrowing condition through the tm matcher facade.

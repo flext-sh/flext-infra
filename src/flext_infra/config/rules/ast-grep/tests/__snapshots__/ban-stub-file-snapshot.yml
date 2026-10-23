@@ -1,6 +1,16 @@
 id: ban-stub-file
 snapshots:
   ? |
+    # AUTO-GENERATED FILE
+    class Boundary: ...
+  : labels:
+    - source: |
+        # AUTO-GENERATED FILE
+        class Boundary: ...
+      style: primary
+      start: 0
+      end: 42
+  ? |
     def load(path: str) -> bytes: ...
   : labels:
     - source: |

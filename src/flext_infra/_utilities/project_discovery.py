@@ -294,14 +294,15 @@ class FlextInfraUtilitiesProjectDiscovery(
         refactor_config: m.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
-        """Return only governed handwritten Python surfaces as scan targets.
+        """Return governed Python sources and owned stub-policy paths.
 
         Configured roots cannot hide active Python sources. Enumerating files
         instead of passing ``.`` keeps foreign repositories, hidden histories,
-        and the artifact SSOT's ignored trees outside the rewrite inventory.
+        and artifact outputs outside the rewrite inventory. Generated or retired
+        owned typing paths remain detection inputs, never rewrite candidates.
 
         Returns:
-            Only governed handwritten Python surfaces as scan targets.
+            Governed source and path-policy targets.
 
         Raises:
             ValueError: If a requested source is outside the governed inventory.
@@ -321,11 +322,9 @@ class FlextInfraUtilitiesProjectDiscovery(
                 project,
                 workspace_excluded_top_dirs=frozenset(),
                 source_project=source_project,
+                owned_path_admission=True,
             )
             if not cls._is_nonparticipant(path, resolved_root, nonparticipants)
-            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                resolved_root, path
-            )
         }
         if source_files is not None:
             selected = {
@@ -458,6 +457,59 @@ class FlextInfraUtilitiesProjectDiscovery(
             ),
         ]
 
+    @staticmethod
+    def excluded_parts() -> frozenset[str]:
+        """Resolve analyzer exclusions from the generated artifact SSOT.
+
+        Returns:
+            The analysis-excluded and source-scan-ignored directory names.
+
+        """
+        return frozenset(config.Infra.codegen.analysis_excluded_dirs) | frozenset(
+            config.Infra.codegen.source_scan_ignored
+        )
+
+    @classmethod
+    def root_namespace(cls, project_root: Path, name: str) -> bool:
+        """Return whether a direct child folder of a project root is a namespace.
+
+        Namespaces are detected, never declared: ``src`` holds the public
+        packages and every other importable child folder is an internal tier.
+        A scan-ignored resource or a folder declaring its own project is no
+        namespace of this one. Callers ask about a Python path beneath the
+        folder, which proves that it holds code.
+
+        Returns:
+            Whether ``name`` is a namespace folder of ``project_root``.
+
+        """
+        folder = project_root / name
+        return name == c.Infra.DEFAULT_SRC_DIR or (
+            name.isidentifier()
+            and name not in cls.excluded_parts()
+            and folder.is_dir()
+            and not (folder / c.PYPROJECT_FILENAME).is_file()
+        )
+
+    @classmethod
+    def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
+        """Return the import package a directory declares inside a project.
+
+        ``src`` contributes its children with its own segment stripped; an
+        internal namespace keeps its name. An empty string when the directory
+        sits outside the project or under no detected namespace.
+
+        Returns:
+            The import package a directory declares inside a project.
+
+        """
+        if not package_dir.is_relative_to(project_root):
+            return ""
+        parts = package_dir.relative_to(project_root).parts
+        if not parts or not cls.root_namespace(project_root, parts[0]):
+            return ""
+        return ".".join(parts[1:] if parts[0] == c.Infra.DEFAULT_SRC_DIR else parts)
+
     @classmethod
     def discover_python_files(
         cls,
@@ -465,6 +517,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         workspace_excluded_top_dirs: frozenset[str],
         source_project: p.Infra.RopeProject | None = None,
+        owned_path_admission: bool = False,
     ) -> t.SequenceOf[Path]:
         """Enumerate sources once without crossing project or artifact boundaries.
 
@@ -479,8 +532,24 @@ class FlextInfraUtilitiesProjectDiscovery(
             else source_project.source_query(project_dir, "isdir")
         ):
             return ()
-        skip_dirs = frozenset(config.Infra.codegen.analysis_excluded_dirs) | frozenset(
-            config.Infra.codegen.source_scan_ignored
+        skip_dirs = cls.excluded_parts()
+        owned_artifacts = (
+            frozenset(
+                artifact.name
+                for artifact in config.Infra.codegen.artifacts
+                if artifact.generated_source or artifact.retired_typing_root
+            )
+            if owned_path_admission
+            else frozenset()
+        )
+        retired_roots = (
+            frozenset(
+                project_dir / artifact.name
+                for artifact in config.Infra.codegen.artifacts
+                if artifact.retired_typing_root
+            )
+            if owned_path_admission
+            else frozenset()
         )
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
@@ -494,12 +563,15 @@ class FlextInfraUtilitiesProjectDiscovery(
                 path.resolve()
                 for path in cls._walk_python_files(
                     project_dir,
-                    skip_dirs,
+                    skip_dirs - owned_artifacts,
                     excluded_paths=excluded_paths,
                     source_project=source_project,
+                    retired_roots=retired_roots,
                 )
-                if not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    project_dir, path
+                if (owned_path_admission and path.suffix == ".pyi")
+                or not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    project_dir,
+                    path,
                 )
             })
         )
@@ -511,6 +583,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         excluded_paths: frozenset[Path] = frozenset(),
         source_project: p.Infra.RopeProject | None = None,
+        retired_roots: frozenset[Path] = frozenset(),
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
 
@@ -538,11 +611,14 @@ class FlextInfraUtilitiesProjectDiscovery(
                 and (
                     not (parent / name).is_symlink() if source_project is None else True
                 )
-                and not (
-                    (parent / name / c.PYPROJECT_FILENAME).is_file()
-                    if source_project is None
-                    else source_project.source_query(
-                        parent / name / c.PYPROJECT_FILENAME, "isfile"
+                and (
+                    any((parent / name).is_relative_to(root) for root in retired_roots)
+                    or not (
+                        (parent / name / c.PYPROJECT_FILENAME).is_file()
+                        if source_project is None
+                        else source_project.source_query(
+                            parent / name / c.PYPROJECT_FILENAME, "isfile"
+                        )
                     )
                 )
                 and not (

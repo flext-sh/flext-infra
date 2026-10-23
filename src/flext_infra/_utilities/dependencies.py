@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from base64 import urlsafe_b64encode
 from collections.abc import Callable, Mapping, MutableMapping
-from importlib.metadata import Distribution, PackagePath
 from json import dumps
 from pathlib import Path
 from types import MappingProxyType
@@ -26,9 +24,6 @@ from flext_infra._utilities import (
 from flext_infra._utilities._dependency_deptry import (
     FlextInfraUtilitiesDependencyDeptryMixin,
 )
-
-_EXACT_INSTALL_METADATA_NAMES: frozenset[str] = frozenset({"METADATA", "RECORD"})
-_EXACT_INSTALL_METADATA_COUNT: int = 2
 
 
 class FlextInfraUtilitiesDependencies(
@@ -76,6 +71,7 @@ class FlextInfraUtilitiesDependencies(
             declarations.value,
             suppliers.value,
             development_only=inputs.development_only,
+            invoked_executables=inputs.invoked_executables,
         )
         return result_type.ok(
             m.Infra.RuntimeDependencyPlan(
@@ -212,8 +208,12 @@ class FlextInfraUtilitiesDependencies(
         ],
         *,
         development_only: t.StrTuple,
+        invoked_executables: t.StrTuple,
     ) -> t.Pair[list[str], list[str]]:
         """Select retained runtime requirements and collect unresolved modules.
+
+        A requirement deptry reports unused stays when the project invokes one
+        of its console scripts: executable usage is never an import.
 
         Returns:
             The retained requirement strings and the unresolved import modules.
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesDependencies(
             canonicalize_name(item.module)
             for item in scan.report.root
             if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
-        }
+        } - set(invoked_executables)
         selected = [
             raw
             for raw, requirement in zip(runtime, parsed_runtime, strict=True)
@@ -538,11 +538,33 @@ class FlextInfraUtilitiesDependencies(
         Returns:
             Dependencies before consumers, with stable distribution-name ties.
 
+        """
+        return tuple(
+            name
+            for wave in cls.workspace_dependency_waves(
+                root, repositories, planned_manifests=planned_manifests
+            )
+            for name in wave
+        )
+
+    @classmethod
+    def workspace_dependency_waves(
+        cls,
+        root: Path,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        *,
+        planned_manifests: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
+    ) -> t.SequenceOf[t.StrSequence]:
+        """Group declared packages into runtime-dependency-first waves.
+
+        Returns:
+            Distributions per wave; a wave depends only on earlier waves.
+
         Raises:
             ValueError: If distributions collide or the runtime graph is cyclic.
 
         """
-        by_name = {
+        by_name: t.MappingKV[str, p.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -553,39 +575,61 @@ class FlextInfraUtilitiesDependencies(
         if len(manifests) != len(planned_manifests):
             msg = "workspace declares duplicate planned manifest paths"
             raise ValueError(msg)
-        graph: dict[str, tuple[str, ...]] = {}
-        for name, repository in by_name.items():
-            project = (root / repository.path).resolve()
-            path = project / c.PYPROJECT_FILENAME
-            plan = manifests.get(path)
-            if plan is None:
-                physical = u.Cli.toml_read_json(path)
-                if physical.failure:
-                    raise ValueError(physical.error) from physical.exception
-                payload = physical.value
-            else:
-                if plan.project.resolve() != project or plan.desired_content is None:
-                    msg = f"planned manifest has no owning payload: {path}"
-                    raise ValueError(msg)
-                payload = u.Cli.toml_mapping_from_text(
-                    plan.desired_content.decode(c.DEFAULT_ENCODING),
-                )
-                if payload is None:
-                    msg = f"invalid planned manifest: {path}"
-                    raise ValueError(msg)
-            graph[name] = tuple(
+        graph = {
+            name: tuple(
                 dependency
                 for dependency in cls.project_dependency_names_from_payload(
-                    payload,
+                    cls._workspace_manifest_payload(
+                        (root / repository.path).resolve(), manifests
+                    ),
                 )
                 if dependency in by_name
             )
+            for name, repository in by_name.items()
+        }
         waves = cls.dependency_waves(graph)
         if waves.failure:
             raise ValueError(waves.error)
         return tuple(
-            by_name[name].distribution for wave in waves.value for name in wave
+            tuple(by_name[name].distribution for name in wave) for wave in waves.value
         )
+
+    @staticmethod
+    def _workspace_manifest_payload(
+        project: Path,
+        manifests: t.MappingKV[Path, m.Infra.CodegenFilePlan],
+    ) -> t.JsonMapping:
+        """Read one project's dependency manifest, planned payload first.
+
+        Args:
+            project: The resolved project root.
+            manifests: Planned manifests indexed by resolved path.
+
+        Returns:
+            The planned manifest payload, or the physical one when unplanned.
+
+        Raises:
+            ValueError: If the manifest cannot be read, or a planned manifest has
+                no owning payload or does not parse.
+
+        """
+        path = project / c.PYPROJECT_FILENAME
+        plan = manifests.get(path)
+        if plan is None:
+            physical = u.Cli.toml_read_json(path)
+            if physical.failure:
+                raise ValueError(physical.error) from physical.exception
+            return physical.value
+        if plan.project.resolve() != project or plan.desired_content is None:
+            msg = f"planned manifest has no owning payload: {path}"
+            raise ValueError(msg)
+        payload = u.Cli.toml_mapping_from_text(
+            plan.desired_content.decode(c.DEFAULT_ENCODING),
+        )
+        if payload is None:
+            msg = f"invalid planned manifest: {path}"
+            raise ValueError(msg)
+        return payload
 
     @staticmethod
     def dependency_waves[NameT: str](
@@ -615,7 +659,7 @@ class FlextInfraUtilitiesDependencies(
                 "dependency graph references names outside the graph: "
                 + ", ".join(unknown),
             )
-        pending: dict[NameT, set[str]] = {
+        pending: Mapping[NameT, set[str]] = {
             name: set(deps) for name, deps in edges.items()
         }
         waves: list[tuple[NameT, ...]] = []
@@ -627,236 +671,11 @@ class FlextInfraUtilitiesDependencies(
                 )
             waves.append(tuple(sorted(ready)))
             pending = {
-                name: deps - ready
+                name: {dependency for dependency in deps if dependency not in ready}
                 for name, deps in pending.items()
                 if name not in ready
             }
         return r[t.SequenceOf[t.SequenceOf[NameT]]].ok(tuple(waves))
-
-    @classmethod
-    def installed_resource_snapshot(
-        cls,
-        distribution: str,
-        *,
-        resource_parts: t.StrSequence,
-        environment_root: Path,
-    ) -> p.Result[m.Infra.InstalledResourceSnapshot]:
-        """Select one declared distribution resource without importing its namespace.
-
-        Returns:
-            Original resource and inventory snapshots, or the first causal failure.
-
-        """
-        result_type = r[m.Infra.InstalledResourceSnapshot]
-        supplier = cls._elected_installed_supplier(distribution, resource_parts)
-        if supplier.failure:
-            return result_type.from_failure(supplier)
-        elected = cls._elected_installed_resource(
-            supplier.value,
-            distribution,
-            resource_parts,
-        )
-        if elected.failure:
-            return result_type.from_failure(elected)
-        resource, metadata_entries = elected.value
-        states = cls._captured_installed_states(
-            supplier.value,
-            environment_root,
-            (*metadata_entries, resource),
-        )
-        if states.failure:
-            return result_type.from_failure(states)
-        if not cls._resource_matches_record(resource, states.value[-1]):
-            return result_type.fail(
-                f"installed resource differs from its owning RECORD: {distribution} "
-                f"{'/'.join(resource_parts)}",
-            )
-        rechecked = cls._rechecked_installed_inventory(
-            supplier.value,
-            states.value,
-            distribution,
-        )
-        if rechecked.failure:
-            return result_type.from_failure(rechecked)
-        return result_type.ok(
-            m.Infra.InstalledResourceSnapshot(
-                resource=states.value[-1],
-                inventory=tuple(states.value[:-1]),
-            ),
-        )
-
-    @staticmethod
-    def _elected_installed_supplier(
-        distribution: str,
-        resource_parts: t.StrSequence,
-    ) -> p.Result[Distribution]:
-        """Authenticate one installed distribution and its resource components.
-
-        Returns:
-            The single elected installed distribution, or the election failure.
-
-        """
-        result_type = r[Distribution]
-        if not resource_parts or any(
-            not part
-            or part in {".", ".."}
-            or "/" in part
-            or "\\" in part
-            or "\0" in part
-            for part in resource_parts
-        ):
-            return result_type.fail(
-                "installed resource requires exact relative components"
-            )
-        installed = u.installed_distributions(name=distribution)
-        if len(installed) != 1:
-            return result_type.fail(
-                f"installed resource requires one distribution: {distribution}; "
-                f"observed={len(installed)}",
-            )
-        supplier = installed[0]
-        if canonicalize_name(supplier.metadata["Name"]) != canonicalize_name(
-            distribution
-        ):
-            return result_type.fail(
-                f"installed resource distribution identity differs: {distribution}",
-            )
-        return result_type.ok(supplier)
-
-    @staticmethod
-    def _elected_installed_resource(
-        supplier: Distribution,
-        distribution: str,
-        resource_parts: t.StrSequence,
-    ) -> p.Result[t.Pair[PackagePath, t.VariadicTuple[PackagePath]]]:
-        """Elect the exact RECORD resource entry beside its native metadata pair.
-
-        Returns:
-            The resource entry and its METADATA and RECORD inventory entries.
-
-        """
-        result_type = r[t.Pair[PackagePath, t.VariadicTuple[PackagePath]]]
-        records = supplier.files
-        if records is None:
-            return result_type.fail(
-                f"installed resource has no RECORD inventory: {distribution}",
-            )
-        resource_entries = tuple(
-            item
-            for item in records
-            if item.parts[-len(resource_parts) :] == tuple(resource_parts)
-        )
-        if len(resource_entries) != 1:
-            return result_type.fail(
-                f"installed resource requires one exact RECORD entry: {distribution} "
-                f"{'/'.join(resource_parts)}; observed={len(resource_entries)}",
-            )
-        metadata_entries = tuple(
-            item
-            for item in records
-            if item.name in {"METADATA", "RECORD"}
-            and item.parent.name.endswith(".dist-info")
-        )
-        if (
-            frozenset(item.name for item in metadata_entries)
-            != (_EXACT_INSTALL_METADATA_NAMES)
-            or len(metadata_entries) != _EXACT_INSTALL_METADATA_COUNT
-        ):
-            return result_type.fail(
-                "installed resource needs its exact METADATA and RECORD: "
-                f"{distribution}",
-            )
-        return result_type.ok((resource_entries[0], metadata_entries))
-
-    @staticmethod
-    def _captured_installed_states(
-        supplier: Distribution,
-        environment_root: Path,
-        entries: t.SequenceOf[PackagePath],
-    ) -> p.Result[list[m.Cli.AtomicFileState]]:
-        """Capture the byte state of every elected entry inside its environment.
-
-        Args:
-            supplier: The elected installed distribution owning the entries.
-            environment_root: Physical root the entries must stay inside.
-            entries: RECORD entries captured in inventory-then-resource order.
-
-        Returns:
-            The captured states in entry order, or the first capture failure.
-
-        """
-        result_type = r[list[m.Cli.AtomicFileState]]
-        prefix = environment_root.expanduser().resolve(strict=True)
-        states: list[m.Cli.AtomicFileState] = []
-        for entry in entries:
-            path = Path(str(supplier.locate_file(entry))).resolve(strict=True)
-            if not path.is_relative_to(prefix):
-                return result_type.fail(
-                    f"installed resource escapes its physical environment: {path}",
-                )
-            captured = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if captured.failure:
-                return result_type.from_failure(captured)
-            states.append(captured.value)
-        return result_type.ok(states)
-
-    @staticmethod
-    def _resource_matches_record(
-        resource: PackagePath,
-        state: m.Cli.AtomicFileState,
-    ) -> bool:
-        """Authenticate one captured resource against its RECORD digest row.
-
-        Args:
-            resource: The elected RECORD entry declaring the expected digest.
-            state: The captured byte state of the resource file.
-
-        Returns:
-            Whether the captured content matches its RECORD digest and size.
-
-        """
-        return not (
-            state.content is None
-            or resource.hash is None
-            or resource.hash.mode != "sha256"
-            or resource.size != len(state.content)
-            or resource.hash.value
-            != urlsafe_b64encode(bytes.fromhex(u.Cli.sha256_bytes(state.content)))
-            .rstrip(b"=")
-            .decode("ascii")
-        )
-
-    @staticmethod
-    def _rechecked_installed_inventory(
-        supplier: Distribution,
-        states: t.SequenceOf[m.Cli.AtomicFileState],
-        distribution: str,
-    ) -> p.Result[bool]:
-        """Authenticate the METADATA and RECORD owners and their byte stability.
-
-        Args:
-            supplier: The elected installed distribution owning the inventory.
-            states: Captured states in inventory-then-resource order.
-            distribution: Elected distribution spelling used in failure text.
-
-        Returns:
-            Whether the inventory is native and survived capture unchanged.
-
-        """
-        result_type = r[bool]
-        inventory = tuple(states[:-1])
-        for name in ("METADATA", "RECORD"):
-            recorded = next(item for item in inventory if item.path.name == name)
-            raw = supplier.read_text(name)
-            if raw is None or recorded.content != raw.encode(c.DEFAULT_ENCODING):
-                return result_type.fail(
-                    "installed resource inventory has a foreign owner: "
-                    f"{distribution} {name}",
-                )
-        unchanged = u.Cli.atomic_verify_binary_file_states(states)
-        if unchanged.failure:
-            return result_type.from_failure(unchanged)
-        return result_type.ok(value=True)
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

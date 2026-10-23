@@ -66,8 +66,6 @@ class TestsFlextInfraUtilitiesDepsMixin:
                 "detect",
                 "--repository-root",
                 str(repository_root if repository_root is not None else root),
-                "--limits",
-                str(root / "limits.toml"),
                 *arguments,
             ],
             cwd=root,

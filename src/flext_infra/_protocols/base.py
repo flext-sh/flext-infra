@@ -12,40 +12,12 @@ from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    import ast
-
     from flext_infra import c, m, p, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
-
-    @runtime_checkable
-    class CodegenProtocolModelRenderer(Protocol):
-        """Source-bound annotation resolver consumed by model selection."""
-
-        @property
-        def workspace(self) -> p.Infra.RopeWorkspaceDsl: ...
-
-        @property
-        def declarations(self) -> t.MappingKV[str, p.Infra.RopePyName]: ...
-
-        @property
-        def dependencies(self) -> set[str]: ...
-
-        @property
-        def imports(self) -> t.MutableMappingKV[str, str]: ...
-
-        def alias_definition(
-            self, binding: p.Infra.RopePyName
-        ) -> t.Pair[ast.TypeAlias, p.Infra.RopeScope] | None: ...
-
-        def source(self, annotation: str, scope: p.Infra.RopeScope) -> str: ...
-
-        def render_protocol(
-            self, name: str, model: p.Infra.RopePyName, scope: p.Infra.RopeScope
-        ) -> str: ...
 
     @runtime_checkable
     class CommandPayloadContext(Protocol):
@@ -243,16 +215,6 @@ class FlextInfraProtocolsBase(Protocol):
         def codegen_conform_collaborators(
             self,
         ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
-
-    @runtime_checkable
-    class CodegenHandlerContext(CodegenExecutionContext, Protocol):
-        """API handler context that also exposes native conform execution."""
-
-        def codegen_conform(
-            self,
-            request: FlextInfraProtocolsBase.CodegenConformRequest,
-            initial_workspace: p.Infra.WorkspaceSpec | None = None,
-        ) -> p.Result[FlextInfraProtocolsBase.CodegenResult]: ...
 
     @runtime_checkable
     class FunctionDescriptor(Protocol):
@@ -1179,7 +1141,6 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for workspace dependency report model contract."""
 
         pip_check: m.Infra.PipCheckReport | None
-        dependency_limits: m.Infra.DependencyLimitsInfo | None
 
     @runtime_checkable
     class JsonService(Protocol):
@@ -1218,23 +1179,8 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_name: str,
             deptry_issues: t.SequenceOf[t.JsonMapping],
-        ) -> m.Infra.ProjectRuntimeReport:
+        ) -> m.Infra.ProjectDependencyReport:
             """Build project report from deptry issues."""
-            ...
-
-        def load_dependency_limits(
-            self,
-            limits_path: Path | None = None,
-        ) -> t.MappingKV[str, t.JsonValue]:
-            """Load dependency limits from TOML file."""
-            ...
-
-        def analyze_required_typings(
-            self,
-            project_path: Path,
-            limits_path: Path | None = None,
-        ) -> p.Result[m.Infra.TypingsReport]:
-            """Get required typing libraries for a project."""
             ...
 
         def run_pip_check(
@@ -1243,15 +1189,6 @@ class FlextInfraProtocolsBase(Protocol):
             venv_bin: Path,
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
-            ...
-
-        def generate_typing_packages(
-            self,
-            repository_root: Path,
-            modules: t.StrSequence,
-            policy: m.Infra.TypingGenerationPolicy,
-        ) -> p.Result[t.VariadicTuple[Path]]:
-            """Generate and install PEP 561 packages in the owning environment."""
             ...
 
     @runtime_checkable

@@ -71,12 +71,6 @@ class FlextInfraConstantsSharedInfra:
         r'([A-Za-z0-9][A-Za-z0-9_.-]*)["`]?',
         re.IGNORECASE,
     )
-    MYPY_STUB_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"(?:Library stubs not installed for|Skipping analyzing) ['\"](\S+?)['\"]",
-    )
-    MYPY_UNTYPED_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"Skipping analyzing ['\"](\S+?)['\"]",
-    )
     INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---
@@ -170,7 +164,6 @@ class FlextInfraConstantsSharedInfra:
     DIR_EXAMPLES: ClassVar[str] = "examples"
     DIR_SCRIPTS: ClassVar[str] = "scripts"
     "imports directly as the bottom of the c/t/p/m/u chain."
-    DIR_TYPINGS: ClassVar[str] = "typings"
     DIR_DOCS: ClassVar[str] = "docs"
     DIR_BUILD: ClassVar[str] = "build"
     DIR_SITE: ClassVar[str] = "site"

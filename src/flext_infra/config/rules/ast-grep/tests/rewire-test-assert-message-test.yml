@@ -1,10 +1,13 @@
 id: rewire-test-assert-message
 valid:
   - assert result.success
+  - assert result.success, result.error
+  - assert value == expected, f"Unexpected value {value!r}"
+  - assert value is not None, "A value is required"
+  - assert isinstance(value, Entry), "An entry is required"
   - |
     if not result.success:
         raise AssertionError(result.error)
 invalid:
-  - assert result.success, result.error
-  - assert value == expected, f"Unexpected value {value!r}"
-  - assert value is not None, "A value is required"
+  - assert self.value is not None, "A value is required"
+  - assert value is None, "No value is expected"

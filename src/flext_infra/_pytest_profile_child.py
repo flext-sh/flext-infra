@@ -78,7 +78,9 @@ class FlextInfraPytestProfileChild:
         return clock, clock.FlextInfraPytestClock.start_profiler()
 
     @classmethod
-    def startup(cls, sitecustomize: str, clock_module: str, child_root_env: str) -> None:
+    def startup(
+        cls, sitecustomize: str, clock_module: str, child_root_env: str
+    ) -> None:
         """Run the profiled sitecustomize handoff for one descendant process.
 
         Args:

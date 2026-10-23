@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import multiprocessing
+import os
 import shlex
 import time
 from collections.abc import Callable
@@ -223,6 +224,39 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         return receipt, observed, (result if result.failure else None)
 
     @staticmethod
+    def machine_worker_capacity(worker_memory_gb: int) -> int:
+        """Derive how many workers this process's CPUs and physical memory hold.
+
+        CPU capacity is the process-scoped count (the cgroup affinity the
+        process actually gets); memory capacity divides physical memory by the
+        declared per-worker budget.
+
+        Args:
+            worker_memory_gb: Physical memory one worker needs, in GiB.
+
+        Returns:
+            The smaller of the CPU and memory capacities.
+
+        Raises:
+            ValueError: If CPU or physical memory capacity is unavailable, or if
+                physical memory cannot hold one worker.
+
+        """
+        cpu_count = os.process_cpu_count()
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        pages = os.sysconf("SC_PHYS_PAGES")
+        if cpu_count <= 0 or page_size <= 0 or pages <= 0:
+            msg = "CPU or physical memory capacity is unavailable"
+            raise ValueError(msg)
+        memory_workers = (
+            (page_size * pages) // c.Infra.BYTES_PER_GIB // worker_memory_gb
+        )
+        if memory_workers <= 0:
+            msg = f"physical memory cannot hold one {worker_memory_gb} GiB worker"
+            raise ValueError(msg)
+        return min(cpu_count, memory_workers)
+
+    @staticmethod
     def fleet_map[TPayload, TResult](
         task: Callable[[TPayload], TResult],
         payloads: t.SequenceOf[TPayload],
@@ -239,7 +273,12 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             The task results in payload order.
 
         """
-        workers = min(config.Infra.codegen.fleet_workers, len(payloads))
+        workers = min(
+            FlextInfraUtilitiesIterationWorkspace.machine_worker_capacity(
+                config.Infra.codegen.fleet_worker_memory_gb
+            ),
+            len(payloads),
+        )
         if workers <= 1:
             return tuple(task(payload) for payload in payloads)
         context = multiprocessing.get_context("forkserver")

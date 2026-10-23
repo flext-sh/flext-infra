@@ -1,0 +1,30 @@
+# A raw assert is rewritten to the tm facade by rewire-test-assert-truth.yml,
+# rewire-test-assert-not-none.yml and rewire-test-assert-guard.yml only where
+# the module imports tm from a FLEXT facade (utils/tm-imported-from-flext.yml).
+# This rule reports the remaining asserts whose tm binding does not resolve, so
+# the import or shadowed binding is repaired before `make mod` rewrites them.
+id: test-assert-tm-binding-required
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+metadata:
+  context:
+    CONDITION:
+      not: emitted-symbol
+      arg: tm flext_tests tm
+rule:
+  all:
+    - pattern: assert $CONDITION
+    - not:
+        any:
+          - pattern: assert $A is None
+          - pattern: assert $A is not None
+          - pattern: assert isinstance($A, $T)
+    - not:
+        has:
+          nthChild: 2
+message: >-
+  The assertion needs the public matcher, but tm does not resolve to its owner
+  at this occurrence. Repair the import or shadowed binding before rewriting.

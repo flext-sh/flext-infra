@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenLazyInit,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
 from flext_infra.deps import FlextInfraPyprojectModernizer
 
@@ -114,7 +112,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 analysis_exclusions=analysis_exclusions,
             ),
         )
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=lazy_sources.value[1],
             declared_files=tuple(lazy_sources.value[0]),
@@ -362,7 +360,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             return result_type.ok(planned)
         root = render_inputs.target.root
         projected = {plan.path: plan for plan in planned}
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root, declared_files=tuple(projected.values())
         ) as binding:
             exports = FlextInfraCodegenLazyInit(
@@ -385,21 +383,8 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 return result_type.from_failure(inputs)
         projected.update((plan.path, plan) for plan in exports.value.files)
         source_states = inputs.value
-        if contract.custom:
-            project = workspace.project
-            if project is None:
-                return result_type.fail(
-                    f"scaffold workspace has no project metadata: {workspace.name}"
-                )
-            protocols = self._existing_protocol_sources(
-                root, project, (tuple(projected.values()), source_states)
-            )
-            if protocols.failure:
-                return result_type.from_failure(protocols)
-            projected.update((plan.path, plan) for plan in protocols.value[0])
-            source_states = protocols.value[1]
         planned = tuple(projected.values())
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root, source_states=source_states, declared_files=planned
         ) as binding:
             final_inputs = self.planned_source_render_inputs(

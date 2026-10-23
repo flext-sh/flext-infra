@@ -11,7 +11,7 @@ from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
 from os import PathLike
-from os.path import normpath, realpath
+from os.path import normpath, realpath, sep
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, Protocol, Self, cast, overload, override
@@ -27,36 +27,12 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModuleQueries
 
 
-def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
-    """Preserve the original native cause at this read-only IO boundary.
-
-    Returns:
-        The successful native result value.
-
-    Raises:
-        ValueError: A failed result has no original exception.
-
-    """
-    if result.failure:
-        cause = result.exception
-        if cause is not None:
-            raise cause
-        raise ValueError(result.error)
-    return result.value
-
-
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired.
 
     Source access reads ``fscommands`` and the snapshot owner classes only
     through the declared authenticated boundary.
     """
-
-    fscommands: (
-        FileSystemCommands
-        | FlextInfraRopeProject.SnapshotFiles
-        | FlextInfraRopeProject.AtomicReadFiles
-    )
 
     @property
     def _authenticated_reads(self) -> FlextInfraRopeProject.AtomicReadFiles:
@@ -414,13 +390,11 @@ class FlextInfraRopeProject(Project):
 
     @staticmethod
     @overload
-    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder:
-        del folder
+    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...
 
     @staticmethod
     @overload
-    def _native_folder(folder: None) -> None:
-        del folder
+    def _native_folder(folder: None) -> None: ...
 
     @staticmethod
     def _native_folder(folder: Folder | p.Infra.RopeRoot | None) -> Folder | None:
@@ -457,8 +431,9 @@ class FlextInfraRopeProject(Project):
             ambient_roots: t.SequenceOf[Path] = (),
         ) -> None:
             self._ambient_roots = tuple(
-                Path(self.realpath(str(root))) for root in ambient_roots
+                self.realpath(str(root)) for root in ambient_roots
             )
+            self._identities: t.MutableMappingKV[str, Path] = {}
             self._sources = MappingProxyType({
                 Path(self.realpath(str(path))): content
                 for path, content in sources.items()
@@ -491,6 +466,17 @@ class FlextInfraRopeProject(Project):
             """
             return normpath(str(Path(path).absolute()))
 
+        def _identity(self, path: str) -> Path:
+            """Resolve one queried path once for this immutable snapshot.
+
+            Returns:
+                The lexical absolute identity of the queried path.
+
+            """
+            if path not in self._identities:
+                self._identities[path] = Path(self.realpath(path))
+            return self._identities[path]
+
         def _ambient_identity(self, resolved: Path) -> Path | None:
             """Return the real path when it belongs to an ambient interpreter root.
 
@@ -502,8 +488,10 @@ class FlextInfraRopeProject(Project):
                 for repository-scoped paths the closed inventory owns.
 
             """
+            # Both sides are lexical absolute paths: a string prefix test is exact.
+            text = str(resolved)
             if any(
-                root == resolved or root in resolved.parents
+                text == root or text.startswith(root + sep)
                 for root in self._ambient_roots
             ):
                 return resolved
@@ -519,7 +507,7 @@ class FlextInfraRopeProject(Project):
                 Whether the specified path exists within the snapshot.
 
             """
-            resolved = Path(self.realpath(path))
+            resolved = self._identity(path)
             if resolved in self._sources or resolved in self._directories:
                 return True
             ambient = self._ambient_identity(resolved)
@@ -535,7 +523,7 @@ class FlextInfraRopeProject(Project):
                 Whether the specified path is a captured source file.
 
             """
-            resolved = Path(self.realpath(path))
+            resolved = self._identity(path)
             if resolved in self._sources:
                 return True
             ambient = self._ambient_identity(resolved)
@@ -551,7 +539,7 @@ class FlextInfraRopeProject(Project):
                 Whether the specified path is a captured or ambient folder.
 
             """
-            resolved = Path(self.realpath(path))
+            resolved = self._identity(path)
             if resolved in self._directories:
                 return True
             ambient = self._ambient_identity(resolved)
@@ -571,7 +559,7 @@ class FlextInfraRopeProject(Project):
                   captured in the snapshot nor ambient interpreter state.
 
             """
-            directory = Path(self.realpath(path))
+            directory = self._identity(path)
             if directory in self._directories:
                 return [child.name for child in self._children[directory]]
             ambient = self._ambient_identity(directory)
@@ -594,7 +582,7 @@ class FlextInfraRopeProject(Project):
                   ambient interpreter state.
 
             """
-            source = Path(self.realpath(path))
+            source = self._identity(path)
             if source in self._sources:
                 return self._sources[source]
             ambient = self._ambient_identity(source)
@@ -617,7 +605,7 @@ class FlextInfraRopeProject(Project):
                   ambient interpreter state.
 
             """
-            source = Path(self.realpath(path))
+            source = self._identity(path)
             if source in self._children:
                 return self._children[source]
             ambient = self._ambient_identity(source)
@@ -738,7 +726,11 @@ class FlextInfraRopeProject(Project):
             return self._receipt
 
     class AtomicReadFiles:
-        """Authenticate only sources actually read by the native semantic graph."""
+        """Authenticate only sources actually read by the native semantic graph.
+
+        Authentication ends at the repository root: supplier and dependency
+        sources outside it are read for inference and never authenticated.
+        """
 
         stat = staticmethod(FileSystemCommands.stat)
 
@@ -1077,34 +1069,19 @@ class FlextInfraRopeProject(Project):
 
             """
             directory = Path(path)
+            if not directory.is_relative_to(self._root):
+                # Folders outside the repository are listed for inference only:
+                # their membership is never inventoried, attributed or verified.
+                return sorted(
+                    child.name
+                    for child in directory.iterdir()
+                    if not self._is_generated_artifact(child)
+                )
             inventory = self._inventory(directory)
             names: list[str] = (
                 [] if inventory is None else [item.name for item in inventory.entries]
             )
-            if inventory is not None:
-                if not self._capturing:
-                    self._inventories[directory] = inventory.model_copy(
-                        update={"membership_queried": True}
-                    )
-                self._record(
-                    directories=(
-                        inventory.model_copy(
-                            update={"queries": (), "membership_queried": True},
-                        ),
-                    ),
-                )
-            else:
-                if not self._capturing:
-                    self._topology[directory] = self._topology[directory].model_copy(
-                        update={"membership_queried": True}
-                    )
-                self._record(
-                    topology=(
-                        self._topology[directory].model_copy(
-                            update={"queries": (), "membership_queried": True},
-                        ),
-                    ),
-                )
+            self._record_membership(directory, inventory)
             if self._overlay.isdir(path):
                 physical_names = frozenset(names)
                 for child in self._overlay.children(path):
@@ -1129,6 +1106,37 @@ class FlextInfraRopeProject(Project):
                 and not self._is_generated_artifact(directory / name)
             )
 
+        def _record_membership(
+            self,
+            directory: Path,
+            inventory: m.Cli.AtomicDirectoryInventory | None,
+        ) -> None:
+            """Pin a listed folder's membership on its inventory or absence witness."""
+            if inventory is not None:
+                if not self._capturing:
+                    self._inventories[directory] = inventory.model_copy(
+                        update={"membership_queried": True}
+                    )
+                self._record(
+                    directories=(
+                        inventory.model_copy(
+                            update={"queries": (), "membership_queried": True},
+                        ),
+                    ),
+                )
+                return
+            if not self._capturing:
+                self._topology[directory] = self._topology[directory].model_copy(
+                    update={"membership_queried": True}
+                )
+            self._record(
+                topology=(
+                    self._topology[directory].model_copy(
+                        update={"queries": (), "membership_queried": True},
+                    ),
+                ),
+            )
+
         def _directory_chain(self, directory: Path) -> m.Cli.AtomicDirectoryChainPlan:
             """Pin one declared directory's own physical ancestry and presence.
 
@@ -1137,9 +1145,9 @@ class FlextInfraRopeProject(Project):
 
             """
             if directory not in self._topology:
-                self._topology[directory] = require_value(
-                    u.Cli.atomic_plan_directory_chain(directory)
-                )
+                self._topology[directory] = u.Cli.atomic_plan_directory_chain(
+                    directory
+                ).unwrap()
             witness = self._topology[directory]
             self._record(
                 topology=(
@@ -1160,8 +1168,8 @@ class FlextInfraRopeProject(Project):
             if self._directory_chain(directory).directories:
                 return None
             if directory not in self._inventories:
-                self._inventories[directory] = require_value(
-                    u.Cli.atomic_inventory_physical_directory(directory)
+                self._inventories[directory] = (
+                    u.Cli.atomic_inventory_physical_directory(directory).unwrap()
                 )
             return self._inventories[directory]
 
@@ -1429,6 +1437,12 @@ class FlextInfraRopeProject(Project):
             children = tuple(Path(path) / name for name in self.listdir(path))
             if follow_aliases:
                 return children
+            if not Path(path).is_relative_to(self._root):
+                return tuple(
+                    child
+                    for child in children
+                    if not child.is_symlink() and (child.is_file() or child.is_dir())
+                )
             inventory = self._inventory(Path(path))
             excluded: set[str] = (
                 {
@@ -1490,32 +1504,24 @@ class FlextInfraRopeProject(Project):
                   witness.
 
             """
+            # Supplier and dependency sources outside the repository are read
+            # for inference only: never consumed, attributed or re-verified, so
+            # a supplier edit cannot abort this repository's run.
+            owned = source in self._effects or source.is_relative_to(self._root)
             state = self._consumed.get(source)
             if state is None:
-                state = self._originals.get(source)
-                if state is None:
-                    declaration = self._effects.get(source)
-                    if declaration is not None and isinstance(
-                        declaration.before, m.Cli.AtomicDirectoryChainPlan
-                    ):
-                        # The original absent parent proves this file absent too.
-                        state = m.Cli.AtomicFileState(path=source)
-                    else:
-                        state = require_value(
-                            u.Cli.atomic_read_binary_file_state(source, required=False),
-                        )
-                    self._originals[source] = state
-                if not self._capturing:
+                state = self._original_state(source)
+                if owned and not self._capturing:
                     self._verify_declarations(source, check_current=False)
                     if state.parent_inode is not None:
                         self._consumed[source] = state
-            if state.parent_inode is None:
+            if owned and state.parent_inode is None:
                 witness = self._directory_chain(source.parent)
                 if not witness.directories:
                     msg = f"Rope source lacks its original parent absence: {source}"
                     raise ValueError(msg)
                 self._record(topology=(witness,))
-            else:
+            elif owned:
                 self._record(states=(state,))
             declaration = self._effects.get(source)
             if declaration is not None and isinstance(
@@ -1525,6 +1531,28 @@ class FlextInfraRopeProject(Project):
             if required and state.content is None:
                 msg = f"Rope required source is absent: {source}"
                 raise FileNotFoundError(msg)
+            return state
+
+        def _original_state(self, source: Path) -> m.Cli.AtomicFileState:
+            """Pin one source's original state on first use, absence included.
+
+            Returns:
+                The original physical state for the source.
+
+            """
+            state = self._originals.get(source)
+            if state is None:
+                declaration = self._effects.get(source)
+                # An original absent parent proves its declared file absent too.
+                state = (
+                    m.Cli.AtomicFileState(path=source)
+                    if declaration is not None
+                    and isinstance(declaration.before, m.Cli.AtomicDirectoryChainPlan)
+                    else u.Cli.atomic_read_binary_file_state(
+                        source, required=False
+                    ).unwrap()
+                )
+                self._originals[source] = state
             return state
 
         def states(self) -> tuple[m.Cli.AtomicFileState, ...]:
@@ -1539,21 +1567,17 @@ class FlextInfraRopeProject(Project):
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
             states = self.states()
-            require_value(
-                u.Cli.atomic_verify_binary_file_states(
-                    states,
-                    nonsecret_source_paths=tuple(
-                        Path(state.path)
-                        for state in states
-                        if Path(state.path).suffix in {".py", ".pyi"}
-                    ),
-                )
-            )
-            require_value(
-                u.Cli.atomic_verify_directory_queries(
-                    self.receipt_directories(), self.receipt_topology()
-                )
-            )
+            u.Cli.atomic_verify_binary_file_states(
+                states,
+                nonsecret_source_paths=tuple(
+                    Path(state.path)
+                    for state in states
+                    if Path(state.path).suffix in {".py", ".pyi"}
+                ),
+            ).unwrap()
+            u.Cli.atomic_verify_directory_queries(
+                self.receipt_directories(), self.receipt_topology()
+            ).unwrap()
             for path in sorted({*self._consumed, *self._consumed_effects}):
                 self._verify_declarations(path)
 
@@ -1681,8 +1705,7 @@ class FlextInfraRopeProject(Project):
         class _NativeExternalFolders(Protocol):
             """Typed view of the external resolver's native folder factory."""
 
-            def get_folder(self, path: str) -> Folder:
-                del path
+            def get_folder(self, path: str) -> Folder: ...
 
         project = cls(
             root,

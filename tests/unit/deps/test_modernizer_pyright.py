@@ -342,7 +342,12 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         tm.that(
             environments[rules.source_dir]["extraPaths"],
-            eq=[rules.source_dir, "flext-core/src", "flext-api/src"],
+            eq=[
+                rules.source_dir,
+                rules.project_root,
+                "flext-core/src",
+                "flext-api/src",
+            ],
         )
 
     def test_root_config_includes_member_src_paths(
@@ -435,7 +440,7 @@ class TestsFlextInfraDepsModernizerPyright:
                         else rules.test_like_report_private_usage
                     ),
                     "extraPaths": (
-                        [rules.source_dir]
+                        [rules.source_dir, rules.project_root]
                         if env_dir == rules.source_dir
                         else [rules.project_root, rules.source_dir]
                     ),

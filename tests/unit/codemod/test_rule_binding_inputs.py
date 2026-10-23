@@ -1,4 +1,8 @@
-"""Rule-owned dependency authentication through native scan and publication.
+"""Repository-bounded rule authentication through native scan and publication.
+
+A rule's binding witnesses end at the repository being scanned: in-repo
+drift rejects publication, while supplier and dependency sources are read
+for inference and never authenticated, so their drift never blocks.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +19,7 @@ from tests import tm, u
 
 
 class TestsFlextInfraRuleBindingInputs:
-    """Reject real dependency drift without authenticating unrelated owners."""
+    """Reject in-repo drift; never authenticate dependency or unrelated owners."""
 
     @staticmethod
     @pytest.mark.parametrize("changed", ["unrelated", "owner", "transitive"])
@@ -25,7 +29,12 @@ class TestsFlextInfraRuleBindingInputs:
         installed_dependency_path: Path,
         changed: str,
     ) -> None:
-        """A rejected candidate contributes no dependencies to a valid rewrite."""
+        """Only the in-repository owner authenticates the rewrite it admitted.
+
+        The transitive base lives in an installed dependency outside the
+        repository: it informs inference, is never a binding witness, and its
+        drift publishes. A rejected candidate contributes no witness either.
+        """
         owner = mod_workspace / "rewrite_owner.py"
         transitive = installed_dependency_path / "binding_base.py"
         unrelated = installed_dependency_path / "rejected_owner.py"
@@ -95,7 +104,7 @@ class TestsFlextInfraRuleBindingInputs:
         tm.that(tuple(entry.rule_id for entry in report.entries), eq=("rewrite_owner",))
         captured = {state.path for state in report.entries[0].binding_states}
         tm.that(owner in captured)
-        tm.that(transitive in captured)
+        tm.fail(transitive in captured)
         tm.fail(unrelated in captured)
         target = {
             "unrelated": unrelated,
@@ -107,9 +116,9 @@ class TestsFlextInfraRuleBindingInputs:
         published = codemod.FlextInfraModGateEngine.apply_report(
             mod_workspace, report, exact_replacements=True
         )
-        if changed == "unrelated":
-            tm.ok(published)
-            tm.that("unwrap(Value)" in source.read_text(encoding="utf-8"))
-        else:
+        if changed == "owner":
             tm.fail(published, has=str(target))
             tm.that(source.read_bytes(), eq=before)
+        else:
+            tm.ok(published)
+            tm.that("unwrap(Value)" in source.read_text(encoding="utf-8"))

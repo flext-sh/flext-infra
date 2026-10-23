@@ -356,10 +356,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             retained planning receipt, or ``None`` to continue the run.
 
         """
-        if (
-            request.mode
-            is not c.Infra.CodegenConformMode.APPLY
-        ):
+        if request.mode is not c.Infra.CodegenConformMode.APPLY:
             return None
         if not (
             self.surface_contract(
@@ -1113,12 +1110,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             )
             for item in failures
         )
-        first_exception = planned.value.exception
-        if first_exception is None:
-            first_exception = next(
-                (item.exception for item in failures if item.exception is not None),
-                None,
-            )
+        first_exception = planned.value.exception or next(
+            (item.exception for item in failures if item.exception is not None),
+            None,
+        )
         completed = self._settle_generation_stage(
             lambda: FlextInfraCodegenTransaction.publish_operation_receipt(
                 request,
@@ -1275,20 +1270,26 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         transaction. Lazy-init plans exactly the repositories conform
         rewrites: the selected mutable ``internal_flext`` repositories of
         ``plan``, never a scope-excluded root or a third-party checkout.
+        Each repository plans independently across the fleet workers, folded
+        in canonical root order.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         """
-        roots = tuple(
+        roots = sorted({
             (request.root / repository.path).resolve()
             for repository in plan.repositories
             if repository.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+        })
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            FlextInfraCodegenLazyInit.composed_analysis(
+                u.Infra.fleet_map(
+                    FlextInfraCodegenLazyInit.plan_scope_root,
+                    tuple((request.root, root) for root in roots),
+                )
+            )
         )
-        return FlextInfraCodegenLazyInit(
-            repository_root=request.root,
-            project_scope_roots=roots,
-        ).plan_files()
 
     def _prepare_managed_plan(
         self,
@@ -1837,10 +1838,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[bool]``.
 
         """
-        if (
-            request.mode
-            is not c.Infra.CodegenConformMode.APPLY
-        ):
+        if request.mode is not c.Infra.CodegenConformMode.APPLY:
             return r[bool].ok(value=False)
         roots = {
             path.expanduser().resolve().parent

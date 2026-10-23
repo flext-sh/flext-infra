@@ -22,8 +22,7 @@ Infra:
       pyrefly:
       - [disable-project-excludes-heuristics, true]
       - [use-ignore-files, false]
-      - - project-excludes
-        - ["**/typings/**"]
+      - [project-excludes, []]
       pyrefly.errors:
       # Preserve every diagnostic from the strict-error policy during cutover.
       - [bad-argument-count, error]
@@ -149,6 +148,14 @@ Infra:
       - [ reportInconsistentConstructor, error ]
       - [ reportMissingImports, error ]
       - [ reportMissingModuleSource, error ]
+      # The only authorized checker exception (tracker memory
+      # operator-ruling-20261022-missing-type-stubs): strict mode requires a
+      # stub file for an untyped third-party import even when Pyright already
+      # infers the library source (useLibraryCodeForTypes). Used surfaces stay
+      # typed through `p` protocols at one boundary module per library. A
+      # project that needs another value declares it in its own
+      # config/tooling.yaml overlay under this same settings table.
+      - [ reportMissingTypeStubs, none ]
       - [ reportPrivateUsage, error ]
       - [ reportUnnecessaryCast, error ]
       - [ reportUnnecessaryComparison, error ]
@@ -405,7 +412,8 @@ Infra:
           # Repairs make fix applies after Ruff's own fixes, to findings Ruff
           # reports without a fix: each Ruff rule name maps to one recipe the
           # lint gate derives from the source (docstring sections from the
-          # signature, summary and raise statement; summaries from the declared
+          # signature, summary and raise statement; a documented exception the
+          # body no longer raises loses only its own Raises entry; summaries from the declared
           # name; the notice from the project's declared author and copyright
           # year; a method that never reads its instance becomes a static
           # method, its signature and decorators edited and its body kept
@@ -420,6 +428,7 @@ Infra:
             docstring-missing-returns: returns-section
             docstring-missing-yields: yields-section
             docstring-missing-exception: raises-section
+            docstring-extraneous-exception: extraneous-raises
             no-self-use: static-method
             import-outside-top-level: normalize-imports
             line-too-long: wrap-long-line
@@ -430,7 +439,7 @@ Infra:
           fix-recipe-phases:
           - [ normalize-imports ]
           - [ summary-docstring, copyright-notice, static-method ]
-          - [ returns-section, yields-section, raises-section ]
+          - [ returns-section, yields-section, raises-section, extraneous-raises ]
           - [ wrap-long-line ]
           # Pydantic evaluates model field annotations at runtime, so an
           # import used only in a model annotation is runtime, not typing-only.
@@ -489,8 +498,6 @@ Infra:
           test-like-dirs: [ tests, examples, scripts ]
           default-excludes:
           - "**/.*"
-          root-typings-paths: []
-          project-typings-paths: []
           ignored-diagnostic-globs: []
           diagnostic-path-overrides: []
           source-report-private-usage: error
@@ -501,8 +508,6 @@ Infra:
           source-dir: src
           project-root: .
           env-dirs: [ src, tests, examples, scripts ]
-          root-typings-paths: []
-          project-typings-paths: []
           workspace-include-children: false
           workspace-include-child-env-dirs: []
           # Empty: scripts/ owns scripts/__init__.py, so every script module
@@ -664,6 +669,16 @@ Infra:
         # the aggregate wall and the slow marker owns its narrow item policy.
       tomlsort:
         process-timeout-seconds: 60
+      # jscpd's own near-miss and meaning passes own clone semantics: the
+      # structural pass (--similarity) compares normalized syntax trees and
+      # runs everywhere; the embedding pass (--semantic) needs the declared
+      # embeddings host, so the CI context records it NOT EXECUTED.
+      jscpd:
+        similarity: 0.8
+        semantic:
+          provider: http
+          url: http://localhost:11434/v1
+          model: unclemusclez/jina-embeddings-v2-base-code
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law

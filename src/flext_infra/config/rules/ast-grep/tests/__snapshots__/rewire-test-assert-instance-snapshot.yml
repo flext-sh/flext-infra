@@ -1,0 +1,48 @@
+id: rewire-test-assert-instance
+snapshots:
+  ? |
+    from tests import tm
+    assert isinstance(value, Entry)
+  : fixed: |
+      from tests import tm
+      value = tm.instance(value, Entry)
+    labels:
+    - source: assert isinstance(value, Entry)
+      style: primary
+      start: 21
+      end: 52
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert isinstance(value, Entry)
+      style: secondary
+      start: 0
+      end: 53
+  ? |
+    from tests import tm
+    if not (isinstance(cfg, m.AiHub.McpConfig)):
+        raise AssertionError
+  : fixed: |
+      from tests import tm
+      cfg = tm.instance(cfg, m.AiHub.McpConfig)
+    labels:
+    - source: |-
+        if not (isinstance(cfg, m.AiHub.McpConfig)):
+            raise AssertionError
+      style: primary
+      start: 21
+      end: 90
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        if not (isinstance(cfg, m.AiHub.McpConfig)):
+            raise AssertionError
+      style: secondary
+      start: 0
+      end: 91

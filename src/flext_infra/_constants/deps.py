@@ -59,24 +59,14 @@ class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     LEGACY_AUTO_BANNER_LINE: ClassVar[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
     )
-    DEPENDENCY_LIMITS_FILENAME: ClassVar[str] = "limits.toml"
-    """Packaged dependency-limit configuration resource."""
-    TYPING_STUB_HEADER: ClassVar[str] = "# @flext-generated: typing-stubs\n"
-    """Ownership marker for generated third-party typing packages."""
-    TEMPLATE_TYPING_PACKAGE: ClassVar[str] = "typing_package.toml.j2"
-    """PEP 561 distribution metadata template."""
-    TYPING_STUB_ENTRY_POINT_GROUP: ClassVar[str] = "flext.typing-stubs"
-    """Installed generated packages publish their implementation module here."""
     DEPTRY_UNUSED_DEPENDENCY_CODE: ClassVar[str] = "DEP002"
     """Deptry rule code for a declared dependency the code never imports."""
+    CONSOLE_SCRIPTS_ENTRY_POINT_GROUP: ClassVar[str] = "console_scripts"
+    """Entry-point group naming the executables an installed distribution ships."""
     DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^Scanning (?P<count>[0-9]+) files?\.\.\.$",
     )
     """Native deptry import extraction's executed file count."""
-    MYPY_FOLLOW_UNTYPED_IMPORTS: ClassVar[str] = "follow_untyped_imports"
-    """Mypy option that analyzes installed packages lacking stubs or py.typed."""
-    MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT: ClassVar[bool] = False
-    """Mypy's own default when neither governed policy nor project declares it."""
     DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
     """PEP 735 dependency-groups table key."""
     MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"

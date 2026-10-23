@@ -6,16 +6,30 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
 
-from flext_infra import c
+import pytest
+
+from flext_infra import c, config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from tests import m, tm, u
 
 
 class TestsFlextInfraDuplicationGate:
-    """Exercise observable gate behavior with the real setup-provisioned tool."""
+    """Exercise observable gate behavior with the real setup-provisioned tool.
+
+    Every scan runs in the declared CI context: the embedding pass needs a
+    host a unit test never reaches, so it is typed NOT EXECUTED there.
+    """
+
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def _ci_context() -> Generator[None]:
+        ci = config.Infra.codegen.make.ci
+        with u.Tests.env_vars_context({ci.variable: ci.value}):
+            yield
 
     _DUPLICATED_MODULE = """\
 def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
@@ -289,13 +303,29 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
 
     def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A clone between two distinct files is a blocking finding."""
+        """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
         root = self._governed_with_python_clone(tmp_path, same_file=False)
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.ok(len(execution.issues) >= 1)
+        rendered = u.Cli.json_as_mapping(
+            u.Cli.json_parse(
+                (
+                    root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
+                ).read_text(encoding="utf-8"),
+            ).unwrap(),
+        )
+        tm.that(
+            rendered.get("similarity"),
+            eq=config.Infra.tooling.tools.jscpd.similarity,
+        )
+        tm.that("semantic" in rendered, truth=False)
+        tm.that(
+            "jscpd semantic pass NOT EXECUTED" in execution.raw_output,
+            truth=True,
+        )
 
     def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
         """A file that duplicates a block inside itself is a finding.
@@ -386,7 +416,11 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, truth=True, msg=execution.issues)
+        tm.that(
+            execution.result.passed,
+            truth=True,
+            msg="; ".join(issue.formatted for issue in execution.issues),
+        )
 
     def test_default_fleet_scope_follows_typed_overrides(self, tmp_path: Path) -> None:
         """An omitted fleet declaration follows the canonical typed default."""

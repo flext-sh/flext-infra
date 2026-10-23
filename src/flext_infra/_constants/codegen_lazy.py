@@ -139,14 +139,6 @@ class FlextInfraConstantsCodegenLazy:
         "main",
     )
     "Canonical dependency order for public aliases and operational entry points."
-    ROOT_WRAPPER_SEGMENTS: ClassVar[frozenset[str]] = frozenset({
-        "docs",
-        "src",
-        "tests",
-        "examples",
-        "scripts",
-    })
-    "Directory segments recognized as project-root wrapper paths."
     TEST_RUNTIME_ALIAS_TARGETS: ClassVar[t.MappingKV[str, t.StrPair]] = (
         MappingProxyType({
             "c": ("flext_tests", "c"),

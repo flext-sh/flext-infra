@@ -7,14 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import cast, override
+from typing import override
 
 from rope.base.project import Project
+from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
 
 from flext_infra import m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope._sdk import Restructure
 
 
 class FlextInfraRopeRestructure(Restructure):
@@ -84,7 +84,7 @@ class FlextInfraRopeRestructure(Restructure):
         self,
         matches: t.SequenceOf[t.Infra.RopeNativeMatch],
         pymodule: t.Infra.RopeNativeSourceModule,
-    ) -> t.Infra.RopeChangeComputer:
+    ) -> t.Infra.RopeNativeChangeComputer:
         """Admit occurrences before the native change computer writes source.
 
         Returns:
@@ -124,9 +124,7 @@ class FlextInfraRopeRestructure(Restructure):
         if isinstance(self.import_policy, Mapping):
             names = (
                 FlextInfraUtilitiesRopeRuntime
-                .require_parsed_module(
-                    self.project.get_pymodule(cast("p.Infra.RopeResource", resource))
-                )
+                .require_parsed_module(self.project.get_pymodule(resource))
                 .get_scope()
                 .get_defined_names()
             )

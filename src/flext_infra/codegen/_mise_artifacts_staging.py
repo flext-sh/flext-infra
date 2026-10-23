@@ -20,7 +20,12 @@ if TYPE_CHECKING:
 
 
 class FlextInfraMiseStaging:
-    """Build every replacement before the journal permits live publication."""
+    """Build every replacement before the journal permits live publication.
+
+    Generation never produces a launcher: every selected project receives the
+    exact bytes of the runtime root's `make upg` triple (the runtime root
+    itself receives its own bytes, a no-op publication).
+    """
 
     def stage(
         self,

@@ -273,14 +273,14 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         """
         tree = ast.parse(source)
         lines = source.splitlines(keepends=True)
-        sections, summaries, wants_notice = cls._collected_sections(
+        sections, removed, summaries, wants_notice = cls._collected_sections(
             tree,
             issues,
             path,
             recipes,
         )
         edits = list(cls._static_method_plan(source, tree, issues, path, recipes))
-        edits.extend(cls._docstring_section_edits(lines, sections, path))
+        edits.extend(cls._docstring_section_edits(lines, sections, removed, path))
         edits.extend(
             cls._summary_edit(lines, definition, text)
             for definition, text in summaries.items()
@@ -296,18 +296,20 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         issues: t.SequenceOf[p.Infra.Issue],
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.Triple[
+    ) -> t.Quad[
         MutableMapping[
             ast.FunctionDef | ast.AsyncFunctionDef,
             MutableMapping[str, list[str]],
         ],
+        MutableMapping[ast.FunctionDef | ast.AsyncFunctionDef, set[str]],
         MutableMapping[ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef, str],
         bool,
     ]:
         """Dispatch every issue's recipe into section, summary, or notice plans.
 
         Returns:
-            The resulting ``(sections, summaries, wants notice)`` triple.
+            The resulting ``(sections, removed raises, summaries, wants notice)``
+            quad.
 
         Raises:
             ValueError: If a whole-module recipe reaches the edit planner.
@@ -317,6 +319,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             ast.FunctionDef | ast.AsyncFunctionDef,
             MutableMapping[str, list[str]],
         ] = {}
+        removed: MutableMapping[ast.FunctionDef | ast.AsyncFunctionDef, set[str]] = {}
         summaries: MutableMapping[
             ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
             str,
@@ -340,6 +343,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                     sections.setdefault(function, {}).setdefault("Raises", []).append(
                         cls._raises_entry(function, issue, path),
                     )
+                case c.Infra.LintFixRecipe.EXTRANEOUS_RAISES:
+                    function = cls._documented_at(tree, issue.line, path)
+                    removed.setdefault(function, set()).add(
+                        cls._finding_exception(issue, path).rsplit(".", maxsplit=1)[-1],
+                    )
                 case c.Infra.LintFixRecipe.SUMMARY_DOCSTRING:
                     definition = cls._defined_at(tree, issue.line, path)
                     summaries[definition] = cls._summary_for(definition)
@@ -360,7 +368,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                         "Ruff lint gate; it never reaches the edit planner"
                     )
                     raise ValueError(msg)
-        return sections, summaries, wants_notice
+        return sections, removed, summaries, wants_notice
 
     @classmethod
     def _docstring_section_edits(
@@ -370,9 +378,13 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             ast.FunctionDef | ast.AsyncFunctionDef,
             t.MappingKV[str, list[str]],
         ],
+        removed: t.MappingKV[ast.FunctionDef | ast.AsyncFunctionDef, set[str]],
         path: Path,
     ) -> list[t.Triple[int, int, str]]:
-        """Build the section-insertion edits for every documented function.
+        """Build one section edit per documented function.
+
+        A function whose docstring both gains and loses entries receives a
+        single edit, so the two never overlap.
 
         Returns:
             The resulting ``list[t.Triple[int, int, str]]``.
@@ -382,18 +394,62 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
 
         """
         edits: list[t.Triple[int, int, str]] = []
-        for function, wanted in sections.items():
+        for function in dict.fromkeys((*sections, *removed)):
             docstring = cls._docstring_expr(function)
             if docstring is None:
                 msg = f"{path}: function at line {function.lineno} has no docstring"
                 raise ValueError(msg)
             start, end, raw = cls._literal(lines, docstring, path)
-            edits.append((
-                start,
-                end,
-                cls._with_sections(raw, " " * docstring.col_offset, wanted),
-            ))
+            indent = " " * docstring.col_offset
+            text = cls._without_raises(raw, indent, removed.get(function, set()))
+            if function in sections:
+                text = cls._with_sections(text, indent, sections[function])
+            edits.append((start, end, text))
         return edits
+
+    @classmethod
+    def _without_raises(cls, raw: str, indent: str, names: set[str]) -> str:
+        """Return the docstring literal without the named ``Raises`` entries.
+
+        Only the entries of the named exceptions leave; the section header
+        leaves with its last entry. Every other line is kept verbatim.
+
+        Returns:
+            The docstring literal without the named ``Raises`` entries.
+
+        """
+        prefix, inner = cls._split_literal(raw)
+        inner = inner.rstrip()
+        section = re.search(rf"^{re.escape(indent)}Raises:\s*$", inner, re.MULTILINE)
+        if not names or section is None:
+            return raw
+        following = re.search(
+            rf"^{re.escape(indent)}\S[^\n]*:\s*$",
+            inner[section.end() :],
+            re.MULTILINE,
+        )
+        cut = section.end() + following.start() if following else len(inner)
+        # One entry per line at the section's entry indent; deeper lines
+        # continue the entry above them.
+        entries = re.split(
+            rf"(?m)^(?={re.escape(indent)}    \S)",
+            inner[section.end() : cut].strip("\n"),
+        )
+        kept = [
+            text.rstrip()
+            for text in entries
+            if text.strip()
+            and text.strip().split(":", 1)[0].rsplit(".", 1)[-1] not in names
+        ]
+        parts = [inner[: section.start()].rstrip()]
+        if kept:
+            parts.append("\n".join((f"{indent}Raises:", *kept)))
+        if inner[cut:].strip():
+            parts.append(inner[cut:].strip("\n"))
+        body = "\n\n".join(parts)
+        if "\n" not in body:
+            return f'{prefix}"""{body}"""'
+        return f'{prefix}"""{body}\n{indent}"""'
 
     @classmethod
     def _notice_edit(
@@ -933,15 +989,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             The ``Raises`` entry for the exception.
 
         Raises:
-            ValueError: If the finding names no exception, or no raise of it
-                in the function states or is guarded by a condition.
+            ValueError: If no raise of the named exception in the function
+                states or is guarded by a condition.
 
         """
-        named = re.search(r"`(?P<name>[^`]+)`", issue.message)
-        if named is None:
-            msg = f"{path}: raise finding names no exception: {issue.message}"
-            raise ValueError(msg)
-        name = named.group("name")
+        name = cls._finding_exception(issue, path)
         parents = {
             child: node
             for node in ast.walk(function)
@@ -958,6 +1010,23 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             raise ValueError(msg)
         joined = "; or ".join(dict.fromkeys(clauses))
         return f"{name}: {joined[:1].upper()}{joined[1:]}."
+
+    @staticmethod
+    def _finding_exception(issue: p.Infra.Issue, path: Path) -> str:
+        """Return the exception a raise-documentation finding names.
+
+        Returns:
+            The exception name quoted in the finding message.
+
+        Raises:
+            ValueError: If the finding names no exception.
+
+        """
+        named = re.search(r"`(?P<name>[^`]+)`", issue.message)
+        if named is None:
+            msg = f"{path}: raise finding names no exception: {issue.message}"
+            raise ValueError(msg)
+        return named.group("name")
 
     @staticmethod
     def _raised_names(

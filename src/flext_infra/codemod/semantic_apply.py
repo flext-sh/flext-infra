@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import keyword
 import operator
+import re
 from collections.abc import Callable, Generator, MutableMapping
 from contextlib import ExitStack, closing, contextmanager
 from functools import partial
@@ -26,6 +28,91 @@ from flext_infra.workspace import FlextInfraRopeWorkspace
 
 class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
+
+    @classmethod
+    def publish_rename_plan(
+        cls,
+        request: m.Infra.SemanticRenamePlanCommand,
+        workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
+    ) -> p.Result[m.Infra.SemanticRenamePlan]:
+        """Plan, authenticate and atomically publish an inventory-derived artifact.
+
+        Returns:
+            The published plan, or the original containment, planning or write failure.
+
+        """
+        root = request.repository_root.resolve()
+        target = (root / request.output).resolve()
+        if not target.is_relative_to(root):
+            return r[m.Infra.SemanticRenamePlan].fail(
+                "rename plan output escapes workspace"
+            )
+        observed = u.Cli.atomic_read_binary_file_state(root / request.output)
+        if observed.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(observed)
+        selections = m.Infra.SemanticRenameSelections.model_validate_json(
+            request.decisions
+        )
+        with workspace_factory(root, None) as workspace:
+            planned = cls.build_rename_plan(root, workspace, selections)
+        if planned.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(planned)
+        content = cls._validated_rename_content(
+            observed.value, planned.value, target, root
+        )
+        if content.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(content)
+        authenticated = u.Cli.atomic_verify_binary_file_states(
+            m.Infra.CodemodBindingSnapshot(
+                states=(*planned.value.candidate.inputs, *planned.value.source_states)
+            ).states
+        )
+        if authenticated.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(authenticated)
+        written = u.Cli.atomic_write_text_file_guarded(
+            observed.value, content.value + "\n"
+        )
+        if written.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(written)
+        return planned
+
+    @staticmethod
+    def _validated_rename_content(
+        before: m.Cli.AtomicFileState,
+        planned: m.Infra.SemanticRenamePlan,
+        target: Path,
+        root: Path,
+    ) -> p.Result[str]:
+        """Reject input aliases, foreign artifacts and non-round-trip content.
+
+        Returns:
+            The exact serialized artifact, or its first authentication failure.
+
+        """
+        if any(
+            state.path == target
+            or (
+                before.inode is not None
+                and (state.device, state.inode) == (before.device, before.inode)
+            )
+            for state in planned.candidate.inputs
+        ):
+            return r[str].fail("rename plan output aliases a governed candidate input")
+        if before.content is not None:
+            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
+            if (previous.candidate.workspaces or (previous.candidate.workspace,))[
+                0
+            ] != u.Infra.import_project_roots(root)[0].resolve():
+                return r[str].fail("rename plan output belongs to another workspace")
+        content = planned.model_dump_json(indent=2, round_trip=True)
+        if (
+            m.Infra.SemanticRenamePlan.model_validate_json(content).model_dump_json(
+                indent=2, round_trip=True
+            )
+            != content
+        ):
+            return r[str].fail("rename artifact did not round-trip exactly")
+        return r[str].ok(value=content)
 
     @classmethod
     def build_rename_plan(
@@ -103,6 +190,165 @@ class FlextInfraCodemodSemanticApply:
             )
         )
 
+    @classmethod
+    def plan_module_names(
+        cls,
+        root: Path,
+        source_plan: m.Infra.SemanticSourcePlan,
+    ) -> p.Result[m.Infra.SemanticSourcePlan]:
+        """Derive one package or module naming wave from authenticated inventory.
+
+        Package waves precede module waves and never select parent and child together.
+        Special double-underscore modules stay intact.
+        Explicit consumer roots participate in reference rewriting, not discovery.
+
+        Returns:
+            The unchanged source plan or its native cross-root rename candidate.
+
+        Raises:
+            ValueError: If a stripped name or inventoried module identity is invalid.
+
+        """
+        if source_plan.candidate.updates:
+            return r[m.Infra.SemanticSourcePlan].fail(
+                "module naming discovery requires the original source seed"
+            )
+        sources = cls._candidate_python_sources(
+            source_plan.candidate, source_plan.source_states
+        )
+        with FlextInfraRopeWorkspace.open_workspace(
+            root, rope_repository_root=source_plan.candidate.workspace
+        ) as workspace:
+            selections: list[m.Infra.SemanticRenameSelection] = []
+            packages = cls._package_naming_candidates(root, sources)
+            candidates = list(packages)
+            for path in () if packages else sorted(sources):
+                name = path.stem
+                if not path.is_relative_to(root.resolve()) or (
+                    name.startswith("__") and name.endswith("__")
+                ):
+                    continue
+                replacement = name.lstrip("_")
+                part = re.search(r"_parts?(?:_?\d+)?$", name)
+                if part is not None:
+                    if part.group()[-1].isdigit():
+                        msg = (
+                            f"unresolved semantic grouping: {path}; numbered split "
+                            "requires a responsibility name from semantic source evidence"
+                        )
+                        raise ValueError(msg)
+                    replacement = name[: part.start()].lstrip("_")
+                if replacement == name:
+                    continue
+                if not replacement.isidentifier() or keyword.iskeyword(replacement):
+                    msg = (
+                        f"module naming has no valid public identifier: {path}; "
+                        "unresolved semantic grouping requires an explicit responsibility"
+                    )
+                    raise ValueError(msg)
+                candidates.append((path, replacement))
+            for path, replacement in candidates:
+                module = workspace.module(path)
+                if module is None:
+                    msg = f"module naming requires an inventoried module: {path}"
+                    raise ValueError(msg)
+                declaration = FlextInfraRenameSymbols.inventoried_declaration(
+                    workspace, module.module_name
+                )
+                if Path(declaration.file_path) != path:
+                    msg = f"module naming identity resolves to another file: {path}"
+                    raise ValueError(msg)
+                destination = ".".join((
+                    *module.module_name.split(".")[:-1],
+                    replacement,
+                ))
+                if workspace.rope_project.find_module(destination) is not None:
+                    msg = f"module naming destination is occupied: {destination}"
+                    raise ValueError(msg)
+                selections.append(
+                    m.Infra.SemanticRenameSelection(
+                        qualified_name=module.module_name,
+                        replacement_name=replacement,
+                        reason=(
+                            "Facade package removes split suffix"
+                            if packages
+                            else "Python module removes private prefix and split suffix"
+                        ),
+                    )
+                )
+            if not selections:
+                return r[m.Infra.SemanticSourcePlan].ok(source_plan)
+            planned = cls.build_rename_plan(
+                root,
+                workspace,
+                m.Infra.SemanticRenameSelections(
+                    decisions=tuple(selections),
+                    consumer_roots=source_plan.consumer_roots,
+                ),
+                source_plan=source_plan,
+            )
+            if planned.failure:
+                return r[m.Infra.SemanticSourcePlan].from_failure(planned)
+            return r[m.Infra.SemanticSourcePlan].ok(planned.value)
+
+    @staticmethod
+    def _package_naming_candidates(
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+        """Select shallowest split packages owned by an actual facade declaration.
+
+        Returns:
+            Initializer paths and semantic destination basenames for one wave.
+
+        Raises:
+            ValueError: If split naming has no unambiguous facade responsibility.
+
+        """
+        selected: list[t.Pair[Path, str]] = []
+        families = u.Infra.facade_families()
+        for path in sorted(sources, key=lambda item: (len(item.parts), item)):
+            if path.name != c.Infra.INIT_PY or not path.is_relative_to(root.resolve()):
+                continue
+            directory = path.parent
+            if any(directory.is_relative_to(owner.parent) for owner, _ in selected):
+                continue
+            part = re.search(r"_parts?(?:_?\d+)?$", directory.name)
+            if part is None:
+                continue
+            basename = directory.name[: part.start()].lstrip("_")
+            if (
+                not basename.isidentifier()
+                or keyword.iskeyword(basename)
+                or part.group()[-1].isdigit()
+            ):
+                msg = (
+                    f"unresolved semantic grouping: {directory}; split package "
+                    "requires a responsibility name from semantic source evidence"
+                )
+                raise ValueError(msg)
+            owned = any(
+                letter in u.Infra.public_export_names_source(sources[facade])
+                for ancestor in (directory, *directory.parents)
+                if ancestor.is_relative_to(root.resolve())
+                for letter, family in families.items()
+                if ancestor.name in family.directories
+                or (
+                    ancestor == directory
+                    and basename in {family.module, family.directory.lstrip("_")}
+                )
+                for filename in family.file_names
+                if (facade := ancestor.parent / filename) in sources
+            )
+            if not owned:
+                msg = (
+                    f"unresolved semantic grouping: {directory}; split package "
+                    "has no authenticated facade declaration owner"
+                )
+                raise ValueError(msg)
+            selected.append((path, f"_{basename}"))
+        return tuple(selected)
+
     @staticmethod
     def _source_scopes(
         root: Path,
@@ -119,15 +365,12 @@ class FlextInfraCodemodSemanticApply:
             return outcome.fail(
                 "consumer roots must be existing absolute checkout roots"
             )
-        scope = u.Infra.import_project_roots(root)[0].resolve()
-        consumers = tuple(
-            dict.fromkeys(
-                u.Infra.import_project_roots(path.resolve())[0].resolve()
-                for path in consumer_roots
-                if u.Infra.import_project_roots(path.resolve())[0].resolve() != scope
-            )
+        # Each scope is exactly its own checkout: a workspace member never
+        # widens to its superproject, so supplier members stay outside the
+        # authenticated capture.
+        scopes = tuple(
+            dict.fromkeys(path.resolve() for path in (root, *consumer_roots))
         )
-        scopes = tuple(dict.fromkeys((scope, *consumers)))
         if any(
             left != right and left.is_relative_to(right)
             for left in scopes
@@ -165,11 +408,15 @@ class FlextInfraCodemodSemanticApply:
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             for path in original
         )
-        if any(
-            state.content != original[state.path].encode(c.DEFAULT_ENCODING)
+        changed = tuple(
+            str(state.path)
             for state in inputs
-        ):
-            return result_type.fail("rename inventory changed during capture")
+            if state.content != original[state.path].encode(c.DEFAULT_ENCODING)
+        )
+        if changed:
+            return result_type.fail(
+                "rename inventory changed during capture: " + ", ".join(changed)
+            )
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},
@@ -204,9 +451,9 @@ class FlextInfraCodemodSemanticApply:
         if not callable(factory):
             msg = "Rope project owner does not expose authenticated construction"
             raise TypeError(msg)
-        extension_modules = u.Infra.runtime_callable(
-            "builtins", "getattr"
-        )(live.get_pycore(), "extension_modules")
+        extension_modules = u.Infra.runtime_callable("builtins", "getattr")(
+            live.get_pycore(), "extension_modules"
+        )
         project = factory(
             live,
             states,
@@ -248,9 +495,7 @@ class FlextInfraCodemodSemanticApply:
         return {
             path: source
             for scope in candidate.workspaces or (candidate.workspace,)
-            for path, source in u.Infra.facade_original_sources(
-                scope, states
-            ).items()
+            for path, source in u.Infra.facade_original_sources(scope, states).items()
         }
 
     @classmethod
@@ -648,9 +893,9 @@ class FlextInfraCodemodSemanticApply:
         if not callable(factory):
             msg = "Rope project owner does not expose authenticated construction"
             raise TypeError(msg)
-        extension_modules = u.Infra.runtime_callable(
-            "builtins", "getattr"
-        )(live.get_pycore(), "extension_modules")
+        extension_modules = u.Infra.runtime_callable("builtins", "getattr")(
+            live.get_pycore(), "extension_modules"
+        )
         project = factory(
             live,
             original_states,

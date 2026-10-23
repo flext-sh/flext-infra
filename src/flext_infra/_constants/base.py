@@ -182,12 +182,8 @@ class FlextInfraConstantsBase(
     "Test dependency group name."
     TYPINGS: ClassVar[DependencyGroup] = DependencyGroup.TYPINGS
     "Typing stubs dependency group name."
-    TYPING_LIBRARIES: ClassVar[str] = "typing_libraries"
-    "Project limits typing_libraries key."
-    MODULE_TO_PACKAGE: ClassVar[str] = "module_to_package"
-    "Typing libraries module_to_package mapping key."
     PYTHON: ClassVar[str] = "python"
-    "Python settings subsection key (in limits)."
+    "Python executable and tool name."
 
     CANONICAL_DEV_DEPENDENCY_GROUPS: ClassVar[t.VariadicTuple[DependencyGroup]] = (
         DEV,

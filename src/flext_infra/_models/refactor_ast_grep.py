@@ -135,6 +135,13 @@ class FlextInfraModelsRefactorGrep:
             bool,
             m.Field(description="Whether the rule declares an automated fix"),
         ]
+        owned_path_suffix: Annotated[
+            Literal[".pyi"] | None,
+            m.Field(
+                description="Owned path admission independent of syntax or content"
+            ),
+        ] = None
+        message: Annotated[str, m.Field(description="Canonical rule diagnostic")] = ""
         module_absence: Annotated[
             bool,
             m.Field(
@@ -187,6 +194,30 @@ class FlextInfraModelsRefactorGrep:
                 ),
             ),
         ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_owned_path_rule(self) -> Self:
+            """Keep path prohibitions detection-only and without ownership exemptions.
+
+            Returns:
+                The original unexempted rule.
+
+            Raises:
+                ValueError: If a path prohibition can rewrite or exempt its paths.
+
+            """
+            if self.owned_path_suffix is not None and (
+                self.fixable
+                or self.context
+                or self.owner
+                or self.consumers_of
+                or self.relocation
+                or self.module_absence
+                or not self.message.strip()
+            ):
+                msg = "owned-path rules cannot rewrite or exempt owned paths"
+                raise ValueError(msg)
+            return self
 
     class CodemodRuleset(FlextInfraModelsBase.FrozenArbitrary):
         """One provider config and its elected, conflict-free rule IDs."""

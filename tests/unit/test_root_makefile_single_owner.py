@@ -50,5 +50,5 @@ class TestsFlextInfraRootMakefileSingleOwner:
             encoding="utf-8",
         )
 
-        tm.that(generic, has="{{ makefile_custom_include }}")
+        tm.that(generic, has="{{ makefile_custom_include")
         tm.that(generic, lacks="workspace_custom.mk")

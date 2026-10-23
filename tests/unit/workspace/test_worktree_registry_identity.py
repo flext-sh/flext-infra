@@ -86,7 +86,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
 
     @pytest.mark.parametrize("absolute", [False, True])
     def test_linked_submodule_authenticates_its_configured_primary(
-        self, tmp_path: Path, absolute: bool
+        self, tmp_path: Path, *, absolute: bool
     ) -> None:
         """Relative and absolute common-config paths identify the same real checkout."""
         primary, linked, common = self._attached(tmp_path)
@@ -128,6 +128,58 @@ class TestsFlextInfraWorktreeRegistryIdentity:
             ),
             eq=registry_before,
         )
+
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_member_lane_uses_its_governing_superproject_declaration(
+        self, tmp_path: Path, *, attached: bool
+    ) -> None:
+        """Attached lanes read their workspace; standalone lanes retain its binding."""
+        primary, standalone, _ = self._attached(tmp_path)
+        parent = primary.parent
+        primary_branch = "fixture-primary-integration"
+        linked_branch = "fixture-linked-integration"
+        u.Tests.git_run(
+            parent,
+            "config",
+            "--file",
+            c.Infra.GITMODULES,
+            "submodule.member.branch",
+            primary_branch,
+        )
+        u.Tests.commit_git_changes(parent, "Declare the member integration branch")
+        member = standalone
+        expected = primary_branch
+        if attached:
+            workspace_lane = u.Tests.git_linked_lane(tmp_path, parent, "workspace-lane")
+            member = workspace_lane / primary.name
+            u.Tests.git_run(
+                primary,
+                "worktree",
+                "add",
+                "--detach",
+                str(member),
+                c.Infra.GIT_HEAD,
+            )
+            u.Tests.git_run(
+                workspace_lane,
+                "config",
+                "--file",
+                c.Infra.GITMODULES,
+                "submodule.member.branch",
+                linked_branch,
+            )
+            expected = linked_branch
+        inputs = tm.ok(u.Infra.load_codegen_inputs(member))
+
+        resolved = tm.ok(
+            u.Infra.resolve_integration_branch(
+                member,
+                policy_branch=inputs.spec.branch_policy.integration_branch,
+                inputs=inputs,
+            ),
+        )
+
+        tm.that(resolved, eq=expected)
 
     @pytest.mark.parametrize(
         "defect",
@@ -176,9 +228,10 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         tm.fail(u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=linked)))
         tm.ok(linked.is_dir())
 
+    @staticmethod
     @pytest.mark.parametrize("bare", [False, True])
     def test_regular_and_bare_registries_preserve_native_identity(
-        self, tmp_path: Path, bare: bool
+        tmp_path: Path, *, bare: bool
     ) -> None:
         """Ordinary primary rows and bare storage keep their native meaning."""
         source = tmp_path / "source"

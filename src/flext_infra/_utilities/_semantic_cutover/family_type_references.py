@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
+from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterator
 
 from flext_infra import c, m, p, t
@@ -18,11 +19,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeStructure,
 )
 
-_MIN_DECLARATION_SEGMENTS = 2
-
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     """Select type positions structurally and bind every edit to Rope identity."""
+
+    _MIN_DECLARATION_SEGMENTS = 2
 
     @classmethod
     def rewrite_type_source(
@@ -186,7 +187,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         start = statement.start_offset + statement.indent
         end = statement.end_offset
         parts = cls.expression_segments(source, start, end, "=")
-        if len(parts) < _MIN_DECLARATION_SEGMENTS:
+        if len(parts) < cls._MIN_DECLARATION_SEGMENTS:
             return set()
         return {(parts[1][0], end, None)}
 
@@ -281,7 +282,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             if include_defaults:
                 selected = parts[1:]
             elif (
-                len(parts) >= _MIN_DECLARATION_SEGMENTS
+                len(parts) >= cls._MIN_DECLARATION_SEGMENTS
                 and ":" in source[parts[0][1] : parts[1][0]]
             ):
                 selected = parts[1:2]
@@ -301,15 +302,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         del _project
         protected: frozenset[t.Pair[int, int]] | None = None
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
+        starts = [start for start, _stop, _metadata in literals]
         selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
         for begin, end, line in cls.annotation_regions(source, module):
-            scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
-                module,
-                begin,
-                declaration_line=line,
-            )
-            for start, stop, _metadata in literals:
-                if not begin <= start < stop <= end or source[start] == "#":
+            # Literals are ordered and disjoint: scan only those starting inside.
+            for start, stop, _metadata in literals[
+                bisect_left(starts, begin) : bisect_left(starts, end)
+            ]:
+                if not start < stop <= end or source[start] == "#":
                     continue
                 if protected is None:
                     protected = cls.type_payload_ranges(source, module)
@@ -317,7 +317,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                     continue
                 literal = cls.string_constant(source[start:stop])
                 if literal is not None:
-                    selected.append((start, stop, literal, scope))
+                    selected.append((
+                        start,
+                        stop,
+                        literal,
+                        FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                            module, begin, declaration_line=line
+                        ),
+                    ))
         return tuple({(item[0], item[1]): item for item in selected}.values())
 
     @staticmethod
@@ -347,12 +354,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
 
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        opaque = refactors.ignored_regions(source)
+        opaque = sorted(
+            (start, end) for start, end, _metadata in refactors.ignored_regions(source)
+        )
         words = cls._require_worder(
             source,
             "reference regions require Rope Worder",
         )
-        imports = tuple(
+        imports = sorted(
             (row.start_offset, row.end_offset)
             for row in FlextInfraUtilitiesRopeStructure.logical_statements(source)
             if row.category
@@ -361,15 +370,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         regions: set[t.Pair[int, int]] = set()
         cursor = 0
         while cursor < len(source):
+            # Each region kind is disjoint: only the last one starting at or
+            # before the cursor can hold it.
             ignored = next(
-                (end for start, end, _metadata in opaque if start <= cursor < end),
+                (
+                    spans[index - 1][1]
+                    for spans in (opaque, imports)
+                    for index in (bisect_right(spans, (cursor, len(source))),)
+                    if index and cursor < spans[index - 1][1]
+                ),
                 None,
             )
-            if ignored is None:
-                ignored = next(
-                    (end for start, end in imports if start <= cursor < end),
-                    None,
-                )
             if ignored is not None:
                 cursor = ignored
                 continue

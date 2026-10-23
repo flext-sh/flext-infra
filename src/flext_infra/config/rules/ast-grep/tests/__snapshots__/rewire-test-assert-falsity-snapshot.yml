@@ -1,0 +1,44 @@
+id: rewire-test-assert-falsity
+snapshots:
+  ? |
+    from tests import tm
+    assert not any(item.dirty for item in items)
+  : fixed: |
+      from tests import tm
+      tm.that(any(item.dirty for item in items), truth=False)
+    labels:
+    - source: assert not any(item.dirty for item in items)
+      style: primary
+      start: 21
+      end: 65
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert not any(item.dirty for item in items)
+      style: secondary
+      start: 0
+      end: 66
+  ? |
+    from tests import tm
+    assert not path.exists()
+  : fixed: |
+      from tests import tm
+      tm.that(path.exists(), truth=False)
+    labels:
+    - source: assert not path.exists()
+      style: primary
+      start: 21
+      end: 45
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert not path.exists()
+      style: secondary
+      start: 0
+      end: 46

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
@@ -13,6 +14,7 @@ from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraCodemodSemanticApply,
     FlextInfraDuplicateApplyPhase,
     FlextInfraImportNormalizationPhase,
     FlextInfraNamespaceRelocationPhase,
@@ -24,6 +26,48 @@ if TYPE_CHECKING:
 
 class FlextInfraModHandlers:
     """Compose the existing mod executor using the API's injected capabilities."""
+
+    @staticmethod
+    def _semantic_decisions_request(
+        root: Path,
+        decisions: Path,
+        output: Path | None,
+        request: p.Infra.ModRequest,
+    ) -> t.Pair[m.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
+        """Validate configured decisions at their required-content boundary.
+
+        Returns:
+            The native planner request and original decisions witness.
+
+        Raises:
+            ValueError: If decisions conflict with the request or escape the workspace.
+
+        """
+        if request.rename_plan is not None:
+            msg = "explicit rename_plan conflicts with declared semantic_decisions"
+            raise ValueError(msg)
+        decisions_path = (root / decisions).resolve()
+        if not decisions_path.is_relative_to(root.resolve()):
+            msg = "semantic decisions escape workspace"
+            raise ValueError(msg)
+        state = u.Cli.atomic_read_binary_file_state(
+            decisions_path, required=True
+        ).unwrap()
+        if state.content is None:
+            msg = "semantic decisions content is absent"
+            raise ValueError(msg)
+        selections = m.Infra.SemanticRenameSelections.model_validate_json(state.content)
+        if output is None:
+            msg = "semantic_decisions requires semantic_plan"
+            raise ValueError(msg)
+        return (
+            m.Infra.SemanticRenamePlanCommand(
+                repository_root=root,
+                decisions=selections.model_dump_json(round_trip=True),
+                output=output,
+            ),
+            state,
+        )
 
     def mod(
         self: p.Infra.ModExecutionContext,
@@ -41,6 +85,17 @@ class FlextInfraModHandlers:
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         campaigns_config = selected.value
+        rename_plan = request.rename_plan or campaigns_config.semantic_plan
+        if campaigns_config.semantic_decisions is not None:
+            configured = FlextInfraModHandlers._semantic_decisions_request(
+                root, campaigns_config.semantic_decisions, rename_plan, request
+            )
+            published = FlextInfraCodemodSemanticApply.publish_rename_plan(
+                configured[0], self.rope_workspace
+            )
+            if published.failure:
+                return r[t.Cli.ResultValue].from_failure(published)
+            u.Cli.atomic_verify_binary_file_states((configured[1],)).unwrap()
         config_dir = root / c.CONFIG_DIR_NAME
         config_root = config_dir.resolve()
         repository_root = root.resolve()
@@ -81,7 +136,7 @@ class FlextInfraModHandlers:
                 source_preview=source_preview,
                 repository_root=root,
                 consumer_roots=request.consumer_roots,
-                rename_plan=request.rename_plan or campaigns_config.semantic_plan,
+                rename_plan=rename_plan,
                 apply_changes=request.apply,
                 check_only=request.check,
                 dry_run=request.dry_run_mode,

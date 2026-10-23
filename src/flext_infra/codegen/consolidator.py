@@ -181,8 +181,8 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
             relative_path = file_path.relative_to(resolved_root)
             if (
                 file_path.suffix != c.Infra.EXT_PYTHON
-                or not relative_path.parts
-                or relative_path.parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
+                or len(relative_path.parts) < 2
+                or not u.Infra.root_namespace(resolved_root, relative_path.parts[0])
                 or constants_directory in relative_path.parts
             ):
                 continue

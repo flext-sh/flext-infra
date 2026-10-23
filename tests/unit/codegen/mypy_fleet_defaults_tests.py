@@ -13,29 +13,33 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from flext_infra.deps import (
-    FlextInfraExtraPathsManager,
-    FlextInfraPyprojectModernizer,
-    FlextInfraToolTablesPhase,
-)
+from flext_infra import config, deps
 from tests import e, m, t, tm, u
 
 
-class TestsMypyFleetMandatoryDefaults:
+class TestsFlextInfraMypyFleetMandatoryDefaults:
     """The selected SSOT policy survives validation and rejects weakening."""
 
     @staticmethod
     def _document_payload(
         *entries: t.Pair[str, t.JsonValue],
     ) -> t.JsonMapping:
-        """Supply native option deltas through the same document production reads."""
-        document = config.Infra.tooling
+        """Supply native option deltas through the same document production reads.
+
+        Returns:
+            The tooling document payload with the given entries appended to the
+            native mypy settings.
+
+        """
+        payload = config.Infra.tooling.model_dump(
+            mode="json", by_alias=True, exclude_computed_fields=True
+        )
+        settings = payload["settings"]
         return {
-            **document.model_dump(by_alias=True, exclude_computed_fields=True),
+            **payload,
             "settings": {
-                **document.settings,
-                "mypy": (*document.settings["mypy"], *entries),
+                **settings,
+                "mypy": [*settings["mypy"], *map(list, entries)],
             },
         }
 
@@ -98,11 +102,11 @@ class TestsMypyFleetMandatoryDefaults:
     def test_generic_options_cannot_shadow_typed_policy(
         self,
         option: str,
-        value: t.Scalar,
+        value: t.JsonValue,
     ) -> None:
         """Generic options cannot bypass the dedicated plugin and code fields."""
         payload = self._document_payload((option, value))
-        with pytest.raises(e.PydanticValidationError, match="[Mm]ypy"):
+        with pytest.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     @pytest.mark.parametrize("option", ["follow-imports", "follow_imports "])
@@ -198,12 +202,16 @@ class TestsMypyFleetMandatoryDefaults:
                 "mypy": mypy,
             },
         }
-        with pytest.raises(e.PydanticValidationError, match="[Mm]ypy"):
+        with pytest.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     @staticmethod
     def test_mypy_path_projection_converges_before_path_sync(tmp_path: Path) -> None:
-        """The table phase retains elected roots before sync and repeated conformance."""
+        """The table phase retains elected roots before sync.
+
+        The same roots survive repeated conformance.
+
+        """
         tooling = config.Infra.tooling
         source_dir = tooling.tools.pyrefly.path_rules.source_dir
         package = tmp_path / source_dir / "arbitrary_package"
@@ -215,13 +223,13 @@ class TestsMypyFleetMandatoryDefaults:
             '[tool.mypy]\nmypy_path = ["retired-root"]\n'
         )
         path.write_text(source, encoding="utf-8")
-        manager = FlextInfraExtraPathsManager(repository_root=tmp_path)
+        manager = deps.FlextInfraExtraPathsManager(repository_root=tmp_path)
         expected = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(source_dir,),
             declared_python_dirs_are_complete=True,
         )
-        modernizer = FlextInfraPyprojectModernizer(repository_root=tmp_path)
+        modernizer = deps.FlextInfraPyprojectModernizer(repository_root=tmp_path)
         first = tm.ok(
             modernizer.conform_source(
                 source,
@@ -236,7 +244,7 @@ class TestsMypyFleetMandatoryDefaults:
         mypy = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["mypy"])
         tm.that(mypy["mypy_path"], eq=list(expected))
         tm.that(
-            FlextInfraToolTablesPhase(tooling).apply_payload(
+            deps.FlextInfraToolTablesPhase(tooling).apply_payload(
                 payload, path=path, mypy_search_paths=expected
             ),
             empty=True,

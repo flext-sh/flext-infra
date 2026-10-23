@@ -241,6 +241,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         RETURNS_SECTION = "returns-section"
         YIELDS_SECTION = "yields-section"
         RAISES_SECTION = "raises-section"
+        EXTRANEOUS_RAISES = "extraneous-raises"
         SUMMARY_DOCSTRING = "summary-docstring"
         COPYRIGHT_NOTICE = "copyright-notice"
         STATIC_METHOD = "static-method"

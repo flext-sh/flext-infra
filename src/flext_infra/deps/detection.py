@@ -1,4 +1,4 @@
-"""Dependency detection and analysis service for deptry, pip-check, and typing stubs.
+"""Dependency detection and analysis service for deptry and pip-check.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,11 +10,11 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.deps import FlextInfraDependencyDetectionAnalysis
+from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
 
 
-class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):
-    """Runtime vs dev dependency detector using deptry, pip-check, mypy stubs."""
+class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionRunnersMixin):
+    """Runtime vs dev dependency detector using deptry and pip-check."""
 
     _log = u.fetch_logger(__name__)
 
@@ -58,7 +58,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self,
         project_name: str,
         deptry_issues: t.SequenceOf[t.JsonMapping],
-    ) -> m.Infra.ProjectRuntimeReport:
+    ) -> m.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues.
 
         Returns:
@@ -82,7 +82,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
                 if (val := item.get(c.Infra.MODULE)) is not None
             ]
 
-        return m.Infra.ProjectRuntimeReport(
+        return m.Infra.ProjectDependencyReport(
             project=project_name,
             deptry=m.Infra.DeptryReport(
                 missing=_module_names(classified.dep001),

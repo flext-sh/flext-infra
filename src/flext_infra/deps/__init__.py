@@ -29,9 +29,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-    from flext_infra.deps.detection_analysis import (
-        FlextInfraDependencyDetectionAnalysis,
-    )
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -47,19 +44,16 @@ if TYPE_CHECKING:
         FlextInfraInjectCommentsPhase,
         FlextInfraToolTablesPhase,
     )
-    from flext_infra.deps.typing_packages import FlextInfraDependencyTypingPackages
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
     "FlextInfraConfigFixerSteps",
     "FlextInfraConsolidateGroupsPhase",
-    "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionRunnersMixin",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyDetectorRuntimeSteps",
-    "FlextInfraDependencyTypingPackages",
     "FlextInfraEnsurePackagingPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
@@ -86,12 +80,10 @@ install_lazy_exports(
         "FlextInfraConfigFixer": ".fix_pyrefly_config",
         "FlextInfraConfigFixerSteps": "._pyrefly_fix_steps",
         "FlextInfraConsolidateGroupsPhase": ".phases.consolidate_groups",
-        "FlextInfraDependencyDetectionAnalysis": ".detection_analysis",
         "FlextInfraDependencyDetectionRunnersMixin": "._detection_runners",
         "FlextInfraDependencyDetectionService": ".detection",
         "FlextInfraDependencyDetectorRuntime": ".detector_runtime",
         "FlextInfraDependencyDetectorRuntimeSteps": "._detector_runtime_steps",
-        "FlextInfraDependencyTypingPackages": ".typing_packages",
         "FlextInfraEnsurePackagingPhase": ".phases.ensure_packaging",
         "FlextInfraEnsurePyreflyConfigPhase": ".phases.ensure_pyrefly",
         "FlextInfraEnsurePyrightConfigPhase": ".phases.ensure_pyright",

@@ -86,34 +86,11 @@ class FlextInfraExtraPathsManager(
             return r[bool].from_failure(result)
         return r[bool].ok(value=True)
 
-    @staticmethod
-    def _existing_typings_paths(
-        rules: p.Infra.TypeCheckerPathRules,
-        *,
-        project_dir: Path,
-        is_root: bool,
-    ) -> t.StrSequence:
-        """Return the configured typings roots that exist under ``project_dir``.
-
-        Returns:
-            The configured typings roots that exist under ``project_dir``.
-
-        """
-        configured_typings = (
-            rules.root_typings_paths if is_root else rules.project_typings_paths
-        )
-        return tuple(
-            relative_path
-            for relative_path in configured_typings
-            if (project_dir / relative_path).is_dir()
-        )
-
     def _search_path_set(
         self,
         rules: p.Infra.TypeCheckerPathRules,
         *,
         project_dir: Path,
-        is_root: bool,
         shared_search_paths: t.StrSequence,
         include_generated_roots: bool,
     ) -> t.Infra.StrSet:
@@ -135,14 +112,7 @@ class FlextInfraExtraPathsManager(
                 include_generated_roots and relative_path in self.generated_python_roots
             )
         ]
-        paths: t.Infra.StrSet = {
-            *self._existing_typings_paths(
-                rules,
-                project_dir=project_dir,
-                is_root=is_root,
-            ),
-            *shared_paths,
-        }
+        paths: t.Infra.StrSet = set(shared_paths)
         paths.discard(rules.source_dir)
         paths.discard(rules.project_root)
         return paths
@@ -157,16 +127,11 @@ class FlextInfraExtraPathsManager(
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         source_root = rules.source_dir
-        typings_paths = self._existing_typings_paths(
-            rules,
-            project_dir=project_dir,
-            is_root=is_root,
-        )
         # Why: naive sorted({".", "src"}) puts "." first and diverges from the
         # declared scaffold roots and pyrefly search-path ordering, so conform
         # apply never reached a fixed point on pyproject.toml. Keep the source
         # import root first; sort everything else for stable comparisons.
-        paths: t.Infra.StrSet = {rules.project_root, source_root, *typings_paths}
+        paths: t.Infra.StrSet = {rules.project_root, source_root}
         paths.discard(source_root)
         return (source_root, *sorted(paths))
 
@@ -205,7 +170,6 @@ class FlextInfraExtraPathsManager(
         paths = self._search_path_set(
             rules,
             project_dir=project_dir,
-            is_root=is_root,
             shared_search_paths=rules.project_shared_search_paths,
             include_generated_roots=True,
         )
@@ -246,7 +210,6 @@ class FlextInfraExtraPathsManager(
         paths = self._search_path_set(
             rules,
             project_dir=project_dir,
-            is_root=is_root,
             shared_search_paths=rules.project_shared_search_paths,
             include_generated_roots=False,
         )

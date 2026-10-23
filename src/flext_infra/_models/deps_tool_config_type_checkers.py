@@ -109,20 +109,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="Always-applied pyright exclude globs.",
                 ),
             ]
-            root_typings_paths: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="root-typings-paths",
-                    description="Typings paths used in workspace settings.",
-                ),
-            ] = ()
-            project_typings_paths: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="project-typings-paths",
-                    description="Typings paths used in declared_repository configs.",
-                ),
-            ] = ()
             ignored_diagnostic_globs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -181,8 +167,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     "env-dirs": [],
                     "test-like-dirs": [],
                     "default-excludes": [],
-                    "root-typings-paths": [],
-                    "project-typings-paths": [],
                     "ignored-diagnostic-globs": [],
                     "diagnostic-path-overrides": [],
                     **(value or {}),
@@ -222,20 +206,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="Project root path entry used in search-path.",
                 ),
             ]
-            root_typings_paths: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="root-typings-paths",
-                    description="Typings paths used in workspace settings.",
-                ),
-            ] = ()
-            project_typings_paths: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="project-typings-paths",
-                    description="Typings paths used in declared_repository configs.",
-                ),
-            ] = ()
             env_dirs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -275,8 +245,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     "source-dir": "src",
                     "project-root": ".",
                     "env-dirs": [],
-                    "root-typings-paths": [],
-                    "project-typings-paths": [],
                     "workspace-include-children": False,
                     "workspace-include-child-env-dirs": [],
                     "project-shared-search-paths": [],

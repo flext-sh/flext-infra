@@ -43,6 +43,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         selection: t.Pair[t.StrMapping, bool],
         sources: t.MappingKV[Path, str],
     ) -> str:
+        """Return a binding-proven structural rewrite without filesystem effects.
+
+        Returns:
+            A binding-proven structural rewrite without filesystem effects.
+
+        """
         project, resource = native
         definitions, is_pytest = selection
         rewritten = cls._rewrite_class_nesting_references(

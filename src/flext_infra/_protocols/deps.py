@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 @runtime_checkable
@@ -43,16 +43,6 @@ class FlextInfraProtocolsDeps(Protocol):
         @property
         def project_root(self) -> str:
             """Project-root entry the generated search paths order last."""
-            ...
-
-        @property
-        def root_typings_paths(self) -> t.StrSequence:
-            """Typings roots configured for a workspace root."""
-            ...
-
-        @property
-        def project_typings_paths(self) -> t.StrSequence:
-            """Typings roots configured for a non-root project."""
             ...
 
 

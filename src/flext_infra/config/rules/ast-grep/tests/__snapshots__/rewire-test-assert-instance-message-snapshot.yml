@@ -1,0 +1,48 @@
+id: rewire-test-assert-instance-message
+snapshots:
+  ? |
+    from tests import tm
+    assert isinstance(value, Entry), "An entry is required"
+  : fixed: |
+      from tests import tm
+      value = tm.instance(value, Entry, msg="An entry is required")
+    labels:
+    - source: assert isinstance(value, Entry), "An entry is required"
+      style: primary
+      start: 21
+      end: 76
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert isinstance(value, Entry), "An entry is required"
+      style: secondary
+      start: 0
+      end: 77
+  ? |
+    from tests import tm
+    if not (isinstance(value, Entry)):
+        raise AssertionError(report)
+  : fixed: |
+      from tests import tm
+      value = tm.instance(value, Entry, msg=report)
+    labels:
+    - source: |-
+        if not (isinstance(value, Entry)):
+            raise AssertionError(report)
+      style: primary
+      start: 21
+      end: 88
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        if not (isinstance(value, Entry)):
+            raise AssertionError(report)
+      style: secondary
+      start: 0
+      end: 89

@@ -107,6 +107,22 @@ class FlextInfraModelsDuplication:
             t.Percentage,
             m.Field(description="Maximum allowed duplication percentage"),
         ]
+        similarity: Annotated[
+            float,
+            m.Field(gt=0, le=1, description="Structural near-miss pass ratio"),
+        ]
+        semantic: Annotated[
+            FlextInfraModelsDuplication.JscpdSemantic | None,
+            m.Field(description="Embedding pass; absent where it is not executed"),
+        ] = None
+
+    class JscpdSemantic(m.ContractModel):
+        """Enabled embedding pass of the generated jscpd configuration."""
+
+        enabled: Annotated[t.StrictBool, m.Field(description="Run the pass")] = True
+        provider: Annotated[t.NonEmptyStr, m.Field(description="Embedding provider")]
+        url: Annotated[t.NonEmptyStr, m.Field(description="Embeddings API URL")]
+        model: Annotated[t.NonEmptyStr, m.Field(description="Embedding model name")]
 
     class JscpdLocation(m.ContractModel):
         """One required source coordinate in a jscpd report."""
@@ -200,6 +216,14 @@ class FlextInfraModelsDuplication:
             m.Field(alias="secondFile", description="Second clone source"),
         ]
         tokens: Annotated[t.PositiveInt, m.Field(description="Duplicated token count")]
+        similarity: Annotated[
+            float | None,
+            m.Field(description="Score of a similar or semantic clone"),
+        ] = None
+        method: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Near-miss mechanism of a similar clone"),
+        ] = None
 
     class JscpdStatisticsSummary(m.ContractModel):
         """Complete aggregate emitted for one format or the whole scan."""

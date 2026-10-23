@@ -75,7 +75,11 @@ class TestsFlextInfraCodegenMakeVerbContract:
 
     @staticmethod
     def test_disabled_selector_keeps_the_verb_executing(infra_git_repo: Path) -> None:
-        """An empty or disabled selector still runs the verb's prerequisites."""
+        """A disabled selector still runs the verb's prerequisites.
+
+        The scaffold has no provisioned environment, so the interpreter guard
+        that every executing verb requires is the first prerequisite to fail.
+        """
         root = infra_git_repo
         TestsFlextInfraCodegenMakeVerbContract._scaffold(root)
         outcome = u.Cli.run_raw(
@@ -84,5 +88,5 @@ class TestsFlextInfraCodegenMakeVerbContract:
         )
         output = tm.ok(outcome)
         tm.fail(u.Cli.process_succeeded(output.outcome))
-        tm.that(output.stderr, has="make upg records the Mise release")
+        tm.that(output.stderr, has="make setup creates it")
         tm.that(output.stdout + output.stderr, lacks="displays this contract")

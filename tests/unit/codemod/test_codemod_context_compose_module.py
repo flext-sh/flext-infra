@@ -219,9 +219,15 @@ class TestsFlextInfraCodemodContextComposeModule:
             for rule in u.Infra.codemod_rule_plan(mod_workspace).unwrap().rules
             if rule.id == "ban-reverse-runtime-import"
         )
-        with u.Infra.codemod_binding_project(
+        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
+        # A layer-zero verdict reads the importer from its captured epoch.
+        snapshot = u.Infra.codemod_binding_snapshot(
             mod_workspace,
-            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
+            (u.Cli.atomic_read_binary_file_state(path, required=True).unwrap(),),
+            facts.binding_modules,
+        )
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
         ) as (project, sources):
             admitted = u.Infra.codemod_context_admits(
                 m.Infra.CodemodAdmission(
@@ -229,7 +235,8 @@ class TestsFlextInfraCodemodContextComposeModule:
                     rule=rule,
                     file_path=path,
                     captures={"TARGET": {"text": module}},
-                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                    facts=facts,
+                    snapshot=snapshot,
                 ),
                 project=project,
                 sources=sources,

@@ -1055,6 +1055,9 @@ class FlextInfraModGateEngine:
                 actionable=actionable,
                 classification=classification,
                 severity=severity,
+                origin="owned-path"
+                if finding.get("origin") == "owned-path"
+                else "ast-grep",
                 replacement_offsets=(
                     m.Infra.ModReplacementOffsets.model_validate(
                         finding["replacementOffsets"]
@@ -1443,6 +1446,8 @@ class FlextInfraModGateEngine:
         plan: m.Infra.CodemodRulePlan,
         targets: t.StrSequence,
         context: m.Infra.ModScanSourceContext,
+        *,
+        artifact_root: Path | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Combine every elected provider's complete ordered native occurrences.
 
@@ -1457,6 +1462,10 @@ class FlextInfraModGateEngine:
 
         """
         rules_by_id = {rule.id: rule for rule in plan.rules}
+        artifact_root = root if artifact_root is None else artifact_root
+        native_targets = tuple(
+            target for target in targets if Path(target).suffix != ".pyi"
+        )
         u.Cli.ensure_dir(settings.work_dir).unwrap()
         with tempfile.TemporaryDirectory(
             prefix="mod-native-catalog-", dir=settings.work_dir
@@ -1467,12 +1476,53 @@ class FlextInfraModGateEngine:
                 f"rules={len(ruleset.rule_ids)}\n",
             )
             sys.stderr.flush()
-            scanned = cls._ruleset_report(
-                root, ruleset, rules_by_id, (targets, context), artifact_root=root
+            scanned = (
+                cls._ruleset_report(
+                    root,
+                    ruleset,
+                    rules_by_id,
+                    (native_targets, context),
+                    artifact_root=artifact_root,
+                )
+                if native_targets
+                else r[m.Infra.ModScanReport].ok(
+                    cls.recounted(
+                        (), source_states=tuple(context.source_states.values())
+                    )
+                )
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
-            return scanned
+            path_findings = u.Infra.codemod_path_findings(
+                root, tuple(context.source_states), plan.rules
+            )
+            if not path_findings:
+                return scanned
+            path_report = Path(directory) / "owned-path.jsonl"
+            u.Cli.atomic_write_text_file(
+                path_report,
+                "".join(
+                    u.Cli.json_dumps(finding).unwrap() + "\n"
+                    for finding in path_findings
+                ),
+            ).unwrap()
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, path_report)
+            admitted_paths = cls._parse_findings(
+                artifact.path,
+                root,
+                ({rule.id: rule.resource for rule in plan.rules}, frozenset()),
+                context,
+                artifact,
+            )
+            if admitted_paths.failure:
+                return admitted_paths
+            return r[m.Infra.ModScanReport].ok(
+                cls.recounted(
+                    (*scanned.value.entries, *admitted_paths.value.entries),
+                    source_states=admitted_paths.value.source_states,
+                    native_artifacts=(*scanned.value.native_artifacts, artifact),
+                )
+            )
 
     @classmethod
     def _publish_scan(
@@ -1672,33 +1722,29 @@ class FlextInfraModGateEngine:
         )
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="mod-native-catalog-", dir=settings.work_dir
-        ) as directory:
-            scanned = cls._ruleset_report(
-                view_root,
-                u.Infra.codemod_stage_scan_ruleset(plan, Path(directory)),
-                rules_by_id,
-                (u.Infra.ast_grep_scan_targets(root), context),
-                artifact_root=root,
+        scanned = cls._native_scan_report(
+            view_root,
+            plan,
+            u.Infra.ast_grep_scan_targets(root),
+            context,
+            artifact_root=root,
+        )
+        if scanned.failure:
+            return r[m.Infra.ModScanReport].from_failure(scanned)
+        for entry in scanned.value.entries:
+            relative = (
+                entry.file.relative_to(view_root)
+                if entry.file.is_absolute()
+                else entry.file
             )
-            if scanned.failure:
-                return r[m.Infra.ModScanReport].from_failure(scanned)
-            for entry in scanned.value.entries:
-                relative = (
-                    entry.file.relative_to(view_root)
-                    if entry.file.is_absolute()
-                    else entry.file
+            entries.append(
+                entry.model_copy(
+                    update={
+                        "file": relative,
+                        "source_state": logical[(root / relative).resolve()],
+                    }
                 )
-                entries.append(
-                    entry.model_copy(
-                        update={
-                            "file": relative,
-                            "source_state": logical[(root / relative).resolve()],
-                        }
-                    )
-                )
+            )
         report = cls._admitted(
             root,
             cls.recounted(

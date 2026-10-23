@@ -282,6 +282,54 @@ class TestsFlextInfraLazyInitAliasInheritance:
         tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
 
     @staticmethod
+    def test_letters_cross_a_namespace_directory_intermediate_facade(
+        tmp_path: Path,
+    ) -> None:
+        """An intermediate facade under namespace directories forwards its letters.
+
+        The child's constants extend a facade in ``infra/pulumi/lib`` whose
+        ``infra`` and ``infra/pulumi`` directories carry no initializer and
+        whose own initializer publishes nothing. Its constants extend the
+        installed ``flext_cli`` facade, so ``r`` is inherited through that
+        chain exactly as through a direct ``flext_cli`` base.
+        """
+        repository_root, child_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-namespace-chain",
+            package_name="flext_test_namespace_child",
+        )
+        intermediate = repository_root / "infra" / "pulumi" / "lib"
+        intermediate.mkdir(parents=True)
+        intermediate.joinpath(c.Infra.INIT_PY).write_text(
+            "",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        intermediate.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_cli import FlextCliConstants\n\n"
+            "class InfraPulumiConstants(FlextCliConstants):\n"
+            "    pass\n\n"
+            '__all__: list[str] = ["InfraPulumiConstants"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "from __future__ import annotations\n\n"
+            "from infra.pulumi.lib.constants import InfraPulumiConstants\n\n"
+            "class FlextTestNamespaceChildConstants(InfraPulumiConstants):\n"
+            "    pass\n\n"
+            "c = FlextTestNamespaceChildConstants\n"
+            '__all__: list[str] = ["FlextTestNamespaceChildConstants", "c"]\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        entries, _refs = u.Infra.lazy_import_mapping_source(generated)
+        inherited = {name for names in dict(entries).values() for name in names}
+        tm.that(inherited, has="r")
+
+    @staticmethod
     def test_declared_parent_resolving_nowhere_fails_loud(tmp_path: Path) -> None:
         """A declared parent that resolves nowhere escapes as the first failure."""
         repository_root, child_root = u.Tests.create_lazy_init_workspace(

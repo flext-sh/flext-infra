@@ -1,0 +1,37 @@
+id: rewire-consumer-deep-import-to-root
+snapshots:
+  from flext_meltano._models.singer import FlextMeltanoModelsSinger:
+    fixed: from flext_meltano import FlextMeltanoModelsSinger
+    labels:
+    - source: from flext_meltano._models.singer import FlextMeltanoModelsSinger
+      style: primary
+      start: 0
+      end: 65
+  from flext_meltano.services.abstractions import FlextMeltanoAbstractions:
+    fixed: from flext_meltano import FlextMeltanoAbstractions
+    labels:
+    - source: from flext_meltano.services.abstractions import FlextMeltanoAbstractions
+      style: primary
+      start: 0
+      end: 72
+  ? |
+    from flext_meltano.services.consumer_bases.tap_service_base import (
+        FlextMeltanoTapServiceBase,
+    )
+  : fixed: |
+      from flext_meltano import FlextMeltanoTapServiceBase
+    labels:
+    - source: |-
+        from flext_meltano.services.consumer_bases.tap_service_base import (
+            FlextMeltanoTapServiceBase,
+        )
+      style: primary
+      start: 0
+      end: 102
+  from flext_meltano.services.singer_sdk import FlextMeltanoSingerTapAdapter:
+    fixed: from flext_meltano import FlextMeltanoSingerTapAdapter
+    labels:
+    - source: from flext_meltano.services.singer_sdk import FlextMeltanoSingerTapAdapter
+      style: primary
+      start: 0
+      end: 74

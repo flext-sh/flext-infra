@@ -54,36 +54,12 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             ValueError: If a parsed import has no complete source span.
-            TypeError: If Rope returns a non-native syntax tree.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            project,
-            source,
-        )
-        tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            msg = "Rope import inventory requires a native syntax tree"
-            raise TypeError(msg)
-        pending = [tree]
-        imports: list[t.Infra.PythonImportNode] = []
-        while pending:
-            node = pending.pop()
-            if isinstance(node, ast.Import | ast.ImportFrom):
-                imports.append(node)
-                continue
-            # Imports occur only in statements. Keep every statement container,
-            # including exception handlers and match cases, but not expressions.
-            pending.extend(
-                child
-                for child in ast.iter_child_nodes(node)
-                if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
-            )
-        imports.sort(key=lambda node: (node.lineno, node.col_offset))
         # AST columns are UTF-8 byte offsets; index the source once for every import.
         source_lines = source.encode(c.DEFAULT_ENCODING).splitlines(keepends=True)
         statements: list[p.Infra.RopeImportStatement] = []
-        for node in imports:
+        for node in cls._source_import_nodes(project, source):
             if node.end_lineno is None or node.end_col_offset is None:
                 msg = "Rope import declaration has no complete source span"
                 raise ValueError(msg)
@@ -110,6 +86,70 @@ class FlextInfraUtilitiesRopeImports:
                 )
             )
         return tuple(statements)
+
+    @classmethod
+    def source_import_targets(
+        cls,
+        project: p.Infra.RopeProject,
+        source: str,
+    ) -> t.VariadicTuple[t.Pair[str | None, t.StrSequence]]:
+        """Collect each declared import's module and imported names in order.
+
+        Returns:
+            One ``(module, names)`` pair per import statement; ``module`` keeps
+            its relative dots and is ``None`` for a plain ``import``.
+
+        """
+        return tuple(
+            (
+                f"{'.' * node.level}{node.module or ''}"
+                if isinstance(node, ast.ImportFrom)
+                else None,
+                tuple(alias.name for alias in node.names),
+            )
+            for node in cls._source_import_nodes(project, source)
+        )
+
+    @staticmethod
+    def _source_import_nodes(
+        project: p.Infra.RopeProject,
+        source: str,
+    ) -> t.SequenceOf[t.Infra.PythonImportNode]:
+        """Collect import nodes from Rope's parsed tree in source order.
+
+        The parsed import nodes cover every lexical scope and exclude strings
+        and comments.
+
+        Returns:
+            The import nodes of every lexical scope, in source order.
+
+        Raises:
+            TypeError: If Rope returns a non-native syntax tree.
+
+        """
+        tree = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project,
+            source,
+        ).get_ast()
+        if not isinstance(tree, ast.AST):
+            msg = "Rope import inventory requires a native syntax tree"
+            raise TypeError(msg)
+        pending = [tree]
+        imports: list[t.Infra.PythonImportNode] = []
+        while pending:
+            node = pending.pop()
+            if isinstance(node, ast.Import | ast.ImportFrom):
+                imports.append(node)
+                continue
+            # Imports occur only in statements. Keep every statement container,
+            # including exception handlers and match cases, but not expressions.
+            pending.extend(
+                child
+                for child in ast.iter_child_nodes(node)
+                if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+            )
+        imports.sort(key=lambda node: (node.lineno, node.col_offset))
+        return imports
 
     @staticmethod
     def import_statements(

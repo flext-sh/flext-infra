@@ -1,13 +1,13 @@
-# Source type hints are the single source of truth: a hand-written `.pyi`
-# stub inside a package source tree competes with the module it shadows.
-# Delete the stub and keep the hints in the module.
+# Owned paths are admitted independently of syntax, content, or generated headers.
 id: ban-stub-file
 language: python
 severity: error
 files:
-  - "**/src/**/*.pyi"
+  - "**/*.pyi"
+metadata:
+  owned_path_suffix: .pyi
 rule:
   kind: module
 message: >-
-  A hand-written .pyi stub in a package source tree duplicates the module's
-  own type hints; delete it and keep the hints in the module.
+  First-party .pyi files are forbidden; retain source annotations and
+  consumer-owned Protocol declarations instead.

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 
@@ -22,19 +22,34 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     """Detect ``Core.Tests`` chain rewrites + import candidates per file.
 
     Composed into FlextInfraWrapperRootNamespaceRefactor via inheritance;
-    borrows repository_root + the include-init / dry-run flags + the wrapper
-    package set from the facade via FLEXT. ``module_ast`` is narrowed to the
-    rope-AST protocol at the parsing boundary via ``ensure_ast_node``, which
-    deliberately avoids ``import ast`` at the consumer layer.
+    borrows repository_root + the include-init / dry-run flags from the
+    facade via FLEXT. Wrapper packages are the detected internal tiers of
+    each file's project: every root namespace folder except ``src``.
+    ``module_ast`` is narrowed to the rope-AST protocol at the parsing
+    boundary via ``ensure_ast_node``, which deliberately avoids
+    ``import ast`` at the consumer layer.
     """
 
     if TYPE_CHECKING:
         repository_root: Path
         include_init: bool
-        _WRAPPER_PACKAGES: ClassVar[t.StrSequence]
 
         @property
         def effective_dry_run(self) -> bool: ...
+
+    @staticmethod
+    def _internal_tier(project_root: Path | None, name: str) -> bool:
+        """Return whether ``name`` is a detected internal tier of the project.
+
+        Returns:
+            Whether ``name`` is a non-``src`` root namespace of ``project_root``.
+
+        """
+        return (
+            project_root is not None
+            and name != c.Infra.DEFAULT_SRC_DIR
+            and u.Infra.root_namespace(project_root, name)
+        )
 
     def _process_wrapper_file(
         self,
@@ -55,7 +70,10 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             project_name,
             metadata_runtime_aliases,
         )
-        if not any(part in self._WRAPPER_PACKAGES for part in rel.parts):
+        project_root = u.Infra.project_root(file_path)
+        if project_root is None or not self._internal_tier(
+            project_root, file_path.relative_to(project_root).parts[0]
+        ):
             return
         if file_path.name == c.Infra.INIT_PY and (not self.include_init):
             return
@@ -70,6 +88,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         )
         has_import_candidate = self._has_wrapper_import_candidate(
             module_ast,
+            project_root=project_root,
             wrapper_submodules=wrapper_submodules,
             runtime_aliases=runtime_aliases,
         )
@@ -150,6 +169,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         self,
         module_ast: t.Infra.RopeAstNode,
         *,
+        project_root: Path,
         wrapper_submodules: frozenset[str],
         runtime_aliases: frozenset[str],
     ) -> bool:
@@ -165,7 +185,9 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             module_name = getattr(node, "module", "") or ""
             parent, dot, child = module_name.partition(".")
             if not (
-                dot and parent in self._WRAPPER_PACKAGES and child in wrapper_submodules
+                dot
+                and child in wrapper_submodules
+                and self._internal_tier(project_root, parent)
             ):
                 continue
             names = getattr(node, "names", []) or []

@@ -114,17 +114,3 @@ class TestsFlextInfraDepsDetectionClassify:
         report = service.build_project_report("test-project", issues)
         tm.that(report.project, eq="test-project")
         tm.that(report.deptry.raw_count, eq=2)
-
-    @staticmethod
-    def test_module_to_types_package_with_custom_limits() -> None:
-        """Verify module to types package with custom limits."""
-        service = FlextInfraDependencyDetectionService()
-        limits: t.MappingKV[str, t.JsonValue] = {
-            "typing_libraries": {
-                "module_to_package": {"custom_module": "types-custom"},
-            },
-        }
-        tm.that(
-            service.module_to_types_package("custom_module", limits),
-            eq="types-custom",
-        )

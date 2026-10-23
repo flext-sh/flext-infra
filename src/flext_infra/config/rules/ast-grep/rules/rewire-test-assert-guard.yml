@@ -1,5 +1,8 @@
 # Explicit failure preserves native guard narrowing and lazy message evaluation.
 # The emitted-symbol predicate requires the real built-in exception binding.
+# A non-None name narrows through tm.not_none and a name type guard through
+# tm.instance (rewire-test-assert-not-none.yml, rewire-test-assert-instance.yml);
+# any other non-narrowing condition is a tm.that observation.
 id: rewire-test-assert-message
 language: Python
 severity: error
@@ -12,7 +15,18 @@ files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
 rule:
-  pattern: "assert $COND, $MSG"
+  all:
+    - pattern: "assert $COND, $MSG"
+    - has:
+        any:
+          - pattern: "$VALUE is None"
+          - pattern: "$VALUE is not None"
+    - not:
+        regex: "^assert [A-Za-z_][A-Za-z0-9_]* is not None,"
+    - not:
+        has:
+          pattern: "isinstance($VALUE, $TYPE)"
+          stopBy: end
 fix: |-
   if not ($COND):
       raise AssertionError($MSG)
@@ -38,8 +52,48 @@ rule:
         any:
           - pattern: "$VALUE is None"
           - pattern: "$VALUE is not None"
-          - pattern: "isinstance($VALUE, $TYPE)"
+    - not:
+        regex: "^assert [A-Za-z_][A-Za-z0-9_]* is not None$"
+    - not:
+        has:
+          pattern: "isinstance($VALUE, $TYPE)"
+          stopBy: end
 fix: |-
   if not ($COND):
       raise AssertionError
 message: Preserve the native guard through an explicit failure.
+---
+# A type guard the tm.instance rule cannot express (attribute subject, tuple
+# kind, compound condition) keeps native narrowing and fails with TypeError,
+# the exception an invalid type raises (Ruff TRY004).
+id: rewire-test-assert-type-guard
+language: Python
+severity: error
+metadata:
+  context:
+    COND:
+      is: emitted-symbol
+      arg: TypeError builtins TypeError
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert $COND"
+        - pattern: |-
+            if not ($COND):
+                raise AssertionError
+    - not:
+        has:
+          nthChild: 2
+          kind: string
+    - has:
+        pattern: "isinstance($VALUE, $TYPE)"
+        stopBy: end
+    - not:
+        regex: "^(assert |if not \\()isinstance\\([A-Za-z_][A-Za-z0-9_]*, [^(]"
+fix: |-
+  if not ($COND):
+      raise TypeError
+message: Fail an unmet type guard with the exception an invalid type raises.

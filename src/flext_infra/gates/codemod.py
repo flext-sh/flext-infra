@@ -45,10 +45,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             FileNotFoundError: If ``not targets``.
 
         """
-        targets = (
-            *self._existing_check_dirs(project_dir),
-            *(path.name for path in project_dir.glob("*.py") if path.is_file()),
-        )
+        targets = u.Infra.ast_grep_scan_targets(project_dir)
         if not targets:
             raise FileNotFoundError(project_dir)
         return self._execute_check_command(
@@ -83,7 +80,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         return self._execute_check_command(
             project_dir,
             ctx,
-            tuple(str(path.relative_to(project_dir)) for path in files),
+            u.Infra.ast_grep_scan_targets(project_dir, source_files=files),
             time.monotonic(),
         )
 
@@ -115,6 +112,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
             return self._failure_gate_execution(project_dir, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
+        native_targets = tuple(
+            target for target in targets if Path(target).suffix != ".pyi"
+        )
         binary = u.Infra.managed_mise_binary(c.Infra.SG, self._repository_root)
         if binary.failure:
             failure = binary.error
@@ -122,12 +122,21 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 failure = "managed scanner resolution failed without a diagnostic"
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
-        findings: list[m.Infra.Issue] = []
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
-        for ruleset in planned.value.rulesets:
+        found = [
+            m.Infra.AstGrepDiagnostic.model_validate(finding)
+            for finding in u.Infra.codemod_path_findings(
+                project_dir,
+                tuple((project_dir / target).resolve() for target in targets),
+                planned.value.rules,
+            )
+        ]
+        for ruleset in planned.value.rulesets if native_targets else ():
             scan = self._run(
-                self._scan_command(ruleset, targets, binary.value, nonparticipants),
+                self._scan_command(
+                    ruleset, native_targets, binary.value, nonparticipants
+                ),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
@@ -173,89 +182,80 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     ),
                 )
                 break
-            facts = u.Infra.codemod_project_facts(
+            found.extend(report.root)
+        # Every ruleset's findings share one fact pass and one captured epoch,
+        # as the mod engine admits its composed plan.
+        facts = u.Infra.codemod_project_facts(
+            project_dir,
+            tuple(
+                rules_by_id[rule_id]
+                for rule_id in dict.fromkeys(finding.rule_id for finding in found)
+            ),
+        )
+        snapshot = (
+            u.Infra.codemod_binding_snapshot(
                 project_dir,
                 tuple(
-                    rules_by_id[rule_id]
-                    for rule_id in dict.fromkeys(
-                        finding.rule_id for finding in report.root
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in dict.fromkeys(
+                        u.Infra.codemod_source_path(project_dir, Path(finding.file))
+                        for finding in found
+                        if finding.rule_id in facts.binding_rule_ids
                     )
                 ),
+                facts.binding_modules,
             )
-            admissions = tuple(
-                m.Infra.CodemodAdmission(
-                    root=project_dir,
-                    rule=rules_by_id[finding.rule_id],
-                    file_path=Path(finding.file),
-                    captures={**finding.captures, **finding.transformed},
-                    facts=facts,
+            if facts.binding_rule_ids
+            else m.Infra.CodemodBindingSnapshot(states=())
+        )
+        with u.Infra.codemod_binding_project(
+            project_dir, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            findings = [
+                m.Infra.Issue(
+                    file=finding.file,
+                    line=finding.line + 1,
+                    column=finding.column + 1,
+                    code=finding.rule_id,
+                    message=finding.message,
+                    severity=finding.severity,
                 )
-                for finding in report.root
-            )
-            snapshot = (
-                u.Infra.codemod_binding_snapshot(
-                    project_dir,
-                    tuple(
-                        u.Cli.atomic_read_binary_file_state(
-                            path,
-                            required=True,
-                        ).unwrap()
-                        for path in dict.fromkeys(
-                            u.Infra.codemod_source_path(project_dir, Path(finding.file))
-                            for finding in report.root
-                            if finding.rule_id in facts.binding_rule_ids
-                        )
+                for finding in found
+                if u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=project_dir,
+                        rule=rules_by_id[finding.rule_id],
+                        file_path=Path(finding.file),
+                        captures={**finding.captures, **finding.transformed},
+                        facts=facts,
+                        snapshot=snapshot,
                     ),
-                    facts.binding_modules,
+                    project=project,
+                    sources=sources,
                 )
-                if facts.binding_rule_ids
-                else m.Infra.CodemodBindingSnapshot(states=())
-            )
-            with u.Infra.codemod_binding_project(
-                project_dir, u.Infra.codemod_source_epoch(snapshot)
-            ) as (
-                project,
-                sources,
-            ):
-                findings.extend(
-                    m.Infra.Issue(
-                        file=finding.file,
-                        line=finding.line + 1,
-                        column=finding.column + 1,
-                        code=finding.rule_id,
-                        message=finding.message,
-                        severity=finding.severity,
-                    )
-                    for finding, admission in zip(report.root, admissions, strict=True)
-                    if u.Infra.codemod_context_admits(
-                        admission.model_copy(update={"snapshot": snapshot}),
-                        project=project,
-                        sources=sources,
-                    )
-                )
+            ]
 
         # A completed scan still blocks when elected policy rules find code.
         # Native scanner failures retain their distinct failure diagnostics.
         issues = (*failures, *findings)
-        return m.Infra.GateExecution(
-            result=self._gate_result(
-                project_dir,
-                passed=not issues,
-                errors=[issue.formatted for issue in issues],
+        return self._build_gate_execution(
+            m.Infra.GateExecutionParams(
+                project_dir=project_dir,
+                verdict=not issues,
+                issues=issues,
                 started=started,
-            ),
-            issues=issues,
-            outcome=(
-                c.Infra.ToolOutcome.ERROR
-                if failures
-                else c.Infra.ToolOutcome.FINDINGS
-                if findings
-                else c.Infra.ToolOutcome.CLEAN
-            ),
-            raw_output="\n".join((
-                (f"{len(findings)} policy findings; {len(failures)} native failures"),
-                *raw_output,
-            )),
+                outcome=(
+                    c.Infra.ToolOutcome.ERROR
+                    if failures
+                    else c.Infra.ToolOutcome.FINDINGS
+                    if findings
+                    else c.Infra.ToolOutcome.CLEAN
+                ),
+                raw_output="\n".join((
+                    f"{len(findings)} policy findings; {len(failures)} native failures",
+                    *raw_output,
+                )),
+            )
         )
 
     def _failure_gate_execution(
