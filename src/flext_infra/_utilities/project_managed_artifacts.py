@@ -86,9 +86,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if document.failure:
             return result_type.from_failure(document)
-        section = u.validate_value(
-            m.Infra.ToolConfigDocument,
-            u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
+        section = r[m.Infra.ToolConfigDocument].create_from_callable(
+            partial(
+                m.Infra.ToolConfigDocument.model_validate,
+                u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
+                context={"project_root": repository_root.resolve()},
+            ),
         )
         if section.failure:
             return result_type.from_failure(section)

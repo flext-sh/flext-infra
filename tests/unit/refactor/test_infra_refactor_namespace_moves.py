@@ -164,10 +164,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             "from __future__ import annotations\n"
             f"from {package.name}._pieces import _core\n"
             f"from {package.name}._pieces import _core as module_alias\n"
+            f"from {package.name}._pieces import _core as owner\n"
             f"from {package.name}._pieces._core import DeclaredOwner, normalize\n"
             f"from {package.name} import unrelated\n"
             f"from {package.name}._other import _core as unrelated_module\n"
             "PAYLOAD = '_core.DeclaredOwner'\n"
+            f"{package.name} = 7\n"
+            "class Consumer:\n"
+            f"    {package.name} = 11\n"
+            "    value: 'owner.DeclaredOwner'\n"
             "__all__ = ('_core', 'DeclaredOwner', 'normalize')\n"
             "def direct(value: '_core.DeclaredOwner') -> '_core.DeclaredOwner':\n"
             "    return value\n"
@@ -191,6 +196,19 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             f"import {package.name}._pieces._core as owned\n" + schema_program,
             python_paths=(str(package.parent),),
         )
+        reference_program = (
+            "from typing import get_type_hints\n"
+            f"from {package.name} import consumer\n"
+            "print(get_type_hints(consumer.Consumer)['value'] is consumer.owner.DeclaredOwner)\n"
+            "print(get_type_hints(consumer.aliased)['value'] is consumer.owner.DeclaredOwner)\n"
+            f"print(getattr(consumer, {package.name!r}))\n"
+            f"print(getattr(consumer.Consumer, {package.name!r}))\n"
+        )
+        original_references = u.Tests.run_lazy_init_probe(
+            reference_program,
+            python_paths=(str(package.parent),),
+        )
+        tm.that(original_references, eq=["True", "True", "7", "11"])
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
             plans = u.Infra.plan_module_move(
@@ -247,6 +265,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
         tm.that(
             u.Tests.run_lazy_init_probe(
+                reference_program,
+                python_paths=(str(package.parent),),
+            ),
+            eq=original_references,
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
                 "from typing import get_type_hints\n"
                 f"from {package.name} import consumer\n"
                 f"import {destination} as relocated\n"
@@ -259,6 +284,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 "print(get_type_hints(consumer.aliased)['value'] is relocated.DeclaredOwner)\n"
                 "print(get_type_hints(consumer.other)['value'] is consumer.unrelated.DeclaredOwner)\n"
                 "print(consumer.unrelated_module.DeclaredOwner is relocated.DeclaredOwner)\n"
+                "print(consumer.owner.DeclaredOwner is relocated.DeclaredOwner)\n"
                 "print(getattr(consumer, consumer.__all__[0]) is relocated)\n"
                 "print(consumer.PAYLOAD)\n",
                 python_paths=(str(package.parent),),
@@ -273,6 +299,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 "True",
                 "True",
                 "False",
+                "True",
                 "True",
                 "_core.DeclaredOwner",
             ],

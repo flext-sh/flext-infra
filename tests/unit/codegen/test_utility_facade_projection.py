@@ -24,14 +24,14 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
     @pytest.mark.parametrize("nested", [False, True])
-    def test_explicit_owner_classes_keep_identity_without_inheritance(
+    def test_explicit_owner_classes_compose_by_inheritance(
         self,
         tmp_path: Path,
         family: Literal["c", "t", "p", "m", "u"],
         *,
         nested: bool,
     ) -> None:
-        """Class reexports retain identity, exclude owner members and reach a fixed point."""
+        """Parts expose original entities through inheritance at a fixed point."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         definition = u.Infra.facade_families()[family]
         self._write(package / "__init__.py", "")
@@ -39,7 +39,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         for module, name in (("base", "OwnerBase"), ("vocabulary", "OwnerVocabulary")):
             self._write(
                 package / definition.directory / f"{module}.py",
-                f"class {name}:\n    value = 'private member'\n__all__ = [{name!r}]\n",
+                f"class {name}:\n    class {name}Entity:\n        pass\n__all__ = [{name!r}]\n",
             )
         facade = package / f"{definition.module}.py"
         indent = "        " if nested else "    "
@@ -84,9 +84,10 @@ class TestsFlextInfraUtilityFacadeProjection:
                     f"facade = import_module({(package.name + '.' + definition.module)!r}).PublicFacade\n"
                     + ("facade = facade.Sample\n" if nested else "")
                     + f"base = import_module({(package.name + '.' + definition.directory + '.base')!r}).OwnerBase\n"
-                    + "assert facade.Base is base\n"
-                    + "assert facade.__bases__ == (object,)\n"
-                    + "assert not hasattr(facade, 'value')\n",
+                    + "assert base in facade.__mro__\n"
+                    + "assert facade.OwnerBaseEntity is base.OwnerBaseEntity\n"
+                    + "assert not hasattr(facade, 'Base')\n"
+                    + "assert not hasattr(facade, 'Vocabulary')\n",
                 ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
@@ -96,14 +97,14 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     @pytest.mark.parametrize("family", ["c", "m", "p", "u"])
     @pytest.mark.parametrize("stale_base", [False, True])
-    def test_explicit_class_bindings_elect_pure_facade_projection(
+    def test_explicit_class_bindings_restore_parts_and_upstream_mro(
         self,
         tmp_path: Path,
         family: Literal["c", "m", "p", "u"],
         *,
         stale_base: bool,
     ) -> None:
-        """Keep short class identities, add missing classes, never inherit parts."""
+        """Retire aliases while preserving original part and upstream entities."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         spec = u.Infra.facade_families()[family]
         self._write(package / "__init__.py", "")
@@ -112,8 +113,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             self._write(
                 package / spec.directory / f"{name.lower()}.py",
                 f"class SampleFacade{name}:\n"
-                "    class Entity:\n        pass\n"
-                "    scalar = 7\n"
+                f"    class {name}Entity:\n        pass\n"
+                f"    {name.upper()}_VALUE = 7\n"
                 f"__all__ = ['SampleFacade{name}']\n",
             )
         self._write(
@@ -140,10 +141,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(tuple(ast.unparse(base) for base in owner.bases), eq=("Framework",))
         tm.that(
             tuple(ast.unparse(base) for base in namespace.bases),
-            eq=("Framework.Sample",),
+            eq=("SampleFacadeContracts", "SampleFacadeSchema", "Framework.Sample"),
         )
-        tm.that(rendered, has="Contracts: ClassVar[type[SampleFacadeContracts]]")
-        tm.that(rendered, has="Schema = SampleFacadeSchema")
+        tm.that(
+            "Contracts: ClassVar[type[SampleFacadeContracts]]" in rendered, eq=False
+        )
+        tm.that("Schema = SampleFacadeSchema" in rendered, eq=False)
         tm.that("SampleFacadeContracts =" in rendered, eq=False)
         self._write(facade, rendered)
         tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
@@ -158,10 +161,10 @@ class TestsFlextInfraUtilityFacadeProjection:
                         f"from {package.name}.{spec.directory}.schema import SampleFacadeSchema\n"
                         "from upstream import Framework\n"
                         "assert facade.__bases__ == (Framework,)\n"
-                        "assert facade.Sample.__bases__ == (Framework.Sample,)\n"
-                        "assert facade.Sample.Contracts is SampleFacadeContracts\n"
-                        "assert facade.Sample.Schema is SampleFacadeSchema\n"
-                        "assert not hasattr(facade.Sample, 'scalar')\n"
+                        "assert facade.Sample.__bases__ == (SampleFacadeContracts, SampleFacadeSchema, Framework.Sample)\n"
+                        "assert facade.Sample.ContractsEntity is SampleFacadeContracts.ContractsEntity\n"
+                        "assert facade.Sample.SchemaEntity is SampleFacadeSchema.SchemaEntity\n"
+                        "assert facade.Sample.CONTRACTS_VALUE == 7\n"
                         "assert not hasattr(facade.Sample, 'SampleFacadeContracts')\n"
                     ),
                 ),

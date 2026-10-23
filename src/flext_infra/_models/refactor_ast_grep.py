@@ -197,7 +197,24 @@ class FlextInfraModelsRefactorGrep:
 
         @m.model_validator(mode="after")
         def _validate_owned_path_rule(self) -> Self:
-            if self.owned_path_suffix is not None and (self.fixable or self.context):
+            """Keep path prohibitions detection-only and without ownership exemptions.
+
+            Returns:
+                The original unexempted rule.
+
+            Raises:
+                ValueError: If a path prohibition can rewrite or exempt its paths.
+
+            """
+            if self.owned_path_suffix is not None and (
+                self.fixable
+                or self.context
+                or self.owner
+                or self.consumers_of
+                or self.relocation
+                or self.module_absence
+                or not self.message.strip()
+            ):
                 msg = "owned-path rules cannot rewrite or exempt owned paths"
                 raise ValueError(msg)
             return self

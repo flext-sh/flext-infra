@@ -821,7 +821,7 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         @m.model_validator(mode="after")
-        def validate_no_local_stubs(self) -> Self:
+        def validate_no_local_stubs(self, info: m.ValidationInfo) -> Self:
             """Reject local stub resolution and producer options in every typed layer.
 
             Returns:
@@ -885,6 +885,15 @@ class FlextInfraModelsDepsToolConfig(
                 Path(sysconfig.get_path(key)).resolve()
                 for key in ("purelib", "platlib")
             )
+            context = info.context
+            project_root = (
+                context.get("project_root") if isinstance(context, Mapping) else None
+            )
+            if project_root is not None and (
+                not isinstance(project_root, Path) or not project_root.is_absolute()
+            ):
+                msg = "tooling validation requires an absolute elected project root"
+                raise ValueError(msg)
             while pending:
                 key, value = pending.pop()
                 option = (
@@ -903,9 +912,15 @@ class FlextInfraModelsDepsToolConfig(
                 ):
                     for entry in value.replace("\\", "/").split(":"):
                         path = Path(entry).expanduser()
-                        if any(
-                            path.resolve().is_relative_to(root)
-                            for root in installed_roots
+                        resolved = (
+                            path.resolve()
+                            if path.is_absolute()
+                            else (project_root / path).resolve()
+                            if isinstance(project_root, Path)
+                            else None
+                        )
+                        if resolved is not None and any(
+                            resolved.is_relative_to(root) for root in installed_roots
                         ):
                             continue
                         if any(

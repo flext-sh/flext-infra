@@ -317,7 +317,9 @@ class FlextInfraUtilitiesRopeClassMove:
                 ordered.extend(scope.get_scopes())
             return ordered
 
-        def declarations(items: t.SequenceOf[p.Infra.RopeScope]) -> list[t.Pair[str | None, str]]:
+        def declarations(
+            items: t.SequenceOf[p.Infra.RopeScope],
+        ) -> list[t.Pair[str | None, str]]:
             return [
                 (scope.get_kind(), scope.pyobject.get_name() if index else "")
                 for index, scope in enumerate(items)
@@ -325,9 +327,15 @@ class FlextInfraUtilitiesRopeClassMove:
 
         def virtual_files() -> tuple[m.Infra.CodegenFilePlan, ...]:
             return tuple(
-                plan.model_copy(update={
-                    "desired_content": candidate[plan.path].encode(c.DEFAULT_ENCODING),
-                }) if plan.path in candidate else plan
+                plan.model_copy(
+                    update={
+                        "desired_content": candidate[plan.path].encode(
+                            c.DEFAULT_ENCODING
+                        ),
+                    }
+                )
+                if plan.path in candidate
+                else plan
                 for plan in declared_files
             )
 
@@ -336,15 +344,18 @@ class FlextInfraUtilitiesRopeClassMove:
             project, candidate, captured=captured, declared_files=virtual_files()
         )
         try:
-            destination_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                composed, cls._resource(composed, root, target)
+            destination_module = (
+                FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                    composed, cls._resource(composed, root, target)
+                )
             )
             for path, text in tuple(candidate.items()):
                 if path == source:
                     continue
                 resource = cls._resource(composed, root, path)
                 original = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    project, cls._resource(project, root, source if path == target else path)
+                    project,
+                    cls._resource(project, root, source if path == target else path),
                 )
                 module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
                     composed, resource
@@ -354,18 +365,29 @@ class FlextInfraUtilitiesRopeClassMove:
                 if declarations(before_scopes) != declarations(current_scopes):
                     msg = f"module relocation changed native annotation scopes: {path}"
                     raise ValueError(msg)
-                positions = {id(scope): index for index, scope in enumerate(current_scopes)}
+                positions = {
+                    id(scope): index for index, scope in enumerate(current_scopes)
+                }
                 if source.stem != target.stem:
                     for scope in before_scopes:
-                        previous, occupied = scope.lookup(source.stem), scope.lookup(target.stem)
-                        if (previous is not None and previous.get_object() is expected
-                                and occupied is not None and occupied.get_object() is not expected):
+                        previous, occupied = (
+                            scope.lookup(source.stem),
+                            scope.lookup(target.stem),
+                        )
+                        if (
+                            previous is not None
+                            and previous.get_object() is expected
+                            and occupied is not None
+                            and occupied.get_object() is not expected
+                        ):
                             msg = f"module rename would capture a consumer binding: {path}:{target.stem}"
                             raise ValueError(msg)
                 required: dict[tuple[int, str], int] = {}
                 binding: str | None = None
 
-                def replacement(scope: p.Infra.RopeScope, expression: str) -> str | None:
+                def replacement(
+                    scope: p.Infra.RopeScope, expression: str
+                ) -> str | None:
                     nonlocal binding
                     index = positions[id(scope)]
                     old_scope = before_scopes[index]
@@ -376,22 +398,48 @@ class FlextInfraUtilitiesRopeClassMove:
                         if old is None or old.get_object() is not expected:
                             continue
                         current = runtime.expression_name(scope, prefix)
-                        if current is not None and current.get_object() is destination_module:
+                        if (
+                            current is not None
+                            and current.get_object() is destination_module
+                        ):
                             required[index, expression] = count
                             return None
-                        _, elected = runtime.import_binding(composed, module, destination, None)
-                        imported, confirmed = runtime.import_binding(composed, module, destination, None)
+                        renamed = runtime.expression_name(scope, target.stem)
+                        if (
+                            count == 1
+                            and prefix == source.stem
+                            and renamed is not None
+                            and renamed.get_object() is destination_module
+                        ):
+                            selected = types.checked_type_reference(
+                                scope, ".".join((target.stem, *parts[count:]))
+                            )
+                            required[index, selected] = 1
+                            return selected
+                        imported, elected = runtime.import_binding(
+                            composed, module, destination, None
+                        )
                         imported_module = runtime.build_string_module(
                             composed, imported, resource=resource
                         )
                         root_name = elected.partition(".")[0]
-                        previous_root = runtime.expression_name(module.get_scope(), root_name)
-                        elected_root = runtime.expression_name(imported_module.get_scope(), root_name)
-                        elected_module = runtime.expression_name(imported_module.get_scope(), elected)
-                        if (confirmed != elected or elected_module is None
-                                or elected_module.get_object() is not destination_module
-                                or (previous_root is not None
-                                    and not runtime.same_name(previous_root, elected_root))):
+                        previous_root = runtime.expression_name(
+                            module.get_scope(), root_name
+                        )
+                        elected_root = runtime.expression_name(
+                            imported_module.get_scope(), root_name
+                        )
+                        elected_module = runtime.expression_name(
+                            imported_module.get_scope(), elected
+                        )
+                        if (
+                            elected_module is None
+                            or elected_module.get_object() is not destination_module
+                            or (
+                                previous_root is not None
+                                and not runtime.same_name(previous_root, elected_root)
+                            )
+                        ):
                             msg = f"occupied native quoted module destination: {path}:{elected}"
                             raise ValueError(msg)
                         selected = types.checked_type_reference(
@@ -405,12 +453,17 @@ class FlextInfraUtilitiesRopeClassMove:
                         return selected
                     return None
 
-                rewritten = types.rewrite_quoted_types(composed, resource, text, replacement)
+                rewritten = types.rewrite_quoted_types(
+                    composed, resource, text, replacement
+                )
                 if binding is not None:
                     rewritten, elected = runtime.import_binding(
                         composed,
-                        runtime.build_string_module(composed, rewritten, resource=resource),
-                        destination, None,
+                        runtime.build_string_module(
+                            composed, rewritten, resource=resource
+                        ),
+                        destination,
+                        None,
                     )
                     if elected != binding:
                         msg = f"quoted module move changed its native import binding: {path}"
@@ -418,13 +471,24 @@ class FlextInfraUtilitiesRopeClassMove:
                 candidate[path] = rewritten
                 if required:
                     checks[path] = required
-                exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(text)
+                exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    text
+                )
                 published = original.get_scope().lookup(source.stem)
-                if (source.stem != target.stem and source.stem in exports
-                        and published is not None and published.get_object() is expected):
-                    candidate[path] = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
-                        candidate[path],
-                        names=[target.stem if name == source.stem else name for name in exports],
+                if (
+                    source.stem != target.stem
+                    and source.stem in exports
+                    and published is not None
+                    and published.get_object() is expected
+                ):
+                    candidate[path] = (
+                        FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+                            candidate[path],
+                            names=[
+                                target.stem if name == source.stem else name
+                                for name in exports
+                            ],
+                        )
                     )
         finally:
             composed.close()
@@ -437,15 +501,21 @@ class FlextInfraUtilitiesRopeClassMove:
             )
             for path, required in checks.items():
                 resource = cls._resource(verified, root, path)
-                module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(verified, resource)
-                positions = {id(scope): index for index, scope in enumerate(scopes(module))}
+                module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                    verified, resource
+                )
+                positions = {
+                    id(scope): index for index, scope in enumerate(scopes(module))
+                }
                 seen: set[tuple[int, str]] = set()
 
                 def validate(scope: p.Infra.RopeScope, expression: str) -> None:
                     key = positions[id(scope)], expression
                     count = required.get(key)
                     if count is not None:
-                        actual = runtime.expression_name(scope, ".".join(expression.split(".")[:count]))
+                        actual = runtime.expression_name(
+                            scope, ".".join(expression.split(".")[:count])
+                        )
                         if actual is None or actual.get_object() is not relocated:
                             msg = f"quoted module reference lost its native identity: {path}:{expression}"
                             raise ValueError(msg)
@@ -453,7 +523,9 @@ class FlextInfraUtilitiesRopeClassMove:
 
                 types.quoted_type_edits(verified, resource, candidate[path], validate)
                 if seen != set(required):
-                    msg = f"module relocation lost original quoted type positions: {path}"
+                    msg = (
+                        f"module relocation lost original quoted type positions: {path}"
+                    )
                     raise ValueError(msg)
         finally:
             verified.close()

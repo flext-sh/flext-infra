@@ -25,6 +25,98 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
 ):
     """Exercise facade rewrites of private imports only through ``u.Infra``."""
 
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize(
+        "assignment",
+        ["Base = Owner", "Base: type[Owner] = Owner"],
+    )
+    def test_rewrites_class_reexports_without_changing_identity(
+        self,
+        tmp_path: Path,
+        *,
+        nested: bool,
+        assignment: str,
+    ) -> None:
+        """Direct and nested facade assignments retain the actual owner class."""
+        naming = TestsFlextInfraFacadeNaming.from_family(
+            "typings",
+            "base",
+            "Sample",
+            "t",
+        )
+        consumer_path, private_import, sources = self._facade_case(tmp_path, naming)
+        package = tmp_path / "flext-sample/src/flext_sample"
+        declaration = (
+            f"    class Sample:\n        {assignment}\n"
+            if nested
+            else f"    {assignment}\n"
+        )
+        sources[package / "typings.py"] = (
+            f"from {naming.private_module} import {naming.private_class} as Owner\n"
+            f"class {naming.root_class}:\n{declaration}"
+            f"t = {naming.root_class}\n"
+        )
+        sources[package / "_typings/base.py"] = (
+            f"class {naming.private_class}:\n    class X:\n        pass\n"
+        )
+        sources[package / "__init__.py"] = "from .typings import t\n"
+        sources[consumer_path] = (
+            f"{private_import}\nowner = {naming.private_class}\n"
+            f"value = {naming.private_class}.X\n"
+        )
+        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
+        reference = "t.Sample.Base" if nested else "t.Base"
+        tm.that(updated, has=f"owner = {reference}")
+        tm.that(updated, has=f"value = {reference}.X")
+        tm.that(updated, lacks=private_import)
+        sources[consumer_path] = updated
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
+        executed = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sys\nfrom runpy import run_path\n"
+                        "sys.path.insert(0, sys.argv[1])\n"
+                        f"from {naming.private_module} import {naming.private_class} as Owner\n"
+                        "consumer = run_path(sys.argv[2])\n"
+                        "assert consumer['owner'] is Owner\n"
+                        "assert consumer['value'] is Owner.X\n"
+                    ),
+                    str(package.parent),
+                    str(consumer_path),
+                ],
+                cwd=tmp_path,
+            ),
+        )
+        tm.ok(u.Cli.process_succeeded(executed.outcome))
+        tm.that(executed.stderr, eq="")
+
+    def test_rejects_ambiguous_class_reexports(self, tmp_path: Path) -> None:
+        """Competing class assignments cannot silently elect a public path."""
+        naming = TestsFlextInfraFacadeNaming.from_family(
+            "typings",
+            "base",
+            "Sample",
+            "t",
+        )
+        consumer_path, private_import, sources = self._facade_case(tmp_path, naming)
+        package = tmp_path / "flext-sample/src/flext_sample"
+        sources[package / "typings.py"] = (
+            f"from {naming.private_module} import {naming.private_class} as Owner\n"
+            f"class {naming.root_class}:\n"
+            "    class Sample:\n        Base = Owner\n        Other = Owner\n"
+            f"t = {naming.root_class}\n"
+        )
+        sources[consumer_path] = f"{private_import}\nowner = {naming.private_class}\n"
+        tm.fail(
+            self._plan(tmp_path, sources, consumer_path, private_import),
+            has="ambiguous public facade references",
+        )
+
     def test_rewires_unique_public_facade_binding(self, tmp_path: Path) -> None:
         """Derive the nested facade path and remove the private import atomically."""
         consumer_path, private_import, sources = self._facade_case(

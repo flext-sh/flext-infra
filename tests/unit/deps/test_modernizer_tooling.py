@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sysconfig
 from copy import deepcopy
 from typing import TYPE_CHECKING
@@ -173,6 +174,50 @@ class TestsFlextInfraDepsModernizerTooling:
         validated = m.Infra.ToolConfigDocument.model_validate(payload)
         for table, key in (("mypy", "mypy_path"), ("pyright", "extraPaths")):
             tm.that(dict(validated.settings[table])[key], eq=paths)
+
+    @staticmethod
+    @pytest.mark.parametrize("relative_to_project", [False, True])
+    def test_member_tooling_paths_use_elected_root_not_process_cwd(
+        tmp_path: Path,
+        *,
+        relative_to_project: bool,
+    ) -> None:
+        """Attached member overlays bind installed typing to their actual root."""
+        root = u.Tests.git_repository(tmp_path, "member-policy")
+        path = os.path.relpath(
+            f"{sysconfig.get_path('purelib')}/vendor-stubs",
+            start=root if relative_to_project else os.getcwd(),
+        )
+        declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
+        declaration.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                declaration,
+                {
+                    "Infra": {
+                        "tooling": {
+                            "tools": {
+                                "pyrefly": {
+                                    "path-rules": {
+                                        "project-shared-search-paths": [path]
+                                    },
+                                }
+                            }
+                        }
+                    },
+                },
+            )
+        )
+        loaded = u.Infra.load_tooling_inputs(root)
+        if relative_to_project:
+            tm.that(
+                tm.ok(
+                    loaded
+                ).document.tools.pyrefly.path_rules.project_shared_search_paths,
+                eq=(path,),
+            )
+        else:
+            tm.fail(loaded, has="Local stub search roots")
 
     @staticmethod
     @pytest.mark.parametrize(

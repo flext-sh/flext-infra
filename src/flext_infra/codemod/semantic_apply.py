@@ -105,7 +105,12 @@ class FlextInfraCodemodSemanticApply:
             ] != u.Infra.import_project_roots(root)[0].resolve():
                 return r[str].fail("rename plan output belongs to another workspace")
         content = planned.model_dump_json(indent=2, round_trip=True)
-        if m.Infra.SemanticRenamePlan.model_validate_json(content) != planned:
+        if (
+            m.Infra.SemanticRenamePlan.model_validate_json(content).model_dump_json(
+                indent=2, round_trip=True
+            )
+            != content
+        ):
             return r[str].fail("rename artifact did not round-trip exactly")
         return r[str].ok(value=content)
 

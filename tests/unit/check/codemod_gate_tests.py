@@ -244,6 +244,39 @@ class TestsFlextInfraCodemodGate:
         for relative, content in owned.items():
             tm.that((project / relative).read_bytes(), eq=content)
 
+    def test_runtime_typing_contracts_are_not_stub_paths(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """Protocol, ABC and overload ellipses in .py remain legitimate declarations."""
+        project = self._project(tmp_path, installed_dependency_path)
+        (project / "typings.py").write_text(
+            "from abc import ABC, abstractmethod\n"
+            "from typing import Protocol, overload\n"
+            "class Port(Protocol):\n"
+            "    def load(self) -> bytes: ...\n"
+            "class Base(ABC):\n"
+            "    @abstractmethod\n"
+            "    def load(self) -> bytes: ...\n"
+            "@overload\n"
+            "def identity(value: int) -> int: ...\n"
+            "@overload\n"
+            "def identity(value: str) -> str: ...\n"
+            "def identity(value: int | str) -> int | str:\n"
+            "    return value\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (project / "py.typed").write_bytes(b"")
+        gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        tm.that(any(issue.code == "ban-stub-file" for issue in gate.issues), eq=False)
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                project, fix=False, selection=("ban-stub-file",)
+            )
+        )
+        tm.that(report.findings, eq=0)
+
     def test_unmanaged_git_submodule_does_not_hide_owned_sibling(
         self,
         tmp_path: Path,

@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import c, m, u
 from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles, FlextInfraMisePublication
 from tests import tm
 
 
@@ -182,23 +182,78 @@ class TestsFlextInfraCodegenFilePlanState:
         tm.that(tuple(tmp_path.iterdir()), eq=(target,))
 
     @staticmethod
-    def test_stub_retirement_uses_the_real_absent_state(tmp_path: Path) -> None:
+    @pytest.mark.parametrize("route", ["plan", "staged", "raw"])
+    def test_stub_retirement_uses_the_real_absent_state(
+        tmp_path: Path, route: str
+    ) -> None:
         """The publication law permits guarded removal, not empty stub replacement."""
         target = tmp_path / "boundary.pyi"
         target.write_bytes(b"value: int\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         plan = m.Infra.CodegenFilePlan(
             project=tmp_path,
             path=target,
-            before=tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            before=before,
             desired_content=None,
             desired_mode=None,
         )
-        tm.ok(
-            FlextInfraMisePublication.publish_file_plan(
-                plan, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+        if route == "plan":
+            tm.ok(
+                FlextInfraMisePublication.publish_file_plan(
+                    plan, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+                )
             )
-        )
+        else:
+            staged = m.Infra.CodegenStagedFile(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                project=tmp_path,
+                before=before,
+                replacement=None,
+            )
+            if route == "staged":
+                tm.ok(FlextInfraMisePublication.publish((staged,)))
+            else:
+                tm.ok(FlextInfraMiseArtifactsFiles.write_publication(staged))
         tm.that(target.exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("copied", [False, True])
+    @pytest.mark.parametrize("content", [b"", b"value: int\n"])
+    def test_raw_staged_publication_cannot_bypass_the_plan_law(
+        tmp_path: Path,
+        content: bytes,
+        *,
+        copied: bool,
+    ) -> None:
+        """Raw stages and copied admission receipts cannot authorize stub bytes."""
+        target = tmp_path / "boundary.pyi"
+        target.write_bytes(b"original\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        replacement = tmp_path / "replacement"
+        replacement.write_bytes(content)
+        staged = m.Infra.CodegenStagedFile(
+            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            project=tmp_path,
+            before=tm.ok(u.Cli.atomic_read_binary_file_state(tmp_path / "source.py"))
+            if copied
+            else before,
+            replacement=tm.ok(
+                u.Cli.atomic_read_binary_file_state(replacement, required=True)
+            ),
+        )
+        if copied:
+            staged = staged.model_copy(update={"before": before})
+        admission = m.Infra.CodegenPhaseOutcome().model_copy(
+            update={"published_files": (staged,)},
+        )
+        for result in (
+            FlextInfraMisePublication.publish((staged,)),
+            FlextInfraMisePublication.publish((staged,), batch_admission=admission),
+            FlextInfraMiseArtifactsFiles.write_publication(staged),
+        ):
+            tm.fail(result, has=".pyi publication is forbidden")
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+        tm.that(replacement.read_bytes(), eq=content)
 
     @staticmethod
     @pytest.mark.parametrize("name", ["py.typed", "typings.py", "protocols.py"])
