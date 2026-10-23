@@ -294,14 +294,15 @@ class FlextInfraUtilitiesProjectDiscovery(
         refactor_config: m.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
-        """Return only governed handwritten Python surfaces as scan targets.
+        """Return governed Python sources and owned stub-policy paths.
 
         Configured roots cannot hide active Python sources. Enumerating files
         instead of passing ``.`` keeps foreign repositories, hidden histories,
-        and the artifact SSOT's ignored trees outside the rewrite inventory.
+        and artifact outputs outside the rewrite inventory. Generated or retired
+        owned typing paths remain detection inputs, never rewrite candidates.
 
         Returns:
-            Only governed handwritten Python surfaces as scan targets.
+            Governed source and path-policy targets.
 
         Raises:
             ValueError: If a requested source is outside the governed inventory.
@@ -321,11 +322,9 @@ class FlextInfraUtilitiesProjectDiscovery(
                 project,
                 workspace_excluded_top_dirs=frozenset(),
                 source_project=source_project,
+                owned_path_admission=True,
             )
             if not cls._is_nonparticipant(path, resolved_root, nonparticipants)
-            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                resolved_root, path
-            )
         }
         if source_files is not None:
             selected = {
@@ -518,6 +517,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         workspace_excluded_top_dirs: frozenset[str],
         source_project: p.Infra.RopeProject | None = None,
+        owned_path_admission: bool = False,
     ) -> t.SequenceOf[Path]:
         """Enumerate sources once without crossing project or artifact boundaries.
 
@@ -533,6 +533,24 @@ class FlextInfraUtilitiesProjectDiscovery(
         ):
             return ()
         skip_dirs = cls.excluded_parts()
+        owned_artifacts = (
+            frozenset(
+                artifact.name
+                for artifact in config.Infra.codegen.artifacts
+                if artifact.generated_source or artifact.retired_typing_root
+            )
+            if owned_path_admission
+            else frozenset()
+        )
+        retired_roots = (
+            frozenset(
+                project_dir / artifact.name
+                for artifact in config.Infra.codegen.artifacts
+                if artifact.retired_typing_root
+            )
+            if owned_path_admission
+            else frozenset()
+        )
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
         )
@@ -545,12 +563,15 @@ class FlextInfraUtilitiesProjectDiscovery(
                 path.resolve()
                 for path in cls._walk_python_files(
                     project_dir,
-                    skip_dirs,
+                    skip_dirs - owned_artifacts,
                     excluded_paths=excluded_paths,
                     source_project=source_project,
+                    retired_roots=retired_roots,
                 )
-                if not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    project_dir, path
+                if (owned_path_admission and path.suffix == ".pyi")
+                or not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    project_dir,
+                    path,
                 )
             })
         )
@@ -562,6 +583,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         excluded_paths: frozenset[Path] = frozenset(),
         source_project: p.Infra.RopeProject | None = None,
+        retired_roots: frozenset[Path] = frozenset(),
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
 
@@ -589,11 +611,14 @@ class FlextInfraUtilitiesProjectDiscovery(
                 and (
                     not (parent / name).is_symlink() if source_project is None else True
                 )
-                and not (
-                    (parent / name / c.PYPROJECT_FILENAME).is_file()
-                    if source_project is None
-                    else source_project.source_query(
-                        parent / name / c.PYPROJECT_FILENAME, "isfile"
+                and (
+                    any((parent / name).is_relative_to(root) for root in retired_roots)
+                    or not (
+                        (parent / name / c.PYPROJECT_FILENAME).is_file()
+                        if source_project is None
+                        else source_project.source_query(
+                            parent / name / c.PYPROJECT_FILENAME, "isfile"
+                        )
                     )
                 )
                 and not (

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import cli
@@ -23,128 +22,11 @@ from flext_infra.refactor import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
 from flext_infra.services import FlextInfraCliModProgress
+from flext_infra.transformers import FlextInfraSemanticPublication
 
 
 class FlextInfraRefactorRoutes:
     """Own the complete refactor command tuple."""
-
-    @staticmethod
-    def _authenticated_rename_state(
-        root: Path,
-        output: Path,
-        target: Path,
-    ) -> p.Result[m.Cli.AtomicFileState]:
-        """Authenticate the planned artifact destination inside its workspace.
-
-        Args:
-            root: Resolved governed workspace root.
-            output: Workspace-relative artifact destination.
-            target: Resolved artifact destination.
-
-        Returns:
-            The observed atomic file state, or the first containment failure.
-
-        """
-        if not target.is_relative_to(root):
-            return r[m.Cli.AtomicFileState].fail(
-                "rename plan output escapes workspace",
-            )
-        return u.Cli.atomic_read_binary_file_state(root / output)
-
-    @staticmethod
-    def _planned_rename_plan(
-        root: Path,
-        selections: m.Infra.SemanticRenameSelections,
-    ) -> p.Result[m.Infra.SemanticRenamePlan]:
-        """Build the inventory-derived rename plan inside a Rope workspace.
-
-        Args:
-            root: Resolved governed workspace root.
-            selections: Explicit domain rename decisions.
-
-        Returns:
-            The planned artifact, or the planning failure.
-
-        """
-        with infra.rope_workspace(root) as workspace:
-            planned = FlextInfraCodemodSemanticApply.build_rename_plan(
-                root,
-                workspace,
-                selections,
-            )
-        if planned.failure:
-            return r[m.Infra.SemanticRenamePlan].from_failure(planned)
-        return planned
-
-    @staticmethod
-    def _validated_rename_content(
-        before: m.Cli.AtomicFileState,
-        planned: m.Infra.SemanticRenamePlan,
-        target: Path,
-        root: Path,
-    ) -> p.Result[str]:
-        """Reject aliased outputs, foreign workspaces and non-round-trip content.
-
-        Args:
-            before: Observed atomic state of the artifact destination.
-            planned: Freshly built rename plan.
-            target: Resolved artifact destination.
-            root: Resolved governed workspace root.
-
-        Returns:
-            The exact serialized artifact content, or the first conflict failure.
-
-        """
-        if any(
-            state.path == target
-            or (
-                before.inode is not None
-                and (state.device, state.inode) == (before.device, before.inode)
-            )
-            for state in planned.candidate.inputs
-        ):
-            return r[str].fail(
-                "rename plan output aliases a governed candidate input",
-            )
-        if before.content is not None:
-            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
-            if (previous.candidate.workspaces or (previous.candidate.workspace,))[
-                0
-            ] != u.Infra.import_project_roots(root)[0].resolve():
-                return r[str].fail(
-                    "rename plan output belongs to another workspace",
-                )
-        content = planned.model_dump_json(indent=2, round_trip=True)
-        if m.Infra.SemanticRenamePlan.model_validate_json(content) != planned:
-            return r[str].fail(
-                "rename artifact did not round-trip exactly",
-            )
-        return r[str].ok(value=content)
-
-    @staticmethod
-    def _published_rename_content(
-        before: m.Cli.AtomicFileState,
-        content: str,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Authenticate candidate inputs, then write the artifact atomically.
-
-        Args:
-            before: Observed atomic state of the artifact destination.
-            content: Validated serialized artifact content.
-            inputs: Governed candidate inputs requiring authentication.
-
-        Returns:
-            Whether the artifact was published, or the first failure.
-
-        """
-        authenticated = u.Cli.atomic_verify_binary_file_states(inputs)
-        if authenticated.failure:
-            return r[bool].from_failure(authenticated)
-        written = u.Cli.atomic_write_text_file_guarded(before, content + "\n")
-        if written.failure:
-            return r[bool].from_failure(written)
-        return r[bool].ok(value=True)
 
     @staticmethod
     def execute_rename_plan(
@@ -156,36 +38,12 @@ class FlextInfraRefactorRoutes:
             The first planning/write failure or the generated artifact receipt.
 
         """
-        root = request.repository_root.resolve()
-        target = (root / request.output).resolve()
-        observed = FlextInfraRefactorRoutes._authenticated_rename_state(
-            root, request.output, target
+        planned = FlextInfraCodemodSemanticApply.publish_rename_plan(
+            request, infra.rope_workspace
         )
-        if observed.failure:
-            return r[t.Cli.ResultValue].from_failure(observed)
-        selections = m.Infra.SemanticRenameSelections.model_validate_json(
-            request.decisions
-        )
-        planned = FlextInfraRefactorRoutes._planned_rename_plan(root, selections)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
-        content = FlextInfraRefactorRoutes._validated_rename_content(
-            observed.value, planned.value, target, root
-        )
-        if content.failure:
-            return r[t.Cli.ResultValue].from_failure(content)
-        published = FlextInfraRefactorRoutes._published_rename_content(
-            observed.value,
-            content.value,
-            m.Infra.CodemodBindingSnapshot(
-                states=(
-                    *planned.value.candidate.inputs,
-                    *planned.value.source_states,
-                )
-            ).states,
-        )
-        if published.failure:
-            return r[t.Cli.ResultValue].from_failure(published)
+        target = (request.repository_root.resolve() / request.output).resolve()
         cli.display_text(
             f"semantic rename plan: {target} files={len(planned.value.edits)}"
         )
@@ -220,13 +78,63 @@ class FlextInfraRefactorRoutes:
         Returns:
             The completed semantic relocation result.
 
+        Raises:
+            ValueError: If exact-file facts or effects escape the declared repository.
+
         """
-        with infra.rope_workspace(request.repository_root) as workspace:
-            target = u.Infra.move_module(
-                workspace.rope_project,
-                request.source_file,
-                request.destination_directory,
-            )
+        root = request.repository_root.resolve()
+        with infra.rope_workspace(root) as workspace:
+            if request.destination_file is not None:
+                if workspace.rope_repository_root.resolve() != root:
+                    msg = "exact module move requires the native repository owner root"
+                    raise ValueError(msg)
+                source = (root / request.source_file).resolve()
+                target = (root / request.destination_file).resolve()
+                if not source.is_relative_to(root) or not target.is_relative_to(root):
+                    msg = "exact module move owners escape the declared repository"
+                    raise ValueError(msg)
+                states = tuple(
+                    u.Cli.atomic_read_binary_file_state(
+                        resource.real_path, required=True
+                    ).unwrap()
+                    for resource in workspace.rope_project.get_python_files()
+                )
+                plans = u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    sources={
+                        state.path: state.content.decode(c.DEFAULT_ENCODING)
+                        for state in states
+                        if state.content is not None
+                    },
+                    source_states=states,
+                )
+                if any(not plan.path.is_relative_to(root) for plan in plans):
+                    msg = "exact module move effects escape the declared repository"
+                    raise ValueError(msg)
+                published = (
+                    FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+                        plans,
+                        repository_root=root,
+                        options=m.Infra.SemanticPublicationOptions(
+                            projection_roots=(root,),
+                            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                        ),
+                    )
+                )
+                if published.failure:
+                    return r[t.Cli.ResultValue].from_failure(published)
+            elif request.destination_directory is not None:
+                target = u.Infra.move_module(
+                    workspace.rope_project,
+                    request.source_file,
+                    request.destination_directory,
+                )
+            else:
+                return r[t.Cli.ResultValue].fail(
+                    "module move requires one validated destination"
+                )
         cli.display_text(str(target))
         return r[t.Cli.ResultValue].ok(value=True)
 
@@ -260,21 +168,6 @@ class FlextInfraRefactorRoutes:
 
         """
         return infra.mod(request, FlextInfraCliModProgress())
-
-    @staticmethod
-    def execute_protocol_models(
-        request: p.Infra.CommandPayloadContext,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Project model contracts through the public API's bound capabilities.
-
-        Returns:
-            The original failure or the CLI's successful completion marker.
-
-        """
-        projected = infra.codegen_protocol_models(request)
-        if projected.failure:
-            return r[t.Cli.ResultValue].from_failure(projected)
-        return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod
     def execute_mod_text(
@@ -357,15 +250,6 @@ class FlextInfraRefactorRoutes:
             ),
             model_cls=FlextInfraWrapperRootNamespaceRefactor,
             handler=FlextInfraWrapperRootNamespaceRefactor.execute,
-        ),
-        m.Cli.ResultCommandRoute(
-            name="protocol-models",
-            help_text=(
-                "Assemble the member's generated structural protocols from "
-                "its validated models; dry-run reports drift"
-            ),
-            model_cls=m.Infra.CommandContext,
-            handler=execute_protocol_models,
         ),
         m.Cli.ResultCommandRoute(
             name="mod",

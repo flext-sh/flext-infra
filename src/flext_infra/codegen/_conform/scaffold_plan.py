@@ -383,19 +383,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 return result_type.from_failure(inputs)
         projected.update((plan.path, plan) for plan in exports.value.files)
         source_states = inputs.value
-        if contract.custom:
-            project = workspace.project
-            if project is None:
-                return result_type.fail(
-                    f"scaffold workspace has no project metadata: {workspace.name}"
-                )
-            protocols = self._existing_protocol_sources(
-                root, project, (tuple(projected.values()), source_states)
-            )
-            if protocols.failure:
-                return result_type.from_failure(protocols)
-            projected.update((plan.path, plan) for plan in protocols.value[0])
-            source_states = protocols.value[1]
         planned = tuple(projected.values())
         with self._source_view(
             root, source_states=source_states, declared_files=planned

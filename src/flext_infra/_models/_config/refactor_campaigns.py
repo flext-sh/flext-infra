@@ -127,6 +127,20 @@ class FlextInfraConfigModelsRefactorCampaigns:
             Path | None,
             m.Field(description="Explicit workspace-relative semantic rename artifact"),
         ] = None
+        semantic_decisions: Annotated[
+            Path | None,
+            m.Field(
+                description="Workspace-relative SemanticRenameSelections JSON input"
+            ),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def validate_semantic_decisions(self) -> Self:
+            """Require an explicit artifact destination for declared decisions."""
+            if self.semantic_decisions is not None and self.semantic_plan is None:
+                msg = "semantic_decisions requires semantic_plan"
+                raise ValueError(msg)
+            return self
 
 
 __all__: list[str] = ["FlextInfraConfigModelsRefactorCampaigns"]

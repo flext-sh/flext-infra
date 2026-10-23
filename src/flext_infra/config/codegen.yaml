@@ -641,15 +641,23 @@ Infra:
       - { verb: gen, scope: root, contexts: [ local, ci ] }
       - { verb: upg, scope: root, contexts: [ local ] }
       - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: mod, scope: root, contexts: [ local, ci ] }
+      # Docs also generate, repair and format; finish those effects before QA.
+      - { verb: docs, scope: each, contexts: [ local, ci ] }
+      - { verb: fix, scope: root, contexts: [ local, ci ] }
+      - { verb: fmt, scope: root, contexts: [ local, ci ] }
       - { verb: gen, scope: root, contexts: [ local, ci ] }
+      # Repeated mutation probes precede runtime/tests on the final candidate.
       - { verb: mod, scope: root, contexts: [ local, ci ] }
       - { verb: fix, scope: root, contexts: [ local, ci ] }
       - { verb: fmt, scope: root, contexts: [ local, ci ] }
-      - { verb: check, scope: each, contexts: [ local, ci ] }
-      - { verb: test, scope: each, contexts: [ local, ci ] }
-      - { verb: build, scope: each, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
       - { verb: examples, scope: each, contexts: [ local, ci ] }
-      - { verb: docs, scope: each, contexts: [ local, ci ] }
+      - { verb: check, scope: each, contexts: [ local, ci ] }
+      - { verb: smells, scope: each, contexts: [ local ] }
+      - { verb: tests, scope: each, contexts: [ local, ci ] }
+      - { verb: build, scope: each, contexts: [ local, ci ] }
       - { verb: status, scope: each, contexts: [ local, ci ] }
       - { verb: audit, scope: each, contexts: [ local, ci ] }
       - { verb: verify-clean, scope: each, contexts: [ local, ci ] }
@@ -927,6 +935,9 @@ Infra:
     - { name: build, source_scan_ignore: true, analysis_exclude: true }
     - { name: dist, source_scan_ignore: true, analysis_exclude: true }
     - { name: node_modules, source_scan_ignore: true, analysis_exclude: true }
+    # Retired first-party typing distributions remain owned path-policy inputs,
+    # never an analyzer search root or a source-scan exemption for .pyi files.
+    - { name: typings, source_scan_ignore: true, retired_typing_root: true }
     # protoc-generated wire-protocol modules ("DO NOT EDIT"): tracked and
     # imported as a regular package, never first-party code. generated_source
     # is the one key every analyzer exclusion, scan, and init derives from.

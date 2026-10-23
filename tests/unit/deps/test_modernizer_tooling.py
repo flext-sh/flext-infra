@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sysconfig
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -50,6 +51,128 @@ class TestsFlextInfraDepsModernizerTooling:
             tm.that(type(pairs), eq=tuple)
             for pair in pairs:
                 tm.that(type(pair), eq=tuple)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("table", "key", "value"),
+        [
+            ("pyright", "stubPath", "local_typing"),
+            ("pyright", "options", {"stubPath": "local_typing"}),
+            ("mypy", "custom_typeshed_dir", "local_typing"),
+            ("pyrefly", "search-path", ["typings/vendor"]),
+            ("stubgen", "output", "local_typing"),
+        ],
+    )
+    def test_stub_options_are_rejected_through_real_tooling_layers(
+        tmp_path: Path,
+        table: str,
+        key: str,
+        value: t.JsonValue,
+    ) -> None:
+        """Project overlays cannot restore a local root, producer or nested override."""
+        root = u.Tests.git_repository(tmp_path, "stub-policy")
+        path = root / c.CONFIG_DIR_NAME / "tooling.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {"tooling": {"settings": {table: [[key, value]]}}},
+                },
+            )
+        )
+        tm.fail(u.Infra.load_tooling_inputs(root), has="Local stub")
+
+    @staticmethod
+    def test_stub_options_cannot_be_claimed_by_derived_settings(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Moving a forbidden native key to a derived layer grants no permission."""
+        payload = {
+            **tool_config_document.model_dump(
+                by_alias=True, exclude_computed_fields=True
+            ),
+            "derived-settings": {
+                **tool_config_document.derived_settings,
+                "pyright": (
+                    *tool_config_document.derived_settings["pyright"],
+                    "stubPath",
+                ),
+            },
+        }
+        with pytest.raises(m.ValidationError, match="Local stub"):
+            m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "path", ["typings/vendor", "vendor-stubs", "stubs", "src/site-packages/stubs"]
+    )
+    def test_topology_cannot_reintroduce_local_stub_paths(
+        tool_config_document: m.Infra.ToolConfigDocument,
+        path: str,
+    ) -> None:
+        """Derived native search paths obey the same law as native option pairs."""
+        tools = tool_config_document.tools
+        payload = {
+            **tool_config_document.model_dump(
+                by_alias=True, exclude_computed_fields=True
+            ),
+            "tools": {
+                **tools.model_dump(by_alias=True, exclude_computed_fields=True),
+                "pyrefly": {
+                    **tools.pyrefly.model_dump(
+                        by_alias=True, exclude_computed_fields=True
+                    ),
+                    "path-rules": {
+                        **tools.pyrefly.path_rules.model_dump(by_alias=True),
+                        "project-shared-search-paths": (path,),
+                    },
+                },
+            },
+        }
+        with pytest.raises(m.ValidationError, match="Local stub search roots"):
+            m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @staticmethod
+    def test_source_paths_and_installed_dependency_typing_are_preserved(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Search-path option names are not banned, nor are installed third-party stubs."""
+        paths = [
+            "src",
+            "../member/src",
+            "src/pkg/_typings",
+            f"{sysconfig.get_path('purelib')}/vendor-stubs",
+        ]
+        payload = {
+            **tool_config_document.model_dump(
+                by_alias=True, exclude_computed_fields=True
+            ),
+            "derived-settings": {
+                **tool_config_document.derived_settings,
+                "mypy": tuple(
+                    key
+                    for key in tool_config_document.derived_settings["mypy"]
+                    if key != "mypy_path"
+                ),
+                "pyright": tuple(
+                    key
+                    for key in tool_config_document.derived_settings["pyright"]
+                    if key != "extraPaths"
+                ),
+            },
+            "settings": {
+                **tool_config_document.settings,
+                "mypy": (*tool_config_document.settings["mypy"], ("mypy_path", paths)),
+                "pyright": (
+                    *tool_config_document.settings["pyright"],
+                    ("extraPaths", paths),
+                ),
+            },
+        }
+        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        for table, key in (("mypy", "mypy_path"), ("pyright", "extraPaths")):
+            tm.that(dict(validated.settings[table])[key], eq=paths)
 
     @staticmethod
     @pytest.mark.parametrize(

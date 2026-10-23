@@ -47,6 +47,9 @@ class FlextInfraMisePublication:
             The resulting ``p.Result[bool]``.
 
         """
+        admitted = u.Infra.codegen_file_publication_admission((plan,))
+        if admitted.failure:
+            return admitted
         dependencies = cls._source_prerequisites(
             plan.source_states,
             {},
@@ -212,6 +215,9 @@ class FlextInfraMisePublication:
 
         """
         result_type = r[m.Infra.CodegenPhaseOutcome]
+        admitted_plans = u.Infra.codegen_file_publication_admission(analysis.files)
+        if admitted_plans.failure:
+            return result_type.from_failure(admitted_plans)
         if producer is not None:
             bound = FlextInfraMisePublication._admission_gates(
                 analysis, prior_publications, producer=producer
@@ -474,6 +480,9 @@ class FlextInfraMisePublication:
 
         """
         result_type = r[m.Infra.CodegenPhaseOutcome]
+        admitted_plans = u.Infra.codegen_file_publication_admission(publications)
+        if admitted_plans.failure:
+            return result_type.from_failure(admitted_plans)
         if batch_admission is not None:
             validated = FlextInfraMisePublication._validated_batch_admission(
                 publications,

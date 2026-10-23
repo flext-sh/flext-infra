@@ -13,6 +13,7 @@ import sys
 import time
 from collections.abc import Generator
 from contextlib import contextmanager
+from functools import partial
 from itertools import islice
 from typing import TYPE_CHECKING
 
@@ -31,6 +32,44 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
+
+    @staticmethod
+    def codegen_file_publication_admission(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan | m.Infra.CodegenStagedFile],
+    ) -> p.Result[bool]:
+        """Reapply the model's publication law to unchecked copies before effects.
+
+        Returns:
+            The first invalid plan or the complete admission.
+
+        """
+        for plan in plans:
+            if isinstance(plan, m.Infra.CodegenStagedFile):
+                replacement = plan.replacement
+                validated = r[m.Infra.CodegenFilePlan].create_from_callable(
+                    partial(
+                        m.Infra.CodegenFilePlan,
+                        project=plan.project,
+                        path=plan.before.path,
+                        before=plan.before,
+                        desired_content=None
+                        if replacement is None
+                        else replacement.content,
+                        desired_mode=None if replacement is None else replacement.mode,
+                        tracking=plan.tracking,
+                        index_before=plan.index_before,
+                        tracking_dependencies=plan.tracking_dependencies,
+                    ),
+                )
+            else:
+                validated = r[m.Infra.CodegenFilePlan].create_from_callable(
+                    partial(
+                        m.Infra.CodegenFilePlan.validate_publication_identity, plan
+                    ),
+                )
+            if validated.failure:
+                return r[bool].from_failure(validated)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def unique_states(

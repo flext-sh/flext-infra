@@ -30,6 +30,86 @@ class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
+    def publish_rename_plan(
+        cls,
+        request: m.Infra.SemanticRenamePlanCommand,
+        workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
+    ) -> p.Result[m.Infra.SemanticRenamePlan]:
+        """Plan, authenticate and atomically publish an inventory-derived artifact.
+
+        Returns:
+            The published plan, or the original containment, planning or write failure.
+
+        """
+        root = request.repository_root.resolve()
+        target = (root / request.output).resolve()
+        if not target.is_relative_to(root):
+            return r[m.Infra.SemanticRenamePlan].fail(
+                "rename plan output escapes workspace"
+            )
+        observed = u.Cli.atomic_read_binary_file_state(root / request.output)
+        if observed.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(observed)
+        selections = m.Infra.SemanticRenameSelections.model_validate_json(
+            request.decisions
+        )
+        with workspace_factory(root, None) as workspace:
+            planned = cls.build_rename_plan(root, workspace, selections)
+        if planned.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(planned)
+        content = cls._validated_rename_content(
+            observed.value, planned.value, target, root
+        )
+        if content.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(content)
+        authenticated = u.Cli.atomic_verify_binary_file_states(
+            m.Infra.CodemodBindingSnapshot(
+                states=(*planned.value.candidate.inputs, *planned.value.source_states)
+            ).states
+        )
+        if authenticated.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(authenticated)
+        written = u.Cli.atomic_write_text_file_guarded(
+            observed.value, content.value + "\n"
+        )
+        if written.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(written)
+        return planned
+
+    @staticmethod
+    def _validated_rename_content(
+        before: m.Cli.AtomicFileState,
+        planned: m.Infra.SemanticRenamePlan,
+        target: Path,
+        root: Path,
+    ) -> p.Result[str]:
+        """Reject input aliases, foreign artifacts and non-round-trip content.
+
+        Returns:
+            The exact serialized artifact, or its first authentication failure.
+
+        """
+        if any(
+            state.path == target
+            or (
+                before.inode is not None
+                and (state.device, state.inode) == (before.device, before.inode)
+            )
+            for state in planned.candidate.inputs
+        ):
+            return r[str].fail("rename plan output aliases a governed candidate input")
+        if before.content is not None:
+            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
+            if (previous.candidate.workspaces or (previous.candidate.workspace,))[
+                0
+            ] != u.Infra.import_project_roots(root)[0].resolve():
+                return r[str].fail("rename plan output belongs to another workspace")
+        content = planned.model_dump_json(indent=2, round_trip=True)
+        if m.Infra.SemanticRenamePlan.model_validate_json(content) != planned:
+            return r[str].fail("rename artifact did not round-trip exactly")
+        return r[str].ok(value=content)
+
+    @classmethod
     def build_rename_plan(
         cls,
         root: Path,
@@ -323,11 +403,15 @@ class FlextInfraCodemodSemanticApply:
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             for path in original
         )
-        if any(
-            state.content != original[state.path].encode(c.DEFAULT_ENCODING)
+        changed = tuple(
+            str(state.path)
             for state in inputs
-        ):
-            return result_type.fail("rename inventory changed during capture")
+            if state.content != original[state.path].encode(c.DEFAULT_ENCODING)
+        )
+        if changed:
+            return result_type.fail(
+                "rename inventory changed during capture: " + ", ".join(changed)
+            )
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},

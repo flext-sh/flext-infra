@@ -318,9 +318,20 @@ class FlextInfraRenameSymbols:
             msg = f"native module rename escapes authenticated inventory: {path}"
             raise ValueError(msg)
         destination = ".".join((*item.module_name.split(".")[:-1], replacement))
-        if producer.find_module(destination) is not None:
-            msg = f"native module destination is occupied: {destination}"
-            raise ValueError(msg)
+        occupied = producer.find_module(destination)
+        if occupied is not None:
+            occupied_path = Path(occupied.real_path).resolve()
+            if (
+                not occupied.is_folder()
+                or any(source.is_relative_to(occupied_path) for source in sources)
+                or any(
+                    name.endswith((".py", ".pyi"))
+                    for _, _, files in producer.source_walk(occupied_path)
+                    for name in files
+                )
+            ):
+                msg = f"native module destination is occupied: {destination}"
+                raise ValueError(msg)
         return path.parent if path.name == c.Infra.INIT_PY else path
 
     @classmethod

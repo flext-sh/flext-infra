@@ -867,9 +867,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         project: p.Infra.RopeProject,
         module: p.Infra.RopeParsedModule,
         module_name: str,
-        name: str,
+        name: str | None,
     ) -> t.Pair[str, str]:
         """Plan an import and use the expression elected by Rope's import owner.
+
+        ``name=None`` elects the module binding rather than a member binding.
 
         Returns:
             The resulting ``t.Pair[str, str]``.

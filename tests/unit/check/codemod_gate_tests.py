@@ -6,18 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
 from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.cli import main
+from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 from tests import c, m, t, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraCodemodGate:
@@ -183,6 +181,68 @@ class TestsFlextInfraCodemodGate:
 
         tm.that(execution.result.passed, eq=True, msg=str(execution.issues))
         tm.that(execution.issues, empty=True)
+
+    def test_owned_stub_paths_share_mod_and_check_admission(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """Empty, invalid, ignored and generated stubs fail without an AST match."""
+        project = self._project(tmp_path, installed_dependency_path)
+        retired = next(
+            artifact.name
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.retired_typing_root
+        )
+        generated = config.Infra.codegen.generated_sources[0]
+        owned = {
+            "root.pyi": b"",
+            "tests/boundary.pyi": b"invalid [\n",
+            "examples/boundary.pyi": b"def load() -> bytes: ...\n",
+            "scripts/boundary.pyi": f"{c.Infra.AUTOGEN_HEADERS[0]}\n".encode(),
+            "infra/contracts/boundary.pyi": b"\xff\n",
+            f"src/pkg/{generated}/boundary.pyi": b"",
+            f"{retired}/owned-stubs/package/__init__.pyi": b"",
+        }
+        excluded = (
+            ".venv/lib/site-packages/dependency/__init__.pyi",
+            f"{retired}/foreign/__init__.pyi",
+            "foreign/__init__.pyi",
+        )
+        for relative, content in owned.items():
+            target = project / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        for relative in excluded:
+            target = project / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"")
+        for root in (project / retired / "foreign", project / "foreign"):
+            (root / c.Infra.GIT_DIR).mkdir()
+        (project / retired / "owned-stubs" / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "owned-stubs"\nversion = "1.0.0"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        observed = {
+            Path(issue.file).as_posix()
+            for issue in gate.issues
+            if issue.code == "ban-stub-file"
+        }
+        tm.that(observed, eq=set(owned))
+        tm.fail(gate.result.passed)
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                project, fix=False, selection=("ban-stub-file",)
+            )
+        )
+        tm.that({entry.file.as_posix() for entry in report.entries}, eq=set(owned))
+        tm.that(report.detection_only, eq=len(owned))
+        tm.that(report.actionable, eq=0)
+        tm.ok(all(entry.origin == "owned-path" for entry in report.entries))
+        tm.ok(all(entry.source_state is not None for entry in report.entries))
+        for relative, content in owned.items():
+            tm.that((project / relative).read_bytes(), eq=content)
 
     def test_unmanaged_git_submodule_does_not_hide_owned_sibling(
         self,
@@ -393,17 +453,10 @@ class TestsFlextInfraCodemodGate:
         try:
             with pytest.raises(PermissionError):
                 tuple(blocked.iterdir())
-            execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+            with pytest.raises(PermissionError):
+                u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
         finally:
             blocked.chmod(original_mode)
-
-        tm.fail(execution.result.passed)
-        tm.that(
-            any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
-            eq=True,
-        )
-        tm.that(execution.raw_output, has="ERROR:")
-        tm.that(execution.raw_output, has="error(s) found in code")
 
     @staticmethod
     @pytest.mark.parametrize("payload", ["", "[", "{}", "[{}]", "[null]"])

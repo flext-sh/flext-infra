@@ -195,3 +195,9 @@ runtime acceptance receipts.
 
 The binding behavior follows Rope's documented
 [restructuring wildcard contract](https://github.com/python-rope/rope/blob/master/docs/overview.rst#restructurings).
+The behavioral restructuring class inherits the installed upstream `Restructure`
+directly, without a local SDK re-export or typing stub. Its native change-computation
+hook admits occurrences and counts matches; its native import hook reuses existing
+bindings without replacing their resource or source identities. Consumer-facing
+`p.Infra.RopeRestructure` and `p.Infra.RopeChangeComputer` remain capability contracts,
+not replacement implementations of those hooks.

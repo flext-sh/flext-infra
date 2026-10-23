@@ -345,6 +345,89 @@ class TestsFlextInfraSemanticPublicationTransactions:
             tm.fail(current.parent.exists())
 
     @pytest.mark.parametrize("unchanged", [False, True])
+    def test_stub_retirement_and_consumer_annotations_publish_together(
+        self,
+        mod_workspace: Path,
+        *,
+        unchanged: bool,
+    ) -> None:
+        """An authenticated absent-state stub plan shares its consumer's group."""
+        u.Tests.run_native_callable(
+            self._scenario_stub_retirement,
+            mod_workspace,
+            unchanged=unchanged,
+        )
+
+    @staticmethod
+    def _scenario_stub_retirement(mod_workspace: Path, *, unchanged: bool) -> None:
+        """The staged real consumer runs without a retiring local stub."""
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
+        source = package / "consumer.py"
+        stub = source.with_suffix(".pyi")
+        desired = "def normalize(value: str) -> str:\n    return value.strip()\n"
+        source.write_text(
+            desired
+            if unchanged
+            else desired.replace("value: str", "value").replace(" -> str", ""),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        stub.write_text(
+            "def normalize(value: str) -> str: ...\n", encoding=c.DEFAULT_ENCODING
+        )
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in (source, stub)
+        )
+        plans = tuple(
+            m.Infra.CodegenFilePlan(
+                project=mod_workspace,
+                path=state.path,
+                before=state,
+                desired_content=None
+                if state.path == stub
+                else desired.encode(c.DEFAULT_ENCODING),
+                desired_mode=None if state.path == stub else state.mode,
+                source_states=states,
+                dependency_group="consumer-stub-retirement",
+            )
+            for state in states
+        )
+
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            tm.fail((candidate_root / stub.relative_to(mod_workspace)).exists())
+            if candidate_root != mod_workspace:
+                tm.ok(u.Cli.atomic_verify_binary_file_states(states))
+            consumer = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        f"from {package.name}.consumer import normalize; assert normalize(' live ') == 'live'",
+                    ),
+                    cwd=candidate_root,
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                                candidate_root / c.Infra.DEFAULT_SRC_DIR
+                            ),
+                        }
+                    ),
+                )
+            )
+            tm.ok(u.Cli.process_succeeded(consumer.outcome))
+            return r[bool].ok(value=True)
+
+        tm.ok(
+            transformers.FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=mod_workspace,
+                options=m.Infra.SemanticPublicationOptions(validator=validate),
+            )
+        )
+        tm.fail(stub.exists())
+        tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
+
+    @pytest.mark.parametrize("unchanged", [False, True])
     def test_semantic_publication_retains_full_native_candidate_checker(
         self,
         tmp_path: Path,

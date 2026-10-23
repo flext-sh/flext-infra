@@ -947,3 +947,115 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(after, lacks="AlphaConstants")
         tm.that(after, lacks="CultureConstants")
         tm.that(after, lacks='"c"')
+
+    @pytest.mark.parametrize(
+        "modules",
+        [("holder_part_01", "holder_part_99"), ("api", "_api")],
+    )
+    def test_legacy_filename_shapes_do_not_authenticate_competing_owners(
+        self, tmp_path: Path, modules: t.StrPair
+    ) -> None:
+        """Recognizing old inputs never makes distinct declarations reexports."""
+        repository, package = self._workspace(tmp_path)
+        before = self._generated_init(package)
+        for module in modules:
+            (package / f"{module}.py").write_text(
+                "class Shared:\n    pass\n\n__all__ = ['Shared']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+
+        analysis = tm.ok(u.Tests.plan_lazy_init(repository))
+
+        tm.that(analysis.files, eq=())
+        tm.that(analysis.issues[0].message, has="ambiguous")
+        tm.that(self._generated_init(package), eq=before)
+
+    def test_semantic_facade_preserves_native_exports_without_private_child_leakage(
+        self, tmp_path: Path
+    ) -> None:
+        """Facade MRO, functions and native aliases survive without ancestor leaks."""
+        repository, package = self._workspace(tmp_path)
+        domain = package / "_runtime"
+        records = domain / "_records"
+        records.mkdir(parents=True)
+        (records / "owner.py").write_text(
+            "class RecordOwner:\n"
+            "    class Record:\n        marker = 'native'\n\n"
+            "__all__ = ['RecordOwner']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (domain / "facade.py").write_text(
+            "from ._records.owner import RecordOwner\n\n"
+            "class RuntimeFacade(RecordOwner):\n    pass\n\n"
+            "def encode(value: str) -> str:\n    return value\n\n"
+            "type Payload = tuple[str, int]\n\n"
+            "__all__ = ['RuntimeFacade', 'encode', 'Payload']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "runtime.py").write_text(
+            "from ._runtime.facade import Payload, RuntimeFacade, encode\n\n"
+            "__all__ = ['RuntimeFacade', 'encode', 'Payload']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            (domain / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING),
+            lacks="RecordOwner",
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"import {package.name} as public\n"
+                "print(public.RuntimeFacade.Record.marker)\n"
+                "print(public.encode('payload'))\n"
+                f"print(public.encode.__module__ == '{package.name}._runtime.facade')\n"
+                f"print(public.Payload.__module__ == '{package.name}._runtime.facade')\n"
+                "print(public.Payload.__value__ == tuple[str, int])\n"
+                "print('RecordOwner' not in public.__all__)\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["native", "payload", "True", "True", "True", "True"],
+        )
+        initializers = tuple(package.rglob(c.Infra.INIT_PY))
+        before = tuple(path.read_bytes() for path in initializers)
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(u.Tests.run_lazy_init(repository, check_only=True), eq=0)
+        tm.that(tuple(path.read_bytes() for path in initializers), eq=before)
+
+    @pytest.mark.parametrize(
+        "modules",
+        [("holder_part_99", "holder_part_01"), ("foundation", "runtime")],
+    )
+    def test_native_introducing_subclass_owns_composed_behavior(
+        self, tmp_path: Path, modules: t.StrPair
+    ) -> None:
+        """Actual ancestry elects the facade independently of legacy numbering."""
+        repository, package = self._workspace(tmp_path)
+        original, facade = modules
+        (package / f"{original}.py").write_text(
+            "class Shared:\n"
+            "    marker = 'initial'\n"
+            "    def read(self) -> str:\n        return self.marker\n\n"
+            "__all__ = ['Shared']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / f"{facade}.py").write_text(
+            f"from .{original} import Shared as SharedBase\n\n"
+            "class Shared(SharedBase):\n    marker = 'composed'\n\n"
+            "__all__ = ['Shared']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name} import Shared\n"
+                "print(Shared().read())\n"
+                f"print(Shared.__module__ == '{package.name}.{facade}')\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["composed", "True"],
+        )
+        tm.that(u.Tests.run_lazy_init(repository, check_only=True), eq=0)

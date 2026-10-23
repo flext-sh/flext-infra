@@ -62,6 +62,12 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             bool,
             m.Field(description="Feed source_scan.ignored_resources"),
         ] = False
+        retired_typing_root: Annotated[
+            bool,
+            m.Field(
+                description="Owned retired typing tree retained in path-policy inventory",
+            ),
+        ] = False
         generated_source: Annotated[
             bool,
             m.Field(
@@ -108,7 +114,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ValueError: If a file resource is declared a generated source.
 
             """
-            if self.generated_source and not self.is_dir:
+            if (self.generated_source or self.retired_typing_root) and not self.is_dir:
                 msg = f"generated source artifact must be a directory: {self.name}"
                 raise ValueError(msg)
             return self
@@ -1294,8 +1300,8 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         ] = ()
 
         @m.model_validator(mode="after")
-        def _validate_publication_identity(self) -> Self:
-            """Bind one complete desired state to its exact project and target.
+        def validate_publication_identity(self) -> Self:
+            """Bind one desired state during validation and publication re-admission.
 
             Returns:
                 The resulting ``Self``.
@@ -1305,11 +1311,14 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                     desired bytes and mode must be present or absent together; or if
                     codegen before state belongs to another path; or if codegen absent
                     parent plan is inconsistent with its destination; or if codegen path
-                    escapes owning project.
+                    escapes owning project or publishes a first-party stub.
 
             """
             if not self.project.is_absolute() or not self.path.is_absolute():
                 msg = "codegen project and path must be absolute"
+                raise ValueError(msg)
+            if self.path.suffix == ".pyi" and self.desired_content is not None:
+                msg = f"first-party .pyi publication is forbidden: {self.path}"
                 raise ValueError(msg)
             if self.index_before is not None and (
                 self.tracking != "runtime-local"

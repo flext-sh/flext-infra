@@ -45,10 +45,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             FileNotFoundError: If ``not targets``.
 
         """
-        targets = (
-            *self._existing_check_dirs(project_dir),
-            *(path.name for path in project_dir.glob("*.py") if path.is_file()),
-        )
+        targets = u.Infra.ast_grep_scan_targets(project_dir)
         if not targets:
             raise FileNotFoundError(project_dir)
         return self._execute_check_command(
@@ -83,7 +80,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         return self._execute_check_command(
             project_dir,
             ctx,
-            tuple(str(path.relative_to(project_dir)) for path in files),
+            u.Infra.ast_grep_scan_targets(project_dir, source_files=files),
             time.monotonic(),
         )
 
@@ -115,6 +112,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
             return self._failure_gate_execution(project_dir, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
+        native_targets = tuple(
+            target for target in targets if Path(target).suffix != ".pyi"
+        )
         binary = u.Infra.managed_mise_binary(c.Infra.SG, self._repository_root)
         if binary.failure:
             failure = binary.error
@@ -124,10 +124,19 @@ class FlextInfraCodemodGate(FlextInfraGate):
             return self._failure_gate_execution(project_dir, failure, started)
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
-        found: list[m.Infra.AstGrepDiagnostic] = []
-        for ruleset in planned.value.rulesets:
+        found = [
+            m.Infra.AstGrepDiagnostic.model_validate(finding)
+            for finding in u.Infra.codemod_path_findings(
+                project_dir,
+                tuple((project_dir / target).resolve() for target in targets),
+                planned.value.rules,
+            )
+        ]
+        for ruleset in planned.value.rulesets if native_targets else ():
             scan = self._run(
-                self._scan_command(ruleset, targets, binary.value, nonparticipants),
+                self._scan_command(
+                    ruleset, native_targets, binary.value, nonparticipants
+                ),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )

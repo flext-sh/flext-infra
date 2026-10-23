@@ -149,10 +149,7 @@ class FlextInfraWorkspaceLifecycle:
                     cls._published_progress(report, selected)
                     return r[m.Infra.LifecycleReport].from_failure(selected)
                 eligible = selected.value
-            executed = cls._executed_receipt(report, receipt, eligible)
-            if executed.failure:
-                return r[m.Infra.LifecycleReport].from_failure(executed)
-            receipts[index], original = executed.value
+            receipts[index], original = cls._executed_receipt(report, receipt, eligible)
             report = report.model_copy(update={"receipts": tuple(receipts)})
             failure = cls._published_progress(report, original)
             if failure is not None:
@@ -192,9 +189,7 @@ class FlextInfraWorkspaceLifecycle:
         report: m.Infra.LifecycleReport,
         receipt: m.Infra.LifecycleReceipt,
         eligible: frozenset[Path] | None,
-    ) -> p.Result[
-        t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome] | None]
-    ]:
+    ) -> t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome] | None]:
         """Run one applicable receipt or mark its unauthenticated destination.
 
         Args:
@@ -207,13 +202,12 @@ class FlextInfraWorkspaceLifecycle:
             The executed or reclassified receipt with its process outcome.
 
         """
-        result_type = r[
-            t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome] | None]
-        ]
-        if receipt.repository_root == report.workspace_root:
-            return result_type.ok(cls.run_receipt(receipt, report.observed_files))
-        if eligible is not None and receipt.repository_root not in eligible:
-            return result_type.ok((
+        if (
+            receipt.repository_root != report.workspace_root
+            and eligible is not None
+            and receipt.repository_root not in eligible
+        ):
+            return (
                 receipt.model_copy(
                     update={
                         "applicable": False,
@@ -223,8 +217,8 @@ class FlextInfraWorkspaceLifecycle:
                     },
                 ),
                 None,
-            ))
-        return result_type.ok(cls.run_receipt(receipt, report.observed_files))
+            )
+        return cls.run_receipt(receipt, report.observed_files)
 
     @classmethod
     def _published_progress(
@@ -313,7 +307,7 @@ class FlextInfraWorkspaceLifecycle:
         receipt: m.Infra.LifecycleReceipt,
         relative_paths: t.VariadicTuple[Path],
     ) -> t.Pair[m.Infra.LifecycleReceipt, p.Result[p.Cli.ProcessOutcome]]:
-        """Reap the original command and observe only declared evidence files.
+        """Reap the original command with bounded, not fixed-point, observations.
 
         Returns:
             The receipt with native outcome, elapsed time and bounded effects.

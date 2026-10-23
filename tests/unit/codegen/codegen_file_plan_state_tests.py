@@ -13,6 +13,7 @@ import pytest
 
 from flext_infra import c, m, u
 from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra.codegen import FlextInfraMisePublication
 from tests import tm
 
 
@@ -134,6 +135,97 @@ class TestsFlextInfraCodegenFilePlanState:
             ),
             truth=True,
         )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "content", [b"", b"def load() -> bytes: ...\n", b"invalid [\n"]
+    )
+    def test_stub_output_is_rejected_at_model_and_copied_plan_publication(
+        tmp_path: Path,
+        content: bytes,
+    ) -> None:
+        """Unchecked copies cannot bypass the model law at either public writer."""
+        target = tmp_path / "boundary.pyi"
+        target.write_bytes(content)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        retirement = m.Infra.CodegenFilePlan(
+            project=tmp_path,
+            path=target,
+            before=before,
+            desired_content=None,
+            desired_mode=None,
+        )
+        with pytest.raises(m.ValidationError, match=r"\.pyi publication is forbidden"):
+            m.Infra.CodegenFilePlan(
+                project=tmp_path,
+                path=target,
+                before=before,
+                desired_content=content,
+                desired_mode=before.mode,
+            )
+        unchecked = retirement.model_copy(
+            update={"desired_content": content, "desired_mode": before.mode}
+        )
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            files=(retirement,),
+            inputs=(before,),
+        ).model_copy(update={"files": (unchecked,)})
+        for result in (
+            FlextInfraMisePublication.publish_file_plan(
+                unchecked, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+            ),
+            FlextInfraMisePublication.admit_batch(analysis),
+        ):
+            tm.fail(result, has=".pyi publication is forbidden")
+        tm.that(target.read_bytes(), eq=content)
+        tm.that(tuple(tmp_path.iterdir()), eq=(target,))
+
+    @staticmethod
+    def test_stub_retirement_uses_the_real_absent_state(tmp_path: Path) -> None:
+        """The publication law permits guarded removal, not empty stub replacement."""
+        target = tmp_path / "boundary.pyi"
+        target.write_bytes(b"value: int\n")
+        plan = m.Infra.CodegenFilePlan(
+            project=tmp_path,
+            path=target,
+            before=tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            desired_content=None,
+            desired_mode=None,
+        )
+        tm.ok(
+            FlextInfraMisePublication.publish_file_plan(
+                plan, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+            )
+        )
+        tm.that(target.exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("name", ["py.typed", "typings.py", "protocols.py"])
+    def test_legitimate_typing_surfaces_remain_publishable(
+        tmp_path: Path,
+        name: str,
+    ) -> None:
+        """Only stub output paths are prohibited, not ordinary typed declarations."""
+        target = tmp_path / name
+        content = (
+            b""
+            if name == "py.typed"
+            else b"from typing import Protocol\nclass Port(Protocol):\n    def load(self) -> bytes: ...\n"
+        )
+        plan = m.Infra.CodegenFilePlan(
+            project=tmp_path,
+            path=target,
+            before=tm.ok(u.Cli.atomic_read_binary_file_state(target)),
+            desired_content=content,
+            desired_mode=0o644,
+        )
+        tm.ok(
+            FlextInfraMisePublication.publish_file_plan(
+                plan, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+            )
+        )
+        tm.that(target.read_bytes(), eq=content)
 
     @pytest.mark.parametrize(
         ("content", "desired_content"),

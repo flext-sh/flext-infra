@@ -344,6 +344,9 @@ class FlextInfraMiseArtifactsFiles:
             The resulting ``p.Result[bool]``.
 
         """
+        admitted = u.Infra.codegen_file_publication_admission((publication,))
+        if admitted.failure:
+            return admitted
         before = publication.before
         replacement = publication.replacement
         if replacement is None:

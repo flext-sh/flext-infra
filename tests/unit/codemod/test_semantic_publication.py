@@ -70,6 +70,97 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(not (facade / "module.py").exists())
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "destination_kind",
+        ["data-only", "module", "package", "namespace", "nested-namespace", "invalid"],
+    )
+    def test_native_module_rename_distinguishes_data_from_python_destinations(
+        tmp_path: Path, destination_kind: str
+    ) -> None:
+        """Plan beside YAML data, but refuse occupied Python or invalid names."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        source = package / "_config.py"
+        original = b"VALUE = 1\n"
+        source.write_bytes(original)
+        target = package / "config.py"
+        data = package / "config"
+        nested = data / "nested"
+        nested.mkdir(parents=True)
+        payloads = {
+            data / "rules.yaml": b"enabled: true\r\n",
+            nested / "settings.yaml": b"value: preserved\n",
+        }
+        for path, content in payloads.items():
+            path.write_bytes(content)
+        consumer = package / "consumer.py"
+        consumer.write_text(
+            f"from {package.name}._config import VALUE\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        occupied = None
+        if destination_kind == "module":
+            occupied = target
+        elif destination_kind == "package":
+            occupied = data / c.Infra.INIT_PY
+        elif destination_kind in {"namespace", "nested-namespace"}:
+            occupied = (
+                nested if destination_kind == "nested-namespace" else data
+            ) / "provider.py"
+        if occupied is not None:
+            occupied.write_bytes(b"")
+            payloads[occupied] = b""
+        originals = {
+            path: path.read_bytes()
+            for path in (source, consumer, package / c.Infra.INIT_PY, *payloads)
+        }
+        selections = m.Infra.SemanticRenameSelections(
+            decisions=(
+                m.Infra.SemanticRenameSelection(
+                    qualified_name=f"{package.name}.{source.stem}",
+                    replacement_name=(
+                        "not-valid" if destination_kind == "invalid" else "config"
+                    ),
+                    reason="Preserve configuration data beside the renamed module",
+                ),
+            ),
+        )
+        with infra.rope_workspace(root) as workspace:
+            if destination_kind == "data-only":
+                planned = tm.ok(
+                    codemod.FlextInfraCodemodSemanticApply.build_rename_plan(
+                        root, workspace, selections
+                    )
+                )
+                tm.that(planned.moves, eq=((source, target),))
+                tm.that(planned.candidate.updates[source], eq=None)
+                tm.that(
+                    planned.candidate.updates[target],
+                    eq=original.decode(c.DEFAULT_ENCODING),
+                )
+                tm.that(
+                    planned.candidate.updates[consumer],
+                    eq=f"from {package.name}.config import VALUE\n",
+                )
+                tm.ok(
+                    all(
+                        not path.is_relative_to(data)
+                        for path in planned.candidate.updates
+                    )
+                )
+            else:
+                with pytest.raises(ValueError, match="occupied|Python identifier"):
+                    codemod.FlextInfraCodemodSemanticApply.build_rename_plan(
+                        root, workspace, selections
+                    )
+        for path, content in originals.items():
+            tm.that(path.read_bytes(), eq=content)
+        tm.ok(data.is_dir())
+        tm.ok(nested.is_dir())
+        tm.that(target.exists(), eq=destination_kind == "module")
+
+    @staticmethod
     @pytest.mark.parametrize("occupied", ["module.py", "__module.py", "module"])
     def test_module_policy_collision_has_no_live_effects(
         tmp_path: Path, occupied: str

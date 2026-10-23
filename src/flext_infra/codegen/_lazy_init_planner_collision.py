@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
@@ -41,7 +40,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 3
         if name in c.Infra.ALIAS_NAMES and "." not in module_path:
             score -= 80
-        score += self._identity_score(module_file, module_path)
         final_score: int = score
         return final_score
 
@@ -60,9 +58,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if policy.expected_alias == name:
             score += 100
         elif policy.expected_family and name.endswith(policy.expected_family):
-            # A governed facade legitimately owns its declared family class
-            # (e.g. ``FlextTestsValidator`` in ``validator.py``); it must win
-            # over an FLEXT ``_part_`` module of the same name.
+            # A governed facade owns its declared family class.
             score += 25
         elif policy.expected_alias:
             # Governed root facades should primarily own their canonical alias.
@@ -86,199 +82,114 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 15
         return score
 
-    @staticmethod
-    def _identity_score(module_file: Path, module_path: str) -> int:
-        """Score a target by module identity: part numbering and depth.
-
-        Returns:
-            The resulting ``int``.
-
-        """
-        score = 0
-        part_number = module_file.stem.rpartition("_part_")[2]
-        if part_number.isdecimal():
-            # The final public facade owns the external
-            # class identity; numbered implementation parts only rank among
-            # themselves when no facade candidate exists.
-            score -= 50
-            score += int(part_number)
-        return score - module_path.count(".")
-
-    def _pick_preferred_target(
-        self,
-        name: str,
-        existing: t.StrPair,
-        target: t.StrPair,
-    ) -> t.StrPair:
-        """Return the higher-scored of two competing export targets.
-
-        Returns:
-            The higher-scored of two competing export targets.
-
-        """
-        existing_score = self._target_score(name, existing)
-        target_score = self._target_score(name, target)
-        if target_score > existing_score:
-            return target
-        if target_score < existing_score:
-            return existing
-        return min(existing, target)
-
     def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
         """Insert a name/target pair and record ambiguous ownership."""
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target
             return
-        # MutableLazyAliasMap values are always StrPair.
-        winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
-            index[name] = self._published_reexport_target(
+            elected = self._published_reexport_target(
                 existing,
                 target,
-                score_winner=winner,
+                name=name,
             )
-            return
+            if elected is not None:
+                index[name] = elected
+                return
         self._collision_count += 1
         u.Cli.error(
             f"export collision for {name!r}: {existing} vs {target}; "
-            f"candidate selected for complete inventory: {winner}",
+            "no unique native publication owner",
         )
-        index[name] = winner
 
     def _published_reexport_target(
         self,
         a: t.StrPair,
         b: t.StrPair,
         *,
-        score_winner: t.StrPair,
-    ) -> t.StrPair:
+        name: str,
+    ) -> t.StrPair | None:
         """Elect the published facade path of one re-export pair.
 
-        An intentional re-export pair is one symbol surfacing through two
-        module paths — a public facade and a deeper private implementation
-        module. Both resolve to the same object, but the root's
-        declared-root publication filter drops any path that carries a
-        private segment, so electing the deeper private path removes the
-        name from the facade entirely even though the member's own
-        ``__all__`` declares it. The path with fewer private segments is
-        the published surface and must win; a shallower path outranks a
-        nested one on a privacy tie, because the member's canonical
-        surface is the one closest to its root. Package initializers are
-        never elected here — their re-export decision stays with the
-        implementation score, which penalizes self-pointing alias groups
-        to keep lazy resolution from importing the package through itself.
+        Native introducing subclasses own their composed behavior. Reexports
+        of the same declaration use their public facade and governed publication
+        authority, then the native introducing module. Equal unrelated publication
+        routes remain ambiguous; filename ordering never elects one.
 
         Returns:
-            The resulting ``t.StrPair``.
+            The authenticated owner, or None for equally authoritative routes.
 
         """
         a_parts = self._module_parts(a[0])
         b_parts = self._module_parts(b[0])
         a_file = self._module_file(a[0])
         b_file = self._module_file(b[0])
-        if (
-            a_file is None
-            or b_file is None
-            or c.Infra.INIT_PY in {a_file.name, b_file.name}
-        ):
-            return score_winner
+        a_binding = self.rope_workspace.rope_project.get_module(a[0]).get_attribute(
+            a[1]
+        )
+        b_binding = self.rope_workspace.rope_project.get_module(b[0]).get_attribute(
+            b[1]
+        )
+        a_object, b_object = a_binding.get_object(), b_binding.get_object()
+        if a_object != b_object:
+            if a_object in u.Infra.class_ancestry(b_object):
+                return b
+            if b_object in u.Infra.class_ancestry(a_object):
+                return a
+        if a_file is not None and a_file.name == c.Infra.INIT_PY:
+            return b if b_file is not None and b_file.name != c.Infra.INIT_PY else None
+        if b_file is not None and b_file.name == c.Infra.INIT_PY:
+            return a
         a_private = len(self._private_segments(a_parts))
         b_private = len(self._private_segments(b_parts))
         if a_private != b_private:
             return a if a_private < b_private else b
         if len(a_parts) != len(b_parts):
             return a if len(a_parts) < len(b_parts) else b
-        return score_winner
+        a_score, b_score = self._target_score(name, a), self._target_score(name, b)
+        if a_score != b_score:
+            return a if a_score > b_score else b
+        introducing: list[t.StrPair] = []
+        for target, binding, module_file in (
+            (a, a_binding, a_file),
+            (b, b_binding, b_file),
+        ):
+            module, _line = u.Infra.definition_location(binding)
+            resource = module.get_resource() if u.Infra.source_module(module) else None
+            if (
+                resource is not None
+                and module_file is not None
+                and (resource.real_path == str(module_file))
+            ):
+                introducing.append(target)
+        return introducing[0] if len(introducing) == 1 else None
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether one module is a root-namespace stub re-exporting the other.
+        """Authenticate reexports and introducing subclasses in the native graph.
 
         Returns:
-            Whether one module is a root-namespace stub re-exporting from the other.
+            Whether the targets share a declaration or composed class lineage.
 
         """
-        # Root typing sidecars are removed; real source
-        # owners now participate in the normal collision policy.
-        checks = (
-            self._is_flext_part_reexport,
-            self._is_private_facade_reexport,
-            self._is_declared_public_reexport,
-            self._is_package_root_reexport,
-            self._is_test_collection_collision,
-        )
-        if any(check(a, b) for check in checks):
+        if not a[1] or not b[1]:
+            return False
+        a_module = self.rope_workspace.rope_project.get_module(a[0])
+        b_module = self.rope_workspace.rope_project.get_module(b[0])
+        if (
+            a[1] not in a_module.get_attributes()
+            or b[1] not in b_module.get_attributes()
+        ):
+            return False
+        a_binding = a_module.get_attribute(a[1])
+        b_binding = b_module.get_attribute(b[1])
+        if u.Infra.same_name(a_binding, b_binding):
             return True
-        for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
-            pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
-            if not u.Infra.matches_root_namespace_file(pub_file):
-                continue
-            if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
-                return True
-        return False
-
-    def _is_declared_public_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
-        if a[1] != b[1]:
-            return False
-        a_owner = self._declared_export_owner(a)
-        b_owner = self._declared_export_owner(b)
-        return (
-            a_owner == b or b_owner == a or (a_owner is not None and a_owner == b_owner)
+        a_object, b_object = a_binding.get_object(), b_binding.get_object()
+        return a_object != b_object and (
+            a_object in u.Infra.class_ancestry(b_object)
+            or b_object in u.Infra.class_ancestry(a_object)
         )
-
-    def _is_package_root_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether a package root republishes its direct facade owner.
-
-        Returns:
-            Whether a package root republishes its direct facade owner.
-
-        """
-        if a[1] != b[1]:
-            return False
-        for root_target, child_target in ((a, b), (b, a)):
-            root_module, attr = root_target
-            child_module, _ = child_target
-            if child_module.rpartition(".")[0] != root_module:
-                continue
-            root_file = self._module_file(root_module)
-            if root_file is None or root_file.name != "__init__.py":
-                continue
-            declared_exports = self.rope_workspace.exports(
-                root_file,
-                export_options=m.Infra.ExportOptions(allow_assignments=True),
-            )
-            if attr in declared_exports:
-                return True
-        return False
-
-    def _declared_export_owner(self, target: t.StrPair) -> t.StrPair | None:
-        module_path, attr = target
-        module_file = self._module_file(module_path)
-        if module_file is None or module_file.name == "__init__.py":
-            return None
-        tree = ast.parse(self.rope_workspace.rope_project.source_text(module_file))
-        for node in tree.body:
-            if not isinstance(node, ast.ImportFrom):
-                continue
-            package_parts = module_path.split(".")[:-1]
-            if node.level:
-                retained_parts = package_parts[: len(package_parts) - node.level + 1]
-                imported_parts = node.module.split(".") if node.module else []
-                imported_module = ".".join((*retained_parts, *imported_parts))
-            elif node.module:
-                imported_module = node.module
-            else:
-                continue
-            for alias in node.names:
-                exported_name = alias.asname or alias.name
-                if exported_name == attr:
-                    owner_module = (
-                        f"{imported_module}.{alias.name}"
-                        if node.level and node.module is None
-                        else imported_module
-                    )
-                    return (owner_module, alias.name)
-        return None
 
     @staticmethod
     def _module_parts(module_path: str) -> t.VariadicTuple[str]:
@@ -289,108 +200,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
 
         """
         return tuple(part for part in module_path.split(".") if part)
-
-    @staticmethod
-    def _part_family_index(parts: t.StrSequence) -> int:
-        """Return the index of the private ``*_parts`` package segment.
-
-        Returns:
-            The index of the private ``*_parts`` package segment.
-
-        """
-        for index, part in enumerate(parts[:-1]):
-            if part.startswith("_") and part.endswith("_parts"):
-                return index
-        return -1
-
-    @staticmethod
-    def _is_part_leaf(module_stem: str) -> bool:
-        """Return whether a module stem is an FLEXT implementation part.
-
-        Returns:
-            Whether a module stem is an FLEXT implementation part.
-
-        """
-        return "_part_" in module_stem
-
-    @classmethod
-    def _is_flext_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether targets are the same logical FLEXT owner split into parts.
-
-        Returns:
-            Whether targets are the same logical FLEXT owner split into parts.
-
-        """
-        if a[1] != b[1]:
-            return False
-        a_parts = cls._module_parts(a[0])
-        b_parts = cls._module_parts(b[0])
-        a_index = cls._part_family_index(a_parts)
-        b_index = cls._part_family_index(b_parts)
-        if (
-            cls._is_part_leaf(a_parts[-1])
-            and cls._is_part_leaf(b_parts[-1])
-            and a_parts[:-1] == b_parts[:-1]
-        ):
-            return True
-        if a_index < 0 and b_index < 0:
-            return False
-        if a_index >= 0 and b_index >= 0:
-            a_family: t.VariadicTuple[str] = tuple(a_parts[: a_index + 1])
-            b_family: t.VariadicTuple[str] = tuple(b_parts[: b_index + 1])
-            return a_family == b_family
-        part_parts, part_index, facade_parts = (
-            (a_parts, a_index, b_parts) if a_index >= 0 else (b_parts, b_index, a_parts)
-        )
-        return cls._facade_owns_part(facade_parts, part_parts[:part_index])
-
-    @classmethod
-    def _facade_owns_part(
-        cls,
-        facade_parts: t.VariadicTuple[str],
-        owner_package: t.VariadicTuple[str],
-    ) -> bool:
-        """Whether a facade module owns one implementation part package.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        if facade_parts[:-1] == owner_package:
-            return True
-        if not owner_package or not owner_package[-1].startswith("_"):
-            return False
-        expected_facade_parts: t.VariadicTuple[str] = (
-            *tuple(owner_package[:-1]),
-            owner_package[-1].removeprefix("_"),
-        )
-        facade_tuple: t.VariadicTuple[str] = tuple(facade_parts)
-        return facade_tuple == expected_facade_parts
-
-    @classmethod
-    def _is_private_facade_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether a public facade re-exports a private implementation module.
-
-        Returns:
-            Whether a public facade re-exports a private implementation module.
-
-        """
-        if a[1] != b[1]:
-            return False
-        for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
-            pub_parts = cls._module_parts(pub_mod)
-            priv_parts = cls._module_parts(priv_mod)
-            if not pub_parts or not priv_parts or pub_parts[0] != priv_parts[0]:
-                continue
-            pub_private_segments = cls._private_segments(pub_parts)
-            priv_private_segments = cls._private_segments(priv_parts)
-            if not (priv_private_segments - pub_private_segments):
-                continue
-            if pub_parts[:-1] == priv_parts[:-1]:
-                return True
-            if pub_parts[-1] == priv_parts[-1].removeprefix("_"):
-                return True
-        return False
 
     @classmethod
     def _private_segments(cls, parts: t.StrSequence) -> frozenset[t.Pair[int, str]]:
@@ -406,20 +215,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             if part.startswith("_")
             and not (part.startswith("__") and part.endswith("__"))
         )
-
-    @classmethod
-    def _is_test_collection_collision(cls, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether duplicate generated test collection names are benign.
-
-        Returns:
-            Whether duplicate generated test collection names are benign.
-
-        """
-        if a[1] != b[1] or not a[1].startswith("Tests"):
-            return False
-        a_parts = cls._module_parts(a[0])
-        b_parts = cls._module_parts(b[0])
-        return bool(a_parts and b_parts and a_parts[0] == b_parts[0] == "tests")
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 import flext_infra
 from flext_infra import codegen
 from tests import tm
@@ -85,15 +83,22 @@ class TestsFlextInfraPublicApi:
             )
             tm.fail(generated)
             tm.fail(conformed)
-            with pytest.raises(FileNotFoundError) as failure:
-                api.codegen_protocol_models(
-                    flext_infra.m.Infra.CommandContext(repository_root=root),
-                )
-            tm.that(failure.value.filename, eq=str(root))
             tm.that(root.exists(), truth=False)
         tm.that(tm.ok(api.execute()), eq=before)
         tm.that(hasattr(api, "request"), truth=False)
         tm.that(hasattr(api, "planning_issues"), truth=False)
+
+    @staticmethod
+    def test_model_mirror_has_no_public_handler_or_refactor_route() -> None:
+        """The public API and CLI cannot recreate a model-shaped typing shadow."""
+        routes = flext_infra.FlextInfraCli.route_table_for(
+            flext_infra.c.Infra.CLI_GROUP_REFACTOR,
+        )
+        tm.that(any(route.name == "protocol-models" for route in routes), truth=False)
+        tm.that(
+            hasattr(flext_infra.infra, "codegen_protocol_models"),
+            truth=False,
+        )
 
     @staticmethod
     def test_conform_engine_keeps_explicit_runtime_seeds_and_ports(

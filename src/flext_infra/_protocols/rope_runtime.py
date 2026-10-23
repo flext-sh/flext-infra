@@ -476,7 +476,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_pymodule(
             self,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            resource: FlextInfraTypesRopeNative.RopeNativeResource
+            | FlextInfraProtocolsRopeRuntime.RopeResource,
             *,
             force_errors: bool = False,
         ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...

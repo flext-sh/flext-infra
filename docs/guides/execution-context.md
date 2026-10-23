@@ -88,7 +88,46 @@ mode, as does publication. A plan
 captured before a producer upgrade is not a portable release migration history;
 a changed epoch must be reconciled causally, never by guessing an old name.
 
-Package-directory renames are refused by this file-effect boundary. Native
+For exact file relocation, the public immutable SDK call is
+`u.Infra.plan_module_move(project, source_file, destination_file=target_file,
+sources=sources, source_states=states)`. Supply the complete authenticated Python
+inventory from the elected project and its original atomic states. Exactly one
+destination form is required. The existing positional directory form remains
+class-only; the exact-file form uses native resource changes for complete mixed
+modules, preserving functions, constants, aliases, class bodies and inheritance.
+Quoted type positions are selected by original native module identity and the
+existing quoted-type owner, with native import binding election. Ordinary
+string payloads are not filename replacements.
+
+No directory, module or Rope metadata is created while planning. Native rename
+intermediates are lookup-only and never published; an occupied intermediate is
+an explicit rejection, not overwritten or assigned an arbitrary alternate name.
+The returned `CodegenFilePlan` effects join the existing semantic publication
+candidate together with lazy-facade projections. A new package initializer is
+only a virtual lookup resource here, not an authored competing export owner.
+The existing public `flext-infra refactor move-module` operation exposes this
+path with `--repository-root`, `--source-file` and `--destination-file`. Exactly
+one of `--destination-file` and the existing `--destination-directory` is required.
+The directory mode retains its existing mutable contract. Exact-file mode reads
+the native project's complete Python inventory through atomic file states, rejects
+foreign owners/effects, and delegates to the public semantic publisher with the
+declared root as its projection scope and the semantic dependency group. That
+declared root must also match the native Rope repository root, never an
+implicitly elected ancestor of a narrower caller scope. The
+publisher plans lazy/facade outputs against the proposed graph, then prepares,
+validates and publishes the complete group. No raw Rope effects or handwritten
+initializers are applied in this mode. Its typed receipt is the existing
+`p.Result[tuple[Path, ...]]` published-path result; the CLI preserves its successful
+boolean result and plain absolute destination-path output after acceptance.
+Neither overload automatically discovers a fleet layout migration or adds a new
+Make selector; `make mod` consumers still elect their semantic destinations.
+
+Class relocation derives module names without a leading underscore, including
+when the original module or class is private. Family destinations retain their
+declared private facade directory; privacy belongs to that directory, not the
+Python module filename.
+
+The exact-file relocation overload does not move package directories. Native
 string payloads and framework registration are not implicitly renamed; they
 remain subject to the existing consumer validation and declaration owners.
 
@@ -232,10 +271,14 @@ execution and malformed-report failures stay separate from diagnostic occurrence
 neither a repeated failure nor an unchanged finding count proves validation success.
 
 Facade projection composes constants, utilities and models from the exports and
-base order declared in their configured private family. Protocol projection keeps
-its consumer-based ownership resolution. The utility path delegates directly to
-the declaration planner. Static and runtime consumer checks retain their own
-import-failure verdicts.
+base order declared in their configured private family. Protocol facade projection
+composes authored consumer-owned `p` contracts through the same native declaration
+and MRO owners; it never copies model fields or public signatures into a second
+typing surface. A dependency port declares only capabilities its consumers use.
+Existing-project conformance and new-project scaffolding generate ordinary facades
+and lazy exports, not model-shaped protocol mirrors. The utility path delegates
+directly to the declaration planner. Static and runtime consumer checks retain
+their own import-failure verdicts.
 Generated protocol and model namespace assignments are derived output, not new
 contract declarations. When an assignment resolves to an exact inherited class,
 projection removes that binding and inherits the canonical private owners in C3

@@ -615,6 +615,9 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[tuple[m.Infra.CodegenStagedFile, ...]]
+        admitted = u.Infra.codegen_file_publication_admission(plans)
+        if admitted.failure:
+            return result_type.from_failure(admitted)
         if phase not in FlextInfraCodegenStaging._phases:
             return result_type.fail(f"unsupported generation phase: {phase}")
         changed = tuple(

@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sysconfig
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
@@ -816,6 +818,106 @@ class FlextInfraModelsDepsToolConfig(
             ):
                 msg = "pytest runtime policy options are derived from typed fields"
                 raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def validate_no_local_stubs(self) -> Self:
+            """Reject local stub resolution and producer options in every typed layer.
+
+            Returns:
+                Source import paths and installed dependency typing unchanged.
+
+            Raises:
+                ValueError: If an option restores a local stub root or producer.
+
+            """
+            forbidden = {
+                "stubpath",
+                "stubdir",
+                "stubdirs",
+                "stubroot",
+                "stubroots",
+                "customtypesheddir",
+                "typeshedpath",
+                "createstub",
+                "stubgen",
+                "generatestubs",
+            }
+            declared_names = (
+                *self.settings,
+                *self.derived_tool_roots,
+                *self.derived_settings,
+                *(key for keys in self.derived_settings.values() for key in keys),
+            )
+            pending: list[tuple[str, t.JsonValue]] = [
+                (key, value) for pairs in self.settings.values() for key, value in pairs
+            ]
+            pending.extend(
+                (key, value)
+                for override in self.tools.mypy.overrides
+                for key, value in override.settings
+            )
+            pyright = self.tools.pyright.path_rules
+            pyrefly = self.tools.pyrefly.path_rules
+            pending.extend(
+                ("search-path", path)
+                for path in (
+                    pyright.source_dir,
+                    pyright.project_root,
+                    *pyright.env_dirs,
+                    *pyright.test_like_dirs,
+                    *(override.root for override in pyright.diagnostic_path_overrides),
+                    pyrefly.source_dir,
+                    pyrefly.project_root,
+                    *pyrefly.env_dirs,
+                    *pyrefly.workspace_include_child_env_dirs,
+                    *pyrefly.project_shared_search_paths,
+                )
+            )
+            for name in declared_names:
+                if any(
+                    part.casefold().replace("-", "").replace("_", "") in forbidden
+                    for part in name.split(".")
+                ):
+                    msg = f"Local stub options and producers are forbidden: {name}"
+                    raise ValueError(msg)
+            installed_roots = tuple(
+                Path(sysconfig.get_path(key)).resolve()
+                for key in ("purelib", "platlib")
+            )
+            while pending:
+                key, value = pending.pop()
+                option = (
+                    key.rsplit(".", 1)[-1].casefold().replace("-", "").replace("_", "")
+                )
+                if option in forbidden:
+                    msg = f"Local stub options and producers are forbidden: {key}"
+                    raise ValueError(msg)
+                if isinstance(value, Mapping):
+                    pending.extend(value.items())
+                elif isinstance(value, list):
+                    pending.extend((key, item) for item in value)
+                elif isinstance(value, str) and (
+                    "path" in option
+                    or option in {"root", "sourcedir", "envdirs", "projectincludes"}
+                ):
+                    for entry in value.replace("\\", "/").split(":"):
+                        path = Path(entry).expanduser()
+                        if any(
+                            path.resolve().is_relative_to(root)
+                            for root in installed_roots
+                        ):
+                            continue
+                        if any(
+                            part in {"typings", "stubs"}
+                            or part.endswith((".pyi", "-stubs"))
+                            or "-stubs-" in part
+                            for part in path.parts
+                        ):
+                            msg = (
+                                f"Local stub search roots are forbidden: {key}={value}"
+                            )
+                            raise ValueError(msg)
             return self
 
         @m.model_validator(mode="after")

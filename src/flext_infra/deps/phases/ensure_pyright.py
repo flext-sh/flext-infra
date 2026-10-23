@@ -86,14 +86,14 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_dir: str,
         member_src_paths: t.SequenceOf[str] = (),
     ) -> t.StrSequence:
-        """``src/`` owns only its path; other dirs also import from src + root.
+        """Resolve owned source packages before installed distributions.
 
         Returns:
             The resulting ``t.StrSequence``.
 
         """
         if env_dir == source_dir:
-            paths = [source_path]
+            paths = list(dict.fromkeys((source_path, project_root)))
         elif source_path != project_root:
             paths = [project_root, source_path]
         else:
