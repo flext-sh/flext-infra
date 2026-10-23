@@ -27,24 +27,6 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModuleQueries
 
 
-def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
-    """Preserve the original native cause at this read-only IO boundary.
-
-    Returns:
-        The successful native result value.
-
-    Raises:
-        ValueError: A failed result has no original exception.
-
-    """
-    if result.failure:
-        cause = result.exception
-        if cause is not None:
-            raise cause
-        raise ValueError(result.error)
-    return result.value
-
-
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired.
 
@@ -414,13 +396,11 @@ class FlextInfraRopeProject(Project):
 
     @staticmethod
     @overload
-    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder:
-        del folder
+    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...
 
     @staticmethod
     @overload
-    def _native_folder(folder: None) -> None:
-        del folder
+    def _native_folder(folder: None) -> None: ...
 
     @staticmethod
     def _native_folder(folder: Folder | p.Infra.RopeRoot | None) -> Folder | None:
@@ -1107,30 +1087,7 @@ class FlextInfraRopeProject(Project):
             names: list[str] = (
                 [] if inventory is None else [item.name for item in inventory.entries]
             )
-            if inventory is not None:
-                if not self._capturing:
-                    self._inventories[directory] = inventory.model_copy(
-                        update={"membership_queried": True}
-                    )
-                self._record(
-                    directories=(
-                        inventory.model_copy(
-                            update={"queries": (), "membership_queried": True},
-                        ),
-                    ),
-                )
-            else:
-                if not self._capturing:
-                    self._topology[directory] = self._topology[directory].model_copy(
-                        update={"membership_queried": True}
-                    )
-                self._record(
-                    topology=(
-                        self._topology[directory].model_copy(
-                            update={"queries": (), "membership_queried": True},
-                        ),
-                    ),
-                )
+            self._record_membership(directory, inventory)
             if self._overlay.isdir(path):
                 physical_names = frozenset(names)
                 for child in self._overlay.children(path):
@@ -1155,6 +1112,37 @@ class FlextInfraRopeProject(Project):
                 and not self._is_generated_artifact(directory / name)
             )
 
+        def _record_membership(
+            self,
+            directory: Path,
+            inventory: m.Cli.AtomicDirectoryInventory | None,
+        ) -> None:
+            """Pin one listed folder's membership on its inventory or absence witness."""
+            if inventory is not None:
+                if not self._capturing:
+                    self._inventories[directory] = inventory.model_copy(
+                        update={"membership_queried": True}
+                    )
+                self._record(
+                    directories=(
+                        inventory.model_copy(
+                            update={"queries": (), "membership_queried": True},
+                        ),
+                    ),
+                )
+                return
+            if not self._capturing:
+                self._topology[directory] = self._topology[directory].model_copy(
+                    update={"membership_queried": True}
+                )
+            self._record(
+                topology=(
+                    self._topology[directory].model_copy(
+                        update={"queries": (), "membership_queried": True},
+                    ),
+                ),
+            )
+
         def _directory_chain(self, directory: Path) -> m.Cli.AtomicDirectoryChainPlan:
             """Pin one declared directory's own physical ancestry and presence.
 
@@ -1163,9 +1151,9 @@ class FlextInfraRopeProject(Project):
 
             """
             if directory not in self._topology:
-                self._topology[directory] = require_value(
-                    u.Cli.atomic_plan_directory_chain(directory)
-                )
+                self._topology[directory] = u.Cli.atomic_plan_directory_chain(
+                    directory
+                ).unwrap()
             witness = self._topology[directory]
             self._record(
                 topology=(
@@ -1186,8 +1174,8 @@ class FlextInfraRopeProject(Project):
             if self._directory_chain(directory).directories:
                 return None
             if directory not in self._inventories:
-                self._inventories[directory] = require_value(
-                    u.Cli.atomic_inventory_physical_directory(directory)
+                self._inventories[directory] = (
+                    u.Cli.atomic_inventory_physical_directory(directory).unwrap()
                 )
             return self._inventories[directory]
 
@@ -1566,9 +1554,9 @@ class FlextInfraRopeProject(Project):
                     m.Cli.AtomicFileState(path=source)
                     if declaration is not None
                     and isinstance(declaration.before, m.Cli.AtomicDirectoryChainPlan)
-                    else require_value(
-                        u.Cli.atomic_read_binary_file_state(source, required=False),
-                    )
+                    else u.Cli.atomic_read_binary_file_state(
+                        source, required=False
+                    ).unwrap()
                 )
                 self._originals[source] = state
             return state
@@ -1585,21 +1573,17 @@ class FlextInfraRopeProject(Project):
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
             states = self.states()
-            require_value(
-                u.Cli.atomic_verify_binary_file_states(
-                    states,
-                    nonsecret_source_paths=tuple(
-                        Path(state.path)
-                        for state in states
-                        if Path(state.path).suffix in {".py", ".pyi"}
-                    ),
-                )
-            )
-            require_value(
-                u.Cli.atomic_verify_directory_queries(
-                    self.receipt_directories(), self.receipt_topology()
-                )
-            )
+            u.Cli.atomic_verify_binary_file_states(
+                states,
+                nonsecret_source_paths=tuple(
+                    Path(state.path)
+                    for state in states
+                    if Path(state.path).suffix in {".py", ".pyi"}
+                ),
+            ).unwrap()
+            u.Cli.atomic_verify_directory_queries(
+                self.receipt_directories(), self.receipt_topology()
+            ).unwrap()
             for path in sorted({*self._consumed, *self._consumed_effects}):
                 self._verify_declarations(path)
 
@@ -1727,8 +1711,7 @@ class FlextInfraRopeProject(Project):
         class _NativeExternalFolders(Protocol):
             """Typed view of the external resolver's native folder factory."""
 
-            def get_folder(self, path: str) -> Folder:
-                del path
+            def get_folder(self, path: str) -> Folder: ...
 
         project = cls(
             root,

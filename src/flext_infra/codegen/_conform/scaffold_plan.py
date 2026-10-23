@@ -112,7 +112,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 analysis_exclusions=analysis_exclusions,
             ),
         )
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=lazy_sources.value[1],
             declared_files=tuple(lazy_sources.value[0]),
@@ -360,7 +360,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             return result_type.ok(planned)
         root = render_inputs.target.root
         projected = {plan.path: plan for plan in planned}
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root, declared_files=tuple(projected.values())
         ) as binding:
             exports = FlextInfraCodegenLazyInit(
@@ -397,7 +397,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             projected.update((plan.path, plan) for plan in protocols.value[0])
             source_states = protocols.value[1]
         planned = tuple(projected.values())
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root, source_states=source_states, declared_files=planned
         ) as binding:
             final_inputs = self.planned_source_render_inputs(

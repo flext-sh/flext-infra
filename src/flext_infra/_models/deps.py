@@ -22,7 +22,6 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsRepository,
     FlextInfraConfigModelsScaffold,
 )
-from flext_infra._models.deps_typings import FlextInfraModelsDepsTypings
 
 GitSourceUrlPrefixField = Annotated[
     t.NonEmptyStr | None,
@@ -44,7 +43,6 @@ GitSourceRefToField = Annotated[
 class FlextInfraModelsDeps(
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsDepsToml,
-    FlextInfraModelsDepsTypings,
 ):
     """Models for dependency detection and modernization reporting."""
 
@@ -255,25 +253,10 @@ class FlextInfraModelsDeps(
                 description="Exit successfully even when issues are found",
             ),
         ] = False
-        typings: Annotated[
-            bool,
-            m.Field(default=False, description="Detect required typing packages"),
-        ] = False
-        apply_typings: Annotated[
-            bool,
-            m.Field(
-                alias="apply-typings",
-                description=("Declare dependency-groups.dev and install through UV"),
-            ),
-        ] = False
         no_pip_check: Annotated[
             bool,
             m.Field(alias="no-pip-check", description="Skip workspace pip check"),
         ] = False
-        limits: Annotated[
-            str | None,
-            m.Field(None, description="Path to dependency limits TOML"),
-        ] = None
 
         @property
         def output_path(self) -> Path | None:
@@ -281,13 +264,6 @@ class FlextInfraModelsDeps(
             if self.output is None:
                 return None
             return Path(self.output).expanduser().resolve()
-
-        @property
-        def limits_path(self) -> Path | None:
-            """Resolved dependency limits path when provided."""
-            if self.limits is None:
-                return None
-            return Path(self.limits).expanduser().resolve()
 
     class GitSourceReferenceMigration(m.ContractModel):
         """Explicit source scope and reference transition; no source conversion."""
@@ -511,15 +487,6 @@ class FlextInfraModelsDeps(
             ),
         ] = False
 
-    class DependencyLimitsInfo(m.ArbitraryTypesModel):
-        """Dependency limits configuration metadata."""
-
-        python_version: Annotated[
-            str | None,
-            m.Field(None, description="Python version"),
-        ] = None
-        limits_path: Annotated[str, m.Field("", description="Path to limits file")] = ""
-
     class PipCheckReport(m.ArbitraryTypesModel):
         """Pip check execution report with status and output lines."""
 
@@ -583,61 +550,6 @@ class FlextInfraModelsDeps(
 
         deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
 
-    class TypingsReport(m.ArbitraryTypesModel):
-        """Typing stubs analysis report with required/current/delta packages."""
-
-        required_packages: Annotated[
-            t.StrSequence,
-            m.Field(description="Required packages"),
-        ] = m.Field(default_factory=tuple)
-        hinted: Annotated[t.StrSequence, m.Field(description="Hinted packages")] = (
-            m.Field(default_factory=tuple)
-        )
-        missing_modules: Annotated[
-            t.StrSequence,
-            m.Field(description="Missing modules"),
-        ] = m.Field(default_factory=tuple)
-        untyped_modules: Annotated[
-            t.StrSequence,
-            m.Field(description="Installed modules without a published stub hint"),
-        ] = m.Field(default_factory=tuple)
-        current: Annotated[t.StrSequence, m.Field(description="Current typings")] = (
-            m.Field(default_factory=tuple)
-        )
-        to_add: Annotated[t.StrSequence, m.Field(description="Typings to add")] = (
-            m.Field(default_factory=tuple)
-        )
-        to_remove: Annotated[
-            t.StrSequence,
-            m.Field(description="Typings to remove"),
-        ] = m.Field(default_factory=tuple)
-        limits_applied: Annotated[
-            bool,
-            m.Field(default=False, description="Whether limits were applied"),
-        ] = False
-        python_version: Annotated[
-            str | None,
-            m.Field(None, description="Python version"),
-        ] = None
-        untyped_imports_followed: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Normal mypy follow_untyped_imports policy; "
-                    "stub discovery is independent of this policy"
-                ),
-            ),
-        ]
-
-    class ProjectRuntimeReport(ProjectDependencyReport):
-        """Project runtime dependency and typings report."""
-
-        typings: FlextInfraModelsDeps.TypingsReport | None = m.Field(
-            None,
-            description="Typings report",
-            validate_default=True,
-        )
-
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects.
 
@@ -646,21 +558,12 @@ class FlextInfraModelsDeps(
         """
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
-        generated_typings: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Declared generated PEP 561 source directories"),
-        ] = ()
-        projects: t.MutableMappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = (
-            m.Field(description="Per-project reports")
-        )
+        projects: t.MutableMappingKV[
+            str, FlextInfraModelsDeps.ProjectDependencyReport
+        ] = m.Field(description="Per-project reports")
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,
             description="Pip check report",
-            validate_default=True,
-        )
-        dependency_limits: FlextInfraModelsDeps.DependencyLimitsInfo | None = m.Field(
-            None,
-            description="Dependency limits",
             validate_default=True,
         )
 

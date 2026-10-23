@@ -36,8 +36,6 @@ class FlextInfraConstantsCli:
         "--verbose",
         "--quiet",
         "--no-fail",
-        "--typings",
-        "--apply-typings",
         "--no-pip-check",
         "--skip-check",
         "--skip-comments",

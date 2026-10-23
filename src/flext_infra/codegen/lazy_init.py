@@ -290,26 +290,19 @@ class FlextInfraCodegenLazyInit(
             plan for analysis in analyses for plan in analysis.publications
         )
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            tuple(
-                item
-                for dependency in (*composed, *publications)
-                for item in dependency.source_directories
-            ),
-            tuple(
-                item
-                for dependency in (*composed, *publications)
-                for item in dependency.source_query_topology
+            tuple(item for plan in composed for item in plan.source_directories)
+            + tuple(item for plan in publications for item in plan.source_directories),
+            tuple(item for plan in composed for item in plan.source_query_topology)
+            + tuple(
+                item for plan in publications for item in plan.source_query_topology
             ),
         )
         return m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
             files=composed,
             inputs=m.Infra.CodemodBindingSnapshot(
-                states=tuple(
-                    state
-                    for dependency in (*composed, *publications)
-                    for state in dependency.source_states
-                ),
+                states=tuple(state for plan in composed for state in plan.source_states)
+                + tuple(state for plan in publications for state in plan.source_states),
             ).states,
             source_directories=directories,
             source_query_topology=topology,

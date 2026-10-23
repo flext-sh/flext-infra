@@ -21,6 +21,136 @@ class TestsFlextInfraSemanticRenameSeed:
     """Source campaigns never weaken the explicit rename artifact contract."""
 
     @staticmethod
+    def test_package_preview_expands_files_modes_and_cross_root_consumers(
+        tmp_path: Path,
+    ) -> None:
+        """A package preview retains nested content and never moves live sources."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        receiver, receiver_package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="package-receiver", package_name="package_receiver"
+        )
+        origin = package / "parts"
+        nested = origin / "nested"
+        nested.mkdir(parents=True)
+        contents = {
+            origin / "__init__.py": "from .service import Original\n",
+            origin / "service.py": "class Original:\n    pass\n",
+            nested / "__init__.py": "",
+            nested / "consumer.py": "from ..service import Original\n",
+        }
+        for path, content in contents.items():
+            path.write_text(content, encoding=c.DEFAULT_ENCODING)
+        source = origin / "service.py"
+        source.chmod(0o750)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        consumer = receiver_package / "consumer.py"
+        consumer.write_text(
+            f"from {package.name}.parts.service import Original\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        selections = m.Infra.SemanticRenameSelections(
+            decisions=(
+                m.Infra.SemanticRenameSelection(
+                    qualified_name=f"{package.name}.parts",
+                    replacement_name="_parts",
+                    reason="Explicit package naming decision",
+                ),
+            ),
+            consumer_roots=(receiver,),
+        )
+        with infra.rope_workspace(root) as workspace:
+            artifact = tm.ok(
+                FlextInfraCodemodSemanticApply.build_rename_plan(
+                    root, workspace, selections
+                )
+            )
+        target = package / "_parts"
+        tm.that(
+            artifact.moves,
+            eq=tuple(
+                sorted((path, target / path.relative_to(origin)) for path in contents)
+            ),
+        )
+        for path, content in contents.items():
+            tm.that(artifact.candidate.updates[path], eq=None)
+            tm.that(
+                artifact.candidate.updates[target / path.relative_to(origin)],
+                eq=content,
+            )
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
+        tm.that(artifact.candidate.modes[target / source.name], eq=original.mode)
+        tm.that(artifact.candidate.updates[consumer], has="._parts.service")
+        tm.fail(target.exists())
+        tm.that(artifact.source_directories, empty=False)
+        tm.that(artifact.source_query_topology, empty=False)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(artifact.source_states))
+        tm.ok(
+            u.Cli.atomic_verify_directory_queries(
+                artifact.source_directories, artifact.source_query_topology
+            )
+        )
+        (nested / "new.py").write_text("", encoding=c.DEFAULT_ENCODING)
+        tm.fail(
+            u.Cli.atomic_verify_directory_queries(
+                artifact.source_directories, artifact.source_query_topology
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "conflict", ["payload", "directory", "module", "child", "empty"]
+    )
+    def test_package_preview_rejects_incomplete_or_overlapping_moves(
+        tmp_path: Path, conflict: str
+    ) -> None:
+        """Unsupported resources and occupied or overlapping moves fail prepublish."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        origin = package / "parts"
+        origin.mkdir()
+        initializer = origin / "__init__.py"
+        initializer.write_text("", encoding=c.DEFAULT_ENCODING)
+        source = origin / "service.py"
+        content = "class Original:\n    pass\n"
+        source.write_text(content, encoding=c.DEFAULT_ENCODING)
+        decisions = [
+            m.Infra.SemanticRenameSelection(
+                qualified_name=f"{package.name}.parts",
+                replacement_name="_parts",
+                reason="Explicit package naming decision",
+            )
+        ]
+        if conflict == "payload":
+            (origin / "resource.json").write_text("{}", encoding=c.DEFAULT_ENCODING)
+            diagnostic = "cannot preserve uninventoried payload"
+        elif conflict == "directory":
+            (package / "_parts").mkdir()
+            diagnostic = "destination is occupied"
+        elif conflict == "module":
+            (package / "_parts.py").write_text("", encoding=c.DEFAULT_ENCODING)
+            diagnostic = "destination is occupied"
+        elif conflict == "empty":
+            (origin / "empty").mkdir()
+            diagnostic = "cannot preserve empty directory"
+        else:
+            decisions.append(
+                m.Infra.SemanticRenameSelection(
+                    qualified_name=f"{package.name}.parts.service",
+                    replacement_name="renamed",
+                    reason="Overlapping child decision",
+                )
+            )
+            diagnostic = "separate virtual waves for overlapping selections"
+        with infra.rope_workspace(root) as workspace:
+            with pytest.raises(ValueError, match=diagnostic):
+                FlextInfraCodemodSemanticApply.build_rename_plan(
+                    root,
+                    workspace,
+                    m.Infra.SemanticRenameSelections(decisions=tuple(decisions)),
+                )
+        tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
+        tm.ok(initializer.exists())
+
+    @staticmethod
     def test_native_rename_artifact_authenticates_selected_sources(
         tmp_path: Path,
     ) -> None:

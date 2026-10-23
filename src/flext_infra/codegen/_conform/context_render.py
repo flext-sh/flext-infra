@@ -13,10 +13,7 @@ from pathlib import Path
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
-from flext_infra.deps import (
-    FlextInfraDependencyDetectionService,
-    FlextInfraEnsurePackagingPhase,
-)
+from flext_infra.deps import FlextInfraEnsurePackagingPhase
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -107,7 +104,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         source: str,
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
-        typing_policy: m.Infra.TypingGenerationPolicy,
         member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
     ) -> p.Result[str]:
         """Conform one pyproject source under the plan's render inputs.
@@ -161,7 +157,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 flext_line=flext_line.value,
                 repository_root=target.root,
                 member_declarations=member_declarations,
-                typing_policy=typing_policy,
             ),
         )
 
@@ -578,9 +573,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 project_dependencies=project_dependencies,
                 development_dependencies=tuple(development_dependencies),
-                generated_typing_distributions=self._generated_typing_distributions(
-                    repository_root
-                ),
                 tooling=tooling,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads=workspace.beads,
@@ -716,24 +708,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 declared_dev.value,
             ))
         return result_type.ok((project.runtime_dependency_overlay, ()))
-
-    @staticmethod
-    def _generated_typing_distributions(repository_root: Path) -> t.StrSequence:
-        """Authenticate local typing sources before template Git-floor rendering.
-
-        Returns:
-            Validated producer identities, empty only for a new scaffold.
-
-        """
-        declaration = repository_root / c.PYPROJECT_FILENAME
-        if not declaration.is_file():
-            return ()
-        generated = u.Infra.generated_typing_packages(
-            u.Cli.toml_read_document(declaration).unwrap(),
-            root=repository_root,
-            policy=FlextInfraDependencyDetectionService().load_typing_generation_policy(),
-        ).unwrap()
-        return tuple(item.distribution for item in generated)
 
     def _validated_render_project(
         self,

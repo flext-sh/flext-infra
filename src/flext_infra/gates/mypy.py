@@ -228,17 +228,12 @@ class FlextInfraMypyGate(FlextInfraGate):
             The resulting ``t.StrMapping | None``.
 
         """
+        del ctx
         overrides = {
             c.Infra.MypyCacheEnvironment.CACHE_DIR.value: str(
                 u.Infra.mypy_cache_directory(project_dir),
             ),
         }
-        typings_generated = ctx.repository_root / c.Infra.DIR_TYPINGS / "generated"
-        if typings_generated.is_dir():
-            existing = u.Cli.process_env().get("MYPYPATH", "")
-            overrides["MYPYPATH"] = str(typings_generated) + (
-                f":{existing}" if existing else ""
-            )
         return u.Cli.process_env(overrides=overrides)
 
     @override

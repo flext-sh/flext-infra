@@ -1,0 +1,59 @@
+# Law: a consumer imports a name its facade package root publishes from that
+# root, never from a module path below it — public or private. The root's own
+# `__all__` (the generated lazy-export surface) is the single source of truth
+# for what is public; this rule derives the root from the imported module
+# path and admits a finding only when that root declares the imported name.
+#
+# `ban-consumer-submodule-import` detects public submodule paths and carries
+# no fix. This rule repairs every single-name import below a facade root,
+# private (`._`) paths included, whenever the derived root publishes the name.
+# Aliased and multi-name imports stay with the detection rule.
+id: rewire-consumer-deep-import-to-root
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  # Test trees import flext-tests fixtures from their submodules on purpose.
+  - "**/tests/**"
+  - "**/conftest.py"
+metadata:
+  context:
+    MODULE:
+      - not: own-package
+      - is: facade-package
+      - not: compose-module
+    NAME:
+      is: package-export
+      of: ROOT
+rule:
+  kind: import_from_statement
+  # Exactly one imported name: a partial pattern match of a multi-name import
+  # would otherwise rewrite the statement and drop its other names.
+  regex: "^from\\s+[A-Za-z0-9_.]+\\s+import\\s+(?:[A-Za-z_][A-Za-z0-9_]*|\\(\\s*[A-Za-z_][A-Za-z0-9_]*\\s*,?\\s*\\))$"
+  any:
+    - pattern: from $MODULE import $NAME
+    - pattern: |
+        from $MODULE import (
+            $NAME,
+        )
+constraints:
+  MODULE:
+    all:
+      - kind: dotted_name
+      - regex: "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z0-9_.]+$"
+      - not:
+          regex: "^flext_core\\.lazy$"
+  NAME:
+    kind: dotted_name
+    regex: "^[A-Za-z_][A-Za-z0-9_]*$"
+transform:
+  ROOT:
+    replace:
+      source: $MODULE
+      replace: "^([A-Za-z_][A-Za-z0-9_]*)\\..*$"
+      by: "${1}"
+fix: from $ROOT import $NAME
+message: >-
+  `$NAME` is published by the `$ROOT` package root: import it from the root,
+  not from the module path `$MODULE` below it.

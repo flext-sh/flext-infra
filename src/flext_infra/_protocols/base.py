@@ -1179,7 +1179,6 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for workspace dependency report model contract."""
 
         pip_check: m.Infra.PipCheckReport | None
-        dependency_limits: m.Infra.DependencyLimitsInfo | None
 
     @runtime_checkable
     class JsonService(Protocol):
@@ -1218,23 +1217,8 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_name: str,
             deptry_issues: t.SequenceOf[t.JsonMapping],
-        ) -> m.Infra.ProjectRuntimeReport:
+        ) -> m.Infra.ProjectDependencyReport:
             """Build project report from deptry issues."""
-            ...
-
-        def load_dependency_limits(
-            self,
-            limits_path: Path | None = None,
-        ) -> t.MappingKV[str, t.JsonValue]:
-            """Load dependency limits from TOML file."""
-            ...
-
-        def analyze_required_typings(
-            self,
-            project_path: Path,
-            limits_path: Path | None = None,
-        ) -> p.Result[m.Infra.TypingsReport]:
-            """Get required typing libraries for a project."""
             ...
 
         def run_pip_check(
@@ -1243,15 +1227,6 @@ class FlextInfraProtocolsBase(Protocol):
             venv_bin: Path,
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
-            ...
-
-        def generate_typing_packages(
-            self,
-            repository_root: Path,
-            projects: t.SequenceOf[Path],
-            policy: m.Infra.TypingGenerationPolicy,
-        ) -> p.Result[t.VariadicTuple[Path]]:
-            """Generate and install PEP 561 packages in the owning environment."""
             ...
 
     @runtime_checkable

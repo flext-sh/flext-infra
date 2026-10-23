@@ -858,8 +858,9 @@ class FlextInfraCodegenPreconditions:
 
         """
         for expected in authority.inputs:
-            if expected.path in bootstrap or not expected.path.is_relative_to(
-                authority.repository_root
+            if expected.path in bootstrap or (
+                expected.path != authority.runtime
+                and not expected.path.is_relative_to(authority.repository_root)
             ):
                 continue
             observed = u.Cli.atomic_read_binary_file_receipt(
@@ -1246,7 +1247,9 @@ class FlextInfraCodegenPreconditions:
             return r[bool].from_failure(states)
         by_path = {state.path: state for state in states.value}
         matched = cls._authenticated_receipt_files(
-            by_path, request.source_authority.inputs
+            by_path,
+            request.source_authority.inputs,
+            request.source_authority.repository_root,
         )
         if matched.failure:
             return r[bool].from_failure(matched)
@@ -1487,15 +1490,20 @@ class FlextInfraCodegenPreconditions:
             )
         )
         output_paths = {output.path for output in own_outputs}
-        authenticated = cls._authenticated_receipt_files(by_path, authority.inputs)
+        authenticated = cls._authenticated_receipt_files(
+            by_path, authority.inputs, authority.repository_root
+        )
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
         # The native authority physically reauthenticates every matching receipt.
-        # Extra planner inputs retain their own immediate snapshot proof.
+        # Extra planner inputs of the generated repository retain their own
+        # immediate snapshot proof; other repositories' inputs are read-only.
         retained = tuple(
             state
             for state in states.value
-            if state.path not in output_paths and state.path not in authenticated.value
+            if state.path not in output_paths
+            and state.path not in authenticated.value
+            and state.path.is_relative_to(authority.repository_root)
         )
         current = FlextInfraMiseArtifactsComparison.states_current(retained)
         if current.failure:
@@ -1511,12 +1519,18 @@ class FlextInfraCodegenPreconditions:
     def _authenticated_receipt_files(
         by_path: t.MappingKV[Path, m.Cli.AtomicFileState],
         receipts: t.VariadicTuple[m.Cli.AtomicFileReceipt],
+        repository_root: Path | None = None,
     ) -> p.Result[set[Path]]:
         """Bind buffered inputs to receipts before their native physical proof.
+
+        With a generated repository, inputs outside it are read-only: they are
+        covered without comparing their buffered state against a receipt.
 
         Args:
             by_path: Captured states indexed by their physical path.
             receipts: Original authority receipts, including owned output preimages.
+            repository_root: The generated repository, when the receipts belong
+                to its sealed authority.
 
         Returns:
             Paths whose exact buffered state agrees with its original receipt.
@@ -1528,6 +1542,11 @@ class FlextInfraCodegenPreconditions:
         for receipt in receipts:
             state = by_path.get(receipt.path)
             if state is None:
+                continue
+            if repository_root is not None and not receipt.path.is_relative_to(
+                repository_root
+            ):
+                covered.add(state.path)
                 continue
             content = state.content
             if (
@@ -1650,6 +1669,9 @@ class FlextInfraCodegenPreconditions:
     ) -> p.Result[bool]:
         """Validate physical source authority and only authenticated own effects.
 
+        The interpreter and the generated repository's receipts and trees are
+        re-proven; other repositories' sources are read-only inputs.
+
         Returns:
             The original input/election proof, without creating execution authority.
 
@@ -1668,7 +1690,10 @@ class FlextInfraCodegenPreconditions:
             return published
         output_paths = {item.path for item in outputs}
         for receipt in authority.inputs:
-            if receipt.path in output_paths and receipt.path != authority.runtime:
+            if receipt.path != authority.runtime and (
+                receipt.path in output_paths
+                or not receipt.path.is_relative_to(authority.repository_root)
+            ):
                 continue
             current = u.Cli.atomic_read_binary_file_receipt(
                 receipt.path, required=receipt.device is not None
@@ -1678,7 +1703,11 @@ class FlextInfraCodegenPreconditions:
             if current.value != receipt:
                 return r[bool].fail(f"native source authority changed: {receipt.path}")
         return cls.source_trees_current(
-            authority.generator_trees,
+            tuple(
+                tree
+                for tree in authority.generator_trees
+                if tree.root.path.is_relative_to(authority.repository_root)
+            ),
             tuple(outputs),
             modules=authority.generator_modules,
         )

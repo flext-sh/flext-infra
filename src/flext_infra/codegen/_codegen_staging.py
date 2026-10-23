@@ -239,7 +239,9 @@ class FlextInfraCodegenStaging:
             queried = u.Cli.atomic_verify_directory_queries(
                 existing.source_directories, existing.source_query_topology
             )
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except OSError as exc:
+            return r[bool].fail(str(exc), exception=exc)
+        except c.EXC_BROAD_RUNTIME as exc:
             return r[bool].fail(str(exc), exception=exc)
         if queried.failure:
             return r[bool].from_failure(queried)
@@ -285,16 +287,15 @@ class FlextInfraCodegenStaging:
             return result_type.from_failure(inputs)
         if inputs.value != prepared.inputs:
             return result_type.fail("prepared source receipt omitted original inputs")
+        contents = {
+            path: None if content is None else content.encode(c.DEFAULT_ENCODING)
+            for path, content in prepared.updates.items()
+        }
         return result_type.ok(
             tuple(
                 plan.model_copy(
                     update={
-                        "desired_content": (
-                            None
-                            if (content := prepared.updates[plan.path.resolve()])
-                            is None
-                            else content.encode(c.DEFAULT_ENCODING)
-                        ),
+                        "desired_content": contents[plan.path.resolve()],
                         "source_states": prepared.inputs,
                         "source_directories": prepared.source_directories,
                         "source_query_topology": prepared.source_query_topology,
@@ -449,9 +450,9 @@ class FlextInfraCodegenStaging:
         if current_inputs.failure:
             return result_type.from_failure(current_inputs)
         updates = cls._composed_candidate_updates(staged_files, plans)
-        prepared: dict[Path, str | None] = {}
-        modes: dict[Path, int] = {}
-        layouts: dict[str, m.Infra.RopeProjectLayout] = {}
+        prepared: t.MutableMappingKV[Path, str | None] = {}
+        modes: t.MutableMappingKV[Path, int] = {}
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
         for receipt in receipts:
             if receipt.version != 1 or not receipt.source_query_topology:
                 return result_type.fail(
@@ -557,14 +558,16 @@ class FlextInfraCodegenStaging:
             return FlextInfraStagedPackage.source_inputs_current(candidate).map(
                 lambda _: candidate
             )
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except OSError as exc:
+            return result_type.fail(str(exc), exception=exc)
+        except c.EXC_BROAD_RUNTIME as exc:
             return result_type.fail(str(exc), exception=exc)
 
     @staticmethod
     def _composed_candidate_updates(
         staged_files: t.VariadicTuple[m.Infra.CodegenStagedFile],
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> dict[Path, str | None]:
+    ) -> t.MutableMappingKV[Path, str | None]:
         """Compose desired sources from declared effects and staged replacements.
 
         Args:
@@ -637,7 +640,7 @@ class FlextInfraCodegenStaging:
                 continue
             created = u.Cli.atomic_create_empty_directory_guarded(
                 phase_root_state,
-                permission_mode=0o700,
+                permission_mode=config.Infra.codegen.modes.directory_private,
             )
             if created.failure:
                 return result_type.from_failure(created)
@@ -699,7 +702,9 @@ class FlextInfraCodegenStaging:
             project = next(
                 (
                     item
-                    for item in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
+                    for item in FlextInfraMiseArtifactsFiles.transaction_participants(
+                        layout
+                    )
                     if item.root == file_plan.project
                 ),
                 None,
@@ -708,7 +713,9 @@ class FlextInfraCodegenStaging:
                 return result_type.fail(
                     f"{phase} file has no transaction participant: {file_plan.path}",
                 )
-            current = FlextInfraMiseArtifactsFiles.read_state(file_plan.path, required=False)
+            current = FlextInfraMiseArtifactsFiles.read_state(
+                file_plan.path, required=False
+            )
             if current.failure:
                 return result_type.from_failure(current)
             before = current.value
@@ -1018,7 +1025,9 @@ class FlextInfraCodegenStaging:
         )
         if staged.failure:
             return result_type.from_failure(staged)
-        staged_state = FlextInfraMiseArtifactsFiles.read_state(staged_path, required=True)
+        staged_state = FlextInfraMiseArtifactsFiles.read_state(
+            staged_path, required=True
+        )
         if staged_state.failure:
             return result_type.from_failure(staged_state)
         return result_type.ok(staged_state.value)

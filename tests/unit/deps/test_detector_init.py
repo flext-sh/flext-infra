@@ -30,9 +30,6 @@ class TestsFlextInfraDepsDetectorInit:
             output=str(output_path),
             quiet=True,
             no_fail=True,
-            typings=True,
-            apply_typings=True,
-            limits="/custom/limits.toml",
         )
         tm.that(params.repository_root, eq=tmp_path.resolve())
         tm.ok(params.no_pip_check)
@@ -41,9 +38,6 @@ class TestsFlextInfraDepsDetectorInit:
         tm.that(str(params.output_path), eq=str(output_path.resolve()))
         tm.ok(params.quiet)
         tm.ok(params.no_fail)
-        tm.ok(params.typings)
-        tm.ok(params.apply_typings)
-        tm.that(str(params.limits_path), eq=str(Path("/custom/limits.toml").resolve()))
 
     @staticmethod
     @pytest.mark.parametrize(

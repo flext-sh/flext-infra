@@ -46,7 +46,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.project import FlextInfraRopeProject, require_value
+from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -308,9 +308,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 continue
             original = originals.get(path)
             if original is None:
-                original = require_value(u.Cli.atomic_read_binary_file_state(path))
+                original = u.Cli.atomic_read_binary_file_state(path).unwrap()
                 originals[path] = original
-            chain = require_value(u.Cli.atomic_plan_directory_chain(path.parent))
+            chain = u.Cli.atomic_plan_directory_chain(path.parent).unwrap()
             declarations[path] = m.Infra.CodegenFilePlan(
                 project=root,
                 path=path,
@@ -676,47 +676,25 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         contents: t.MappingKV[Path, str],
         project: p.Infra.RopeProject,
     ) -> str:
-        """Publish composition through the declared family export boundaries.
+        """Retain direct component ownership in the generated MRO composition.
 
         Authored declarations and unrelated imports retain their syntax. The
         namespace rule catalog owns their architecture checks; generation only
-        rewires bindings the selected family explicitly publishes.
+        preserves the discovered component imports. Re-exporting those imports
+        through a family barrel would make the facade depend on a second public
+        surface instead of its actual declaration owners.
 
         Returns:
             Generated composition carrying the canonical ownership marker.
 
         """
-        tree = ast.parse(source)
-        _, declarations = cls._declared_sources(
+        cls._declared_sources(
             pkg_dir,
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
             contents=contents,
             project=project,
         )
-        published = {
-            f"{declaration.target}.{declaration.qualified_base}": (
-                f"{declaration.target.rpartition('.')[0]}.{declaration.qualified_base}"
-            )
-            for declaration in declarations
-        }
-        for node in tree.body:
-            if not isinstance(node, ast.ImportFrom) or not node.module:
-                continue
-            module = f"{pkg_dir.name}.{node.module}" if node.level else node.module
-            for alias in node.names:
-                target = published.get(f"{module}.{alias.name}")
-                if target is None:
-                    continue
-                source = (
-                    RenameCommand(
-                        CodemodContext(full_package_name=pkg_dir.name),
-                        old_name=f"{module}.{alias.name}",
-                        new_name=target,
-                    )
-                    .transform_module(parse_module(source))
-                    .code
-                )
         source = cls._wrap_facade_imports(cls._merged_facade_imports(source))
         if source.startswith(c.Infra.AUTOGEN_HEADERS):
             return source

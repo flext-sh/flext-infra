@@ -23,6 +23,94 @@ class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
 
     @staticmethod
+    def test_module_policy_derives_native_moves_and_cross_root_consumers(
+        tmp_path: Path,
+    ) -> None:
+        """Discover private module files without changing packages or live bytes."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        receiver, receiver_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="module-receiver",
+            package_name="module_receiver",
+        )
+        for checkout in (root, receiver):
+            u.Tests.provision_checkout(checkout)
+            u.Tests.provision_runtime_environment(checkout)
+        facade = package / "_facade"
+        facade.mkdir()
+        (facade / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
+        source = facade / "_module.py"
+        source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        special = facade / "__main__.py"
+        special.write_text("", encoding=c.DEFAULT_ENCODING)
+        proper = facade / "proper.py"
+        proper.write_text("", encoding=c.DEFAULT_ENCODING)
+        consumer = receiver_package / "consumer.py"
+        original = f"from {package.name}._facade._module import VALUE\n"
+        consumer.write_text(original, encoding=c.DEFAULT_ENCODING)
+        consumer_private = receiver_package / "_consumer.py"
+        consumer_private.write_text("", encoding=c.DEFAULT_ENCODING)
+        seed = tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.build_source_plan(root, (receiver,))
+        )
+        planned = tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
+        )
+        updates = planned.candidate.updates
+        tm.that(updates[source], eq=None)
+        tm.that(updates[facade / "module.py"], eq=source.read_text())
+        tm.that(
+            updates[consumer],
+            eq=f"from {package.name}._facade.module import VALUE\n",
+        )
+        for unchanged in (special, proper, facade / "__init__.py", consumer_private):
+            tm.ok(unchanged not in updates)
+        tm.that(consumer.read_text(), eq=original)
+        tm.ok(source.is_file())
+        tm.ok(not (facade / "module.py").exists())
+
+    @staticmethod
+    @pytest.mark.parametrize("occupied", ["module.py", "__module.py", "module"])
+    def test_module_policy_collision_has_no_live_effects(
+        tmp_path: Path, occupied: str
+    ) -> None:
+        """Reject occupied or competing module destinations before publication."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        source = package / "_module.py"
+        original = "VALUE = 1\n"
+        source.write_text(original, encoding=c.DEFAULT_ENCODING)
+        destination = package / occupied
+        if destination.suffix:
+            destination.write_text("", encoding=c.DEFAULT_ENCODING)
+        else:
+            destination.mkdir()
+            (destination / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
+        seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
+        with pytest.raises(ValueError, match="conflict|occupied"):
+            codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
+        tm.that(source.read_text(), eq=original)
+        tm.ok(destination.exists())
+
+    @staticmethod
+    @pytest.mark.parametrize("name", ["_.py", "_class.py"])
+    def test_module_policy_rejects_invalid_stripped_identifiers(
+        tmp_path: Path, name: str
+    ) -> None:
+        """Do not turn a private module into an empty identifier or keyword."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        source = package / name
+        original = "VALUE = 1\n"
+        source.write_text(original, encoding=c.DEFAULT_ENCODING)
+        seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
+        with pytest.raises(ValueError, match="no valid public identifier"):
+            codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
+        tm.that(source.read_text(), eq=original)
+
+    @staticmethod
     def _rename_artifact(
         tmp_path: Path,
         *,

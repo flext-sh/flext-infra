@@ -1343,20 +1343,21 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 issues=tuple(planner.state.planning_issues),
                 elapsed=time.monotonic() - started,
             )
-        planned = planner._governed_repository_plans(
-            target,
-            local_workspace,
-            planner.surface_contract(
-                c.Infra.CodegenConformSurface(task.surface),
-                codegen=inputs.spec,
-            ),
-            inputs,
-            scaffold=(
-                task.initial_workspace is not None
-                and task.initial_workspace.project is not None
-                and repository.name == task.workspace.repository.name
-            ),
-        )
+        with planner.shared_source_views():
+            planned = planner._governed_repository_plans(
+                target,
+                local_workspace,
+                planner.surface_contract(
+                    c.Infra.CodegenConformSurface(task.surface),
+                    codegen=inputs.spec,
+                ),
+                inputs,
+                scaffold=(
+                    task.initial_workspace is not None
+                    and task.initial_workspace.project is not None
+                    and repository.name == task.workspace.repository.name
+                ),
+            )
         if planned.failure:
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=repository.name,

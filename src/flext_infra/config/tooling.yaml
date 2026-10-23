@@ -22,8 +22,7 @@ Infra:
       pyrefly:
       - [disable-project-excludes-heuristics, true]
       - [use-ignore-files, false]
-      - - project-excludes
-        - ["**/typings/**"]
+      - [project-excludes, []]
       pyrefly.errors:
       # Preserve every diagnostic from the strict-error policy during cutover.
       - [bad-argument-count, error]
@@ -149,6 +148,14 @@ Infra:
       - [ reportInconsistentConstructor, error ]
       - [ reportMissingImports, error ]
       - [ reportMissingModuleSource, error ]
+      # The only authorized checker exception (tracker memory
+      # operator-ruling-20261022-missing-type-stubs): strict mode requires a
+      # stub file for an untyped third-party import even when Pyright already
+      # infers the library source (useLibraryCodeForTypes). Used surfaces stay
+      # typed through `p` protocols at one boundary module per library. A
+      # project that needs another value declares it in its own
+      # config/tooling.yaml overlay under this same settings table.
+      - [ reportMissingTypeStubs, none ]
       - [ reportPrivateUsage, error ]
       - [ reportUnnecessaryCast, error ]
       - [ reportUnnecessaryComparison, error ]
@@ -491,8 +498,6 @@ Infra:
           test-like-dirs: [ tests, examples, scripts ]
           default-excludes:
           - "**/.*"
-          root-typings-paths: []
-          project-typings-paths: []
           ignored-diagnostic-globs: []
           diagnostic-path-overrides: []
           source-report-private-usage: error
@@ -503,8 +508,6 @@ Infra:
           source-dir: src
           project-root: .
           env-dirs: [ src, tests, examples, scripts ]
-          root-typings-paths: []
-          project-typings-paths: []
           workspace-include-children: false
           workspace-include-child-env-dirs: []
           # Empty: scripts/ owns scripts/__init__.py, so every script module

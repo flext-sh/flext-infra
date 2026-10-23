@@ -64,8 +64,10 @@ class FlextInfraRenameSymbols:
         module_resource = workspace.rope_project.find_module(qualified_name)
         if module_resource is not None:
             path = Path(module_resource.real_path).resolve()
+            if module_resource.is_folder():
+                path /= "__init__.py"
             indexed = workspace.module(path)
-            if indexed is None or module_resource.is_folder():
+            if indexed is None:
                 msg = (
                     f"semantic rename requires an inventoried "
                     f"module file: {qualified_name}"
@@ -123,6 +125,21 @@ class FlextInfraRenameSymbols:
         ] = {}
         moves: dict[Path, Path] = {}
         selected: set[t.Pair[Path, str]] = set()
+        for decision in decisions:
+            path = Path(decision.declaration.file_path).resolve()
+            if decision.declaration.kind != "module" or path.name != "__init__.py":
+                continue
+            for other in decisions:
+                for item in (other.declaration, *other.contracts):
+                    other_path = Path(item.file_path).resolve()
+                    if item != decision.declaration and other_path.is_relative_to(
+                        path.parent
+                    ):
+                        msg = (
+                            "native package rename requires separate virtual waves for "
+                            f"overlapping selections: {path.parent} and {other_path}"
+                        )
+                        raise ValueError(msg)
         for decision in decisions:
             cls._plan_native_decision(
                 projects, sources, decision, selected, (rewrites, moves)
@@ -279,8 +296,19 @@ class FlextInfraRenameSymbols:
         """
         producer = projects[0]
         root = Path(producer.root.real_path)
+        path = Path(item.file_path).resolve()
+        if item.kind == "module":
+            if path not in sources:
+                msg = f"native module rename escapes authenticated inventory: {path}"
+                raise ValueError(msg)
+            destination = ".".join((*item.module_name.split(".")[:-1], replacement))
+            if producer.find_module(destination) is not None:
+                msg = f"native module destination is occupied: {destination}"
+                raise ValueError(msg)
+            if path.name == "__init__.py":
+                path = path.parent
         resource = producer.get_resource(
-            Path(item.file_path).resolve().relative_to(root).as_posix()
+            path.relative_to(root).as_posix()
         )
         offset = cls._native_identifier_offset(producer, sources, item, replacement)
         owner = item.scope_path.rpartition(".")[0]
@@ -318,8 +346,9 @@ class FlextInfraRenameSymbols:
                 effects[0],
             )
 
-    @staticmethod
+    @classmethod
     def _record_native_move(
+        cls,
         change: p.Infra.RopeMoveResource,
         sources: t.MappingKV[Path, str],
         moves: t.MutableMappingKV[Path, Path],
@@ -333,7 +362,19 @@ class FlextInfraRenameSymbols:
         """
         origin = Path(change.resource.real_path).resolve()
         target = Path(change.new_resource.real_path).resolve()
-        if origin not in sources or change.resource.is_folder():
+        if not origin.is_relative_to(root) or not target.is_relative_to(root):
+            msg = f"native module move is foreign: {origin} -> {target}"
+            raise ValueError(msg)
+        if change.resource.is_folder():
+            if origin / "__init__.py" not in sources:
+                msg = f"native package move has no authenticated initializer: {origin}"
+                raise ValueError(msg)
+            if target.exists():
+                msg = f"native package destination is occupied: {target}"
+                raise ValueError(msg)
+            cls._record_package_moves(change.resource, target, sources, moves, root)
+            return
+        if origin not in sources:
             msg = f"native module move escapes authenticated file inventory: {origin}"
             raise ValueError(msg)
         if origin in moves and moves[origin] == target:
@@ -345,6 +386,42 @@ class FlextInfraRenameSymbols:
             msg = f"native module destination is occupied or foreign: {target}"
             raise ValueError(msg)
         moves[origin] = target
+
+    @classmethod
+    def _record_package_moves(
+        cls,
+        resource: p.Infra.RopeResource,
+        target: Path,
+        sources: t.MappingKV[Path, str],
+        moves: t.MutableMappingKV[Path, Path],
+        root: Path,
+    ) -> None:
+        """Expand only complete snapshot directory inventories into file effects."""
+        if not isinstance(resource, p.Infra.RopeRoot):
+            msg = f"native package has no directory inventory: {resource.real_path}"
+            raise ValueError(msg)
+        children = resource.get_children()
+        if not children:
+            msg = f"native package cannot preserve empty directory: {resource.real_path}"
+            raise ValueError(msg)
+        for child in children:
+            origin = Path(child.real_path).resolve()
+            destination = target / child.name
+            if not origin.is_relative_to(root) or origin.parent != Path(
+                resource.real_path
+            ).resolve():
+                msg = f"native package payload is foreign: {origin}"
+                raise ValueError(msg)
+            if child.is_folder():
+                cls._record_package_moves(child, destination, sources, moves, root)
+                continue
+            if origin not in sources or origin.suffix != ".py":
+                msg = f"native package cannot preserve uninventoried payload: {origin}"
+                raise ValueError(msg)
+            if origin in moves or destination in moves.values() or destination.exists():
+                msg = f"native package moves conflict: {origin} -> {destination}"
+                raise ValueError(msg)
+            moves[origin] = destination
 
     @staticmethod
     def _member_paths(source: str, path: Path) -> frozenset[tuple[str, ...]]:

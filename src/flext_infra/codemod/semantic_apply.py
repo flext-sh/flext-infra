@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import keyword
 import operator
 from collections.abc import Callable, Generator, MutableMapping
 from contextlib import ExitStack, closing, contextmanager
@@ -103,6 +104,86 @@ class FlextInfraCodemodSemanticApply:
             )
         )
 
+    @classmethod
+    def plan_module_names(
+        cls,
+        root: Path,
+        source_plan: m.Infra.SemanticSourcePlan,
+    ) -> p.Result[m.Infra.SemanticSourcePlan]:
+        """Derive module-only naming decisions from the authenticated inventory.
+
+        Special double-underscore modules and containing package names stay intact.
+        Explicit consumer roots participate in reference rewriting, not discovery.
+
+        Returns:
+            The unchanged source plan or its native cross-root rename candidate.
+
+        Raises:
+            ValueError: If a stripped name or inventoried module identity is invalid.
+
+        """
+        if source_plan.candidate.updates:
+            return r[m.Infra.SemanticSourcePlan].fail(
+                "module naming discovery requires the original source seed"
+            )
+        sources = cls._candidate_python_sources(
+            source_plan.candidate, source_plan.source_states
+        )
+        with FlextInfraRopeWorkspace.open_workspace(
+            root, rope_repository_root=source_plan.candidate.workspace
+        ) as workspace:
+            selections: list[m.Infra.SemanticRenameSelection] = []
+            for path in sorted(sources):
+                name = path.stem
+                if (
+                    not path.is_relative_to(root.resolve())
+                    or not name.startswith("_")
+                    or (name.startswith("__") and name.endswith("__"))
+                ):
+                    continue
+                replacement = name.lstrip("_")
+                if not replacement.isidentifier() or keyword.iskeyword(replacement):
+                    msg = f"module naming has no valid public identifier: {path}"
+                    raise ValueError(msg)
+                module = workspace.module(path)
+                if module is None:
+                    msg = f"module naming requires an inventoried module: {path}"
+                    raise ValueError(msg)
+                declaration = FlextInfraRenameSymbols.inventoried_declaration(
+                    workspace, module.module_name
+                )
+                if Path(declaration.file_path) != path:
+                    msg = f"module naming identity resolves to another file: {path}"
+                    raise ValueError(msg)
+                destination = ".".join((
+                    *module.module_name.split(".")[:-1],
+                    replacement,
+                ))
+                if workspace.rope_project.find_module(destination) is not None:
+                    msg = f"module naming destination is occupied: {destination}"
+                    raise ValueError(msg)
+                selections.append(
+                    m.Infra.SemanticRenameSelection(
+                        qualified_name=module.module_name,
+                        replacement_name=replacement,
+                        reason="Python module files have no leading underscore",
+                    )
+                )
+            if not selections:
+                return r[m.Infra.SemanticSourcePlan].ok(source_plan)
+            planned = cls.build_rename_plan(
+                root,
+                workspace,
+                m.Infra.SemanticRenameSelections(
+                    decisions=tuple(selections),
+                    consumer_roots=source_plan.consumer_roots,
+                ),
+                source_plan=source_plan,
+            )
+            if planned.failure:
+                return r[m.Infra.SemanticSourcePlan].from_failure(planned)
+            return r[m.Infra.SemanticSourcePlan].ok(planned.value)
+
     @staticmethod
     def _source_scopes(
         root: Path,
@@ -119,15 +200,22 @@ class FlextInfraCodemodSemanticApply:
             return outcome.fail(
                 "consumer roots must be existing absolute checkout roots"
             )
-        scope = u.Infra.import_project_roots(root)[0].resolve()
-        consumers = tuple(
+        # Each scope is the repository owning its checkout: a workspace member
+        # never widens to its superproject, so supplier members stay outside
+        # the authenticated capture.
+        scopes = tuple(
             dict.fromkeys(
-                u.Infra.import_project_roots(path.resolve())[0].resolve()
-                for path in consumer_roots
-                if u.Infra.import_project_roots(path.resolve())[0].resolve() != scope
+                max(
+                    (
+                        owner.resolve()
+                        for owner in u.Infra.import_project_roots(path.resolve())
+                        if path.resolve().is_relative_to(owner.resolve())
+                    ),
+                    key=lambda owner: len(owner.parts),
+                )
+                for path in (root, *consumer_roots)
             )
         )
-        scopes = tuple(dict.fromkeys((scope, *consumers)))
         if any(
             left != right and left.is_relative_to(right)
             for left in scopes

@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, settings, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
@@ -25,11 +25,11 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         params: m.Infra.DetectCommand,
         root: Path,
         venv_bin: Path,
-    ) -> p.Result[t.Pair[t.SequenceOf[Path], Path]]:
-        """Discover projects and verify deptry; return ``(projects, limits_path)``.
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Discover projects and verify deptry.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.SequenceOf[Path], Path]]``.
+            The discovered project paths.
 
         """
         detector = self._detector
@@ -38,61 +38,28 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             projects_filter=u.Infra.normalize_sequence_values(params.projects),
         )
         if projects_result.failure:
-            return r[tuple[t.SequenceOf[Path], Path]].from_failure(projects_result)
+            return r[t.SequenceOf[Path]].from_failure(projects_result)
         projects: t.SequenceOf[Path] = projects_result.value
         if not projects:
             detector.log.error("deps_no_projects_found")
-            return r[tuple[t.SequenceOf[Path], Path]].fail("no projects found")
+            return r[t.SequenceOf[Path]].fail("no projects found")
         deptry_path = venv_bin / c.Infra.DEPTRY
         if not deptry_path.exists():
             detector.log.error("deps_deptry_missing", path=str(deptry_path))
-            return r[tuple[t.SequenceOf[Path], Path]].fail(
+            return r[t.SequenceOf[Path]].fail(
                 f"Deptry executable not found at {deptry_path}",
             )
-        limits_default = (
-            Path(__file__).resolve().parent / c.Infra.DEPENDENCY_LIMITS_FILENAME
-        )
-        limits_path = params.limits_path or limits_default
-        return r[tuple[t.SequenceOf[Path], Path]].ok((projects, limits_path))
-
-    def _configure_typings_limits(
-        self,
-        limits_path: Path,
-        report_model: p.Infra.WorkspaceReport,
-    ) -> p.Result[bool]:
-        """Load dependency-limits TOML and seed the workspace report's limits info.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        limits_data = self._deps.load_dependency_limits(limits_path)
-        if not limits_data:
-            return r[bool].ok(value=False)
-        python_payload = limits_data.get(c.Infra.PYTHON)
-        python_cfg: t.JsonMapping = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(python_payload)
-            if isinstance(python_payload, Mapping)
-            else {}
-        )
-        version_value = python_cfg.get(c.Infra.VERSION)
-        python_version = str(version_value) if version_value is not None else None
-        report_model.dependency_limits = m.Infra.DependencyLimitsInfo(
-            python_version=python_version,
-            limits_path=str(limits_path),
-        )
-        return r[bool].ok(value=True)
+        return r[t.SequenceOf[Path]].ok(projects)
 
     def _run_project_detection(
         self,
         project_path: Path,
         *,
         venv_bin: Path,
-        limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport],
+        projects_report: MutableMapping[str, m.Infra.ProjectDependencyReport],
     ) -> p.Result[bool]:
-        """Run deptry + optional typings detection/apply for one project.
+        """Run deptry for one project.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -100,7 +67,6 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         """
         detector = self._detector
         deps_service = self._deps
-        do_typings = params.typings or params.apply_typings
         project_name = project_path.name
         if not params.quiet:
             detector.log.info("deps_deptry_running", project=project_name)
@@ -131,71 +97,6 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             project_name,
             issues,
         )
-        run_typings_for_project = (
-            do_typings and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
-        )
-        if not run_typings_for_project:
-            return r[bool].ok(value=True)
-        return self._run_project_typings(
-            project_path,
-            limits_path=limits_path,
-            params=params,
-            projects_report=projects_report,
-        )
-
-    def _run_project_typings(
-        self,
-        project_path: Path,
-        *,
-        limits_path: Path,
-        params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport],
-    ) -> p.Result[bool]:
-        """Declare typing requirements in the development group through native UV.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        detector = self._detector
-        project_name = project_path.name
-        if not params.quiet:
-            detector.log.info("deps_typings_detect_running", project=project_name)
-        typings_result = self._deps.analyze_required_typings(
-            project_path,
-            limits_path=limits_path,
-        )
-        if typings_result.failure:
-            return r[bool].from_failure(typings_result)
-        typings_report = typings_result.value
-        projects_report[project_name].typings = typings_report
-        to_add: t.StrSequence = typings_report.to_add
-        if not (params.apply_typings and to_add and params.apply):
-            return r[bool].ok(value=True)
-        # UV declares the development requirement; Make owns resolution and install.
-        run_outcome = u.Cli.run_raw(
-            [
-                settings.Infra.uv_executable or c.Infra.UV,
-                "add",
-                "--project",
-                str(project_path),
-                "--group",
-                c.Infra.DEV,
-                "--frozen",
-                "--",
-                *to_add,
-            ],
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
-        if run_outcome.failure:
-            return r[bool].from_failure(run_outcome)
-        if not u.Cli.process_succeeded(run_outcome.value.outcome):
-            return r[bool].fail(
-                f"UV typing dependency add failed for {project_name}: "
-                f"exit {run_outcome.value.outcome.raw_return_code}\n"
-                f"{run_outcome.value.stdout}\n{run_outcome.value.stderr}",
-            )
         return r[bool].ok(value=True)
 
     def _run_pip_check(

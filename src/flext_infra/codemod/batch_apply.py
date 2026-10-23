@@ -498,6 +498,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return self._authenticate_phase_seed(root, rope_workspace, loaded.value)
         return FlextInfraCodemodSemanticApply.build_source_plan(
             root, self.consumer_roots
+        ).flat_map(
+            lambda seed: FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         ).map(lambda seed: (seed, None))
 
     def _authenticate_phase_seed(

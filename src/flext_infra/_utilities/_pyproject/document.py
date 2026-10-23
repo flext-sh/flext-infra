@@ -68,10 +68,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 )
             ),
         ] = None
-        typing_policy: m.Infra.TypingGenerationPolicy | None = m.Field(
-            default=None,
-            description="Selected generated typing provenance policy",
-        )
 
     @classmethod
     def parsed_pyproject(
@@ -228,27 +224,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if origins.failure:
             return result.from_failure(origins)
         declared_sources, candidate_sources = origins.value
-        generated_local: t.VariadicTuple[m.Infra.GeneratedTypingPackage] = ()
-        if provenance.typing_policy is not None:
-            if provenance.repository_root is None:
-                return result.fail(
-                    "generated typing provenance requires repository root"
-                )
-            generated = cls.generated_typing_packages(
-                source,
-                root=provenance.repository_root,
-                policy=provenance.typing_policy,
-            )
-            if generated.failure:
-                return result.from_failure(generated)
-            generated_local = generated.value
         source_context = FlextInfraUtilitiesPyprojectRequirementsProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             family_line=provenance.flext_line.branch
             if provenance.flext_line is not None
             else None,
-            generated_local=generated_local,
         )
         return result.ok((
             source,
@@ -312,7 +293,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             declared_sources=provenance.declared_sources,
             candidate_sources=provenance.candidate_sources,
             family_line=provenance.family_line,
-            generated_local=provenance.generated_local,
         )
         if normalized.failure:
             return result_type.from_failure(

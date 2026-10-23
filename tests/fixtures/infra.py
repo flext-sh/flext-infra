@@ -970,15 +970,6 @@ def real_detector_project(
             ).is_file(),
             eq=True,
         )
-        (root / "limits.toml").write_bytes(
-            (
-                _PROJECT_ROOT
-                / "src"
-                / "flext_infra"
-                / "deps"
-                / c.Infra.DEPENDENCY_LIMITS_FILENAME
-            ).read_bytes(),
-        )
         yield root
 
 

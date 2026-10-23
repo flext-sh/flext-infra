@@ -245,7 +245,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         cpu_count = os.process_cpu_count()
         page_size = os.sysconf("SC_PAGE_SIZE")
         pages = os.sysconf("SC_PHYS_PAGES")
-        if cpu_count is None or cpu_count <= 0 or page_size <= 0 or pages <= 0:
+        if cpu_count <= 0 or page_size <= 0 or pages <= 0:
             msg = "CPU or physical memory capacity is unavailable"
             raise ValueError(msg)
         memory_workers = (

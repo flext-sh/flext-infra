@@ -92,6 +92,14 @@ Package-directory renames are refused by this file-effect boundary. Native
 string payloads and framework registration are not implicitly renamed; they
 remain subject to the existing consumer validation and declaration owners.
 
+Facade composition retains direct imports of discovered component declarations;
+the renderer does not redirect them through private-family package exports.
+Existing behavioral base chains retain their native C3 ordering. This is not a
+class-only export cutover: qualifying component consumers through the facade
+class and retiring module/package exports must join the same authenticated
+semantic candidate, including lazy-init projections, before publication. Removing
+barrels or behavioral bases independently would break existing consumers.
+
 The AST/semantic candidate is not yet an all-phases atomic guarantee: the legacy
 text, CSV and independent loop callbacks still expose effectful operations.
 Their existing owners need pure planning ports before those effects can join the

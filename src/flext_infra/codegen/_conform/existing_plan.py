@@ -295,7 +295,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if sources.failure:
             return result_type.from_failure(sources)
         custom, initializers = sources.value[1], sources.value[2]
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=sources.value[3],
             declared_files=sources.value[0],
@@ -465,7 +465,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             }.values()
         )
         started = time.monotonic()
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=lazy_result.value[1],
             declared_files=cohort,
@@ -553,7 +553,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root, source_states=inputs, declared_files=declared
         ) as projected:
             exports = FlextInfraCodegenLazyInit(
@@ -600,7 +600,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.MappingKV[str, str],
             ]
         ]
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=initial[1],
             declared_files=tuple(initial[0]),
@@ -770,7 +770,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 operation, index, produced_new_files=produced
             ):
                 continue
-            with u.Infra.facade_source_project(
+            with self._source_view(
                 root,
                 source_states=inputs,
                 declared_files=tuple(staged.values()),
@@ -824,7 +824,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=initial[1],
             declared_files=tuple(initial[0]),
@@ -1803,7 +1803,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
-        with u.Infra.facade_source_project(
+        with self._source_view(
             root,
             source_states=inputs,
             declared_files=tuple(staged.values()),
