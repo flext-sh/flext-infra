@@ -135,10 +135,15 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The resulting ``m.Infra.CodegenPlan``.
 
         """
+        workspace = tm.ok(u.Infra.load_workspace(root))
         for entry in config.Infra.codegen.templates.entries:
             destination = entry.destination.format(
                 package_name="fixture_project",
                 ns="fixture_project",
+                **u.Infra.runtime_module_names(
+                    project_name=workspace.repository.distribution,
+                    codegen=config.Infra.codegen,
+                ),
             )
             (root / destination).parent.mkdir(parents=True, exist_ok=True)
         for managed in config.Infra.codegen.managed_files:
