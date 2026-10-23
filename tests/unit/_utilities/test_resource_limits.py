@@ -285,7 +285,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     def test_mypy_policy_rejects_default_above_its_ceiling() -> None:
         """The typed SSOT rejects an inconsistent default and ceiling."""
         policy = config.Infra.tooling.tools.mypy
-        payload = policy.model_dump()
+        payload = policy.model_dump(by_alias=True)
         payload["timeout_seconds"] = policy.max_timeout_seconds + 1
         with pytest.raises(ValueError, match="default timeout exceeds"):
             type(policy).model_validate(payload)

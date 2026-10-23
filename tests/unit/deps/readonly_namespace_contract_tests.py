@@ -196,7 +196,10 @@ class TestsFlextInfraReadonlyNamespaceContract:
         project = u.Tests.mk_project(
             tmp_path,
             "invalid-manifest",
-            pyproject="[tool.ruff]\nunknown-manifest-setting = true\n",
+            pyproject=(
+                '[project]\nname = "invalid-manifest"\nversion = "0.0.0"\n'
+                "[tool.ruff]\nunknown-manifest-setting = true\n"
+            ),
         )
         (project / "selected.py").write_text("pass\n", encoding="utf-8")
         context = m.Infra.GateContext(
