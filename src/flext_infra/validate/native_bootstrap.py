@@ -320,9 +320,6 @@ class FlextInfraValidateNativeBootstrap:
         supplier_environment: str | None = None,
     ) -> Path | None:
         """Authenticate every supplier-capable native manifest and lock binding."""
-        import shlex
-        from urllib.parse import urlsplit
-
         owned = cls.native_packages(consumer_root, supplier=False)
         if supplier_root is not None:
             supplier_root = supplier_root.resolve(strict=True)
@@ -337,6 +334,29 @@ class FlextInfraValidateNativeBootstrap:
         control = cls.distribution_name(control_distribution)
         if control in owned:
             expected[control] = owned[control]
+        manifest, lock = cls.setup_documents(
+            consumer_root, supplier_root, resolution_root, supplier_environment,
+        )
+        manifest_path = resolution_root / "pyproject.toml"
+        lock_path = resolution_root / "uv.lock"
+        sources = cls.manifest_sources(manifest, manifest_path)
+        if supplier_root is not None and control not in expected:
+            msg = f"control distribution has no selected native package: {control_distribution}"
+            raise ValueError(msg)
+        cls.manifest_bindings(sources, expected, manifest_path)
+        present = cls.lock_bindings(lock, sources, expected, lock_path, control)
+        if control not in present:
+            msg = f"control distribution absent from lock: {lock_path}: {control_distribution}"
+            raise ValueError(msg)
+        cls.lock_edges(lock, expected, lock_path)
+        return expected.get(control)
+
+    @classmethod
+    def setup_documents(
+        cls, consumer_root: Path, supplier_root: Path | None,
+        resolution_root: Path, supplier_environment: str | None,
+    ) -> tuple[dict[str, NativeValue], dict[str, NativeValue]]:
+        """Attach preparation instructions to the original missing-input exceptions."""
         manifest_path = resolution_root / "pyproject.toml"
         lock_path = resolution_root / "uv.lock"
         try:
@@ -364,18 +384,29 @@ class FlextInfraValidateNativeBootstrap:
                 f"explicit lock preparation required before setup: {command} (consumer {consumer_root}; resolver {resolution_root})"
             )
             raise
-        sources = manifest.get("tool", {}).get("uv", {}).get("sources", {})
-        normalized_sources = {}
+        return manifest, lock
+
+    @classmethod
+    def manifest_sources(
+        cls, manifest: dict[str, NativeValue], manifest_path: Path,
+    ) -> dict[str, NativeValue]:
+        """Normalize native source keys once and reject ambiguous declarations."""
+        sources = cls.native_section(manifest, "tool", "uv", "sources")
+        normalized_sources: dict[str, NativeValue] = {}
         for name, value in sources.items():
             normalized = cls.distribution_name(name)
             if normalized in normalized_sources:
                 msg_0 = f"ambiguous manifest distribution: {manifest_path}: {name}"
                 raise ValueError(msg_0)
             normalized_sources[normalized] = value
-        sources = normalized_sources
-        if supplier_root is not None and control not in expected:
-            msg_0 = f"control distribution has no selected native package: {control_distribution}"
-            raise ValueError(msg_0)
+        return normalized_sources
+
+    @classmethod
+    def manifest_bindings(
+        cls, sources: dict[str, NativeValue], expected: Mapping[str, Path],
+        manifest_path: Path,
+    ) -> None:
+        """Authenticate every selected conditional manifest editable binding."""
         for name, declarations in sources.items():
             if name not in expected:
                 continue
@@ -384,98 +415,110 @@ class FlextInfraValidateNativeBootstrap:
             if not declarations:
                 msg_0 = f"missing editable manifest binding: {manifest_path}: {name}: {expected[name]}"
                 raise ValueError(msg_0)
-            for declaration in declarations:
-                if declaration.get("editable") is not True or not isinstance(
-                    declaration.get("path"), str
-                ):
+            for value in cls.native_array(declarations):
+                declaration = cls.native_table(value)
+                path = declaration.get("path")
+                if declaration.get("editable") is not True or not isinstance(path, str):
                     msg_0 = f"noneditable manifest binding: {manifest_path}: {name}: {declaration!r}"
                     raise ValueError(msg_0)
                 cls.editable_path(
-                    resolution_root,
-                    declaration["path"],
+                    manifest_path.parent,
+                    path,
                     expected[name],
                     manifest_path,
                     name,
                 )
-        present = set()
-        for package in lock.get("package", []):
-            name = cls.distribution_name(package["name"])
+    @classmethod
+    def locked_control_source(
+        cls, package: dict[str, NativeValue], lock_path: Path,
+    ) -> None:
+        """Require the native noneditable control source and its locked identity."""
+        source = cls.native_section(package, "source")
+        if set(source) not in ({"git"}, {"registry"}):
+            msg = f"unprovable native control source: {lock_path}: {package!r}"
+            raise ValueError(msg)
+        location = urlsplit(cls.native_text(next(iter(source.values()))))
+        if not location.scheme or not location.netloc:
+            msg = f"invalid native control source: {lock_path}: {source!r}"
+            raise ValueError(msg)
+        if "git" in source and not location.fragment:
+            msg = f"Git control source has no locked commit: {lock_path}: {source!r}"
+            raise ValueError(msg)
+        if not isinstance(package.get("version"), str):
+            msg = f"native control source has no locked version: {lock_path}: {package!r}"
+            raise ValueError(msg)
+
+    @classmethod
+    def lock_bindings(
+        cls, lock: dict[str, NativeValue], sources: dict[str, NativeValue],
+        expected: Mapping[str, Path], lock_path: Path, control: str,
+    ) -> set[str]:
+        """Validate package identities without conflating legitimate name forks."""
+        present: set[str] = set()
+        for value in cls.native_array(lock.get("package", [])):
+            package = cls.native_table(value)
+            name = cls.distribution_name(cls.native_text(package["name"]))
             if name == control and name not in expected:
-                source = package.get("source", {})
-                if set(source) not in ({"git"}, {"registry"}):
-                    msg_0 = (
-                        f"unprovable native control source: {lock_path}: {package!r}"
-                    )
-                    raise ValueError(msg_0)
-                location = urlsplit(next(iter(source.values())))
-                if not location.scheme or not location.netloc:
-                    msg_0 = f"invalid native control source: {lock_path}: {source!r}"
-                    raise ValueError(msg_0)
-                if "git" in source and not location.fragment:
-                    msg_0 = f"Git control source has no locked commit: {lock_path}: {source!r}"
-                    raise ValueError(msg_0)
-                if not isinstance(package.get("version"), str):
-                    msg_0 = f"native control source has no locked version: {lock_path}: {package!r}"
-                    raise ValueError(msg_0)
+                cls.locked_control_source(package, lock_path)
                 present.add(name)
             if name not in expected:
                 continue
             present.add(name)
             if name not in sources:
-                msg_0 = f"missing editable manifest binding: {manifest_path}: {name}: {expected[name]}"
+                msg_0 = f"missing editable manifest binding: {lock_path.parent / 'pyproject.toml'}: {name}: {expected[name]}"
                 raise ValueError(msg_0)
-            source = package.get("source", {})
+            source = cls.native_section(package, "source")
             if set(source) != {"editable"}:
                 msg_0 = f"noneditable lock binding: {lock_path}: {name}: {source!r}"
                 raise ValueError(msg_0)
             cls.editable_path(
-                resolution_root, source["editable"], expected[name], lock_path, name
+                lock_path.parent, cls.native_text(source["editable"]), expected[name], lock_path, name
             )
-        if control not in present:
-            msg_0 = f"control distribution absent from lock: {lock_path}: {control_distribution}"
-            raise ValueError(msg_0)
-        # UV repeats qualified edges in metadata, groups, overrides and forks.
-        # Check each occurrence; repeated names are not duplicate identities.
+        return present
+    @classmethod
+    def lock_edge(
+        cls, value: dict[str, NativeValue], expected: Mapping[str, Path],
+        lock_path: Path,
+    ) -> None:
+        """Authenticate one qualified native edge, including its copied source."""
+        name = value.get("name")
+        if not isinstance(name, str):
+            return
+        normalized = cls.distribution_name(name)
+        if normalized not in expected:
+            return
+        for key in ("editable", "path", "directory", "virtual"):
+            if key not in value:
+                continue
+            if key != "editable":
+                msg = f"noneditable lock edge: {lock_path}: {value!r}"
+                raise ValueError(msg)
+            cls.editable_path(
+                lock_path.parent, cls.native_text(value[key]),
+                expected[normalized], lock_path, name,
+            )
+        if "source" in value:
+            source = cls.native_table(value["source"])
+            if set(source) != {"editable"}:
+                msg = f"foreign lock edge: {lock_path}: {value!r}"
+                raise ValueError(msg)
+            cls.editable_path(
+                lock_path.parent, cls.native_text(source["editable"]),
+                expected[normalized], lock_path, name,
+            )
 
-        def edges(value: dict | list) -> None:
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(item, (dict, list)):
-                        edges(item)
-                return
-            name = value.get("name")
-            if isinstance(name, str) and cls.distribution_name(name) in expected:
-                normalized = cls.distribution_name(name)
-                for key in ("editable", "path", "directory", "virtual"):
-                    if key in value:
-                        if key != "editable":
-                            msg_0 = f"noneditable lock edge: {lock_path}: {value!r}"
-                            raise ValueError(msg_0)
-                        cls.editable_path(
-                            resolution_root,
-                            value[key],
-                            expected[normalized],
-                            lock_path,
-                            name,
-                        )
-                if "source" in value:
-                    source = value["source"]
-                    if set(source) != {"editable"}:
-                        msg_0 = f"foreign lock edge: {lock_path}: {value!r}"
-                        raise ValueError(msg_0)
-                    cls.editable_path(
-                        resolution_root,
-                        source["editable"],
-                        expected[normalized],
-                        lock_path,
-                        name,
-                    )
+    @classmethod
+    def lock_edges(
+        cls, value: NativeValue, expected: Mapping[str, Path], lock_path: Path,
+    ) -> None:
+        """Visit native edge copies and conditional forks, retaining full identities."""
+        if isinstance(value, list):
+            for item in value:
+                cls.lock_edges(item, expected, lock_path)
+        elif isinstance(value, dict):
+            cls.lock_edge(value, expected, lock_path)
             for item in value.values():
-                if isinstance(item, (dict, list)):
-                    edges(item)
-
-        edges(lock)
-        return expected.get(control)
+                cls.lock_edges(item, expected, lock_path)
 
     @staticmethod
     def editable_path(
