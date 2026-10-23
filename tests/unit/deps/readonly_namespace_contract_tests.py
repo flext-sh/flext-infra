@@ -36,9 +36,8 @@ class TestsFlextInfraReadonlyNamespaceContract:
             "return-type-owner": "example._protocols.base.ExampleProtocols.Branch",
             "producer-qualname": f"example._settings.ExampleSettings.{name}",
         }
-        occurrence = (
-            FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence
-            .model_validate(payload)
+        occurrence = FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence.model_validate(
+            payload
         )
         tm.that(occurrence.model_dump(by_alias=True), eq=payload)
 
@@ -107,7 +106,9 @@ class TestsFlextInfraReadonlyNamespaceContract:
     def test_producer_member_is_paired(name: str, producer: str) -> None:
         """A declaration cannot authorize an unrelated producer member."""
         with pytest.raises(ValueError, match="paired PascalCase producer member"):
-            contract = FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence
+            contract = (
+                FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence
+            )
             contract.model_validate({
                 "path": "src/example/_protocols/base.py",
                 "qualname": f"ExampleProtocols.Settings.{name}",
@@ -184,7 +185,9 @@ class TestsFlextInfraReadonlyNamespaceContract:
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
         tm.that(gate.source_manifest(project, context, targets=(".",)), has=notebook)
-        with pytest.raises(ValueError, match=r"coverage is unavailable for: selected\.ipynb"):
+        with pytest.raises(
+            ValueError, match=r"coverage is unavailable for: selected\.ipynb"
+        ):
             gate.readonly_namespace_sources(project, context, targets=(".",))
 
     @staticmethod
@@ -193,7 +196,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
         project = u.Tests.mk_project(
             tmp_path,
             "invalid-manifest",
-            pyproject='[tool.ruff]\nunknown-manifest-setting = true\n',
+            pyproject="[tool.ruff]\nunknown-manifest-setting = true\n",
         )
         (project / "selected.py").write_text("pass\n", encoding="utf-8")
         context = m.Infra.GateContext(

@@ -214,7 +214,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         effective = u.Infra.mypy_resource_limit_for_project(tmp_path)
         tm.that(effective, eq=expected_limit)
         command = u.Infra.mypy_limited_command(
-            u.Tests.mypy_workload(tmp_path), effective,
+            u.Tests.mypy_workload(tmp_path),
+            effective,
         )
         tm.that(
             command,
@@ -271,7 +272,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     @pytest.mark.parametrize("value", [0, -1, True, 1.5, "12"])
     def test_mypy_policy_requires_positive_integer_seconds(
         field: str,
-        value: int | float | str,
+        value: float | str,
     ) -> None:
         """Both canonical budgets reject coercion and non-positive seconds."""
         policy = config.Infra.tooling.tools.mypy

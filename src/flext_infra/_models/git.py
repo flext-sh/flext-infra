@@ -535,13 +535,21 @@ class FlextInfraModelsGit(
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         _publication_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
 
-        repo_root: Path = m.Field(description="Exact repository admitted by the Git owner")
+        repo_root: Path = m.Field(
+            description="Exact repository admitted by the Git owner"
+        )
         branch: t.NonEmptyStr = m.Field(description="Explicit owned publication branch")
         subject: t.NonEmptyStr = m.Field(description="Native commit message")
-        base_oid: t.NonEmptyStr = m.Field(description="Twice-advertised integration tip")
-        integration_ref: t.NonEmptyStr = m.Field(description="Integration cache CAS ref")
+        base_oid: t.NonEmptyStr = m.Field(
+            description="Twice-advertised integration tip"
+        )
+        integration_ref: t.NonEmptyStr = m.Field(
+            description="Integration cache CAS ref"
+        )
         remote: t.NonEmptyStr = m.Field(description="Declared publication remote")
-        previous_oid: t.NonEmptyStr | None = m.Field(description="Owned ref CAS preimage")
+        previous_oid: t.NonEmptyStr | None = m.Field(
+            description="Owned ref CAS preimage"
+        )
         caller_branch: t.NonEmptyStr = m.Field(description="Original caller branch")
         caller_oid: t.NonEmptyStr = m.Field(description="Original caller HEAD")
         index_before: m.Cli.AtomicFileState = m.Field(

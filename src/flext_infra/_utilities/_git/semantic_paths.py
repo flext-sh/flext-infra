@@ -11,7 +11,13 @@ import stat
 from pathlib import Path
 
 from flext_cli import u as cli_u
-from git import GitCommandError, HookExecutionError, IndexFile, InvalidGitRepositoryError, Repo
+from git import (
+    GitCommandError,
+    HookExecutionError,
+    IndexFile,
+    InvalidGitRepositoryError,
+    Repo,
+)
 from gitdb.util import LockedFD
 
 from flext_infra import m, p, r, t
@@ -426,9 +432,12 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     ) -> p.Result[bool]:
         storage = state.__pydantic_private__
         if storage is None or storage.get("_publication_birth") != (
-            id(state), cls._git_publication_digest(state)
+            id(state),
+            cls._git_publication_digest(state),
         ):
-            return r[bool].fail("Git publication admission was not emitted by this owner")
+            return r[bool].fail(
+                "Git publication admission was not emitted by this owner"
+            )
         repo = cls._repo(state.repo_root)
         if (
             repo.head.commit.hexsha != state.caller_oid
@@ -456,7 +465,9 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
                 or publication.issues
                 or publication.pending_files
             ):
-                msg = "Git publication requires complete repository-bound native effects"
+                msg = (
+                    "Git publication requires complete repository-bound native effects"
+                )
                 raise ValueError(msg)
             pending.extend(reversed(publication.batches))
             for published in publication.published_files:
@@ -535,17 +546,25 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         trees = FlextInfraUtilitiesGitStateTreesMixin
         baseline = {
             entry.path: entry
-            for entry in trees._state_tree_entries(state.repo_root, state.base_oid, paths)
+            for entry in trees._state_tree_entries(
+                state.repo_root, state.base_oid, paths
+            )
         }
-        staged = {
-            entry.path: entry
-            for entry in trees.state_snapshot_index(state.repo_root, paths)
-        } if paths else {}
+        staged = (
+            {
+                entry.path: entry
+                for entry in trees.state_snapshot_index(state.repo_root, paths)
+            }
+            if paths
+            else {}
+        )
         for before in inputs:
             path = before.path.relative_to(state.repo_root)
             preimage = cls._git_publication_entry(state.repo_root, before, write=False)
             if baseline.get(path) != preimage or staged.get(path) != preimage:
-                return result.fail(f"owned output overlaps pre-existing changes: {path}")
+                return result.fail(
+                    f"owned output overlaps pre-existing changes: {path}"
+                )
         entries = tuple(
             entry
             for after in observed.value
@@ -564,11 +583,17 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
                 if expected_tree == repo.commit(state.base_oid).tree.hexsha:
                     return result.ok(m.Infra.GitOidReport(oid=state.base_oid))
                 commit = index.commit(
-                    state.subject, parent_commits=[repo.commit(state.base_oid)], head=False
+                    state.subject,
+                    parent_commits=[repo.commit(state.base_oid)],
+                    head=False,
                 )
                 if commit.tree.hexsha != expected_tree:
-                    return result.fail("commit hook changed authenticated owned outputs")
-                verified = publication_verifier.publication_input_states(inputs, publications)
+                    return result.fail(
+                        "commit hook changed authenticated owned outputs"
+                    )
+                verified = publication_verifier.publication_input_states(
+                    inputs, publications
+                )
                 if verified.failure:
                     return result.from_failure(verified)
                 original = cls._git_publication_current(state)
@@ -576,15 +601,19 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
                     return result.from_failure(original)
                 fresh = cls.git_verify_lane(
                     m.Infra.GitLaneVerificationRequest(
-                        repo_root=state.repo_root, remote=state.remote,
-                        candidate=state.caller_oid, expected_tip=state.base_oid,
+                        repo_root=state.repo_root,
+                        remote=state.remote,
+                        candidate=state.caller_oid,
+                        expected_tip=state.base_oid,
                     )
                 ).flat_map(
                     lambda tip: cls._git_lane_retained_ownership(
                         m.Infra.GitLaneVerificationRequest(
-                            repo_root=state.repo_root, remote=state.remote,
+                            repo_root=state.repo_root,
+                            remote=state.remote,
                             ownership=state.ownership,
-                        ), tip.oid
+                        ),
+                        tip.oid,
                     )
                 )
                 if fresh.failure:
@@ -602,7 +631,9 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         if state.branch != state.caller_branch:
             commands += f"verify refs/heads/{state.caller_branch} {state.caller_oid}\n"
         commands += f"update {owned} {oid} {previous}\nprepare\ncommit\n"
-        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(commands.encode("utf-8")) as stream:
+        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
+            commands.encode("utf-8")
+        ) as stream:
             cls._repo(state.repo_root).git.update_ref("--stdin", istream=stream)
 
 

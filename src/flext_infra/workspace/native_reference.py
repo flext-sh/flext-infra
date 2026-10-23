@@ -3022,12 +3022,15 @@ class FlextInfraWorkspaceNativeReference:
             Metadata keys and attributes written from the same native field.
 
         """
-        if not cls._is_native(function, FunctionType):
-            return ()
-        if not {"metadata", "type"}.issubset(function.__code__.co_names):
+        if not cls._is_native(function, FunctionType) or not {
+            "metadata",
+            "type",
+        }.issubset(function.__code__.co_names):
             return ()
         rows: list[t.Pair[str, t.Infra.NativeOperand]] = []
+        positions: dict[int, int] = {}
         for instruction in cls._instructions(function.__code__, instructions):
+            positions[instruction.offset] = len(rows)
             if instruction.opname == "LOAD_FAST_LOAD_FAST" and cls._is_operand_tuple(
                 instruction.argval
             ):
@@ -3066,9 +3069,31 @@ class FlextInfraWorkspaceNativeReference:
                 ("BINARY_SUBSCR", None),
             ]:
                 continue
+            gates = tuple(
+                position
+                for position, instruction in enumerate(rows[:index])
+                if instruction[0].startswith("POP_JUMP")
+            )
+            if (
+                tuple(rows[position][0] for position in gates)
+                != ("POP_JUMP_IF_TRUE", "POP_JUMP_IF_FALSE")
+                or rows[gates[0] - 3 : gates[0]]
+                != [
+                    ("LOAD_FAST", item),
+                    ("LOAD_ATTR", "init"),
+                    ("TO_BOOL", None),
+                ]
+                or rows[gates[1] - 3 : gates[1]]
+                != [
+                    ("LOAD_FAST", item),
+                    ("LOAD_ATTR", "metadata"),
+                    ("CONTAINS_OP", 0),
+                ]
+            ):
+                continue
             aliases = (
                 alias[2][1]
-                for start in range(index - 7)
+                for start in (gates[1] + 1,)
                 if (alias := rows[start : start + 8])[:2]
                 == [("LOAD_FAST", item), ("LOAD_ATTR", "metadata")]
                 and alias[2][0] == "LOAD_GLOBAL"
@@ -3081,6 +3106,10 @@ class FlextInfraWorkspaceNativeReference:
                     ("LOAD_ATTR", "name"),
                     ("STORE_SUBSCR", None),
                 ]
+                and alias[2] == rows[gates[1] - 4]
+                and (jump := rows[start + 8])[0] == "JUMP_FORWARD"
+                and isinstance(jump[1], int)
+                and positions.get(jump[1]) == index - 6
             )
             projected.extend(
                 (key, row[1])

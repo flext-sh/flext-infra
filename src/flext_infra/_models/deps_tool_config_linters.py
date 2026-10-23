@@ -80,7 +80,9 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 or path.suffix not in {".py", ".pyi"}
                 or any(character in value for character in "\\*?[]{}:\x00\n\r")
             ):
-                msg = "readonly namespace requires an exact project-relative Python path"
+                msg = (
+                    "readonly namespace requires an exact project-relative Python path"
+                )
                 raise ValueError(msg)
             return value
 
@@ -253,13 +255,17 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         timeout_seconds: Annotated[
             int,
             m.Field(
-                gt=0, strict=True, description="Default Mypy wall-time budget in seconds.",
+                gt=0,
+                strict=True,
+                description="Default Mypy wall-time budget in seconds.",
             ),
         ]
         max_timeout_seconds: Annotated[
             int,
             m.Field(
-                gt=0, strict=True, description="Finite project budget ceiling in seconds.",
+                gt=0,
+                strict=True,
+                description="Finite project budget ceiling in seconds.",
             ),
         ]
 

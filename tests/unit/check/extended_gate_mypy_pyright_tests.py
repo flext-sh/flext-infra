@@ -143,7 +143,9 @@ class TestsFlextInfraTypeGates:
         source = source_root / "budgeted.py"
         source.write_text("value: int = 1\n", encoding="utf-8")
         execution = gates.FlextInfraMypyGate(project).check_files(
-            [source], project, checker_context,
+            [source],
+            project,
+            checker_context,
         )
         tm.ok(execution.result.passed)
         tm.that(execution.raw_output, has=f"timeout_seconds={budget}")

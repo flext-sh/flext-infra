@@ -48,7 +48,9 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         if request.base != declared.value.branch or request.branch == request.base:
             return result.fail("owned lane must target the declared integration branch")
         tip = cls.git_verify_lane(verification).flat_map(
-            lambda observed: cls._git_lane_retained_ownership(verification, observed.oid)
+            lambda observed: cls._git_lane_retained_ownership(
+                verification, observed.oid
+            )
         )
         if tip.failure:
             return result.from_failure(tip)
@@ -56,7 +58,9 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             return result.fail("native prior ownership is required")
         try:
             with cls._state_leases((request.repo_root,)):
-                return cls._git_prepare_publication_state(request, tip.value.oid, declared.value)
+                return cls._git_prepare_publication_state(
+                    request, tip.value.oid, declared.value
+                )
         except (GitCommandError, OSError, ValueError) as exc:
             return result.fail_op("admit owned Git publication", exc)
 
@@ -84,14 +88,18 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             )
         advertised = cls.git_remote_branch_oid(
             m.Infra.GitRemoteBranchRequest(
-                repo_root=root, remote=declared.remote, branch=request.branch,
+                repo_root=root,
+                remote=declared.remote,
+                branch=request.branch,
             )
         )
         if advertised.failure:
             return result.from_failure(advertised)
         if advertised.value.text and advertised.value.text != previous:
             return result.fail("owned local and remote candidate require convergence")
-        index = u.Cli.atomic_read_binary_file_state(Path(repo.index.path), required=False)
+        index = u.Cli.atomic_read_binary_file_state(
+            Path(repo.index.path), required=False
+        )
         if index.failure:
             return result.from_failure(index)
         state = m.Infra.GitPublicationState(
@@ -109,7 +117,9 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         )
         storage = state.__pydantic_private__
         if storage is None:
-            return result.fail("native Git publication has no private admission storage")
+            return result.fail(
+                "native Git publication has no private admission storage"
+            )
         storage["_publication_birth"] = (id(state), cls._git_publication_digest(state))
         return cls._git_publication_current(state).map(lambda _current: state)
 
