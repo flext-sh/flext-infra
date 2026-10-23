@@ -93,6 +93,78 @@ class TestsFlextInfraRenderProvenance:
         )
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "record", ["native", "parent", "prefix", "case", "backslash"]
+    )
+    def test_real_record_paths_preserve_native_namespace_ownership(
+        tmp_path: Path,
+        record: str,
+    ) -> None:
+        """Real descriptors retain native lexical ownership and physical coverage."""
+        namespace = "record_provider_fixture"
+        package = tmp_path / namespace
+        package.mkdir()
+        (package / c.Infra.INIT_PY).write_text(
+            "def produce():\n    return 'physical provider'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "resource.bin").write_bytes(b"unlisted physical package resource")
+        metadata = tmp_path / "record_provider_fixture-1.0.dist-info"
+        metadata.mkdir()
+        (metadata / "METADATA").write_text(
+            "Metadata-Version: 2.4\nName: record-provider-fixture\nVersion: 1.0\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (metadata / "resource.bin").write_bytes(b"unlisted physical metadata resource")
+        paths = {
+            "native": f"{namespace}/__init__.py",
+            "parent": f"../{namespace}/__init__.py",
+            "prefix": f"{namespace}_other/__init__.py",
+            "case": f"{namespace.upper()}/__init__.py",
+            "backslash": f"{namespace}\\__init__.py",
+        }
+        (metadata / "RECORD").write_text(
+            f"{metadata.name}/METADATA,,\n{metadata.name}/RECORD,,\n{paths[record]},,\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        probe = """
+import importlib
+import importlib.metadata
+import sys
+from pathlib import Path
+from flext_infra.validate import FlextInfraValidateFreshImport
+directory, namespace = sys.argv[1:]
+sys.path.insert(0, directory)
+importlib.invalidate_caches()
+package = Path(directory) / namespace
+descriptor = importlib.metadata.distribution('record-provider-fixture')
+declared = descriptor.files
+assert declared is not None
+owned = any(
+    Path(str(descriptor.locate_file(item))).absolute().is_relative_to(package)
+    for item in declared
+)
+producer = importlib.import_module(namespace)
+observed = FlextInfraValidateFreshImport.capture_producer(
+    Path.cwd(), entrypoint=producer.produce)
+if owned:
+    evidence = observed.unwrap()
+    assert (namespace, package) in evidence.generator_modules
+    bound = {state.path: state for state in evidence.inputs}
+    for resource in (package / 'resource.bin', Path(descriptor.locate_file(
+        'record_provider_fixture-1.0.dist-info/resource.bin'))):
+        assert bound[resource].content == resource.read_bytes()
+else:
+    assert observed.failure, observed
+    assert 'ambiguous physical distribution ownership' in observed.error, observed.error
+print('native-record-ownership=' + str(owned))
+"""
+        process = tm.ok(
+            u.Cli.run([sys.executable, "-c", probe, str(tmp_path), namespace])
+        )
+        tm.that(process.stdout, has="native-record-ownership=")
+
+    @staticmethod
     @pytest.mark.parametrize("mutation", ["unchanged", "duplicate", "rebound"])
     def test_real_third_provider_preserves_physical_election(
         tmp_path: Path,
@@ -406,10 +478,10 @@ print('physical-provider-proof=' + mutation)
             tm.that(tm.ok(observed), eq=(helper,))
             tm.that(helper.read_bytes(), eq=plan.desired_content)
 
+    @staticmethod
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     @pytest.mark.parametrize("ci_context", [False, True])
     def test_controller_ignores_undeclared_and_caller_sources(
-        self,
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,

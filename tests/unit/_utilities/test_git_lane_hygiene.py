@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, c, config, m, main
+from flext_infra import FlextInfraCodegenConform, FlextInfraGitService, c, config, m, main
 from tests import tm, u
 
 
@@ -158,7 +158,7 @@ class TestsFlextInfraGitLaneHygiene:
         root = base.repo_root
         remote = config.Infra.codegen.branch_policy.lane_remote
         if large:
-            names = tuple(f"retained-{index}-{'x' * 160}" for index in range(256))
+            names = tuple(f"retained-{index}-{'x' * 160}" for index in range(512))
             for name in names:
                 (root / name).write_text("retained source\n", encoding="utf-8")
             u.Tests.git_run(root, "add", "--", *names)
@@ -315,11 +315,23 @@ class TestsFlextInfraGitLaneHygiene:
         version = tm.ok(u.Infra.current_workspace_version(root))
         u.Tests.git_run(root, "tag", f"v{version}")
         u.Tests.git_run(root, "push", request.remote, "HEAD")
-        rendered_root, _ = u.Tests.render_make_environment(
-            tmp_path / "rendered", c.Infra.MakeProfile.STANDALONE
+        rendered_root = u.Tests.git_repository(tmp_path / "rendered")
+        u.Tests.self_named_project(rendered_root, initialize=False)
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                state=m.Infra.CodegenConformState(repository_root=rendered_root),
+            ).plan(
+                m.Infra.CodegenConformRequest(
+                    root=rendered_root,
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                    scope="self",
+                ),
+            ),
         )
-        rendered = (rendered_root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding=c.DEFAULT_ENCODING,
+        rendered = next(
+            file.desired_content
+            for file in plan.files
+            if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
         body = rendered.split("_builtin_release_version:", 1)[1].split("\n\n", 1)[0]
         recipe = "\n".join(
