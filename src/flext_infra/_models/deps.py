@@ -125,6 +125,15 @@ class FlextInfraModelsDeps(
             t.StrTuple,
             m.Field(description="Contract-owned requirements forbidden in runtime"),
         ]
+        invoked_executables: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Canonical unimported requirements whose installed console "
+                    "scripts the project's own files invoke"
+                ),
+            ),
+        ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(

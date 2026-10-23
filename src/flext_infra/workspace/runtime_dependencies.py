@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from importlib.machinery import all_suffixes
 from importlib.metadata import Distribution
 from json import dumps
@@ -88,6 +89,28 @@ class FlextInfraRuntimeDependencyCollector:
         )
         if providers.failure:
             return result.from_failure(providers)
+        unused = {
+            canonicalize_name(item.module)
+            for item in scan.report.root
+            if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
+        }
+        invoked = self.invoked_console_scripts(
+            project_root,
+            {
+                identity: tuple(
+                    entry.name
+                    for entry in distribution.entry_points
+                    if entry.group == c.Infra.CONSOLE_SCRIPTS_ENTRY_POINT_GROUP
+                )
+                for distribution in u.installed_distributions(
+                    path=tuple(str(path) for path in observed.metadata_paths),
+                )
+                if (identity := canonicalize_name(distribution.metadata["Name"]))
+                in unused
+            },
+        )
+        if invoked.failure:
+            return result.from_failure(invoked)
         return result.ok(
             m.Infra.RuntimeDependencyInputs(
                 target_root=project_root,
@@ -95,6 +118,7 @@ class FlextInfraRuntimeDependencyCollector:
                 lock=lock,
                 providers=providers.value,
                 development_only=self._development_only,
+                invoked_executables=invoked.value,
                 inputs=(
                     scan.settings,
                     u.Cli.atomic_read_binary_file_state(
@@ -108,6 +132,56 @@ class FlextInfraRuntimeDependencyCollector:
                 ),
             ),
         )
+
+    @staticmethod
+    def invoked_console_scripts(
+        project_root: Path,
+        distributions: t.MappingKV[str, t.StrSequence],
+    ) -> p.Result[t.StrTuple]:
+        """Elect distributions whose console scripts the project's own files invoke.
+
+        A dependency used only through its executable (a Make recipe running it,
+        code resolving it beside the interpreter) never appears as an import. Its
+        console-script name, referenced as a whole token in a tracked or
+        unpublished project file, is the usage evidence.
+
+        Args:
+            project_root: Repository root whose Git-visible files are searched.
+            distributions: Canonical distribution names with their console scripts.
+
+        Returns:
+            Canonical names of the distributions with at least one invoked script.
+
+        """
+        scripts = {
+            script: name for name, names in distributions.items() for script in names
+        }
+        if not scripts:
+            return r[t.StrTuple].ok(())
+        paths = u.Infra.git_source_scope_paths(project_root)
+        if paths is None:
+            return r[t.StrTuple].fail(
+                f"console script usage requires a Git project: {project_root}"
+            )
+        pattern = re.compile(
+            r"(?<![\w.-])("
+            + "|".join(
+                re.escape(script) for script in sorted(scripts, key=len, reverse=True)
+            )
+            + r")(?![\w.-])"
+        )
+        invoked: set[str] = set()
+        for path in paths:
+            content = path.read_bytes()
+            if b"\0" in content:
+                continue
+            invoked.update(
+                scripts[match.group(1)]
+                for match in pattern.finditer(
+                    content.decode(c.DEFAULT_ENCODING, errors="surrogateescape")
+                )
+            )
+        return r[t.StrTuple].ok(tuple(sorted(invoked)))
 
     def _collect_providers(
         self,

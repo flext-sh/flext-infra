@@ -140,12 +140,11 @@ class TestsFlextInfraSemanticRenameSeed:
                 )
             )
             diagnostic = "separate virtual waves for overlapping selections"
+        selections = m.Infra.SemanticRenameSelections(decisions=tuple(decisions))
         with infra.rope_workspace(root) as workspace:
             with pytest.raises(ValueError, match=diagnostic):
                 FlextInfraCodemodSemanticApply.build_rename_plan(
-                    root,
-                    workspace,
-                    m.Infra.SemanticRenameSelections(decisions=tuple(decisions)),
+                    root, workspace, selections
                 )
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
         tm.ok(initializer.exists())

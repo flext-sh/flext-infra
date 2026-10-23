@@ -34,12 +34,6 @@ class FlextInfraRopeProject(Project):
     through the declared authenticated boundary.
     """
 
-    fscommands: (
-        FileSystemCommands
-        | FlextInfraRopeProject.SnapshotFiles
-        | FlextInfraRopeProject.AtomicReadFiles
-    )
-
     @property
     def _authenticated_reads(self) -> FlextInfraRopeProject.AtomicReadFiles:
         """Require the authenticated original read owner of this project.
@@ -1117,7 +1111,7 @@ class FlextInfraRopeProject(Project):
             directory: Path,
             inventory: m.Cli.AtomicDirectoryInventory | None,
         ) -> None:
-            """Pin one listed folder's membership on its inventory or absence witness."""
+            """Pin a listed folder's membership on its inventory or absence witness."""
             if inventory is not None:
                 if not self._capturing:
                     self._inventories[directory] = inventory.model_copy(

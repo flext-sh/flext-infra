@@ -61,6 +61,8 @@ class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     )
     DEPTRY_UNUSED_DEPENDENCY_CODE: ClassVar[str] = "DEP002"
     """Deptry rule code for a declared dependency the code never imports."""
+    CONSOLE_SCRIPTS_ENTRY_POINT_GROUP: ClassVar[str] = "console_scripts"
+    """Entry-point group naming the executables an installed distribution ships."""
     DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^Scanning (?P<count>[0-9]+) files?\.\.\.$",
     )

@@ -231,7 +231,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
             with project.frozen_layout():
                 yield (
-                    FlextInfraUtilitiesCodegenFacades._require_source_project(project),
+                    FlextInfraUtilitiesCodegenFacades.require_source_project(project),
                     consumed,
                     sources,
                 )
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             project.verify_source_states()
 
     @staticmethod
-    def _require_source_project(value: p.AttributeProbe) -> p.Infra.RopeProject:
+    def require_source_project(value: p.AttributeProbe) -> p.Infra.RopeProject:
         """Admit the native project at its actual dynamic SDK boundary.
 
         Returns:

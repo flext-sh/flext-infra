@@ -125,6 +125,7 @@ class TestsFlextInfraDepsGate:
                 ),
             ),
             development_only=(),
+            invoked_executables=(),
             inputs=(
                 u.Cli.atomic_read_binary_file_state(
                     root / "src" / "fixturepkg" / "__init__.py",
@@ -434,6 +435,28 @@ class TestsFlextInfraDepsGate:
         tm.that(pyproject.read_bytes(), eq=after)
         tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
         tm.that(repaired.raw_output, has="repair-rescan")
+
+    @staticmethod
+    @pytest.mark.parametrize("invoked", [False, True])
+    def test_executable_only_dependency_stays_runtime(
+        tmp_path: Path,
+        *,
+        invoked: bool,
+    ) -> None:
+        """A dependency used only through its console script is never demoted."""
+        name = distribution("deptry").metadata["Name"]
+        root = TestsFlextInfraDepsGate._project(tmp_path, dumps(name), "")
+        inputs = TestsFlextInfraDepsGate._dependency_inputs(root).model_copy(
+            update={"invoked_executables": (name,) if invoked else ()},
+        )
+        scan = u.Infra.capture_deptry_scan(
+            root,
+            Path(sys.executable).parent,
+            config_path=root / c.PYPROJECT_FILENAME,
+            json_output_path=tmp_path / "native.json",
+        ).unwrap()
+        plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+        tm.that(plan.dependencies, eq=(name,) if invoked else ())
 
     @staticmethod
     @pytest.mark.parametrize(

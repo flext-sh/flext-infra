@@ -10,7 +10,7 @@ import ast
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from flext_infra import m, p, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
@@ -64,14 +64,14 @@ class FlextInfraRenameSymbols:
         module_resource = workspace.rope_project.find_module(qualified_name)
         if module_resource is not None:
             path = Path(module_resource.real_path).resolve()
-            if not module_resource.is_folder() and path.name == "__init__.py":
+            if not module_resource.is_folder() and path.name == c.Infra.INIT_PY:
                 msg = (
                     "native initializer rename requires its package identity: "
                     f"{qualified_name}"
                 )
                 raise ValueError(msg)
             if module_resource.is_folder():
-                path /= "__init__.py"
+                path /= c.Infra.INIT_PY
             indexed = workspace.module(path)
             if indexed is None:
                 msg = (
@@ -131,21 +131,7 @@ class FlextInfraRenameSymbols:
         ] = {}
         moves: dict[Path, Path] = {}
         selected: set[t.Pair[Path, str]] = set()
-        for decision in decisions:
-            path = Path(decision.declaration.file_path).resolve()
-            if decision.declaration.kind != "module" or path.name != "__init__.py":
-                continue
-            for other in decisions:
-                for item in (other.declaration, *other.contracts):
-                    other_path = Path(item.file_path).resolve()
-                    if item != decision.declaration and other_path.is_relative_to(
-                        path.parent
-                    ):
-                        msg = (
-                            "native package rename requires separate virtual waves for "
-                            f"overlapping selections: {path.parent} and {other_path}"
-                        )
-                        raise ValueError(msg)
+        cls._reject_overlapping_packages(decisions)
         for decision in decisions:
             cls._plan_native_decision(
                 projects, sources, decision, selected, (rewrites, moves)
@@ -169,6 +155,33 @@ class FlextInfraRenameSymbols:
             updates[target] = updates.get(origin, sources[origin])
             updates[origin] = None
         return dict(sorted(updates.items())), tuple(sorted(moves.items()))
+
+    @staticmethod
+    def _reject_overlapping_packages(
+        decisions: t.SequenceOf[m.Infra.SemanticRenameDecision],
+    ) -> None:
+        """Require a package rename to own no other selected identity.
+
+        Raises:
+            ValueError: If another selection lies inside a renamed package.
+
+        """
+        packages = tuple(
+            (decision.declaration, Path(decision.declaration.file_path).resolve())
+            for decision in decisions
+            if decision.declaration.kind == "module"
+            and Path(decision.declaration.file_path).name == c.Infra.INIT_PY
+        )
+        for declaration, path in packages:
+            for other in decisions:
+                for item in (other.declaration, *other.contracts):
+                    other_path = Path(item.file_path).resolve()
+                    if item != declaration and other_path.is_relative_to(path.parent):
+                        msg = (
+                            "native package rename requires separate virtual waves for "
+                            f"overlapping selections: {path.parent} and {other_path}"
+                        )
+                        raise ValueError(msg)
 
     @staticmethod
     def _native_producer(
@@ -282,6 +295,67 @@ class FlextInfraRenameSymbols:
             raise ValueError(msg)
         return offset
 
+    @staticmethod
+    def _native_rename_path(
+        producer: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+        item: m.Infra.Object,
+        replacement: str,
+    ) -> Path:
+        """Validate a module rename and elect the resource Rope renames.
+
+        Returns:
+            The declaration file, or a renamed package's folder.
+
+        Raises:
+            ValueError: If a module rename escapes the inventory or is occupied.
+
+        """
+        path = Path(item.file_path).resolve()
+        if item.kind != "module":
+            return path
+        if path not in sources:
+            msg = f"native module rename escapes authenticated inventory: {path}"
+            raise ValueError(msg)
+        destination = ".".join((*item.module_name.split(".")[:-1], replacement))
+        if producer.find_module(destination) is not None:
+            msg = f"native module destination is occupied: {destination}"
+            raise ValueError(msg)
+        return path.parent if path.name == c.Infra.INIT_PY else path
+
+    @classmethod
+    def _record_native_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        changes: p.Infra.RopeChangeSet,
+        sources: t.MappingKV[Path, str],
+        effects: t.Pair[
+            t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
+            t.MutableMappingKV[Path, Path],
+        ],
+        root: Path,
+    ) -> None:
+        """Record one project's native content changes and module moves.
+
+        Raises:
+            TypeError: If Rope emits an unsupported native effect.
+
+        """
+        for change in changes.changes:
+            if isinstance(change, p.Infra.RopeChangeContents):
+                cls._record_campaign_change(
+                    change,
+                    context=(project, sources),
+                    identity=(),
+                    planned=effects[0],
+                    rename_definitions=True,
+                )
+            elif isinstance(change, p.Infra.RopeMoveResource):
+                cls._record_native_move(change, sources, effects[1], root)
+            else:
+                msg = "native rename produced an unsupported effect"
+                raise TypeError(msg)
+
     @classmethod
     def _plan_native_item(
         cls,
@@ -302,39 +376,14 @@ class FlextInfraRenameSymbols:
         """
         producer = projects[0]
         root = Path(producer.root.real_path)
-        path = Path(item.file_path).resolve()
-        if item.kind == "module":
-            if path not in sources:
-                msg = f"native module rename escapes authenticated inventory: {path}"
-                raise ValueError(msg)
-            destination = ".".join((*item.module_name.split(".")[:-1], replacement))
-            if producer.find_module(destination) is not None:
-                msg = f"native module destination is occupied: {destination}"
-                raise ValueError(msg)
-            if path.name == "__init__.py":
-                path = path.parent
-        resource = producer.get_resource(
-            path.relative_to(root).as_posix()
-        )
+        path = cls._native_rename_path(producer, sources, item, replacement)
+        resource = producer.get_resource(path.relative_to(root).as_posix())
         offset = cls._native_identifier_offset(producer, sources, item, replacement)
         owner = item.scope_path.rpartition(".")[0]
         for project, changes in u.Infra.rename_all_changes(
             projects, resource, offset, replacement
         ):
-            for change in changes.changes:
-                if isinstance(change, p.Infra.RopeChangeContents):
-                    cls._record_campaign_change(
-                        change,
-                        context=(project, sources),
-                        identity=(),
-                        planned=effects[0],
-                        rename_definitions=True,
-                    )
-                elif isinstance(change, p.Infra.RopeMoveResource):
-                    cls._record_native_move(change, sources, effects[1], root)
-                else:
-                    msg = "native rename produced an unsupported effect"
-                    raise TypeError(msg)
+            cls._record_native_changes(project, changes, sources, effects, root)
             cls._plan_quoted_rename(
                 project,
                 sources,
@@ -372,7 +421,7 @@ class FlextInfraRenameSymbols:
             msg = f"native module move is foreign: {origin} -> {target}"
             raise ValueError(msg)
         if change.resource.is_folder():
-            if origin / "__init__.py" not in sources:
+            if origin / c.Infra.INIT_PY not in sources:
                 msg = f"native package move has no authenticated initializer: {origin}"
                 raise ValueError(msg)
             if target.exists():
@@ -413,14 +462,17 @@ class FlextInfraRenameSymbols:
             raise ValueError(msg)
         children = resource.get_children()
         if not children:
-            msg = f"native package cannot preserve empty directory: {resource.real_path}"
+            msg = (
+                f"native package cannot preserve empty directory: {resource.real_path}"
+            )
             raise ValueError(msg)
         for child in children:
             origin = Path(child.real_path).resolve()
             destination = target / child.name
-            if not origin.is_relative_to(root) or origin.parent != Path(
-                resource.real_path
-            ).resolve():
+            if (
+                not origin.is_relative_to(root)
+                or origin.parent != Path(resource.real_path).resolve()
+            ):
                 msg = f"native package payload is foreign: {origin}"
                 raise ValueError(msg)
             if child.is_folder():

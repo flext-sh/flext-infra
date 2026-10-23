@@ -33,6 +33,7 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodBindingChain,
@@ -1492,7 +1493,13 @@ class FlextInfraUtilitiesCodemodProject(
             roles = cls._module_role_cache.set({})
             owners = cls._implementation_owner_cache.set({})
             walks = cls._closed_walk_cache.set((project, epoch.snapshot, ({}, {})))
-            stems = cls._class_stem_context.set((layout_project, {}, {}))
+            stems = cls._class_stem_context.set((
+                FlextInfraUtilitiesCodegenFacades.require_source_project(
+                    layout_project
+                ),
+                {},
+                {},
+            ))
             try:
                 # The admission pass is the consumer of every layout read, so a
                 # cached class-stem query replays its receipt into this scope.

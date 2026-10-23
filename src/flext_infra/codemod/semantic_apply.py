@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import keyword
 import operator
+import re
 from collections.abc import Callable, Generator, MutableMapping
 from contextlib import ExitStack, closing, contextmanager
 from functools import partial
@@ -110,9 +111,10 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         source_plan: m.Infra.SemanticSourcePlan,
     ) -> p.Result[m.Infra.SemanticSourcePlan]:
-        """Derive module-only naming decisions from the authenticated inventory.
+        """Derive one package or module naming wave from authenticated inventory.
 
-        Special double-underscore modules and containing package names stay intact.
+        Package waves precede module waves and never select parent and child together.
+        Special double-underscore modules stay intact.
         Explicit consumer roots participate in reference rewriting, not discovery.
 
         Returns:
@@ -133,18 +135,34 @@ class FlextInfraCodemodSemanticApply:
             root, rope_repository_root=source_plan.candidate.workspace
         ) as workspace:
             selections: list[m.Infra.SemanticRenameSelection] = []
-            for path in sorted(sources):
+            packages = cls._package_naming_candidates(root, sources)
+            candidates = list(packages)
+            for path in () if packages else sorted(sources):
                 name = path.stem
-                if (
-                    not path.is_relative_to(root.resolve())
-                    or not name.startswith("_")
-                    or (name.startswith("__") and name.endswith("__"))
+                if not path.is_relative_to(root.resolve()) or (
+                    name.startswith("__") and name.endswith("__")
                 ):
                     continue
                 replacement = name.lstrip("_")
+                part = re.search(r"_parts?(?:_?\d+)?$", name)
+                if part is not None:
+                    if part.group()[-1].isdigit():
+                        msg = (
+                            f"unresolved semantic grouping: {path}; numbered split "
+                            "requires a responsibility name from semantic source evidence"
+                        )
+                        raise ValueError(msg)
+                    replacement = name[: part.start()].lstrip("_")
+                if replacement == name:
+                    continue
                 if not replacement.isidentifier() or keyword.iskeyword(replacement):
-                    msg = f"module naming has no valid public identifier: {path}"
+                    msg = (
+                        f"module naming has no valid public identifier: {path}; "
+                        "unresolved semantic grouping requires an explicit responsibility"
+                    )
                     raise ValueError(msg)
+                candidates.append((path, replacement))
+            for path, replacement in candidates:
                 module = workspace.module(path)
                 if module is None:
                     msg = f"module naming requires an inventoried module: {path}"
@@ -166,7 +184,11 @@ class FlextInfraCodemodSemanticApply:
                     m.Infra.SemanticRenameSelection(
                         qualified_name=module.module_name,
                         replacement_name=replacement,
-                        reason="Python module files have no leading underscore",
+                        reason=(
+                            "Facade package removes split suffix"
+                            if packages
+                            else "Python module removes private prefix and split suffix"
+                        ),
                     )
                 )
             if not selections:
@@ -185,6 +207,64 @@ class FlextInfraCodemodSemanticApply:
             return r[m.Infra.SemanticSourcePlan].ok(planned.value)
 
     @staticmethod
+    def _package_naming_candidates(
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+        """Select shallowest split packages owned by an actual facade declaration.
+
+        Returns:
+            Initializer paths and semantic destination basenames for one wave.
+
+        Raises:
+            ValueError: If split naming has no unambiguous facade responsibility.
+
+        """
+        selected: list[t.Pair[Path, str]] = []
+        families = u.Infra.facade_families()
+        for path in sorted(sources, key=lambda item: (len(item.parts), item)):
+            if path.name != c.Infra.INIT_PY or not path.is_relative_to(root.resolve()):
+                continue
+            directory = path.parent
+            if any(directory.is_relative_to(owner.parent) for owner, _ in selected):
+                continue
+            part = re.search(r"_parts?(?:_?\d+)?$", directory.name)
+            if part is None:
+                continue
+            basename = directory.name[: part.start()].lstrip("_")
+            if (
+                not basename.isidentifier()
+                or keyword.iskeyword(basename)
+                or part.group()[-1].isdigit()
+            ):
+                msg = (
+                    f"unresolved semantic grouping: {directory}; split package "
+                    "requires a responsibility name from semantic source evidence"
+                )
+                raise ValueError(msg)
+            owned = any(
+                letter in u.Infra.public_export_names_source(sources[facade])
+                for ancestor in (directory, *directory.parents)
+                if ancestor.is_relative_to(root.resolve())
+                for letter, family in families.items()
+                if ancestor.name in family.directories
+                or (
+                    ancestor == directory
+                    and basename in {family.module, family.directory.lstrip("_")}
+                )
+                for filename in family.file_names
+                if (facade := ancestor.parent / filename) in sources
+            )
+            if not owned:
+                msg = (
+                    f"unresolved semantic grouping: {directory}; split package "
+                    "has no authenticated facade declaration owner"
+                )
+                raise ValueError(msg)
+            selected.append((path, f"_{basename}"))
+        return tuple(selected)
+
+    @staticmethod
     def _source_scopes(
         root: Path,
         consumer_roots: t.VariadicTuple[Path],
@@ -200,21 +280,11 @@ class FlextInfraCodemodSemanticApply:
             return outcome.fail(
                 "consumer roots must be existing absolute checkout roots"
             )
-        # Each scope is the repository owning its checkout: a workspace member
-        # never widens to its superproject, so supplier members stay outside
-        # the authenticated capture.
+        # Each scope is exactly its own checkout: a workspace member never
+        # widens to its superproject, so supplier members stay outside the
+        # authenticated capture.
         scopes = tuple(
-            dict.fromkeys(
-                max(
-                    (
-                        owner.resolve()
-                        for owner in u.Infra.import_project_roots(path.resolve())
-                        if path.resolve().is_relative_to(owner.resolve())
-                    ),
-                    key=lambda owner: len(owner.parts),
-                )
-                for path in (root, *consumer_roots)
-            )
+            dict.fromkeys(path.resolve() for path in (root, *consumer_roots))
         )
         if any(
             left != right and left.is_relative_to(right)

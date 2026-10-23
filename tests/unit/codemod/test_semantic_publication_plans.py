@@ -8,15 +8,11 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import codegen, codemod, config, infra, transformers
-from tests import c, m, p, r, tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraSemanticPublicationPlans:

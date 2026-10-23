@@ -392,7 +392,9 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         return list(
-            dict.fromkeys(self._tool_config.tools.pyright.path_rules.ignored_diagnostic_globs)
+            dict.fromkeys(
+                self._tool_config.tools.pyright.path_rules.ignored_diagnostic_globs
+            )
         )
 
     def _expected_project_roots(
