@@ -179,9 +179,6 @@ class FlextInfraImportNormalization(
             The rewritten source, or ``None`` when the module is out of scope
             or already canonical.
 
-        Raises:
-            ValueError: If ``root_exports is None``.
-
         """
         return cls._normalize_source(
             location=(project_root, file_path),
@@ -206,13 +203,19 @@ class FlextInfraImportNormalization(
         Returns:
             The canonical source, or None at the fixed point.
 
+        Raises:
+            ValueError: If the namespace has no owned package initializer.
+
         """
         project_root, file_path = location
-        import_graph, sources, rope_project = inputs
+        import_graph, sources, _ = inputs
         if file_path.name == c.Infra.INIT_PY:
             return None
-        located = u.Infra.import_namespace(project_root, file_path, sources=sources)
-        if located is None:
+        if (
+            located := u.Infra.import_namespace(
+                project_root, file_path, sources=sources
+            )
+        ) is None:
             return None
         namespace_dir, module = located
         root_exports = u.Infra.import_lazy_exports(
@@ -257,7 +260,7 @@ class FlextInfraImportNormalization(
                 root_exports=root_exports,
             )
             updated = cls._one_pass(
-                state, current, sources=sources, rope_project=rope_project
+                state, current, sources=sources, rope_project=inputs[2]
             )
             if updated is None:
                 break
@@ -378,10 +381,10 @@ class FlextInfraImportNormalization(
             lambda: cls._relative_import_edits(state, lines),
             lambda: cls._guard_edits(state.tree, lines),
             lambda: cls._placement_edits(state, lines),
+            lambda: cls._root_alias_binding_edits(state, lines),
             lambda: cls._route_edits(
                 state, lines, sources=sources, rope_project=rope_project
             ),
-            lambda: cls._root_alias_binding_edits(state, lines),
             lambda: cls._layer_order_edits(state, lines),
         )
         for build in builders:
@@ -442,7 +445,7 @@ class FlextInfraImportNormalization(
                 if (
                     isinstance(node, ast.ImportFrom)
                     and target == scope.namespace
-                    and node in state.tree.body
+                    and cls._enclosing_scope(node, state.parents) is None
                     and any(
                         isinstance(statement, ast.Assign | ast.AnnAssign)
                         and (alias.asname or alias.name)

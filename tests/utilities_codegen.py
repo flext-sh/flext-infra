@@ -136,33 +136,45 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The resulting ``m.Infra.CodegenPlan``.
 
         """
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        declared = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+                root, inputs=inputs
+            ),
+        )
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
-        for entry in config.Infra.codegen.templates.entries:
+        project = declared.project
+        package_name = (
+            metadata.package_name if project is None else project.package_name
+        )
+        class_stem = metadata.class_stem if project is None else project.class_stem
+        namespace = (
+            u.Infra.package_alias(package_name=package_name)
+            if project is None
+            else project.namespace_attribute
+        )
+        for entry in inputs.spec.templates.entries:
+            if declared.repository.role not in entry.profiles:
+                continue
             destination = entry.destination.format(
-                package_name="fixture_project",
-                ns="fixture_project",
+                package_name=package_name,
+                ns=namespace,
                 **u.Infra.runtime_module_names(
-                    project_name=metadata.project.name,
-                    codegen=config.Infra.codegen,
+                    project_name=declared.repository.distribution,
+                    codegen=inputs.spec,
                 ),
             )
             (root / destination).parent.mkdir(parents=True, exist_ok=True)
-        for managed in config.Infra.codegen.managed_files:
+        for managed in inputs.spec.managed_files:
             (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
         # Scaffold entries create declaration family directories, and the
         # facade completeness law rejects owners without their public facade.
-        package_dir = root / "src" / "fixture_project"
-        for family in ("u", "p"):
-            facade = (
-                package_dir
-                / f"{TestsFlextInfraUtilitiesCodegenMixin.family_public_module(family)}"
-                ".py"
-            )
-            if (
-                package_dir / u.Infra.facade_families()[family].directory
-            ).is_dir() and (not facade.is_file()):
+        package_dir = root / c.Infra.DEFAULT_SRC_DIR / package_name
+        for family in u.Infra.facade_families().values():
+            facade = package_dir / f"{family.module}.py"
+            if (package_dir / family.directory).is_dir() and not facade.is_file():
                 facade.write_text(
-                    f"class FixtureProject{family.capitalize()}Facade:\n    pass\n",
+                    f"class {class_stem}{family.suffix}:\n    pass\n",
                     encoding="utf-8",
                 )
         request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)

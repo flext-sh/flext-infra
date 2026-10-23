@@ -13,6 +13,7 @@ import pytest
 
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
 from flext_infra.release import FlextInfraReleaseBuildMixin
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
 
@@ -498,23 +499,27 @@ class TestsFlextInfraReleaseHelpers:
             )
 
     class TestsInternalLockedVersions:
-        """The internal-versions map reads git dependencies from the root lock."""
+        """The internal-versions map reads the runtime's elected lock."""
 
         @staticmethod
         def write_lock(workspace: Path, body: str) -> Path:
-            """Write one uv.lock body into the workspace root.
+            """Write one uv.lock body at the public runtime's elected path.
 
             Returns:
                 The resulting ``Path``.
 
             """
-            lock = workspace / c.Infra.UV_LOCK_FILENAME
+            lock = tm.ok(
+                FlextInfraWorkspaceDetector.resolution_context(workspace)
+            ).lock_path
+            lock.parent.mkdir(parents=True, exist_ok=True)
             lock.write_text(body, encoding="utf-8")
             return lock
 
         @staticmethod
         def test_reads_internal_git_versions_and_skips_the_rest(tmp_path: Path) -> None:
             """Internal git entries seed the map; other names and sources do not."""
+            u.Tests.initialize_git_repo(tmp_path)
             lock_body = """
 [[package]]
 name = "flext-api"
@@ -543,6 +548,7 @@ source = { registry = "https://pypi.org/simple" }
         @staticmethod
         def test_missing_lock_fails_loud(tmp_path: Path) -> None:
             """Release pins require the lock owned by dependency resolution."""
+            u.Tests.initialize_git_repo(tmp_path)
             result = FlextInfraReleaseBuildMixin.internal_locked_versions(tmp_path)
 
             tm.fail(result)
@@ -551,6 +557,7 @@ source = { registry = "https://pypi.org/simple" }
         @staticmethod
         def test_invalid_lock_fails_loud(tmp_path: Path) -> None:
             """A corrupt lock is a typed failure, never a silently empty map."""
+            u.Tests.initialize_git_repo(tmp_path)
             TestsFlextInfraReleaseHelpers.TestsInternalLockedVersions.write_lock(
                 tmp_path,
                 "not [ valid toml",
@@ -564,6 +571,7 @@ source = { registry = "https://pypi.org/simple" }
         @staticmethod
         def test_invalid_package_preserves_validation_failure(tmp_path: Path) -> None:
             """A parseable lock with an invalid package is never partly consumed."""
+            u.Tests.initialize_git_repo(tmp_path)
             TestsFlextInfraReleaseHelpers.TestsInternalLockedVersions.write_lock(
                 tmp_path,
                 '[[package]]\nname = "flext-api"\nversion = 1\nsource = {git = "repo"}',

@@ -159,7 +159,12 @@ class TestsFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         reports_dir = tmp_path / "reports"
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
@@ -171,7 +176,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that lint() returns a GateResult."""
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         (project_dir / "src" / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
@@ -188,6 +198,12 @@ class TestsFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        result = checker.format(tmp_path)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        result = checker.format(project_dir)
         tm.that(result, is_=r)
         tm.ok(result)

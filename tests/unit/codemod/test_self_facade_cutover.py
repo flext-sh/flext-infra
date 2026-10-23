@@ -38,8 +38,7 @@ class TestsFlextInfraSelfFacadeCutover:
         child_class = "AuxiliaryUtilities"
         sources = {
             package / c.Infra.INIT_PY: (
-                f"from .utilities import {primary_class} as u\n"
-                "__all__ = ['u']\n"
+                f"from .utilities import {primary_class} as u\n__all__ = ['u']\n"
             ),
             package / c.Infra.UTILITIES_PY: (
                 f"class {primary_class}:\n"

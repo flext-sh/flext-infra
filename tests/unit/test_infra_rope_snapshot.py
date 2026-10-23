@@ -18,6 +18,64 @@ class TestsFlextInfraRopeSnapshot:
     """Validate the closed snapshot inventory against governed entry files."""
 
     @staticmethod
+    def test_import_snapshot_keeps_each_relative_owner(tmp_path: Path) -> None:
+        """Identical declarations keep distinct suppliers in the real import graph."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        consumers: list[Path] = []
+        owners: list[Path] = []
+        for name in ("left", "right"):
+            folder = package / name
+            folder.mkdir()
+            (folder / "__init__.py").write_text("", encoding="utf-8")
+            owner = folder / "owner.py"
+            owner.write_text(f"Value = {name!r}\n", encoding="utf-8")
+            consumer = folder / "consumer.py"
+            consumer.write_text("from .owner import Value\n", encoding="utf-8")
+            consumers.append(consumer)
+            owners.append(owner)
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in consumers
+        )
+        snapshot = u.Infra.codemod_binding_snapshot(root, states)
+        tm.that(
+            {state.path for state in snapshot.states}.intersection(owners),
+            eq=set(owners),
+        )
+        with u.Infra.codemod_binding_project(
+            root, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, _sources):
+            for consumer, owner in zip(consumers, owners, strict=True):
+                resource = u.Infra.require_file_resource(
+                    project.get_resource(consumer.relative_to(root).as_posix()),
+                    consumer,
+                )
+                module = u.Infra.build_string_module(
+                    project, project.source_text(consumer), resource=resource
+                )
+                supplier, _line = module.get_attribute(
+                    "Value"
+                ).get_definition_location()
+                supplied_resource = tm.not_none(tm.not_none(supplier).get_resource())
+                tm.that(supplied_resource.real_path, eq=str(owner))
+
+    @staticmethod
+    def test_import_snapshot_syntax_error_identifies_dependency(tmp_path: Path) -> None:
+        """The capture caller passes the transitive supplier's resource to Rope."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owner = package / "broken_owner.py"
+        owner.write_text("Value = 1\n\ninvalid = )\n", encoding="utf-8")
+        consumer = package / "consumer.py"
+        consumer.write_text("from .broken_owner import Value\n", encoding="utf-8")
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
+        with pytest.raises(u.Infra.rope_syntax_errors()) as rejected:
+            u.Infra.codemod_binding_snapshot(root, (state,))
+        tm.that(
+            str(rejected.value),
+            has=f"<{owner.relative_to(root).as_posix()}> line <3>",
+        )
+
+    @staticmethod
     def test_native_observation_evidence_is_validated_and_independent() -> None:
         """Each capture owns its evidence and rejects incomplete bindings."""
         first = m.Infra.NativeObservationContext(paths=())

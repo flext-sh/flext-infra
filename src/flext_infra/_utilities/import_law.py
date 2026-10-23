@@ -70,7 +70,7 @@ class FlextInfraUtilitiesImportLaw:
         """Return the module-level statement binding each top-level name.
 
         Returns:
-            The first declaring statement for each module-level name.
+            The last declaring statement for each module-level name.
 
         """
         bindings: t.MutableMappingKV[str, ast.stmt] = {}
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesImportLaw:
                 case _:
                     pass
             for bound in names:
-                bindings.setdefault(bound, statement)
+                bindings[bound] = statement
         return bindings
 
     @classmethod
@@ -1099,7 +1099,24 @@ class FlextInfraUtilitiesImportLaw:
                 provider.get_name(), path, source, project=project, pymodule=provider
             ).get(alias_name)
             if route is None:
-                break
+                alias_name, _declaration = (
+                    FlextInfraUtilitiesImportLaw._declared_binding(
+                        ast.parse(source), alias_name
+                    )
+                )
+                binding = provider.get_attributes().get(alias_name)
+                if not isinstance(binding, p.Infra.RopeImportedName):
+                    return binding
+                alias_name = binding.imported_name
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        project,
+                        FlextInfraUtilitiesRopeRuntimeModules.imported_module_resource(
+                            project, binding
+                        ),
+                    )
+                )
+                continue
             if len(route.attributes) != 1:
                 msg = f"declaration export is not a named binding: {identity}"
                 raise ValueError(msg)

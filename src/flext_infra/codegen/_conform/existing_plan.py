@@ -12,7 +12,6 @@ from collections.abc import Callable, Generator, MutableMapping
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
-from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
@@ -1430,8 +1429,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         Existing handwritten Make content is validated against the selected
         profile policy. The canonical source inventory contributes declared
-        ``u``, ``p`` and ``m`` facades from every owned package, including
-        auxiliary packages. Each subsequent family binds the prior candidate,
+        facade families from every owned package, including internal test and
+        auxiliary namespaces. Each subsequent family binds the prior candidate,
         while its receipts continue to authenticate the original source epoch.
         This method returns file plans; it does not publish their contents.
 
@@ -1455,7 +1454,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if make_plan_present and make_plan_value is not None:
                 plans.append(make_plan_value)
         if root.is_dir():
-            families: t.VariadicTuple[Literal["u", "p", "m"]] = ("u", "p", "m")
             layout = u.Infra.layout(root)
             project, consumed, sources = binding
             package_dirs = {
@@ -1464,13 +1462,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 if path.is_relative_to(root)
                 and path.suffix == c.Infra.EXT_PYTHON
                 and path.parent / c.Infra.INIT_PY in sources
-                and path.relative_to(root).parts[:1] == ("src",)
             }
             if layout is not None and layout.class_stem:
                 package_dirs.add(layout.package_dir)
             staged = {plan.path: plan for plan in declared_files}
             inputs = consumed()[0]
-            for family in sorted(families, key=tuple(u.Infra.facade_families()).index):
+            for declared_family in u.Infra.facade_families().values():
+                family = c.Infra.FacadeFamily(declared_family.letter)
                 for package_dir in sorted(package_dirs):
                     if (
                         layout is None or package_dir != layout.package_dir
@@ -1496,7 +1494,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         self,
         root: Path,
         package_dir: Path,
-        family: Literal["u", "p", "m"],
+        family: c.Infra.FacadeFamily,
         staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[
@@ -1589,7 +1587,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         self,
         root: Path,
         package_dir: Path,
-        family: Literal["u", "p", "m"],
+        family: c.Infra.FacadeFamily,
         binding: t.Triple[
             p.Infra.RopeProject,
             Callable[
@@ -1614,17 +1612,34 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         project, consumed_states, sources = binding
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        rendered = u.Infra.render_utility_facade(
-            package_dir,
-            family=family,
-            project=project,
-            sources=sources,
-        )
-        if rendered is None:
-            return result_type.ok(())
         facade_path = u.Infra.facade_module_path(
             package_dir, family, project=project, sources=sources
         )
+        if family is c.Infra.FacadeFamily.T:
+            if facade_path is None or not project.source_query(
+                package_dir / u.Infra.facade_families()[family].directory, "isdir"
+            ):
+                return result_type.ok(())
+            rendered = u.Infra.render_type_facade(
+                package_dir,
+                facade_path,
+                {
+                    path: u.Infra.require_file_resource(
+                        project.get_resource(path.relative_to(root).as_posix()), path
+                    ).read()
+                    for path in sources
+                },
+                project=project,
+            )
+        else:
+            rendered = u.Infra.render_utility_facade(
+                package_dir,
+                family=family.value,
+                project=project,
+                sources=sources,
+            )
+        if rendered is None:
+            return result_type.ok(())
         if facade_path is None:
             msg = f"rendered {family} facade has no declaring module"
             raise ValueError(msg)

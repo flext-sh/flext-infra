@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import cProfile
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -19,7 +20,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -106,13 +107,13 @@ class TestsFlextInfraCodegenConfigLifecycle:
                     config.Infra.tooling,
                     "pytest.ini_options",
                     "testpaths",
-                    t.StrSequence,
+                    Sequence[str],
                 )
                 for pattern in u.Infra.native_tool_setting(
                     config.Infra.tooling,
                     "pytest.ini_options",
                     "python_files",
-                    t.StrSequence,
+                    Sequence[str],
                 )
                 for path in (root / directory).rglob(pattern)
                 if path.is_file()

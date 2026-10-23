@@ -53,6 +53,9 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        admitted = u.Infra.codegen_file_publication_admission(plans)
+        if admitted.failure:
+            return result_type.from_failure(admitted)
         projects = tuple(dict.fromkeys(plan.project for plan in plans))
         if len(projects) > 1:
             return cls._prepare_split_project_plans(workspace, plans, projects, prepare)

@@ -243,13 +243,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             The owning family letter, including split-source descendants.
 
         """
-        for parent in path.parents:
-            family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-                parent.name,
-            )
-            if family is not None:
-                return family
-        return None
+        return FlextInfraUtilitiesCodegenNamespace.facade_family_of_source(path)
 
     @classmethod
     def _declaration_import_rewrites(

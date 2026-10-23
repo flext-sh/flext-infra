@@ -17,6 +17,99 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
+    @pytest.mark.parametrize(
+        ("distribution", "kind"),
+        [
+            ("sample-library", c.Infra.ProjectKind.INTERNAL_FLEXT),
+            ("acme-service", c.Infra.ProjectKind.INTERNAL),
+        ],
+    )
+    @pytest.mark.slow
+    def test_governed_builder_uses_project_owned_catalogue(
+        self,
+        tmp_path: Path,
+        distribution: str,
+        kind: c.Infra.ProjectKind,
+    ) -> None:
+        """Plan real repositories without borrowing another project's identity."""
+        root = tmp_path / distribution
+        pyproject = u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            distribution,
+            beads=u.Tests.BeadsIdentity(
+                workspace=distribution,
+                database=distribution.replace("-", "_"),
+                issue_prefix=distribution,
+            ),
+        )
+        catalogue = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        tm.ok(
+            u.Cli.toml_write_mapping(
+                pyproject,
+                {
+                    **tm.ok(u.Cli.toml_read_json(pyproject)),
+                    "build-system": {
+                        "requires": list(catalogue.scaffold.build.requirements),
+                        "build-backend": catalogue.scaffold.build.backend,
+                    },
+                },
+            ),
+        )
+        project = u.Tests.project_spec(distribution)
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "kind": kind.value,
+                                "project": project.model_dump(mode="json"),
+                            },
+                            "managed_files": [
+                                *(
+                                    managed.model_dump(mode="json")
+                                    for managed in catalogue.managed_files
+                                ),
+                                {
+                                    "path": f"project-artifacts/{distribution}/policy.txt",
+                                    "owner": "codegen",
+                                    "policy": "full",
+                                },
+                            ],
+                        },
+                    },
+                },
+            ),
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        declared = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+                root, inputs=inputs
+            ),
+        )
+
+        plan = u.Tests.governed_project_plan(root)
+
+        tm.that(plan.issues, eq=())
+        tm.that(plan.workspace.repository, eq=declared.repository)
+        tm.that(plan.workspace.repository.kind, eq=kind)
+        tm.that(plan.workspace.repository.package, eq=True)
+        tm.that(plan.workspace.project, eq=declared.project)
+        for managed in inputs.spec.managed_files:
+            tm.that((root / managed.path).parent.is_dir(), eq=True)
+        package_dir = root / c.Infra.DEFAULT_SRC_DIR / project.package_name
+        for family in u.Infra.facade_families().values():
+            if (package_dir / family.directory).is_dir():
+                tm.that(
+                    (package_dir / f"{family.module}.py").read_text(encoding="utf-8"),
+                    has=f"class {project.class_stem}{family.suffix}:",
+                )
+        tm.that(
+            tuple(path.name for path in (root / c.Infra.DEFAULT_SRC_DIR).iterdir()),
+            eq=(project.package_name,),
+        )
+
     @staticmethod
     def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
         """Plan a standalone fixture with city participation disabled.

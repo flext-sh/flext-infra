@@ -41,8 +41,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             path
             for path in sources
             if path.is_relative_to(workspace.repository_root)
-            and FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-                path.parent.name,
+            and FlextInfraUtilitiesCodegenNamespace.facade_family_of_source(
+                path.relative_to(workspace.repository_root),
             )
             is not None
             and not sources[path].startswith(c.Infra.AUTOGEN_HEADERS)

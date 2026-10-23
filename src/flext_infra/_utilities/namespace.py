@@ -165,6 +165,23 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
+    def facade_family_of_source(cls, source: Path) -> str | None:
+        """Return the nearest family owning a source, including split parts.
+
+        Callers selecting a repository scope pass a repository-relative path
+        so a homonymous directory outside that scope cannot elect an owner.
+
+        Returns:
+            The family letter, or ``None`` outside private family directories.
+
+        """
+        for parent in source.parents:
+            family = cls.facade_family_of_directory(parent.name)
+            if family is not None:
+                return family
+        return None
+
+    @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether *file_name* is a governed root-namespace facade file.
 
@@ -178,15 +195,22 @@ class FlextInfraUtilitiesCodegenNamespace:
     def runtime_module_names(
         *, project_name: str, codegen: m.Infra.CodegenConfigSpec
     ) -> t.StrMapping:
-        """Resolve singleton roles to physical stems for exactly one project."""
+        """Resolve singleton roles to physical stems for exactly one project.
+
+        Returns:
+            The canonical stems with the project's declared overrides applied.
+
+        """
         defaults = {
             Path(module_file).stem.removeprefix("_"): Path(module_file).stem
             for module_file, *_ in c.Infra.RUNTIME_MODULES
         }
-        return {
-            **defaults,
-            **codegen.runtime_module_overrides.get(canonicalize_name(project_name), {}),
-        }
+        defaults.update(
+            codegen.runtime_module_overrides.get(
+                canonicalize_name(project_name), {}
+            ).items()
+        )
+        return defaults
 
     @classmethod
     def runtime_singleton_export(

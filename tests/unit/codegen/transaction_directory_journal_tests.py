@@ -54,11 +54,26 @@ class TestsFlextInfraTransactionDirectoryJournal:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize(
+        ("project_name", "package_name", "version"),
+        [
+            ("flext-source-alpha", "flext_source_alpha", "0.12.7"),
+            ("flext-source-beta", "flext_source_beta", "7.4.9"),
+        ],
+    )
     def test_initial_invalid_source_dependencies_leave_no_staging_effects(
         tmp_path: Path,
+        project_name: str,
+        package_name: str,
+        version: str,
     ) -> None:
         """Initial staging recovery preserves the original files and first failure."""
-        root = u.Tests.git_repository(tmp_path)
+        root, _package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name=project_name,
+            package_name=package_name,
+        )
+        tm.ok(u.Infra.replace_project_version(root, version))
         u.Tests.copy_tracked_mise_seeds(root)
         target = root / "generated.md"
         target.write_bytes(b"original document\n")
@@ -91,24 +106,25 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
         roots = owner.capability_roots("conform", (root,))
         before = TestsFlextInfraConformSupport.project_tree(root)
-        failed = owner.run_files_locked(
-            roots,
-            lambda scope_root: owner.publish_file_phase_locked(
-                scope_root,
+        for _attempt in range(2):
+            failed = owner.run_files_locked(
                 roots,
-                m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                    files=(config_plan, invalid),
-                    inputs=(config_before,),
+                lambda scope_root: owner.publish_file_phase_locked(
+                    scope_root,
+                    roots,
+                    m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                        files=(config_plan, invalid),
+                        inputs=(config_before,),
+                    ),
+                    m.Infra.CodegenPhasePublicationPolicy(directories=()),
                 ),
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            ),
-        )
-        tm.fail(failed, has="journal entry source dependencies must be unique")
-        tm.that(
-            TestsFlextInfraConformSupport.project_tree(root),
-            eq=before,
-        )
+            )
+            tm.fail(failed, has="journal entry source dependencies must be unique")
+            tm.that(
+                TestsFlextInfraConformSupport.project_tree(root),
+                eq=before,
+            )
         tm.fail((root / ".state").exists())
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         tm.that(

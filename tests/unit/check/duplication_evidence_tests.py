@@ -37,8 +37,8 @@ class TestsFlextInfraDuplicationEvidence:
                 "startLoc": {"line": 1, "column": 0, "position": 0},
                 "endLoc": {
                     "line": len(lines),
-                    "column": len(lines[-1]),
-                    "position": len(source.rstrip()),
+                    "column": len(lines[-1].encode()),
+                    "position": len(source.rstrip().encode()),
                 },
             }
             for path in files
@@ -254,3 +254,12 @@ class TestsFlextInfraDuplicationEvidence:
             gates.FlextInfraDuplicationEvidence.parse(
                 report.model_dump_json() + "\nunknown output"
             )
+
+    def test_scanner_byte_columns_bind_unicode_sources(self, tmp_path: Path) -> None:
+        """Real scanner byte columns must not become false source-drift failures."""
+        report = self._report(tmp_path, "value = 'a\u00e7\u00e3o'\n")
+        assessment = self._assess(tmp_path, report)
+        tm.that(
+            assessment.candidates[0].disposition, eq="below_existing_behavior_floor"
+        )
+        tm.ok(assessment.candidates[0].measures[0].tokens > 0)

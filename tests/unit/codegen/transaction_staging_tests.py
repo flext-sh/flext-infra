@@ -1142,8 +1142,11 @@ class TestsFlextInfraTransactionPublication:
             desired_mode=before.mode,
             changes=("semantic migration",),
         )
+        consumed_candidate = False
 
         def validate(candidate_root: Path) -> p.Result[bool]:
+            nonlocal consumed_candidate
+
             candidate = candidate_root / target.relative_to(root)
             consumed = tm.ok(
                 u.Cli.run_raw(
@@ -1160,6 +1163,7 @@ class TestsFlextInfraTransactionPublication:
                 ),
             )
             tm.ok(u.Cli.process_succeeded(consumed.outcome))
+            consumed_candidate = True
             original = tm.ok(
                 u.Cli.atomic_read_binary_file_state(target, required=True),
             )
@@ -1182,6 +1186,9 @@ class TestsFlextInfraTransactionPublication:
             repository_root=root,
             options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
+        if not consumed_candidate:
+            tm.ok(outcome)
+        tm.ok(consumed_candidate)
         if mutation == "unchanged":
             tm.ok(outcome)
         else:

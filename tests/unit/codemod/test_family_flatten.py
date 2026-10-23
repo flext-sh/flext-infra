@@ -49,6 +49,29 @@ class TestsFlextInfraFamilyFlatten:
     """Exercise the real module graph, not mocked semantic identities."""
 
     @staticmethod
+    def test_source_family_uses_ancestry_without_electing_external_homonyms(
+        tmp_path: Path,
+    ) -> None:
+        """All registered families share one boundary-aware source classification."""
+        for letter, family in u.Infra.facade_families().items():
+            source = tmp_path / family.directory / "domain" / "payload.py"
+            tm.that(
+                u.Infra.facade_family_of_source(source.relative_to(tmp_path)),
+                eq=letter,
+            )
+            helper = tmp_path / "helpers" / f"{family.module}_payload.py"
+            tm.that(
+                u.Infra.facade_family_of_source(helper.relative_to(tmp_path)),
+                none=True,
+            )
+            root = tmp_path / family.directory / "repository"
+            external = root / "helpers" / "payload.py"
+            tm.that(
+                u.Infra.facade_family_of_source(external.relative_to(root)),
+                none=True,
+            )
+
+    @staticmethod
     def test_duplicate_facade_namespace_uses_declared_inherited_owner(
         tmp_path: Path,
     ) -> None:
@@ -116,6 +139,7 @@ class TestsFlextInfraFamilyFlatten:
         tmp_path: Path,
         *,
         collision: bool,
+        subdirectory: str,
     ) -> WrapperFamilyFixture:
         """Seed the wrapper family, its consumers, and one unrelated homonym.
 
@@ -130,6 +154,10 @@ class TestsFlextInfraFamilyFlatten:
         family = package / directory
         family.mkdir()
         (family / "__init__.py").write_text("", encoding="utf-8")
+        for component in subdirectory.split("/") if subdirectory else ():
+            family /= component
+            family.mkdir()
+            (family / "__init__.py").write_text("", encoding="utf-8")
         path = family / "payload.py"
         owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         parent = package / "entities.py"
@@ -147,8 +175,9 @@ class TestsFlextInfraFamilyFlatten:
         )
         path.write_text(source, encoding="utf-8")
         consumer = package / "consumer.py"
+        module = ".".join(path.relative_to(package).with_suffix("").parts)
         references = (
-            f"from {package.name}.{directory}.payload import {owner} as Part\n\n"
+            f"from {package.name}.{module} import {owner} as Part\n\n"
             "class Public(Part):\n    pass\n\n"
             "VALUE = Public.Wrapper.Entity.VALUE\n"
             "TEXT = Part.Wrapper.TEXT\n"
@@ -229,8 +258,10 @@ class TestsFlextInfraFamilyFlatten:
 
     @staticmethod
     @pytest.mark.parametrize("collision", [False, True])
+    @pytest.mark.parametrize("subdirectory", ["", "domain", "domain/split"])
     def test_snapshot_rewrites_alias_and_inherited_consumers_without_effects(
         tmp_path: Path,
+        subdirectory: str,
         *,
         collision: bool,
     ) -> None:
@@ -238,6 +269,7 @@ class TestsFlextInfraFamilyFlatten:
         fixture = TestsFlextInfraFamilyFlatten._seed_wrapper_family(
             tmp_path,
             collision=collision,
+            subdirectory=subdirectory,
         )
         root = fixture.root
         path = fixture.path
@@ -294,9 +326,11 @@ class TestsFlextInfraFamilyFlatten:
             "class Entity:\n        def value(self) -> int:\n            return 1",
         ],
     )
+    @pytest.mark.parametrize("subdirectory", ["", "domain", "domain/split"])
     def test_entity_classes_are_not_namespace_wrappers(
         tmp_path: Path,
         entity: str,
+        subdirectory: str,
     ) -> None:
         """Test entity classes are not namespace wrappers."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -305,6 +339,10 @@ class TestsFlextInfraFamilyFlatten:
         )
         family.mkdir()
         (family / "__init__.py").write_text("", encoding="utf-8")
+        for component in subdirectory.split("/") if subdirectory else ():
+            family /= component
+            family.mkdir()
+            (family / "__init__.py").write_text("", encoding="utf-8")
         path = family / "payload.py"
         owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         source = (

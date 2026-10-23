@@ -58,15 +58,16 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
+        empty_failure = (
+            scan.outcome.raw_return_code == 1
+            and report is not None
+            and report.statistics.total.clones == 0
+        )
         if (
             scan.outcome.raw_return_code not in {0, 1}
             or scan.outcome.timed_out
             or scan.outcome.forwarded_signal is not None
-            or (
-                scan.outcome.raw_return_code == 1
-                and report is not None
-                and report.statistics.total.clones == 0
-            )
+            or empty_failure
         ):
             issues = (*issues, self._tool_failure_issue(scan))
         not_executed = (

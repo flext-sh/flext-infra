@@ -59,6 +59,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
                         tracking=plan.tracking,
                         index_before=plan.index_before,
                         tracking_dependencies=plan.tracking_dependencies,
+                        source_states=plan.source_states,
+                        source_directories=plan.source_directories,
+                        source_query_topology=plan.source_query_topology,
                     ),
                 )
             else:
@@ -67,6 +70,12 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 )
             if validated.failure:
                 return r[bool].from_failure(validated)
+            if len({state.path for state in plan.source_states}) != len(
+                plan.source_states
+            ):
+                return r[bool].fail(
+                    "journal entry source dependencies must be unique",
+                )
         return r[bool].ok(value=True)
 
     @staticmethod

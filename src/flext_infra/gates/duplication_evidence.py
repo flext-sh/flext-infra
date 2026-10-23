@@ -16,6 +16,7 @@ from pathlib import Path
 
 from flext_infra import m, t, u
 
+
 class FlextInfraDuplicationEvidence:
     """Own the source cache and provenance for exactly one scanner invocation."""
 
@@ -338,9 +339,13 @@ class FlextInfraDuplicationEvidence:
         if start > end or start[0] > len(lines) or end[0] > len(lines):
             msg = f"source span out of bounds: {path}:{start}:{end}"
             raise ValueError(msg)
-        if start[1] > len(lines[start[0] - 1]) or end[1] > len(lines[end[0] - 1]):
+        if start[1] > len(lines[start[0] - 1].encode()) or end[1] > len(
+            lines[end[0] - 1].encode()
+        ):
             msg = f"source column out of bounds: {path}:{start}:{end}"
             raise ValueError(msg)
+        for line, column in (start, end):
+            lines[line - 1].encode()[:column].decode()
         return data, source
 
     @classmethod
@@ -357,8 +362,23 @@ class FlextInfraDuplicationEvidence:
         """
         tree = ast.parse(source, filename=side.name)
         excluded, keep, removed = cls._syntax_ranges(tree, source.splitlines())
-        start = (side.start_location.line, side.start_location.column)
-        end = (side.end_location.line, side.end_location.column)
+        lines = source.splitlines()
+        start = (
+            side.start_location.line,
+            len(
+                lines[side.start_location.line - 1]
+                .encode()[: side.start_location.column]
+                .decode()
+            ),
+        )
+        end = (
+            side.end_location.line,
+            len(
+                lines[side.end_location.line - 1]
+                .encode()[: side.end_location.column]
+                .decode()
+            ),
+        )
         imports = (
             node
             for node in ast.walk(tree)

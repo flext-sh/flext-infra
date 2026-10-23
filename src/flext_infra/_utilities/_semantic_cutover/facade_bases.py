@@ -1092,13 +1092,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         *,
         project: p.Infra.RopeProject,
     ) -> t.Infra.TransformResult:
-        """Require elected self imports to resolve before returning candidate bytes.
+        """Require residual self imports to be proven composition-only references.
 
         Returns:
             The candidate and its actual behavior edits.
 
         Raises:
-            ValueError: If a self-facade import has no lower callable binding.
+            ValueError: If a self-facade import retains an unproved reference.
 
         """
         remaining = tuple(
@@ -1148,7 +1148,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         binding = runtime.qualified_name(project, qualified)
         receiver = binding.get_object()
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(receiver) or not (
-            runtime.same_name(binding, runtime.resolve_symbol(module.get_scope(), local))
+            runtime.same_name(
+                binding, runtime.resolve_symbol(module.get_scope(), local)
+            )
         ):
             return False
         references = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(

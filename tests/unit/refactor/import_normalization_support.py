@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import c, t, tm, u
 
@@ -68,6 +67,11 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         cls._lazy_init(package / "_utilities", {"DemoHelper": ".helper"})
         cls._lazy_init(package / "_models", {"DemoRecord": ".record"})
         cls._lazy_init(package / "services", {"DemoRunner": ".runner"})
+        for letter, family in u.Infra.facade_families().items():
+            (package / f"{family.module}.py").write_text(
+                f"from flext_cli import {letter}\n__all__ = ['{letter}']\n",
+                encoding="utf-8",
+            )
         return project, package
 
     @staticmethod

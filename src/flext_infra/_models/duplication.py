@@ -129,7 +129,7 @@ class FlextInfraModelsDuplication:
 
         column: Annotated[
             t.NonNegativeInt,
-            m.Field(description="Zero-based source column reported by jscpd"),
+            m.Field(description="Zero-based UTF-8 byte column reported by jscpd"),
         ]
         line: Annotated[
             t.PositiveInt,

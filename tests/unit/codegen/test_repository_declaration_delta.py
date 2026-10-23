@@ -17,8 +17,59 @@ from tests import c, m, tm, u
 class TestsFlextInfraRepositoryDeclarationDelta:
     """Preserve own declarations without projecting another repository's facts."""
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("class_stem", "bad-name"),
+            ("class_stem", "class"),
+            ("namespace", "nested.namespace"),
+            ("namespace", "None"),
+            ("alias", "bad alias"),
+            ("alias", "for"),
+            ("package_name", "bad-package"),
+            ("package_name", "package..child"),
+            ("upstream", "package.class"),
+            ("upstream", "package; side_effect()"),
+        ],
+    )
+    def test_project_code_identity_rejects_invalid_declarations(
+        field: str,
+        value: str,
+    ) -> None:
+        """Reject invalid code at the shared declaration boundary, before planning."""
+        payload = u.Tests.project_spec("identity-project").model_dump()
+        payload[field] = value
+
+        with pytest.raises(ValueError, match="project declaration requires a Python"):
+            m.Infra.ProjectSpec.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("class_stem", "ProjectClass"),
+            ("namespace", "Namespace"),
+            ("alias", "project_alias"),
+            ("package_name", "namespace.package"),
+            ("upstream", "namespace.foundation"),
+            ("constant_name", "distribution-with-hyphens"),
+        ],
+    )
+    def test_project_identity_preserves_code_names_and_distribution_values(
+        field: str,
+        value: str,
+    ) -> None:
+        """Preserve valid identities and distinguish wire values from code names."""
+        payload = u.Tests.project_spec("identity-project").model_dump()
+        payload[field] = value
+
+        project = m.Infra.ProjectSpec.model_validate(payload)
+
+        tm.that(project.model_dump()[field], eq=value)
+
+    @staticmethod
     def test_governance_profiles_retain_their_canonical_enum_identity(
-        self,
         tmp_path: Path,
     ) -> None:
         """Migration preserves every supported architecture and lifecycle boundary."""
@@ -40,9 +91,9 @@ class TestsFlextInfraRepositoryDeclarationDelta:
                     tm.ok(declaration.state is state)
                     tm.ok(declaration.codegen is codegen)
 
+    @staticmethod
     @pytest.mark.parametrize("read_only", [False, True])
     def test_own_declarations_survive_public_model_roundtrip(
-        self,
         tmp_path: Path,
         *,
         read_only: bool,
@@ -84,8 +135,8 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         )
         tm.that(portable.read_only, eq=read_only)
 
+    @staticmethod
     def test_own_policy_overlay_never_poisons_the_project_metadata(
-        self,
         tmp_path: Path,
     ) -> None:
         """The overlay's project selector is admission, never delta content.
@@ -119,8 +170,8 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         tm.fail(declaration.beads_enabled)
         tm.ok(declaration.ci_enabled)
 
+    @staticmethod
     def test_foreign_members_do_not_change_own_declaration(
-        self,
         tmp_path: Path,
     ) -> None:
         """Changing composition does not change a repository's own configuration."""

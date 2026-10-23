@@ -105,9 +105,6 @@ class FlextInfraImportNormalizationRoutesMixin(
         Returns:
             Import edits with one provider per lexical facade binding.
 
-        Raises:
-            ValueError: If competing providers do not prove the same identity.
-
         """
         edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
         bindings: dict[tuple[int, str], tuple[str, str]] = {}
@@ -147,12 +144,9 @@ class FlextInfraImportNormalizationRoutesMixin(
                     # lazy routing cannot make an own-namespace edge legal.
                     routed.setdefault(node.module, []).append(cls._clause(alias))
                     continue
-                root = cls._root_alias_source(state, node.module, alias)
-                if root is not None:
-                    original = resolve(node.module, alias.name)
-                    published = resolve(root, alias.asname or alias.name)
-                    if original is None or not u.Infra.same_name(original, published):
-                        root = None
+                root = cls._native_root_alias_source(
+                    state, (node.module, alias), resolve
+                )
                 if cls._duplicate_alias(state, (node, alias), bindings, resolve):
                     continue
                 routed.setdefault(
@@ -182,12 +176,37 @@ class FlextInfraImportNormalizationRoutesMixin(
                     )
                     or (
                         (f"{indent}pass",)
-                        if cls._sole_body_statement(node, state.parents)
+                        if isinstance(parent := state.parents.get(id(node)), ast.If)
+                        and parent.body == [node]
                         else ()
                     ),
                 ),
             )
         return edits
+
+    @classmethod
+    def _native_root_alias_source(
+        cls,
+        state: m.Infra.ImportLawPass,
+        imported: t.Pair[str, ast.alias],
+        resolve: Callable[[str, str], p.Infra.RopePyName | None],
+    ) -> str | None:
+        """Prove that the role-eligible public route preserves native identity.
+
+        Returns:
+            The own public namespace, or no identity-preserving route.
+
+        """
+        module, alias = imported
+        root = cls._root_alias_source(state, module, alias)
+        if root is None:
+            return None
+        original = resolve(module, alias.name)
+        if original is None or not u.Infra.same_name(
+            original, resolve(root, alias.asname or alias.name)
+        ):
+            return None
+        return root
 
     @classmethod
     def _duplicate_alias(
@@ -256,11 +275,12 @@ class FlextInfraImportNormalizationRoutesMixin(
             ),
         )
         edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
-        for node in state.tree.body:
+        for node in cls._iter_imports(state.tree):
             if (
                 not isinstance(node, ast.ImportFrom)
                 or node.level
                 or node.module != scope.namespace
+                or cls._enclosing_scope(node, state.parents) is not None
             ):
                 continue
             kept = [
@@ -278,7 +298,12 @@ class FlextInfraImportNormalizationRoutesMixin(
                     cls._end_line(node),
                     (f"{indent}from {scope.namespace} import {clauses}",)
                     if kept
-                    else (),
+                    else (
+                        (f"{indent}pass",)
+                        if isinstance(parent := state.parents.get(id(node)), ast.If)
+                        and parent.body == [node]
+                        else ()
+                    ),
                 ),
             )
         missing = (

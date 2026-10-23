@@ -1344,7 +1344,10 @@ class TestsFlextInfraSemanticPhaseContract:
             )
         tm.that({edit.file_path for edit in edits}, eq={consumer, private})
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
-        proposed = {**sources, **{edit.file_path: edit.updated_source for edit in edits}}
+        proposed = {
+            **sources,
+            **{edit.file_path: edit.updated_source for edit in edits},
+        }
         for edit in edits:
             tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
         with infra.rope_workspace(root) as rope:
@@ -1404,7 +1407,9 @@ class TestsFlextInfraSemanticPhaseContract:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("case", ["same-value", "different-value", "identity-depth"])
+    @pytest.mark.parametrize(
+        "case", ["same-value", "different-value", "identity-depth"]
+    )
     def test_nonprefixed_constants_reject_competing_publications_before_writes(
         tmp_path: Path, case: str
     ) -> None:

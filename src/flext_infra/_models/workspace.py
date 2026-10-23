@@ -179,6 +179,21 @@ class FlextInfraModelsWorkspace:
             validate_default=True,
             description="Ordered native binding and executable observations",
         )
+        evidence_index: t.MutableMappingKV[
+            str, FlextInfraModelsWorkspace.NativeBindingEvidence
+        ] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MutableMappingKV[
+                        str, FlextInfraModelsWorkspace.NativeBindingEvidence
+                    ]
+                )
+            ),
+            description="Invocation-local references to the first binding evidence",
+        )
+        indexed_evidence: int = m.Field(
+            default=0, description="Ordered evidence prefix covered by the lookup index"
+        )
         generated_owners: t.MutableMappingKV[
             int, t.Triple[str, str, p.AttributeProbe | None]
         ] = m.Field(

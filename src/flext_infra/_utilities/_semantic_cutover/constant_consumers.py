@@ -723,9 +723,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             source = refactors.content_change(resource, source, qualified).new_contents
         count = len(rewrites) + len(qualified)
         changes = (
-            (f"constant consumers -> {package}.c: {count} references",)
-            if count
-            else ()
+            (f"constant consumers -> {package}.c: {count} references",) if count else ()
         )
         return source, changes
 
@@ -758,9 +756,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             reference
             for reference, binding in public.items()
             if reference.count(".") == 1
-            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
-                binding.get_object()
-            )
+            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object().get_module() is owner_module
         }
         destinations: t.MutableMappingKV[str, list[str]] = {}
@@ -908,11 +904,13 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 constants_module = (
                     FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
                         f"{parts[-1]}.py"
-                    ) == "c"
+                    )
+                    == "c"
                     or any(
                         FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
                             part
-                        ) == "c"
+                        )
+                        == "c"
                         for part in parts
                     )
                 )
@@ -1127,7 +1125,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         for occurrence in occurrences:
             scope = runtime.scope_at(module, occurrence.offset)
             existing = scope.lookup("c")
-            if existing is not None and not cls._constant_owner_binding(facade, existing):
+            if existing is not None and not cls._constant_owner_binding(
+                facade, existing
+            ):
                 message = f"constant facade c is shadowed in {resource.real_path}"
                 raise ValueError(message)
             start, end = occurrence.get_word_range()
