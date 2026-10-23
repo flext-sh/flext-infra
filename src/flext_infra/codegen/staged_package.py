@@ -472,6 +472,12 @@ class FlextInfraStagedPackage:
             ),
         )
         source_project.verify_source_states()
+        introduced = frozenset(
+            item.project_root
+            for item in selected
+            if item.project_root / c.PYPROJECT_FILENAME in normalized
+            and states[item.project_root / c.PYPROJECT_FILENAME].content is None
+        )
         plan = m.Infra.StageSourcePlan(
             workspace=workspace,
             roots=tuple(
@@ -485,8 +491,18 @@ class FlextInfraStagedPackage:
             declared_files=cls._declared_source_effects(
                 workspace, normalized, states, options.modes, options.declared_files
             ),
-            layouts=tuple(selected),
-            workspace_packages=tuple(sorted(layouts)),
+            layouts=tuple(
+                item for item in selected if item.project_root not in introduced
+            ),
+            workspace_packages=tuple(
+                sorted(
+                    name
+                    for name, item in layouts.items()
+                    if item.project_root not in introduced
+                )
+            ),
+            candidate_layouts=tuple(selected),
+            candidate_workspace_packages=tuple(sorted(layouts)),
         )
         return cls.source_inputs_current(plan).map(lambda _: plan)
 
@@ -585,7 +601,7 @@ class FlextInfraStagedPackage:
             plans.append(planned.value)
         packages: t.MutableMappingKV[str, Path] = {}
         for plan in plans:
-            for layout in plan.layouts:
+            for layout in plan.candidate_layouts:
                 if (
                     packages.setdefault(layout.package_name, layout.project_root)
                     != layout.project_root
@@ -623,6 +639,16 @@ class FlextInfraStagedPackage:
                 layouts=tuple(layout for plan in plans for layout in plan.layouts),
                 workspace_packages=tuple(
                     sorted({name for plan in plans for name in plan.workspace_packages})
+                ),
+                candidate_layouts=tuple(
+                    layout for plan in plans for layout in plan.candidate_layouts
+                ),
+                candidate_workspace_packages=tuple(
+                    sorted({
+                        name
+                        for plan in plans
+                        for name in plan.candidate_workspace_packages
+                    })
                 ),
             )
         )
@@ -848,9 +874,13 @@ class FlextInfraStagedPackage:
         current = cls.source_inputs_current(plan)
         if current.failure:
             return result_type.from_failure(current)
-        layouts = {layout.package_name: layout for layout in plan.layouts}
+        layouts = {layout.package_name: layout for layout in plan.candidate_layouts}
         local = next(
-            (layout for layout in plan.layouts if layout.project_root == project_root),
+            (
+                layout
+                for layout in plan.candidate_layouts
+                if layout.project_root == project_root
+            ),
             None,
         )
         if local is None:

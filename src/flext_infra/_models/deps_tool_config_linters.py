@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated
+from keyword import iskeyword
+from pathlib import PurePosixPath
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
@@ -32,6 +34,97 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
+
+    class RuffReadonlyNamespaceOccurrence(m.ArbitraryTypesModel):
+        """Identify one readonly namespace, never a name-wide lint exemption.
+
+        These are declaration identities. Source authentication, producer typing,
+        and complete native lint coverage must precede any Ruff adaptation.
+        """
+
+        path: t.NonEmptyStr = m.Field(
+            description="Exact project-relative getter source path, without globs.",
+        )
+        qualname: t.NonEmptyStr = m.Field(
+            description="Getter declaration qualified within its source module.",
+        )
+        role: Literal["protocol-instance-readonly-namespace"] = m.Field(
+            description="Readonly instance Protocol getter role to authenticate.",
+        )
+        return_type_owner: t.NonEmptyStr = m.Field(
+            alias="return-type-owner",
+            description="Fully qualified declared return contract owner.",
+        )
+        producer_qualname: t.NonEmptyStr = m.Field(
+            alias="producer-qualname",
+            description="Fully qualified real producer namespace member.",
+        )
+
+        @m.field_validator("path")
+        @classmethod
+        def require_exact_project_path(cls, value: str) -> str:
+            """Reject glob, escaping, and normalized spellings of source paths.
+
+            Returns:
+                The exact project-relative Python source identity.
+
+            Raises:
+                ValueError: If the path is not an exact relative source path.
+
+            """
+            path = PurePosixPath(value)
+            if (
+                path.is_absolute()
+                or path.as_posix() != value
+                or ".." in path.parts
+                or path.suffix not in {".py", ".pyi"}
+                or any(character in value for character in "\\*?[]{}:\x00\n\r")
+            ):
+                msg = "readonly namespace requires an exact project-relative Python path"
+                raise ValueError(msg)
+            return value
+
+        @m.field_validator("qualname", "return_type_owner", "producer_qualname")
+        @classmethod
+        def require_declaration_identity(cls, value: str) -> str:
+            """Accept qualified Python identities, not expressions or patterns.
+
+            Returns:
+                The unchanged qualified declaration identity.
+
+            Raises:
+                ValueError: If the value cannot name a qualified declaration.
+
+            """
+            parts = value.split(".")
+            if len(parts) < 2 or any(
+                not part.isascii() or not part.isidentifier() or iskeyword(part)
+                for part in parts
+            ):
+                msg = "readonly namespace requires a qualified declaration identity"
+                raise ValueError(msg)
+            return value
+
+        @m.model_validator(mode="after")
+        def require_paired_namespace(self) -> Self:
+            """Require the producer to expose the same PascalCase namespace.
+
+            Returns:
+                The identity pair, without granting a semantic exemption.
+
+            Raises:
+                ValueError: If the declared namespace and producer disagree.
+
+            """
+            name = self.qualname.rsplit(".", 1)[1]
+            if (
+                not name[0].isupper()
+                or not any(character.islower() for character in name)
+                or self.producer_qualname.rsplit(".", 1)[1] != name
+            ):
+                msg = "readonly namespace requires a paired PascalCase producer member"
+                raise ValueError(msg)
+            return self
 
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
@@ -159,8 +252,33 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
         timeout_seconds: Annotated[
             int,
-            m.Field(gt=0, description="Mypy wall-time budget in seconds."),
+            m.Field(
+                gt=0, strict=True, description="Default Mypy wall-time budget in seconds.",
+            ),
         ]
+        max_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0, strict=True, description="Finite project budget ceiling in seconds.",
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def validate_timeout_ceiling(self) -> Self:
+            """Keep the default inside the declared finite ceiling.
+
+            Returns:
+                The validated policy.
+
+            Raises:
+                ValueError: If the default exceeds the ceiling.
+
+            """
+            if self.timeout_seconds > self.max_timeout_seconds:
+                msg = "Mypy default timeout exceeds max_timeout_seconds"
+                raise ValueError(msg)
+            return self
+
         ruling_disable_error_codes: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(

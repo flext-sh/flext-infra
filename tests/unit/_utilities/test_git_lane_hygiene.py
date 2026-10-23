@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCodegenConform, FlextInfraGitService, c, config, m, main
+from flext_infra import FlextInfraGitService, c, config, m, main, workspace
 from tests import tm, u
 
 
@@ -316,22 +316,20 @@ class TestsFlextInfraGitLaneHygiene:
         u.Tests.git_run(root, "tag", f"v{version}")
         u.Tests.git_run(root, "push", request.remote, "HEAD")
         rendered_root = u.Tests.git_repository(tmp_path / "rendered")
-        u.Tests.self_named_project(rendered_root, initialize=False)
-        plan = tm.ok(
-            FlextInfraCodegenConform(
-                state=m.Infra.CodegenConformState(repository_root=rendered_root),
-            ).plan(
-                m.Infra.CodegenConformRequest(
-                    root=rendered_root,
-                    what=c.Infra.CodegenConformSurface.MAKEFILE,
-                    scope="self",
-                ),
-            ),
+        u.Tests.WorktreeFixture.write_python_project(rendered_root, rendered_root.name)
+        u.Tests.write_standalone_workspace_manifest(rendered_root, rendered_root.name)
+        u.Tests.git_run(
+            rendered_root,
+            "remote",
+            "add",
+            request.remote,
+            u.Tests.WorktreeFixture.governed_repository_url(rendered_root.name),
         )
-        rendered = next(
-            file.desired_content
-            for file in plan.files
-            if file.path.name == c.Infra.MAKEFILE_FILENAME
+        rendered = u.Tests.conform_makefile_text(
+            rendered_root,
+            tm.ok(
+                workspace.FlextInfraWorkspaceDetector.load_workspace_spec(rendered_root)
+            ),
         )
         body = rendered.split("_builtin_release_version:", 1)[1].split("\n\n", 1)[0]
         recipe = "\n".join(

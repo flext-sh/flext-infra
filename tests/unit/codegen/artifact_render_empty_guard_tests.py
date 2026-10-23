@@ -174,9 +174,15 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         family_name = f"{c.NAMESPACE_FAMILY_PREFIX}family_contract"
         project_name = family_name.replace("_", "-")
         family_root, family = u.Tests.create_lazy_init_workspace(
-            tmp_path,
+            root,
             project_name=project_name,
             package_name=family_name,
+        )
+        (root / ".gitmodules").write_text(
+            f'[submodule "{project_name}"]\n'
+            f"    path = {project_name}\n"
+            f"    url = https://example.invalid/{project_name}.git\n",
+            encoding=c.DEFAULT_ENCODING,
         )
         (family / "__init__.py").write_text(
             "from typing import TYPE_CHECKING\n"
@@ -217,15 +223,14 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             "published = family.name in u.project_alias_owners()\n"
             f"assert published is {publishes_contract!r}\n"
             "target = package / 'chosen.py'\n"
-            "plan = staging.plan_sources(root, {target: 'value = 1\\n'},\n"
-            "    options=m.Infra.StageSourceOptions(\n"
-            "        workspaces=(root, family_root))).unwrap()\n"
+            "plan = staging.plan_sources(root, {target: 'value = 1\\n'}).unwrap()\n"
             "assert family.name in {layout.package_name for layout in plan.layouts}\n"
             "sealed = {state.path: state for state in plan.inputs}\n"
             "for name in ('__init__.py', '__version__.py', 'marker.py'):\n"
             "    path = family / name\n"
             "    assert sealed[path].content == path.read_bytes()\n"
             "assert family / 'typing_only.py' not in sealed\n"
+            "assert family_root / 'pyproject.toml' not in sealed\n"
             "assert not target.exists()\n",
             str(root),
             str(family_root),

@@ -50,8 +50,11 @@ class TestsFlextInfraScriptDispatchMakefile:
             root_repository,
             project=u.Tests.project_spec("demo-root"),
         )
+        root = tmp_path / root_repository.name
+        root.mkdir()
+        u.Tests.initialize_git_repo(root, origin_url=root_repository.url)
         rendered: str = u.Tests.conform_makefile_text(
-            tmp_path / "demo-root",
+            root,
             workspace,
         )
         return rendered
@@ -107,15 +110,26 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        # The verb target may carry prerequisites (the workspace guard).
+        makefile = tmp_path / "demo-root" / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        observed = tm.ok(
+            u.Cli.run(
+                (
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "--dry-run",
+                    "--print-data-base",
+                    "--eval=__flext_fixture_probe__:",
+                    "__flext_fixture_probe__",
+                ),
+                cwd=makefile.parent,
+            ),
+        )
         deploy_targets = [
-            line for line in rendered.splitlines() if line.startswith("deploy:")
+            line for line in observed.stdout.splitlines() if line.startswith("deploy:")
         ]
         tm.that(len(deploy_targets), eq=1)
-        tm.that(
-            rendered.count("\n_activated-deploy: _builtin_require_environment\n"),
-            eq=1,
-        )
+        tm.that(observed.stderr, lacks="overriding recipe for target")
 
     def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
         """Custom ``_custom_<verb>`` handlers bypass the builtin allowlist.
@@ -206,19 +220,20 @@ class TestsFlextInfraScriptDispatchMakefile:
             if line.startswith(".PHONY:") and "_builtin_gen_" in line
         )
         tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
-        # The one handler drives the conform engine (CLI namespace is unchanged).
+        # The handler delegates the entire publication to the generation pipeline.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
-        tm.that(gen_all_body.count("codegen conform"), eq=1)
-        tm.ok("--mode apply" in gen_all_body)
-        tm.fail("--mode check" in gen_all_body)
+        tm.that(gen_all_body.count("codegen generate"), eq=1)
         tm.that(gen_all_body, has="$(PROJECT_FLEXT_INFRA)")
         tm.that(
             gen_all_body,
             lacks=[
                 "_builtin_require_environment",
                 "$(FLEXT_INFRA_BOOTSTRAP)",
+                "codegen conform",
                 "codegen init",
                 "deps modernize",
+                "--mode apply",
+                "--mode check",
             ],
         )
         tm.that(
@@ -227,7 +242,14 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         tm.fail("define _generated_docs" in rendered)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
-        tm.that(gen_init_body.count("codegen init"), eq=2)
+        tm.that(gen_init_body.count("codegen init"), eq=1)
+        tm.that(
+            gen_init_body,
+            has=[
+                'set -- --kind "$$KIND";',
+                'codegen init --repository-root "$(PROJECT_ROOT)" "$$@"',
+            ],
+        )
         tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
         tm.ok("# @flext-regenerate: make gen" in rendered)
@@ -257,6 +279,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         # Every public verb except help/clean/upg requires the Mise pin
         # (db516968e); seed it so the run reaches the interpreter check.
         u.Tests.copy_tracked_mise_seeds(root)
+        u.Tests.initialize_git_repo(root)
         invoked = u.Tests.run_isolated_make(
             ["--no-print-directory", "-f", str(makefile), "initialize"],
             cwd=root,

@@ -40,7 +40,8 @@ class TestsFlextInfraJournalRelocation:
                 path=root / "generated.md",
                 before=tm.ok(
                     u.Cli.atomic_read_binary_file_state(
-                        root / "generated.md", required=True,
+                        root / "generated.md",
+                        required=True,
                     ),
                 ),
                 desired_content=b"generated document\n",
@@ -76,7 +77,8 @@ class TestsFlextInfraJournalRelocation:
         root = u.Tests.git_repository(tmp_path)
         (root / "generated.md").write_bytes(b"original document\n")
         prepared = TestsFlextInfraJournalRelocation._interrupted_staging(
-            root, materialized=materialized,
+            root,
+            materialized=materialized,
         )
         if relocated:
             root = root.rename(root.with_name("relocated-repository"))
@@ -101,12 +103,19 @@ class TestsFlextInfraJournalRelocation:
         for directory in rebound.directories:
             if directory.manifest is not None:
                 tm.ok(directory.manifest.root.path.is_relative_to(root))
-                tm.ok(all(entry.path.is_relative_to(root) for entry in directory.manifest.entries))
+                tm.ok(
+                    all(
+                        entry.path.is_relative_to(root)
+                        for entry in directory.manifest.entries
+                    ),
+                )
         for intent in rebound.staging_intents:
             tm.ok(intent.before.path.is_relative_to(root))
         tm.ok(
             codegen.FlextInfraMiseArtifactsJournal.write(
-                layout, rebound, expected=original_state,
+                layout,
+                rebound,
+                expected=original_state,
             ),
         )
         tm.ok(
@@ -125,14 +134,18 @@ class TestsFlextInfraJournalRelocation:
         root = u.Tests.git_repository(tmp_path)
         (root / "generated.md").write_bytes(b"original document\n")
         prepared = TestsFlextInfraJournalRelocation._interrupted_staging(
-            root, materialized=True,
+            root,
+            materialized=True,
         )
         layout = prepared.plan.layout
         payload = u.json_dict_adapter().validate_json(
             prepared.journal.model_dump_json(),
         )
         payload["scope_inode"] = prepared.journal.scope_inode + 1
-        layout.journal_path.write_text(u.json_dumps(payload), encoding=c.DEFAULT_ENCODING)
+        layout.journal_path.write_text(
+            tm.ok(u.Cli.json_dumps(payload)),
+            encoding=c.DEFAULT_ENCODING,
+        )
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(layout.journal_path, required=True),
         )
@@ -141,7 +154,9 @@ class TestsFlextInfraJournalRelocation:
             has="another physical scope",
         )
         tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(layout.journal_path, required=True)),
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(layout.journal_path, required=True),
+            ),
             eq=before,
         )
         tm.that((root / "generated.md").read_bytes(), eq=b"original document\n")

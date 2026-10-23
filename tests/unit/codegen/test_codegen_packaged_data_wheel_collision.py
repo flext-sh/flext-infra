@@ -677,7 +677,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         root.mkdir()
-        _ = u.Tests.initialize_git_repo(root)
+        _ = u.Tests.initialize_git_repo(root, origin_url=project.homepage)
         self._prepare_runtime(root)
         tm.fail((root / c.PYPROJECT_FILENAME).exists())
         tm.fail((root / declared_file).exists())

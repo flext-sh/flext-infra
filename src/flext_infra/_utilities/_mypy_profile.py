@@ -7,8 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import cProfile
+import resource
 import signal
 import sys
+import time
 from pathlib import Path
 from types import FrameType
 
@@ -30,6 +32,7 @@ class FlextInfraMypyProfiler:
 
         """
         profile = cProfile.Profile()
+        started = time.monotonic()
         previous_interrupt = signal.getsignal(signal.SIGINT)
         previous_termination = signal.getsignal(signal.SIGTERM)
         if previous_interrupt is None or previous_termination is None:
@@ -63,6 +66,13 @@ class FlextInfraMypyProfiler:
             profile.dump_stats(destination)
         sys.stdout.write(stdout)
         sys.stderr.write(stderr)
+        peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        peak_rss_bytes = peak_rss if sys.platform == "darwin" else peak_rss * 1024
+        sys.stderr.write(
+            "\nLOG:  Mypy profile telemetry: "
+            f"elapsed_seconds={time.monotonic() - started:.6f} "
+            f"peak_rss_bytes={peak_rss_bytes} exit_code={status}\n",
+        )
         return status
 
 

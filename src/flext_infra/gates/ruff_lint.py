@@ -28,6 +28,91 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     # never applied a single lint fix and the command below was dead code.
     can_fix: ClassVar[bool] = True
 
+    def source_manifest(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        *,
+        targets: t.StrSequence | None = None,
+    ) -> tuple[Path, ...]:
+        """Ask the native lint owner which files its actual invocation reads.
+
+        This does not reuse codemod's transformation inventory: Ruff owns
+        include/exclude, explicit targets, stubs, notebooks, and ignore files.
+        An admission caller must reject unsupported formats rather than remove
+        them from this manifest.
+
+        Returns:
+            Existing project-owned source paths selected by native Ruff.
+
+        Raises:
+            ValueError: If native discovery is incomplete or escapes the project.
+
+        """
+        selected = (
+            self._get_check_dirs(project_dir, ctx) if targets is None else targets
+        )
+        result = self._run(
+            self._lint_command(ctx, selected, ("--show-files", "--no-fix")),
+            project_dir,
+            timeout=self._check_timeout(project_dir, ctx),
+            env=self._check_env(project_dir, ctx),
+            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
+        )
+        if not u.Cli.process_succeeded(result.outcome) or result.stderr.strip():
+            msg = (
+                "Ruff source manifest is unavailable: "
+                f"exit={result.outcome.raw_return_code}; {result.stderr.strip()}"
+            )
+            raise ValueError(msg)
+        root = project_dir.resolve()
+        paths: set[Path] = set()
+        for line in result.stdout.splitlines():
+            candidate = Path(line)
+            path = (
+                candidate if candidate.is_absolute() else root / candidate
+            ).resolve()
+            if not path.is_relative_to(root) or not path.is_file():
+                msg = f"Ruff source manifest has an invalid project source: {line!r}"
+                raise ValueError(msg)
+            paths.add(path)
+        if not paths:
+            msg = (
+                "Ruff source manifest is empty; naming coverage cannot be authenticated"
+            )
+            raise ValueError(msg)
+        return tuple(sorted(paths))
+
+    def readonly_namespace_sources(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        *,
+        targets: t.StrSequence | None = None,
+    ) -> tuple[Path, ...]:
+        """Require complete Python coverage before a per-name naming adaptation.
+
+        Returns:
+            The unchanged native manifest, including stub and generated inputs.
+
+        Raises:
+            ValueError: If any native input has no Python namespace authenticator.
+
+        """
+        manifest = self.source_manifest(project_dir, ctx, targets=targets)
+        unsupported = tuple(
+            path
+            for path in manifest
+            if path.suffix not in {".py", ".pyi"}
+            and path.name not in {c.PYPROJECT_FILENAME, "ruff.toml", ".ruff.toml"}
+        )
+        if unsupported:
+            msg = "Readonly namespace naming coverage is unavailable for: " + ", ".join(
+                str(path.relative_to(project_dir.resolve())) for path in unsupported
+            )
+            raise ValueError(msg)
+        return manifest
+
     @override
     def _check_env(
         self,

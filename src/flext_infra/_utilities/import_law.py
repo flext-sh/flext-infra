@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -852,6 +853,7 @@ class FlextInfraUtilitiesImportLaw:
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
+        source: Path,
     ) -> Literal["layer0", "family", "consumer"]:
         """Resolve declaration roles by native ancestry, not consumer imports.
 
@@ -859,7 +861,11 @@ class FlextInfraUtilitiesImportLaw:
             The lexical family role or the source-defined configuration role.
 
         """
-        role = cls.import_module_role(module.get_name())
+        role = cls.import_module_role(
+            FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
+                source, project_root=Path(project.root.real_path)
+            ),
+        )
         if role != "consumer":
             return role
         runtime = FlextInfraUtilitiesRopeRuntimeModules

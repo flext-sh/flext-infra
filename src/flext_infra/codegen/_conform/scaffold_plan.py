@@ -37,7 +37,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 f"scaffold workspace has no project metadata: {workspace.name}",
             )
         root = target.root
-        profile = target.make_profile
         required_data_destinations = frozenset(
             entry.destination
             for entry in codegen.templates.entries
@@ -59,7 +58,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 ),
             )
             for entry in codegen.templates.entries
-            if profile in entry.profiles
+            if target.make_profile in entry.profiles
             and (entry.destination != c.PYPROJECT_FILENAME or contract.pyproject)
             and (
                 contract.delegates
@@ -117,10 +116,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                     destination for _, destination in scaffold_entries
                 ),
                 declared_python_dirs=tuple(
-                    self._scaffold_python_dirs(codegen.templates.entries, profile),
+                    self._scaffold_python_dirs(
+                        codegen.templates.entries, target.make_profile
+                    ),
                 ),
                 declared_python_dirs_are_complete=(
-                    profile is not c.Infra.MakeProfile.WORKSPACE
+                    target.make_profile is not c.Infra.MakeProfile.WORKSPACE
                 ),
                 analysis_exclusions=analysis_exclusions,
             ),

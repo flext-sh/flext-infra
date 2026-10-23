@@ -37,10 +37,12 @@ class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformBootstrap):
 
         """
         root = request.root.expanduser().resolve()
-        workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
-        if workspace_result.failure:
-            return r[bool].from_failure(workspace_result)
-        workspace = workspace_result.value
+        workspace = self.state.initial_workspace
+        if workspace is None:
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+            if workspace_result.failure:
+                return r[bool].from_failure(workspace_result)
+            workspace = workspace_result.value
         owner = root / c.Infra.BEADS_DIRNAME
         if workspace.beads is None:
             if owner.exists() or owner.is_symlink():

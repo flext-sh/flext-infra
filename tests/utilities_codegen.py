@@ -13,151 +13,24 @@ from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
 
-from typing_extensions import TypeForm
-
-from flext_infra import config, r, u
-from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.codegen import (
-    FlextInfraCodegenConform,
-    FlextInfraCodegenConsolidator,
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
-from flext_infra.workspace import FlextInfraRopeWorkspace
+from flext_infra import codegen, config, r, u, workspace
 from tests import (
     TestsFlextInfraUtilitiesGitMixin,
     TestsFlextInfraUtilitiesProjectFixtureMixin,
-    TestsFlextInfraUtilitiesTomlMixin,
     TestsFlextInfraUtilitiesToolingFixtureMixin,
     c,
     m,
     p,
     t,
     tm,
+    utilities_conform,
 )
 
 
-class TestsFlextInfraUtilitiesScaffold:
+class TestsFlextInfraUtilitiesCodegenMixin(
+    utilities_conform.TestsFlextInfraUtilitiesConform,
+):
     """Public conformance and scaffold fixture helpers."""
-
-    @staticmethod
-    def family_public_module(family: str) -> str:
-        """Return the public facade module stem the core package gives a letter.
-
-        Returns:
-            The public facade module stem the core package gives a letter.
-
-        """
-        return u.Infra.facade_families()[family].module
-
-    @staticmethod
-    def ruff_policy_toml() -> str:
-        """Render the fleet Ruff policy as a pyproject fragment.
-
-        Reads the same typed SSOT production reads (P0): fixture
-        workspaces carry the real rule selection, elected rule owners, native
-        convention, preview, and import policy without exemption tables.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        ruff_cfg = config.Infra.tooling.tools.ruff
-        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
-            ruff_cfg.lint.rule_owners,
-            check_gates=config.Infra.codegen.make.check_gates_default,
-            repair_gates=(
-                *config.Infra.codegen.make.check_gates_fixable,
-                *config.Infra.codegen.make.fmt_gates,
-            ),
-        )
-        options = u.Infra.native_tool_configuration(config.Infra.tooling, "ruff")
-        options["target-version"] = (
-            "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
-        )
-        lint = u.Cli.toml_mapping_ensure_table(options, "lint")
-        u.Cli.toml_mapping_sync_string_list(
-            lint,
-            "ignore",
-            sorted({
-                *delegated,
-                *ruff_cfg.lint.ruling_disabled_rules,
-                *u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff.lint", "ignore", TypeForm(t.StrSequence)
-                ),
-            }),
-        )
-        return u.Cli.toml_dumps(
-            u.Cli.toml_document_from_mapping({"tool": {"ruff": options}})
-        )
-
-    @staticmethod
-    def conform_request(
-        root: Path,
-        *,
-        what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-        scope: c.Infra.CodegenConformScope = c.Infra.CodegenConformScope.SELF,
-        mode: c.Infra.CodegenConformMode = c.Infra.CodegenConformMode.CHECK,
-    ) -> m.Infra.CodegenConformRequest:
-        """Build one codegen conform request; every default is the model's own.
-
-        Returns:
-            The resulting ``m.Infra.CodegenConformRequest``.
-
-        """
-        return m.Infra.CodegenConformRequest(
-            root=root,
-            what=what,
-            scope=scope,
-            mode=mode,
-        )
-
-    @staticmethod
-    def conform_plan(
-        root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        *,
-        what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-        executor_root: Path | None = None,
-    ) -> m.Infra.CodegenPlan:
-        """Plan one fixture workspace through the public conform boundary.
-
-        Returns:
-            The resulting ``m.Infra.CodegenPlan``.
-
-        """
-        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root, what=what)
-        return (
-            FlextInfraCodegenConform(
-                repository_root=root if executor_root is None else executor_root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root if executor_root is None else executor_root,
-                    request=request,
-                    initial_workspace=workspace,
-                ),
-            )
-            .plan(request)
-            .unwrap()
-        )
-
-    @staticmethod
-    def conform_makefile_text(root: Path, workspace: m.Infra.WorkspaceSpec) -> str:
-        """Render the root Makefile conform plans for one fixture workspace.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        plan = TestsFlextInfraUtilitiesCodegenMixin.conform_plan(
-            root,
-            workspace,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-        )
-        makefile = next(
-            file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
-        )
-        return TestsFlextInfraUtilitiesTomlMixin.codegen_file_text(makefile)
 
     @staticmethod
     def scaffold_plan(
@@ -287,7 +160,7 @@ class TestsFlextInfraUtilitiesScaffold:
                     encoding="utf-8",
                 )
         request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
-        result = FlextInfraCodegenConform(
+        result = codegen.FlextInfraCodegenConform(
             state=m.Infra.CodegenConformState(repository_root=root, request=request),
         ).plan(request)
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))
@@ -310,15 +183,11 @@ class TestsFlextInfraUtilitiesScaffold:
             else tm.not_none(match.desired_content).decode(c.DEFAULT_ENCODING)
         )
 
-
-class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
-    """Lazy-init execution and publication fixture helpers."""
-
     @staticmethod
     def prepare_source_preview(repository_root: Path) -> None:
         """Authenticate the real preview control plane before source receipts."""
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=repository_root)
+        transaction = codegen.FlextInfraCodegenTransaction(
+            codegen.FlextInfraCodegenMiseArtifacts(repository_root=repository_root)
         )
         tm.ok(
             transaction.run_files_locked(
@@ -354,11 +223,11 @@ class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
         """
         with (
             u.Infra.facade_source_project(repository_root) as (project, _, _),
-            FlextInfraRopeWorkspace.open_workspace(
+            workspace.FlextInfraRopeWorkspace.open_workspace(
                 repository_root, source_project=project
-            ) as workspace,
+            ) as rope_workspace,
         ):
-            yield workspace
+            yield rope_workspace
 
     @staticmethod
     def create_lazy_init_workspace(
@@ -528,7 +397,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
             The resulting ``int``.
 
         """
-        service = FlextInfraCodegenLazyInit(repository_root=repository_root)
+        service = codegen.FlextInfraCodegenLazyInit(repository_root=repository_root)
         planned = service.plan_files().unwrap()
         changed = tuple(
             plan for plan in planned.files if u.Infra.codegen_file_requires_effect(plan)
@@ -553,10 +422,14 @@ class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
             The lazy-init planning receipt WITHOUT unwrapping it.
 
         """
-        return FlextInfraCodegenLazyInit(repository_root=repository_root).plan_files()
+        return codegen.FlextInfraCodegenLazyInit(
+            repository_root=repository_root,
+        ).plan_files()
 
     @staticmethod
-    def materialize_lazy_init(service: FlextInfraCodegenLazyInit) -> p.Result[bool]:
+    def materialize_lazy_init(
+        service: codegen.FlextInfraCodegenLazyInit,
+    ) -> p.Result[bool]:
         """Publish one service plan through canonical guarded file primitives.
 
         Returns:
@@ -650,19 +523,21 @@ class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
             )
 
     @staticmethod
-    def create_lazy_init_service(repository_root: Path) -> FlextInfraCodegenLazyInit:
+    def create_lazy_init_service(
+        repository_root: Path,
+    ) -> codegen.FlextInfraCodegenLazyInit:
         """Provide the typed test helper `create_lazy_init_service`.
 
         Returns:
             The resulting ``FlextInfraCodegenLazyInit``.
 
         """
-        return FlextInfraCodegenLazyInit(repository_root=repository_root)
+        return codegen.FlextInfraCodegenLazyInit(repository_root=repository_root)
 
     @staticmethod
     def lazy_init_scenario(
         tmp_path: Path,
-    ) -> t.Triple[Path, Path, FlextInfraCodegenLazyInit]:
+    ) -> t.Triple[Path, Path, codegen.FlextInfraCodegenLazyInit]:
         """Create the workspace, write its namespace module, build the service.
 
         Returns:
@@ -707,7 +582,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
             The resulting ``p.Result[str]``.
 
         """
-        service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
+        service = codegen.FlextInfraCodegenConsolidator(
             repository_root=repository_root,
             dry_run=dry_run,
             project_name=project,

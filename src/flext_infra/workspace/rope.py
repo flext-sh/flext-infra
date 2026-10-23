@@ -9,39 +9,23 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from keyword import iskeyword
 from pathlib import Path
-from time import perf_counter
 from types import TracebackType
-from typing import Annotated, ClassVar, Self, override
+from typing import Annotated, Self, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace import FlextInfraRopeQueryMixin
 
 
-class FlextInfraRopeWorkspace(
-    FlextInfraRopeQueryMixin,
-    s[m.Infra.RopeWorkspaceSession],
-):
+class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
     """Open one shared Rope workspace with cached public DSL methods."""
-
-    _IDENTIFIER_PATTERN: ClassVar[t.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
 
     rope_repository_root_override: Annotated[
         Path | None,
         m.Field(description="Optional Rope project root; defaults to repository_root"),
     ] = None
 
-    _rope_repository_root: Path
-    _rope_project: t.Infra.RopeProject | None = m.PrivateAttr(
-        default_factory=lambda: None,
-    )
-    _owns_rope_project: bool = m.PrivateAttr(default=True)
-    _index_receipt: m.Infra.CodegenPhaseAnalysis | None = m.PrivateAttr(default=None)
-    _reused_index: bool = m.PrivateAttr(default=False)
     _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
-    )
-    _workspace_index: m.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
-        default_factory=lambda: None,
     )
     _codegen_projects: t.VariadicTuple[p.Infra.ProjectInfo] | None = m.PrivateAttr(
         default_factory=lambda: None,
@@ -66,16 +50,6 @@ class FlextInfraRopeWorkspace(
         t.VariadicTuple[m.Infra.Object],
     ] = m.PrivateAttr(
         default_factory=dict[t.Triple[str, bool, bool], t.VariadicTuple[m.Infra.Object]]
-    )
-    _resource_cache: MutableMapping[str, t.Infra.RopeFile | None] = m.PrivateAttr(
-        default_factory=dict[str, t.Infra.RopeFile | None],
-    )
-    _name_index: (
-        MutableMapping[str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]]
-        | None
-    ) = m.PrivateAttr(default_factory=lambda: None)
-    _import_dependents_index: MutableMapping[str, t.VariadicTuple[Path]] | None = (
-        m.PrivateAttr(default_factory=lambda: None)
     )
 
     @override
@@ -134,75 +108,6 @@ class FlextInfraRopeWorkspace(
             workspace._reused_index = True
         _ = workspace.rope_project
         return workspace
-
-    @property
-    def rope_repository_root(self) -> Path:
-        """Canonical root used for the shared Rope project."""
-        return self._rope_repository_root
-
-    @property
-    def rope_project(self) -> t.Infra.RopeProject:
-        """Shared Rope project, opening it lazily once."""
-        rope_project = self._rope_project
-        if rope_project is None:
-            started_at = perf_counter()
-            u.Cli.info(f"rope: opening workspace at {self._rope_repository_root}")
-            # Why: the session indexes every project this repository owns,
-            # not just its root folder (flext-infra: 0 modules bug); declared
-            # submodules are other repositories and stay installed libraries.
-            rope_project = u.Infra.init_rope_workspace(self._rope_repository_root)
-            self._rope_project = rope_project
-            u.Cli.info(f"rope: workspace ready in {perf_counter() - started_at:.2f}s")
-        return rope_project
-
-    @property
-    def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
-        """Cached workspace index for the shared Rope project."""
-        workspace_index = self._workspace_index
-        if workspace_index is None:
-            started_at = perf_counter()
-            u.Cli.info(
-                f"rope: indexing python workspace at {self._rope_repository_root}",
-            )
-            if self.rope_project.authenticated_sources:
-                with (
-                    self.rope_project.source_consumption() as consumption,
-                    self.rope_project.source_selection(),
-                ):
-                    workspace_index = u.Infra.index_rope_workspace(
-                        self.rope_project,
-                        self.repository_root,
-                    )
-                self._index_receipt = consumption.receipt()
-            else:
-                workspace_index = u.Infra.index_rope_workspace(
-                    self.rope_project,
-                    self._rope_repository_root,
-                )
-            self._workspace_index = workspace_index
-            u.Cli.info(
-                "rope: indexed "
-                f"{len(workspace_index.package_dirs)} package dirs and "
-                f"{len(workspace_index.modules_by_path)} modules in "
-                f"{perf_counter() - started_at:.2f}s",
-            )
-        if self._reused_index:
-            self.rope_project.replay_source_consumption(self.source_index_receipt)
-            self._reused_index = False
-        return workspace_index
-
-    @property
-    def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis:
-        """Require the original authenticated structural-selection receipt.
-
-        Raises:
-            ValueError: If the structural index has no original source evidence.
-
-        """
-        if self._index_receipt is None:
-            msg = "Rope structural index has no original source evidence"
-            raise ValueError(msg)
-        return self._index_receipt
 
     @override
     def execute(self) -> p.Result[m.Infra.RopeWorkspaceSession]:
@@ -355,28 +260,6 @@ class FlextInfraRopeWorkspace(
             )
             self._package_context_cache[cache_key] = context
             return context
-
-    @override
-    def resource(self, file_path: Path) -> t.Infra.RopeFile | None:
-        """Resolve bound planning resources without a live Path existence test.
-
-        Returns:
-            The bound Rope resource, or ``None`` when the path is outside the
-            Rope root or absent from the workspace.
-
-        """
-        if self._owns_rope_project:
-            return super().resource(file_path)
-        path = file_path.absolute()
-        root = self._rope_repository_root.resolve()
-        if not path.is_relative_to(root):
-            return None
-        if not self.rope_project.source_query(path, "isfile"):
-            return None
-        return u.Infra.require_file_resource(
-            self.rope_project.get_resource(path.relative_to(root).as_posix()),
-            path,
-        )
 
     def policy(
         self,
@@ -545,30 +428,38 @@ class FlextInfraRopeWorkspace(
         del _exc_type, _exc, _tb
         self.close()
 
-    def _resource_for(self, file_path: Path) -> t.Infra.RopeFile:
-        """Require a resource inside the active Rope workspace.
+    def objects(
+        self,
+        file_path: Path,
+        *,
+        include_local_scopes: bool = True,
+        include_references: bool = True,
+    ) -> t.SequenceOf[m.Infra.Object]:
+        """Return Rope-only discovered objects for one module path.
 
         Returns:
-            The resulting ``t.Infra.RopeResource``.
-
-        Raises:
-            FileNotFoundError: If
-                ``resolved_path.is_relative_to(self._rope_repository_root.resolve()) and
-                (not resolved_path.exists())``.
-            ValueError: If path is outside the active rope workspace.
+            Rope-only discovered objects for one module path.
 
         """
-        resource = self.resource(file_path)
-        if resource is not None:
-            return resource
-        resolved_path = file_path.resolve()
-        if (
-            resolved_path.is_relative_to(self._rope_repository_root.resolve())
-            and not resolved_path.exists()
-        ):
-            raise FileNotFoundError(resolved_path)
-        msg = f"path is outside the active rope workspace: {file_path}"
-        raise ValueError(msg)
+        resolved_file = file_path.resolve()
+        cache_key = (str(resolved_file), include_local_scopes, include_references)
+        with u.Infra.cached_source_query(
+            self.rope_project,
+            self._module_object_cache,
+            cache_key,
+            self._query_receipts,
+            f"objects:{cache_key}",
+        ) as cached:
+            if cached:
+                return self._module_object_cache[cache_key]
+            objects = u.Infra.objects(
+                self,
+                resolved_file,
+                include_local_scopes=include_local_scopes,
+                include_references=include_references,
+            )
+            self._module_object_cache[cache_key] = objects
+            return objects
 
 
 __all__: t.StrSequence = ("FlextInfraRopeWorkspace",)

@@ -20,6 +20,74 @@ from flext_infra.gates import FlextInfraRuffLintGate
 from tests import c, m, t, tm, u
 
 
+class TestsFlextInfraStaticClassExports:
+    """Validate source-proven static publication without changing runtime exports."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("declaration", "published", "promoted"),
+        [
+            ("class Original: pass\ns = Original\n", True, True),
+            ("class Original[T]: pass\ns = Original\n", True, True),
+            ("class Original: pass\ns = Original()\n", True, False),
+            ("def Original(): pass\ns = Original\n", True, False),
+            ("class Original[T]: pass\ns = Original[int]\n", True, False),
+            ("class Original: pass\ns = Original\ns = Original\n", True, False),
+            (
+                (
+                    "from typing import overload\n"
+                    "@overload\ndef Original(value: int) -> int: ...\n"
+                    "@overload\ndef Original(value: str) -> str: ...\n"
+                    "def Original(value): return value\ns = Original\n"
+                ),
+                True,
+                False,
+            ),
+            (
+                (
+                    "class Original: pass\n"
+                    "class Other: pass\nOriginal = Other\ns = Original\n"
+                ),
+                True,
+                False,
+            ),
+            ("class Original: pass\ns = Original\n", False, False),
+        ],
+    )
+    def test_static_alias_requires_published_original_class(
+        tmp_path: Path, declaration: str, *, published: bool, promoted: bool
+    ) -> None:
+        """Static imports preserve non-class bindings and published class identity."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package / "provider.py").write_text(declaration, encoding=c.DEFAULT_ENCODING)
+        items = (("Original", "Original"), ("s", "s")) if published else (("s", "s"),)
+        with u.Infra.facade_source_project(repository, project_roots=(repository,)) as (
+            project,
+            _,
+            _,
+        ):
+            plan = m.Infra.LazyInitPlan(
+                context=m.Infra.LazyInitPackageContext(
+                    pkg_dir=package,
+                    init_path=package / c.Infra.INIT_PY,
+                    current_pkg=package.name,
+                    surface=package.name,
+                    importable=True,
+                ),
+                action=c.Infra.LazyInitAction.WRITE,
+                exports=tuple(name for name, _ in items),
+                lazy_map={
+                    name: (f"{package.name}.provider", attr) for name, attr in items
+                },
+                eager_dunders={},
+            )
+            rendered = FlextInfraCodegenGeneration.render_init(
+                plan,
+                source_project=project,
+            )
+        tm.that("Original as s" in rendered, eq=promoted)
+
+
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 

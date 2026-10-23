@@ -47,7 +47,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         """
         if not isinstance(self.fscommands, FlextInfraRopeProject.AtomicReadFiles):
-            msg = "Rope project does not own authenticated live reads"
+            filesystem = type(self.fscommands)
+            msg = (
+                "Rope project does not own authenticated live reads: "
+                f"filesystem={filesystem.__module__}.{filesystem.__qualname__} "
+                f"root={self.root.real_path}"
+            )
             raise TypeError(msg)
         return self.fscommands
 
@@ -638,6 +643,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     reverse=True,
                 )
             )
+            self._query_owner_roots = MappingProxyType(
+                dict(reversed(self._query_owners))
+            )
             self._managed_query_paths = frozenset(
                 path
                 for plan in declared_files
@@ -1167,9 +1175,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 return True
             return next(
                 (
-                    owned
-                    for root, owned in self._query_owners
-                    if candidate.is_relative_to(root)
+                    self._query_owner_roots[root]
+                    for root in (candidate, *candidate.parents)
+                    if root in self._query_owner_roots
                 ),
                 False,
             )
@@ -1716,6 +1724,27 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             python_path_folders=tuple(election.python_path_folders),
         )
         return project
+
+    @staticmethod
+    def native_election(live: p.Infra.RopeProject) -> p.Infra.RopeProjectElection:
+        """Capture the installed native resolver's elected source identities.
+
+        Returns:
+            The original source, extension and interpreter search election.
+
+        """
+        return m.Infra.RopeProjectElection(
+            source_folders=tuple(folder.path for folder in live.get_source_folders()),
+            ignored_resources=tuple(sorted(config.Infra.codegen.source_scan_ignored)),
+            extension_modules=FlextInfraUtilitiesRopeRuntimeModuleQueries.extension_module_names(
+                live
+            ),
+            python_path_folders=tuple(
+                folder.real_path
+                for folder in live.get_python_path_folders()
+                if folder.is_folder()
+            ),
+        )
 
     @classmethod
     def from_atomic_reads(

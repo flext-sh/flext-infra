@@ -47,48 +47,49 @@ from flext_infra._utilities._semantic_cutover.private_imports import (
 )
 
 
-class _ContractSources(Mapping[Path, str]):
-    """Read-only live view of staged updates over authenticated source inputs."""
-
-    def __init__(
-        self,
-        updates: t.MappingKV[Path, str],
-        originals: t.MappingKV[Path, str],
-    ) -> None:
-        """Retain both source layers by reference without widening their access."""
-        self._updates = updates
-        self._originals = originals
-
-    def __getitem__(self, path: Path) -> str:
-        """Return the staged value when present, otherwise its original input."""
-        return self._updates[path] if path in self._updates else self._originals[path]
-
-    def __iter__(self) -> Iterator[Path]:
-        """Preserve original key order and append newly staged paths.
-
-        Yields:
-            Each source path once, in the source overlay's stable order.
-
-        """
-        yield from self._originals
-        yield from (path for path in self._updates if path not in self._originals)
-
-    def __len__(self) -> int:
-        """Count each path once without materializing or copying source data.
-
-        Returns:
-            The number of distinct paths in the live overlay.
-
-        """
-        return len(self._originals) + sum(
-            path not in self._originals for path in self._updates
-        )
-
-
 class FlextInfraUtilitiesSemanticContracts(
     FlextInfraUtilitiesSemanticCutoverModelFields
 ):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
+
+    class _ContractSources(Mapping[Path, str]):
+        """Read-only live view of staged updates over authenticated source inputs."""
+
+        def __init__(
+            self,
+            updates: t.MappingKV[Path, str],
+            originals: t.MappingKV[Path, str],
+        ) -> None:
+            """Retain both source layers by reference without widening their access."""
+            self._updates = updates
+            self._originals = originals
+
+        def __getitem__(self, path: Path) -> str:
+            """Return the staged value when present, otherwise its original input."""
+            return (
+                self._updates[path] if path in self._updates else self._originals[path]
+            )
+
+        def __iter__(self) -> Iterator[Path]:
+            """Preserve original key order and append newly staged paths.
+
+            Yields:
+                Each source path once, in the source overlay's stable order.
+
+            """
+            yield from self._originals
+            yield from (path for path in self._updates if path not in self._originals)
+
+        def __len__(self) -> int:
+            """Count each path once without materializing or copying source data.
+
+            Returns:
+                The number of distinct paths in the live overlay.
+
+            """
+            return len(self._originals) + sum(
+                path not in self._originals for path in self._updates
+            )
 
     @classmethod
     def _plan_rope_contracts(
@@ -289,7 +290,7 @@ class FlextInfraUtilitiesSemanticContracts(
         t.MutableMappingKV[str, Path],
     ]:
         working = dict(context[0])
-        proposed_sources = _ContractSources(working, sources)
+        proposed_sources = cls._ContractSources(working, sources)
         relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
         applied: t.MutableMappingKV[Path, t.MutableSequenceOf[str]] = {}
         project: p.Infra.RopeProject | None = None

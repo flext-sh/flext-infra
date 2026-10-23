@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import m, t
@@ -71,12 +73,48 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
                     repo.git.update_index("-z", "--index-info", istream=stream)
 
     @classmethod
+    @contextmanager
+    def state_publication_index(
+        cls,
+        root: Path,
+        base: str,
+        paths: t.SequenceOf[Path],
+        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+    ) -> Generator[Path]:
+        """Select an isolated index containing only the explicit scoped effects."""
+        repo = cls._repo(root)
+        with tempfile.TemporaryDirectory(dir=repo.common_dir) as staging:
+            index_path = Path(staging) / "index"
+            with repo.git.custom_environment(GIT_INDEX_FILE=str(index_path)):
+                repo.git.read_tree(base)
+                removed = (
+                    tuple(
+                        Path(path)
+                        for path in repo.git.ls_files(
+                            "-z",
+                            "--",
+                            *cls._state_pathspecs(paths),
+                        ).split("\0")
+                        if path
+                    )
+                    if paths
+                    else ()
+                )
+                cls.state_index_update(
+                    root,
+                    removed,
+                    entries,
+                    index_file=index_path,
+                )
+                yield index_path
+
+    @classmethod
     def _state_tree(
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
     ) -> str:
-        """Write the captured tree through an isolated index and return its OID.
+        """Write the captured tree through the same isolated-index owner.
 
         Returns:
             The native Git object identifier without conversion.
@@ -85,35 +123,14 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
             TypeError: If write-tree returned a non-text object identifier.
 
         """
-        repo = cls._repo(snapshot.repo_root)
-        with tempfile.TemporaryDirectory(dir=repo.common_dir) as staging:
-            index_path = str(Path(staging) / "index")
-            with repo.git.custom_environment(GIT_INDEX_FILE=index_path):
-                repo.git.read_tree(snapshot.head)
-                removed = (
-                    tuple(
-                        Path(path)
-                        for path in repo.git.ls_files(
-                            "-z",
-                            "--",
-                            *cls._state_pathspecs(snapshot.paths),
-                        ).split("\0")
-                        if path
-                    )
-                    if snapshot.paths
-                    else ()
-                )
-                cls.state_index_update(
-                    snapshot.repo_root,
-                    removed,
-                    entries,
-                    index_file=Path(index_path),
-                )
-                oid = repo.git.write_tree()
-                if not isinstance(oid, str):
-                    msg = "write-tree returned a non-text object identifier"
-                    raise TypeError(msg)
-                return oid
+        with cls.state_publication_index(
+            snapshot.repo_root, snapshot.head, snapshot.paths, entries
+        ):
+            oid = cls._repo(snapshot.repo_root).git.write_tree()
+        if not isinstance(oid, str):
+            msg = "write-tree returned a non-text object identifier"
+            raise TypeError(msg)
+        return oid
 
     @classmethod
     def _state_working_entries(

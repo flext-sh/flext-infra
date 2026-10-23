@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from git import GitCommandError
 
-from flext_infra import c, m, r
+from flext_infra import c, config, m, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticWorktreeMixin
 
 if TYPE_CHECKING:
@@ -24,6 +25,93 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
     FlextInfraUtilitiesGitSemanticWorktreeMixin,
 ):
     """Own the lane every repository publication shares (release, propagation)."""
+
+    @classmethod
+    def git_prepare_publication(
+        cls, request: m.Infra.GitLaneRequest
+    ) -> p.Result[m.Infra.GitPublicationState]:
+        """Admit an owned ref without requiring or changing a clean caller checkout.
+
+        Returns:
+            The original live admission, or the first prior-state or tip failure.
+
+        """
+        result = r[m.Infra.GitPublicationState]
+        verification = m.Infra.GitLaneVerificationRequest(
+            repo_root=request.repo_root,
+            remote=config.Infra.codegen.branch_policy.lane_remote,
+            ownership=request.ownership,
+        )
+        declared = cls._git_lane_declared_remote(verification)
+        if declared.failure:
+            return result.from_failure(declared)
+        if request.base != declared.value.branch or request.branch == request.base:
+            return result.fail("owned lane must target the declared integration branch")
+        tip = cls.git_verify_lane(verification).flat_map(
+            lambda observed: cls._git_lane_retained_ownership(verification, observed.oid)
+        )
+        if tip.failure:
+            return result.from_failure(tip)
+        if request.ownership is None:
+            return result.fail("native prior ownership is required")
+        try:
+            with cls._state_leases((request.repo_root,)):
+                return cls._git_prepare_publication_state(request, tip.value.oid, declared.value)
+        except (GitCommandError, OSError, ValueError) as exc:
+            return result.fail_op("admit owned Git publication", exc)
+
+    @classmethod
+    def _git_prepare_publication_state(
+        cls,
+        request: m.Infra.GitLaneRequest,
+        tip: str,
+        declared: m.Infra.GitRemoteBranchRequest,
+    ) -> p.Result[m.Infra.GitPublicationState]:
+        result = r[m.Infra.GitPublicationState]
+        repo = cls._repo(request.repo_root)
+        root = Path(repo.working_dir).resolve()
+        if root != request.repo_root.resolve() or request.ownership is None:
+            return result.fail("Git publication requires its exact admitted repository")
+        ref = f"refs/heads/{request.branch}"
+        repo.git.check_ref_format(ref)
+        previous = next(
+            (head.commit.hexsha for head in repo.heads if head.name == request.branch),
+            None,
+        )
+        if previous is not None and not repo.is_ancestor(previous, repo.commit(tip)):
+            return result.fail(
+                f"existing owned candidate requires integration proof: {request.branch}"
+            )
+        advertised = cls.git_remote_branch_oid(
+            m.Infra.GitRemoteBranchRequest(
+                repo_root=root, remote=declared.remote, branch=request.branch,
+            )
+        )
+        if advertised.failure:
+            return result.from_failure(advertised)
+        if advertised.value.text and advertised.value.text != previous:
+            return result.fail("owned local and remote candidate require convergence")
+        index = u.Cli.atomic_read_binary_file_state(Path(repo.index.path), required=False)
+        if index.failure:
+            return result.from_failure(index)
+        state = m.Infra.GitPublicationState(
+            repo_root=root,
+            branch=request.branch,
+            subject=request.subject,
+            base_oid=tip,
+            integration_ref=f"refs/remotes/{declared.remote}/{declared.branch}",
+            remote=declared.remote,
+            previous_oid=previous,
+            caller_branch=repo.active_branch.name,
+            caller_oid=repo.head.commit.hexsha,
+            index_before=index.value,
+            ownership=request.ownership,
+        )
+        storage = state.__pydantic_private__
+        if storage is None:
+            return result.fail("native Git publication has no private admission storage")
+        storage["_publication_birth"] = (id(state), cls._git_publication_digest(state))
+        return cls._git_publication_current(state).map(lambda _current: state)
 
     @classmethod
     def _verified_lane_base(cls, request: m.Infra.GitLaneRequest) -> p.Result[Path]:

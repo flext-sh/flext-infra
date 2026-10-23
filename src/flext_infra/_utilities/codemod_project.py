@@ -1020,7 +1020,8 @@ class FlextInfraUtilitiesCodemodProject(
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         return (
-            FlextInfraUtilitiesImportLaw.import_source_role(project, module) == "layer0"
+            FlextInfraUtilitiesImportLaw.import_source_role(project, module, source)
+            == "layer0"
         )
 
     @classmethod
@@ -1474,21 +1475,21 @@ class FlextInfraUtilitiesCodemodProject(
                 for end in range(1, len(parts) + 1)
             )
         )
-        states = {state.path: state for state in project.consumed_source_states()}
-        with project.source_consumption(), project.frozen_layout():
-            cls._snapshot_project_imports(
-                project,
-                m.Infra.CodemodBindingProject(
-                    root=Path(project.root.real_path),
-                    source_paths=tuple(source_paths),
-                    modules=modules,
-                ),
-                states,
-                ({}, {}),
-            )
-        return cls.codemod_source_epoch(
-            m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
+        selection = m.Infra.CodemodBindingProject(
+            root=Path(project.root.real_path),
+            source_paths=tuple(source_paths),
+            modules=modules,
         )
+        if not project.authenticated_sources:
+            snapshot = cls.codemod_binding_snapshot(
+                selection.root, projects=(selection,)
+            )
+        else:
+            states = {state.path: state for state in project.consumed_source_states()}
+            with project.source_consumption(), project.frozen_layout():
+                cls._snapshot_project_imports(project, selection, states, ({}, {}))
+            snapshot = m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
+        return cls.codemod_source_epoch(snapshot)
 
     @classmethod
     @contextmanager
@@ -1510,22 +1511,7 @@ class FlextInfraUtilitiesCodemodProject(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
                     (),
-                    election=m.Infra.RopeProjectElection(
-                        source_folders=tuple(
-                            folder.path for folder in live.get_source_folders()
-                        ),
-                        ignored_resources=tuple(
-                            sorted(config.Infra.codegen.source_scan_ignored)
-                        ),
-                        extension_modules=FlextInfraUtilitiesRopeRuntimeModules.extension_module_names(
-                            live
-                        ),
-                        python_path_folders=tuple(
-                            folder.real_path
-                            for folder in live.get_python_path_folders()
-                            if folder.is_folder()
-                        ),
-                    ),
+                    election=FlextInfraRopeProject.native_election(live),
                     sources={},
                 )
             ) as layout_project,
@@ -1574,6 +1560,8 @@ class FlextInfraUtilitiesCodemodProject(
     ) -> m.Infra.CodemodBindingSnapshot:
         """Capture every selected project's owners once before inference.
 
+        Each elected graph retains the same admitted dependency receipts.
+
         Args:
             root: The root path of the project to capture.
             source_states: A tuple of atomic file states representing the source files.
@@ -1599,19 +1587,23 @@ class FlextInfraUtilitiesCodemodProject(
         )
         for selection in selections:
             with (
-                FlextInfraUtilitiesCodegenFacades.facade_source_project(
-                    selection.root,
-                    source_options=m.Infra.StageSourceOptions(
-                        inputs=tuple(
-                            state
-                            for path, state in states.items()
-                            if path.is_relative_to(selection.root.resolve())
-                        ),
+                FlextInfraUtilitiesRopeCore.open_project(selection.root) as live,
+                closing(
+                    FlextInfraRopeProject.from_atomic_reads(
+                        live,
+                        tuple(states.values()),
+                        election=FlextInfraRopeProject.native_election(live),
+                        sources={},
                     ),
-                ) as (project, _, _),
+                ) as project,
                 project.frozen_layout(),
             ):
-                cls._snapshot_project_imports(project, selection, states, ({}, {}))
+                cls._snapshot_project_imports(
+                    FlextInfraUtilitiesCodegenFacades.require_source_project(project),
+                    selection,
+                    states,
+                    ({}, {}),
+                )
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @classmethod

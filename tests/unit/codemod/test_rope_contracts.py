@@ -22,8 +22,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraRopeContracts:
-    """Prove runtime values, failure contracts and the shared fixed point."""
+class TestsFlextInfraRopeContractCatalog:
+    """Validate rule ownership, catalogue composition and public export retirement."""
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -123,11 +123,36 @@ class TestsFlextInfraRopeContracts:
         tm.that(rules[-1].source_states[0].path, eq=overlay)
 
     @staticmethod
+    def test_repository_overlay_cannot_redeclare_a_packaged_rule(
+        tmp_path: Path,
+    ) -> None:
+        """A rule identity has one owner; an overlay redeclaration fails loud."""
+        packaged = u.Infra.declared_contract_rules(tmp_path)[0]
+        overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True)
+        overlay.write_text(
+            "rules:\n"
+            f"  - id: {packaged.id}\n"
+            f"    pattern: {packaged.pattern!r}\n"
+            f"    goal: {packaged.goal!r}\n"
+            "    arguments: {}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with pytest.raises(ValueError, match="duplicate Rope contract rule"):
+            u.Infra.declared_contract_rules(tmp_path)
+
+
+class TestsFlextInfraRopeConstructorContracts:
+    """Preserve constructor targets, injected ports and native adapter behavior."""
+
+    @staticmethod
     @pytest.mark.parametrize("readonly", [False, True])
+    @pytest.mark.parametrize("chained", [False, True])
     def test_constructor_target_preserves_arguments_and_noncall_references(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         *,
         readonly: bool,
+        chained: bool,
     ) -> None:
         """Replace native callees without a signature catalogue or argument rewrite."""
         workspace, path = rope_contract_consumer
@@ -137,6 +162,8 @@ class TestsFlextInfraRopeContracts:
             "    def __init__(self, value, *, label, registry=None):\n"
             "        self.value, self.label = value, label\n"
             "class Api(Service):\n"
+            "    pass\n"
+            "class FinalApi(Api):\n"
             "    pass\n"
             "class Child(Service):\n"
             "    pass\n"
@@ -163,17 +190,32 @@ class TestsFlextInfraRopeContracts:
             call_target="service",
             missing_keywords=("registry",),
         )
+        rules = [rule]
+        target = "Api"
+        if chained:
+            rules.append(
+                m.Infra.RopeContractRule(
+                    id="service-constructor-final-composition",
+                    pattern="${service}",
+                    goal="FinalApi",
+                    arguments={"service": f"name={module}.Api"},
+                    bindings={"FinalApi": f"{module}.FinalApi"},
+                    call_target="service",
+                    missing_keywords=("registry",),
+                )
+            )
+            target = "FinalApi"
         sources = {path: source}
         edits = tm.ok(
             u.Infra.plan_contract_rules(
                 workspace,
                 MappingProxyType(sources) if readonly else sources,
-                (rule,),
+                rules,
             )
         )
         tm.that(len(edits), eq=1)
         updated = edits[0].updated_source
-        tm.that(updated, contains="result = Api(load(), label=tag())")
+        tm.that(updated, contains=f"result = {target}(load(), label=tag())")
         tm.that(updated, contains="class Child(Service):")
         tm.that(updated, contains="selected: type[Service] = Service")
         tm.that(
@@ -184,7 +226,7 @@ class TestsFlextInfraRopeContracts:
         path.write_text(updated, encoding=c.DEFAULT_ENCODING)
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
         tm.that(
-            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
             empty=True,
         )
 
@@ -215,23 +257,27 @@ class TestsFlextInfraRopeContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    def test_repository_overlay_cannot_redeclare_a_packaged_rule(
-        tmp_path: Path,
+    def test_aliased_adapter_preserves_validation_and_failure_modes(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
-        """A rule identity has one owner; an overlay redeclaration fails loud."""
-        packaged = u.Infra.declared_contract_rules(tmp_path)[0]
-        overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
-        overlay.parent.mkdir(parents=True)
-        overlay.write_text(
-            "rules:\n"
-            f"  - id: {packaged.id}\n"
-            f"    pattern: {packaged.pattern!r}\n"
-            f"    goal: {packaged.goal!r}\n"
-            "    arguments: {}\n",
-            encoding=c.DEFAULT_ENCODING,
+        """The public constructor preserves native coercion and rejection."""
+        source = (
+            "from pydantic import TypeAdapter as Parse, ValidationError\n"
+            "def consume():\n"
+            "    adapter = Parse(list[int])\n"
+            "    accepted = adapter.validate_json('[1, \"2\"]')\n"
+            "    try:\n"
+            "        adapter.validate_python(['invalid'])\n"
+            "    except ValidationError as error:\n"
+            "        return accepted, tuple(item['type'] for item in error.errors())\n"
+            "    raise AssertionError('invalid input was accepted')\n"
+            "evidence = consume()\n"
         )
-        with pytest.raises(ValueError, match="duplicate Rope contract rule"):
-            u.Infra.declared_contract_rules(tmp_path)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+
+
+class TestsFlextInfraRopeFieldContracts:
+    """Preserve Pydantic field factories, validation effects and runtime values."""
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -271,6 +317,7 @@ class TestsFlextInfraRopeContracts:
     def test_real_defaults_preserve_runtime_and_converge(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
+        *,
         changes: bool,
     ) -> None:
         """Native Rope retains independent instances and public JSON roundtrips."""
@@ -434,6 +481,7 @@ class TestsFlextInfraRopeContracts:
     def test_readonly_factory_preserves_full_field_validation_and_freshness(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         minimum: int,
+        *,
         alias: bool,
     ) -> None:
         """The owning field validates all metadata, not just a collection origin."""
@@ -597,6 +645,7 @@ class TestsFlextInfraRopeContracts:
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         origin: str,
         factory: str,
+        *,
         changes: bool,
     ) -> None:
         """An arbitrary alias name cannot grant or deny collection mutability."""
@@ -694,57 +743,6 @@ class TestsFlextInfraRopeContracts:
         tm.ok("contract_factory=lambda: TypeForm(" in updated)
 
     @staticmethod
-    @pytest.mark.parametrize("alias", [False, True])
-    def test_quoted_type_positions_require_explicit_declaring_source_repair(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
-        alias: bool,
-    ) -> None:
-        """A quoted owner is not converted into a runtime type by string surgery."""
-        workspace, path = rope_contract_consumer
-        declaration = "type Contract = Sequence['Domain.Item']\n" if alias else ""
-        annotation = "Contract" if alias else "Sequence['Domain.Item']"
-        source = (
-            "from collections.abc import Sequence\n"
-            "from pydantic import BaseModel, Field\n"
-            "class Domain:\n"
-            "    class Item(BaseModel):\n"
-            "        label: str\n"
-            f"{declaration}"
-            "class Payload(BaseModel):\n"
-            f"    values: {annotation} = Field(default_factory=list)\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError, match="fix the declaring source"):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=workspace,
-                sources={path: source},
-            )
-        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-
-    @staticmethod
-    def test_literal_and_annotated_payload_strings_remain_data(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
-    ) -> None:
-        """The existing native payload classifier never unquotes literal metadata."""
-        source = (
-            "from collections.abc import Sequence\n"
-            "from typing import Annotated, Literal\n"
-            "from pydantic import BaseModel, Field\n"
-            "class Payload(BaseModel):\n"
-            "    values: Annotated[Sequence[Literal['entry']], 'metadata'] = "
-            "Field(default_factory=list)\n"
-            "first, second = Payload(), Payload()\n"
-            "evidence = (first.values is not second.values, first.model_dump_json(), "
-            "second.model_dump_json())\n"
-        )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
-        _workspace, path = rope_contract_consumer
-        updated = path.read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that(updated, contains="Literal['entry']")
-        tm.that(updated, contains="'metadata'")
-
-    @staticmethod
     @pytest.mark.parametrize(
         "marker",
         [
@@ -759,6 +757,7 @@ class TestsFlextInfraRopeContracts:
     def test_effectful_metadata_alias_rejects_additional_native_validation(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         marker: str,
+        *,
         alias: bool,
     ) -> None:
         """Stable metadata aliases do not prove validation callbacks idempotent."""
@@ -852,6 +851,7 @@ class TestsFlextInfraRopeContracts:
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         definition: str,
         metadata: str,
+        *,
         alias: bool,
     ) -> None:
         """Native registered constraints are not opaque validation callbacks."""
@@ -1079,24 +1079,65 @@ class TestsFlextInfraRopeContracts:
             rope_contract_consumer, source, expect_change=False
         )
 
+
+class TestsFlextInfraRopeTypePositionContracts:
+    """Distinguish quoted type references from Literal and Annotated payload data."""
+
     @staticmethod
-    def test_aliased_adapter_preserves_validation_and_failure_modes(
+    @pytest.mark.parametrize("alias", [False, True])
+    def test_quoted_type_positions_require_explicit_declaring_source_repair(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        *,
+        alias: bool,
+    ) -> None:
+        """A quoted owner is not converted into a runtime type by string surgery."""
+        workspace, path = rope_contract_consumer
+        declaration = "type Contract = Sequence['Domain.Item']\n" if alias else ""
+        annotation = "Contract" if alias else "Sequence['Domain.Item']"
+        source = (
+            "from collections.abc import Sequence\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            f"{declaration}"
+            "class Payload(BaseModel):\n"
+            f"    values: {annotation} = Field(default_factory=list)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(ValueError, match="fix the declaring source"):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_literal_and_annotated_payload_strings_remain_data(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
-        """The public constructor preserves native coercion and rejection."""
+        """The existing native payload classifier never unquotes literal metadata."""
         source = (
-            "from pydantic import TypeAdapter as Parse, ValidationError\n"
-            "def consume():\n"
-            "    adapter = Parse(list[int])\n"
-            "    accepted = adapter.validate_json('[1, \"2\"]')\n"
-            "    try:\n"
-            "        adapter.validate_python(['invalid'])\n"
-            "    except ValidationError as error:\n"
-            "        return accepted, tuple(item['type'] for item in error.errors())\n"
-            "    raise AssertionError('invalid input was accepted')\n"
-            "evidence = consume()\n"
+            "from collections.abc import Sequence\n"
+            "from typing import Annotated, Literal\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Payload(BaseModel):\n"
+            "    values: Annotated[Sequence[Literal['entry']], 'metadata'] = "
+            "Field(default_factory=list)\n"
+            "first, second = Payload(), Payload()\n"
+            "evidence = (first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json())\n"
         )
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        _workspace, path = rope_contract_consumer
+        updated = path.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(updated, contains="Literal['entry']")
+        tm.that(updated, contains="'metadata'")
+
+
+class TestsFlextInfraRopeLoggingContracts:
+    """Preserve logger identity, emission contracts and CLI diagnostic effects."""
 
     @staticmethod
     @pytest.mark.parametrize(

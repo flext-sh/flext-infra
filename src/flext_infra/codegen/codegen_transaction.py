@@ -271,7 +271,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The elected native layouts, or the original selection failure.
 
         """
-        layouts = plan.layouts
+        layouts = plan.candidate_layouts
         if project_root is not None:
             selected = FlextInfraStagedPackage.project_layouts(plan, project_root)
             if selected.failure:
@@ -435,7 +435,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             + "origins = {name: Path(source) / name for name, source in bindings}\n"
             "for name, module in tuple(sys.modules.items()):\n"
             "    namespace = name.split('.')[0]\n"
-            f"    if namespace not in {tuple(plan.workspace_packages)!r}:\n"
+            f"    if namespace not in {tuple(plan.candidate_workspace_packages)!r}:\n"
             "        continue\n"
             "    root = origins.get(namespace)\n"
             "    origin = getattr(module, '__file__', None)\n"

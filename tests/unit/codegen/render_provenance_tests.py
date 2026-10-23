@@ -82,8 +82,7 @@ class TestsFlextInfraRenderProvenance:
                 for path in (*expected_paths, binding)
             ),
         )
-        declared = distributions[0].files
-        tm.that(declared, none=False)
+        declared = tm.not_none(distributions[0].files)
         tm.that(
             paths,
             eq=tuple(
@@ -108,7 +107,6 @@ class TestsFlextInfraRenderProvenance:
             "def produce():\n    return 'physical provider'\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        (package / "resource.bin").write_bytes(b"unlisted physical package resource")
         metadata = tmp_path / "record_provider_fixture-1.0.dist-info"
         metadata.mkdir()
         (metadata / "METADATA").write_text(
@@ -132,7 +130,8 @@ import importlib
 import importlib.metadata
 import sys
 from pathlib import Path
-from flext_infra.validate import FlextInfraValidateFreshImport
+from flext_infra import m
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 directory, namespace = sys.argv[1:]
 sys.path.insert(0, directory)
 importlib.invalidate_caches()
@@ -144,14 +143,16 @@ owned = any(
     Path(str(descriptor.locate_file(item))).absolute().is_relative_to(package)
     for item in declared
 )
-producer = importlib.import_module(namespace)
-observed = FlextInfraValidateFreshImport.capture_producer(
-    Path.cwd(), entrypoint=producer.produce)
+importlib.import_module(namespace)
+observed = FlextInfraCodegenPreconditions.observed_source_authority(
+    Path(sys.prefix).parent,
+    (m.Infra.SourceClassReference(target=namespace, attributes=('produce',)),))
 if owned:
-    evidence = observed.unwrap()
+    evidence, _observation = observed.unwrap()
     assert (namespace, package) in evidence.generator_modules
-    bound = {state.path: state for state in evidence.inputs}
-    for resource in (package / 'resource.bin', Path(descriptor.locate_file(
+    bound = {state.path: state for state in
+             FlextInfraCodegenPreconditions.authority_inputs(evidence).unwrap()}
+    for resource in (package / '__init__.py', Path(descriptor.locate_file(
         'record_provider_fixture-1.0.dist-info/resource.bin'))):
         assert bound[resource].content == resource.read_bytes()
 else:
@@ -301,8 +302,8 @@ print('physical-provider-proof=' + mutation)
         elif mutation == "removed-root":
             resource_root.rename(tmp_path / "retired-resource-root")
         elif mutation == "mode":
-            tm.that(state.mode, none=False)
-            resource.chmod(state.mode ^ stat.S_IXUSR)
+            mode = tm.not_none(state.mode)
+            resource.chmod(mode ^ stat.S_IXUSR)
         elif mutation == "timestamp":
             before = resource.stat()
             os.utime(resource, ns=(before.st_atime_ns, before.st_mtime_ns + 1))
@@ -471,7 +472,7 @@ print('physical-provider-proof=' + mutation)
             tm.fail(observed, has="generation authenticated state changed")
             tm.that(
                 observed.error,
-                has=f"expected_sha256={u.Cli.sha256_bytes(state.content)}",
+                has=f"expected_sha256={u.Cli.sha256_bytes(tm.not_none(state.content))}",
             )
             tm.that(helper.read_bytes(), eq=b"VALUE = 'foreign'\n")
         else:

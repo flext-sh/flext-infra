@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
@@ -250,19 +251,30 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         cls,
         live_path: Path,
         rendered: str,
-    ) -> p.Result[str]:
+    ) -> p.Result[t.Pair[str, m.Cli.AtomicFileState]]:
         """Read the live declaration and preserve its project-owned values.
 
         Returns:
             The preserved overlay or the original read or composition failure.
 
         """
-        if not live_path.is_file():
-            return u.Infra.overlay_preserved(rendered, None)
-        return u.Infra.live_pyproject_text(
-            live_path,
-            regenerate_managed_tools=True,
-        ).flat_map(lambda live_text: u.Infra.overlay_preserved(rendered, live_text))
+        state = u.Cli.atomic_read_binary_file_state(live_path)
+        if state.failure:
+            return r[t.Pair[str, m.Cli.AtomicFileState]].from_failure(state)
+        original = state.value
+        if original.content is None:
+            return u.Infra.overlay_preserved(rendered, None).map(
+                lambda source: (source, original),
+            )
+        return (
+            u.Infra
+            .recover_live_pyproject_text(
+                original.content.decode(c.DEFAULT_ENCODING),
+            )
+            .flat_map(u.Infra.pyproject_regeneration_source)
+            .flat_map(lambda live_text: u.Infra.overlay_preserved(rendered, live_text))
+            .map(lambda source: (source, original))
+        )
 
     @classmethod
     def _composed_pyproject_overlay(
@@ -285,14 +297,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         overlaid = cls._live_pyproject_overlay(live_path, rendered)
         if overlaid.failure:
             return result_type.from_failure(overlaid)
-        composed_rendered = overlaid.value
+        composed_rendered, original = overlaid.value
         original_tooling_sources = (
             ()
             if render_inputs is None or render_inputs.tooling_runtime is None
             else render_inputs.tooling_runtime.sources
         )
         combined_sources = u.Infra.unique_states(
-            (*original_tooling_sources, *tooling.value.sources),
+            (*original_tooling_sources, *tooling.value.sources, original),
         )
         if combined_sources.failure:
             return result_type.from_failure(combined_sources)
@@ -455,8 +467,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ),
         )
 
-    @staticmethod
+    @classmethod
     def _composed_release_overlay(
+        cls,
         repository_root: Path,
         rendered: str,
         _render_inputs: m.Infra.CodegenRenderInputs | None,
@@ -481,6 +494,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if parsed.failure:
             return result_type.from_failure(parsed)
+        declaration = cls._release_declaration(parsed.value)
+        if declaration.failure:
+            return result_type.from_failure(declaration)
         overlay = u.Cli.yaml_parse(rendered)
         if overlay.failure:
             return result_type.from_failure(overlay)
@@ -493,7 +509,27 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
 
     @staticmethod
+    def _release_declaration(
+        document: t.MappingKV[str, t.Cli.YamlValue],
+    ) -> p.Result[t.MappingKV[str, t.Cli.YamlValue]]:
+        """Validate only owned namespace shapes without copying authored values.
+
+        Returns:
+            The declared release mapping by reference, or its original shape error.
+
+        """
+        result_type = r[t.MappingKV[str, t.Cli.YamlValue]]
+        namespace = document.get("Infra", {})
+        if not isinstance(namespace, Mapping):
+            return result_type.fail("Infra must be a mapping")
+        release = namespace.get("release", {})
+        if not isinstance(release, Mapping):
+            return result_type.fail("Infra.release must be a mapping")
+        return result_type.ok(release)
+
+    @classmethod
     def _release_policy_render_inputs(
+        cls,
         root: Path,
     ) -> p.Result[
         t.Pair[m.Infra.ReleasePolicySpec, t.VariadicTuple[m.Cli.AtomicFileState]]
@@ -540,16 +576,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if declaration.value.content is not None
             else "{}",
         )
-        selected = document.flat_map(
-            lambda values: r[t.JsonMapping].create_from_callable(
-                lambda: u.json_mapping_adapter().validate_python(
-                    u
-                    .json_mapping_adapter()
-                    .validate_python(values.get("Infra", {}))
-                    .get("release", {}),
-                ),
-            ),
-        )
+        selected = document.flat_map(cls._release_declaration)
         return selected.flat_map(
             lambda section: r[m.Infra.ReleasePolicySpec].create_from_callable(
                 lambda: m.Infra.ReleasePolicySpec.model_validate({

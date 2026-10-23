@@ -198,10 +198,20 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         owner_name, nested, indentation = owner
         doc = module.get_doc()
         summary = doc.splitlines()[0].strip() if doc else ""
+        docstring = (
+            ast.unparse(
+                ast.Module(
+                    body=[ast.Expr(value=ast.Constant(value=summary))],
+                    type_ignores=[],
+                )
+            )
+            if summary
+            else ""
+        )
         position = min(edit.start for edit in edits)
         replacement = (
             f"class {owner_name}:\n"
-            + (" " * indentation + repr(summary) + "\n\n" if summary else "")
+            + (" " * indentation + docstring + "\n\n" if docstring else "")
             + nested
         )
         return [
@@ -264,13 +274,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         ]
         if len(own_body) == 1 and own_body[0].text.strip() == "pass":
             return (m.Infra.SourceRewrite(start=first, end=last, text=nested),)
-        if (
-            own_body
-            and FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
-                own_body[0].text.strip()
-            )
-            is not None
-        ):
+        if own_body and owner.pyobject.get_doc() is not None:
             first = min(own_body[0].end_offset + 1, len(source))
         return (
             m.Infra.SourceRewrite(start=first, end=first, text="\n" + nested + "\n"),

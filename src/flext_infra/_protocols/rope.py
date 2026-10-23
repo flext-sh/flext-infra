@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -443,32 +443,6 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             export_options: m.Infra.ExportOptions | None = None,
         ) -> t.StrSequence: ...
-
-    class RopeWorkspaceQueryOwner(RopeWorkspaceDsl, Protocol):
-        """Native session state consumed by the cached workspace queries."""
-
-        _IDENTIFIER_PATTERN: ClassVar[t.RegexPattern]
-        _resource_cache: t.MutableMappingKV[
-            str, FlextInfraProtocolsRopeRuntime.RopeFile | None
-        ]
-        _query_receipts: t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis]
-        _module_object_cache: t.MutableMappingKV[
-            t.Triple[str, bool, bool], t.VariadicTuple[m.Infra.Object]
-        ]
-        _name_index: (
-            t.MutableMappingKV[
-                str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]
-            ]
-            | None
-        )
-        _import_dependents_index: t.MutableMappingKV[str, t.VariadicTuple[Path]] | None
-
-        def _resource_for(
-            self, file_path: Path
-        ) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
-
-        @classmethod
-        def _reference_surface_for(cls, file_path: Path) -> str: ...
 
     @runtime_checkable
     class RopeAnalysisMethods(Protocol):

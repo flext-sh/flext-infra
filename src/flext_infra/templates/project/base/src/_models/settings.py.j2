@@ -16,7 +16,10 @@ class {{ class_stem }}SettingsModels:
     class SettingsNamespace(m.ContractModel):
         """Validated environment-sourced settings for {{ ns }}."""
 
-        enabled: bool = {% if scaffold.ping_example.enabled_default %}True{% else %}False{% endif %}
+        enabled: bool = m.Field(
+            default={% if scaffold.ping_example.enabled_default %}True{% else %}False{% endif %},
+            description="Enable command execution",
+        )
 
 
 __all__: list[str] = ["{{ class_stem }}SettingsModels"]

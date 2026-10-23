@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
@@ -21,6 +22,88 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     FlextInfraCodegenGenerationImportsMixin,
 ):
     """TYPE_CHECKING block generation helper methods."""
+
+    @staticmethod
+    def _native_class_export_binding(
+        mod: str,
+        attr_name: str,
+        items: t.StrPairSequence,
+        source_project: p.Infra.RopeProject,
+    ) -> str:
+        """Bind bare class aliases only to an elected original declaration.
+
+        Returns:
+            The published class name, or the unchanged non-class binding.
+
+        Raises:
+            ValueError: If the rendered import changes the proven class identity.
+
+        """
+        owner = u.Infra.require_parsed_module(source_project.get_module(mod))
+        tree = owner.get_ast()
+        if not isinstance(tree, ast.Module):
+            return attr_name
+        assignments = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Store)
+            and node.id == attr_name
+        ]
+        aliases = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == attr_name
+            and isinstance(node.value, ast.Name)
+        ]
+        if len(assignments) != 1 or len(aliases) != 1:
+            return attr_name
+        alias = aliases[0]
+        original = alias.value
+        if (
+            not isinstance(original, ast.Name)
+            or (original.id, original.id) not in items
+        ):
+            return attr_name
+        declarations = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == original.id
+        ]
+        binding = owner.get_attributes().get(attr_name)
+        canonical = owner.get_attributes().get(original.id)
+        if (
+            len(declarations) != 1
+            or declarations[0].lineno >= alias.lineno
+            or binding is None
+            or canonical is None
+            or any(
+                isinstance(node, ast.Name)
+                and isinstance(node.ctx, ast.Store)
+                and node.id == original.id
+                for node in ast.walk(tree)
+            )
+        ):
+            return attr_name
+        target = canonical.get_object()
+        if (
+            not u.Infra.py_class(target)
+            or target.get_module() is not owner
+            or binding.get_object() is not target
+            or not isinstance(target, p.Infra.RopeSourceDefinition)
+            or target.get_ast() is not declarations[0]
+        ):
+            return attr_name
+        attributes = u.Infra.build_string_module(
+            source_project, f"from {mod} import {original.id} as {attr_name}\n"
+        ).get_attributes()
+        if attributes[attr_name].get_object() is not target:
+            message = f"Static class export identity changed: {mod}.{attr_name}"
+            raise ValueError(message)
+        return original.id
 
     @classmethod
     def _owned_child_imports(
@@ -225,11 +308,18 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     )
                 )
                 continue
+            imported_name = (
+                FlextInfraCodegenGenerationTypeCheckingMixin._native_class_export_binding(
+                    mod, attr_name, items, source_project
+                )
+                if source_project is not None
+                else attr_name
+            )
             parts.append(
-                f"{attr_name} as {export_name}"
+                f"{imported_name} as {export_name}"
                 if export_name in module_exports
                 else FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
-                    attr_name, export_name
+                    imported_name, export_name
                 )
             )
         deduped_parts = tuple(dict.fromkeys(parts))

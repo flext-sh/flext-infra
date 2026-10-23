@@ -12,10 +12,6 @@ from flext_infra import c, e, m, p, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 
-def _relocate_generation_directory_error(error: str) -> str:
-    return f"relocate generation directory: {error}"
-
-
 class FlextInfraMiseArtifactsJournalRelocation:
     """Rebind paths only after proving the journal's unchanged physical owners."""
 
@@ -361,7 +357,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
             return e.fail_validation(
                 error=exc,
                 result_type=r[m.Infra.CodegenJournalDirectory],
-            ).map_error(_relocate_generation_directory_error)
+            ).map_error(lambda error: f"relocate generation directory: {error}")
         return r[m.Infra.CodegenJournalDirectory].ok(relocated_directory)
 
     @classmethod

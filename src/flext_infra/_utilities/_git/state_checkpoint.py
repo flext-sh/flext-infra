@@ -117,16 +117,20 @@ class FlextInfraUtilitiesGitStateCheckpointMixin(FlextInfraUtilitiesGitStateTree
         retained_parents = tuple(
             part for oid in snapshot.retained_commits for part in ("-p", oid)
         )
-        worktree_commit = repo.git.commit_tree(
-            worktree_tree,
-            "-p",
-            snapshot.head,
-            "-p",
-            index_commit,
-            *retained_parents,
-            "-m",
-            snapshot.model_dump_json(),
-        )
+        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
+            snapshot.model_dump_json().encode(c.DEFAULT_ENCODING),
+        ) as stream:
+            worktree_commit = repo.git.commit_tree(
+                worktree_tree,
+                "-p",
+                snapshot.head,
+                "-p",
+                index_commit,
+                *retained_parents,
+                "-F",
+                "-",
+                istream=stream,
+            )
         cls._state_require_original(snapshot)
         repo.git.update_ref("--no-deref", checkpoint_ref, worktree_commit, "")
         checkpoint = m.Infra.GitWorktreeStateCheckpoint(

@@ -151,7 +151,13 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Original project layouts in the desired import closure",
         )
         workspace_packages: tuple[str, ...] = m.Field(
-            description="Declared workspace namespaces with sealed candidate origins",
+            description="Original elected workspace namespaces",
+        )
+        candidate_layouts: tuple[FlextInfraModelsRope.RopeProjectLayout, ...] = m.Field(
+            description="Prospective import closure of the authenticated declarations",
+        )
+        candidate_workspace_packages: tuple[str, ...] = m.Field(
+            description="Prospective namespaces requiring sealed candidate origins",
         )
 
     class SemanticSourcePlan(m.ImmutableValueModel):

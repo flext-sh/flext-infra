@@ -21,6 +21,34 @@ class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
 
     @staticmethod
+    def test_query_refresh_preserves_native_project_and_resource_contract(
+        tmp_path: Path,
+    ) -> None:
+        """Read queries keep native identities, ordering, and eager missing errors."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source_path = package / "query_owner.py"
+        source = "class QueryOwner:\n    pass\n"
+        source_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with flext_infra.infra.rope_workspace(root) as workspace:
+            project = workspace.rope_project
+            resource = tm.not_none(workspace.resource(source_path))
+            tm.ok(resource is workspace.resource(source_path))
+            tm.that(workspace.source(source_path), eq=source)
+            modules = workspace.modules()
+            tm.that(
+                tuple(entry.file_path for entry in modules),
+                eq=tuple(sorted(entry.file_path for entry in modules)),
+            )
+            names = workspace.name_index()
+            tm.ok(names is workspace.name_index())
+            tm.that(names, has="QueryOwner")
+            workspace.refresh(preserve_indexes=True)
+            tm.ok(project is workspace.rope_project)
+            tm.that(workspace.source(source_path), eq=source)
+            with pytest.raises(FileNotFoundError):
+                workspace.source(package / "missing_query_owner.py")
+
+    @staticmethod
     @pytest.mark.parametrize("same_root", [False, True])
     def test_sibling_scopes_keep_their_root_and_independent_lifetime(
         rope_sibling_scopes: t.Pair[t.Pair[Path, Path], t.Pair[Path, Path]],

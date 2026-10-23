@@ -157,6 +157,12 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def workspace_packages(self) -> t.VariadicTuple[str]: ...
 
+        @property
+        def candidate_layouts(self) -> t.VariadicTuple[m.Infra.RopeProjectLayout]: ...
+
+        @property
+        def candidate_workspace_packages(self) -> t.VariadicTuple[str]: ...
+
     @runtime_checkable
     class CodegenPlanOutcome(Protocol):
         """Public plan membership, separate from the internal publication schema."""
@@ -242,6 +248,17 @@ class FlextInfraProtocolsBase(Protocol):
 
         def rollback(self) -> None:
             """Close the descriptor and remove only its unpublished lock."""
+            ...
+
+    class GitPublicationVerifier(Protocol):
+        """The native publication authority consumed by the scoped Git writer."""
+
+        def publication_input_states(
+            self,
+            inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+            publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+            """Authenticate original native receipts and return their live outputs."""
             ...
 
     @runtime_checkable
@@ -1257,23 +1274,6 @@ class FlextInfraProtocolsBase(Protocol):
         def execute(self) -> p.Result[bool]:
             """Execute refactoring pass."""
             ...
-
-    class ProjectClassificationDependencies(Protocol):
-        """Composed metadata readers used by project classification."""
-
-        def _as_mapping(
-            self, raw_value: t.JsonValue | None
-        ) -> t.MappingKV[str, t.JsonValue]: ...
-
-        def _append_poetry_dependency_mapping(
-            self,
-            *,
-            raw_mapping: t.MappingKV[str, t.JsonValue],
-            dependencies: t.MutableSequenceOf[str],
-        ) -> None: ...
-
-        @staticmethod
-        def _normalize_dependency_name(raw_name: str) -> str: ...
 
     class CensusObjectRules(Protocol):
         """Object classification operations consumed by project reporting."""

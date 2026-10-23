@@ -352,32 +352,43 @@ class FlextInfraUtilitiesResourceLimits:
 
     @classmethod
     def mypy_runner_timeout_for_project(cls, project_dir: Path) -> int:
-        """Runner timeout honoring the project ``config/tooling.yaml`` budget.
-
-        A project budget may only lower the fleet ``tools.mypy.timeout_seconds``
-        bound; a budget above it fails loud.
+        """Runner timeout honoring the same effective limit as the child.
 
         Returns:
             The resulting ``int``.
 
+        """
+        return cls.mypy_runner_timeout(cls.mypy_resource_limit_for_project(project_dir))
+
+    @classmethod
+    def mypy_resource_limit_for_project(
+        cls,
+        project_dir: Path,
+    ) -> m.Infra.MypyResourceLimit:
+        """Resolve a project budget without changing the fleet default.
+
+        Returns:
+            The effective validated memory and analysis-time limits.
+
         Raises:
-            ValueError: If project mypy budget.
+            ValueError: If the project exceeds the finite fleet ceiling.
 
         """
         limit = cls.mypy_resource_limit()
         budget = cls._project_mypy_budget(project_dir)
         if budget is not None:
-            if budget > limit.timeout_seconds:
+            ceiling = config.Infra.tooling.tools.mypy.max_timeout_seconds
+            if budget > ceiling:
                 msg = (
-                    f"project mypy budget {budget}s exceeds the fleet bound "
-                    f"tools.mypy.timeout_seconds={limit.timeout_seconds}s"
+                    f"project mypy budget {budget}s exceeds the fleet ceiling "
+                    f"tools.mypy.max_timeout_seconds={ceiling}s"
                 )
                 raise ValueError(msg)
             limit = m.Infra.MypyResourceLimit(
                 memory_limit_mb=limit.memory_limit_mb,
                 timeout_seconds=budget,
             )
-        return cls.mypy_runner_timeout(limit)
+        return limit
 
     @staticmethod
     def _project_mypy_budget(project_dir: Path) -> int | None:

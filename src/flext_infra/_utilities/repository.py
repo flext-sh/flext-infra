@@ -516,7 +516,9 @@ class FlextInfraUtilitiesRepository:
                 repository_root,
                 policy_branch=policy_branch,
             ).map(lambda branch: (manifest.value, branch))
-        declared_line = cls._declared_flext_source(repository_root)
+        declared_line = cls._declared_flext_source(
+            repository_root, distribution=distribution, policy_branch=policy_branch
+        )
         if declared_line.failure or declared_line.value[0]:
             return declared_line
         return r[t.Pair[str, str]].fail(
@@ -563,12 +565,15 @@ class FlextInfraUtilitiesRepository:
     def _declared_flext_source(
         cls,
         repository_root: Path,
+        *,
+        distribution: str,
+        policy_branch: str,
     ) -> p.Result[t.Pair[str, str]]:
-        """Return the own declaration's explicit scaffold dependency source.
+        """Return the own declaration's explicit dependency integration source.
 
-        It declares the family line when the generated pyproject carries none
-        (every internal requirement is commit residue of a retired pin). Being
-        hand-authored, a commit ref there is a pin beside uv.lock and fails.
+        A scaffold source declares the line directly. An immutable candidate
+        declares its repository while the existing branch policy owns the
+        integration line; the candidate commit never becomes a branch selector.
 
         Returns:
             The repository's explicit dependency source, when declared.
@@ -582,8 +587,21 @@ class FlextInfraUtilitiesRepository:
         repository = loaded.value.spec.repository
         project = repository.project
         if project is None or project.flext_source is None:
-            # Absence is an EMPTY payload, never None (flext-core result law).
-            return r[t.Pair[str, str]].ok(("", ""))
+            candidates = tuple(
+                candidate
+                for candidate in repository.candidate_dependencies
+                if canonicalize_name(candidate.distribution)
+                == canonicalize_name(distribution)
+            )
+            if not candidates:
+                return r[t.Pair[str, str]].ok(("", ""))
+            if len(candidates) != 1:
+                return r[t.Pair[str, str]].fail(
+                    f"multiple candidate sources declare {distribution}",
+                )
+            return cls._canonical_https_url(candidates[0].url).map(
+                lambda url: (url, policy_branch),
+            )
         parsed = cls.declared_git_source(project.flext_source)
         if parsed.failure or not cls.ref_is_commit(parsed.value[1]):
             return parsed

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-{% if kind == "Settings" %}from {{ upstream }} import {{ upstream_facades["p"] }}
+{% if kind == "Settings" %}from {{ upstream }} import p as parent_p
 
 {% endif %}
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ class {{ class_stem }}Protocols{{ kind }}:
     """Protocol namespace for validated {{ kind | lower }} data."""
 
     @runtime_checkable
-    class {{ kind }}({% if kind == "Settings" %}{{ upstream_facades["p"] }}.Settings, {% endif %}Protocol):
+    class {{ kind }}({% if kind == "Settings" %}parent_p.Settings, {% endif %}Protocol):
         """Direct project {{ kind | lower }} singleton surface."""
 
 {{ namespace_declaration }}

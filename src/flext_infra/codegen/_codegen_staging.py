@@ -503,12 +503,22 @@ class FlextInfraCodegenStaging:
                 declared_files=tuple(
                     plan.model_copy(update={"prepared_sources": None}) for plan in plans
                 ),
-                layouts=layouts,
+                layouts=tuple(
+                    layout for receipt in receipts for layout in receipt.layouts
+                ),
                 workspace_packages=tuple(
                     sorted({
                         name
                         for receipt in receipts
                         for name in receipt.workspace_packages
+                    })
+                ),
+                candidate_layouts=layouts,
+                candidate_workspace_packages=tuple(
+                    sorted({
+                        name
+                        for receipt in receipts
+                        for name in receipt.candidate_workspace_packages
                     })
                 ),
             )
@@ -666,7 +676,9 @@ class FlextInfraCodegenStaging:
                 or merge(
                     "candidate preparation package identity differs",
                     layouts,
-                    tuple((item.package_name, item) for item in receipt.layouts),
+                    tuple(
+                        (item.package_name, item) for item in receipt.candidate_layouts
+                    ),
                 )
             )
             if conflict is not None:

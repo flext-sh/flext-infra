@@ -199,9 +199,11 @@ class FlextInfraWorkspaceChecker(
         current = codegen.FlextInfraStagedPackage.source_inputs_current(source_plan)
         if current.failure:
             return result_type.from_failure(current)
-        if project_root not in {layout.project_root for layout in source_plan.layouts}:
+        if project_root not in {
+            layout.project_root for layout in source_plan.candidate_layouts
+        }:
             return result_type.fail(
-                "candidate checker project has no original source authority"
+                "candidate checker project has no declared source authority"
             )
         environment = u.Infra.runtime_environment_dir(project_root)
         if environment.is_symlink() or not environment.is_dir():

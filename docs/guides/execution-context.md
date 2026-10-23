@@ -51,7 +51,10 @@ Release-version ownership is selected by `LANE_CHECKPOINT_REF`, an existing
 dedicated Git checkpoint reference, not caller-authored receipt JSON. The public
 `workspace lane-ownership` command reconstructs its original metadata and index
 parent, verifies the full repository scope, live remote retention, and inclusion
-in the current integration tip, then emits the typed receipt consumed by release.
+in the current integration tip, then emits the typed receipt. The generated Make
+recipe passes only the checkpoint selector to the release API composition root,
+which resolves that same producer and passes its validated receipt by reference;
+complete checkpoint metadata never travels in a command-line argument.
 It never captures, publishes, integrates, switches branches, or modifies current
 staged, unstaged, or untracked work. A checkpoint from a different repository
 identity, an unpublished capture, or an unintegrated capture is refused. Receipt

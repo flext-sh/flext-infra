@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_infra import FlextInfraGitLanes, m, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraGitService(s[m.Infra.GitStatusReport]):
@@ -96,6 +96,35 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
 
         """
         return u.Infra.git_lane_ownership(request)
+
+    @staticmethod
+    def prepare_publication(
+        request: m.Infra.GitLaneRequest,
+    ) -> p.Result[m.Infra.GitPublicationState]:
+        """Admit a private owned ref while preserving the actual caller checkout.
+
+        Returns:
+            The original native admission or its first proof failure.
+
+        """
+        return u.Infra.git_prepare_publication(request)
+
+    @staticmethod
+    def commit_publications(
+        state: m.Infra.GitPublicationState,
+        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        *,
+        publication_verifier: p.Infra.GitPublicationVerifier,
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Consume original native outputs through the scoped alternate-index owner.
+
+        Returns:
+            The owned commit without staging unrelated caller state.
+
+        """
+        return u.Infra.git_commit_publications(
+            state, publications, publication_verifier=publication_verifier
+        )
 
 
 __all__: list[str] = ["FlextInfraGitService"]
