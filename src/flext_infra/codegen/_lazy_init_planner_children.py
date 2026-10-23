@@ -50,6 +50,16 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             del name, allow_main
             raise NotImplementedError
 
+        @staticmethod
+        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool:
+            del context
+            raise NotImplementedError
+
+        @staticmethod
+        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool:
+            del module_path, root_pkg
+            raise NotImplementedError
+
     def _has_live_package_content(
         self,
         package_entry: m.Infra.RopePackageIndexEntry,
@@ -156,8 +166,13 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         publish_child_exports = (
             parent_context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
-        # Implementation packages belong to their importing facade, not to every
-        # ancestor initializer. This applies to any declared family or domain.
+        # Implementation packages belong to their importing facade: a private
+        # ``_<facade>/`` child publishes into its direct parent initializer, so
+        # ``from pkg.services import Owner`` resolves an owner declared under
+        # ``pkg/services/_acl/``, as the layout law requires. Only a facade root
+        # withholds owners behind a private segment, because the root ABI is its
+        # public contract and a private owner never widens it.
+        is_facade_root = self._is_facade_root(parent_context)
         direct: list[str] = []
         children = dict.fromkeys((
             *package_entry.descendant_child_dirs,
@@ -184,7 +199,9 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 # own layout directories, not export surfaces: a
                 # child package name never enters their lazy map.
                 continue
-            if child_dir.name.startswith("_"):
+            if is_facade_root and self._is_private_owner(
+                child_pkg_name, root_pkg=parent_pkg
+            ):
                 continue
             self._add(
                 lazy_map,
