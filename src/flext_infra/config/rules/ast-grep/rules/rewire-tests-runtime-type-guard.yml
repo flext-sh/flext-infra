@@ -1,0 +1,31 @@
+# Law: a test asserts through the canonical `tm` matcher. A bare boolean type
+# probe discards its own verdict, so `tm.matches_runtime_type(value, Type)`
+# asserted nothing; `tm.that(value, is_=Type)` is the matcher that owns the
+# runtime type assertion and raises on mismatch.
+id: rewire-tests-runtime-type-guard
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  pattern:
+    context: tm.matches_runtime_type($VALUE, $TYPE)
+    selector: expression_statement
+fix: tm.that($VALUE, is_=$TYPE)
+message: >-
+  `tm.matches_runtime_type` returns a discarded boolean: assert the runtime
+  type with `tm.that($VALUE, is_=$TYPE)`.
+---
+# Law: one owner per container inspection. `fetch_container_status` only
+# delegated to `fetch_container_info`; consumers call the owner directly.
+id: rewire-docker-container-status-to-info
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  pattern: $RECEIVER.fetch_container_status($$$ARGS)
+fix: $RECEIVER.fetch_container_info($$$ARGS)
+message: >-
+  `fetch_container_status` is a delegate of `fetch_container_info`: call the
+  owner `fetch_container_info` directly.

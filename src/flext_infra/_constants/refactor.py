@@ -220,7 +220,11 @@ class FlextInfraConstantsRefactor:
           rule names in ``arg`` (a declared facade letter, a module, a
           private module or a subpackage of that name);
         - ``family-base``: the private family package holding the finding's
-          module begins with ``base.py``.
+          module begins with ``base.py``;
+        - ``family-member``: the captured dotted module names a private
+          family (its first ``_``-prefixed segment) that the finding's module
+          belongs to: the finding lives inside that family tree or is the
+          family's facade module (the segment without its ``_``).
 
         ``family-base-file`` proves that the finding is the immediate base
         leaf of a private family with a declared sibling facade.
@@ -263,6 +267,7 @@ class FlextInfraConstantsRefactor:
         LATER_LAYER = "later-layer"
         IMPORT_CYCLE = "import-cycle"
         COMPOSES_FAMILY = "composes-family"
+        FAMILY_MEMBER = "family-member"
         CLASS_STEM = "class-stem"
         PACKAGE_LAYERS = "package-layers"
         PACKAGE_ROOT_INIT = "package-root-init"

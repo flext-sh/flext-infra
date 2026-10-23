@@ -114,6 +114,12 @@ class FlextInfraModelsCodegenRender:
     class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
+        publish_index: Annotated[
+            bool,
+            m.Field(
+                description="Resolved release policy permits package index publication"
+            ),
+        ] = False
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         gate_original_receipt_filename: Annotated[
             t.NonEmptyStr,

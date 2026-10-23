@@ -345,14 +345,15 @@ class FlextInfraModelsDepsToolConfig(
         @property
         def parallel_arguments(self) -> t.StrTuple:
             """Native scheduler arguments derived from the typed policy."""
-            scheduling = (
+            reorder = (
+                "--loadscope-reorder"
+                if self.loadscope_reorder
+                else "--no-loadscope-reorder"
+            )
+            scheduling: t.StrTuple = (
                 ("--maxschedchunk", str(self.parallel_schedule_chunk))
                 if self.parallel_distribution == "load"
-                else (
-                    "--loadscope-reorder"
-                    if self.loadscope_reorder
-                    else "--no-loadscope-reorder",
-                )
+                else (reorder,)
             )
             return ("--dist", self.parallel_distribution, *scheduling)
 
@@ -822,11 +823,11 @@ class FlextInfraModelsDepsToolConfig(
         def validate_no_local_stubs(self) -> Self:
             """Reject stub option and producer structure in every typed layer.
 
+            The name and nested-value checks raise ``ValueError`` when an option
+            restores a local stub root or producer.
+
             Returns:
                 Source import paths and installed dependency typing unchanged.
-
-            Raises:
-                ValueError: If an option restores a local stub root or producer.
 
             """
             forbidden = {
@@ -841,19 +842,22 @@ class FlextInfraModelsDepsToolConfig(
                 "stubgen",
                 "generatestubs",
             }
+            self._reject_stub_option_names(forbidden)
+            self._reject_stub_option_values(forbidden)
+            return self
+
+        def _reject_stub_option_names(self, forbidden: t.Infra.StrSet) -> None:
+            """Reject declared table and option names that restore local stubs.
+
+            Raises:
+                ValueError: If a declared name segment matches a forbidden option.
+
+            """
             declared_names = (
                 *self.settings,
                 *self.derived_tool_roots,
                 *self.derived_settings,
                 *(key for keys in self.derived_settings.values() for key in keys),
-            )
-            pending: list[tuple[str, t.JsonValue]] = [
-                (key, value) for pairs in self.settings.values() for key, value in pairs
-            ]
-            pending.extend(
-                (key, value)
-                for override in self.tools.mypy.overrides
-                for key, value in override.settings
             )
             for name in declared_names:
                 if any(
@@ -862,6 +866,22 @@ class FlextInfraModelsDepsToolConfig(
                 ):
                     msg = f"Local stub options and producers are forbidden: {name}"
                     raise ValueError(msg)
+
+        def _reject_stub_option_values(self, forbidden: t.Infra.StrSet) -> None:
+            """Reject nested setting keys that restore local stub roots or producers.
+
+            Raises:
+                ValueError: If any nested setting key matches a forbidden option.
+
+            """
+            pending: list[tuple[str, t.JsonValue]] = [
+                (key, value) for pairs in self.settings.values() for key, value in pairs
+            ]
+            pending.extend(
+                (key, value)
+                for override in self.tools.mypy.overrides
+                for key, value in override.settings
+            )
             while pending:
                 key, value = pending.pop()
                 option = (
@@ -874,7 +894,6 @@ class FlextInfraModelsDepsToolConfig(
                     pending.extend(value.items())
                 elif isinstance(value, list):
                     pending.extend((key, item) for item in value)
-            return self
 
         @m.model_validator(mode="after")
         def validate_pyright_options(self) -> Self:

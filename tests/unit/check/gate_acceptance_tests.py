@@ -10,13 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
-from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
-from flext_infra.gates import (
-    FlextInfraMarkdownGate,
-    FlextInfraRuffFormatGate,
-    FlextInfraRuffLintGate,
-)
+from flext_infra import check, config, gates
 from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
@@ -64,7 +58,12 @@ class TestsFlextInfraGateAcceptance:
         tmp_path: Path,
     ) -> None:
         """A native incompatibility warning is not hidden behind an exit-zero run."""
-        project = u.Tests.mk_project(tmp_path, "native-format-warning", with_src=True)
+        project = u.Tests.mk_project(
+            tmp_path,
+            "native-format-warning",
+            pyproject='[project]\nname = "native-format-warning"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         source = project / "src" / "sample.py"
         source.write_text("VALUE = 1\n", encoding="utf-8")
         (project / "ruff.toml").write_text(
@@ -77,7 +76,7 @@ class TestsFlextInfraGateAcceptance:
             apply_fixes=True,
             selected_files=(source,),
         )
-        gate = FlextInfraRuffFormatGate(tmp_path)
+        gate = gates.FlextInfraRuffFormatGate(tmp_path)
         for execution in (
             gate.check_files((source,), project, context),
             gate.fix(project, context),
@@ -88,7 +87,10 @@ class TestsFlextInfraGateAcceptance:
                 [issue.code for issue in execution.issues], has=f"{c.Infra.FORMAT}-exec"
             )
             tm.that(execution.raw_output, has="COM812")
-        tm.fail(FlextInfraRuffFormatGate.format_files(project, (source,)), has="COM812")
+        tm.fail(
+            gates.FlextInfraRuffFormatGate.format_files(project, (source,)),
+            has="COM812",
+        )
 
     @staticmethod
     def test_tooling_contract_rejects_retired_residual_policy() -> None:
@@ -174,18 +176,32 @@ class TestsFlextInfraGateAcceptance:
             boundary.issues[0].related_locations[0].model_dump(mode="json"),
             eq=location.model_dump(mode="json"),
         )
+        receipt = tmp_path / "serialization.raw.log"
+        # Persist declared model-fixture bytes, not evidence of a tool execution.
+        u.Cli.atomic_write_text_file(receipt, params.raw_output).unwrap()
         execution = m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 project=tmp_path.name,
                 gate=c.Infra.SECURITY,
                 passed=verdict,
+                duration=0.0,
             ),
             issues=params.issues,
             outcome=params.outcome,
+            raw_output=params.raw_output,
+            raw_receipt=receipt,
         )
         tm.ok(execution.issues[0] is issue)
         restored_execution = m.Infra.GateExecution.model_validate_json(
             execution.model_dump_json(exclude_computed_fields=True),
+        )
+        tm.that(restored_execution.raw_receipt, eq=receipt)
+        tm.that(
+            u.Cli
+            .atomic_read_binary_file_state(receipt, required=True)
+            .unwrap()
+            .content,
+            eq=params.raw_output.encode("utf-8"),
         )
         tm.that(
             restored_execution.issues[0].model_dump(mode="json"),
@@ -224,14 +240,19 @@ class TestsFlextInfraGateAcceptance:
         broken: bool,
     ) -> None:
         """Real Ruff formatting exercises the shared assembly contract."""
-        project = u.Tests.mk_project(tmp_path, "format-contract", with_src=True)
+        project = u.Tests.mk_project(
+            tmp_path,
+            "format-contract",
+            pyproject='[project]\nname = "format-contract"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         source = project / "src" / "sample.py"
         source.write_text(
             "def broken(:\n" if broken else "value=1\n",
             encoding="utf-8",
         )
         u.Tests.initialize_git_repo(project)
-        execution = FlextInfraRuffFormatGate(tmp_path).fix(
+        execution = gates.FlextInfraRuffFormatGate(tmp_path).fix(
             project,
             m.Infra.GateContext(
                 repository_root=tmp_path,
@@ -245,7 +266,7 @@ class TestsFlextInfraGateAcceptance:
             eq=c.Infra.ToolOutcome.ERROR if broken else c.Infra.ToolOutcome.CLEAN,
         )
         tm.that(bool(execution.issues), eq=broken)
-        tm.ok(execution.raw_output.strip() != "")
+        tm.that(execution.raw_output.strip(), empty=False)
         tm.that(
             source.read_text(encoding="utf-8"),
             eq="def broken(:\n" if broken else "value = 1\n",
@@ -259,14 +280,19 @@ class TestsFlextInfraGateAcceptance:
         fail_fast: bool,
     ) -> None:
         """Real Ruff failures remain red without inventing dependent executions."""
-        project: Path = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project: Path = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         (project / "src" / "broken.py").write_text(
             "missing_name( 1 )\n",
             encoding="utf-8",
         )
         requested = (c.Infra.LINT, c.Infra.FORMAT)
         results = tm.ok(
-            FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+            check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 (project.name,),
                 requested,
                 fail_fast=fail_fast,
@@ -286,7 +312,7 @@ class TestsFlextInfraGateAcceptance:
             tm.ok(receipt is not None)
             if receipt is None:
                 pytest.fail("Every executed gate must retain its native receipt")
-            tm.ok(receipt.read_text(encoding="utf-8").strip() != "")
+            tm.that(receipt.read_text(encoding="utf-8").strip(), empty=False)
 
     @staticmethod
     @pytest.mark.parametrize("residual", [False, True])
@@ -296,13 +322,18 @@ class TestsFlextInfraGateAcceptance:
         residual: bool,
     ) -> None:
         """Native repair applies safe effects but remaining findings stay red."""
-        project: Path = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project: Path = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         source = project / "src" / "broken.py"
         source.write_text(
             "import os\n" + ("missing_name()\n" if residual else ""),
             encoding="utf-8",
         )
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",
@@ -321,17 +352,22 @@ class TestsFlextInfraGateAcceptance:
             eq=c.Infra.ToolOutcome.FINDINGS if residual else c.Infra.ToolOutcome.CLEAN,
         )
         tm.that(source.read_text(encoding="utf-8"), lacks="import os")
-        tm.ok(execution.raw_output.strip() != "")
+        tm.that(execution.raw_output.strip(), empty=False)
 
     @staticmethod
     def test_native_fix_does_not_reject_already_fixed_diagnostics(
         tmp_path: Path,
     ) -> None:
         """Ruff can report a findings exit even after every violation was fixed."""
-        project = u.Tests.mk_project(tmp_path, "repaired", with_src=True)
+        project = u.Tests.mk_project(
+            tmp_path,
+            "repaired",
+            pyproject='[project]\nname = "repaired"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         source = project / "src" / "sample.py"
         source.write_text("import os\n", encoding="utf-8")
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",
@@ -348,7 +384,12 @@ class TestsFlextInfraGateAcceptance:
     @staticmethod
     def test_native_fix_rejects_unrepairable_recipe_residue(tmp_path: Path) -> None:
         """An unsplittable identifier retains its native diagnostic, never a waiver."""
-        project = u.Tests.mk_project(tmp_path, "recipe-residue", with_src=True)
+        project = u.Tests.mk_project(
+            tmp_path,
+            "recipe-residue",
+            pyproject='[project]\nname = "recipe-residue"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         limit = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
@@ -366,7 +407,7 @@ class TestsFlextInfraGateAcceptance:
             apply_fixes=True,
             ruff_args=("--select", rule, "--line-length", str(limit)),
         )
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
         execution = gate.fix(project, context)
         tm.fail(execution.result.passed)
         tm.that(
@@ -377,7 +418,7 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.issues, eq=gate.check(project, context).issues)
         tm.that([issue.code for issue in execution.issues], has=rule)
         tm.that(source.read_text(encoding="utf-8"), eq=content)
-        tm.ok(execution.raw_output.strip() != "")
+        tm.that(execution.raw_output.strip(), empty=False)
 
     @staticmethod
     @pytest.mark.parametrize("residual", [False, True])
@@ -387,7 +428,11 @@ class TestsFlextInfraGateAcceptance:
         residual: bool,
     ) -> None:
         """Already-fixed Markdown records do not fail a clean postrepair check."""
-        project = u.Tests.mk_project(tmp_path, "markdown-repair")
+        project = u.Tests.mk_project(
+            tmp_path,
+            "markdown-repair",
+            pyproject='[project]\nname = "markdown-repair"\nversion = "0.1.0"\n',
+        )
         source = project / "README.md"
         source.write_text(
             "# Title   \n" + ("\n[Target](missing.md)\n" if residual else ""),
@@ -399,7 +444,7 @@ class TestsFlextInfraGateAcceptance:
             reports_dir=tmp_path / "reports",
             apply_fixes=True,
         )
-        gate = FlextInfraMarkdownGate(tmp_path)
+        gate = gates.FlextInfraMarkdownGate(tmp_path)
         execution = gate.fix(project, context)
         tm.that(execution.result.passed, eq=not residual)
         tm.that(execution.issues, eq=gate.check(project, context).issues)
@@ -415,7 +460,12 @@ class TestsFlextInfraGateAcceptance:
         residual: bool,
     ) -> None:
         """Public checker dispatch repairs only selected files unless check-only."""
-        project = u.Tests.mk_project(tmp_path, "selected-repair", with_src=True)
+        project = u.Tests.mk_project(
+            tmp_path,
+            "selected-repair",
+            pyproject='[project]\nname = "selected-repair"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         selected = project / "src" / "selected.py"
         unselected = selected.with_name("unselected.py")
         selected.write_text(
@@ -432,7 +482,7 @@ class TestsFlextInfraGateAcceptance:
             selected_files=(selected,),
         )
         results = tm.ok(
-            FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+            check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 (project.name,),
                 (c.Infra.LINT,),
                 ctx=context,
@@ -442,7 +492,7 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.result.passed, eq=not (check_only or residual))
         tm.that("import os" in selected.read_text(encoding="utf-8"), eq=check_only)
         tm.that(unselected.read_text(encoding="utf-8"), eq="import os\n")
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
         tm.that(
             execution.issues,
             eq=gate.check_files((selected,), project, context).issues,
@@ -455,7 +505,7 @@ class TestsFlextInfraGateAcceptance:
         sorted(
             gate_id
             for gate_id in c.Infra.TYPE_CHECKER_GATES
-            for gate_type in (FlextInfraGateRegistry().get(gate_id),)
+            for gate_type in (check.FlextInfraGateRegistry().get(gate_id),)
             if gate_type is not None and gate_type.requires_python_targets
         ),
     )
@@ -464,9 +514,11 @@ class TestsFlextInfraGateAcceptance:
         gate_id: str,
     ) -> None:
         """Content-selected checkers have no execution without Python sources."""
-        project: Path = u.Tests.mk_project(tmp_path, "p1")
+        project: Path = u.Tests.mk_project(
+            tmp_path, "p1", pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n'
+        )
         results = tm.ok(
-            FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+            check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 (project.name,),
                 (gate_id,),
             ),

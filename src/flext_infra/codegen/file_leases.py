@@ -280,10 +280,12 @@ class FlextInfraCodegenFileLeases:
     def _lease_file_participants(
         self,
         participants: t.VariadicTuple[m.Infra.CodegenFileParticipant],
-        *,
-        held_roots: frozenset[Path] = frozenset(),
     ) -> Generator[None]:
-        """Serialize destinations not already covered by the outer root lease.
+        """Serialize every destination through its own participant lease.
+
+        The journal lease anchors one repository's recovery authority only; each
+        written root, the run's own repository included, holds its participant
+        lease so a workspace run and a member run never publish concurrently.
 
         Raises:
             ValueError: If file publication root changed before lease; or if file
@@ -309,10 +311,6 @@ class FlextInfraCodegenFileLeases:
                     key=lambda item: str(item.root),
                 ):
                     if participant.root in self._file_leases:
-                        continue
-                    if participant.root.resolve() in held_roots:
-                        acquired.add(participant.root)
-                        self._file_leases[participant.root] = participant
                         continue
                     lease_directory = (
                         participant.root / c.Infra.TRANSACTION_STATE_DIRNAME

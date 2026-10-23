@@ -449,6 +449,66 @@ class TestsFlextInfraDepsModernizerPyright:
             ],
         )
 
+    @pytest.mark.parametrize("is_root", [False, True])
+    def test_package_parent_environment_preserves_strict_included_namespace(
+        self,
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+        *,
+        is_root: bool,
+    ) -> None:
+        """A first-party namespace child must not shadow an installed top-level SDK."""
+        rules = tool_config_document.tools.pyright.path_rules
+        selected = tool_config_document.model_copy(
+            update={
+                "tools": tool_config_document.tools.model_copy(
+                    update={
+                        "pyright": tool_config_document.tools.pyright.model_copy(
+                            update={
+                                "path_rules": rules.model_copy(
+                                    update={"project_root_env_dirs": ("infra",)},
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            },
+        )
+        project = self._sample_project(tmp_path, rules.source_dir)
+        namespace = project / "infra" / "pulumi"
+        namespace.mkdir(parents=True)
+        (namespace / "consumer.py").write_text(
+            "import pulumi\nconfig = pulumi.Config()\n"
+            "invalid: int = 'strict sentinel'\n",
+            encoding="utf-8",
+        )
+        pyright = self._applied(
+            selected,
+            m.Infra.PyprojectAnalyzerContext(
+                is_root=is_root,
+                project_dir=project,
+                repository_root=project if is_root else None,
+            ),
+        )
+        tm.ok("infra" in u.Tests.toml_strings(pyright["include"]))
+        tm.that(pyright["typeCheckingMode"], eq="strict")
+        environments = [
+            u.Tests.toml_mapping(item)
+            for item in u.Tests.toml_list(pyright["executionEnvironments"])
+        ]
+        roots = [environment["root"] for environment in environments]
+        tm.ok("infra" not in roots)
+        tm.that(roots[-1], eq=rules.project_root)
+        tm.that(
+            environments[-1]["reportPrivateUsage"],
+            eq=rules.other_report_private_usage,
+        )
+        tm.ok(rules.source_dir in roots)
+        declared = FlextInfraEnsurePyrightConfigPhase(
+            selected,
+        ).environment_payloads_for_dirs(("infra", rules.source_dir))
+        tm.that([entry["root"] for entry in declared], eq=roots)
+
     def test_project_config_uses_canonical_typings_and_fixture_excludes(
         self,
         tmp_path: Path,

@@ -210,7 +210,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
             )
         except ValueError as exc:
-            return r[m.Infra.MakeRenderContext].fail(str(exc))
+            return r[m.Infra.MakeRenderContext].fail(str(exc), exception=exc)
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=tooling.tools.pytest,
@@ -526,15 +526,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         project_dependencies, development_dependencies = dependencies.value
         profile = target.make_profile
         tooling_runtime = render_inputs.tooling_runtime
-        if tooling_runtime is None:
+        if tooling_runtime is None or tooling_runtime.document is None:
             return r[m.Infra.ProjectRenderContext].fail(
-                "Project rendering requires resolved tooling context",
+                "Project rendering requires resolved tooling context"
+                if tooling_runtime is None
+                else "Project rendering requires the elected tooling document",
             )
         tooling = tooling_runtime.document
-        if tooling is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                "Project rendering requires the elected tooling document",
-            )
         integration = self._integration_facts(render_inputs)
         if integration.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(integration)
@@ -576,6 +574,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 tooling=tooling,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads=workspace.beads,
+                ownership_command_prefix=codegen.toolchain.beads.ownership_command_prefix,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,
                 package_name=project.package_name,

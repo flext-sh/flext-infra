@@ -417,6 +417,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if render_inputs is None:
             snapshot = u.Infra.snapshot_committed_project_managed_artifacts(
                 repository_root,
+                read_committed_directory=u.Infra.git_committed_directory_blobs,
             )
             if snapshot.failure:
                 return result_type.from_failure(snapshot)
@@ -822,6 +823,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return r[p.Model].from_failure(excluded)
         return r[p.Model].ok(
             m.Infra.GithubWorkflowRenderSpec(
+                publish_index=config.Infra.release.publish_index,
                 dist=dist,
                 gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
                 setup_operations_report_directory=(

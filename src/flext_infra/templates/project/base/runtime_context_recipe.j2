@@ -1,6 +1,6 @@
 {% from "tool_bootstrap_recipe.j2" import mise_locked_qualification, mise_staging_cleanup, mise_network_admission -%}
-{#- Native Git owns physical boundaries; native UV owns membership. The same
-    shell readers serve Make parsing and direnv without importing Python or
+{#- Native Git owns physical boundaries and attachment; native UV owns other
+    membership. The same shell readers serve Make parsing and direnv without importing Python or
     inspecting workspace member patterns. Only public setup/upg may provision
     their frozen native reader before association is known. -#}
 {% macro physical_file_reader(path, make_syntax=false) -%}
@@ -67,6 +67,16 @@ printf '%s\n' "{{ d }}{git_root}"
 {% set d = "$$" if make_syntax else "$" -%}
 {{ git_discovery_context(project_root, make_syntax) }} \
 if [ "{{ d ~ '{' ~ uv_resolution.hosted_variable ~ ':-}' }}" = "{{ uv_resolution.hosted_value }}" ]; then printf '%s\n' "{{ d }}{project_root}"; exit 0; fi; \
+attached="{{ d }}(git -C "{{ d }}{git_root}" rev-parse --show-superproject-working-tree)"; \
+if [ -n "{{ d }}{attached}" ] && [ -f "{{ d }}{attached}/pyproject.toml" ]; then \
+	attached="{{ d }}(cd "{{ d }}{attached}" && pwd -P)"; \
+	member_keys="{{ d }}(git -C "{{ d }}{attached}" config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path{{ d }}')"; \
+	for member_key in {{ d }}{member_keys}; do \
+		member_path="{{ d }}(git -C "{{ d }}{attached}" config --file .gitmodules --get "{{ d }}{member_key}")"; \
+		if [ "{{ d }}{attached}/{{ d }}{member_path}" -ef "{{ d }}{git_root}" ]; then printf '%s\n' "{{ d }}{attached}"; exit 0; fi; \
+	done; \
+	printf 'ERROR: attached runtime has no original member declaration: %s\n' "{{ d }}{git_root}" >&2; exit 2; \
+fi; \
 reader_root=; \
 parent="{{ d }}(dirname "{{ d }}{project_root}")"; \
 while [ "{{ d }}{parent}" != / ]; do \
@@ -88,7 +98,17 @@ MISE_GLOBAL_CONFIG_FILE="{{ d }}{MISE_CONFIG_DIR}/config.toml"; \
 MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}{reader_root}")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
 reader_mise=mise; \
-uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
+{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+	mise_stage=; \
+	trap 'bootstrap_status=$$?; trap - EXIT; {{ mise_staging_cleanup() }} exit "$${bootstrap_status}"' EXIT; \
+	{ \
+		{{ mise_network_admission() }} \
+		{{ mise_locked_qualification('$${reader_root}', toolchain) }} \
+		mise_qualify; \
+	} >&2; \
+	reader_mise="$${mise_bootstrap_bin}"; \
+;; esac; \
+{% endif %}uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
 {% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
 	uv_active="$$("$${reader_mise}" -C "$${reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --active)"; \
 	uv_installed="$$("$${reader_mise}" -C "$${reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --installed)"; \
@@ -97,15 +117,7 @@ uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ 
 		if [ "$${uv_version}" = "$${uv_active}" ]; then uv_present=Y; fi; \
 	done; \
 	if [ -z "$${uv_present}" ]; then \
-	mise_stage=; \
-	trap 'bootstrap_status=$$?; trap - EXIT; {{ mise_staging_cleanup() }} exit "$${bootstrap_status}"' EXIT; \
-	{ \
-		{{ mise_network_admission() }} \
-		{{ mise_locked_qualification('$${reader_root}', toolchain) }} \
-		mise_qualify; \
-		"$${mise_bootstrap_bin}" -C "$${reader_root}" install --locked --yes "{{ uv_tool.selector or uv_tool.name }}"; \
-	} >&2; \
-	reader_mise="$${mise_bootstrap_bin}"; \
+		"$${reader_mise}" -C "$${reader_root}" install --locked --yes "{{ uv_tool.selector or uv_tool.name }}" >&2; \
 	fi; \
 ;; esac; \
 {% endif %}uv_binary="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}{uv_requested}")"; \

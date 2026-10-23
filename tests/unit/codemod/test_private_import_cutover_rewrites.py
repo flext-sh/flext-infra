@@ -81,7 +81,8 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
                     (
                         "import sys\nfrom runpy import run_path\n"
                         "sys.path.insert(0, sys.argv[1])\n"
-                        f"from {naming.private_module} import {naming.private_class} as Owner\n"
+                        f"from {naming.private_module} import "
+                        f"{naming.private_class} as Owner\n"
                         "consumer = run_path(sys.argv[2])\n"
                         "assert consumer['owner'] is Owner\n"
                         "assert consumer['value'] is Owner.X\n"
@@ -112,10 +113,8 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             f"t = {naming.root_class}\n"
         )
         sources[consumer_path] = f"{private_import}\nowner = {naming.private_class}\n"
-        tm.fail(
-            self._plan(tmp_path, sources, consumer_path, private_import),
-            has="ambiguous public facade references",
-        )
+        with pytest.raises(ValueError, match="ambiguous public facade references"):
+            self._plan(tmp_path, sources, consumer_path, private_import)
 
     def test_rewires_unique_public_facade_binding(self, tmp_path: Path) -> None:
         """Derive the nested facade path and remove the private import atomically."""
@@ -264,10 +263,8 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         )
         sources[consumer_path] = f"{private_import}\n\n{consumer}"
 
-        tm.fail(
-            self._plan(tmp_path, sources, consumer_path, private_import),
-            has="public facade alias u is shadowed",
-        )
+        with pytest.raises(ValueError, match="public facade alias u is shadowed"):
+            self._plan(tmp_path, sources, consumer_path, private_import)
 
     @pytest.mark.parametrize(
         "class_binding",
@@ -488,15 +485,16 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             + declaration
         )
         sources[consumer_path] = source
-        planned = self._plan(tmp_path, sources, consumer_path, private_import)
         rejected_capture = (
             shadowed
             and enclosing_scope
             and (not annotation_scope or not future_annotations)
         )
-        if rejected_capture and planned.failure:
-            tm.fail(planned, has="public facade alias u is shadowed")
+        if rejected_capture:
+            with pytest.raises(ValueError, match="public facade alias u is shadowed"):
+                self._plan(tmp_path, sources, consumer_path, private_import)
             return
+        planned = self._plan(tmp_path, sources, consumer_path, private_import)
         updated = tm.ok(planned)[0].updated_source
         tm.that(updated, has="u.Sample.ServiceManagers")
         package = tmp_path / "flext-sample/src/flext_sample"
@@ -531,11 +529,6 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
                 cwd=tmp_path,
             ),
         )
-        if rejected_capture:
-            tm.fail(u.Cli.process_succeeded(executed.outcome))
-            tm.that(executed.stderr, has="AttributeError")
-            tm.fail(planned, has="public facade alias u is shadowed")
-            return
         tm.ok(u.Cli.process_succeeded(executed.outcome))
         tm.that(executed.stderr, eq="")
 

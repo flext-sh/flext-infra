@@ -75,7 +75,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
         started = time.monotonic()
         envrc = project_dir / c.Infra.ENVRC_FILENAME
         if not envrc.is_file():
-            return self._skip_result(project_dir, started)
+            return self._skip_result(project_dir, ctx, started)
         content = u.Cli.files_read_text(envrc)
         if content.failure:
             issue = m.Infra.Issue(
@@ -90,7 +90,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 project_dir,
                 passed=False,
                 issues=(issue,),
-                raw_output=issue.message,
+                evidence=self._publish_raw_receipt(ctx, issue.message),
                 started=started,
             )
         violations = self._contract_boundary().envrc_contract_violations(
@@ -136,7 +136,9 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 project_dir,
                 passed=False,
                 issues=issues,
-                raw_output="\n".join(issue.message for issue in issues),
+                evidence=self._publish_raw_receipt(
+                    ctx, "\n".join(issue.message for issue in issues)
+                ),
                 started=started,
             )
         return super().check(project_dir, ctx)

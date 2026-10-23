@@ -404,6 +404,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             FlextInfraConfigModelsBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
+        ownership_command_prefix: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(min_length=1, description="Configured Beads ownership command"),
+        ]
         canonical_project_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical PEP 621 project name"),

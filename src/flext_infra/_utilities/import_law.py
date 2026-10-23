@@ -779,7 +779,14 @@ class FlextInfraUtilitiesImportLaw:
             return None
         namespace_dir = base / namespace_name
         init = namespace_dir / c.Infra.INIT_PY
-        if not (init.is_file() if sources is None else init in sources):
+        declared_namespace = (
+            base == root
+            and namespace_name
+            in FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(root)
+        )
+        if not declared_namespace and not (
+            init.is_file() if sources is None else init in sources
+        ):
             return None
         parts = relative.with_suffix("").parts
         if parts[-1] == "__init__":
@@ -839,6 +846,46 @@ class FlextInfraUtilitiesImportLaw:
             if stem in config.Infra.tooling.lazy_init.import_layer_order:
                 return "consumer"
         return "consumer"
+
+    @classmethod
+    def import_source_role(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+    ) -> Literal["layer0", "family", "consumer"]:
+        """Resolve declaration roles by native ancestry, not consumer imports.
+
+        Returns:
+            The lexical family role or the source-defined configuration role.
+
+        """
+        role = cls.import_module_role(module.get_name())
+        if role != "consumer":
+            return role
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        roots = tuple(
+            runtime.qualified_name(project, name, module_name="flext_core").get_object()
+            for name in ("FlextConfig", "FlextSettings")
+        )
+        pending = [
+            value
+            for attribute in module.get_attributes().values()
+            if types.py_class(value := attribute.get_object())
+            and value.get_module() is module
+        ]
+        visited: set[int] = set()
+        while pending:
+            declaration = pending.pop()
+            if id(declaration) in visited:
+                continue
+            visited.add(id(declaration))
+            if any(declaration is root for root in roots):
+                return "layer0"
+            pending.extend(
+                base for base in declaration.get_superclasses() if types.py_class(base)
+            )
+        return role
 
     @staticmethod
     def import_direct_module(namespace_dir: Path, file_path: Path) -> bool:

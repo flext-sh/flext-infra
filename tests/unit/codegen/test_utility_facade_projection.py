@@ -22,6 +22,81 @@ from tests import c, m, p, r, t, tm, u
 class TestsFlextInfraUtilityFacadeProjection:
     """Exercise declared owner projection only through ``u.Infra``."""
 
+    @pytest.mark.parametrize(
+        "binding", ["canonical", "foreign", "renamed", "duplicate", "annotation"]
+    )
+    @pytest.mark.parametrize("model", [False, True])
+    @pytest.mark.parametrize("constructor", ["ConfigDict", "m.ConfigDict"])
+    def test_explicit_owner_config_requires_canonical_metadata(
+        self,
+        tmp_path: Path,
+        binding: str,
+        native_consumer: p.Tests.NativeConsumer,
+        constructor: str,
+        *,
+        model: bool,
+    ) -> None:
+        """Preserve native owner configuration without admitting ambiguous aliases."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_families()["u"].directory
+        self._write(package / "__init__.py", "")
+        self._write(
+            package / directory / "__init__.py",
+            "from .owner import Owner, Foreign\n__all__ = ['Owner', 'Foreign']\n",
+        )
+        self._write(
+            package / directory / "owner.py",
+            "from pydantic import BaseModel, ConfigDict\n"
+            "from flext_core import m\n"
+            + ("class Owner(BaseModel):\n" if model else "class Owner:\n")
+            + f"    model_config = {constructor}(ignored_types=(type,))\n"
+            "class Foreign:\n    model_config = {}\n"
+            "__all__ = ['Owner']\n",
+        )
+        metadata = {
+            "canonical": "    model_config = Owner.model_config\n",
+            "foreign": "    model_config = Foreign.model_config\n",
+            "renamed": "    Other = Owner.model_config\n",
+            "duplicate": (
+                "    model_config = Owner.model_config\n    model_config = Owner\n"
+            ),
+            "annotation": "    model_config: type[Owner] = Owner.model_config\n",
+        }[binding]
+        facade = package / "utilities.py"
+        self._write(
+            facade,
+            f"from {package.name}.{directory} import Owner, Foreign\n"
+            "class Utilities:\n" + metadata + "    Cli = Owner\nu = Utilities\n"
+            "__all__ = ['Utilities', 'u']\n",
+        )
+        if binding != "canonical":
+            with pytest.raises(
+                ValueError, match="Ambiguous explicit facade class binding"
+            ):
+                u.Infra.render_utility_facade(package)
+            return
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        tm.that(
+            sum(
+                alias.name == "Owner"
+                for node in ast.walk(ast.parse(rendered))
+                if isinstance(node, ast.ImportFrom)
+                for alias in node.names
+            ),
+            eq=1,
+        )
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.utilities import u\n"
+            f"from {package.name}.{directory}.owner import Owner\n"
+            "assert Owner in u.__mro__\n"
+            "assert u.model_config == Owner.model_config\n"
+            "assert not hasattr(u, 'Cli')\n",
+            cwd=root,
+        )
+
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,

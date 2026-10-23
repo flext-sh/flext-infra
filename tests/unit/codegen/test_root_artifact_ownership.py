@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra import codegen, config, infra
 from tests import c, m, tm, u
+from tests.unit.codegen import conform_support
 
 
 class TestsFlextInfraRootArtifactOwnership:
@@ -28,17 +28,6 @@ class TestsFlextInfraRootArtifactOwnership:
         )
 
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
-
-    @staticmethod
-    def test_release_workflow_requires_explicit_repository_opt_in() -> None:
-        """Package membership alone must never activate release automation."""
-        entry = next(
-            item
-            for item in config.Infra.codegen.templates.entries
-            if item.destination == ".github/workflows/release.yml"
-        )
-
-        tm.ok(entry.requires_release_protocol)
 
     @staticmethod
     def test_governed_artifacts_have_one_explicit_policy() -> None:
@@ -166,16 +155,10 @@ class TestsFlextInfraRootArtifactOwnership:
             for item in config.Infra.codegen.managed_files
             if item.path.as_posix() in c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS
         }
-        before = tuple(
-            sorted(
-                (path.relative_to(root).as_posix(), path.read_bytes())
-                for path in root.rglob("*")
-                if path.is_file() and ".git" not in path.relative_to(root).parts
-            ),
-        )
+        before = conform_support.TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            codegen.FlextInfraCodegenConform(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -190,13 +173,7 @@ class TestsFlextInfraRootArtifactOwnership:
         )
         result = tm.ok(infra.codegen_conform(request))
         tm.that(result.written_files, eq=())
-        after = tuple(
-            sorted(
-                (path.relative_to(root).as_posix(), path.read_bytes())
-                for path in root.rglob("*")
-                if path.is_file() and ".git" not in path.relative_to(root).parts
-            ),
-        )
+        after = conform_support.TestsFlextInfraConformSupport.project_tree(root)
         tm.that(after, eq=before)
         for relative, expected in manual.items():
             tm.that((root / relative).read_bytes(), eq=expected)
@@ -247,7 +224,7 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                FlextInfraCodegenConform(
+                codegen.FlextInfraCodegenConform(
                     repository_root=root,
                     state=m.Infra.CodegenConformState(
                         repository_root=root,

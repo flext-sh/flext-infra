@@ -13,18 +13,15 @@ from functools import partial
 from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from flext_infra import c, codegen, config, m, r, t, u
+from flext_infra import c, codegen, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsProcess,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodegenStaging:
@@ -232,19 +229,13 @@ class FlextInfraCodegenStaging:
         """
         if existing.version != 1 or not existing.source_query_topology:
             return r[bool].fail("candidate preparation receipt has no root authority")
-        current = FlextInfraMiseArtifactsVerification.states_current(existing.inputs)
+        current = FlextInfraMiseArtifactsVerification.states_current(
+            existing.inputs
+        ).flat_map(
+            lambda _: FlextInfraCodegenStaging._directory_queries_current(existing)
+        )
         if current.failure:
             return current
-        try:
-            queried = u.Cli.atomic_verify_directory_queries(
-                existing.source_directories, existing.source_query_topology
-            )
-        except OSError as exc:
-            return r[bool].fail(str(exc), exception=exc)
-        except c.EXC_BROAD_RUNTIME as exc:
-            return r[bool].fail(str(exc), exception=exc)
-        if queried.failure:
-            return r[bool].from_failure(queried)
         hashes = dict(existing.prepared_hashes)
         if set(hashes) != {plan.path for plan in plans} or any(
             plan.prepared_sources is not existing
@@ -262,6 +253,26 @@ class FlextInfraCodegenStaging:
         ):
             return r[bool].fail("prepared source receipt cannot be reopened")
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _directory_queries_current(
+        receipt: p.Infra.StageSourceReceipt,
+    ) -> p.Result[bool]:
+        """Reprove a receipt's directory membership queries.
+
+        Returns:
+            Success while every recorded directory query still holds.
+
+        """
+        try:
+            queried = u.Cli.atomic_verify_directory_queries(
+                receipt.source_directories, receipt.source_query_topology
+            )
+        except OSError as exc:
+            return r[bool].fail(str(exc), exception=exc)
+        except c.EXC_BROAD_RUNTIME as exc:
+            return r[bool].fail(str(exc), exception=exc)
+        return queried.map(lambda _: True)
 
     @staticmethod
     def _prepared_plans(
@@ -410,102 +421,26 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[m.Infra.StageSourcePlan]
-        receipts: list[p.Infra.StageSourceReceipt] = []
-        projects = {plan.project for plan in plans}
-        for plan in plans:
-            receipt = plan.prepared_sources
-            if receipt is None:
-                return result_type.fail(
-                    f"candidate has no preparation receipt: {plan.path}"
-                )
-            if (
-                plan.source_states != receipt.inputs
-                or plan.source_directories != receipt.source_directories
-                or plan.source_query_topology != receipt.source_query_topology
-            ):
-                return result_type.fail(
-                    f"candidate source receipt differs: {plan.path}"
-                )
-            if not (
-                receipt.workspace.is_relative_to(workspace)
-                or workspace.is_relative_to(receipt.workspace)
-                or receipt.workspace in projects
-            ):
-                return result_type.fail(
-                    "candidate preparation root differs from its scope"
-                )
-            if all(receipt is not previous for previous in receipts):
-                receipts.append(receipt)
-        inputs = u.Infra.unique_states((
+        elected = cls._candidate_receipts(workspace, plans)
+        if elected.failure:
+            return result_type.from_failure(elected)
+        receipts = elected.value
+        current_inputs = u.Infra.unique_states((
             *(state for receipt in receipts for state in receipt.inputs),
             *(state for plan in plans for state in plan.source_states),
-        ))
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        current_inputs = (
-            codegen.FlextInfraMiseArtifactsVerification.session_input_states(
-                inputs.value, session
+        )).flat_map(
+            lambda inputs: (
+                codegen.FlextInfraMiseArtifactsVerification.session_input_states(
+                    inputs, session
+                )
             )
         )
         if current_inputs.failure:
             return result_type.from_failure(current_inputs)
-        updates = cls._composed_candidate_updates(staged_files, plans)
-        prepared: t.MutableMappingKV[Path, str | None] = {}
-        modes: t.MutableMappingKV[Path, int] = {}
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
-        for receipt in receipts:
-            if receipt.version != 1 or not receipt.source_query_topology:
-                return result_type.fail(
-                    "candidate preparation receipt has no root authority"
-                )
-            expected_hashes = tuple(
-                (
-                    path,
-                    None
-                    if content is None
-                    else u.Cli.sha256_bytes(content.encode(c.DEFAULT_ENCODING)),
-                )
-                for path, content in sorted(receipt.updates.items())
-            )
-            if receipt.prepared_hashes != expected_hashes:
-                return result_type.fail("candidate preparation receipt bytes changed")
-            for path, content in receipt.updates.items():
-                if path in prepared and prepared[path] != content:
-                    return result_type.fail(
-                        f"candidate preparation receipts disagree: {path}"
-                    )
-                prepared[path] = content
-            for path, mode in receipt.modes.items():
-                if path in modes and modes[path] != mode:
-                    return result_type.fail(
-                        f"candidate preparation modes disagree: {path}"
-                    )
-                modes[path] = mode
-            for layout in receipt.layouts:
-                previous = layouts.get(layout.package_name)
-                if previous is not None and previous != layout:
-                    return result_type.fail(
-                        "candidate preparation package identity differs: "
-                        f"{layout.package_name}"
-                    )
-                layouts[layout.package_name] = layout
-        if prepared != updates:
-            return result_type.fail(
-                "staged candidate differs from sealed preparation bytes"
-            )
-        if any(
-            plan.desired_mode != modes.get(plan.path)
-            or any(
-                staged.before.path == plan.path
-                and staged.replacement is not None
-                and staged.replacement.mode != plan.desired_mode
-                for staged in staged_files
-            )
-            for plan in plans
-        ):
-            return result_type.fail(
-                "staged candidate differs from sealed preparation modes"
-            )
+        merged = cls._sealed_candidate_payloads(receipts, staged_files, plans)
+        if merged.failure:
+            return result_type.from_failure(merged)
+        prepared, modes, layouts = merged.value
         try:
             directories, topology = u.Cli.atomic_merge_directory_query_receipts(
                 tuple(
@@ -546,7 +481,7 @@ class FlextInfraCodegenStaging:
                 declared_files=tuple(
                     plan.model_copy(update={"prepared_sources": None}) for plan in plans
                 ),
-                layouts=tuple(layouts.values()),
+                layouts=layouts,
                 workspace_packages=tuple(
                     sorted({
                         name
@@ -555,13 +490,184 @@ class FlextInfraCodegenStaging:
                     })
                 ),
             )
-            return FlextInfraStagedPackage.source_inputs_current(candidate).map(
-                lambda _: candidate
-            )
+            # consume_sources authenticates these exact inputs, ancestry and
+            # directory queries before materializing; repeating it here only
+            # rereads every input once more with no effect in between.
+            return result_type.ok(candidate)
         except OSError as exc:
             return result_type.fail(str(exc), exception=exc)
         except c.EXC_BROAD_RUNTIME as exc:
             return result_type.fail(str(exc), exception=exc)
+
+    @staticmethod
+    def _candidate_receipts(
+        workspace: Path,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[p.Infra.StageSourceReceipt]]:
+        """Elect each distinct sealed receipt that still binds its plans' sources.
+
+        Returns:
+            The distinct receipts in plan order, or the first binding rejection.
+
+        """
+        result_type = r[t.VariadicTuple[p.Infra.StageSourceReceipt]]
+        receipts: list[p.Infra.StageSourceReceipt] = []
+        projects = {plan.project for plan in plans}
+        for plan in plans:
+            receipt = plan.prepared_sources
+            if receipt is None:
+                return result_type.fail(
+                    f"candidate has no preparation receipt: {plan.path}"
+                )
+            if (
+                plan.source_states != receipt.inputs
+                or plan.source_directories != receipt.source_directories
+                or plan.source_query_topology != receipt.source_query_topology
+            ):
+                return result_type.fail(
+                    f"candidate source receipt differs: {plan.path}"
+                )
+            if not (
+                receipt.workspace.is_relative_to(workspace)
+                or workspace.is_relative_to(receipt.workspace)
+                or receipt.workspace in projects
+            ):
+                return result_type.fail(
+                    "candidate preparation root differs from its scope"
+                )
+            if all(receipt is not previous for previous in receipts):
+                receipts.append(receipt)
+        return result_type.ok(tuple(receipts))
+
+    @classmethod
+    def _sealed_candidate_payloads(
+        cls,
+        receipts: t.VariadicTuple[p.Infra.StageSourceReceipt],
+        staged_files: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[
+        t.Triple[
+            t.MutableMappingKV[Path, str | None],
+            t.MutableMappingKV[Path, int],
+            t.VariadicTuple[m.Infra.RopeProjectLayout],
+        ]
+    ]:
+        """Merge sealed payloads and prove the staged candidate equals them.
+
+        Returns:
+            The merged updates, modes and layouts, or the first divergence.
+
+        """
+        result_type = r[
+            t.Triple[
+                t.MutableMappingKV[Path, str | None],
+                t.MutableMappingKV[Path, int],
+                t.VariadicTuple[m.Infra.RopeProjectLayout],
+            ]
+        ]
+        merged = cls._merged_receipt_payloads(receipts)
+        if merged.failure:
+            return merged
+        prepared, modes, _layouts = merged.value
+        if prepared != cls._composed_candidate_updates(staged_files, plans):
+            return result_type.fail(
+                "staged candidate differs from sealed preparation bytes"
+            )
+        if any(
+            plan.desired_mode != modes.get(plan.path)
+            or any(
+                staged.before.path == plan.path
+                and staged.replacement is not None
+                and staged.replacement.mode != plan.desired_mode
+                for staged in staged_files
+            )
+            for plan in plans
+        ):
+            return result_type.fail(
+                "staged candidate differs from sealed preparation modes"
+            )
+        return merged
+
+    @staticmethod
+    def _merged_receipt_payloads(
+        receipts: t.VariadicTuple[p.Infra.StageSourceReceipt],
+    ) -> p.Result[
+        t.Triple[
+            t.MutableMappingKV[Path, str | None],
+            t.MutableMappingKV[Path, int],
+            t.VariadicTuple[m.Infra.RopeProjectLayout],
+        ]
+    ]:
+        """Merge sealed receipt bytes, modes and package layouts without conflict.
+
+        Returns:
+            The merged updates, modes and layouts, or the first disagreement.
+
+        """
+        result_type = r[
+            t.Triple[
+                t.MutableMappingKV[Path, str | None],
+                t.MutableMappingKV[Path, int],
+                t.VariadicTuple[m.Infra.RopeProjectLayout],
+            ]
+        ]
+        prepared: t.MutableMappingKV[Path, str | None] = {}
+        modes: t.MutableMappingKV[Path, int] = {}
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
+        for receipt in receipts:
+            if receipt.version != 1 or not receipt.source_query_topology:
+                return result_type.fail(
+                    "candidate preparation receipt has no root authority"
+                )
+            if receipt.prepared_hashes != tuple(
+                (
+                    path,
+                    None
+                    if content is None
+                    else u.Cli.sha256_bytes(content.encode(c.DEFAULT_ENCODING)),
+                )
+                for path, content in sorted(receipt.updates.items())
+            ):
+                return result_type.fail("candidate preparation receipt bytes changed")
+            merge = FlextInfraCodegenStaging._merge_disagreement
+            conflict = (
+                merge(
+                    "candidate preparation receipts disagree",
+                    prepared,
+                    tuple(receipt.updates.items()),
+                )
+                or merge(
+                    "candidate preparation modes disagree",
+                    modes,
+                    tuple(receipt.modes.items()),
+                )
+                or merge(
+                    "candidate preparation package identity differs",
+                    layouts,
+                    tuple((item.package_name, item) for item in receipt.layouts),
+                )
+            )
+            if conflict is not None:
+                return result_type.fail(conflict)
+        return result_type.ok((prepared, modes, tuple(layouts.values())))
+
+    @staticmethod
+    def _merge_disagreement[K, V](
+        message: str,
+        merged: t.MutableMappingKV[K, V],
+        items: t.VariadicTuple[t.Pair[K, V]],
+    ) -> str | None:
+        """Merge items into one map, stopping at the first disagreeing key.
+
+        Returns:
+            ``"<message>: <key>"`` for the first disagreeing key, else ``None``.
+
+        """
+        for key, value in items:
+            if key in merged and merged[key] != value:
+                return f"{message}: {key}"
+            merged[key] = value
+        return None
 
     @staticmethod
     def _composed_candidate_updates(

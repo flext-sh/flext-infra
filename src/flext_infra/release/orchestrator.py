@@ -33,6 +33,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
         str,
         m.Field(description="Pull-request title to validate against the protocol"),
     ] = ""
+    ownership: Annotated[
+        m.Infra.GitLaneOwnershipReceipt | None,
+        m.Field(description="Authenticated integrated prior-state ownership receipt"),
+    ] = None
     conform_collaborators: Annotated[
         m.Infra.CodegenConformPorts | None,
         m.Field(
@@ -122,6 +126,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
                 subject=c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.value.next),
                 body_file=self._release_dir(root, plan.value.tag)
                 / c.Infra.RELEASE_NOTES_FILENAME,
+                ownership=self.ownership,
             ),
             lambda: self._stamp_release(ctx, plan.value),
         )

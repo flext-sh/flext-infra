@@ -109,7 +109,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             if not failure:
                 failure = "codemod rule planning failed without a diagnostic"
                 raise RuntimeError(failure)
-            return self._failure_gate_execution(project_dir, failure, started)
+            return self._failure_gate_execution(project_dir, ctx, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
         native_targets = tuple(
@@ -121,7 +121,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             if not failure:
                 failure = "managed scanner resolution failed without a diagnostic"
                 raise RuntimeError(failure)
-            return self._failure_gate_execution(project_dir, failure, started)
+            return self._failure_gate_execution(project_dir, ctx, failure, started)
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
         found = [
@@ -255,12 +255,14 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     f"{len(findings)} policy findings; {len(failures)} native failures",
                     *raw_output,
                 )),
-            )
+            ),
+            ctx=ctx,
         )
 
     def _failure_gate_execution(
         self,
         project_dir: Path,
+        ctx: m.Infra.GateContext,
         failure: str,
         started: float,
     ) -> m.Infra.GateExecution:
@@ -283,7 +285,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     severity=str(c.Infra.GateSeverity.ERROR.value),
                 ),
             ),
-            raw_output=failure,
+            evidence=self._publish_raw_receipt(ctx, failure),
             started=started,
         )
 

@@ -8,20 +8,16 @@ from __future__ import annotations
 
 import os
 import stat
-from collections.abc import MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from copy import deepcopy
 from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-from flext_core.config_sources import FlextStrictYamlConfigSource
+from flext_core import FlextStrictYamlConfigSource
 
-from flext_infra import c, m, p, r, t
-from flext_infra._config import FlextInfraConfig
-from flext_infra._utilities._git.semantic_index import (
-    FlextInfraUtilitiesGitSemanticIndexMixin,
-)
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
+from flext_infra import FlextInfraConfig, c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
@@ -450,6 +446,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 if projected is not None
                 else dict(payload)
             )
+            # A command is one ordered invocation, not an additive rule list.
+            beads_path = ("Infra", "codegen", "toolchain", "beads")
+            declared_beads = u.Cli.json_walk_path(values, beads_path)
+            if isinstance(declared_beads, Mapping) and (
+                "ownership_command_prefix" in declared_beads
+            ):
+                retained_beads: t.JsonValue = merged
+                for namespace in beads_path:
+                    if not isinstance(retained_beads, dict):
+                        break
+                    retained_beads = retained_beads.get(namespace)
+                if isinstance(retained_beads, dict):
+                    retained_beads.pop("ownership_command_prefix", None)
             merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
 
@@ -761,6 +770,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def load_committed_project_managed_artifacts(
         cls,
         project_dir: Path,
+        *,
+        read_committed_directory: Callable[
+            [Path, str], p.Result[t.MappingKV[str, bytes]]
+        ],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Load ManagedArtifacts from the project's committed ``HEAD`` catalog.
 
@@ -773,7 +786,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             The resulting ``p.Result[m.Infra.ProjectManagedArtifactsResolution]``.
 
         """
-        snapshot = cls.snapshot_committed_project_managed_artifacts(project_dir)
+        snapshot = cls.snapshot_committed_project_managed_artifacts(
+            project_dir,
+            read_committed_directory=read_committed_directory,
+        )
         if snapshot.failure:
             return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
@@ -784,6 +800,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def snapshot_committed_project_managed_artifacts(
         cls,
         project_dir: Path,
+        *,
+        read_committed_directory: Callable[
+            [Path, str], p.Result[t.MappingKV[str, bytes]]
+        ],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
         """Capture and parse the committed catalog without physical source states.
 
@@ -796,7 +816,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         resolved = project_dir.expanduser().resolve()
-        blobs = FlextInfraUtilitiesGitSemanticIndexMixin.git_committed_directory_blobs(
+        blobs = read_committed_directory(
             resolved,
             c.CONFIG_DIR_NAME,
         )

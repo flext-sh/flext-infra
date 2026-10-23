@@ -56,12 +56,12 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        del ctx
         started = time.monotonic()
         errors = self._collect(project_dir)
         if errors.failure:
             return self._build_project_error_gate_result(
                 project_dir,
+                ctx=ctx,
                 passed=False,
                 errors=[errors.error or "index-declarations scan failed"],
                 started=started,
@@ -69,6 +69,7 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
         defects = errors.unwrap()
         return self._build_project_error_gate_result(
             project_dir,
+            ctx=ctx,
             passed=not defects,
             errors=list(defects),
             started=started,

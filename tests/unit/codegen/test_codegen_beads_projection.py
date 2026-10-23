@@ -10,55 +10,126 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config
-from flext_infra.codegen import FlextInfraCodegenConformBeadsRoutes
-from tests import m, tm, u
-
-
-def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
-    """Plan one Gascity-disabled standalone governed fixture project.
-
-    Returns:
-        The governed codegen plan for the standalone project.
-
-    """
-    u.Tests.WorktreeFixture.initialize_governed_project(
-        root,
-        "fixture-project",
-        beads=u.Tests.BeadsIdentity(
-            workspace="fixture-workspace",
-            database="project_database",
-            issue_prefix="project-prefix",
-        ),
-    )
-    project = root
-    u.Tests.write_standalone_workspace_manifest(
-        project,
-        "fixture-project",
-        declaration=u.Tests.StandaloneManifestDeclaration(gascity_enabled=False),
-    )
-    return u.Tests.governed_project_plan(project)
-
-
-def _planned_envrc_local_entry(root: Path) -> m.Infra.CodegenFilePlan | None:
-    """Return the planned ``.envrc.local`` entry of one governed project.
-
-    Returns:
-        The planned ``.envrc.local`` entry, or ``None`` when it is unplanned.
-
-    """
-    plan = u.Tests.governed_project_plan(root)
-    return next(
-        (item for item in plan.files if item.path.name == ".envrc.local"),
-        None,
-    )
+from flext_infra import c, codegen, config, workspace
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
     @staticmethod
-    def _project(root: Path, *, database: str, issue_prefix: str) -> Path:
+    def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
+        """Plan a standalone fixture with city participation disabled.
+
+        Returns:
+            The governed codegen plan for the standalone project.
+
+        """
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-project",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fixture-workspace",
+                database="project_database",
+                issue_prefix="project-prefix",
+            ),
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {"Infra": {"codegen": {"repository": {"gascity_enabled": False}}}},
+            ),
+        )
+        return u.Tests.governed_project_plan(root)
+
+    @staticmethod
+    def _planned_envrc_local_entry(root: Path) -> m.Infra.CodegenFilePlan | None:
+        """Return the planned local activation artifact.
+
+        Returns:
+            The local activation entry, or None when it is unplanned.
+
+        """
+        plan = u.Tests.governed_project_plan(root)
+        return next(
+            (item for item in plan.files if item.path.name == ".envrc.local"),
+            None,
+        )
+
+    @pytest.mark.parametrize("prefix", [None, ("tracker-wrapper", "read", "beads")])
+    def test_ownership_policy_roundtrips_through_repository_identity(
+        self,
+        tmp_path: Path,
+        prefix: t.StrTuple | None,
+    ) -> None:
+        """Project the selected command without assuming a particular backend."""
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+            custom_issue_types=("triage",),
+        )
+        identity = tm.ok(workspace.FlextInfraWorkspaceDetector.load_beads_spec(root))
+        if prefix is not None:
+            tm.ok(
+                u.Cli.yaml_dump(
+                    root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME,
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "toolchain": {
+                                    "beads": {"ownership_command_prefix": list(prefix)},
+                                },
+                            },
+                        },
+                    },
+                ),
+            )
+        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.toolchain.beads
+        rendered = tm.not_none(
+            u.Tests.planned_text(
+                u.Tests.governed_project_plan(root),
+                "config/beads.yaml",
+            ),
+        )
+        (root / "config" / "beads.yaml").write_text(rendered, encoding="utf-8")
+
+        observed = tm.ok(workspace.FlextInfraWorkspaceDetector.load_beads_spec(root))
+
+        tm.that(observed.ownership_command_prefix, eq=policy.ownership_command_prefix)
+        tm.that(observed.custom_issue_types, eq=identity.custom_issue_types)
+        tm.that(observed.workspace, eq=identity.workspace)
+        tm.that(observed.database, eq=identity.database)
+        tm.that(observed.issue_prefix, eq=identity.issue_prefix)
+        if prefix is not None:
+            tm.that(observed.ownership_command_prefix, eq=prefix)
+        cwd = tm.not_none(observed.ownership_command_cwd)
+        tm.fail(cwd.is_absolute())
+        tm.that((root / cwd).resolve(), eq=root.resolve())
+
+    @pytest.mark.parametrize("prefix", [None, (), ("",)])
+    @staticmethod
+    def test_ownership_policy_requires_a_nonempty_command(
+        prefix: t.StrTuple | None,
+    ) -> None:
+        """Missing or empty selected policy never becomes a default backend."""
+        policy = config.Infra.codegen.toolchain.beads
+        payload = policy.model_dump(round_trip=True)
+        if prefix is None:
+            del payload["ownership_command_prefix"]
+        else:
+            payload["ownership_command_prefix"] = prefix
+        with pytest.raises(ValueError, match="ownership_command_prefix"):
+            type(policy).model_validate(payload)
+
+    @staticmethod
+    def _project(
+        root: Path,
+        *,
+        database: str,
+        issue_prefix: str,
+        custom_issue_types: t.StrTuple = (),
+    ) -> Path:
         u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-project",
@@ -67,6 +138,7 @@ class TestsFlextInfraCodegenBeadsProjection:
                 database=database,
                 issue_prefix=issue_prefix,
             ),
+            custom_issue_types=custom_issue_types,
         )
         return root
 
@@ -94,7 +166,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         # set on every adopt and start, so a projection in any other form left
         # every governed checkout dirty after each gc pass.
         beads = config.Infra.codegen.toolchain.beads
-        parsed = u.Tests.toml_mapping(tm.ok(u.Cli.yaml_parse(rendered_config)))
+        parsed = tm.ok(u.Cli.yaml_parse(rendered_config))
         tm.that(parsed["issue_prefix"], eq="project-prefix")
         tm.that(parsed["issue-prefix"], eq="project-prefix")
         tm.that(parsed["dolt.mode"], eq=beads.dolt_mode)
@@ -133,7 +205,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tmp_path: Path,
     ) -> None:
         """A disabled city never moves runtime ownership into generated config."""
-        plan = _standalone_governed_plan(tmp_path / "project")
+        plan = self._standalone_governed_plan(tmp_path / "project")
         rendered_config = u.Tests.planned_text(plan, c.Infra.BEADS_CONFIG_RELPATH)
         rendered_mise = u.Tests.planned_text(plan, ".mise.toml")
 
@@ -183,7 +255,7 @@ class TestsFlextInfraCodegenBeadsProjection:
 
     def test_generated_envrc_excludes_storage_routing(self, tmp_path: Path) -> None:
         """The project activation leaves Beads routing to native discovery."""
-        plan = _standalone_governed_plan(tmp_path / "project")
+        plan = self._standalone_governed_plan(tmp_path / "project")
         rendered_envrc = u.Tests.planned_text(plan, ".envrc")
 
         if rendered_envrc is None:
@@ -218,7 +290,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             encoding="utf-8",
         )
 
-        entry = _planned_envrc_local_entry(root)
+        entry = self._planned_envrc_local_entry(root)
 
         if entry is None or entry.desired_content is None:
             pytest.fail("custom overrides must keep .envrc.local planned")
@@ -246,7 +318,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             encoding="utf-8",
         )
 
-        entry = _planned_envrc_local_entry(root)
+        entry = self._planned_envrc_local_entry(root)
 
         if entry is None:
             pytest.fail("residue-only .envrc.local must be planned for removal")
@@ -266,11 +338,14 @@ class TestsFlextInfraCodegenBeadsProjection:
             database="project_database",
             issue_prefix="project-prefix",
         )
-        u.Tests.write_standalone_workspace_manifest(
-            root,
-            "fixture-project",
-            declaration=u.Tests.StandaloneManifestDeclaration(
-                gascity_enabled=gascity_enabled,
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {"repository": {"gascity_enabled": gascity_enabled}},
+                    },
+                },
             ),
         )
 
@@ -356,14 +431,14 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
         (route / "dolt.gate.lock").write_text("", encoding="utf-8")
 
-        state = FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
+        state = codegen.FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
 
         tm.fail(state.failure)
         tm.ok(state.value)
 
         (route / "stranger.txt").write_text("unexpected\n", encoding="utf-8")
 
-        broken = FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
+        broken = codegen.FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
 
         tm.ok(broken.failure)
         tm.ok(broken.error is not None and "stranger.txt" in broken.error)

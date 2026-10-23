@@ -112,7 +112,8 @@ class FlextInfraDepsGate(FlextInfraGate):
                         issues=(*execution.issues, issue),
                         raw_output=execution.raw_output + "\n" + issue.message,
                         started=started,
-                    )
+                    ),
+                    ctx=ctx,
                 )
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             u.Infra.publish_runtime_dependency_plan(plan).unwrap()
@@ -127,7 +128,8 @@ class FlextInfraDepsGate(FlextInfraGate):
                 + "\nrepair-rescan\n"
                 + after.raw_output,
                 started=started,
-            )
+            ),
+            ctx=ctx,
         )
 
     def _prepare_report_dir(
@@ -237,6 +239,7 @@ class FlextInfraDepsGate(FlextInfraGate):
                 raw_output=raw_output,
                 started=started,
             ),
+            ctx=ctx,
         ), scan
 
 

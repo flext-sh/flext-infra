@@ -288,6 +288,7 @@ Infra:
       mise_selector: github:jdx/mise
       mise_version: "2026.10.3"
       beads:
+        ownership_command_prefix: [direnv, exec, ., bd]
         # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
         # The bd and gc binaries are host tools; no project .mise.toml
         # declares them.
@@ -1367,6 +1368,9 @@ Infra:
     - path: .beads/metadata.json
       owner: codegen
       policy: full
+    - path: config/beads.yaml
+      owner: codegen
+      policy: full
     - path: .envrc
       owner: codegen
       policy: full
@@ -2220,13 +2224,12 @@ Infra:
         # without the Install uv step, and the job died on "uv: command not found".
         profiles: [ workspace, standalone ]
         delegate: render
-      # Release automation is opt-in per distribution. Repositories without an
-      # explicit declaration have this generated workflow retired by conform.
+      # Every governed workflow surface includes Release. Publication itself
+      # requires explicit dispatch and successful exact-candidate canonical CI.
       - source: base/.github/workflows/release.yml.j2
         destination: .github/workflows/release.yml
         profiles: [ workspace, standalone ]
         delegate: render
-        requires_release_protocol: true
       - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
         destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
         profiles: [ workspace, standalone ]

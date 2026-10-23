@@ -37,6 +37,9 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         plan = self._derive_plan(root, ctx.version)
         if plan.failure:
             return plan
+        admitted = self._guard_maintenance_line(root, plan.value)
+        if admitted.failure:
+            return r[m.Infra.ReleasePlan].from_failure(admitted)
         written = u.Cli.json_write(
             self._release_dir(root) / c.Infra.RELEASE_PLAN_FILENAME,
             plan.value.model_dump(mode="json", exclude_computed_fields=True),
@@ -54,6 +57,71 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         return plan
 
     @classmethod
+    def _guard_maintenance_line(
+        cls,
+        root: Path,
+        plan: m.Infra.ReleasePlan,
+    ) -> p.Result[bool]:
+        """Reject every out-of-line candidate before publishing its receipt.
+
+        Returns:
+            Admission or a diagnostic retaining the derived semantic bump.
+
+        """
+        policy = cls._release_policy(root)
+        if policy.failure:
+            return r[bool].from_failure(policy)
+        line = policy.value.maintenance_line
+        if line is not None:
+            candidate = u.Infra.parse_semver(plan.next)
+            if candidate.failure:
+                return r[bool].from_failure(candidate)
+            if candidate.value[:2] != line:
+                return r[bool].fail(
+                    f"release maintenance line violation in {root}: "
+                    f"allowed={line[0]}.{line[1]}.x current={plan.current} "
+                    f"previous_tag={plan.previous_tag} candidate={plan.next} "
+                    f"bump={plan.bump} merges={plan.merges!r}; "
+                    "semantic bumps are not clamped to the maintenance line",
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _release_policy(root: Path) -> p.Result[m.Infra.ReleasePolicySpec]:
+        """Read the release policy of the authenticated containing workspace.
+
+        Returns:
+            The workspace policy, or the repository policy for a standalone checkout.
+
+        """
+        result_type = r[m.Infra.ReleasePolicySpec]
+        owner = u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=root))
+        if owner.failure:
+            return result_type.from_failure(owner)
+        workspace = owner.value.repository_root.resolve()
+        if workspace != root.resolve():
+            members = u.Infra.git_submodule_declarations(workspace)
+            if members.failure:
+                return result_type.from_failure(members)
+            if not any(
+                (workspace / member.path).resolve() == root.resolve()
+                for member in members.value
+            ):
+                return result_type.fail(
+                    f"release policy root is not a declared workspace member: {root}",
+                )
+        document = u.Infra.load_config_document_inputs(
+            workspace,
+            filename=c.Infra.INFRA_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        return u.validate_value(
+            m.Infra.ReleasePolicySpec,
+            u.Cli.json_walk_path(document.value.values, ("Infra", "release")),
+        )
+
+    @classmethod
     def _derive_plan(cls, root: Path, current: str) -> p.Result[m.Infra.ReleasePlan]:
         """Apply the protocol's decision rules to the repository state.
 
@@ -61,7 +129,7 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
             The resulting ``p.Result[m.Infra.ReleasePlan]``.
 
         """
-        tagged = cls._tag_and_history(root)
+        tagged = cls._tag_and_history(root, current)
         if tagged.failure:
             return r[m.Infra.ReleasePlan].from_failure(tagged)
         latest, history = tagged.value
@@ -107,7 +175,11 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         return cls._bump_plan(root, current, latest)
 
     @classmethod
-    def _tag_and_history(cls, root: Path) -> p.Result[t.Pair[str, t.StrSequence]]:
+    def _tag_and_history(
+        cls,
+        root: Path,
+        current: str,
+    ) -> p.Result[t.Pair[str, t.StrSequence]]:
         """Resolve the latest merged release tag and the subjects since it.
 
         Why: CI plans on the pull request's synthetic merge commit, so the
@@ -130,13 +202,27 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
                 c.Infra.GIT_HEAD,
                 "--list",
                 c.Infra.TAG_FORMAT.format(version="[0-9]*"),
-                "--sort=-version:refname",
             ],
             cwd=root,
         )
         if tags.failure:
             return result_type.from_failure(tags)
-        latest = next((line for line in tags.value.splitlines() if line), "")
+        selected = u.Infra.latest_release_tag(tuple(tags.value.splitlines()))
+        if selected.failure:
+            return result_type.from_failure(selected)
+        latest = selected.value
+        if latest:
+            stale = u.Infra.version_is_newer(
+                latest.removeprefix(c.Infra.TAG_FORMAT.format(version="")),
+                current,
+            )
+            if stale.failure:
+                return result_type.from_failure(stale)
+            if stale.value:
+                return result_type.fail(
+                    f"declared current version {current} in {root} is older than "
+                    f"latest merged release {latest}; refusing a release downgrade",
+                )
         history = cls._subjects(root, latest, merges_only=False)
         if history.failure:
             return result_type.from_failure(history)
@@ -158,7 +244,13 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         merges = cls._subjects(root, latest, merges_only=True)
         if merges.failure:
             return r[m.Infra.ReleasePlan].from_failure(merges)
-        bump = u.Infra.plan_bump(merges.value, config.Infra.release.bump_types)
+        policy = cls._release_policy(root)
+        if policy.failure:
+            return r[m.Infra.ReleasePlan].from_failure(policy)
+        if policy.value.finalize_maintenance:
+            bump = r[c.Infra.VersionBump].ok(c.Infra.VersionBump.PATCH)
+        else:
+            bump = u.Infra.plan_bump(merges.value, policy.value.bump_types)
         if bump.failure:
             return r[m.Infra.ReleasePlan].from_failure(bump)
         return u.Infra.bump_version(current, bump.value).map(

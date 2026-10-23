@@ -332,6 +332,14 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
+    class GateOutputReceipt(m.ContractModel):
+        """Exact native output paired with its atomically published runtime path."""
+
+        raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
+            m.Field(description="Unmodified native output", exclude=True)
+        )
+        path: Path = m.Field(description="Durably published native output receipt")
+
     class GateExecutionParams(m.ContractModel):
         """Validated assembly inputs keeping native outcome apart from acceptance."""
 
@@ -341,7 +349,9 @@ class FlextInfraModelsCheck:
         issues: t.VariadicTuple[Issue] = m.Field(
             description="Complete native diagnostics",
         )
-        raw_output: str = m.Field(description="Unmodified native output")
+        raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
+            m.Field(description="Unmodified native output")
+        )
         started: float = m.Field(description="Monotonic execution start time")
 
     class GateExecution(m.ArbitraryTypesModel):
@@ -356,14 +366,16 @@ class FlextInfraModelsCheck:
                 "Complete native gate diagnostics, including informative findings"
             ),
         )
-        raw_output: str = m.Field(
-            "",
-            description=(
-                "In-memory native output; persisted once at raw_receipt rather "
-                "than duplicated inside serialized execution summaries"
-            ),
-            exclude=True,
-            validate_default=True,
+        raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
+            m.Field(
+                default="",
+                description=(
+                    "In-memory native output; persisted once at raw_receipt rather "
+                    "than duplicated inside serialized execution summaries"
+                ),
+                exclude=True,
+                validate_default=True,
+            )
         )
         raw_receipt: Path | None = m.Field(
             None,

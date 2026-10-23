@@ -26,6 +26,12 @@ name: CI
 {%- endfor %}
     types: [opened, synchronize, reopened, ready_for_review, edited]
   workflow_call:
+    inputs:
+      ref:
+        description: Exact candidate commit to validate instead of the caller event SHA.
+        required: false
+        type: string
+        default: ""
     secrets:
       CI_DEPENDENCIES_APP_ID:
         required: false
@@ -45,7 +51,7 @@ name: CI
 # group: a PR event delivered after its merge resolves github.ref to the base
 # branch and, keyed by ref alone, cancelled the post-merge run.
 concurrency:
-  group: {% raw %}${{ github.workflow }}-${{ github.event_name }}-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || github.ref }}{% endraw %}
+  group: {% raw %}${{ github.workflow }}-${{ github.event_name }}-${{ inputs.ref || (github.event_name == 'pull_request' && github.event.pull_request.number) || github.ref }}{% endraw %}
   cancel-in-progress: true
 
 jobs:
@@ -74,6 +80,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           persist-credentials: false
           fetch-depth: 0
+          ref: {% raw %}${{ inputs.ref || github.sha }}{% endraw %}
 {%- include "_fragments/private_dependency_auth.j2" %}
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
@@ -222,6 +229,7 @@ jobs:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
           persist-credentials: false
+          ref: {% raw %}${{ inputs.ref || github.sha }}{% endraw %}
 {%- include "_fragments/private_dependency_auth.j2" %}
 {%- include "_fragments/custom_steps.j2" %}
 {%- include "_fragments/mise_install.j2" %}
@@ -232,5 +240,4 @@ jobs:
           PR_TITLE: {% raw %}${{ github.event.pull_request.title }}{% endraw %}
         run: {{ make.ci.variable }}={{ make.ci.value }} make release-plan
   # End SECTION: release-plan job
-
 

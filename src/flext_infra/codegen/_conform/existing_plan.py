@@ -273,7 +273,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         repository = target.repository
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
-        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
+        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(
+            root,
+            read_committed_directory=u.Infra.git_committed_directory_blobs,
+        )
         if managed_artifacts.failure:
             return result_type.from_failure(managed_artifacts)
         u.Cli.info(

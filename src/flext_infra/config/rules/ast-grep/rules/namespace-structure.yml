@@ -237,10 +237,7 @@ id: ban-reverse-runtime-import-settings
 language: python
 severity: error
 files:
-  - "**/settings.py"
-  - "**/_settings.py"
-  - "**/config.py"
-  - "**/_config.py"
+  - "**/*.py"
 metadata:
   context:
     MODULE:

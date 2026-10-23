@@ -197,16 +197,27 @@ class TestsFlextInfraTransactionLease:
         tm.ok(transaction.run_files_locked(roots, publish))
 
     @staticmethod
+    def _run_files(scope: Path) -> None:
+        """Run one complete file transaction over the repository's own root."""
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=scope),
+        )
+        tm.ok(
+            transaction.run_files_locked(
+                transaction.capability_roots("mise", (scope,)),
+                TestsFlextInfraTransactionLease._ok_path,
+            ),
+        )
+
+    @staticmethod
     def _acquire_when_granted(scope: Path, acquired: Event) -> None:
-        """Wait politely for the scope lease, then report the grant.
+        """Wait politely for the repository's file lease, then report the grant.
 
         flext-c2kp3: a same-scope contender must wait for a live holder instead
         of failing fast, so this child only publishes ``acquired`` once the
         kernel actually grants the lease.
         """
-        owner = FlextInfraCodegenMiseArtifacts(repository_root=scope)
-        transaction = FlextInfraCodegenTransaction(owner)
-        tm.ok(transaction.run_locked(prepare=True, operation=r[Path].ok))
+        TestsFlextInfraTransactionLease._run_files(scope)
         acquired.set()
 
     @staticmethod
@@ -241,17 +252,6 @@ class TestsFlextInfraTransactionLease:
         return root, member, independent
 
     @staticmethod
-    def _run_member_transaction(member: Path) -> None:
-        """Run one full transaction against the held member scope."""
-        owner = FlextInfraCodegenMiseArtifacts(repository_root=member)
-        tm.ok(
-            FlextInfraCodegenTransaction(owner).run_locked(
-                prepare=True,
-                operation=lambda scope: owner.validate_artifacts(member, scope),
-            ),
-        )
-
-    @staticmethod
     def _run_independent_transaction(independent: Path) -> None:
         """Run one full transaction in the free scope while the lease is held."""
         independent_owner = FlextInfraCodegenMiseArtifacts(
@@ -272,9 +272,15 @@ class TestsFlextInfraTransactionLease:
         self,
         tmp_path: Path,
     ) -> None:
-        """A same-scope contender waits for a live holder; scopes are free."""
+        """A same-member contender waits; the workspace and other scopes are free.
+
+        A member's file publication anchors its journal in the member's own Git
+        directory, so the workspace journal stays free for every other member.
+        """
         root, member, independent = self._member_workspace(tmp_path)
-        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)),
+        )
         journal_path = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         lock_path = journal_path.with_name(f"{journal_path.name}.lock")
         context = multiprocessing.get_context("spawn")
@@ -305,6 +311,11 @@ class TestsFlextInfraTransactionLease:
             tm.that(journal_path.read_bytes(), eq=journal_before)
 
             self._run_independent_transaction(independent)
+            tm.ok(
+                FlextInfraCodegenTransaction(
+                    FlextInfraCodegenMiseArtifacts(repository_root=root),
+                ).run_locked(prepare=True, operation=self._ok_path),
+            )
             tm.that(journal_path.read_bytes(), eq=journal_before)
 
             # Releasing the holder hands the lease to the waiting contender.
@@ -334,7 +345,7 @@ class TestsFlextInfraTransactionLease:
             (lock_after.st_dev, lock_after.st_ino),
             eq=(lock_before.st_dev, lock_before.st_ino),
         )
-        self._run_member_transaction(member)
+        self._run_files(member)
         tm.that(lock_path.stat().st_ino, eq=lock_after.st_ino)
 
     def test_file_participant_lease_lives_in_ignored_state_directory(

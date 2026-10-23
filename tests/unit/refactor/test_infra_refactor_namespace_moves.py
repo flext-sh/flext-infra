@@ -146,7 +146,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             "class Payload(BaseModel):\n    value: str\n"
             "def normalize(value: Label) -> Label:\n"
             "    return value.strip().upper() * FACTOR\n"
-            "__all__ = ('DeclaredOwner', 'Parent', 'Payload', 'normalize', 'FACTOR', 'Label')\n",
+            "__all__ = ('DeclaredOwner', 'Parent', 'Payload', 'normalize', "
+            "'FACTOR', 'Label')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         (package / "unrelated.py").write_text(
@@ -176,9 +177,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             "__all__ = ('_core', 'DeclaredOwner', 'normalize')\n"
             "def direct(value: '_core.DeclaredOwner') -> '_core.DeclaredOwner':\n"
             "    return value\n"
-            "def aliased(value: 'module_alias.DeclaredOwner') -> 'module_alias.DeclaredOwner':\n"
+            "def aliased(value: 'module_alias.DeclaredOwner') "
+            "-> 'module_alias.DeclaredOwner':\n"
             "    return value\n"
-            "def other(value: 'unrelated.DeclaredOwner') -> 'unrelated.DeclaredOwner':\n"
+            "def other(value: 'unrelated.DeclaredOwner') "
+            "-> 'unrelated.DeclaredOwner':\n"
             "    return value\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -199,8 +202,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         reference_program = (
             "from typing import get_type_hints\n"
             f"from {package.name} import consumer\n"
-            "print(get_type_hints(consumer.Consumer)['value'] is consumer.owner.DeclaredOwner)\n"
-            "print(get_type_hints(consumer.aliased)['value'] is consumer.owner.DeclaredOwner)\n"
+            "print(get_type_hints(consumer.Consumer)['value'] "
+            "is consumer.owner.DeclaredOwner)\n"
+            "print(get_type_hints(consumer.aliased)['value'] "
+            "is consumer.owner.DeclaredOwner)\n"
             f"print(getattr(consumer, {package.name!r}))\n"
             f"print(getattr(consumer.Consumer, {package.name!r}))\n"
         )
@@ -215,8 +220,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 workspace.rope_project,
                 source,
                 destination_file=target,
-                sources=sources,
-                source_states=states,
+                inputs=(sources, states),
             )
         tm.fail(target.exists())
         if nested:
@@ -280,10 +284,14 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 "print(relocated.FACTOR)\n"
                 "print(relocated.Label.__value__ is str)\n"
                 "print(relocated.DeclaredOwner.__bases__ == (relocated.Parent,))\n"
-                "print(get_type_hints(consumer.direct)['value'] is relocated.DeclaredOwner)\n"
-                "print(get_type_hints(consumer.aliased)['value'] is relocated.DeclaredOwner)\n"
-                "print(get_type_hints(consumer.other)['value'] is consumer.unrelated.DeclaredOwner)\n"
-                "print(consumer.unrelated_module.DeclaredOwner is relocated.DeclaredOwner)\n"
+                "print(get_type_hints(consumer.direct)['value'] "
+                "is relocated.DeclaredOwner)\n"
+                "print(get_type_hints(consumer.aliased)['value'] "
+                "is relocated.DeclaredOwner)\n"
+                "print(get_type_hints(consumer.other)['value'] "
+                "is consumer.unrelated.DeclaredOwner)\n"
+                "print(consumer.unrelated_module.DeclaredOwner "
+                "is relocated.DeclaredOwner)\n"
                 "print(consumer.owner.DeclaredOwner is relocated.DeclaredOwner)\n"
                 "print(getattr(consumer, consumer.__all__[0]) is relocated)\n"
                 "print(consumer.PAYLOAD)\n",
@@ -362,8 +370,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     workspace.rope_project,
                     source,
                     destination_file=target,
-                    sources=sources,
-                    source_states=states,
+                    inputs=(sources, states),
                 )
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
@@ -385,8 +392,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     workspace.rope_project,
                     source,
                     destination_file=target,
-                    sources=sources,
-                    source_states=states,
+                    inputs=(sources, states),
                 )
         tm.fail(target.parent.exists())
         for state in states:
@@ -406,8 +412,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     workspace.rope_project,
                     source,
                     destination_file=target,
-                    sources={source: sources[source]},
-                    source_states=states,
+                    inputs=({source: sources[source]}, states),
                 )
         tm.fail(target.parent.exists())
         for state in states:
@@ -426,8 +431,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 workspace.rope_project,
                 source,
                 destination_file=target,
-                sources=sources,
-                source_states=states,
+                inputs=(sources, states),
             )
         occupied = target.with_suffix("")
         occupied.mkdir()
@@ -468,8 +472,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     workspace.rope_project,
                     source,
                     destination_file=target,
-                    sources=sources,
-                    source_states=states,
+                    inputs=(sources, states),
                 )
         tm.fail(target.exists())
         for state in states:
@@ -588,8 +591,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 workspace.rope_project,
                 source,
                 target.parent,
-                sources=sources,
-                source_states=states,
+                inputs=(sources, states),
             )
         for plan in plans:
             tm.that(
@@ -642,8 +644,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 workspace.rope_project,
                 source,
                 target.parent,
-                sources=sources,
-                source_states=states,
+                inputs=(sources, states),
             )
         newer = source.read_bytes() + b"\n# Newer authored work.\n"
         tm.ok(
@@ -693,8 +694,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     workspace.rope_project,
                     source,
                     target.parent,
-                    sources=sources,
-                    source_states=states,
+                    inputs=(sources, states),
                 )
         tm.fail(target.parent.exists())
 

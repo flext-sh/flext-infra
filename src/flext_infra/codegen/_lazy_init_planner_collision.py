@@ -121,16 +121,14 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             The authenticated owner, or None for equally authoritative routes.
 
         """
-        a_parts = self._module_parts(a[0])
-        b_parts = self._module_parts(b[0])
         a_file = self._module_file(a[0])
         b_file = self._module_file(b[0])
-        a_binding = self.rope_workspace.rope_project.get_module(a[0]).get_attribute(
-            a[1]
-        )
-        b_binding = self.rope_workspace.rope_project.get_module(b[0]).get_attribute(
-            b[1]
-        )
+        a_binding = u.Infra.require_semantic_module(
+            self.rope_workspace.rope_project.get_module(a[0])
+        ).get_attribute(a[1])
+        b_binding = u.Infra.require_semantic_module(
+            self.rope_workspace.rope_project.get_module(b[0])
+        ).get_attribute(b[1])
         a_object, b_object = a_binding.get_object(), b_binding.get_object()
         if a_object != b_object and a_object in u.Infra.class_ancestry(b_object):
             return b
@@ -140,6 +138,22 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return b if b_file is not None and b_file.name != c.Infra.INIT_PY else None
         if b_file is not None and b_file.name == c.Infra.INIT_PY:
             return a
+        ranked = self._rank_reexport_target(a, b, name=name)
+        if ranked is not None:
+            return ranked
+        return self._introducing_target((a, a_binding, a_file), (b, b_binding, b_file))
+
+    def _rank_reexport_target(
+        self, a: t.StrPair, b: t.StrPair, *, name: str
+    ) -> t.StrPair | None:
+        """Compare publication routes without inventing a filename tie-breaker.
+
+        Returns:
+            The stronger route, or None for equally authoritative routes.
+
+        """
+        a_parts = self._module_parts(a[0])
+        b_parts = self._module_parts(b[0])
         a_private = len(self._private_segments(a_parts))
         b_private = len(self._private_segments(b_parts))
         if a_private != b_private:
@@ -149,7 +163,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         a_score, b_score = self._target_score(name, a), self._target_score(name, b)
         if a_score != b_score:
             return a if a_score > b_score else b
-        return self._introducing_target((a, a_binding, a_file), (b, b_binding, b_file))
+        return None
 
     @staticmethod
     def _introducing_target(
@@ -198,8 +212,12 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         """
         if not a[1] or not b[1]:
             return False
-        a_module = self.rope_workspace.rope_project.get_module(a[0])
-        b_module = self.rope_workspace.rope_project.get_module(b[0])
+        a_module = u.Infra.require_semantic_module(
+            self.rope_workspace.rope_project.get_module(a[0])
+        )
+        b_module = u.Infra.require_semantic_module(
+            self.rope_workspace.rope_project.get_module(b[0])
+        )
         if (
             a[1] not in a_module.get_attributes()
             or b[1] not in b_module.get_attributes()

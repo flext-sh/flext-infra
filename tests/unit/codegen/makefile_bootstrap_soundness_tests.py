@@ -15,12 +15,9 @@ from shlex import quote
 
 import pytest
 
-from flext_infra import config, settings
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
-from tests.unit.codegen.test_mise_pin_bootstrap import (
-    TestsFlextInfraMisePinBootstrap as MisePinBootstrapFixture,
-)
+from flext_infra import config, settings, workspace
+from tests import c, m, t, tm, u
+from tests.unit.codegen import test_mise_pin_bootstrap
 
 
 class TestsFlextInfraMakefileBootstrapSoundness:
@@ -45,8 +42,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         policy = inputs.spec.make.uv_resolution
         tm.that(settings.Infra.editable_supplier_root is not None, eq=supplier)
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        rendered = u.Tests.conform_makefile_text(root, workspace)
+        spec = tm.ok(workspace.FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        rendered = u.Tests.conform_makefile_text(root, spec)
         tm.ok(u.Cli.atomic_write_text_file(root / c.Infra.MAKEFILE_FILENAME, rendered))
         (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             "$(info install-runtime-recipe=$(value INSTALL_RUNTIME_RECIPE))\n",
@@ -116,14 +113,14 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             c.Infra.MakeProfile.STANDALONE,
             bootstrap=True,
         )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        spec = tm.ok(workspace.FlextInfraWorkspaceDetector.load_workspace_spec(root))
         supplier_root = tmp_path / "supplier"
         supplier_root.mkdir()
         editable_supplier(supplier_root)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / c.Infra.MAKEFILE_FILENAME,
-                u.Tests.conform_makefile_text(root, workspace),
+                u.Tests.conform_makefile_text(root, spec),
             )
         )
         marker = root / "pre-upg-ran"
@@ -189,14 +186,25 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 associated=True,
             )
         )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
+        u.Tests.initialize_git_repo(
+            member,
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url(member.name),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            root,
+            member,
+            distribution=member.name,
+            relative_path=member.relative_to(root).as_posix(),
+        )
+        u.Tests.git_run(root, "submodule", "absorbgitdirs")
+        spec = tm.ok(workspace.FlextInfraWorkspaceDetector.load_workspace_spec(member))
         supplier_root = tmp_path / "supplier"
         supplier_root.mkdir()
         editable_supplier(supplier_root)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 member / c.Infra.MAKEFILE_FILENAME,
-                u.Tests.conform_makefile_text(member, workspace),
+                u.Tests.conform_makefile_text(member, spec),
             )
         )
         policy = config.Infra.codegen.make.uv_resolution
@@ -312,7 +320,11 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         isolation = tmp_path / "native-tools"
         (isolation / "home").mkdir(parents=True)
-        native_env = MisePinBootstrapFixture.environment(isolation)
+        native_env = (
+            test_mise_pin_bootstrap.TestsFlextInfraMisePinBootstrap.environment(
+                isolation
+            )
+        )
         for project in (root, member):
             tm.ok(
                 u.Cli.run_checked(
@@ -334,7 +346,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         locks = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in lock_paths
         )
-        system_tools = MisePinBootstrapFixture.system_path_without_mise(isolation)
+        system_tools = (
+            test_mise_pin_bootstrap.TestsFlextInfraMisePinBootstrap
+        ).system_path_without_mise(isolation)
         optional_credential_provider = system_tools / "gh"
         if optional_credential_provider.is_symlink():
             optional_credential_provider.unlink()
@@ -394,8 +408,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         "entry",
         ["spaced", "symlink", "outside-spaced", "outside-symlink"],
     )
+    @staticmethod
     def test_public_make_paths_keep_the_physical_runtime_owner(
-        self,
         tmp_path: Path,
         entry: str,
     ) -> None:
@@ -520,7 +534,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     @staticmethod
     def _runtime_context_probe(
         project: Path,
-        env: dict[str, str],
+        env: t.StrMapping,
         *,
         cwd: Path,
     ) -> m.Infra.WorkspaceRuntimeContext:
@@ -565,12 +579,14 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         return m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
 
     @pytest.mark.parametrize("invocation", ["root", "member"])
+    @pytest.mark.parametrize("excluded", [False, True])
     @pytest.mark.parametrize("hosted", [False, True])
     def test_hosted_runtime_is_independent_of_local_ci_partition(
         self,
         tmp_path: Path,
         invocation: str,
         *,
+        excluded: bool,
         hosted: bool,
     ) -> None:
         """Make and the runtime API distinguish hosted isolation from local CI.
@@ -585,11 +601,12 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             shape=u.Tests.MakeEnvironmentShape(project_name="hosted-owner-root"),
         )
         member, _ = u.Tests.render_make_environment(
-            root,
+            tmp_path / "hosted-member-seed",
             c.Infra.MakeProfile.STANDALONE,
             bootstrap=True,
             shape=u.Tests.MakeEnvironmentShape(project_name="hosted-owner-member"),
         )
+        member = member.rename(root / member.name)
         u.Tests.WorktreeFixture.attach_submodule(
             root,
             member,
@@ -597,12 +614,28 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             relative_path=member.relative_to(root).as_posix(),
         )
         u.Tests.git_run(root, "submodule", "absorbgitdirs")
-        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        if excluded:
+            document = u.Tests.toml_doc(
+                (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+            )
+            u.Cli.toml_ensure_table(u.Cli.toml_ensure_table(document, "tool"), "uv")[
+                "workspace"
+            ] = {
+                "members": [],
+                "exclude": [member.relative_to(root).as_posix()],
+            }
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / c.PYPROJECT_FILENAME,
+                    u.Cli.toml_dumps(document),
+                ),
+            )
         environment = root / c.Infra.ENVIRONMENT_DIRECTORY
-        native_options = m.Cli.ProcessOptions(
-            remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+        self._provisioned_native_venv(
+            tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root)),
+            environment,
+            m.Cli.ProcessOptions(remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS),
         )
-        self._provisioned_native_venv(binary, environment, native_options)
         tm.fail(environment.is_symlink())
         tm.ok((environment / "pyvenv.cfg").is_file())
         member_environment = member / c.Infra.ENVIRONMENT_DIRECTORY
@@ -654,8 +687,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(context.standalone, eq=hosted)
         tm.fail(member_environment.exists())
 
+    @staticmethod
     def test_python_project_without_python_ancestor_owns_its_runtime(
-        self,
         tmp_path: Path,
     ) -> None:
         """A Git-only container supplies no Python composition or tool manifest."""
@@ -724,7 +757,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             process.stdout,
             has=f"independent-environment={environment.resolve()}\n",
         )
-        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
+        context = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.resolution_context(project)
+        )
         tm.that(context.runtime_root, eq=project.resolve())
         tm.that(context.environment_path, eq=environment.resolve())
         for path in (
@@ -735,8 +770,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         ):
             tm.fail(path.exists())
 
+    @staticmethod
     def test_dangling_git_marker_rejects_ancestor_discovery(
-        self,
         tmp_path: Path,
     ) -> None:
         """A malformed declared Git boundary cannot become an absent boundary."""
@@ -800,7 +835,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.ok(process.outcome.raw_return_code != 0)
         tm.that(process.stderr, has=native_error.stderr.strip())
         tm.that(process.stdout, lacks="nested-help-executed")
-        context = FlextInfraWorkspaceDetector.resolution_context(project)
+        context = workspace.FlextInfraWorkspaceDetector.resolution_context(project)
         tm.ok(context.failure)
         tm.ok(marker.is_symlink())
         tm.fail(marker.exists())
@@ -949,8 +984,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             eq=metadata_before,
         )
 
+    @staticmethod
     def test_public_make_preserves_native_project_mise_lock_scope(
-        self,
         tmp_path: Path,
     ) -> None:
         """The complete Make environment cannot reclassify project tools as global."""
@@ -1039,8 +1074,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
     @pytest.mark.parametrize("scenario", ["relative-link", "link-cycle"])
+    @staticmethod
     def test_public_make_authenticates_file_aliases_without_replacing_the_invoker(
-        self,
         tmp_path: Path,
         scenario: str,
     ) -> None:
@@ -1097,8 +1132,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     @pytest.mark.parametrize("verb", ["setup", "upg"])
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     @pytest.mark.parametrize("broken", [False, True])
+    @staticmethod
     def test_borrowed_environment_blocks_bootstrap_before_effects(
-        self,
         tmp_path: Path,
         verb: str,
         profile: c.Infra.MakeProfile,

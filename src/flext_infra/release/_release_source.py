@@ -23,7 +23,7 @@ class FlextInfraReleaseSourceMixin(FlextInfraReleaseArtifactMixin):
         stage_path: Path,
         gitleaks_config: Path,
     ) -> p.Result[t.Pair[m.Infra.SourceSnapshot, str]]:
-        """Extract HEAD of a clean project; scan, return identity + license digest.
+        """Extract committed HEAD; scan, return identity + license digest.
 
         Returns:
             The resulting ``p.Result[t.Pair[m.Infra.SourceSnapshot, str]]``.
@@ -47,22 +47,13 @@ class FlextInfraReleaseSourceMixin(FlextInfraReleaseArtifactMixin):
 
     @staticmethod
     def _committed_snapshot(project_path: Path) -> p.Result[m.Infra.SourceSnapshot]:
-        """Read the HEAD commit identity of a project with a clean working tree.
+        """Read HEAD once without consuming or changing working-tree or index bytes.
 
         Returns:
             The committed source identity and its reproducible epoch.
 
         """
         result_type = r[m.Infra.SourceSnapshot]
-        status = u.Cli.capture(
-            [c.Infra.GIT, "status", "--porcelain"],
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
-        if status.failure:
-            return result_type.from_failure(status)
-        if status.value.strip():
-            return result_type.fail(f"release project is dirty: {project_path}")
         identity = u.Cli.capture(
             [
                 c.Infra.GIT,

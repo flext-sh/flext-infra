@@ -30,7 +30,9 @@ class TestsFlextInfraGateErrorReporting:
         tmp_path: Path,
     ) -> None:
         """Test workspace report retains all executed failures."""
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path, "p1", pyproject='[project]\nname = "p1"\n', with_src=True
+        )
         (project_dir / "src" / "p1" / "value.py").write_text(
             "value=[1,2,3]\n",
             encoding="utf-8",
@@ -86,7 +88,9 @@ class TestsFlextInfraGateErrorReporting:
         tmp_path: Path,
     ) -> None:
         """Test ruff format reports each unformatted file once."""
-        proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        proj_dir = u.Tests.mk_project(
+            tmp_path, "p1", pyproject='[project]\nname = "p1"\n', with_src=True
+        )
         unformatted = "value=[1,2,3]\n\n\n\n\nother=(4,5)\n"
         for name in ("one.py", "two.py"):
             (proj_dir / c.Infra.DEFAULT_SRC_DIR / name).write_text(
@@ -108,11 +112,14 @@ class TestsFlextInfraGateErrorReporting:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """A formatter error without issues remains available in its raw receipt."""
+        """A native formatter error retains its blocking diagnostic and receipt."""
         project_dir = u.Tests.mk_project(
             tmp_path,
             "p1",
-            pyproject='[tool.ruff]\nline-length = "invalid-line-length"\n',
+            pyproject=(
+                '[project]\nname = "p1"\n'
+                '[tool.ruff]\nline-length = "invalid-line-length"\n'
+            ),
             with_src=True,
         )
         (project_dir / "src" / "p1" / "value.py").write_text(
@@ -131,8 +138,9 @@ class TestsFlextInfraGateErrorReporting:
         project = result.value[0]
         tm.fail(project.passed)
         execution = project.gates[c.Infra.FORMAT]
-        tm.fail(bool(execution.issues))
-        tm.fail(bool(execution.result.errors))
+        tm.that(tuple(issue.code for issue in execution.issues), eq=("format-exec",))
+        tm.that(len(execution.result.errors), eq=1)
+        tm.that(execution.result.errors[0], has="invalid-line-length")
         tm.that(execution.raw_output, has="invalid-line-length")
         tm.that(execution.raw_receipt, none=False)
         tm.that(
@@ -142,8 +150,7 @@ class TestsFlextInfraGateErrorReporting:
         captured = capsys.readouterr()
         tm.that(
             f"{captured.out}\n{captured.err}",
-            has=str(execution.raw_receipt),
-            lacks="invalid-line-length",
+            has=[str(execution.raw_receipt), "invalid-line-length"],
         )
 
     @staticmethod
@@ -159,7 +166,7 @@ class TestsFlextInfraGateErrorReporting:
         )
         source_marker = "native_receipt_source_marker"
         (source_dir / "finding.py").write_text(
-            f'assert "{source_marker}"\n',
+            f'eval("{source_marker}")\n',
             encoding="utf-8",
         )
         invalid = source_dir / "invalid.py"
@@ -188,6 +195,7 @@ class TestsFlextInfraGateErrorReporting:
         tm.that(execution.raw_receipt.parent.parent.parent, eq=reports_dir)
         receipt = execution.raw_receipt.read_bytes().decode("utf-8")
         tm.that(receipt, eq=execution.raw_output, has=source_marker)
+        tm.that(any(issue.code == "B307" for issue in execution.issues), eq=True)
         tm.that(
             any(
                 issue.code == c.Infra.ToolOutcome.ERROR
@@ -264,6 +272,7 @@ class TestsFlextInfraGateErrorReporting:
             tmp_path,
             "p1",
             pyproject=(
+                '[project]\nname = "p1"\n'
                 '[tool.mypy]\nplugins = ["broken_plugin.py"]\nshow_traceback = true\n'
             ),
             with_src=True,

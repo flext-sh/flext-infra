@@ -180,7 +180,7 @@ class TestsFlextInfraMisePinBootstrap:
         receipt = report.receipts[0]
         tm.that(receipt.root, eq=Path())
         tm.ok(receipt.executed)
-        tm.fail(receipt.completed)
+        tm.that(receipt.completed, eq=False)
         tm.that(receipt.native_exit_code, eq=2)
         tm.that(receipt.stage, eq="lock-pin")
         tm.that(receipt.files, eq=())

@@ -120,7 +120,8 @@ class FlextInfraConfigModelsRelease:
         and died with "release build selected no publishable projects".
         Publishable membership is project policy, not a naming convention.
 
-        `bump_types` maps a Conventional Commits type found in a merged
+        Unless explicit maintenance finalization is selected, `bump_types` maps
+        a Conventional Commits type found in a merged
         pull-request title to the bump it earns; a type absent from the map
         releases nothing, and `!` in the title always earns a major bump. The
         Conventional Commits defaults are the typed default, so a consumer
@@ -157,6 +158,27 @@ class FlextInfraConfigModelsRelease:
                 "perf": c.Infra.VersionBump.PATCH,
             }
         )
+        maintenance_line: Annotated[
+            t.Pair[t.NonNegativeInt, t.NonNegativeInt] | None,
+            m.Field(
+                description="Permitted major/minor release line; unset is unrestricted",
+            ),
+        ] = None
+        finalize_maintenance: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Finalize the declared maintenance line with a patch release "
+                    "instead of deriving a new major/minor line from commit titles"
+                ),
+            ),
+        ] = False
+        publish_index: Annotated[
+            bool,
+            m.Field(
+                description="Permit explicitly requested package index publication",
+            ),
+        ] = False
         publish_url: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -173,6 +195,22 @@ class FlextInfraConfigModelsRelease:
                 ),
             ),
         ]
+
+        @m.model_validator(mode="after")
+        def _validate_maintenance_finalization(self) -> Self:
+            """Require a declared line for an explicit maintenance release.
+
+            Returns:
+                The validated policy.
+
+            Raises:
+                ValueError: If finalization has no declared maintenance line.
+
+            """
+            if self.finalize_maintenance and self.maintenance_line is None:
+                msg = "maintenance finalization requires a declared maintenance line"
+                raise ValueError(msg)
+            return self
 
     class BuildConstraintSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One hash-pinned build requirement (``uv build --require-hashes``)."""

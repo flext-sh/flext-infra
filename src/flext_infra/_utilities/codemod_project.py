@@ -607,18 +607,6 @@ class FlextInfraUtilitiesCodemodProject(
                     return False
                 continue
             if condition.predicate in {
-                c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
-                c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
-            }:
-                if (
-                    cls._declaration_condition_admits(
-                        admission, condition, source, project, sources
-                    )
-                    is not condition.holds
-                ):
-                    return False
-                continue
-            if condition.predicate in {
                 c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                 c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
@@ -689,6 +677,13 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If a native predicate lacks its original source epoch.
 
         """
+        if condition.predicate in {
+            c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
+            c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+        }:
+            return cls._declaration_condition_admits(
+                admission, condition, source, project, sources
+            )
         if (
             condition.predicate is c.Infra.CodemodContextPredicate.LATER_LAYER
             and project is not None
@@ -729,14 +724,17 @@ class FlextInfraUtilitiesCodemodProject(
             or source not in sources
         ):
             raise ValueError(messages[condition.predicate])
-        if condition.predicate is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION:
-            return cls._isolated_execution_holds(project, condition, source, sources)
-        if (
-            condition.predicate
-            is c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION
-        ):
-            return cls._canonical_static_publication(
-                admission, condition, source, project, sources
+        if condition.predicate in {
+            c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
+            c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION,
+        }:
+            return (
+                cls._isolated_execution_holds(project, condition, source, sources)
+                if condition.predicate
+                is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION
+                else cls._canonical_static_publication(
+                    admission, condition, source, project, sources
+                )
             )
         # One epoch owns one implementation closure per primitive, for every finding.
         cached = cls._implementation_owner_cache.get()
@@ -1022,8 +1020,7 @@ class FlextInfraUtilitiesCodemodProject(
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         return (
-            FlextInfraUtilitiesImportLaw.import_module_role(module.get_name())
-            == "layer0"
+            FlextInfraUtilitiesImportLaw.import_source_role(project, module) == "layer0"
         )
 
     @classmethod
@@ -2006,6 +2003,7 @@ class FlextInfraUtilitiesCodemodProject(
                 | c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
                 | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
                 | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
+                | c.Infra.CodemodContextPredicate.FAMILY_MEMBER
             ):
                 return cls._context_project_holds(
                     root,
@@ -2096,7 +2094,18 @@ class FlextInfraUtilitiesCodemodProject(
                 # The project owns its public package and its internal tiers
                 # (tests, examples, scripts); an absolute import between them
                 # never crosses a package boundary.
-                return module == own or module in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                    root, file_path
+                )
+                if owner is None:
+                    msg = f"project owner is unresolved: {file_path}"
+                    raise ValueError(msg)
+                namespaces = FlextInfraUtilitiesCodegenNamespace
+                return (
+                    module == own
+                    or module in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                    or module in namespaces.repository_namespace_packages(owner)
+                )
             case c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE:
                 return module in facts.runtime_modules
             case c.Infra.CodemodContextPredicate.FACADE_PACKAGE:
@@ -2189,8 +2198,19 @@ class FlextInfraUtilitiesCodemodProject(
         """
         value, of = captured
         match predicate:
-            case c.Infra.CodemodContextPredicate.MODULE_EXPORT:
-                return value in cls._module_exports(file_path)
+            case (
+                c.Infra.CodemodContextPredicate.MODULE_EXPORT
+                | c.Infra.CodemodContextPredicate.FACADE_MODULE
+            ):
+                exports = cls._module_exports(file_path)
+                return (
+                    value in exports
+                    if predicate is c.Infra.CodemodContextPredicate.MODULE_EXPORT
+                    else bool(
+                        frozenset(config.Infra.tooling.lazy_init.import_layer_order)
+                        & exports
+                    )
+                )
             case c.Infra.CodemodContextPredicate.FILE_FAMILY:
                 return value in cls._file_families(file_path)
             case c.Infra.CodemodContextPredicate.PACKAGE_EXPORT:
@@ -2198,11 +2218,6 @@ class FlextInfraUtilitiesCodemodProject(
                     msg = f"predicate {predicate} requires an 'of' capture"
                     raise ValueError(msg)
                 return value in cls._package_exports(of)
-            case c.Infra.CodemodContextPredicate.FACADE_MODULE:
-                return bool(
-                    frozenset(config.Infra.tooling.lazy_init.import_layer_order)
-                    & cls._module_exports(file_path),
-                )
             case c.Infra.CodemodContextPredicate.LATER_LAYER:
                 return cls._later_layer(root, file_path, value, condition)
             case c.Infra.CodemodContextPredicate.CLASS_STEM:
@@ -2233,10 +2248,15 @@ class FlextInfraUtilitiesCodemodProject(
         match predicate:
             case c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT:
                 return cls._context_root_init_holds(root, file_path)
-            case c.Infra.CodemodContextPredicate.FAMILY_BASE:
-                return cls._family_package_has_base(file_path)
-            case c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE:
-                return cls._family_base_file(root, file_path)
+            case (
+                c.Infra.CodemodContextPredicate.FAMILY_BASE
+                | c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE
+            ):
+                return (
+                    cls._family_package_has_base(file_path)
+                    if predicate is c.Infra.CodemodContextPredicate.FAMILY_BASE
+                    else cls._family_base_file(root, file_path)
+                )
             case c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE:
                 owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                     root, file_path
@@ -2255,6 +2275,8 @@ class FlextInfraUtilitiesCodemodProject(
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
             case c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:
                 return cls.composes_family_package(file_path, value)
+            case c.Infra.CodemodContextPredicate.FAMILY_MEMBER:
+                return cls._family_member(root, file_path, value)
             case _:
                 message = f"predicate is not project-scoped: {predicate}"
                 raise ValueError(message)
@@ -2381,6 +2403,49 @@ class FlextInfraUtilitiesCodemodProject(
             module: frozenset(canonicalize_name(name) for name in providers)
             for module, providers in packages_distributions().items()
         })
+
+    @staticmethod
+    def _family_member(root: Path, file_path: Path, imported: str) -> bool:
+        """Return whether a module belongs to the private family it imports.
+
+        The family is the imported path up to its first ``_``-prefixed
+        segment; its facade is that path with the underscore removed. The
+        finding belongs to it when its dotted module lies inside the family
+        tree or is the facade module itself.
+
+        Returns:
+            Whether the finding's module is a member or the facade of the family.
+
+        Raises:
+            ValueError: If the finding's project or namespace is unresolved.
+
+        """
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            root, file_path
+        )
+        located = (
+            None
+            if owner is None
+            else FlextInfraUtilitiesImportLaw.import_namespace(owner, file_path)
+        )
+        if located is None:
+            msg = f"module namespace is unresolved: {file_path}"
+            raise ValueError(msg)
+        parts = imported.split(".")
+        private = next(
+            (
+                index
+                for index, part in enumerate(parts)
+                if part.startswith("_") and not part.startswith("__")
+            ),
+            None,
+        )
+        if private is None:
+            return False
+        family = ".".join(parts[: private + 1])
+        facade = ".".join((*parts[:private], parts[private].removeprefix("_")))
+        module = located[1]
+        return module in {family, facade} or module.startswith(f"{family}.")
 
     @staticmethod
     def _module_exports(file_path: Path) -> frozenset[str]:
@@ -2678,7 +2743,14 @@ class FlextInfraUtilitiesCodemodProject(
         prefix = FlextInfraUtilitiesCodegenNamespace.project_prefix(
             file_path,
             project_layout=layout,
+            source_project=source_project,
         )
+        if file_path.relative_to(owner).parts[0] in (
+            FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(
+                owner, source_project=source_project
+            )
+        ):
+            return name.startswith(prefix)
         if file_path.is_relative_to(owner / c.Infra.DIR_TESTS):
             return name.startswith(prefix)
         return name.startswith((prefix, layout.class_stem))

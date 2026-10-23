@@ -43,7 +43,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        del ctx
         started = time.monotonic()
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet
@@ -63,8 +62,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output="\n".join(
-                part for part in (scan.stdout, scan.stderr, not_executed) if part
+            evidence=self._publish_raw_receipt(
+                ctx,
+                "\n".join(
+                    part for part in (scan.stdout, scan.stderr, not_executed) if part
+                ),
             ),
             started=started,
         )

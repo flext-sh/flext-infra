@@ -1036,13 +1036,22 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
             participant_policy=configured.value,
         )
-        planned = transaction.run_locked(
-            prepare=True,
-            operation=lambda scope_root: self._execute_managed_locked(
-                request,
-                scope_root,
-            ),
-        ).flat_map(lambda _: self._prepare_managed_plan(request))
+        planned = (
+            transaction
+            .prepare_source_controlplanes(
+                tuple(root.target for root in configured.value.roots),
+            )
+            .flat_map(
+                lambda _: transaction.run_locked(
+                    prepare=True,
+                    operation=lambda scope_root: self._execute_managed_locked(
+                        request,
+                        scope_root,
+                    ),
+                ),
+            )
+            .flat_map(lambda _: self._prepare_managed_plan(request))
+        )
         cause = planned.exception
         if cause is not None:
             raise cause

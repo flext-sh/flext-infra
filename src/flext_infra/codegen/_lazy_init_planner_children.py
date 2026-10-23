@@ -166,13 +166,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         publish_child_exports = (
             parent_context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
-        # Implementation packages belong to their importing facade: a private
-        # ``_<facade>/`` child publishes into its direct parent initializer, so
-        # ``from pkg.services import Owner`` resolves an owner declared under
-        # ``pkg/services/_acl/``, as the layout law requires. Only a facade root
-        # withholds owners behind a private segment, because the root ABI is its
-        # public contract and a private owner never widens it.
-        is_facade_root = self._is_facade_root(parent_context)
+        # Direct source exports delimit an authored facade's API. A private
+        # child cannot widen it; an explicit reexport is already in lazy_map.
+        # Namespace-only packages can still bridge their implementation owners.
+        owns_export_surface = self._is_facade_root(parent_context) or bool(lazy_map)
         direct: list[str] = []
         children = dict.fromkeys((
             *package_entry.descendant_child_dirs,
@@ -199,7 +196,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 # own layout directories, not export surfaces: a
                 # child package name never enters their lazy map.
                 continue
-            if is_facade_root and self._is_private_owner(
+            if owns_export_surface and self._is_private_owner(
                 child_pkg_name, root_pkg=parent_pkg
             ):
                 continue

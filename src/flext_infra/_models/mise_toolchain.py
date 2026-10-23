@@ -68,6 +68,13 @@ class FlextInfraModelsMiseToolchain:
     class BeadsToolSpec(FlextInfraModelsMiseToolchainBase):
         """Beads ledger and Gas City projection contract."""
 
+        ownership_command_prefix: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Public ownership command projected into each repository",
+            ),
+        ]
         endpoint_origin: Annotated[
             Literal["inherited_city"],
             m.Field(description="Gas City-owned endpoint inheritance mode"),

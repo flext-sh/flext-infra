@@ -50,6 +50,9 @@ from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
+from flext_infra._utilities._semantic_cutover.declaration_payload import (
+    FlextInfraUtilitiesDeclarationPayload,
+)
 from flext_infra._utilities.codegen_facade_syntax import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
 )
@@ -1560,6 +1563,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 declarations,
                 declared_names,
                 existing,
+                source,
             )
             source = cls._declared_facade_render(context, source, namespace, ordered)
         if family == "m":
@@ -1625,7 +1629,31 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         ):
             return False
         names: set[str] = set()
-        for (name, _, annotation), value in zip(aliases, resolved, strict=True):
+        for alias, value in zip(aliases, resolved, strict=True):
+            name, expression, annotation = alias
+            if (
+                name not in names
+                and name == "model_config"
+                and annotation is None
+                and isinstance(expression, ast.Attribute)
+                and expression.attr == name
+            ):
+                receiver = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                    scope, expression.value
+                )
+                if (
+                    receiver is not None
+                    and any(receiver.get_object() is owner for owner in owners)
+                    and cls._canonical_config_binding(
+                        project, receiver.get_object(), name
+                    )
+                    and value is not None
+                    and not FlextInfraUtilitiesRopeRuntime.abstract_class(
+                        value.get_object()
+                    )
+                ):
+                    names.add(name)
+                    continue
             annotated = (
                 FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, annotation)
                 if annotation is not None
@@ -1652,6 +1680,48 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
                 raise ValueError(message)
         return True
+
+    @staticmethod
+    def _canonical_config_binding(
+        project: p.Infra.RopeProject, owner: p.Infra.RopePyObject, name: str
+    ) -> bool:
+        """Prove metadata construction at its declared owner by native SDK identity.
+
+        Returns:
+            Whether the owner binding calls the canonical configuration constructor.
+
+        """
+        binding = owner.get_attributes().get(name)
+        if binding is None:
+            return False
+        module, line = binding.get_definition_location()
+        if module is None or line is None:
+            return False
+        scope = owner.get_scope()
+        if scope is None:
+            return False
+        native = FlextInfraUtilitiesDeclarationPayload.identity_name(
+            project, "pydantic.ConfigDict"
+        )
+        if not FlextInfraUtilitiesRopeRuntime.source_module(module):
+            return False
+        for node in ast.walk(ast.parse(module.source_code)):
+            if (
+                isinstance(node, ast.Assign | ast.AnnAssign)
+                and node.lineno == line
+                and isinstance(node.value, ast.Call)
+            ):
+                constructor = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                    scope, node.value.func
+                )
+                return (
+                    constructor is not None
+                    and native.get_object()
+                    in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
+                        constructor.get_object()
+                    )
+                )
+        return False
 
     @classmethod
     def _remove_model_namespace_class_shadows(
@@ -1774,12 +1844,21 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         declarations: list[m.Infra.SourceClassReference],
         declared_names: set[str],
         existing: tuple[str, ...],
+        source: str,
     ) -> None:
         """Register the imports the reordered facade bases require."""
+        imports = {
+            (node.module, alias.name)
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.ImportFrom) and not node.level
+            for alias in node.names
+            if alias.asname is None
+        }
         for item in declarations:
             if (
                 item.qualified_base in declared_names
                 and item.qualified_base not in existing
+                and (item.target.rpartition(".")[0], item.qualified_base) not in imports
             ):
                 AddImportsVisitor.add_needed_import(
                     context,

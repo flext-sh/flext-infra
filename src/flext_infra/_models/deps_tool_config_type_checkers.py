@@ -72,6 +72,16 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
 
+            project_root_env_dirs: Annotated[
+                t.StrSequence,
+                m.Field(
+                    alias="project-root-env-dirs",
+                    description=(
+                        "Included directories resolved from their project package parent."
+                    ),
+                ),
+            ] = ()
+
             source_dir: Annotated[
                 str,
                 m.Field(

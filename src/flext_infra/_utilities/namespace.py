@@ -22,6 +22,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSource,
@@ -617,12 +618,36 @@ class FlextInfraUtilitiesCodegenNamespace:
         if not file_path.is_relative_to(project_root):
             return class_stem
         rel_parts = file_path.relative_to(project_root).parts
+        declared = cls.repository_namespace_packages(
+            project_root, source_project=source_project
+        )
+        if rel_parts and rel_parts[0] in declared:
+            return u.derive_class_stem(rel_parts[0].replace("_", "-"))
         surface_prefix = (
             rel_parts[0].title()
             if rel_parts and rel_parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
             else ""
         )
         return f"{surface_prefix}{class_stem}" if surface_prefix else class_stem
+
+    @staticmethod
+    def repository_namespace_packages(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
+        """Read independent repository packages from their typed declaration.
+
+        Returns:
+            Explicit namespace packages, never directories inferred from layout.
+
+        """
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declaration = artifacts.load_repository_declaration_inputs(
+            project_root, source_project=source_project
+        ).unwrap()
+        project = declaration.spec.project
+        return () if project is None else project.repository_namespace_packages
 
     @staticmethod
     def _policy_surface_name(package_parts: t.StrSequence) -> str:

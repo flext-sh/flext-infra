@@ -114,7 +114,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             The resulting ``t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]``.
 
         """
-        return [
+        environments = [
             self._env_entry(
                 env_dir=env_dir,
                 root=env_dir,
@@ -127,7 +127,23 @@ class FlextInfraEnsurePyrightConfigPhase:
                 rules=rules,
             )
             for env_dir in env_dirs
+            if env_dir not in rules.project_root_env_dirs
         ]
+        if any(env_dir in rules.project_root_env_dirs for env_dir in env_dirs):
+            environments.append(
+                self._env_entry(
+                    env_dir=rules.project_root,
+                    root=project_root,
+                    extra_paths=self._extra_paths_for_env(
+                        env_dir=rules.project_root,
+                        source_path=source_path,
+                        project_root=project_root,
+                        source_dir=rules.source_dir,
+                    ),
+                    rules=rules,
+                ),
+            )
+        return environments
 
     def _diagnostic_override_envs(
         self,
@@ -234,6 +250,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 )
                 for env_dir in roots
                 if (repository_root / member / env_dir).is_dir()
+                and env_dir not in rules.project_root_env_dirs
             )
             # Top-level modules such as conftest.py still belong to this member.
             environments.append(
@@ -291,6 +308,8 @@ class FlextInfraEnsurePyrightConfigPhase:
             ),
         )
         for env_dir in project_roots:
+            if env_dir in rules.project_root_env_dirs:
+                continue
             if (repository_root / env_dir / c.PYPROJECT_FILENAME).is_file():
                 continue
             expected_envs.append(
@@ -303,6 +322,19 @@ class FlextInfraEnsurePyrightConfigPhase:
                         project_root=rules.project_root,
                         source_dir=rules.source_dir,
                         member_src_paths=member_src_paths,
+                    ),
+                    rules=rules,
+                ),
+            )
+        if any(env_dir in rules.project_root_env_dirs for env_dir in project_roots):
+            expected_envs.append(
+                self._env_entry(
+                    env_dir=rules.project_root,
+                    root=rules.project_root,
+                    extra_paths=(
+                        rules.project_root,
+                        root_source_path,
+                        *member_src_paths,
                     ),
                     rules=rules,
                 ),

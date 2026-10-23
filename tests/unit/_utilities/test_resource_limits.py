@@ -70,6 +70,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
             u.Tests.mypy_workload(tmp_path),
             limit,
         )
+        if sys.platform != "darwin":
+            tm.that(command, has="--verbose")
         result = u.Cli.run_raw(command, timeout=u.Infra.mypy_runner_timeout(limit))
 
         tm.ok(result)
@@ -529,8 +531,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
         diagnostic = u.Infra.mypy_failure_diagnostic(
             m.Cli.CommandOutput(
-                stdout="",
-                stderr="",
+                stdout="LOG:  Parsing oci.models\nTRACE: dependency graph",
+                stderr="timeout: sending signal TERM to command 'prlimit'",
                 outcome=m.Cli.ProcessOutcome(
                     raw_return_code=exit_code,
                     timed_out=timed_out,
@@ -547,8 +549,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 f"timeout={limit.timeout_seconds}s",
                 f"exit={exit_code}",
                 "signal=none",
+                "timeout: sending signal TERM",
             ],
         )
+        tm.that(diagnostic, lacks=["LOG:", "TRACE:"])
 
     @staticmethod
     @pytest.mark.parametrize(

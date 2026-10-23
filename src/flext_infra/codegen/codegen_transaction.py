@@ -614,10 +614,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             )
             if participants.failure:
                 return r[T].from_failure(participants)
-            with self._lease_file_participants(
-                participants.value,
-                held_roots=frozenset({identity.value.repo_root.resolve()}),
-            ):
+            with self._lease_file_participants(participants.value):
                 self._file_run_identity = identity.value
                 self._file_run_git_directory = physical.value
                 try:
@@ -658,7 +655,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         producer = self._file_session_authority()
         if producer.failure:
             return r[m.Infra.GitIdentityReport].from_failure(producer)
-        identity = self._planner.scope_identity()
+        identity = self._planner.repository_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)
         authorized = self._authorize_roots(tuple(roots.values()))

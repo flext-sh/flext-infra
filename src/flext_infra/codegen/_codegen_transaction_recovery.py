@@ -598,7 +598,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             / outcome.transaction_id
             / f"{u.Cli.sha256_bytes(content)}{report.suffix}"
         )
-        desired: dict[Path, bytes | None] = {
+        desired: t.MutableMappingKV[Path, bytes | None] = {
             root / archive: content,
             root / report: content,
         }
@@ -719,33 +719,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         owned = self._publication_journal_current(session)
         if owned.failure:
             return r[m.Infra.CodegenTransactionSession].from_failure(owned)
-        outputs = {item.path: item for item in session.journal.outputs}
-        if batch_admission is not None:
-            if (
-                batch_admission.analysis is None
-                or batch_admission.analysis.files != plans
-                or {item.path for item in batch_admission.outputs}
-                != {item.path for item in plans}
-            ):
-                return r[m.Infra.CodegenTransactionSession].fail(
-                    "output proof differs from its native admitted plan",
-                )
-            outputs.update({item.path: item for item in batch_admission.outputs})
-        admitted = {item.before.path: item for item in session.published_files}
-        for plan in plans:
-            state = FlextInfraCodegenTransactionRecovery._proof_output_state(
-                session, plan, admitted
-            )
-            if state.failure:
-                return r[m.Infra.CodegenTransactionSession].from_failure(state)
-            record = FlextInfraMiseArtifactsJournal.source_record(
-                "output",
-                state.value,
-                path=plan.path,
-            )
-            if record.failure:
-                return r[m.Infra.CodegenTransactionSession].from_failure(record)
-            outputs[plan.path] = record.value
+        proven = self._proof_outputs(session, plans, batch_admission)
+        if proven.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(proven)
+        outputs = proven.value
         adopted = topology or session.journal
         native_directories, native_topology = (
             FlextInfraMiseArtifactsJournal.source_query_records(
@@ -781,6 +758,46 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 }
             )
         )
+
+    @staticmethod
+    def _proof_outputs(
+        session: m.Infra.CodegenTransactionSession,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        batch_admission: m.Infra.CodegenPhaseOutcome | None,
+    ) -> p.Result[t.MutableMappingKV[Path, m.Infra.CodegenJournalSource]]:
+        """Record each plan's physical output proof over the journal's outputs.
+
+        Returns:
+            Journal output records keyed by path, or the first proof failure.
+
+        """
+        result_type = r[t.MutableMappingKV[Path, m.Infra.CodegenJournalSource]]
+        outputs = {item.path: item for item in session.journal.outputs}
+        if batch_admission is not None:
+            if (
+                batch_admission.analysis is None
+                or batch_admission.analysis.files != plans
+                or {item.path for item in batch_admission.outputs}
+                != {item.path for item in plans}
+            ):
+                return result_type.fail(
+                    "output proof differs from its native admitted plan",
+                )
+            outputs.update({item.path: item for item in batch_admission.outputs})
+        admitted = {item.before.path: item for item in session.published_files}
+        for plan in plans:
+            state = FlextInfraCodegenTransactionRecovery._proof_output_state(
+                session, plan, admitted
+            )
+            if state.failure:
+                return result_type.from_failure(state)
+            record = FlextInfraMiseArtifactsJournal.source_record(
+                "output", state.value, path=plan.path
+            )
+            if record.failure:
+                return result_type.from_failure(record)
+            outputs[plan.path] = record.value
+        return result_type.ok(outputs)
 
     @staticmethod
     def _observed_proof_state(
@@ -906,7 +923,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[m.Infra.CodegenFootprint]``.
 
         """
-        identity = self._planner.scope_identity()
+        identity = self._planner.repository_identity()
         if identity.failure:
             return r[m.Infra.CodegenFootprint].from_failure(identity)
         with u.Infra.codegen_transaction_lease(
@@ -951,14 +968,31 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[m.Infra.GitIdentityReport].fail(
                 "footprint validation requires request authorization",
             )
-        identity = self._planner.scope_identity()
+        identity = self._planner.repository_identity()
         if identity.failure:
             return r[m.Infra.GitIdentityReport].from_failure(identity)
-        if identity.value.repo_root != self._participant_policy.scope_root:
-            return r[m.Infra.GitIdentityReport].fail(
-                "generation authorization coordination root differs",
-            )
-        return identity
+        return self._coordination_root_authorized(identity.value.repo_root).map(
+            lambda _: identity.value
+        )
+
+    def _coordination_root_authorized(self, root: Path) -> p.Result[bool]:
+        """Admit the workspace root or one authorized member as journal anchor.
+
+        File journals live in the Git directory of the repository a run writes,
+        so the anchor is either the policy scope root or one declared member.
+
+        Returns:
+            Success when ``root`` is an authorized coordination anchor.
+
+        """
+        policy = self._participant_policy
+        if (
+            policy is None
+            or root == policy.scope_root
+            or root in {item.target for item in policy.roots}
+        ):
+            return r[bool].ok(value=True)
+        return r[bool].fail("generation authorization coordination root differs")
 
     def _validate_footprint_locked(
         self,
@@ -1083,8 +1117,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         authorized = self._authorize_roots(roots)
         if authorized.failure or self._participant_policy is None:
             return authorized
-        if layout.scope_root != self._participant_policy.scope_root:
-            return r[bool].fail("generation authorization coordination root differs")
+        anchored = self._coordination_root_authorized(layout.scope_root)
+        if anchored.failure:
+            return anchored
         recorded_layout = layout.model_copy(
             update={"file_participants": journal.file_participants},
         )
@@ -1134,9 +1169,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         """
         if self._participant_policy is None:
             return r[bool].ok(value=True)
-        if identity.repo_root != self._participant_policy.scope_root:
-            return r[bool].fail("generation authorization coordination root differs")
-        authorized = self._authorize_roots((identity.repo_root,))
+        authorized = self._coordination_root_authorized(identity.repo_root).flat_map(
+            lambda _: self._authorize_roots((identity.repo_root,))
+        )
         if authorized.failure:
             return authorized
         observed = self._validate_footprint_locked(identity)

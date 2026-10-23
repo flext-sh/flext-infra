@@ -44,6 +44,24 @@ class FlextInfraMiseWorkspacePlanner:
             return identity
         return self._submodule_scope_identity(requested, identity.value)
 
+    def repository_identity(self) -> p.Result[m.Infra.GitIdentityReport]:
+        """Resolve the requested repository's own Git identity for file runs.
+
+        File publication coordinates only the repository it writes: an attached
+        member anchors its journal lease in its own Git directory, so member
+        generations run in parallel. A workspace run still serializes with each
+        member through that member's destination participant lease.
+
+        Returns:
+            The exact worktree identity of the requested repository.
+
+        """
+        requested = self._owner.repository_root.expanduser().absolute()
+        physical = self._physical_directory(requested)
+        if physical.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(physical)
+        return u.Infra.exact_worktree_root(requested)
+
     def _submodule_scope_identity(
         self,
         requested: Path,

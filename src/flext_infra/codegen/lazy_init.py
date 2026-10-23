@@ -170,6 +170,9 @@ class FlextInfraCodegenLazyInit(
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
+        Raises:
+            ValueError: If the lazy-init target lacks its original native receipt.
+
         """
         roots = (
             (self.repository_root.resolve(),)
@@ -193,7 +196,7 @@ class FlextInfraCodegenLazyInit(
             (publications, failures),
         ) as project:
             planned = self._plan_roots(roots, source_project=project)
-            if planned.is_success:
+            if planned.success:
                 publications.extend(
                     (Path(path), receipt)
                     for path, receipt in self._publication_receipts.items()

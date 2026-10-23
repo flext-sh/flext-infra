@@ -8,9 +8,9 @@
 # - A push to the integration branch whose head is NOT the protocol's release
 #   commit opens or updates the release pull request (`make release-version
 #   `); when nothing is releasable the run is a no-op.
-# - A push whose head IS the release commit (the merged release pull request)
-#   tags it, builds the receipt and publishes exactly what the receipt attests.
-# - `workflow_dispatch` re-runs build and publication for an existing tag.
+# - Release commits are validated but never publish unattended.
+# - `workflow_dispatch` validates an existing tag, then builds one receipt and
+#   publishes exactly what that receipt attests.
 {% set persist_private_checkout_credentials = true -%}
 name: Release
 
@@ -52,28 +52,41 @@ jobs:
         id: head
         env:
           EVENT_NAME: {% raw %}${{ github.event_name }}{% endraw %}
-          DISPATCH_TAG: {% raw %}${{ inputs.tag }}{% endraw %}
         shell: bash
         run: |
           set -euo pipefail
           subject="$(git log -1 --format=%s)"
+          echo "ref=$(git rev-parse HEAD^{commit})" >> "${GITHUB_OUTPUT}"
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            echo "ref=refs/tags/${DISPATCH_TAG}" >> "${GITHUB_OUTPUT}"
             echo "release_commit=true" >> "${GITHUB_OUTPUT}"
           else
-            echo "ref=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
             case "${subject}" in
               "chore(release): v"*) echo "release_commit=true" >> "${GITHUB_OUTPUT}" ;;
               *) echo "release_commit=false" >> "${GITHUB_OUTPUT}" ;;
             esac
           fi
 
+  candidate-ci:
+    name: Validate exact release candidate
+    needs: identity
+    permissions:
+      contents: read
+{% if packages_read %}
+      packages: read
+{% endif %}
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}
+    secrets: inherit
+
   version:
     name: Open or update the release pull request
-    needs: identity
+    needs: [identity, candidate-ci]
     if: needs.identity.outputs.release_commit == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      ref: {% raw %}${{ steps.version.outputs.ref }}{% endraw %}
     permissions:
       contents: write  # Push the release/next lane.
       pull-requests: write  # Open or update the release pull request.
@@ -81,33 +94,55 @@ jobs:
       {{ make.ci.variable }}: {{ make.ci.value }}
       # GitHub standard: the built-in GITHUB_TOKEN with the declared job
       # permissions (contents: write, pull-requests: write) opens and updates
-      # the release pull request. The integration lane CI runs on push events,
-      # so the release PR carries no PR-triggered CI by design.
+      # the release pull request. version-ci validates its resulting HEAD
+      # directly: this token does not trigger pull-request or push workflows.
       GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
     steps:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
+          ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}
           submodules: {{ checkout_submodules }}
           token: {% raw %}${{ github.token }}{% endraw %}
 {%- include "_fragments/private_submodules_init.j2" %}
 {%- include "_fragments/private_dependency_auth.j2" %}
 {{- release_bootstrap_steps() }}
+      - name: Admit validated integration commit
+        env:
+          INTEGRATION_BRANCH: {{ repository_branch }}
+        run: git switch -C "${INTEGRATION_BRANCH}" HEAD
       - name: Release pull request
-        run: make release-version
+        id: version
+        run: |
+          set -euo pipefail
+          make release-version
+          echo "ref=$(git rev-parse HEAD^{commit})" >> "${GITHUB_OUTPUT}"
+
+  version-ci:
+    name: Validate release pull request commit
+    needs: version
+    permissions:
+      contents: read
+{% if packages_read %}
+      packages: read
+{% endif %}
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: {% raw %}${{ needs.version.outputs.ref }}{% endraw %}
+    secrets: inherit
 
   publish:
     name: Tag, build and publish the release commit
-    needs: identity
-    if: needs.identity.outputs.release_commit == 'true'
+    needs: [identity, candidate-ci]
+    if: github.event_name == 'workflow_dispatch' && needs.identity.outputs.release_commit == 'true' && needs.candidate-ci.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
       contents: write # Push the release tag and create the GitHub release.
+{% if publish_index %}
       id-token: write # Trusted publishing to the package index.
-    # Why: trusted publishing uses this job's OIDC token; a GitHub Environment
-    # is repository-specific and must not be projected unless declared by its owner.
+{% endif %}
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
       GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
@@ -126,4 +161,4 @@ jobs:
       - name: Build receipt
         run: make release-build
       - name: Publish
-        run: make publication  INDEX=Y
+        run: make publication{% if publish_index %} INDEX=Y{% endif %}

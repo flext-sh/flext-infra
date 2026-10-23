@@ -142,16 +142,23 @@ class FlextInfraWorkspaceCheckGatesMixin:
         """
         gate = self._registry.create(gate_id, self._repository_root)
         if gate is None:
+            gate_ctx = ctx or self._gate_ctx(reports_dir)
+            message = f"{gate_id} gate not registered"
+            receipt = gate_ctx.reports_dir / (
+                f"{gate_id}{config.Infra.tooling.raw_check_receipt_suffix}"
+            )
+            u.Cli.atomic_write_text_file(receipt, message).unwrap()
             return m.Infra.GateExecution(
                 result=m.Infra.GateResult(
                     gate=gate_id,
                     project=project_dir.name,
                     passed=False,
-                    errors=[f"{gate_id} gate not registered"],
+                    errors=[message],
                     duration=0.0,
                 ),
                 issues=(),
-                raw_output=f"{gate_id} gate not registered",
+                raw_output=message,
+                raw_receipt=receipt,
                 outcome=c.Infra.ToolOutcome.ERROR,
             )
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
@@ -265,14 +272,6 @@ class FlextInfraWorkspaceCheckGatesMixin:
             del _pipeline_ctx
             gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
-            raw_receipt = gate_ctx.reports_dir / (
-                f"{gate_id}{config.Infra.tooling.raw_check_receipt_suffix}"
-            )
-            u.Cli.atomic_write_text_file(
-                raw_receipt,
-                execution.raw_output,
-            ).unwrap()
-            execution = execution.model_copy(update={"raw_receipt": raw_receipt})
             gates_sink[gate_id] = execution
             self._gate_logger.info(
                 "gate_executed",

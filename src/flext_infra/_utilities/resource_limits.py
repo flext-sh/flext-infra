@@ -11,6 +11,7 @@ import platform
 import shutil
 import signal
 import sys
+import time
 from importlib import metadata
 from pathlib import Path
 from typing import ClassVar
@@ -304,6 +305,7 @@ class FlextInfraUtilitiesResourceLimits:
         )
         return (
             timeout_executable,
+            "--verbose",
             "--signal=TERM",
             f"--kill-after={c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s",
             f"{validated_limit.timeout_seconds}s",
@@ -332,6 +334,21 @@ class FlextInfraUtilitiesResourceLimits:
             validated_limit.timeout_seconds + c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
         )
         return timeout_seconds
+
+    @staticmethod
+    def mypy_runner_deadline(timeout: int) -> m.Cli.ProcessDeadline:
+        """Compose the runner deadline after the complete inner supervisor window.
+
+        Returns:
+            An explicit deadline preserving analysis and inner forced-kill grace.
+
+        """
+        return m.Cli.ProcessDeadline(
+            expires_at_monotonic=time.monotonic() + timeout,
+            termination_grace_seconds=(
+                c.Infra.MYPY_TIMEOUT_GRACE_SECONDS - c.Infra.TIMEOUT_KILL_AFTER_SECONDS
+            ),
+        )
 
     @classmethod
     def mypy_runner_timeout_for_project(cls, project_dir: Path) -> int:
@@ -472,9 +489,10 @@ class FlextInfraUtilitiesResourceLimits:
             return None
         detail = (
             "\n".join(
-                stream.strip()
+                line
                 for stream in (output.stdout, output.stderr)
-                if stream.strip()
+                for line in stream.splitlines()
+                if line.strip() and not line.startswith(("LOG:", "TRACE:"))
             )
             or "resource limit reached"
         )

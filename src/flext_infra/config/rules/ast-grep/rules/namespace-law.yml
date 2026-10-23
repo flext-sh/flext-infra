@@ -254,6 +254,7 @@ metadata:
     NAME:
       - is: local-alias
       - not: file-family
+      - not: layer-zero-file
 rule:
   kind: dotted_name
   pattern: $NAME
@@ -311,6 +312,7 @@ metadata:
     NAME:
       - is: local-alias
       - not: file-family
+      - not: layer-zero-file
 rule:
   kind: dotted_name
   pattern: $NAME

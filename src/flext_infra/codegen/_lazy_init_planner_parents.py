@@ -11,10 +11,11 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
+    from abc import abstractmethod
     from collections.abc import MutableMapping
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import m, p, t
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin:
@@ -26,14 +27,14 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         _parent_package_cache: MutableMapping[str, t.StrSequence]
         _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
-        def _module_file(self, module_path: str) -> Path | None:
-            del module_path
+        @abstractmethod
+        def _module_file(self, module_path: str) -> Path | None: ...
 
-        def _parent_packages(self, pkg_dir: Path) -> t.StrSequence:
-            del pkg_dir
+        @abstractmethod
+        def _parent_packages(self, pkg_dir: Path) -> t.StrSequence: ...
 
-        def _provider_package_dir(self, package_name: str) -> Path | None:
-            del package_name
+        @abstractmethod
+        def _provider_package_dir(self, package_name: str) -> Path | None: ...
 
     def _parents_from_constants_module(
         self,
@@ -231,7 +232,17 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             package_name,
         )
         if indexed_dir is not None:
-            return self._parent_packages(indexed_dir)
+            init_path = indexed_dir / c.Infra.INIT_PY
+            resource = self.rope_workspace.resource(init_path)
+            if resource is None:
+                return self._parent_packages(indexed_dir)
+            source = resource.read()
+            if not u.Infra.codegen_initializer_is_authored(
+                source.encode(c.DEFAULT_ENCODING)
+            ):
+                return self._parent_packages(indexed_dir)
+            # A retained initializer does not acquire its classes' inherited API.
+            return u.Infra.absolute_import_sources_source(source, name=alias_name)
         package_dir = self._provider_package_dir(package_name)
         init_path = None if package_dir is None else package_dir / c.Infra.INIT_PY
         if init_path is None or not self.rope_workspace.rope_project.source_query(

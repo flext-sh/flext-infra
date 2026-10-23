@@ -205,6 +205,17 @@ class FlextInfraMypyGate(FlextInfraGate):
                 msg = f"Mypy native report contains an unsubmitted source: {source}"
                 raise ValueError(msg)
 
+    @staticmethod
+    @override
+    def _runner_deadline(timeout: int) -> p.Cli.ProcessDeadline:
+        """Leave the child's analysis and forced-kill windows uninterrupted.
+
+        Returns:
+            A deadline whose soft boundary follows the inner forced-kill window.
+
+        """
+        return u.Infra.mypy_runner_deadline(timeout)
+
     @override
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Keep the outer runner alive through the controlled Mypy deadline.

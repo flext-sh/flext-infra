@@ -1,0 +1,7 @@
+id: rewire-docker-container-status-to-info
+valid:
+  - docker.fetch_container_info(container_name)
+  - fetch_container_status(container_name)
+invalid:
+  - docker.fetch_container_status(container_name)
+  - docker_control.fetch_container_status(container_name)

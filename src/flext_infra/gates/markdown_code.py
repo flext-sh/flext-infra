@@ -421,16 +421,17 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        del ctx
         started = time.monotonic()
         ran, passed, issues = self._run_extracted(project_dir, fix=False)
         if not ran:
-            return self._skip_result(project_dir, started)
+            return self._skip_result(project_dir, ctx, started)
         return self._build_check_gate_execution(
             project_dir,
             passed=passed,
             issues=issues,
-            raw_output="\n".join(issue.formatted for issue in issues),
+            evidence=self._publish_raw_receipt(
+                ctx, "\n".join(issue.formatted for issue in issues)
+            ),
             started=started,
         )
 
@@ -443,12 +444,12 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
         """
         if ctx.check_only or not ctx.apply_fixes:
-            return self._check_only_fix_result(project_dir)
+            return self._check_only_fix_result(project_dir, ctx)
         started = time.monotonic()
         with self._mutation_lease(project_dir):
             ran, passed, issues = self._run_extracted(project_dir, fix=True)
         if not ran:
-            return self._skip_result(project_dir, started)
+            return self._skip_result(project_dir, ctx, started)
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
@@ -464,6 +465,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 ),
                 started=started,
             ),
+            ctx=ctx,
         )
 
 

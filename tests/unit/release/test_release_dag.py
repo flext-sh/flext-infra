@@ -7,17 +7,72 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
+import tarfile
 import zipfile
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraReleaseDag:
     """Behavior contract for fail-closed release build policy."""
+
+    @staticmethod
+    def test_rendered_plan_selects_member_version_from_workspace_cwd(
+        tmp_path: Path,
+    ) -> None:
+        """The generated recipe selects each repository, not the caller's version."""
+        root_version = tm.ok(
+            u.Infra.bump_version(
+                c.Tests.RELEASE_VERSION_BASE, c.Infra.VersionBump.PATCH
+            ),
+        )
+        member_name = "flext-member"
+        workspace = u.Tests.create_release_workspace(
+            tmp_path / "release",
+            project_names=(member_name,),
+            version=root_version,
+            initialize_project_git=True,
+        )
+        rendered_root, _ = u.Tests.render_make_environment(
+            tmp_path / "render",
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        rendered = (rendered_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        recipe = rendered.split("_builtin_release_plan:", 1)[1].splitlines()[1]
+        command = recipe.strip().removeprefix("@").partition(" $(if ")[0]
+        command = command.replace("$(PROJECT_FLEXT_INFRA)", "flext-infra")
+        for selected in (workspace, workspace / member_name):
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        "bash",
+                        "-eu",
+                        "-c",
+                        command.replace("$(PROJECT_ROOT)", str(selected)),
+                    ],
+                    cwd=workspace,
+                ),
+            )
+            plan = m.Infra.ReleasePlan.model_validate_json(
+                (
+                    selected / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME
+                ).read_text(encoding=c.DEFAULT_ENCODING),
+            )
+            tm.that(
+                plan.current,
+                eq=tm.ok(u.Infra.current_workspace_version(selected)),
+            )
+            tm.that(plan.next, eq=plan.current)
+        tm.that(
+            tm.ok(u.Infra.current_workspace_version(workspace / member_name)),
+            ne=root_version,
+        )
 
     class TestsDryRun:
         """Metadata-only build behavior."""
@@ -354,23 +409,72 @@ class TestsFlextInfraReleaseDag:
         """Immutable committed-source behavior."""
 
         @staticmethod
-        def test_dirty_committed_member_is_rejected(tmp_path: Path) -> None:
-            """Reject a project whose committed source has working-tree changes."""
+        def test_shared_wip_is_preserved_and_only_committed_bytes_ship(
+            tmp_path: Path,
+        ) -> None:
+            """Build the committed SHA, not staged, modified, or untracked bytes."""
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
-            package_file = workspace / project_name / "src" / "flext_a" / "__init__.py"
-            package_file.write_text("# uncommitted release change\n", encoding="utf-8")
+            project = workspace / project_name
+            package_file = project / "src" / "flext_a" / "__init__.py"
+            committed = package_file.read_bytes()
+            oid = u.Tests.git_capture(project, "rev-parse", "HEAD^{commit}").strip()
+            package_file.write_bytes(b"# staged release change\n")
+            u.Tests.git_bootstrap(project, ("add", "src/flext_a/__init__.py"))
+            package_file.write_bytes(b"# uncommitted release change\n")
+            added = package_file.parent / "uncommitted.py"
+            added.write_bytes(b"# untracked release addition\n")
+            prepared = project / "dist" / "nested" / "source-receipt.json"
+            prepared.parent.mkdir(parents=True)
+            prepared.write_bytes(b'{"uncommitted": true}\n')
+            status = u.Tests.git_capture(project, "status", "--porcelain")
+            index = u.Tests.git_capture(project, "show", ":src/flext_a/__init__.py")
 
-            result = u.Tests.run_release_build(workspace, project_name)
-
-            build_log = u.Tests.release_build_log_text(workspace, project_name)
-            tm.that(result, eq=1)
-            tm.that(build_log, has="release project is dirty")
             tm.that(
-                u.Tests.release_artifact_dir(
-                    workspace,
-                    c.Tests.RELEASE_VERSION_BASE,
-                    project_name,
-                ).exists(),
-                eq=False,
+                u.Tests.run_release_build(workspace, project_name),
+                eq=0,
+                msg=u.Tests.release_build_log_text(workspace, project_name),
             )
+            report = u.Tests.release_build_report(workspace)
+            tm.that(report.records[0].commit_oid, eq=oid)
+            tm.that(package_file.read_bytes(), eq=b"# uncommitted release change\n")
+            tm.that(added.read_bytes(), eq=b"# untracked release addition\n")
+            tm.that(prepared.read_bytes(), eq=b'{"uncommitted": true}\n')
+            tm.that(
+                u.Tests.git_capture(project, "status", "--porcelain"),
+                eq=status,
+            )
+            tm.that(
+                u.Tests.git_capture(project, "show", ":src/flext_a/__init__.py"),
+                eq=index,
+            )
+            artifacts = u.Tests.release_artifact_dir(
+                workspace,
+                c.Tests.RELEASE_VERSION_BASE,
+                project_name,
+            )
+            with zipfile.ZipFile(next(artifacts.glob("*.whl"))) as archive:
+                tm.that(archive.read("flext_a/__init__.py"), eq=committed)
+                tm.that(archive.namelist(), lacks="flext_a/uncommitted.py")
+                tm.that(
+                    any("source-receipt.json" in name for name in archive.namelist()),
+                    eq=False,
+                )
+            with tarfile.open(next(artifacts.glob("*.tar.gz"))) as archive:
+                member = next(
+                    item
+                    for item in archive.getmembers()
+                    if item.name.endswith("/src/flext_a/__init__.py")
+                )
+                with tm.not_none(archive.extractfile(member)) as source:
+                    tm.that(source.read(), eq=committed)
+                tm.that(
+                    any(
+                        name.endswith("/uncommitted.py") for name in archive.getnames()
+                    ),
+                    eq=False,
+                )
+                tm.that(
+                    any("source-receipt.json" in name for name in archive.getnames()),
+                    eq=False,
+                )

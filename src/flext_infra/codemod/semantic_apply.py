@@ -200,9 +200,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         Returns:
             The unchanged source plan or its native cross-root rename candidate.
 
-        Raises:
-            ValueError: If a stripped name or inventoried module identity is invalid.
-
         """
         if source_plan.candidate.updates:
             return r[m.Infra.SemanticSourcePlan].fail(
@@ -214,40 +211,19 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         with FlextInfraRopeWorkspace.open_workspace(
             root, rope_repository_root=root
         ) as workspace:
-            selections: list[m.Infra.SemanticRenameSelection] = []
             packages = cls._package_naming_candidates(root, sources)
             candidates = packages or cls._module_naming_candidates(
                 root, sources, workspace
             )
-            for path, replacement in candidates:
-                module = workspace.module(path)
-                if module is None:
-                    msg = f"module naming requires an inventoried module: {path}"
-                    raise ValueError(msg)
-                declaration = FlextInfraRenameSymbols.inventoried_declaration(
-                    workspace, module.module_name
-                )
-                if Path(declaration.file_path) != path:
-                    msg = f"module naming identity resolves to another file: {path}"
-                    raise ValueError(msg)
-                destination = ".".join((
-                    *module.module_name.split(".")[:-1],
-                    replacement,
-                ))
-                if workspace.rope_project.find_module(destination) is not None:
-                    msg = f"module naming destination is occupied: {destination}"
-                    raise ValueError(msg)
-                selections.append(
-                    m.Infra.SemanticRenameSelection(
-                        qualified_name=module.module_name,
-                        replacement_name=replacement,
-                        reason=(
-                            "Facade package removes split suffix"
-                            if packages
-                            else "Python module removes private prefix and split suffix"
-                        ),
-                    )
-                )
+            reason = (
+                "Facade package removes split suffix"
+                if packages
+                else "Python module removes private prefix and split suffix"
+            )
+            selections = [
+                cls._module_naming_selection(workspace, path, replacement, reason)
+                for path, replacement in candidates
+            ]
             if not selections:
                 return r[m.Infra.SemanticSourcePlan].ok(source_plan)
             planned = cls.build_rename_plan(
@@ -262,6 +238,49 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             if planned.failure:
                 return r[m.Infra.SemanticSourcePlan].from_failure(planned)
             return r[m.Infra.SemanticSourcePlan].ok(planned.value)
+
+    @staticmethod
+    def _module_naming_selection(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        path: Path,
+        replacement: str,
+        reason: str,
+    ) -> m.Infra.SemanticRenameSelection:
+        """Authenticate one naming candidate against its native module identity.
+
+        The candidate must be an inventoried module whose declaration resolves to
+        the same file, and its sibling destination must still be free.
+
+        Returns:
+            The explicit rename selection for the candidate module.
+
+        Raises:
+            ValueError: If the module is not inventoried, its identity resolves to
+                another file, or the destination module is already occupied.
+
+        """
+        module = workspace.module(path)
+        if module is None:
+            msg = f"module naming requires an inventoried module: {path}"
+            raise ValueError(msg)
+        declaration = FlextInfraRenameSymbols.inventoried_declaration(
+            workspace, module.module_name
+        )
+        if Path(declaration.file_path) != path:
+            msg = f"module naming identity resolves to another file: {path}"
+            raise ValueError(msg)
+        destination = ".".join((
+            *module.module_name.split(".")[:-1],
+            replacement,
+        ))
+        if workspace.rope_project.find_module(destination) is not None:
+            msg = f"module naming destination is occupied: {destination}"
+            raise ValueError(msg)
+        return m.Infra.SemanticRenameSelection(
+            qualified_name=module.module_name,
+            replacement_name=replacement,
+            reason=reason,
+        )
 
     @classmethod
     def _module_naming_candidates(

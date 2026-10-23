@@ -62,14 +62,13 @@ class FlextInfraRuntimeDependencyCollector:
         if lock.content is None or scan.settings.content is None:
             return result.fail("dependency collector lacks native lock or declarations")
         payload = u.Cli.toml_mapping_from_text(lock.content.decode(c.DEFAULT_ENCODING))
-        if payload is None:
-            return result.fail(f"invalid native dependency lock: {lock.path}")
-        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         document = u.Cli.toml_parse_text(
             scan.settings.content.decode(c.DEFAULT_ENCODING),
         )
-        if document is None:
-            return result.fail(f"invalid target declarations: {scan.settings.path}")
+        if payload is None or document is None:
+            invalid = lock.path if payload is None else scan.settings.path
+            return result.fail(f"invalid native dependency input: {invalid}")
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         markers = FlextInfraBindingService.consumer_marker_environment(
             consumer_root=project_root,
             python=self._python,
