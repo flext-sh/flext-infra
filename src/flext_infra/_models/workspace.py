@@ -827,23 +827,41 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Resolved package edges; absent for a leaf package"),
         ] = ()
         optional_dependencies: Annotated[
-            dict[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
+            t.MappingKV[
+                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
+            ],
             m.Field(
                 alias="optional-dependencies",
                 description="Resolved edges by extra; absent when no extras exist",
             ),
         ] = m.Field(
-            default_factory=dict,
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                    ]
+                ),
+            ),
             validate_default=True,
         )
         dev_dependencies: Annotated[
-            dict[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
+            t.MappingKV[
+                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
+            ],
             m.Field(
                 alias="dev-dependencies",
                 description="Resolved edges by development group; absent means none",
             ),
         ] = m.Field(
-            default_factory=dict,
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                    ]
+                ),
+            ),
             validate_default=True,
         )
         resolution_markers: Annotated[
