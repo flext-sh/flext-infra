@@ -12,7 +12,10 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra._config import FlextInfraConfig
-from flext_infra.codegen import FlextInfraCodegenGeneration
+from flext_infra.codegen import (
+    FlextInfraCodegenGeneration,
+    FlextInfraCodegenLazyInitGenerationRegistryMixin,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
@@ -20,21 +23,14 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
+class FlextInfraCodegenLazyInitGenerationFilePlanMixin(
+    FlextInfraCodegenLazyInitGenerationRegistryMixin,
+):
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
-    if TYPE_CHECKING:
-        _publication_receipts: t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis]
-
-        @property
-        def source_project(self) -> p.Infra.RopeProject: ...
-
-        def _cleanup_generated_support_file_states(
-            self,
-            plan: m.Infra.LazyInitPlan,
-        ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-            del plan
-            raise NotImplementedError(type(self).__qualname__)
+    _publication_receipts: t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis] = (
+        m.PrivateAttr(default_factory=dict[str, m.Infra.CodegenPhaseAnalysis])
+    )
 
     @staticmethod
     def _snapshot_paths(
@@ -238,20 +234,6 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 config.Infra.codegen.modes.file_default
                 if desired_content is not None
                 else None
-            ),
-        )
-
-    @staticmethod
-    def _is_generated(content: bytes | None) -> bool:
-        """Return whether bytes carry an accepted lazy-init owner marker.
-
-        Returns:
-            Whether bytes carry an accepted lazy-init owner marker.
-
-        """
-        return content is not None and content.startswith(
-            tuple(
-                header.encode(c.DEFAULT_ENCODING) for header in c.Infra.AUTOGEN_HEADERS
             ),
         )
 

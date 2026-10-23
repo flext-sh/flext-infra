@@ -7,11 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from flext_core import FlextRuntime
+from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
+from flext_infra._models.deps import (
+    GitSourceRefFromField,
+    GitSourceRefToField,
+    GitSourceUrlPrefixField,
+)
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import (
     FlextInfraConsolidateGroupsPhase,
@@ -30,16 +36,58 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyprojectModernizerDocument:
+class FlextInfraPyprojectModernizerDocument(
+    FlextInfraProjectSelectionServiceBase[bool],
+):
     """Own the parsed document state and the ordered phase pipeline."""
 
-    if TYPE_CHECKING:
-        # Members supplied by the composed modernizer service.
-        tomlsort_sort_first: t.StrSequence
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
+    @staticmethod
+    def _config_sort_first() -> t.StrSequence:
+        """Read the config-owned top-level TOML section order once.
 
-        @property
-        def root(self) -> Path: ...
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
+        return u.Infra.native_tool_setting(
+            config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+        )
+
+    audit: Annotated[
+        bool,
+        m.Field(default=False, description="Audit pyproject changes without writing"),
+    ] = False
+    skip_check: Annotated[
+        bool,
+        m.Field(alias="skip-check", description="Skip post-write validation"),
+    ] = False
+    skip_comments: Annotated[
+        bool,
+        m.Field(alias="skip-comments", description="Skip managed comment updates"),
+    ] = False
+    rewrite_constraints: Annotated[
+        bool,
+        m.Field(
+            alias="rewrite-constraints",
+            description="Rewrite dependency constraints from the provisioned runtime",
+        ),
+    ] = False
+    managed_artifacts: Annotated[
+        m.Infra.ProjectManagedArtifactsResolution | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Caller-owned project ManagedArtifacts resolution",
+        ),
+    ] = None
+    git_source_url_prefix: GitSourceUrlPrefixField = None
+    git_source_ref_from: GitSourceRefFromField = None
+    git_source_ref_to: GitSourceRefToField = None
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=_config_sort_first,
+        exclude=True,
+        description="Config-owned top-level TOML section order",
+    )
 
     def _project_kind(
         self,

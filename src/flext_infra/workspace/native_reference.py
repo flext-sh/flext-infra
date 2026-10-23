@@ -4920,6 +4920,30 @@ class FlextInfraWorkspaceNativeReference:
                 )
                 for code in compiled[key]
             ):
+                differences: list[str] = []
+                executed_fields = executed.model_dump()
+                for code in compiled[key]:
+                    if code.co_name != executed.name:
+                        continue
+                    candidate = cls._code_evidence(code)
+                    candidate_fields = candidate.model_dump()
+                    differences.append(
+                        f"qualname={code.co_qualname!r},"
+                        f"firstlineno={code.co_firstlineno},"
+                        f"differing_fields={
+                            tuple(
+                                field
+                                for field in m.Infra.NativeCodeEvidence.model_fields
+                                if executed_fields[field] != candidate_fields[field]
+                            )
+                        },"
+                        f"witness_sha256={
+                            u.Cli.sha256_bytes(candidate.witness)
+                            if candidate.witness is not None
+                            else None
+                        }"
+                    )
+                receipt = states.get(Path(executed.filename))
                 return r[bool].fail(
                     f"authored producer code differs from pinned native source: "
                     f"{binding.binding}; supplier={binding.supplier}; "
@@ -4931,7 +4955,17 @@ class FlextInfraWorkspaceNativeReference:
                             for code in compiled[key]
                             if code.co_name == executed.name
                         )
-                    }",
+                    }; observed_witness_sha256={
+                        u.Cli.sha256_bytes(executed.witness)
+                        if executed.witness is not None
+                        else None
+                    }; pinned_source_sha256={
+                        receipt.sha256 if receipt is not None else None
+                    }; compiler_python={tuple(sys.version_info[:3])}; "
+                    f"compiler_optimize={sys.flags.optimize}; "
+                    f"compiler_dont_inherit=True; "
+                    f"marshal_version={c.Infra.NATIVE_CODE_WITNESS_MARSHAL_VERSION}; "
+                    f"candidate_differences={tuple(differences)}",
                 )
             admitted += 1
         if not admitted:

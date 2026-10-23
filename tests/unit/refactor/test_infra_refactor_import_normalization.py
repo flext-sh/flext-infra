@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
-from flext_infra.refactor import FlextInfraImportNormalization
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra import c, m, refactor, transformers
 from tests import tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
@@ -27,6 +25,40 @@ class TestsFlextInfraRefactorImportNormalization(
     TestsFlextInfraRefactorImportNormalizationSupport,
 ):
     """Each import-law rule observed through ``normalize_source``."""
+
+    @classmethod
+    @pytest.mark.parametrize("consumer", [False, True])
+    def test_function_publication_never_routes_initializer_to_itself(
+        cls, tmp_path: Path, *, consumer: bool
+    ) -> None:
+        """Static function exports keep their native owner inside its initializer."""
+        project, package = cls._project(tmp_path)
+        owner = package / "_utilities"
+        cls._lazy_init(owner, {"inspect_value": ".inspection"})
+        (owner / "inspection.py").write_text(
+            "def inspect_value(value: str) -> str:\n    return value\n"
+            "__all__ = ['inspect_value']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = package / "consumer.py" if consumer else owner / c.Infra.INIT_PY
+        before = (
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            "    from demo_pkg._utilities.inspection import inspect_value\n"
+        )
+        normalized = refactor.FlextInfraImportNormalization.normalize_source(
+            project_root=project, file_path=target, source=before
+        )
+        if consumer:
+            tm.that(normalized, has="from demo_pkg._utilities import inspect_value")
+        else:
+            tm.that(normalized, eq=None)
+            tm.that(
+                refactor.FlextInfraImportNormalization.normalize_source(
+                    project_root=project, file_path=target, source=before
+                ),
+                eq=None,
+            )
 
     @classmethod
     def test_import_plan_uses_working_sources_without_replacing_original_receipts(
@@ -65,7 +97,7 @@ class TestsFlextInfraRefactorImportNormalization(
         frozen = dict(working)
         with u.Infra.open_project(project) as rope:
             analysis = tm.ok(
-                FlextInfraImportNormalization.plan_files(
+                refactor.FlextInfraImportNormalization.plan_files(
                     project,
                     (target,),
                     sources=working,
@@ -130,7 +162,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            refactor.FlextInfraImportNormalization.normalize_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
@@ -149,7 +181,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         target.write_text(source, encoding="utf-8")
         with pytest.raises(ValueError, match="destination is occupied"):
-            FlextInfraImportNormalization.normalize_source(
+            refactor.FlextInfraImportNormalization.normalize_source(
                 project_root=project,
                 file_path=target,
                 source=source,
@@ -171,7 +203,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         module.write_text(source, encoding="utf-8")
         with pytest.raises(ValueError, match="forbidden reverse namespace import"):
-            FlextInfraImportNormalization.normalize_source(
+            refactor.FlextInfraImportNormalization.normalize_source(
                 project_root=project, file_path=module, source=source
             )
         tm.that(module.read_text(encoding="utf-8"), eq=source)
@@ -221,7 +253,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            refactor.FlextInfraImportNormalization.normalize_source(
                 project_root=project, file_path=module, source=normalized
             ),
             eq=None,
@@ -249,7 +281,7 @@ class TestsFlextInfraRefactorImportNormalization(
         target = package / "bootstrap.py"
         target.write_text(source, encoding="utf-8")
         tm.that(
-            FlextInfraImportNormalization.normalize_source(
+            refactor.FlextInfraImportNormalization.normalize_source(
                 project_root=project,
                 file_path=target,
                 source=source,
@@ -298,7 +330,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         module.write_text(normalized, encoding="utf-8")
         tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=project,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(project,)),
@@ -340,7 +372,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "class LocalTypes:\n    type JsonPayload = str\n\nt = LocalTypes\n",
             encoding="utf-8",
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = refactor.FlextInfraImportNormalization.normalize_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -388,7 +420,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "__all__ = ['u']\n",
             encoding="utf-8",
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = refactor.FlextInfraImportNormalization.normalize_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -434,7 +466,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "from flext_cli import m, u\n\n"
             "ADAPTER: m.TypeAdapter[str] = u.type_adapter(str)\n"
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
+        normalized = refactor.FlextInfraImportNormalization.normalize_source(
             project_root=project,
             file_path=module,
             source=source,
@@ -526,7 +558,7 @@ class TestsFlextInfraRefactorImportNormalization(
     def test_reverse_runtime_import_keeps_its_place(cls, tmp_path: Path) -> None:
         """A lower layer reading a higher layer at runtime keeps the import inline."""
         project, package = cls._project(tmp_path)
-        result = FlextInfraImportNormalization.normalize_source(
+        result = refactor.FlextInfraImportNormalization.normalize_source(
             project_root=project,
             file_path=package / "_utilities" / "bridge.py",
             source=(

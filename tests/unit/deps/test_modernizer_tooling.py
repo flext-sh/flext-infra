@@ -109,33 +109,36 @@ class TestsFlextInfraDepsModernizerTooling:
         "path", ["typings/vendor", "vendor-stubs", "stubs", "src/site-packages/stubs"]
     )
     def test_topology_cannot_reintroduce_local_stub_paths(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tmp_path: Path,
         path: str,
     ) -> None:
         """Derived native search paths obey the same law as native option pairs."""
-        tools = tool_config_document.tools
-        payload = {
-            **tool_config_document.model_dump(
-                by_alias=True, exclude_computed_fields=True
-            ),
-            "tools": {
-                **tools.model_dump(by_alias=True, exclude_computed_fields=True),
-                "pyrefly": {
-                    **tools.pyrefly.model_dump(
-                        by_alias=True, exclude_computed_fields=True
-                    ),
-                    "path-rules": {
-                        **tools.pyrefly.path_rules.model_dump(by_alias=True),
-                        "project-shared-search-paths": (path,),
+        root = u.Tests.git_repository(tmp_path, "path-policy")
+        declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
+        declaration.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                declaration,
+                {
+                    "Infra": {
+                        "tooling": {
+                            "tools": {
+                                "pyrefly": {
+                                    "path-rules": {
+                                        "project-shared-search-paths": [path]
+                                    },
+                                }
+                            }
+                        }
                     },
                 },
-            },
-        }
-        with pytest.raises(m.ValidationError, match="Local stub search roots"):
-            m.Infra.ToolConfigDocument.model_validate(payload)
+            )
+        )
+        tm.fail(u.Infra.load_tooling_inputs(root), has="Local stub search roots")
 
     @staticmethod
     def test_source_paths_and_installed_dependency_typing_are_preserved(
+        tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
         """Search-path option names are not banned, nor are installed third-party stubs."""
@@ -171,7 +174,11 @@ class TestsFlextInfraDepsModernizerTooling:
                 ),
             },
         }
-        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        root = u.Tests.git_repository(tmp_path, "source-policy")
+        declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
+        declaration.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.yaml_dump(declaration, {"Infra": {"tooling": payload}}))
+        validated = tm.ok(u.Infra.load_tooling_inputs(root)).document
         for table, key in (("mypy", "mypy_path"), ("pyright", "extraPaths")):
             tm.that(dict(validated.settings[table])[key], eq=paths)
 

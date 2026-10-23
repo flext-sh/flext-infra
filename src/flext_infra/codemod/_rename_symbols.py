@@ -392,7 +392,7 @@ class FlextInfraRenameSymbols:
         offset = cls._native_identifier_offset(producer, sources, item, replacement)
         owner = item.scope_path.rpartition(".")[0]
         for project, changes in u.Infra.rename_all_changes(
-            projects, resource, offset, replacement
+            projects, resource, offset, replacement, sources=sources
         ):
             cls._record_native_changes(project, changes, sources, effects, root)
             cls._plan_quoted_rename(
@@ -401,6 +401,7 @@ class FlextInfraRenameSymbols:
                 {
                     Path(candidate.real_path): candidate
                     for candidate in project.get_python_files()
+                    if Path(candidate.real_path) in sources
                 },
                 (
                     item.module_name.rpartition(".")[0]

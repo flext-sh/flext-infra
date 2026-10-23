@@ -1285,15 +1285,15 @@ class FlextInfraModGateEngine:
             targets: The sequence of target paths to enumerate.
 
         Returns:
-            A frozenset of resolved Python file paths within the target directories.
+            Resolved Python paths, retaining prohibited lexical stub leaves.
 
         """
         return frozenset(
-            path.resolve()
+            path.absolute() if path.suffix == ".pyi" else path.resolve()
             for target in targets
             for path in (
                 u.Infra.iter_directory_python_files(root / target)
-                if (root / target).is_dir()
+                if (root / target).suffix != ".pyi" and (root / target).is_dir()
                 else (root / target,)
             )
         )

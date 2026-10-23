@@ -152,6 +152,52 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         tm.that(source.read_bytes(), eq=original.content)
 
     @staticmethod
+    def test_repeated_overlay_reads_keep_transitive_original_bytes(
+        tmp_path: Path,
+    ) -> None:
+        """Every overlay consumer rejects a changed original producer dependency."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        dependency = package / "dependency.py"
+        source.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        dependency.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source))
+        incoming = tm.ok(u.Cli.atomic_read_binary_file_state(dependency))
+        proposed = b"class Published: pass\n__all__ = ['Published']\n"
+        plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=source,
+            before=original,
+            desired_content=proposed,
+            desired_mode=original.mode,
+            source_states=(incoming,),
+        )
+        with ExitStack() as contexts:
+            project, _, _ = contexts.enter_context(
+                u.Infra.facade_source_project(root, declared_files=(plan,)),
+            )
+            with project.source_consumption() as first:
+                tm.that(project.source_bytes(source), eq=proposed)
+            with project.source_consumption() as repeated:
+                tm.that(project.source_bytes(source), eq=proposed)
+            dependency.write_text(
+                "# Changed producer input\n", encoding=c.DEFAULT_ENCODING
+            )
+            for scope in (first, repeated):
+                tm.that(
+                    {state.path for state in scope.receipt().inputs},
+                    has=dependency,
+                )
+                rejected = u.Cli.atomic_verify_binary_file_states(
+                    scope.receipt().inputs
+                )
+                tm.ok(rejected.failure)
+                tm.that(rejected.error, contains=str(dependency))
+            tm.that(source.read_bytes(), eq=original.content)
+            with pytest.raises(ValueError, match=escape(str(dependency))):
+                contexts.close()
+
+    @staticmethod
     def test_isolated_native_consumers_share_original_transitive_receipts(
         tmp_path: Path,
     ) -> None:

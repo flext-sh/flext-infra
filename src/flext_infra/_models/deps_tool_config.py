@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sysconfig
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
@@ -821,8 +819,8 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         @m.model_validator(mode="after")
-        def validate_no_local_stubs(self, info: m.ValidationInfo) -> Self:
-            """Reject local stub resolution and producer options in every typed layer.
+        def validate_no_local_stubs(self) -> Self:
+            """Reject stub option and producer structure in every typed layer.
 
             Returns:
                 Source import paths and installed dependency typing unchanged.
@@ -857,23 +855,6 @@ class FlextInfraModelsDepsToolConfig(
                 for override in self.tools.mypy.overrides
                 for key, value in override.settings
             )
-            pyright = self.tools.pyright.path_rules
-            pyrefly = self.tools.pyrefly.path_rules
-            pending.extend(
-                ("search-path", path)
-                for path in (
-                    pyright.source_dir,
-                    pyright.project_root,
-                    *pyright.env_dirs,
-                    *pyright.test_like_dirs,
-                    *(override.root for override in pyright.diagnostic_path_overrides),
-                    pyrefly.source_dir,
-                    pyrefly.project_root,
-                    *pyrefly.env_dirs,
-                    *pyrefly.workspace_include_child_env_dirs,
-                    *pyrefly.project_shared_search_paths,
-                )
-            )
             for name in declared_names:
                 if any(
                     part.casefold().replace("-", "").replace("_", "") in forbidden
@@ -881,19 +862,6 @@ class FlextInfraModelsDepsToolConfig(
                 ):
                     msg = f"Local stub options and producers are forbidden: {name}"
                     raise ValueError(msg)
-            installed_roots = tuple(
-                Path(sysconfig.get_path(key)).resolve()
-                for key in ("purelib", "platlib")
-            )
-            context = info.context
-            project_root = (
-                context.get("project_root") if isinstance(context, Mapping) else None
-            )
-            if project_root is not None and (
-                not isinstance(project_root, Path) or not project_root.is_absolute()
-            ):
-                msg = "tooling validation requires an absolute elected project root"
-                raise ValueError(msg)
             while pending:
                 key, value = pending.pop()
                 option = (
@@ -906,33 +874,6 @@ class FlextInfraModelsDepsToolConfig(
                     pending.extend(value.items())
                 elif isinstance(value, list):
                     pending.extend((key, item) for item in value)
-                elif isinstance(value, str) and (
-                    "path" in option
-                    or option in {"root", "sourcedir", "envdirs", "projectincludes"}
-                ):
-                    for entry in value.replace("\\", "/").split(":"):
-                        path = Path(entry).expanduser()
-                        resolved = (
-                            path.resolve()
-                            if path.is_absolute()
-                            else (project_root / path).resolve()
-                            if isinstance(project_root, Path)
-                            else None
-                        )
-                        if resolved is not None and any(
-                            resolved.is_relative_to(root) for root in installed_roots
-                        ):
-                            continue
-                        if any(
-                            part in {"typings", "stubs"}
-                            or part.endswith((".pyi", "-stubs"))
-                            or "-stubs-" in part
-                            for part in path.parts
-                        ):
-                            msg = (
-                                f"Local stub search roots are forbidden: {key}={value}"
-                            )
-                            raise ValueError(msg)
             return self
 
         @m.model_validator(mode="after")

@@ -12,11 +12,142 @@ import re
 import tokenize
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen import FlextInfraStagedPackage
 
 
 class FlextInfraRenameSources:
     """Read campaign data and source snapshots without granting write effects."""
+
+    @staticmethod
+    def rename_selections(
+        artifact: m.Infra.SemanticRenamePlan,
+    ) -> m.Infra.SemanticRenameSelections:
+        """Reconstruct execution intent without treating artifacts as rule authority.
+
+        Returns:
+            The original typed native selections and elected consumers.
+
+        """
+        return m.Infra.SemanticRenameSelections(
+            decisions=tuple(
+                m.Infra.SemanticRenameSelection(
+                    qualified_name=".".join(
+                        part
+                        for part in (
+                            item.declaration.module_name,
+                            item.declaration.scope_path,
+                        )
+                        if part
+                    ),
+                    replacement_name=item.replacement_name,
+                    reason=item.reason,
+                    contracts=tuple(
+                        f"{part.module_name}.{part.scope_path}"
+                        for part in item.contracts
+                    ),
+                )
+                for item in artifact.decisions
+            ),
+            consumer_roots=artifact.consumer_roots,
+        )
+
+    @staticmethod
+    def compose_candidate[PlanT: m.Infra.SemanticSourcePlan](
+        candidate: PlanT,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[PlanT]:
+        """Fold phase effects without replacing their physical originals.
+
+        Returns:
+            The staged view with the union of original source witnesses.
+            The first original planning exception escapes unchanged.
+
+        """
+        if analysis.exception is not None:
+            raise analysis.exception
+        if analysis.issues:
+            return r[PlanT].fail("; ".join(issue.message for issue in analysis.issues))
+        known = {
+            state.path: state
+            for state in m.Infra.CodemodBindingSnapshot(
+                states=(*candidate.candidate.inputs, *candidate.source_states)
+            ).states
+        }
+        updates = dict(candidate.candidate.updates)
+        modes = dict(candidate.candidate.modes)
+        effect_states: list[m.Cli.AtomicFileState] = []
+        for effect in analysis.files:
+            before = effect.before
+            if not isinstance(before, m.Cli.AtomicFileState):
+                return r[PlanT].fail(
+                    f"phase effect lost its original file evidence: {effect.path}"
+                )
+            if before != known.setdefault(effect.path, before):
+                return r[PlanT].fail(
+                    f"phase replaced original physical evidence: {effect.path}"
+                )
+            effect_states.append(before)
+            updates[effect.path] = (
+                None
+                if effect.desired_content is None
+                else effect.desired_content.decode(c.DEFAULT_ENCODING)
+            )
+            if effect.desired_content is None:
+                modes.pop(effect.path, None)
+            elif effect.desired_mode is not None:
+                modes[effect.path] = effect.desired_mode
+        captured = m.Infra.CodemodBindingSnapshot(
+            states=(
+                *candidate.candidate.inputs,
+                *candidate.source_states,
+                *analysis.inputs,
+                *effect_states,
+                *(state for effect in analysis.files for state in effect.source_states),
+            )
+        )
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            (
+                *candidate.candidate.source_directories,
+                *candidate.source_directories,
+                *analysis.source_directories,
+                *(
+                    item
+                    for effect in analysis.files
+                    for item in effect.source_directories
+                ),
+            ),
+            (
+                *candidate.candidate.source_query_topology,
+                *candidate.source_query_topology,
+                *analysis.source_query_topology,
+                *(
+                    item
+                    for effect in analysis.files
+                    for item in effect.source_query_topology
+                ),
+            ),
+        )
+        return FlextInfraStagedPackage.plan_sources(
+            candidate.candidate.workspace,
+            updates,
+            options=m.Infra.StageSourceOptions(
+                inputs=captured.states,
+                workspaces=candidate.candidate.workspaces,
+                modes=modes,
+                source_directories=directories,
+                source_query_topology=topology,
+            ),
+        ).map(
+            lambda stage: candidate.model_copy(
+                update={
+                    "candidate": stage,
+                    "source_states": captured.states,
+                    "source_directories": stage.source_directories,
+                    "source_query_topology": stage.source_query_topology,
+                }
+            )
+        )
 
     @staticmethod
     def symbol_paths(

@@ -108,11 +108,18 @@ class FlextInfraModHandlers:
             campaign_roots = tuple(
                 (root / value).resolve() for value in declared.roots
             ) or (root,)
-            for path in campaign_roots:
-                if not path.resolve().is_relative_to(repository_root):
-                    return r[t.Cli.ResultValue].fail(
-                        f"CSV campaign scan root escapes repository: {path}",
-                    )
+            escaped = next(
+                (
+                    path
+                    for path in campaign_roots
+                    if not path.is_relative_to(repository_root)
+                ),
+                None,
+            )
+            if escaped is not None:
+                return r[t.Cli.ResultValue].fail(
+                    f"CSV campaign scan root escapes repository: {escaped}",
+                )
         campaigns = tuple(
             m.Infra.ApplyRenamesInput(
                 repository_root=root,

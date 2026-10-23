@@ -83,6 +83,7 @@ class FlextInfraModelsRefactorGrep:
                 )
                 raise ValueError(msg)
             if self.predicate in {
+                c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
                 c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
                 c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
             } and (

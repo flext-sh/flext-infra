@@ -283,13 +283,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
     @staticmethod
     def _sealed_runtime_environment(
-        plan: m.Infra.StageSourcePlan,
         runtime_root: Path,
     ) -> p.Result[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]:
         """Bind the declared physical runtime and its observed chain identity.
 
         Args:
-            plan: The planned candidate sources pinned to original states.
             runtime_root: Declared physical runtime of the consumer.
 
         Returns:
@@ -298,7 +296,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         """
         result_type = r[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]
         environment = u.Infra.runtime_environment_dir(
-            plan.workspace, runtime_root=runtime_root
+            runtime_root, runtime_root=runtime_root
         )
         if environment.is_symlink() or not environment.is_dir():
             return result_type.fail(
@@ -334,7 +332,6 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return r[m.Infra.ValidationReport].from_failure(elected)
         layouts = elected.value
         sealed = FlextInfraCodegenTransaction._sealed_runtime_environment(
-            plan,
             runtime_root,
         )
         if sealed.failure:

@@ -67,11 +67,6 @@ printf '%s\n' "{{ d }}{git_root}"
 {% set d = "$$" if make_syntax else "$" -%}
 {{ git_discovery_context(project_root, make_syntax) }} \
 if [ "{{ d ~ '{' ~ uv_resolution.hosted_variable ~ ':-}' }}" = "{{ uv_resolution.hosted_value }}" ]; then printf '%s\n' "{{ d }}{project_root}"; exit 0; fi; \
-superproject="{{ d }}(git -C "{{ d }}{project_root}" rev-parse --show-superproject-working-tree)"; \
-if [ -n "{{ d }}{superproject}" ] && [ -f "{{ d }}{superproject}/pyproject.toml" ]; then \
-	cd "{{ d }}{superproject}" && pwd -P; \
-	exit 0; \
-fi; \
 reader_root=; \
 parent="{{ d }}(dirname "{{ d }}{project_root}")"; \
 while [ "{{ d }}{parent}" != / ]; do \
@@ -93,7 +88,15 @@ MISE_GLOBAL_CONFIG_FILE="{{ d }}{MISE_CONFIG_DIR}/config.toml"; \
 MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}{reader_root}")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
 reader_mise=mise; \
+uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
 {% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+	uv_active="$$("$${reader_mise}" -C "$${reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --active)"; \
+	uv_installed="$$("$${reader_mise}" -C "$${reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --installed)"; \
+	uv_present=; \
+	for uv_version in $${uv_installed}; do \
+		if [ "$${uv_version}" = "$${uv_active}" ]; then uv_present=Y; fi; \
+	done; \
+	if [ -z "$${uv_present}" ]; then \
 	mise_stage=; \
 	trap 'bootstrap_status=$$?; trap - EXIT; {{ mise_staging_cleanup() }} exit "$${bootstrap_status}"' EXIT; \
 	{ \
@@ -103,9 +106,9 @@ reader_mise=mise; \
 		"$${mise_bootstrap_bin}" -C "$${reader_root}" install --locked --yes "{{ uv_tool.selector or uv_tool.name }}"; \
 	} >&2; \
 	reader_mise="$${mise_bootstrap_bin}"; \
+	fi; \
 ;; esac; \
-{% endif %}uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
-uv_binary="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}{uv_requested}")"; \
+{% endif %}uv_binary="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}{uv_requested}")"; \
 if [ ! -x "{{ d }}{uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
 owner="{{ d }}("{{ d }}{uv_binary}" workspace dir --project "{{ d }}{project_root}")"; \
 case "{{ d }}{owner}" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d }}{owner}" >&2; exit 2 ;; esac; \

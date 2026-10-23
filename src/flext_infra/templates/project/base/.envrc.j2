@@ -98,6 +98,12 @@ fi
 {% endfor %}
 # End SECTION: configured paths
 
+# === SECTION: local overrides (managed) ===
+# Source: template. Load overrides after VENV_DIR and tools are available,
+# before the single resolution election consumes their supplier selection.
+source_env_if_exists .envrc.local
+# End SECTION: local overrides
+
 # === SECTION: virtual environment (managed) ===
 # Source: the physical Git runtime root owns the derived environment.
 if [[ -f "${PROJECT_ROOT}/pyproject.toml" && -d "${VENV_DIR}" ]]; then
@@ -121,9 +127,3 @@ else
   unset VIRTUAL_ENV
 fi
 # End SECTION: virtual environment
-
-# === SECTION: local overrides (managed) ===
-# Source: template. Repository-local, tracked overrides load last and win;
-# every other runtime value comes from the caller's environment.
-source_env_if_exists .envrc.local
-# End SECTION: local overrides

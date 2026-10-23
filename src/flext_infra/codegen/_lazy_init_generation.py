@@ -6,16 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.codegen import (
-    FlextInfraCodegenLazyInitGenerationFilePlanMixin,
-    FlextInfraCodegenLazyInitGenerationRegistryMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInitGenerationFilePlanMixin
 
 
 # Root manifests and initializers are synchronized as one artifact set.
 class FlextInfraCodegenLazyInitGenerationMixin(
     FlextInfraCodegenLazyInitGenerationFilePlanMixin,
-    FlextInfraCodegenLazyInitGenerationRegistryMixin,
 ):
     """Plan ``__init__.py`` artifact sets per package directory."""
 

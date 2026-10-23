@@ -128,7 +128,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             m.Infra.AstGrepDiagnostic.model_validate(finding)
             for finding in u.Infra.codemod_path_findings(
                 project_dir,
-                tuple((project_dir / target).resolve() for target in targets),
+                tuple((project_dir / target).absolute() for target in targets),
                 planned.value.rules,
             )
         ]

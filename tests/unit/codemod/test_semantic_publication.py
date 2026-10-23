@@ -150,7 +150,7 @@ class TestsFlextInfraSemanticPublication:
                     )
                 )
             else:
-                with pytest.raises(ValueError, match="occupied|Python identifier"):
+                with pytest.raises(ValueError, match=r"occupied|Python identifier"):
                     codemod.FlextInfraCodemodSemanticApply.build_rename_plan(
                         root, workspace, selections
                     )
@@ -179,7 +179,7 @@ class TestsFlextInfraSemanticPublication:
             destination.mkdir()
             (destination / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="conflict|occupied"):
+        with pytest.raises(ValueError, match=r"conflict|occupied"):
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.that(source.read_text(), eq=original)
         tm.ok(destination.exists())
@@ -292,6 +292,69 @@ class TestsFlextInfraSemanticPublication:
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.ok(str(source) in str(caught.value))
         tm.ok(source.is_file())
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("declaration", "replacement"),
+        [
+            ("Contract", "contract"),
+            ("Fields", "fields"),
+            ("Aggregates", "aggregates"),
+            ("Document", "document"),
+            ("PyprojectIngressContract", "pyproject_ingress_contract"),
+        ],
+    )
+    def test_numbered_modules_derive_native_owner_relative_responsibility(
+        tmp_path: Path, declaration: str, replacement: str
+    ) -> None:
+        """Native introducing identities select short names and rewrite callers."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        owner = "ExampleModelsProjectMetadata"
+        prefix = "ExampleModels" if declaration.startswith("Pyproject") else owner
+        identity = prefix + declaration
+        source = package / f"{owner.lower()}_part_01.py"
+        original = f"class {identity}:\n    pass\n"
+        source.write_text(original, encoding=c.DEFAULT_ENCODING)
+        consumer = package / "consumer.py"
+        imported = f"from {package.name}.{source.stem} import {identity}\n"
+        consumer.write_text(imported, encoding=c.DEFAULT_ENCODING)
+        seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
+        planned = tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
+        )
+        tm.that(planned.candidate.updates[source], eq=None)
+        tm.that(planned.candidate.updates[package / f"{replacement}.py"], eq=original)
+        tm.that(
+            planned.candidate.updates[consumer],
+            eq=f"from {package.name}.{replacement} import {identity}\n",
+        )
+        tm.that(source.read_text(), eq=original)
+        tm.that(consumer.read_text(), eq=imported)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "declarations",
+        [
+            "class ExampleContract:\n    pass\nclass ExampleFields:\n    pass\n",
+            "class Example:\n    pass\n",
+            "class UnrelatedContract:\n    pass\n",
+        ],
+    )
+    def test_numbered_modules_reject_ambiguous_native_responsibility(
+        tmp_path: Path, declarations: str
+    ) -> None:
+        """Multiple, owner-only and unrelated identities do not authorize a move."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        source = package / "example_part_01.py"
+        source.write_text(declarations, encoding=c.DEFAULT_ENCODING)
+        seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
+        with pytest.raises(ValueError, match="unresolved semantic grouping"):
+            codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
+        tm.that(source.read_text(), eq=declarations)
 
     @staticmethod
     def _rename_artifact(

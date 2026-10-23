@@ -313,6 +313,10 @@ class FlextInfraStagedPackage:
         options = prepared.value
         if options.workspaces:
             return cls._composed_scope_plan(updates, options)
+        containing = cls.workspace_root(workspace)
+        if containing.failure:
+            return result_type.from_failure(containing)
+        workspace = containing.value
         root = u.Cli.atomic_plan_directory_chain(workspace)
         if root.failure:
             return result_type.from_failure(root)
@@ -587,7 +591,7 @@ class FlextInfraStagedPackage:
         )
         return result_type.ok(
             m.Infra.StageSourcePlan(
-                workspace=Path(commonpath(scopes)),
+                workspace=Path(commonpath(plan.workspace for plan in plans)),
                 workspaces=scopes,
                 roots=tuple(
                     dict.fromkeys(root for plan in plans for root in plan.roots)
@@ -924,15 +928,15 @@ class FlextInfraStagedPackage:
             The superproject root or the standalone repository root.
 
         """
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-        if identity.failure:
-            return r[Path].from_failure(identity)
-        if identity.value.is_attached_submodule:
-            superproject = identity.value.superproject_root
-            if superproject is None:
-                return r[Path].fail("attached candidate has no superproject root")
-            return r[Path].ok(superproject)
-        return r[Path].ok(identity.value.repo_root)
+        request = m.Infra.GitRepoRequest(repo_root=root)
+        inside = u.Infra.git_is_inside_work_tree(request)
+        if inside.failure:
+            return r[Path].from_failure(inside)
+        if not inside.value.value:
+            return r[Path].ok(root.resolve())
+        return u.Infra.git_repository_root(request).map(
+            lambda identity: identity.repository_root,
+        )
 
     @classmethod
     def plan(

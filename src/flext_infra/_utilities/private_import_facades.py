@@ -740,23 +740,23 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     f"{public_path}.{child.name}",
                     f"{identity}.{child.name}",
                 )
-            elif isinstance(child, ast.Assign | ast.AnnAssign):
-                targets = (
-                    child.targets if isinstance(child, ast.Assign) else [child.target]
-                )
-                for target in targets:
-                    if (
-                        isinstance(target, ast.Name)
-                        and not target.id.startswith("_")
-                        and cls._inherits_facade(
-                            bindings,
-                            class_bases,
-                            qualified,
-                            f"{identity}.{target.id}",
-                            frozenset(),
-                        )
-                    ):
-                        references.add(f"{public_path}.{target.id}")
+                continue
+            if not isinstance(child, ast.Assign | ast.AnnAssign):
+                continue
+            targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+            for target in targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and not target.id.startswith("_")
+                    and cls._inherits_facade(
+                        bindings,
+                        class_bases,
+                        qualified,
+                        f"{identity}.{target.id}",
+                        frozenset(),
+                    )
+                ):
+                    references.add(f"{public_path}.{target.id}")
 
     @staticmethod
     def facade_alias_binding(

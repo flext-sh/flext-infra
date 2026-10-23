@@ -98,6 +98,13 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
+            if (
+                condition.predicate
+                is c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR
+            ):
+                return cls._declaration_decorator_holds(
+                    (project, module, scope), condition, sources
+                )
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
                 c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
@@ -176,6 +183,54 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 capture.text,
                 start,
                 sources,
+            )
+
+        @classmethod
+        def _declaration_decorator_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Resolve decorators of the captured native function, including aliases.
+
+            Returns:
+                Whether the declaration uses the configured decorator identity.
+
+            Raises:
+                TypeError: If the captured native function has no source definition.
+                ValueError: If the function has no declaring scope.
+
+            """
+            project, module, scope = frame
+            if scope.get_kind() != c.Infra.RopeScopeKind.FUNCTION:
+                return False
+            definition = scope.pyobject
+            if not isinstance(definition, p.Infra.RopeSourceDefinition):
+                msg = "captured native function has no source definition"
+                raise TypeError(msg)
+            node = definition.get_ast()
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                msg = "captured native function has no function syntax"
+                raise TypeError(msg)
+            declaring = scope.parent
+            if declaring is None:
+                msg = "captured native function has no declaring scope"
+                raise ValueError(msg)
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            return any(
+                cls._resolved_symbol_matches(
+                    project, condition, runtime.resolve_symbol(declaring, decorator)
+                )
+                and cls.stable_binding_chain(
+                    (project, module, declaring),
+                    ast.unparse(decorator),
+                    runtime.source_offset(module.source_code, decorator),
+                    sources,
+                )
+                for decorator in node.decorator_list
             )
 
         @classmethod

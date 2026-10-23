@@ -11,22 +11,48 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
+from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenLazyInitGenerationRegistryMixin:
+class FlextInfraCodegenLazyInitGenerationRegistryMixin(
+    FlextInfraCodegenExecutionBase[bool],
+):
     """Describe stale generated sidecars without publishing any effect."""
 
-    if TYPE_CHECKING:
+    _source_project: p.Infra.RopeProject | None = m.PrivateAttr(default=None)
 
-        @property
-        def source_project(self) -> p.Infra.RopeProject: ...
+    @property
+    def source_project(self) -> p.Infra.RopeProject:
+        """Require the sole original source authority during generation.
 
-        @staticmethod
-        def _is_generated(content: bytes | None) -> bool:
-            del content
+        Returns:
+            The original source project authority.
+
+        Raises:
+            ValueError: When no original source authority was captured.
+
+        """
+        if self._source_project is None:
+            msg = "lazy-init generation has no original source authority"
+            raise ValueError(msg)
+        return self._source_project
+
+    @staticmethod
+    def _is_generated(content: bytes | None) -> bool:
+        """Return whether bytes carry an accepted lazy-init owner marker.
+
+        Returns:
+            Whether bytes carry an accepted lazy-init owner marker.
+
+        """
+        return content is not None and content.startswith(
+            tuple(
+                header.encode(c.DEFAULT_ENCODING) for header in c.Infra.AUTOGEN_HEADERS
+            ),
+        )
 
     def _optional_state(self, path: Path) -> p.Result[m.Cli.AtomicFileState]:
         """Read one optional physical file state through the atomic owner.

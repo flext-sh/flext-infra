@@ -11,15 +11,128 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import c, codemod, m
 from tests import tm, u
 
+if TYPE_CHECKING:
+    from tests import p
+
 
 class TestsFlextInfraRuleBindingInputs:
     """Reject in-repo drift; never authenticate dependency or unrelated owners."""
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_inline_shells_preserve_native_declaration_identities(
+        mod_workspace: Path,
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
+        """Reject competing shells, not real aliased contracts or live methods."""
+        owner = Path(__file__).resolve().parents[3]
+        rule = next(
+            item
+            for item in tm.ok(u.Infra.codemod_rule_plan(owner)).rules
+            if item.resource.name == "concrete-mixin-runtime-ellipsis.yml"
+        )
+        consumer = mod_workspace / "consumer.py"
+        source = (
+            c.Infra.AUTOGEN_HEADERS[0]
+            + "\n"
+            + """from abc import ABC as Abstract, abstractmethod as required
+from typing import TYPE_CHECKING as types_only, Protocol as Contract
+from typing import overload as signature, override as marked
+
+class ReaderMixin(Contract):
+    @property
+    def value(self) -> str: ...
+
+class AbstractMixin(Abstract):
+    @marked
+    @required
+    def read(self, required: str) -> str: ...
+
+class Overloads:
+    if types_only:
+        @signature
+        def select(self, value: int) -> int: ...
+        @signature
+        def select(self, value: str) -> str: ...
+    def select(self, value: int | str) -> int | str:
+        return value
+
+class InlineOwner:
+    if types_only:
+        @property
+        def source_project(self) -> str: ...
+        @staticmethod
+        def generated(content: bytes | None) -> bool:
+            del content
+        def cleanup(self, plan: str) -> str:
+            del plan
+            raise NotImplementedError(type(self).__qualname__)
+    def live(self, value: str) -> str:
+        return value
+
+class RuntimeMixin:
+    def missing(self) -> int: ...
+
+class Protocol:
+    pass
+
+class PretenderMixin(Protocol):
+    def counterfeit(self) -> str: ...
+
+def substitute(function):
+    return function
+
+class DecoratedMixin:
+    @substitute
+    def decorated_shell(self) -> str: ...
+
+not_typing = False
+class ConditionalOwner:
+    if not_typing:
+        def conditional(self) -> str: ...
+"""
+        )
+        tm.ok(u.Cli.atomic_write_text_file(consumer, source))
+        native_consumer(
+            "from inspect import isabstract\nfrom runpy import run_path\n"
+            f"observed = run_path({str(consumer)!r})\n"
+            "assert isabstract(observed['AbstractMixin'])\n"
+            "value = 'retained-reference'\n"
+            "assert observed['InlineOwner']().live(value) is value\n"
+            "assert observed['Overloads']().select(value) is value\n",
+            cwd=mod_workspace,
+        )
+        report = tm.ok(
+            codemod.FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=False,
+                selection=(rule.id,),
+                source_files=(consumer,),
+            )
+        )
+        expected = (
+            "source_project",
+            "generated",
+            "cleanup",
+            "missing",
+            "counterfeit",
+            "decorated_shell",
+        )
+        tm.that(len(report.entries), eq=len(expected))
+        for name in expected:
+            tm.that(
+                sum(entry.text.startswith(f"def {name}(") for entry in report.entries),
+                eq=1,
+            )
+        tm.that({entry.rule_id for entry in report.entries}, eq={rule.id})
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
     @pytest.mark.parametrize("changed", ["unrelated", "owner", "transitive"])

@@ -239,13 +239,19 @@ class FlextInfraUtilitiesResourceLimits:
             ValueError: If the project metadata cannot be read.
 
         """
-        metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
-            project_dir,
+        source = FlextInfraUtilitiesPyproject.live_pyproject_text(
+            project_dir / c.PYPROJECT_FILENAME,
         )
-        if metadata.failure:
-            msg = metadata.error or f"project metadata unreadable: {project_dir}"
+        if source.failure:
+            msg = source.error or f"project metadata unreadable: {project_dir}"
             raise ValueError(msg)
-        return cache_root / metadata.value.project.name
+        payload = u.Cli.toml_mapping_from_text(source.value)
+        if payload is None:
+            msg = f"project metadata is not valid TOML: {project_dir}"
+            raise ValueError(msg)
+        return cache_root / FlextInfraUtilitiesPyproject.project_name_from_payload(
+            project_dir / c.PYPROJECT_FILENAME, payload
+        )
 
     @staticmethod
     def external_cache_directory(

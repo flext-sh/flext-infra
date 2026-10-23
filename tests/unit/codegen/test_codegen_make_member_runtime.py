@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import config, settings
 from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
@@ -55,8 +56,10 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         )
 
     @staticmethod
-    def _workspace_with_member(tmp_path: Path, member_source: Path) -> Path:
-        """Check the rendered member out as a submodule of a real superproject.
+    def _workspace_with_member(
+        tmp_path: Path, member_source: Path, *, included: bool = True
+    ) -> Path:
+        """Declare and prove native UV membership of a real Git submodule.
 
         Returns:
             The resulting ``Path``.
@@ -86,6 +89,36 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
                 ],
                 cwd=workspace,
             ),
+        )
+        (workspace / c.PYPROJECT_FILENAME).write_text(
+            "[tool.uv.workspace]\n"
+            + (
+                f'members = ["{member_source.name}"]\n'
+                if included
+                else f'members = []\nexclude = ["{member_source.name}"]\n'
+            ),
+            encoding="utf-8",
+        )
+        u.Tests.copy_tracked_mise_seeds(workspace)
+        member = workspace / member_source.name
+        native = tm.ok(
+            u.Cli.run_raw(
+                (u.Tests.managed_uv(), "workspace", "dir", "--project", str(member)),
+                cwd=member,
+                options=m.Cli.ProcessOptions(
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(native.outcome),
+            eq=True,
+            msg=native.stdout + native.stderr,
+        )
+        tm.that(native.stdout.strip(), eq=str(workspace if included else member))
+        tm.that(
+            tm.ok(u.Infra.runtime_owner_root(member)),
+            eq=workspace if included else member,
         )
         return workspace.resolve()
 
@@ -151,6 +184,96 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             eq=str(u.Infra.runtime_environment_dir(project_root)),
         )
 
+    @staticmethod
+    @pytest.mark.parametrize("supplier", ["absent", "external", "self"])
+    @pytest.mark.parametrize("hosted", [False, True])
+    def test_direnv_elects_resolution_after_local_supplier_overrides(
+        tmp_path: Path, supplier: str, *, hosted: bool
+    ) -> None:
+        """Cold activation consumes local inputs once without losing VENV_DIR."""
+        project_root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        resolution = config.Infra.codegen.make.uv_resolution
+        supplier_variable = settings.Infra.EDITABLE_SUPPLIER_ENVIRONMENT
+        runtime_environment = u.Infra.runtime_environment_dir(project_root)
+        runtime_environment.mkdir(exist_ok=True)
+        supplier_root = tmp_path / "supplier"
+        supplier_root.mkdir()
+        selected = project_root if supplier == "self" else supplier_root
+        (project_root / ".envrc.local").write_text(
+            'export OBSERVED_VENV_DIR="${VENV_DIR}"\n'
+            'printf "loaded\\n" >> overrides.log\n'
+            + (
+                f'export {supplier_variable}="{selected}"\n'
+                if supplier != "absent"
+                else f"unset {supplier_variable}\n"
+            ),
+            encoding="utf-8",
+        )
+        expected_directory = (
+            resolution.standalone_directory
+            if hosted
+            else resolution.editable_directory
+            if supplier == "external"
+            else resolution.local_directory
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.CLI_DIRENV, "allow", str(project_root)), cwd=project_root
+            )
+        )
+        try:
+            for _ in range(2):
+                process = tm.ok(
+                    u.Cli.run_raw(
+                        (
+                            c.Infra.CLI_DIRENV,
+                            "exec",
+                            ".",
+                            "printenv",
+                            "UV_PROJECT",
+                            "UV_PROJECT_ENVIRONMENT",
+                            "OBSERVED_VENV_DIR",
+                        ),
+                        cwd=project_root,
+                        options=m.Cli.ProcessOptions(
+                            env={
+                                resolution.hosted_variable: (
+                                    resolution.hosted_value if hosted else "false"
+                                )
+                            },
+                            remove_env_keys=(
+                                *c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                                supplier_variable,
+                            ),
+                        ),
+                    )
+                )
+                tm.that(
+                    u.Cli.process_succeeded(process.outcome),
+                    eq=True,
+                    msg=process.stdout + process.stderr,
+                )
+                tm.that(
+                    process.stdout.splitlines(),
+                    eq=[
+                        str(project_root / expected_directory),
+                        str(runtime_environment),
+                        str(runtime_environment),
+                    ],
+                )
+        finally:
+            tm.ok(
+                u.Cli.run_checked(
+                    (c.Infra.CLI_DIRENV, "deny", str(project_root)), cwd=project_root
+                )
+            )
+        tm.that(
+            (project_root / "overrides.log").read_text(encoding="utf-8").splitlines(),
+            eq=["loaded", "loaded"],
+        )
+
     def test_submodule_member_resolves_the_workspace_runtime(
         self,
         tmp_path: Path,
@@ -166,13 +289,34 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         values = self._runtime_values(member)
 
         tm.that(values["PROJECT_ROOT"], eq=str(member))
-        for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT", "UV_PROJECT"):
+        for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT"):
             tm.that(values[name], eq=str(workspace))
+        tm.that(
+            values["UV_PROJECT"],
+            eq=str(workspace / config.Infra.codegen.make.uv_resolution.local_directory),
+        )
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT"):
             tm.that(
                 values[name],
                 eq=str(u.Infra.runtime_environment_dir(member, runtime_root=workspace)),
             )
+
+    def test_excluded_submodule_keeps_its_own_runtime(self, tmp_path: Path) -> None:
+        """Git attachment cannot override UV's explicit workspace exclusion."""
+        member_source, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        workspace = self._workspace_with_member(tmp_path, member_source, included=False)
+        member = workspace / member_source.name
+
+        values = self._runtime_values(member)
+
+        for name in ("PROJECT_ROOT", "REPOSITORY_ROOT", "RUNTIME_ROOT"):
+            tm.that(values[name], eq=str(member))
+        tm.that(
+            values["RUNTIME_VENV"],
+            eq=str(u.Infra.runtime_environment_dir(member, runtime_root=member)),
+        )
 
     def test_attached_member_upg_delegates_to_the_runtime_root(
         self,
@@ -235,8 +379,6 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         member = owner
         if attached:
             owner = self._workspace_with_member(tmp_path, project_root)
-            # The member's activation reads the runtime pin of its superproject.
-            u.Tests.copy_tracked_mise_seeds(owner)
             member = owner / project_root.name
         entry = member
         if linked:

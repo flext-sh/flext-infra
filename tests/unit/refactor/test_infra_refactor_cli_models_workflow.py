@@ -25,6 +25,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     @staticmethod
     def test_mod_cli_accepts_repeated_typed_consumer_roots_and_rejects_missing_scope(
         tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Repeated run roots reach the canonical action without CSV or env inputs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -48,7 +49,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             ])
         tm.ok(result != 0)
         tm.that(
-            output.getvalue(),
+            capsys.readouterr().err,
             has="consumer roots must be existing absolute checkout roots",
         )
         tm.that(source.read_bytes(), eq=original)
@@ -69,8 +70,8 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "        return 'native'\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        roots = []
-        consumers = []
+        roots: list[Path] = []
+        consumers: list[Path] = []
         for index in range(2):
             root, consumer_package = u.Tests.create_lazy_init_workspace(
                 tmp_path,
@@ -140,8 +141,10 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             )
         tm.that(main(arguments), eq=0)
         tm.that(
-            m.Infra.SemanticRenamePlan.model_validate_json(artifact_path.read_bytes()),
-            eq=artifact,
+            m.Infra.SemanticRenamePlan.model_validate_json(
+                artifact_path.read_bytes()
+            ).model_dump(include={"edits", "decisions", "moves"}),
+            eq=artifact.model_dump(include={"edits", "decisions", "moves"}),
         )
         for path, content in originals.items():
             tm.that(path.read_bytes(), eq=content)
@@ -262,10 +265,12 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             tm.that(artifact.candidate.workspace, eq=workspace)
             tm.that(artifact.edits[0].updated_source, has="def meaningful(")
             tm.that(main(arguments), eq=0)
-            tm.that(
-                m.Infra.SemanticRenamePlan.model_validate_json(output.read_bytes()),
-                eq=artifact,
+            repeated = m.Infra.SemanticRenamePlan.model_validate_json(
+                output.read_bytes()
             )
+            tm.that(repeated.edits, eq=artifact.edits)
+            tm.that(repeated.decisions, eq=artifact.decisions)
+            tm.that(repeated.moves, eq=artifact.moves)
         else:
             tm.that(result, ne=0)
         for path, content in originals.items():

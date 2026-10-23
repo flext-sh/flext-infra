@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -329,14 +330,33 @@ _native_atomic = (
         output = consumer.native_reference_probe(request)
         if output.failure:
             return result_type.from_failure(output)
-        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+        diagnostics = "".join(
+            rf"native-cold phase={phase} event={event} "
+            rf"elapsed_s=[0-9]+\.[0-9]{{6}} "
+            rf"providers={len(request.source_authority.generator_modules)} "
+            rf"receipts={len(request.source_authority.inputs)} trace=[0-9]+\n"
+            for phase in ("bootstrap", "capture", "receipts", "json")
+            for event in ("start", "end")
+        )
+        if (
+            not u.Cli.process_succeeded(output.value.outcome)
+            or re.fullmatch(diagnostics, output.value.stderr) is None
+        ):
             return result_type.fail(
                 f"cold native source import failed: {output.value.outcome}\n"
                 f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}",
             )
-        imported = m.Infra.NativeImportObservation.model_validate_json(
-            output.value.stdout
-        )
+        sys.stderr.write(output.value.stderr)
+        try:
+            imported = m.Infra.NativeImportObservation.model_validate_json(
+                output.value.stdout
+            )
+        except m.ValidationError as error:
+            error.add_note(
+                f"cold native source import evidence: {output.value.outcome}\n"
+                f"stdout:\n{output.value.stdout}\nstderr:\n{output.value.stderr}"
+            )
+            raise
         private = imported.__pydantic_private__
         if private is None:
             return result_type.fail(
@@ -396,7 +416,7 @@ _native_atomic = (
             (name, str(root))
             for name, root in request.source_authority.generator_modules
         )
-        code = (
+        bootstrap = (
             "import importlib, sys\nfrom pathlib import Path\n"
             f"_native_roots = {{name: Path(root) for name, root in "
             f"{elected_roots!r}}}\n"
@@ -418,12 +438,42 @@ _native_atomic = (
             + c.Infra.FRESH_IMPORT_ORIGIN_CODE.replace(
                 c.Infra.FRESH_IMPORT_ORIGINS_PLACEHOLDER, repr(origins)
             )
-            + "reference = native.capture(selections).unwrap()\n"
-            "reference = reference.model_copy(update={'executed_sources': tuple("
-            "m.Cli.AtomicFileReceipt.model_validate_json(receipt) "
-            "for path, receipt in sorted(_native_trace.items()))})\n"
-            "sys.stdout.write(reference.model_dump_json())\n"
         )
+        code = "import sys\nfrom time import perf_counter\n_native_trace = {}\n"
+        line_map: list[str] = []
+        for phase, body in (
+            ("bootstrap", bootstrap),
+            ("capture", "reference = native.capture(selections).unwrap()\n"),
+            (
+                "receipts",
+                (
+                    "reference = reference.model_copy(update={'executed_sources': tuple("
+                    "m.Cli.AtomicFileReceipt.model_validate_json(receipt) "
+                    "for path, receipt in sorted(_native_trace.items()))})\n"
+                ),
+            ),
+            ("json", "sys.stdout.write(reference.model_dump_json())\n"),
+        ):
+            first_line = code.count("\n") + 1
+            code += (
+                "_native_phase_started = perf_counter()\n"
+                f"print(f'native-cold phase={phase} event=start elapsed_s=0.000000 "
+                f"providers={len(elected_roots)} receipts={len(receipts)} "
+                "trace={len(_native_trace)}', file=sys.stderr, flush=True)\n"
+                + body
+                + f"print(f'native-cold phase={phase} event=end "
+                "elapsed_s={perf_counter() - _native_phase_started:.6f} "
+                f"providers={len(elected_roots)} receipts={len(receipts)} "
+                "trace={len(_native_trace)}', file=sys.stderr, flush=True)\n"
+            )
+            line_map.append(f"{phase}:{first_line}-{code.count(chr(10))}")
+        # Bind traceback line numbers to this exact stdin, without exposing source.
+        sys.stderr.write(
+            "native-cold worker "
+            f"sha256={u.Cli.sha256_bytes(code.encode(c.DEFAULT_ENCODING))} "
+            f"lines={code.count(chr(10))} phases={','.join(line_map)}\n"
+        )
+        sys.stderr.flush()
         return self.execute_probe(
             m.Infra.FreshImportProbe(subject="native reference", code=code),
             cwd=request.repository_root,

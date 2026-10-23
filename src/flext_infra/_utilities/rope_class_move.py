@@ -115,21 +115,7 @@ class FlextInfraUtilitiesRopeClassMove:
         if source == target:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
-        for path in (source, target):
-            if path.suffix != ".py" or path.name == c.Infra.INIT_PY:
-                msg = f"module resource move requires a Python file module: {path}"
-                raise ValueError(msg)
-            names = (*path.parent.relative_to(root).parts, path.stem)
-            if any(
-                not name.isidentifier() or keyword.iskeyword(name) for name in names
-            ):
-                msg = f"module resource move requires Python identifiers: {path}"
-                raise ValueError(msg)
-        for parent in target.parents:
-            if parent == root:
-                break
-            if parent.with_suffix(".py").exists():
-                raise FileExistsError(parent.with_suffix(".py"))
+        cls._validate_module_resource_paths(root, source, target)
         parents = {
             root,
             *(path.parent for path in sources if path.is_relative_to(root)),
@@ -149,6 +135,59 @@ class FlextInfraUtilitiesRopeClassMove:
         topology = tuple(
             u.Cli.atomic_plan_directory_chain(path).unwrap() for path in sorted(parents)
         )
+        return cls._module_resource_move_plans(
+            project, root, source, target, sources, source_states, directories, topology
+        )
+
+    @staticmethod
+    def _validate_module_resource_paths(root: Path, source: Path, target: Path) -> None:
+        """Reject invalid module identifiers and occupied package parents.
+
+        Raises:
+            ValueError: If a path cannot identify a Python module.
+            FileExistsError: If a parent is already a file module.
+
+        """
+        for path in (source, target):
+            if path.suffix != ".py" or path.name == c.Infra.INIT_PY:
+                msg = f"module resource move requires a Python file module: {path}"
+                raise ValueError(msg)
+            names = (*path.parent.relative_to(root).parts, path.stem)
+            if any(
+                not name.isidentifier() or keyword.iskeyword(name) for name in names
+            ):
+                msg = f"module resource move requires Python identifiers: {path}"
+                raise ValueError(msg)
+        for directory in target.parents:
+            if directory == root:
+                break
+            module_file = directory.with_suffix(".py")
+            if module_file.exists():
+                raise FileExistsError(module_file)
+
+    @classmethod
+    def _module_resource_move_plans(
+        cls,
+        project: p.Infra.RopeProject,
+        root: Path,
+        source: Path,
+        target: Path,
+        sources: t.MappingKV[Path, str],
+        source_states: tuple[m.Cli.AtomicFileState, ...],
+        directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
+        topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Compose authenticated native resource changes and publication plans.
+
+        Returns:
+            File plans retaining the captured directory queries.
+
+        Raises:
+            ValueError: If the source inventory is incomplete.
+            FileNotFoundError: If the source has no captured mode.
+            FileExistsError: If an intermediate module is occupied.
+
+        """
         inventory = {
             Path(item.real_path).resolve() for item in project.get_python_files()
         }
@@ -349,9 +388,10 @@ class FlextInfraUtilitiesRopeClassMove:
                     composed, cls._resource(composed, root, target)
                 )
             )
-            for path, text in tuple(candidate.items()):
+
+            def rewrite_consumer(path: Path, text: str) -> None:
                 if path == source:
-                    continue
+                    return
                 resource = cls._resource(composed, root, path)
                 original = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
                     project,
@@ -490,6 +530,9 @@ class FlextInfraUtilitiesRopeClassMove:
                             ],
                         )
                     )
+
+            for path, text in tuple(candidate.items()):
+                rewrite_consumer(path, text)
         finally:
             composed.close()
         verified = runtime.snapshot_project(
@@ -499,7 +542,10 @@ class FlextInfraUtilitiesRopeClassMove:
             relocated = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
                 verified, cls._resource(verified, root, target)
             )
-            for path, required in checks.items():
+
+            def validate_consumer(
+                path: Path, required: dict[tuple[int, str], int]
+            ) -> None:
                 resource = cls._resource(verified, root, path)
                 module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
                     verified, resource
@@ -527,6 +573,9 @@ class FlextInfraUtilitiesRopeClassMove:
                         f"module relocation lost original quoted type positions: {path}"
                     )
                     raise ValueError(msg)
+
+            for path, required in checks.items():
+                validate_consumer(path, required)
         finally:
             verified.close()
 

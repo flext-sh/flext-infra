@@ -1213,7 +1213,45 @@ class FlextInfraCodegenPreconditions:
         if current.failure:
             return r[bool].from_failure(current)
         if current.value != receipt:
-            return r[bool].fail(f"cold executed source changed: {receipt.path}")
+            child_fields = receipt.model_dump()
+            current_fields = current.value.model_dump()
+            differences = tuple(
+                (
+                    field,
+                    child_fields[field],
+                    current_fields[field],
+                    type(child_fields[field]).__qualname__,
+                    type(current_fields[field]).__qualname__,
+                )
+                for field in m.Cli.AtomicFileReceipt.model_fields
+                if child_fields[field] != current_fields[field]
+            )
+            child_digest = u.Cli.sha256_bytes(
+                receipt.model_dump_json().encode(c.DEFAULT_ENCODING)
+            )
+            current_digest = u.Cli.sha256_bytes(
+                current.value.model_dump_json().encode(c.DEFAULT_ENCODING)
+            )
+            return r[bool].fail(
+                f"cold executed source changed: {receipt.path}; "
+                f"previous_present={previous is not None}; "
+                f"previous_matches_child={
+                    previous == receipt if previous is not None else None
+                }; "
+                f"child_receipt_sha256={child_digest}; "
+                f"current_receipt_sha256={current_digest}; "
+                f"child_model={type(receipt).__module__}.{type(receipt).__qualname__}; "
+                f"current_model={type(current.value).__module__}."
+                f"{type(current.value).__qualname__}; "
+                f"same_model_type={type(receipt) is type(current.value)}; "
+                f"private_equal={
+                    receipt.__pydantic_private__ == current.value.__pydantic_private__
+                }; "
+                f"extra_equal={
+                    receipt.__pydantic_extra__ == current.value.__pydantic_extra__
+                }; "
+                f"changed_components_child_current_types={differences}",
+            )
         return r[bool].ok(value=True)
 
     @classmethod

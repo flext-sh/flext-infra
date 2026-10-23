@@ -328,7 +328,9 @@ class FlextInfraUtilitiesProjectDiscovery(
         }
         if source_files is not None:
             selected = {
-                path.resolve().relative_to(resolved_root).as_posix()
+                (path.absolute() if path.suffix == ".pyi" else path.resolve())
+                .relative_to(resolved_root)
+                .as_posix()
                 for path in source_files
             }
             if not selected or selected - eligible:
@@ -560,18 +562,27 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         return tuple(
             sorted({
-                path.resolve()
+                path.absolute()
+                if owned_path_admission and path.suffix == ".pyi"
+                else path.resolve()
                 for path in cls._walk_python_files(
                     project_dir,
                     skip_dirs - owned_artifacts,
                     excluded_paths=excluded_paths,
                     source_project=source_project,
                     retired_roots=retired_roots,
+                    owned_path_admission=owned_path_admission,
                 )
                 if (owned_path_admission and path.suffix == ".pyi")
-                or not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    project_dir,
-                    path,
+                or (
+                    not any(
+                        part.startswith(".") or part in skip_dirs
+                        for part in path.relative_to(project_dir).parts
+                    )
+                    and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                        project_dir,
+                        path,
+                    )
                 )
             })
         )
@@ -584,6 +595,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         excluded_paths: frozenset[Path] = frozenset(),
         source_project: p.Infra.RopeProject | None = None,
         retired_roots: frozenset[Path] = frozenset(),
+        owned_path_admission: bool = False,
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
 
@@ -596,6 +608,18 @@ class FlextInfraUtilitiesProjectDiscovery(
             """Propagate the walk's original filesystem failure."""
             raise error
 
+        owned_roots = (
+            frozenset(directory / root for root in config.Infra.source_scan.roots)
+            | retired_roots
+            if owned_path_admission
+            else frozenset()
+        )
+        artifact_boundaries = frozenset(
+            artifact.name
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.source_scan_ignore
+            and not (artifact.generated_source or artifact.retired_typing_root)
+        ) | {c.Infra.GIT_DIR}
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
@@ -605,8 +629,15 @@ class FlextInfraUtilitiesProjectDiscovery(
             child_dirs[:] = [
                 name
                 for name in child_dirs
-                if name not in skip_dirs
-                and not name.startswith(".")
+                if (
+                    (name not in skip_dirs and not name.startswith("."))
+                    or (
+                        name not in artifact_boundaries
+                        and any(
+                            (parent / name).is_relative_to(root) for root in owned_roots
+                        )
+                    )
+                )
                 and parent / name not in excluded_paths
                 and (
                     not (parent / name).is_symlink() if source_project is None else True
@@ -630,14 +661,22 @@ class FlextInfraUtilitiesProjectDiscovery(
                 )
             ]
             for file_name in file_names:
+                stub_path = owned_path_admission and Path(file_name).suffix == ".pyi"
                 if (
-                    not file_name.startswith(".")
-                    and file_name not in skip_dirs
+                    (
+                        stub_path
+                        or (
+                            not file_name.startswith(".") and file_name not in skip_dirs
+                        )
+                    )
                     and parent / file_name not in excluded_paths
                     and Path(file_name).suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                     and (
-                        (parent / file_name).is_file()
-                        and not (parent / file_name).is_symlink()
+                        (
+                            (parent / file_name).is_file()
+                            and not (parent / file_name).is_symlink()
+                        )
+                        or (stub_path and (parent / file_name).is_symlink())
                         if source_project is None
                         else source_project.source_query(parent / file_name, "isfile")
                     )
@@ -850,6 +889,16 @@ class FlextInfraUtilitiesProjectDiscovery(
             return r[Path].from_failure(runtime)
         attached = runtime.value.repository_root.resolve()
         if attached != git_root and (attached / c.PYPROJECT_FILENAME).is_file():
+            declarations = FlextInfraUtilitiesGit.git_submodule_declarations(attached)
+            if declarations.failure:
+                return r[Path].from_failure(declarations)
+            if not any(
+                (attached / member.path).resolve() == git_root
+                for member in declarations.value
+            ):
+                return r[Path].fail(
+                    f"attached runtime has no original member declaration: {git_root}"
+                )
             return r[Path].ok(attached)
         scope = cls._native_resolution_scope(project_root, git_root)
         if scope.failure:

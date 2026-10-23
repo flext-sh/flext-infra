@@ -86,15 +86,17 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if document.failure:
             return result_type.from_failure(document)
-        section = r[m.Infra.ToolConfigDocument].create_from_callable(
-            partial(
-                m.Infra.ToolConfigDocument.model_validate,
-                u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
-                context={"project_root": repository_root.resolve()},
-            ),
+        section = u.validate_value(
+            m.Infra.ToolConfigDocument,
+            u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
         )
         if section.failure:
             return result_type.from_failure(section)
+        admitted_paths = cls.native_tool_search_path_admission(
+            section.value, repository_root
+        )
+        if admitted_paths.failure:
+            return result_type.from_failure(admitted_paths)
         verified = (
             cls._verify_unchanged_snapshots(document.value.sources)
             if source_project is None

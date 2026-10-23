@@ -23,6 +23,42 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 
+    @pytest.mark.parametrize("asynchronous", [False, True])
+    def test_deep_function_exports_keep_their_static_owner(
+        self, tmp_path: Path, *, asynchronous: bool
+    ) -> None:
+        """Static and lazy publication retain a deep function's native identity."""
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+        domain = package / ("_" + "d" * (width - len(package.name) - 22))
+        domain.mkdir()
+        (domain / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        (domain / "provider.py").write_text(
+            f"{'async ' if asynchronous else ''}def encode(value: str) -> str:\n"
+            "    return value\n\n__all__ = ['encode']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        namespace = f"{package.name}.{domain.name}"
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import typing\nimport flext_core.lazy\n"
+                "typing.TYPE_CHECKING = True\n"
+                f"import {namespace} as public\n"
+                f"from {namespace}.provider import encode\n"
+                "print(public.encode is encode)\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["True"],
+        )
+        tm.that(u.Tests.run_lazy_init(repository, check_only=True), eq=0)
+
     @classmethod
     def _bootstrap_content(
         cls, tmp_path: Path, current_pkg: str, provider: str, export: str

@@ -22,6 +22,47 @@ from tests import c, m, p, r, t, tm, u
 class TestsFlextInfraUtilityFacadeProjection:
     """Exercise declared owner projection only through ``u.Infra``."""
 
+    def test_initializer_retires_exports_moved_into_class_owners(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Generated barrels follow live owners, not their obsolete export map."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        child = package / "services"
+        module = child / "engine.py"
+        self._write(package / "__init__.py", "")
+        self._write(child / "__init__.py", "")
+        self._write(
+            module, "def build_plan():\n    return 7\n__all__ = ['build_plan']\n"
+        )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        self._write(
+            module,
+            "class Engine:\n    @staticmethod\n"
+            "    def build_plan():\n        return 7\n"
+            "__all__ = ['Engine']\n",
+        )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        rendered = (child / "__init__.py").read_text(encoding="utf-8")
+        tm.that("build_plan" in rendered, eq=False)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that((child / "__init__.py").read_text(encoding="utf-8"), eq=rendered)
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.services import Engine; "
+                        "assert Engine.build_plan() == 7"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+
     @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
     @pytest.mark.parametrize("nested", [False, True])
     def test_explicit_owner_classes_compose_by_inheritance(
@@ -39,7 +80,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         for module, name in (("base", "OwnerBase"), ("vocabulary", "OwnerVocabulary")):
             self._write(
                 package / definition.directory / f"{module}.py",
-                f"class {name}:\n    class {name}Entity:\n        pass\n__all__ = [{name!r}]\n",
+                f"class {name}:\n    class {name}Entity:\n        pass\n"
+                f"__all__ = [{name!r}]\n",
             )
         facade = package / f"{definition.module}.py"
         indent = "        " if nested else "    "
@@ -47,7 +89,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             facade,
             '"""Explicit public class facade."""\n'
             f"from {package.name}.{definition.directory}.base import OwnerBase\n"
-            f"from {package.name}.{definition.directory}.vocabulary import OwnerVocabulary\n"
+            f"from {package.name}.{definition.directory}.vocabulary "
+            "import OwnerVocabulary\n"
             "class PublicFacade:\n"
             + ("    class Sample:\n" if nested else "")
             + f"{indent}Base = OwnerBase\n"
@@ -81,9 +124,11 @@ class TestsFlextInfraUtilityFacadeProjection:
                     sys.executable,
                     "-c",
                     "from importlib import import_module\n"
-                    f"facade = import_module({(package.name + '.' + definition.module)!r}).PublicFacade\n"
+                    f"facade = import_module('{package.name}.{definition.module}')"
+                    ".PublicFacade\n"
                     + ("facade = facade.Sample\n" if nested else "")
-                    + f"base = import_module({(package.name + '.' + definition.directory + '.base')!r}).OwnerBase\n"
+                    + f"base = import_module('{package.name}."
+                    f"{definition.directory}.base').OwnerBase\n"
                     + "assert base in facade.__mro__\n"
                     + "assert facade.OwnerBaseEntity is base.OwnerBaseEntity\n"
                     + "assert not hasattr(facade, 'Base')\n"
@@ -129,8 +174,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             f"from {package.name}.{spec.directory}.contracts "
             "import SampleFacadeContracts\n\n"
             "class SampleFacade(Framework):\n"
-            f"    class Sample({'SampleFacadeContracts, ' if stale_base else ''}Framework.Sample):\n"
-            "        Contracts: ClassVar[type[SampleFacadeContracts]] = SampleFacadeContracts\n"
+            "    class Sample("
+            + ("SampleFacadeContracts, Framework.Sample" if stale_base else "")
+            + "):\n"
+            "        Contracts: ClassVar[type[SampleFacadeContracts]] = "
+            "SampleFacadeContracts\n"
             f"{family} = SampleFacade\n"
             f"__all__ = ['SampleFacade', '{family}']\n",
         )
@@ -157,13 +205,18 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "-c",
                     (
                         f"from {package.name}.{spec.module} import {family} as facade\n"
-                        f"from {package.name}.{spec.directory}.contracts import SampleFacadeContracts\n"
-                        f"from {package.name}.{spec.directory}.schema import SampleFacadeSchema\n"
+                        f"from {package.name}.{spec.directory}.contracts "
+                        "import SampleFacadeContracts\n"
+                        f"from {package.name}.{spec.directory}.schema "
+                        "import SampleFacadeSchema\n"
                         "from upstream import Framework\n"
                         "assert facade.__bases__ == (Framework,)\n"
-                        "assert facade.Sample.__bases__ == (SampleFacadeContracts, SampleFacadeSchema, Framework.Sample)\n"
-                        "assert facade.Sample.ContractsEntity is SampleFacadeContracts.ContractsEntity\n"
-                        "assert facade.Sample.SchemaEntity is SampleFacadeSchema.SchemaEntity\n"
+                        "assert facade.Sample.__bases__ == (SampleFacadeContracts, "
+                        "SampleFacadeSchema, Framework.Sample)\n"
+                        "assert facade.Sample.ContractsEntity is "
+                        "SampleFacadeContracts.ContractsEntity\n"
+                        "assert facade.Sample.SchemaEntity is "
+                        "SampleFacadeSchema.SchemaEntity\n"
                         "assert facade.Sample.CONTRACTS_VALUE == 7\n"
                         "assert not hasattr(facade.Sample, 'SampleFacadeContracts')\n"
                     ),
@@ -677,7 +730,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         path = next(iter(desired))
         self._write(path, desired[path])
         with (
-            pytest.raises(ValueError, match="atomic source changed"),
+            pytest.raises(RuntimeError, match="atomic source changed"),
             u.Infra.facade_source_project(
                 tmp_path,
                 source_states=originals,
@@ -2118,11 +2171,13 @@ class TestsFlextInfraUtilityFacadeProjection:
         if not virtual:
             self._write(owner, source)
 
-        with u.Infra.facade_source_project(
-            tmp_path, planned_sources={owner: source} if virtual else {}
-        ) as (project, _, sources):
-            with pytest.raises(ValueError, match="have no public facade"):
-                u.Infra.render_utility_facade(package, project=project, sources=sources)
+        with (
+            u.Infra.facade_source_project(
+                tmp_path, planned_sources={owner: source} if virtual else {}
+            ) as (project, _, sources),
+            pytest.raises(ValueError, match="have no public facade"),
+        ):
+            u.Infra.render_utility_facade(package, project=project, sources=sources)
 
     @staticmethod
     @pytest.mark.parametrize("present", [False, True])

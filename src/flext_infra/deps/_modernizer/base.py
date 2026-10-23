@@ -6,78 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import override
 
-from typing_extensions import TypeForm
-
-from flext_infra import FlextInfraProjectSelectionServiceBase, config, m, p, r, t, u
-from flext_infra._models.deps import (
-    GitSourceRefFromField,
-    GitSourceRefToField,
-    GitSourceUrlPrefixField,
-)
-from flext_infra.deps._modernizer import (
-    FlextInfraPyprojectModernizerDocument,
-    FlextInfraPyprojectModernizerRun,
-    FlextInfraPyprojectModernizerTooling,
-)
+from flext_infra import p, r
+from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerRun
 
 
 class FlextInfraPyprojectModernizerBase(
-    FlextInfraProjectSelectionServiceBase[bool],
-    FlextInfraPyprojectModernizerDocument,
-    FlextInfraPyprojectModernizerTooling,
     FlextInfraPyprojectModernizerRun,
 ):
     """Modernize workspace pyproject.toml files to the canonical format."""
-
-    @staticmethod
-    def _config_sort_first() -> t.StrSequence:
-        """Read the config-owned top-level TOML section order once.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        return u.Infra.native_tool_setting(
-            config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
-        )
-
-    audit: Annotated[
-        bool,
-        m.Field(default=False, description="Audit pyproject changes without writing"),
-    ] = False
-    skip_check: Annotated[
-        bool,
-        m.Field(alias="skip-check", description="Skip post-write validation"),
-    ] = False
-    skip_comments: Annotated[
-        bool,
-        m.Field(alias="skip-comments", description="Skip managed comment updates"),
-    ] = False
-    rewrite_constraints: Annotated[
-        bool,
-        m.Field(
-            alias="rewrite-constraints",
-            description="Rewrite dependency constraints from the provisioned runtime",
-        ),
-    ] = False
-    managed_artifacts: Annotated[
-        m.Infra.ProjectManagedArtifactsResolution | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Caller-owned project ManagedArtifacts resolution",
-        ),
-    ] = None
-    git_source_url_prefix: GitSourceUrlPrefixField = None
-    git_source_ref_from: GitSourceRefFromField = None
-    git_source_ref_to: GitSourceRefToField = None
-    tomlsort_sort_first: t.StrSequence = m.Field(
-        default_factory=_config_sort_first,
-        exclude=True,
-        description="Config-owned top-level TOML section order",
-    )
 
     @override
     def execute(self) -> p.Result[bool]:

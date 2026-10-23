@@ -271,6 +271,7 @@ class FlextInfraConstantsRefactor:
         LAYER_ZERO_FILE = "layer-zero-file"
         PAYLOAD_DECLARATION = "payload-declaration"
         PROTOCOL_DECLARATION = "protocol-declaration"
+        DECLARATION_DECORATOR = "declaration-decorator"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"
         MEMBER_RELOCATION = "member-relocation"

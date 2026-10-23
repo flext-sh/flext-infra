@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
     FlextInfraCodegenLazyInitPlanner,
     FlextInfraCodegenLazyInitProjectionManifest,
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInit(
-    FlextInfraCodegenExecutionBase[bool],
     FlextInfraCodegenLazyInitGenerationMixin,
 ):
     """Plan ``__init__.py`` artifacts with PEP 562 lazy imports.
@@ -40,16 +38,12 @@ class FlextInfraCodegenLazyInit(
     """
 
     _modified_files: t.Infra.StrSet = m.PrivateAttr(default_factory=set)
-    _source_project: p.Infra.RopeProject | None = m.PrivateAttr(default=None)
     _source_indexes: t.MutableMappingKV[
         Path, t.Pair[m.Infra.RopeWorkspaceIndex, m.Infra.CodegenPhaseAnalysis]
     ] = m.PrivateAttr(
         default_factory=dict[
             Path, t.Pair[m.Infra.RopeWorkspaceIndex, m.Infra.CodegenPhaseAnalysis]
         ],
-    )
-    _publication_receipts: t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis] = (
-        m.PrivateAttr(default_factory=dict[str, m.Infra.CodegenPhaseAnalysis])
     )
     project_scope_roots: Annotated[
         t.VariadicTuple[Path] | None,
@@ -61,23 +55,6 @@ class FlextInfraCodegenLazyInit(
             ),
         ),
     ] = None
-
-    @property
-    @override
-    def source_project(self) -> p.Infra.RopeProject:
-        """Require the sole original source authority during generation.
-
-        Returns:
-            The original source project authority.
-
-        Raises:
-            ValueError: When no original source authority was captured.
-
-        """
-        if self._source_project is None:
-            msg = "lazy-init generation has no original source authority"
-            raise ValueError(msg)
-        return self._source_project
 
     @property
     def modified_files(self) -> t.StrSequence:
@@ -123,6 +100,10 @@ class FlextInfraCodegenLazyInit(
         self,
         *,
         source_project: p.Infra.RopeProject | None = None,
+        source_publications: t.MutableSequenceOf[
+            t.Pair[Path, m.Infra.CodegenPhaseAnalysis]
+        ]
+        | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return one complete immutable lazy-init analysis receipt.
 
@@ -148,7 +129,10 @@ class FlextInfraCodegenLazyInit(
         u.Cli.info(
             f"lazy-init: planning read-only artifacts for {self.repository_root}",
         )
-        planned = self._plan_in_workspace(source_project=source_project)
+        planned = self._plan_in_workspace(
+            source_project=source_project,
+            source_publications=source_publications,
+        )
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
@@ -168,6 +152,10 @@ class FlextInfraCodegenLazyInit(
         self,
         *,
         source_project: p.Infra.RopeProject | None = None,
+        source_publications: t.MutableSequenceOf[
+            t.Pair[Path, m.Infra.CodegenPhaseAnalysis]
+        ]
+        | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Plan once against one original epoch with isolated artifact consumers.
 
@@ -175,8 +163,9 @@ class FlextInfraCodegenLazyInit(
         transaction owns aggregate evidence publication after verified effects;
         planning has no filesystem effects. File plans, publications and issues
         retain physical attribution, with manifests after ordered root plans.
-        A source that changes during planning raises its original exception;
-        generation is rerun, never re-planned in process.
+        Each completed output retains its authentic native input receipt.
+        Changed dependencies retain the original exception beside independent
+        plans; publication re-proves each component without re-planning.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
@@ -195,13 +184,40 @@ class FlextInfraCodegenLazyInit(
                     inputs=(),
                 ),
             )
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
         with self._source_binding(
-            self.repository_root.resolve(), source_project, roots
+            self.repository_root.resolve(),
+            source_project,
+            roots,
+            (publications, failures),
         ) as project:
             planned = self._plan_roots(roots, source_project=project)
-        if source_project is not None:
-            project.verify_source_states()
-        return planned
+            if planned.is_success:
+                publications.extend(
+                    (Path(path), receipt)
+                    for path, receipt in self._publication_receipts.items()
+                )
+                for target, receipt in planned.value.failed_targets:
+                    if not isinstance(receipt, m.Infra.CodegenPhaseAnalysis):
+                        msg = "lazy-init target lacks its original native receipt"
+                        raise ValueError(msg)
+                    publications.append((target, receipt))
+                if source_project is not None:
+                    verified = u.Infra.verify_source_publications(project, publications)
+                    if verified.issues:
+                        failures.append(verified)
+            elif source_project is not None:
+                project.verify_source_states()
+        if planned.failure:
+            return planned
+        if source_publications is not None:
+            source_publications.extend(publications)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            self.composed_analysis((planned.value, *failures))
+            if failures
+            else planned.value
+        )
 
     def _plan_roots(
         self,
@@ -320,6 +336,10 @@ class FlextInfraCodegenLazyInit(
         root: Path,
         source_project: p.Infra.RopeProject | None,
         scope_roots: t.VariadicTuple[Path],
+        source_publications: t.Pair[
+            t.MutableSequenceOf[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
+            t.MutableSequenceOf[m.Infra.CodegenPhaseAnalysis],
+        ],
     ) -> Generator[p.Infra.RopeProject]:
         """Bind the shared original authority without replacing an injected epoch.
 
@@ -340,6 +360,7 @@ class FlextInfraCodegenLazyInit(
                 project_roots=tuple(
                     scope for scope in scope_roots if scope.is_relative_to(root)
                 ),
+                source_publications=source_publications,
             ) as binding:
                 yield binding[0]
             return

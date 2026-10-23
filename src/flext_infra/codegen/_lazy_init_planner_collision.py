@@ -132,11 +132,10 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             b[1]
         )
         a_object, b_object = a_binding.get_object(), b_binding.get_object()
-        if a_object != b_object:
-            if a_object in u.Infra.class_ancestry(b_object):
-                return b
-            if b_object in u.Infra.class_ancestry(a_object):
-                return a
+        if a_object != b_object and a_object in u.Infra.class_ancestry(b_object):
+            return b
+        if a_object != b_object and b_object in u.Infra.class_ancestry(a_object):
+            return a
         if a_file is not None and a_file.name == c.Infra.INIT_PY:
             return b if b_file is not None and b_file.name != c.Infra.INIT_PY else None
         if b_file is not None and b_file.name == c.Infra.INIT_PY:
@@ -150,20 +149,45 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         a_score, b_score = self._target_score(name, a), self._target_score(name, b)
         if a_score != b_score:
             return a if a_score > b_score else b
-        introducing: list[t.StrPair] = []
-        for target, binding, module_file in (
-            (a, a_binding, a_file),
-            (b, b_binding, b_file),
-        ):
-            module, _line = u.Infra.definition_location(binding)
-            resource = module.get_resource() if u.Infra.source_module(module) else None
-            if (
-                resource is not None
-                and module_file is not None
-                and (resource.real_path == str(module_file))
-            ):
-                introducing.append(target)
+        return self._introducing_target((a, a_binding, a_file), (b, b_binding, b_file))
+
+    @staticmethod
+    def _introducing_target(
+        a: t.Triple[t.StrPair, p.Infra.RopePyName, Path | None],
+        b: t.Triple[t.StrPair, p.Infra.RopePyName, Path | None],
+    ) -> t.StrPair | None:
+        """Elect a sole native introducing declaration.
+
+        Returns:
+            The sole introducing target, or None when ambiguous.
+
+        """
+        introducing = [
+            target
+            for target, binding, module_file in (a, b)
+            if FlextInfraCodegenLazyInitPlannerCollisionMixin._introduces_binding(
+                binding, module_file
+            )
+        ]
         return introducing[0] if len(introducing) == 1 else None
+
+    @staticmethod
+    def _introduces_binding(
+        binding: p.Infra.RopePyName, module_file: Path | None
+    ) -> bool:
+        """Check whether publication comes from the native declaration module.
+
+        Returns:
+            Whether the target module introduces the binding.
+
+        """
+        module, _line = u.Infra.definition_location(binding)
+        resource = module.get_resource() if u.Infra.source_module(module) else None
+        return (
+            resource is not None
+            and module_file is not None
+            and resource.real_path == str(module_file)
+        )
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
         """Authenticate reexports and introducing subclasses in the native graph.

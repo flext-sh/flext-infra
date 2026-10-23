@@ -118,7 +118,7 @@ class FlextInfraUtilitiesImportLaw:
         directory = cls.import_package_dir(scope.project_root, module, sources=sources)
         if directory is not None:
             return cls._declared_subpackage_source(scope, module, name, sources=sources)
-        if not package or module == scope.module:
+        if not package or scope.module in {module, package}:
             return None
         if (
             cls.import_lazy_exports(scope.project_root, module, sources=sources)

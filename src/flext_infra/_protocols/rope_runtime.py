@@ -403,7 +403,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def source_capture(self) -> AbstractContextManager[None]: ...
 
-        def verify_source_states(self) -> None: ...
+        def verify_source_states(
+            self, receipt: m.Infra.CodegenPhaseAnalysis | None = None
+        ) -> None: ...
 
         def source_consumer(
             self,

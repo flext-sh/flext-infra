@@ -453,7 +453,12 @@ class FlextInfraUtilitiesCodemodProject(
             The absolute source path of the finding.
 
         """
-        return (file_path if file_path.is_absolute() else root / file_path).resolve()
+        candidate = file_path if file_path.is_absolute() else root / file_path
+        return (
+            candidate.parent.resolve() / candidate.name
+            if candidate.suffix == ".pyi"
+            else candidate.resolve()
+        )
 
     @staticmethod
     def codemod_binding_requirements(
@@ -466,6 +471,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         predicates = {
+            c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
             c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
             c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
             c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
@@ -498,6 +504,7 @@ class FlextInfraUtilitiesCodemodProject(
                 for condition in rule.context
                 if condition.predicate
                 in {
+                    c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
                     c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                     c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                     c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
@@ -584,9 +591,9 @@ class FlextInfraUtilitiesCodemodProject(
         captures = admission.captures
         facts = admission.facts
         cls._require_context_facts(admission)
-        source = cls.codemod_source_path(root, admission.file_path)
         if rule.owned_path_suffix is not None:
-            return source.suffix == rule.owned_path_suffix
+            return admission.file_path.suffix == rule.owned_path_suffix
+        source = cls.codemod_source_path(root, admission.file_path)
         for condition in rule.context:
             # Alternative syntax branches bind only their own metavariables.
             # This also applies before native declaration/binding evaluation.
@@ -612,6 +619,7 @@ class FlextInfraUtilitiesCodemodProject(
                     return False
                 continue
             if condition.predicate in {
+                c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                 c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
                 c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,

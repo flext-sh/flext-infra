@@ -195,9 +195,11 @@ class FlextInfraRopeProject(Project):
         """
         return self._authenticated_reads.receipt_topology()
 
-    def verify_source_states(self) -> None:
-        """Verify the original input epoch after semantic planning."""
-        self._authenticated_reads.verify()
+    def verify_source_states(
+        self, receipt: m.Infra.CodegenPhaseAnalysis | None = None
+    ) -> None:
+        """Verify the complete epoch or one authentic original consumer receipt."""
+        self._authenticated_reads.verify(receipt)
 
     # Import roots are declared by FLEXT; a read-only analysis pass also
     # freezes their resource identities and the external Python path.
@@ -626,6 +628,7 @@ class FlextInfraRopeProject(Project):
                 int, m.Cli.AtomicDirectoryInventory
             ] = {}
             self._topology: t.MutableMappingKV[int, m.Cli.AtomicDirectoryChainPlan] = {}
+            self._effects: set[Path] = set()
             self._receipt: m.Infra.CodegenPhaseAnalysis | None = None
 
         def record(
@@ -633,6 +636,7 @@ class FlextInfraRopeProject(Project):
             states: tuple[m.Cli.AtomicFileState, ...] = (),
             directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = (),
             topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = (),
+            effects: tuple[Path, ...] = (),
         ) -> None:
             """Merge exact observations while retaining their original identities.
 
@@ -650,6 +654,7 @@ class FlextInfraRopeProject(Project):
             self._states.update((id(state), state) for state in states)
             self._directories.update((id(item), item) for item in directories)
             self._topology.update((id(item), item) for item in topology)
+            self._effects.update(effects)
 
         def _directory_observations(
             self,
@@ -688,7 +693,9 @@ class FlextInfraRopeProject(Project):
                 for key, inventory in elected.items()
             )
 
-        def seal(self) -> m.Infra.CodegenPhaseAnalysis:
+        def seal(
+            self,
+        ) -> t.Pair[m.Infra.CodegenPhaseAnalysis, tuple[Path, ...]]:
             """Freeze the receipt only after the consumer has left its scope.
 
             Returns:
@@ -708,7 +715,7 @@ class FlextInfraRopeProject(Project):
                 source_directories=directories,
                 source_query_topology=topology,
             )
-            return self._receipt
+            return self._receipt, tuple(sorted(self._effects))
 
         def receipt(self) -> m.Infra.CodegenPhaseAnalysis:
             """Require a complete receipt; an active or failed scope is not evidence.
@@ -762,7 +769,9 @@ class FlextInfraRopeProject(Project):
             self._structural_queries = 0
             self._capturing = 0
             self._scopes: list[FlextInfraRopeProject.SourceConsumption] = []
-            self._receipts: list[m.Infra.CodegenPhaseAnalysis] = []
+            self._receipts: list[
+                t.Pair[m.Infra.CodegenPhaseAnalysis, tuple[Path, ...]]
+            ] = []
             self._originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             self._consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             self._inventories: t.MutableMappingKV[
@@ -939,7 +948,8 @@ class FlextInfraRopeProject(Project):
                   or no consumer scope is active.
 
             """
-            if not any(issued is receipt for issued in self._receipts):
+            issued = next((item for item in self._receipts if item[0] is receipt), None)
+            if issued is None:
                 msg = "Rope source receipt does not belong to this original epoch"
                 raise ValueError(msg)
             if not self._scopes:
@@ -949,6 +959,7 @@ class FlextInfraRopeProject(Project):
                 receipt.inputs,
                 receipt.source_directories,
                 receipt.source_query_topology,
+                issued[1],
             )
 
         def _record(
@@ -956,12 +967,13 @@ class FlextInfraRopeProject(Project):
             states: tuple[m.Cli.AtomicFileState, ...] = (),
             directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = (),
             topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = (),
+            effects: tuple[Path, ...] = (),
         ) -> None:
             """Attribute the exact event to every enclosing consumer."""
             if self._capturing:
                 return
             for scope in self._scopes:
-                scope.record(states, directories, topology)
+                scope.record(states, directories, topology, effects)
 
         def _consume_effect(self, path: Path) -> None:
             """Attribute a declared overlay effect's original proof to its consumer.
@@ -997,8 +1009,10 @@ class FlextInfraRopeProject(Project):
                 # verification; still attribute the declared effect to this
                 # consumer so independent scopes retain their proof.
                 self._record(
+                    states=states,
                     directories=plan.source_directories,
                     topology=chains,
+                    effects=(path,),
                 )
                 return
             self._consumed_effects.add(path)
@@ -1017,7 +1031,9 @@ class FlextInfraRopeProject(Project):
                 (item.root.path, item) for item in directories
             )
             self._imported_topology.update((item.target, item) for item in topology)
-            self._record(directories=plan.source_directories, topology=chains)
+            self._record(
+                directories=plan.source_directories, topology=chains, effects=(path,)
+            )
 
         def exists(self, path: str) -> bool:
             """Retain native election, including explicitly planned resources.
@@ -1524,6 +1540,8 @@ class FlextInfraRopeProject(Project):
             elif owned:
                 self._record(states=(state,))
             declaration = self._effects.get(source)
+            if declaration is not None:
+                self._record(effects=(source,))
             if declaration is not None and isinstance(
                 declaration.before, m.Cli.AtomicDirectoryChainPlan
             ):
@@ -1564,9 +1582,28 @@ class FlextInfraRopeProject(Project):
             """
             return tuple(self._consumed.values())
 
-        def verify(self) -> None:
-            """Reprove original inputs and absence witnesses without replacing them."""
-            states = self.states()
+        def verify(self, receipt: m.Infra.CodegenPhaseAnalysis | None = None) -> None:
+            """Reprove an issued scope, or all original inputs for direct consumers."""
+            if receipt is not None:
+                with self.consumption() as scope:
+                    self.replay(receipt)
+                issued = scope.receipt()
+                if not (
+                    issued.inputs
+                    or issued.source_directories
+                    or issued.source_query_topology
+                ):
+                    self.verify()
+                    return
+                states = issued.inputs
+                directories = issued.source_directories
+                topology = issued.source_query_topology
+                effects = self._receipts[-1][1]
+            else:
+                states = self.states()
+                directories = self.receipt_directories()
+                topology = self.receipt_topology()
+                effects = tuple(self._consumed_effects)
             u.Cli.atomic_verify_binary_file_states(
                 states,
                 nonsecret_source_paths=tuple(
@@ -1575,10 +1612,8 @@ class FlextInfraRopeProject(Project):
                     if Path(state.path).suffix in {".py", ".pyi"}
                 ),
             ).unwrap()
-            u.Cli.atomic_verify_directory_queries(
-                self.receipt_directories(), self.receipt_topology()
-            ).unwrap()
-            for path in sorted({*self._consumed, *self._consumed_effects}):
+            u.Cli.atomic_verify_directory_queries(directories, topology).unwrap()
+            for path in sorted({*(state.path for state in states), *effects}):
                 self._verify_declarations(path)
 
         def _verify_declarations(

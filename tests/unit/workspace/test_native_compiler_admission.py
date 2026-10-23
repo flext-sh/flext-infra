@@ -207,6 +207,17 @@ class TestsNativeCompilerAdmission:
             "assert import_pids[1] > 0 and import_pids[1] != parent_pid\n"
             "method = module.Payload.operation\n"
             "assert method(module.Payload()) == 'native'\n"
+            "method.__code__ = method.__code__.replace("
+            "co_stacksize=method.__code__.co_stacksize + 1)\n"
+            "assert method(module.Payload()) == 'native'\n"
+            "rejected = authenticate(module.__name__)\n"
+            "assert rejected.failure\n"
+            "assert 'authored producer code differs from pinned native source' "
+            "in rejected.error\n"
+            "assert \"differing_fields=('witness',)\" in rejected.error\n"
+            "assert 'observed_witness_sha256=' in rejected.error\n"
+            "assert 'pinned_source_sha256=' in rejected.error\n"
+            "assert 'compiler_optimize=' in rejected.error\n"
             "method.__code__ = method.__code__.replace(co_name='foreign')\n"
             "assert method(module.Payload()) == 'native'\n"
             "assert authenticate(module.__name__).failure\n"
@@ -889,6 +900,132 @@ class TestsNativeCompilerAdmission:
             "assert source.read_text(encoding='utf-8').endswith("
             "\"return 'source-two'\\n\")\n"
             "assert module.operation() == 'source-two'\n",
+            str(tmp_path),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("unexpected_stderr", ["", "unexpected native stderr\n"])
+    def test_cold_diagnostics_preserve_provenance_and_stderr_rejection(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        unexpected_stderr: str,
+    ) -> None:
+        """Real cold imports expose phases without accepting unrelated stderr."""
+        marker = tmp_path / "diagnostic-import-effect"
+        u.Tests.write_package_init(
+            tmp_path / "diagnostic_provider",
+            "import sys\n"
+            "from pathlib import Path\n"
+            f"marker = Path({str(marker)!r})\n"
+            "if marker.exists():\n"
+            f"    sys.stderr.write({unexpected_stderr!r})\n"
+            "marker.write_text('imported', encoding='utf-8')\n"
+            "def operation():\n"
+            "    return 'native-value'\n",
+        )
+        native_consumer(
+            "from contextlib import redirect_stderr\n"
+            "from io import StringIO\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('diagnostic_provider')\n"
+            "source = Path(module.__file__)\n"
+            "assert source == Path(sys.argv[1]) / 'diagnostic_provider/__init__.py'\n"
+            "before = source.read_bytes()\n"
+            "diagnostics = StringIO()\n"
+            "with redirect_stderr(diagnostics):\n"
+            "    observed = authenticate(module.__name__)\n"
+            "assert observed.success == (not sys.argv[2]), observed.error\n"
+            "assert sys.modules[module.__name__] is module\n"
+            "assert source.read_bytes() == before\n"
+            "assert module.operation() == 'native-value'\n"
+            "evidence = diagnostics.getvalue()\n"
+            "assert 'native-cold worker sha256=' in evidence\n"
+            "assert 'phases=bootstrap:' in evidence\n"
+            "assert 'native-value' not in evidence\n"
+            "if sys.argv[2]:\n"
+            "    assert sys.argv[2] in observed.error\n"
+            "    assert 'native-cold phase=json event=end' in observed.error\n"
+            "else:\n"
+            "    reference = observed.unwrap()\n"
+            "    assert any(item.path == source for item in reference.executed_sources)\n"
+            "    for phase in ('bootstrap', 'capture', 'receipts', 'json'):\n"
+            "        for event in ('start', 'end'):\n"
+            "            assert f'native-cold phase={phase} event={event} ' in evidence\n",
+            str(tmp_path),
+            unexpected_stderr,
+        )
+
+    @staticmethod
+    def test_cold_source_mutation_reports_receipt_components(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A real post-compilation mutation is rejected with metadata, not bytes."""
+        marker = tmp_path / "source-mutation-import-effect"
+        u.Tests.write_package_init(
+            tmp_path / "source_mutation_provider",
+            "from pathlib import Path\n"
+            f"marker = Path({str(marker)!r})\n"
+            "if marker.exists():\n"
+            "    Path(__file__).write_bytes("
+            "Path(__file__).read_bytes() + b'# changed source bytes\\n')\n"
+            "marker.write_text('imported', encoding='utf-8')\n"
+            "def operation():\n"
+            "    return 'diagnostic-source-body'\n",
+        )
+        native_consumer(
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('source_mutation_provider')\n"
+            "source = Path(module.__file__)\n"
+            "before = source.read_bytes()\n"
+            "rejected = authenticate(module.__name__)\n"
+            "assert rejected.failure\n"
+            "assert 'cold executed source changed: ' + str(source) in rejected.error\n"
+            "assert 'previous_present=' in rejected.error\n"
+            "assert 'previous_matches_child=' in rejected.error\n"
+            "assert 'child_receipt_sha256=' in rejected.error\n"
+            "assert 'current_receipt_sha256=' in rejected.error\n"
+            "assert 'changed_components_child_current_types=' in rejected.error\n"
+            "assert \"'sha256'\" in rejected.error\n"
+            "assert 'diagnostic-source-body' not in rejected.error\n"
+            "assert source.read_bytes() != before\n"
+            "assert module.operation() == 'diagnostic-source-body'\n",
+            str(tmp_path),
+        )
+
+    @staticmethod
+    def test_cold_malformed_stdout_preserves_validation_exception_evidence(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Unstructured child stdout remains a native validation exception."""
+        marker = tmp_path / "stdout-import-effect"
+        u.Tests.write_package_init(
+            tmp_path / "stdout_provider",
+            "from pathlib import Path\n"
+            f"marker = Path({str(marker)!r})\n"
+            "if marker.exists():\n"
+            "    print('unstructured child output')\n"
+            "marker.write_text('imported', encoding='utf-8')\n"
+            "def operation():\n"
+            "    return 'native'\n",
+        )
+        native_consumer(
+            "sys.path.insert(0, sys.argv[1])\n"
+            "module = importlib.import_module('stdout_provider')\n"
+            "try:\n"
+            "    authenticate(module.__name__)\n"
+            "except m.ValidationError as error:\n"
+            "    assert error.__traceback__ is not None\n"
+            "    assert error.errors()[0]['type'] == 'json_invalid'\n"
+            "    evidence = '\\n'.join(error.__notes__)\n"
+            "    assert 'cold native source import evidence:' in evidence\n"
+            "    assert 'stdout:\\nunstructured child output\\n' in evidence\n"
+            "    assert 'stderr:\\nnative-cold phase=bootstrap event=start' in evidence\n"
+            "    assert 'native-cold phase=json event=end' in evidence\n"
+            "else:\n"
+            "    raise AssertionError('malformed stdout was accepted')\n"
+            "assert module.operation() == 'native'\n",
             str(tmp_path),
         )
 
