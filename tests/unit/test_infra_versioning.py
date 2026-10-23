@@ -17,7 +17,7 @@ from tests import tf, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+    from tests import p, t
 
 
 class TestsFlextInfraInfraVersioning:
@@ -168,3 +168,55 @@ class TestsFlextInfraInfraVersioning:
             return
         tm.ok(result, eq=True)
         tm.ok(u.Infra.current_workspace_version(tmp_path), eq=expected)
+
+    @staticmethod
+    def test_version_publisher_returns_original_native_effects(
+        tmp_path: Path, native_consumer: p.Tests.NativeConsumer
+    ) -> None:
+        """The version owner publishes its real plan and retains native authority."""
+        script = """
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from flext_infra import codegen
+from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from tests import c, m, r, tm, u
+
+runtime_root = Path(sys.argv[1])
+root = u.Tests.git_repository(Path(sys.argv[2]) / "repo")
+pyproject = u.Tests.WorktreeFixture.write_python_project(root, root.name)
+current = tm.ok(u.Infra.current_workspace_version(root))
+version = tm.ok(u.Infra.bump_version(current, "patch"))
+original = pyproject.read_bytes()
+plan = tm.ok(u.Infra.project_version_plan(root, version))
+tm.that(plan.before.content, eq=original)
+tm.that(pyproject.read_bytes(), eq=original)
+producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
+    runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
+))
+owner = codegen.FlextInfraCodegenTransaction(repository_root=root, producer=producer)
+receipts = []
+
+def publish(file):
+    analysis = m.Infra.CodegenPhaseAnalysis(phase=file.phase, files=(file,))
+    result = owner.publish_file_phase_locked(
+        root,
+        owner.capability_roots(file.phase.value, (root,)),
+        analysis,
+        policy=m.Infra.CodegenPhasePublicationPolicy(directories=()),
+        publication_receipts=receipts,
+    )
+    if result.failure:
+        return r[m.Infra.CodegenPhaseOutcome].from_failure(result)
+    if len(receipts) != 1:
+        return r[m.Infra.CodegenPhaseOutcome].fail("one native version receipt required")
+    return r[m.Infra.CodegenPhaseOutcome].ok(receipts[0])
+
+receipt = tm.ok(u.Infra.publish_project_version(root, version, publish))
+tm.that(receipt is receipts[0], eq=True)
+tm.that(receipt.written_files, eq=(pyproject,))
+tm.ok(codegen.FlextInfraMiseArtifactsVerification.publication_birth_current(receipt))
+tm.ok(u.Infra.current_workspace_version(root), eq=version)
+"""
+        native_consumer(script, str(tmp_path))

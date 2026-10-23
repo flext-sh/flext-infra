@@ -12,6 +12,9 @@ from pathlib import Path
 from textwrap import indent
 
 from flext_infra import m, p, t
+from flext_infra._utilities._semantic_cutover.declaration_relocation import (
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+)
 from flext_infra._utilities._semantic_cutover.declaration_retirement import (
     FlextInfraUtilitiesSemanticDeclarationRetirement,
 )
@@ -56,6 +59,7 @@ class FlextInfraUtilitiesSemanticDelegations:
                 msg = "delegation module has no native AST"
                 raise TypeError(msg)
             rewrites: list[p.Infra.SourceRewrite] = []
+            required: list[p.Infra.RopeImportInfo] = []
             for owner in ast.walk(tree):
                 if not isinstance(owner, ast.ClassDef):
                     continue
@@ -77,9 +81,10 @@ class FlextInfraUtilitiesSemanticDelegations:
                     location = f"{rule_id}: {module.get_name()}:{statement.lineno}"
                     try:
                         cls._prove_descriptor(project, descriptor)
-                        text = cls._method(
+                        text, imports = cls._method(
                             project, module, scope, owner, statement, arguments
                         )
+                        required.extend(imports)
                     except (TypeError, ValueError) as error:
                         msg = f"{location}: {error}; fix the declaring owner before publication"
                         raise ValueError(msg) from error
@@ -97,11 +102,23 @@ class FlextInfraUtilitiesSemanticDelegations:
                         )
                     )
             if rewrites:
-                changes.append(
-                    FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-                        resource, sources[path], rewrites
-                    )
+                change = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                    resource, sources[path], rewrites
                 )
+                if required:
+                    organized = runtime.module_imports_for_pymodule(
+                        project, runtime.build_string_module(
+                            project, change.new_contents, resource=resource
+                        )
+                    )
+                    for information in required:
+                        organized.add_import(information)
+                    change = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                        resource, sources[path], (m.Infra.SourceRewrite(
+                            start=0, end=len(sources[path]), text=organized.get_changed_source()
+                        ),)
+                    )
+                changes.append(change)
         return changes
 
     @staticmethod
@@ -375,7 +392,7 @@ class FlextInfraUtilitiesSemanticDelegations:
         owner: ast.ClassDef,
         statement: ast.Assign,
         arguments: tuple[ast.expr, ...],
-    ) -> str:
+    ) -> tuple[str, tuple[p.Infra.RopeImportInfo, ...]]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if (
             len(statement.targets) != 1
@@ -482,8 +499,6 @@ class FlextInfraUtilitiesSemanticDelegations:
         rendered.body = (
             [deepcopy(native.body[0])] if ast.get_docstring(native) is not None else []
         ) + [returned]
-        # Admit only names already bound to the same native declaration at destination.
-        # Import transplantation is deliberately not approximated by copying source text.
         signature = deepcopy(rendered)
         signature.body = [ast.Pass()]
         generics = {parameter.name for parameter in signature.type_params}
@@ -491,6 +506,12 @@ class FlextInfraUtilitiesSemanticDelegations:
         if native_scope is None:
             msg = "prototype has no native annotation scope"
             raise ValueError(msg)
+        required: list[p.Infra.RopeImportInfo] = []
+        imported = {
+            alias or name.split(".")[0]: information
+            for information in FlextInfraUtilitiesSemanticDeclarationRelocation.native_import_infos(project, origin)
+            for name, alias in information.names_and_aliases
+        }
         for node in ast.walk(signature):
             if (
                 isinstance(node, ast.Name)
@@ -499,14 +520,21 @@ class FlextInfraUtilitiesSemanticDelegations:
             ):
                 original = runtime.expression_name(native_scope, node.id)
                 destination = runtime.expression_name(scope, node.id)
-                if (
-                    original is None
-                    or destination is None
-                    or not runtime.same_name(original, destination)
+                if original is not None and destination is not None and runtime.same_name(original, destination):
+                    continue
+                information = imported.get(node.id)
+                if original is None or destination is not None or information is None or (
+                    isinstance(information, p.Infra.RopeFromImport) and information.level
                 ):
-                    msg = f"signature binding {node.id} requires native import transplantation from {origin.get_name()}"
+                    msg = f"signature binding {node.id} has no unambiguous native import from {origin.get_name()}"
                     raise ValueError(msg)
-        return ast.unparse(ast.fix_missing_locations(rendered))
+                aliases = tuple((name, alias) for name, alias in information.names_and_aliases if (alias or name.split(".")[0]) == node.id)
+                required.append(
+                    runtime.from_import(information.module_name, information.level, aliases)
+                    if isinstance(information, p.Infra.RopeFromImport)
+                    else runtime.normal_import(aliases)
+                )
+        return ast.unparse(ast.fix_missing_locations(rendered)), tuple(required)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticDelegations"]

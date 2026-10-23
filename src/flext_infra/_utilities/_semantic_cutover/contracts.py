@@ -515,6 +515,14 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         working.update((path, retirement_sources[path]) for path in working)
+        if any(
+            m.Infra.RopeContractRule.model_validate(rule, from_attributes=True).operation
+            == "materialize-delegations"
+            for rule in rules
+        ) and any(working[path] != source for path, source in items):
+            FlextInfraUtilitiesSemanticDeclarationRelocation.preflight_semantic_import_graph(
+                workspace, sources, retirement_sources
+            )
         if captured and staged_receivers:
             normalized = cls._normalize_projected_consumers(
                 workspace, retirement_sources, epoch, tuple(working), staged_receivers

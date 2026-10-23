@@ -464,10 +464,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = f"class-nesting file has multiple owners: {sorted(owners)}"
             raise ValueError(msg)
         owner_name = next(iter(owners))
-        composition = is_pytest and not any(
-            isinstance(node, ast.ClassDef) and node.name == owner_name
-            for node in ast.parse(source).body
-        )
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
@@ -540,7 +536,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             original_bindings=None
             if Path(resource.real_path).name == "conftest.py"
             else frozenset(definitions),
-            composition=composition,
+            composition=not any(
+                isinstance(node, cst.ClassDef) and node.name.value == owner_name
+                for node in wrapper.module.body
+            ),
         )
 
     @classmethod
