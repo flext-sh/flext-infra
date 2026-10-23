@@ -163,9 +163,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         members: list[str] = []
         positions = wrapper.resolve(PositionProvider)
         inclusive = wrapper.resolve(WhitespaceInclusivePositionProvider)
-        statements = {
-            positions[node].start.line: node for node in wrapper.module.body
-        }
+        statements = {positions[node].start.line: node for node in wrapper.module.body}
         for item in selected:
             node = statements[item.line]
             region = inclusive[node]
@@ -179,9 +177,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             code_start = module.lines.get_line_start(positions[code].start.line)
             members.append(
                 FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
-                    (source[begin:code_start] + cls._nested_member_body(
-                        item, source[code_start:end], (module, typing), selection[2]
-                    )).rstrip()
+                    (
+                        source[begin:code_start]
+                        + cls._nested_member_body(
+                            item, source[code_start:end], (module, typing), selection[2]
+                        )
+                    ).rstrip()
                     + "\n",
                     indentation,
                 )
@@ -252,8 +253,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             raise ValueError(msg)
         positions = wrapper.resolve(PositionProvider)
         declaration = next(
-            item for item in wrapper.module.body
-            if isinstance(item, cst.ClassDef) and positions[item].start.line == node.lineno
+            item
+            for item in wrapper.module.body
+            if isinstance(item, cst.ClassDef)
+            and positions[item].start.line == node.lineno
         )
         member = declaration.body.body[0]
         region = wrapper.resolve(WhitespaceInclusivePositionProvider)[member]
@@ -316,9 +319,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             if owner.get_body_start() <= item.line <= owner.get_end()
         ]
         if len(own_body) == 1 and own_body[0].text.strip() == "pass":
-            return (m.Infra.SourceRewrite(
-                start=first, end=last, text=source[first:code_start] + nested
-            ),)
+            return (
+                m.Infra.SourceRewrite(
+                    start=first, end=last, text=source[first:code_start] + nested
+                ),
+            )
         if own_body and owner.pyobject.get_doc() is not None:
             first = min(own_body[0].end_offset + 1, len(source))
         return (
@@ -350,7 +355,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         return [
             *edits,
             *cls._existing_owner_edits(
-                source, (module, structure[2]), structure[0], owner, (contents[1], contents[2])
+                source,
+                (module, structure[2]),
+                structure[0],
+                owner,
+                (contents[1], contents[2]),
             ),
         ]
 

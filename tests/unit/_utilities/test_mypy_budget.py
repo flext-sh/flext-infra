@@ -30,7 +30,8 @@ class TestsFlextInfraMypyBudget:
     @pytest.mark.parametrize("field", ["timeout_seconds", "max_timeout_seconds"])
     @pytest.mark.parametrize("value", [0, -1, True, 1.5, "12"])
     def test_policy_requires_positive_integer_seconds(
-        field: str, value: float | str,
+        field: str,
+        value: float | str,
     ) -> None:
         """Both canonical budgets reject coercion and non-positive seconds."""
         policy = config.Infra.tooling.tools.mypy
@@ -74,7 +75,9 @@ class TestsFlextInfraMypyBudget:
         source = source_root / "budgeted.py"
         source.write_text("value: int = 1\n", encoding="utf-8")
         execution = gates.FlextInfraMypyGate(project).check_files(
-            [source], project, context,
+            [source],
+            project,
+            context,
         )
         tm.ok(execution.result.passed)
         tm.that(execution.raw_output, has=f"timeout_seconds={budget}")
