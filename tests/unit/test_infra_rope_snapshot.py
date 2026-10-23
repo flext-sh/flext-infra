@@ -10,8 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
-from flext_infra.workspace import FlextInfraRopeWorkspace
+from flext_infra import config, infra, m
 from tests import p, tm, u
 
 
@@ -84,7 +83,7 @@ class TestsFlextInfraRopeSnapshot:
         content = "value = 1\n"
         source.write_text(content, encoding="utf-8")
         late_source = package / "late.py"
-        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             snapshot = u.Infra.snapshot_project(rope.rope_project, {source: content})
             try:
                 source.unlink()
@@ -109,7 +108,7 @@ class TestsFlextInfraRopeSnapshot:
     def test_unbound_live_source_query_requires_authentication(tmp_path: Path) -> None:
         """A native physical project is not an authenticated source inventory."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             tm.fail(rope.rope_project.authenticated_sources)
             with pytest.raises(
                 TypeError, match="does not own authenticated live reads"
@@ -186,7 +185,7 @@ class TestsFlextInfraRopeSnapshot:
                 else:
                     project.source_state(source)
 
-        with pytest.raises(ValueError, match="atomic source changed") as rejected:
+        with pytest.raises(RuntimeError, match="atomic source changed") as rejected:
             consume_changed_source()
         tm.that(str(rejected.value), has=str(source))
         tm.that(str(rejected.value), has="content_changed=True")
@@ -263,7 +262,7 @@ class TestsFlextInfraRopeSnapshot:
                     stream.truncate()
                 project.verify_source_states()
 
-        with pytest.raises(ValueError, match="atomic source changed"):
+        with pytest.raises(RuntimeError, match="atomic source changed"):
             plan_changed_source()
 
     @staticmethod
@@ -329,7 +328,7 @@ tm.that(source.exists(), eq=False)
         module_path = package_root / "declared.py"
         source = "value = 1\n"
         module_path.write_text(source, encoding="utf-8")
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             project = rope.rope_project
             source_roots = tuple(
                 folder.real_path for folder in project.get_source_folders()
@@ -376,7 +375,7 @@ tm.that(source.exists(), eq=False)
         (declared_package / "__init__.py").write_text("", encoding="utf-8")
         module_path = declared_package / "declared.py"
         module_path.write_text("value = 1\n", encoding="utf-8")
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             resource = tm.not_none(
                 rope.rope_project.find_module(f"{root_name}.declared"),
             )
@@ -405,7 +404,7 @@ tm.that(source.exists(), eq=False)
             package_init.resolve(): package_init.read_text(encoding="utf-8"),
             conftest.resolve(): conftest.read_text(encoding="utf-8"),
         }
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             snapshot = u.Infra.snapshot_project(rope.rope_project, sources)
             try:
                 resource = snapshot.get_resource("conftest.py")
@@ -432,7 +431,7 @@ tm.that(source.exists(), eq=False)
             m.Infra.CodemodBindingSnapshot(states=states)
         )
         content = "value = 1\n"
-        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             snapshot = u.Infra.snapshot_project(
                 rope.rope_project, {source: content}, captured=epoch
             )
@@ -456,7 +455,7 @@ tm.that(source.exists(), eq=False)
             m.Infra.CodemodBindingSnapshot(states=(state,))
         )
         with (
-            FlextInfraRopeWorkspace.open_workspace(root) as rope,
+            infra.rope_workspace(root) as rope,
             pytest.raises(ValueError, match="outside its input inventory"),
         ):
             u.Infra.snapshot_project(
@@ -481,7 +480,7 @@ tm.that(source.exists(), eq=False)
             outsider.resolve(): "value = 1\n",
         }
         with (
-            FlextInfraRopeWorkspace.open_workspace(repository_root) as rope,
+            infra.rope_workspace(repository_root) as rope,
             pytest.raises(
                 ValueError,
                 match=r"outside its input inventory",

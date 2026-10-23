@@ -13,15 +13,50 @@ from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_che
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_core import p, t
+    from flext_core import p
 
-    from flext_infra import m
-    from flext_infra._typings.rope_native import FlextInfraTypesRopeNative
+    from flext_infra import m, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
+
+    class RopeProjectFiles(Protocol):
+        """Filesystem observations consumed by native project construction."""
+
+        def realpath(self, path: str) -> str: ...
+
+        def exists(self, path: str) -> bool: ...
+
+        def isfile(self, path: str) -> bool: ...
+
+        def isdir(self, path: str) -> bool: ...
+
+        def listdir(self, path: str) -> list[str]: ...
+
+        def read(self, path: str) -> bytes: ...
+
+    class RopeResourceOwner(Protocol):
+        """External resource election used by the native project initializer."""
+
+        def get_resource(
+            self, name: str, /
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+    class RopeProjectInitializer(Protocol):
+        """Native initialization with its documented nullable state folder."""
+
+        def __call__(
+            self,
+            project: t.Infra.RopeNativeProject,
+            projectroot: str,
+            *,
+            fscommands: FlextInfraProtocolsRopeRuntime.RopeProjectFiles | None,
+            ropefolder: str | None,
+            external_project: FlextInfraProtocolsRopeRuntime.RopeResourceOwner | None,
+            **prefs: bool | t.StrSequence,
+        ) -> None: ...
 
     @runtime_checkable
     class RopeProjectElection(Protocol):
@@ -478,13 +513,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_pymodule(
             self,
-            resource: FlextInfraTypesRopeNative.RopeNativeResource
+            resource: t.Infra.RopeNativeResource
             | FlextInfraProtocolsRopeRuntime.RopeResource,
             *,
             force_errors: bool = False,
-        ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
+        ) -> t.Infra.RopeNativeParsedModule: ...
 
-        def get_pycore(self) -> FlextInfraTypesRopeNative.RopeNativeCore: ...
+        def get_pycore(self) -> t.Infra.RopeNativeCore: ...
 
         def get_source_folders(
             self,
@@ -504,14 +539,14 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraTypesRopeNative.RopeNativeSemanticModule: ...
+        ) -> t.Infra.RopeNativeSemanticModule: ...
 
         def get_relative_module(
             self,
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
             level: int,
-        ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
+        ) -> t.Infra.RopeNativeParsedModule: ...
 
         def get_python_files(
             self,

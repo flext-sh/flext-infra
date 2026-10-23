@@ -39,6 +39,14 @@ dispatchers retain the environment contract, never the selected host path.
 Shared defaults own ordinary FLEXT dependency declarations; a project's codegen
 input retains only its identity and genuine dependency/tool deltas. Live editable
 source selection does not require clean, committed, or stationary worktrees.
+Release builds instead resolve the selected project's committed `HEAD` once and
+extract that exact SHA through `git archive`; the build receipt records the SHA
+and commit epoch. Shared working-tree, index, and untracked changes remain in place
+and never become source inputs. In particular, checkout `dist/` files are not
+copied into the audited stage. Required build assets must belong to the committed
+source or be produced by its build backend inside the isolated build, not injected
+from unauthenticated checkout outputs. Release metadata and snapshotted build
+policy retain their existing explicit rendering and attestation boundaries.
 Generation publishes resolver manifests; only `make upg` writes their UV locks.
 Before installation, an isolated UV bootstrap consumes the supplier's native
 local resolver lock and live editable sources, never its `.venv`. It refreshes
@@ -406,6 +414,23 @@ separate identities; ambiguous ownership is a failure. Lexical entrypoints retai
 the physical executable sources they consume and the metadata proving their elected
 providers. Explicit module inventories and declared resource trees retain their
 membership checks; unrelated files do not become lexical producer inputs.
+
+Rope source-query ownership comes from the original declared source folders and
+native dependency import roots, with the most specific elected owner taking
+precedence. Explicit managed effects retain their original destination witnesses.
+A dependency runtime nested below the checkout root has the same ownership as an
+external dependency runtime; lexical containment alone does not make its module
+probes project-source elections. Actual dependency payload reads still retain
+immutable file receipts, including metadata, and changed consumed bytes fail
+verification in either layout. Physical ancestry and symlink guards for declared
+sources remain unchanged.
+
+The project composes the native resource/module/layout interface through MRO;
+its authenticated source epoch remains the public consumer boundary. Native
+initialization uses the exact upstream class descriptor through the consumed
+initializer protocol, including Rope's documented `ropefolder=None` contract.
+The physical root and injected filesystem identity are checked after initialization;
+the protocol alone is not evidence of the vendor's signature or runtime behavior.
 
 The captured cold module election is retained with the same native manifests in
 phase inputs, journal transitions, and publication receipts. Revalidation uses the
