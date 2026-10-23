@@ -158,6 +158,10 @@ class FlextInfraModelsDuplication:
             t.NonEmptyStr,
             m.Field(description="Absolute scanned source path"),
         ]
+        nodes: Annotated[
+            t.NonNegativeInt | None,
+            m.Field(description="Scanner AST node count for semantic spans"),
+        ] = None
         start: Annotated[
             t.NonNegativeInt,
             m.Field(description="Inclusive clone start offset"),

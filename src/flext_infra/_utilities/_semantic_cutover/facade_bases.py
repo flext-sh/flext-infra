@@ -1152,7 +1152,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         ):
             return False
         references = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
-            module, "${receiver}", arguments={"receiver": f"name={qualified}"}
+            module, f"${{{local}}}", arguments={local: f"name={qualified},exact"}
         )
         bases: set[t.Pair[int, int]] = set()
         pending = list(module.get_scope().get_scopes())

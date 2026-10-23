@@ -353,7 +353,14 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
     @classmethod
     @pytest.mark.parametrize("namespace", ["primary_pkg", "secondary_pkg"])
     @pytest.mark.parametrize(
-        "relative", ["consumer.py", "_models/record.py", "_constants/value.py", "constants.py", "domain_records.py"]
+        "relative",
+        [
+            "consumer.py",
+            "_models/record.py",
+            "_constants/value.py",
+            "constants.py",
+            "domain_records.py",
+        ],
     )
     @pytest.mark.parametrize("guarded", [False, True])
     def test_native_facade_role_and_identity_are_project_independent(
@@ -362,7 +369,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         """Only consumers converge on an identical public alias; producers do not."""
         project = tmp_path / namespace
         package = u.Tests.src_package(
-            project, namespace,
+            project,
+            namespace,
             pyproject=f"[project]\nname='{namespace}'\nversion='1.0.0'\n",
         )
         parent = package.parent / "ancestor_pkg"
@@ -375,7 +383,11 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "class Result:\n    pass\n\nr = Result\n__all__ = ['r']\n",
             encoding="utf-8",
         )
-        producer = relative in {"_constants/value.py", "constants.py", "domain_records.py"}
+        producer = relative in {
+            "_constants/value.py",
+            "constants.py",
+            "domain_records.py",
+        }
         provider = relative[:-3].replace("/", ".") if producer else "facade"
         cls._lazy_init(package, {"c": f".{provider}", "r": "ancestor_pkg"})
         if not producer:
@@ -388,31 +400,47 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         source = (
             "from __future__ import annotations\nfrom typing import TYPE_CHECKING\n"
             + (f"if TYPE_CHECKING:\n    {statement}" if guarded else statement)
-            + ("\nc = c\n__all__ = ['c']\n" if producer else "\ndef read() -> c:\n    return r\n")
+            + (
+                "\nc = c\n__all__ = ['c']\n"
+                if producer
+                else "\ndef read() -> c:\n    return r\n"
+            )
         )
         module.write_text(source, encoding="utf-8")
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project, file_path=module, source=source
-        ) or source
+        normalized = (
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=source
+            )
+            or source
+        )
         module.write_text(normalized, encoding="utf-8")
         tm.that(
             FlextInfraImportNormalization.normalize_source(
                 project_root=project, file_path=module, source=normalized
-            ), eq=None,
+            ),
+            eq=None,
         )
         imports = [
-            node.module for node in ast.walk(ast.parse(normalized))
-            if isinstance(node, ast.ImportFrom) and any(alias.name == "c" for alias in node.names)
+            node.module
+            for node in ast.walk(ast.parse(normalized))
+            if isinstance(node, ast.ImportFrom)
+            and any(alias.name == "c" for alias in node.names)
         ]
         tm.that(imports, eq=["ancestor_pkg" if producer else namespace])
         if guarded:
             normalized = normalized.replace("if TYPE_CHECKING:", "if True:")
             module.write_text(normalized, encoding="utf-8")
-        outcome = tm.ok(u.Cli.run_raw(
-            (sys.executable, "-c", f"from {namespace}.{relative[:-3].replace('/', '.')} import c, r; from ancestor_pkg import c as original_c, r as original_r; assert c is original_c; assert r is original_r"),
-            cwd=project,
-            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-        ))
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    f"from {namespace}.{relative[:-3].replace('/', '.')} import c, r; from ancestor_pkg import c as original_c, r as original_r; assert c is original_c; assert r is original_r",
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
         tm.that(outcome.exit_code, eq=0)
         tm.that(outcome.stderr, eq="")
 
@@ -426,7 +454,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         """Inherited operational aliases deduplicate; independent classes reject."""
         project = tmp_path / namespace
         package = u.Tests.src_package(
-            project, namespace,
+            project,
+            namespace,
             pyproject=f"[project]\nname='{namespace}'\nversion='1.0.0'\n",
         )
         parent = package.parent / "ancestor_pkg"
@@ -437,13 +466,18 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         cls._lazy_init(package, {"r": ".result" if distinct else "ancestor_pkg"})
         if distinct:
             (package / "result.py").write_text(
-                "from ancestor_pkg import r\nclass LocalResult(r):\n    pass\nr = LocalResult\n__all__ = ['r']\n", encoding="utf-8"
+                "from ancestor_pkg import r\nclass LocalResult(r):\n    pass\nr = LocalResult\n__all__ = ['r']\n",
+                encoding="utf-8",
             )
         module = package / "consumer.py"
         source = (
             "from typing import TYPE_CHECKING\n"
             f"from {namespace} import r\n"
-            + ("if TYPE_CHECKING:\n    from ancestor_pkg import r\n" if guarded else "from ancestor_pkg import r\n")
+            + (
+                "if TYPE_CHECKING:\n    from ancestor_pkg import r\n"
+                if guarded
+                else "from ancestor_pkg import r\n"
+            )
             + "value = r\n"
         )
         module.write_text(source, encoding="utf-8")
@@ -456,18 +490,32 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             return
         normalized = cls._normalize(project, module, source)
         module.write_text(normalized, encoding="utf-8")
-        tm.that(FlextInfraImportNormalization.normalize_source(
-            project_root=project, file_path=module, source=normalized
-        ), eq=None)
-        tm.that(sum(
-            alias.name == "r" for node in ast.walk(ast.parse(normalized))
-            if isinstance(node, ast.ImportFrom) for alias in node.names
-        ), eq=1)
-        outcome = tm.ok(u.Cli.run_raw(
-            (sys.executable, "-c", f"from {namespace}.consumer import r, value; from ancestor_pkg import r as native; assert r is native; assert value is native"),
-            cwd=project,
-            options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-        ))
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project, file_path=module, source=normalized
+            ),
+            eq=None,
+        )
+        tm.that(
+            sum(
+                alias.name == "r"
+                for node in ast.walk(ast.parse(normalized))
+                if isinstance(node, ast.ImportFrom)
+                for alias in node.names
+            ),
+            eq=1,
+        )
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    f"from {namespace}.consumer import r, value; from ancestor_pkg import r as native; assert r is native; assert value is native",
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
         tm.that(outcome.exit_code, eq=0)
         tm.that(outcome.stderr, eq="")
 

@@ -4684,7 +4684,7 @@ class FlextInfraWorkspaceNativeReference:
     @staticmethod
     def _loaded_root_value(
         facts: m.Infra.NativeFunctionObservationContext,
-        instruction: t.Infra.NativeInstruction,
+        instruction: Instruction,
         bound_receiver: t.Infra.NativeOperand | None,
     ) -> t.Infra.NativeOperand | None:
         """Resolve only a loaded global or the actual bound receiver.

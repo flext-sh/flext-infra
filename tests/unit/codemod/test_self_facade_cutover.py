@@ -88,8 +88,12 @@ class TestsFlextInfraSelfFacadeCutover:
         for _ in range(2):
             with infra.rope_workspace(root) as workspace:
                 edits = tm.ok(
-                    FlextInfraCodemodSemanticApply.plan_census_constants(
-                        root, workspace, sources=sources
+                    FlextInfraCodemodSemanticApply.census_constants(
+                        root,
+                        workspace,
+                        apply=False,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
                     )
                 )
             tm.that(edits, empty=True)
