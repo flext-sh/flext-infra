@@ -55,7 +55,7 @@ class FlextInfraRenameSymbols:
         """Resolve an explicit identity through native bindings and actual inventory.
 
         Returns:
-            The unique introducing callable object observed in its source module.
+            The inventoried module, package initializer, or introducing callable.
 
         Raises:
             ValueError: If the identity is missing, inherited, or ambiguous.
@@ -65,7 +65,10 @@ class FlextInfraRenameSymbols:
         if module_resource is not None:
             path = Path(module_resource.real_path).resolve()
             if not module_resource.is_folder() and path.name == "__init__.py":
-                msg = f"native initializer rename requires its package identity: {qualified_name}"
+                msg = (
+                    "native initializer rename requires its package identity: "
+                    f"{qualified_name}"
+                )
                 raise ValueError(msg)
             if module_resource.is_folder():
                 path /= "__init__.py"
@@ -114,7 +117,7 @@ class FlextInfraRenameSymbols:
         sources: t.MappingKV[Path, str],
         decisions: t.SequenceOf[m.Infra.SemanticRenameDecision],
     ) -> t.Pair[t.MappingKV[Path, str | None], t.VariadicTuple[t.Pair[Path, Path]]]:
-        """Compose native class/callable/module effects across every elected root.
+        """Compose native class/callable/module/package effects across elected roots.
 
         Returns:
             Complete desired bytes and native moves, without performing effects.
@@ -399,7 +402,12 @@ class FlextInfraRenameSymbols:
         moves: t.MutableMappingKV[Path, Path],
         root: Path,
     ) -> None:
-        """Expand only complete snapshot directory inventories into file effects."""
+        """Expand only complete snapshot directory inventories into file effects.
+
+        Raises:
+            ValueError: If topology, payloads, or destinations cannot be preserved.
+
+        """
         if not isinstance(resource, p.Infra.RopeRoot):
             msg = f"native package has no directory inventory: {resource.real_path}"
             raise ValueError(msg)
