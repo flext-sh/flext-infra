@@ -14,8 +14,10 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+    FlextInfraUtilitiesGitWorktreeIO,
+)
 
 if TYPE_CHECKING:
     from git import Repo

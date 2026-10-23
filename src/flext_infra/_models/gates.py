@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -179,7 +180,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         reports_dir: Annotated[Path, m.Field(description="Reports output directory")]
         apply_fixes: Annotated[
             bool,
-            m.Field(description="Apply supported fixes before checking"),
+            m.Field(description="Execute supported repairs instead of checking"),
         ] = False
         check_only: Annotated[
             bool,
@@ -216,6 +217,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         candidate_runtime_report: Annotated[
             FlextInfraModelsCore.ValidationReport | None,
             m.Field(description="Census observed by the authenticated sealed runtime"),
+        ] = None
+        check_progress: Annotated[
+            Callable[[Path, FlextInfraModelsCheck.ProjectResult], None] | None,
+            m.Field(
+                description="Invocation-owned observer of reached native gate results",
+                exclude=True,
+            ),
         ] = None
 
         @m.model_validator(mode="after")
@@ -654,6 +662,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         gates: Annotated[
             t.NonEmptyStr, m.Field(description="Resolved native checker gate inventory")
         ]
+        report_output: Annotated[
+            Path | None,
+            m.Field(description="Invocation-owned typed checker summary destination"),
+        ] = None
 
     class GateCaptureFinishRequest(m.ContractModel):
         """Reaped producer facts and publication context for one original capture."""

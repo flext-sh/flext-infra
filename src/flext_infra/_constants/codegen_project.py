@@ -44,13 +44,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     # closed vocabulary used by models and CLI dispatch.
 
     @unique
-    class TemplateDelegate(StrEnum):
-        """Rendering owner for a scaffold catalog entry."""
-
-        RENDER = "render"
-        MANIFEST = "manifest"
-
-    @unique
     class CodegenConformScope(StrEnum):
         """Repository selection accepted by ``codegen conform``."""
 

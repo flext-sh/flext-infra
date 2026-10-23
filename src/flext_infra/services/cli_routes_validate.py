@@ -124,7 +124,7 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
             ),
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_CLEAN,
-                help_text="Report or remove disposable build artifacts",
+                help_text="Report or remove declared disposables owned by this repository",
                 model_cls=FlextInfraCleanService,
                 handler=FlextInfraCleanService.execute_command,
                 success_message="Clean completed",

@@ -98,7 +98,7 @@ MISE_GLOBAL_CONFIG_FILE="{{ d }}{MISE_CONFIG_DIR}/config.toml"; \
 MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}{reader_root}")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
 reader_mise=mise; \
-{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup) \
 	mise_stage=; \
 	trap 'bootstrap_status=$$?; trap - EXIT; {{ mise_staging_cleanup() }} exit "$${bootstrap_status}"' EXIT; \
 	{ \
@@ -109,7 +109,7 @@ reader_mise=mise; \
 	reader_mise="$${mise_bootstrap_bin}"; \
 ;; esac; \
 {% endif %}uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
-{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup) \
 	uv_active="$$("$${reader_mise}" -C "$${reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --active)"; \
 	uv_installed="$$("$${reader_mise}" -C "$${reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --installed)"; \
 	uv_present=; \

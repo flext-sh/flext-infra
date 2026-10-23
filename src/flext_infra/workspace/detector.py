@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import errno
+import os
+import stat
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -107,22 +110,69 @@ class FlextInfraWorkspaceDetector(
         Returns:
             The resulting ``p.Result[m.Infra.WorkspaceRuntimeContext]``.
 
+        Raises:
+            NotADirectoryError: If ``not
+                stat.S_ISDIR(resolved_supplier.stat().st_mode)``.
+
         """
         result_type = r[m.Infra.WorkspaceRuntimeContext]
         inputs = u.Infra.load_codegen_inputs(runtime_root)
         if inputs.failure:
             return result_type.from_failure(inputs)
         policy = inputs.value.spec.make.uv_resolution
-        supplier_root = settings.Infra.editable_supplier_root
-        if standalone or supplier_root == runtime_root.resolve():
-            supplier_root = None
+        supplier_root = None if standalone else settings.Infra.editable_supplier_root
+        if (
+            not standalone
+            and supplier_root is None
+            and type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT not in os.environ
+        ):
+            selection = runtime_root / policy.supplier_selection_file
+            captured = u.Cli.atomic_read_binary_file_state(selection)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            content = captured.value.content
+            if content is not None:
+                try:
+                    selected = content.decode(c.DEFAULT_ENCODING)
+                except UnicodeError as exc:
+                    return result_type.fail(
+                        f"invalid editable supplier selection: {selection}",
+                        exception=exc,
+                    )
+                if (
+                    not selected.endswith("\n")
+                    or selected.count("\n") != 1
+                    or "\r" in selected
+                    or "\x00" in selected
+                ):
+                    return result_type.fail(
+                        f"editable supplier selection must contain one UTF-8 line: "
+                        f"{selection}"
+                    )
+                selected = selected.removesuffix("\n")
+                if selected:
+                    supplier_root = Path(selected)
         if supplier_root is not None:
-            if not supplier_root.is_dir():
+            if not supplier_root.is_absolute():
                 return result_type.fail(
-                    "editable supplier root is not an existing directory: "
-                    f"{supplier_root}"
+                    "editable supplier root must be an absolute path"
                 )
-            supplier_root = supplier_root.resolve()
+            try:
+                resolved_supplier = supplier_root.resolve(strict=True)
+                if not stat.S_ISDIR(resolved_supplier.stat().st_mode):
+                    raise NotADirectoryError(
+                        errno.ENOTDIR,
+                        "editable supplier root is not a directory",
+                        str(supplier_root),
+                    )
+            except OSError as exc:
+                return result_type.fail(
+                    f"cannot authenticate editable supplier root {supplier_root}: {exc}",
+                    exception=exc,
+                )
+            supplier_root = resolved_supplier
+            if supplier_root == runtime_root.resolve():
+                supplier_root = None
         directory = (
             policy.standalone_directory
             if standalone
@@ -388,10 +438,23 @@ class FlextInfraWorkspaceDetector(
             The resulting ``p.Result[m.Infra.RepositoryRef]``.
 
         """
-        metadata = u.Infra.read_project_metadata_state(repository_root)
-        if metadata.failure:
-            return r[m.Infra.RepositoryRef].from_failure(metadata)
-        project_name = metadata.value.metadata.project.name
+        metadata_path = repository_root / c.PYPROJECT_FILENAME
+        if metadata_path.exists() or metadata_path.is_symlink():
+            metadata = u.Infra.read_project_metadata_state(repository_root)
+            if metadata.failure:
+                return r[m.Infra.RepositoryRef].from_failure(metadata)
+            project_name = metadata.value.metadata.project.name
+            package = u.Infra.project_package_participation(
+                metadata.value.packaging,
+            )
+        else:
+            scaffold = cls._declared_scaffold_project(repository_root)
+            if scaffold.failure:
+                return r[m.Infra.RepositoryRef].from_failure(scaffold)
+            project_name = scaffold.value.constant_name
+            # The explicit ProjectSpec declares the import package the existing
+            # scaffold planner materializes; no PEP metadata exists yet.
+            package = True
         origin = cls._reconciled_origin(
             repository_root,
             path=path,
@@ -431,9 +494,7 @@ class FlextInfraWorkspaceDetector(
                 provider=provider_name,
                 kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 codegen=c.Infra.CodegenKind.CONFORM,
-                package=u.Infra.project_package_participation(
-                    metadata.value.packaging,
-                ),
+                package=package,
                 # The checkout's own root package is its environment's
                 # editable install by the uv contract — the lock records
                 # `editable = "."` for the project root in every standalone
@@ -444,6 +505,98 @@ class FlextInfraWorkspaceDetector(
                 read_only=False,
             ),
         )
+
+    @staticmethod
+    def _declared_scaffold_project(
+        repository_root: Path,
+    ) -> p.Result[m.Infra.ProjectSpec]:
+        """Admit only a prepared new tree with its complete own declaration.
+
+        Returns:
+            The declared project, or the original Git/configuration failure.
+
+        """
+        result_type = r[m.Infra.ProjectSpec]
+        inputs = u.Infra.load_codegen_inputs(repository_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        declaration = inputs.value.spec.repository
+        if declaration.project is None:
+            error = FileNotFoundError(
+                f"repository has no {c.PYPROJECT_FILENAME} or explicit "
+                f"project declaration: {repository_root}",
+            )
+            return result_type.fail(str(error), exception=error)
+        if (
+            declaration.integration is None
+            or "kind" not in declaration.model_fields_set
+        ):
+            return result_type.fail(
+                "new project requires its own integration and kind declarations: "
+                f"{repository_root}",
+            )
+        project = declaration.project
+        if project.flext_source is None:
+            return result_type.fail(
+                f"new project requires explicit dependency provenance: {repository_root}",
+            )
+        source = u.Infra.declared_git_source(project.flext_source)
+        if source.failure:
+            return result_type.from_failure(source)
+        if u.Infra.dep_name(project.flext_source) != (
+            inputs.value.spec.infra_repository.distribution
+        ):
+            return result_type.fail(
+                "new project provenance must declare its infrastructure dependency: "
+                f"{project.flext_source}",
+            )
+        source_url, source_ref = source.value
+        if u.Infra.ref_is_commit(source_ref):
+            return result_type.fail(
+                "new project provenance requires an integration line, not a commit: "
+                f"{project.flext_source}",
+            )
+        line = u.Infra.flext_integration_line(
+            codegen=inputs.value.spec,
+            repository_root=repository_root,
+            bootstrap_source=m.Infra.CodegenBootstrapSource(
+                url=source_url, ref=source_ref
+            ),
+        )
+        if line.failure:
+            return result_type.from_failure(line)
+        identity = u.Infra.exact_worktree_root(repository_root)
+        if identity.failure:
+            return result_type.from_failure(identity)
+        path_request = m.Infra.GitRelativePathRequest(
+            repo_root=repository_root,
+            relative_path=c.PYPROJECT_FILENAME,
+        )
+        tracked = u.Infra.git_is_tracked(path_request)
+        if tracked.failure:
+            return result_type.from_failure(tracked)
+        history = u.Infra.git_path_has_history(path_request)
+        if history.failure:
+            return result_type.from_failure(history)
+        if tracked.value.value or history.value.value:
+            return result_type.fail(
+                f"established repository is missing {c.PYPROJECT_FILENAME}: "
+                f"{repository_root}",
+            )
+        sources = u.Infra.git_source_scope_paths(repository_root)
+        if sources is None:
+            return result_type.fail(
+                f"new-project source inventory has no Git owner: {repository_root}",
+            )
+        authored = tuple(
+            path for path in sources if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+        )
+        if authored:
+            return result_type.fail(
+                "repository with existing Python sources is not a new scaffold: "
+                f"{', '.join(str(path) for path in authored)}",
+            )
+        return result_type.ok(project)
 
     @classmethod
     def _load_subprojects(
@@ -763,9 +916,23 @@ class FlextInfraWorkspaceDetector(
         if external_consumers.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
         (workspace_beads, resolved_refs, name) = workspace.value
+        bootstrap_source: m.Infra.CodegenBootstrapSource | None = None
+        if not (resolved_root / c.PYPROJECT_FILENAME).exists():
+            project = declaration.project
+            if project is None or project.flext_source is None:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    f"new project has no declared dependency source: {resolved_root}",
+                )
+            source = u.Infra.declared_git_source(project.flext_source)
+            if source.failure:
+                return r[m.Infra.WorkspaceSpec].from_failure(source)
+            bootstrap_source = m.Infra.CodegenBootstrapSource(
+                url=source.value[0], ref=source.value[1]
+            )
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=name,
+                flext_source=bootstrap_source,
                 beads=workspace_beads,
                 gascity_enabled=resolved_refs[0][1],
                 repository=resolved_refs[0][0],
@@ -1101,10 +1268,17 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 "local workspace repository path must be '.'",
             )
-        metadata = u.Infra.read_project_metadata_result(resolved_root)
-        if metadata.failure:
-            return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
-        canonical_project_name = metadata.value.project.name
+        metadata_path = resolved_root / c.PYPROJECT_FILENAME
+        if metadata_path.exists() or metadata_path.is_symlink():
+            metadata = u.Infra.read_project_metadata_result(resolved_root)
+            if metadata.failure:
+                return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
+            canonical_project_name = metadata.value.project.name
+        else:
+            scaffold = cls._declared_scaffold_project(resolved_root)
+            if scaffold.failure:
+                return r[m.Infra.RepositoryConformTarget].from_failure(scaffold)
+            canonical_project_name = scaffold.value.constant_name
         if canonical_project_name != workspace.repository.distribution:
             return r[m.Infra.RepositoryConformTarget].fail(
                 "project metadata and repository identity differ: "

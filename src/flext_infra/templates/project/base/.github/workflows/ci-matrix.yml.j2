@@ -76,7 +76,7 @@ jobs:
           -e {{ make.ci.variable }}={{ make.ci.value }}
           -e GITHUB_TOKEN
           ci-matrix-ubuntu
-          bash -ec 'make setup && make gen && make gen && make check && make test && make build'
+          bash -ec 'make setup && make gen && make gen && make check && make tests && make build'
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===

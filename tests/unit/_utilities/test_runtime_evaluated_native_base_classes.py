@@ -17,9 +17,9 @@ from tests import tm, u
 class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
     """Native ancestry, provider metadata and aliases keep declared lineage."""
 
+    @staticmethod
     @pytest.mark.parametrize("name", ["Structure", "Union", "Array"])
     def test_ctypes_native_private_parents_do_not_require_module_exports(
-        self,
         tmp_path: Path,
         name: str,
     ) -> None:
@@ -43,8 +43,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
         )
 
+    @staticmethod
     def test_ctypes_inherited_alias_obeys_c3_with_shared_native_identity(
-        self,
         tmp_path: Path,
     ) -> None:
         """Native wrapper identity cannot split the shared diamond ancestor."""
@@ -70,8 +70,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         )
 
+    @staticmethod
     def test_shared_private_native_parent_is_still_a_duplicate_base(
-        self,
         tmp_path: Path,
     ) -> None:
         """Separate provider wrappers cannot invent distinct native classes."""
@@ -88,12 +88,12 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("module", "name"),
         [("_ctypes", "_CData"), ("ctypes", "MissingNativeClass")],
     )
     def test_missing_native_export_keeps_its_original_failure(
-        self,
         tmp_path: Path,
         module: str,
         name: str,
@@ -111,7 +111,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             )
         tm.that(str(failure.value), eq=f"Attribute {name} not found")
 
-    def test_star_imported_provider_base_resolves(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_star_imported_provider_base_resolves(tmp_path: Path) -> None:
         """A provider base bound by ``from .x import *`` is a real binding.
 
         PyYAML declares ``class SafeLoader(Reader, Scanner, ...)`` after
@@ -133,6 +134,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
         )
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("module", "name"),
         [
@@ -145,7 +147,6 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         ],
     )
     def test_native_provider_namespace_preserves_class_bases(
-        self,
         tmp_path: Path,
         module: str,
         name: str,
@@ -164,6 +165,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
         )
 
+    @staticmethod
     @pytest.mark.parametrize("declared", [False, True])
     @pytest.mark.parametrize(
         "metadata",
@@ -176,7 +178,6 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         ],
     )
     def test_provider_class_metadata_preserves_imported_and_declared_lineage(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
         metadata: str,
@@ -217,6 +218,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         )
         tm.fail("metadata_provider" in sys.modules)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "mutation",
         [
@@ -228,7 +230,6 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         ],
     )
     def test_provider_metadata_never_masks_the_first_binding_mutation(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
         mutation: str,
@@ -265,8 +266,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=f"Unsupported class binding mutation in mutating_provider: {mutation}",
         )
 
+    @staticmethod
     def test_class_local_table_subscript_store_is_not_a_class_rebinding(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
     ) -> None:
@@ -302,7 +303,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         )
 
-    def test_inconsistent_mro_fails_visibly(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_inconsistent_mro_fails_visibly(tmp_path: Path) -> None:
         source = (
             "class Left: pass\nclass Right: pass\n"
             "class First(Left, Right): pass\nclass Second(Right, Left): pass\n"
@@ -315,9 +317,9 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     @pytest.mark.parametrize("aliased", [False, True])
     def test_qualified_provider_import_keeps_its_class_attributes(
-        self,
         tmp_path: Path,
         *,
         aliased: bool,
@@ -345,8 +347,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         )
 
+    @staticmethod
     def test_libcst_module_alias_resolves_the_published_class(
-        self,
         tmp_path: Path,
     ) -> None:
         """The original real-consumer base has a complete installed source identity."""
@@ -360,6 +362,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
         )
 
+    @staticmethod
     @pytest.mark.parametrize(
         "publication",
         [
@@ -371,7 +374,6 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         ],
     )
     def test_provider_reexports_and_inherited_aliases_use_declared_source(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
         publication: str,
@@ -413,8 +415,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         )
         tm.fail("declared_provider" in sys.modules)
 
+    @staticmethod
     def test_planned_reexport_overrides_an_installed_provider(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
     ) -> None:
@@ -466,8 +468,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             ),
         )
 
+    @staticmethod
     def test_configured_root_can_be_an_unpublished_planned_class(
-        self,
         tmp_path: Path,
     ) -> None:
         package = tmp_path / "src" / "unpublished_root"
@@ -486,9 +488,9 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
             eq=roots,
         )
 
+    @staticmethod
     @pytest.mark.parametrize("value", ["0", "RuntimeRoot()"])
     def test_field_or_call_value_cannot_be_a_class_alias(
-        self,
         tmp_path: Path,
         value: str,
     ) -> None:
@@ -505,8 +507,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     def test_missing_explicit_external_base_is_not_deselected(
-        self,
         tmp_path: Path,
     ) -> None:
         source = u.Tests.runtime_root_import() + (
@@ -520,7 +522,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
-    def test_imported_module_is_not_a_class_identity(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_imported_module_is_not_a_class_identity(tmp_path: Path) -> None:
         source = "import libcst as cst\nclass Invalid(cst): pass\n"
         with pytest.raises(ValueError, match="Module used as a class base"):
             u.Infra.runtime_evaluated_base_classes(
@@ -529,8 +532,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     def test_duplicate_class_identity_through_alias_fails(
-        self,
         tmp_path: Path,
     ) -> None:
         source = u.Tests.runtime_root_import() + (
@@ -543,8 +546,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     def test_conditional_required_alias_is_not_chosen_from_one_branch(
-        self,
         tmp_path: Path,
     ) -> None:
         source = u.Tests.runtime_root_import() + (
@@ -560,6 +563,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     @pytest.mark.parametrize(
         "mutation",
         [
@@ -571,7 +575,6 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         ],
     )
     def test_unsupported_mutation_never_preserves_a_previous_class(
-        self,
         tmp_path: Path,
         mutation: str,
     ) -> None:
@@ -597,8 +600,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     def test_provider_reexport_enters_a_planned_class_once(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
     ) -> None:
@@ -631,8 +634,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
         tm.fail(package.exists())
         tm.fail("planned_bridge" in sys.modules)
 
+    @staticmethod
     def test_true_planned_reexport_cycle_fails_at_its_binding(
-        self,
         tmp_path: Path,
     ) -> None:
         package = tmp_path / "src" / "cycle_contract"
@@ -649,8 +652,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 tmp_path, planned, u.Tests.runtime_evaluated_roots()
             )
 
+    @staticmethod
     def test_missing_inherited_member_cannot_be_deselected(
-        self,
         tmp_path: Path,
     ) -> None:
         source = "class Namespace: pass\nclass Invalid(Namespace.Missing): pass\n"

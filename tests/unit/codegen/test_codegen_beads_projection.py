@@ -17,6 +17,7 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("distribution", "kind"),
         [
@@ -26,7 +27,6 @@ class TestsFlextInfraCodegenBeadsProjection:
     )
     @pytest.mark.slow
     def test_governed_builder_uses_project_owned_catalogue(
-        self,
         tmp_path: Path,
         distribution: str,
         kind: c.Infra.ProjectKind,

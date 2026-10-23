@@ -20,9 +20,8 @@ from tests import c, m, tm, u
 class TestsFlextInfraCodegenScaffolder:
     """Tests for ``FlextInfraCodegenScaffolder``."""
 
-    def test_missing_repository_propagates_discovery_failure(
-        self, tmp_path: Path
-    ) -> None:
+    @staticmethod
+    def test_missing_repository_propagates_discovery_failure(tmp_path: Path) -> None:
         """A missing repository cannot produce a successful empty scaffold."""
         missing = tmp_path / "missing"
         with pytest.raises(RuntimeError, match=str(missing)):

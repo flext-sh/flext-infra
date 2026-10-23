@@ -164,7 +164,8 @@ class TestsFlextInfraPyprojectDependencyGroups:
         source = self._source(
             groups,
             project_fields=(
-                f"[project.optional-dependencies]\nfeature = [{tm.ok(u.Cli.json_dumps(optional))}]"
+                f"[project.optional-dependencies]\nfeature = "
+                f"[{tm.ok(u.Cli.json_dumps(optional))}]"
             ),
         )
         rendered = tm.ok(self._conform(source, role))
@@ -312,9 +313,11 @@ class TestsFlextInfraPyprojectDependencyGroups:
         codegen = str(c.Infra.DependencyGroup.CODEGEN)
         authored_name = dev.capitalize()
         source = self._source(
-            f"{authored_name} = [{tm.ok(u.Cli.json_dumps(authored_bound))}, {tm.ok(u.Cli.json_dumps(marked))}, "
+            f"{authored_name} = [{tm.ok(u.Cli.json_dumps(authored_bound))}, "
+            f"{tm.ok(u.Cli.json_dumps(marked))}, "
             '{include-group = "base"}, '
-            f"{tm.ok(u.Cli.json_dumps(extra))}, {tm.ok(u.Cli.json_dumps(direct))}, {tm.ok(u.Cli.json_dumps(marked))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(extra))}, {tm.ok(u.Cli.json_dumps(direct))}, "
+            f"{tm.ok(u.Cli.json_dumps(marked))}]\n"
             f"{codegen} = []\n"
             "base = []\n"
             f'examples = [{{include-group = "{authored_name}"}}]',
@@ -322,8 +325,8 @@ class TestsFlextInfraPyprojectDependencyGroups:
         seed = self._source(f"{dev} = []\n{codegen} = []")
         return (authored_name, source, seed)
 
+    @staticmethod
     def _assert_variant_floor_group(
-        self,
         conformed: str,
         source: str,
         authored_name: str,
@@ -445,7 +448,8 @@ class TestsFlextInfraPyprojectDependencyGroups:
         source = self._source(
             f"{name} = [{tm.ok(u.Cli.json_dumps(group_first))}, "
             '{include-group = "shared"}, '
-            f"{tm.ok(u.Cli.json_dumps(group_last))}, {tm.ok(u.Cli.json_dumps(group_first))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(group_last))}, "
+            f"{tm.ok(u.Cli.json_dumps(group_first))}]\n"
             f"{other} = []\n"
             "shared = []\n"
             f'examples = [{{include-group = "{name}"}}]',

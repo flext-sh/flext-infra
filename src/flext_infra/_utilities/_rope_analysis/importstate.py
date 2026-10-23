@@ -590,7 +590,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         for child in scope.get_scopes():
             if child.get_kind() != "Class":
                 continue
-            target = child.pyobject
+            target = FlextInfraUtilitiesRopeRuntime.require_class_object(
+                child.pyobject, "facade declaration"
+            )
             name = target.get_name()
             binding = attributes.get(name)
             if name not in exports or binding is None:
@@ -619,7 +621,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         return next(iter(owners)) if owners else None
 
     @staticmethod
-    def _declared_class_aliases(target: t.Infra.RopePyObject) -> frozenset[str]:
+    def _declared_class_aliases(target: p.Infra.RopeClassObject) -> frozenset[str]:
         """Return explicitly exported names bound to this exact class object.
 
         Returns:
@@ -665,7 +667,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
         """
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
-        target = module.get_attribute(class_name).get_object()
+        target = FlextInfraUtilitiesRopeRuntime.require_class_object(
+            module.get_attribute(class_name).get_object(), class_name
+        )
         attributes = target.get_attributes()
         names: set[str] = set()
         pending = [
@@ -679,15 +683,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             if not FlextInfraUtilitiesRopeRuntime.py_class(base):
                 continue
             scope = base.get_scope()
-            if scope is not None:
-                for child in scope.get_scopes():
-                    if child.get_kind() != "Class":
-                        continue
-                    nested = child.pyobject
-                    name = nested.get_name()
-                    binding = attributes.get(name)
-                    if binding is not None and binding.get_object() is nested:
-                        names.add(name)
+            for child in scope.get_scopes():
+                if child.get_kind() != "Class":
+                    continue
+                nested = child.pyobject
+                name = nested.get_name()
+                binding = attributes.get(name)
+                if binding is not None and binding.get_object() is nested:
+                    names.add(name)
             pending.extend(
                 (parent, ancestors | {id(base)}) for parent in base.get_superclasses()
             )
@@ -696,7 +699,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     @classmethod
     def _inherited_class_aliases(
         cls,
-        target: t.Infra.RopePyObject,
+        target: p.Infra.RopeClassObject,
         *,
         visited: frozenset[int],
     ) -> frozenset[str]:
@@ -796,6 +799,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             Method symbols for a class from one resolved Rope module.
 
+        Raises:
+            TypeError: A native function has no concrete source scope kind.
+
         """
         result: t.MutableStrMapping = {}
         attributes = pymodule.get_attributes()
@@ -810,7 +816,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             child = pyname.get_object()
             if not FlextInfraUtilitiesRopeRuntime.py_function(child):
                 continue
-            result[name] = child.get_kind()
+            kind = child.get_scope().get_kind()
+            if kind is None:
+                message = f"native function has no scope kind: {name}"
+                raise TypeError(message)
+            result[name] = kind
         return result
 
     @staticmethod
@@ -873,7 +883,8 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             pyname = pymodule.get_attributes().get(symbol_name)
             if pyname is None:
                 return False
-            return bool(pyname.get_object().get_doc())
+            value = pyname.get_object()
+            return isinstance(value, p.Infra.RopeNamedObject) and bool(value.get_doc())
         finally:
             rope_project.close()
 

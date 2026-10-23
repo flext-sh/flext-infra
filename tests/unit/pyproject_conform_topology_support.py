@@ -139,7 +139,8 @@ class TestsFlextInfraPyprojectConformTopologySupport:
             ),
         )
 
-    def _overlay(self, source: str, rendered: str) -> str:
+    @staticmethod
+    def _overlay(source: str, rendered: str) -> str:
         """Merge one render through the preserved-overlay owner.
 
         Returns:

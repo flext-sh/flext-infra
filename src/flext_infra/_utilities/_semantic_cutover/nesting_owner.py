@@ -16,7 +16,10 @@ import pytest
 from flext_cli import u
 
 from flext_infra import p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,7 +64,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             raise TypeError(msg)
         owner = next(iter(definitions.values()))
         binding = module.get_scope().get_defined_names().get(owner)
-        scope = binding.get_object().get_scope() if binding is not None else None
+        scope = (
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+                binding.get_object(), owner
+            ).get_scope()
+            if binding is not None
+            else None
+        )
         occupied = set(definitions)
         if scope is not None:
             occupied.update(scope.get_defined_names())
@@ -190,8 +199,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         if not cls._pytest_name_matches(name, patterns):
             return False
         definition = binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(definition):
+            return False
         scope = definition.get_scope()
-        if scope is None or scope.get_kind() != "Class":
+        if scope.get_kind() != "Class":
             return False
         flag = definition.get_attributes().get("__test__")
         if flag is None:

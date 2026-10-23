@@ -19,10 +19,7 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, config, m, p, settings, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -226,7 +223,11 @@ class FlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     def project_cache_directory(project_dir: Path, cache_root: Path) -> Path:
-        """Namespace one declared cache by the real project's metadata.
+        """Namespace one declared cache by its physical project root.
+
+        Analyzer storage must not parse package metadata before the native tool
+        can diagnose its inputs. Physical roots also separate checkouts declaring
+        the same distribution name.
 
         Args:
             project_dir: The path to the project whose cache is being namespaced.
@@ -237,21 +238,13 @@ class FlextInfraUtilitiesResourceLimits:
             The resulting ``Path``.
 
         Raises:
-            ValueError: If the project metadata cannot be read.
+            OSError: If the selected physical project root cannot be resolved.
 
         """
-        source = FlextInfraUtilitiesPyproject.live_pyproject_text(
-            project_dir / c.PYPROJECT_FILENAME,
-        )
-        if source.failure:
-            msg = source.error or f"project metadata unreadable: {project_dir}"
-            raise ValueError(msg)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            msg = f"project metadata is not valid TOML: {project_dir}"
-            raise ValueError(msg)
-        return cache_root / FlextInfraUtilitiesPyproject.project_name_from_payload(
-            project_dir / c.PYPROJECT_FILENAME, payload
+        physical = project_dir.resolve(strict=True)
+        return (
+            cache_root
+            / hashlib.sha256(str(physical).encode(c.DEFAULT_ENCODING)).hexdigest()
         )
 
     @staticmethod

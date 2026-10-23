@@ -492,7 +492,7 @@ class FlextInfraCodegenLazyInitPlanner(
         resource = module.get_resource() if module is not None else None
         scope = (
             owner.get_scope()
-            if resource is not None and isinstance(owner, p.Infra.RopeSourceDefinition)
+            if resource is not None and u.Infra.py_class(owner)
             else None
         )
         key = (

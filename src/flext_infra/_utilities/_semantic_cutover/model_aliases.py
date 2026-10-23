@@ -168,13 +168,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
         assignments: tuple[ast.Assign, ...],
     ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        scope = wrapper.get_object().get_scope()
-        if scope is None:
-            msg = (
-                f"model alias namespace has no native scope: "
-                f"{path}:{wrapper.get_object().get_name()}"
-            )
-            raise ValueError(msg)
+        namespace = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            wrapper.get_object(), str(path)
+        )
+        scope = namespace.get_scope()
         aliases: dict[str, p.Infra.RopePyName] = {}
         targets: dict[str, tuple[str, str]] = {}
         for assignment in assignments:
@@ -183,7 +180,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             if target is None:
                 msg = (
                     f"unresolved model alias target: "
-                    f"{path}:{wrapper.get_object().get_name()}.{alias}"
+                    f"{path}:{namespace.get_name()}.{alias}"
                 )
                 raise ValueError(msg)
             value = target.get_object()
@@ -198,7 +195,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
                 return None
             provider = value.get_module()
-            provider_resource = None if provider is None else provider.get_resource()
+            provider_resource = provider.get_resource()
             if provider_resource is None:
                 msg = f"model alias target has no source declaration: {path}:{alias}"
                 raise ValueError(msg)
@@ -227,7 +224,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 and binding.get_object() == value
                 and runtime.same_name(binding, target)
             )
-            if len(canonical) != 1 or provider is None:
+            if len(canonical) != 1:
                 msg = (
                     f"alias target is not a canonical model declaration: {path}:{alias}"
                 )
@@ -413,7 +410,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
         targets: t.MappingKV[str, t.Pair[str, str]],
         sources: t.MutableMappingKV[Path, str],
     ) -> frozenset[Path]:
-        name = wrapper.get_object().get_name()
+        name = FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+            wrapper.get_object(), "model alias namespace"
+        ).get_name()
         observed = dict(sources)
         for resource in project.get_python_files():
             path = Path(resource.real_path).resolve()

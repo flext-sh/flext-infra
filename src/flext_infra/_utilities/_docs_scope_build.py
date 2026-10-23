@@ -38,9 +38,17 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         Returns:
             Normalized project filters for docs-scoped operations.
 
+        Raises:
+            ValueError: If an explicit project selection is empty.
+
         """
-        del repository_root
-        return list(FlextInfraUtilitiesBase.normalize_sequence_values(projects) or ())
+        if projects is None:
+            return []
+        selected = FlextInfraUtilitiesBase.normalize_sequence_values(projects)
+        if not selected:
+            msg = f"docs project selection is empty for {repository_root}"
+            raise ValueError(msg)
+        return list(selected)
 
     @staticmethod
     def build_scopes(
@@ -112,6 +120,19 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
             and not has_workspace_topology
             and is_enabled
         ):
+            selected_names = (
+                FlextInfraUtilitiesDocsScopeBuildMixin._selected_project_names(
+                    resolved_root,
+                    projects,
+                )
+            )
+            if selected_names:
+                return FlextInfraUtilitiesDocsScopeBuildMixin._selected_project_scopes(
+                    resolved_root,
+                    discovered,
+                    selected_names,
+                    output_dir,
+                )
             return (
                 FlextInfraUtilitiesDocsScopeBuildMixin._governed_scope(
                     resolved_root,

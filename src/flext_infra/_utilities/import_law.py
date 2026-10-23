@@ -410,12 +410,7 @@ class FlextInfraUtilitiesImportLaw:
             binding = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
                 project, qualified
             )
-        if binding.get_object().get_kind() not in {
-            "function",
-            "method",
-            "staticmethod",
-            "classmethod",
-        }:
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(binding.get_object()):
             return None
         holder, line = binding.get_definition_location()
         if holder is None or line is None:

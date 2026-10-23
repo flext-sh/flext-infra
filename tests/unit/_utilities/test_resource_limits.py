@@ -657,10 +657,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def test_mypy_cache_directory_is_project_keyed_and_survives_relocks(
+    def test_mypy_cache_directory_is_physical_and_survives_metadata_changes(
         tmp_path: Path,
     ) -> None:
-        """One shared Mypy cache per project, reused by every checkout and relock."""
+        """Physical checkouts stay isolated without reading mutable TOML or locks."""
         spec = config.Infra.codegen.make.mypy_cache
 
         def checkout(name: str, project: str) -> Path:
@@ -675,15 +675,17 @@ class TestsFlextInfraUtilitiesResourceLimits:
         lane = checkout("lane", "fixture-alpha")
         primary = checkout("primary", "fixture-alpha")
         other = checkout("other", "fixture-beta")
-        shared = u.Infra.mypy_cache_directory(lane)
-        # Every checkout of one project reuses one analysis.
-        tm.that(u.Infra.mypy_cache_directory(primary), eq=shared)
+        cached = u.Infra.mypy_cache_directory(lane)
+        tm.ok(u.Infra.mypy_cache_directory(primary) != cached)
         tm.that(
-            shared.is_relative_to(u.Infra.external_cache_directory(spec)),
+            cached.is_relative_to(u.Infra.external_cache_directory(spec)),
             eq=True,
         )
-        # A relock keeps the directory: Mypy revalidates changed modules itself.
         (lane / c.Infra.UV_LOCK_FILENAME).write_text("rotated\n", encoding="utf-8")
-        tm.that(u.Infra.mypy_cache_directory(lane), eq=shared)
-        # Distinct projects never share one tests package namespace.
-        tm.ok(u.Infra.mypy_cache_directory(other) != shared)
+        tm.that(u.Infra.mypy_cache_directory(lane), eq=cached)
+        metadata = lane / c.PYPROJECT_FILENAME
+        metadata.write_text("[project", encoding="utf-8")
+        before = metadata.read_bytes()
+        tm.that(u.Infra.mypy_cache_directory(lane), eq=cached)
+        tm.that(metadata.read_bytes(), eq=before)
+        tm.ok(u.Infra.mypy_cache_directory(other) != cached)

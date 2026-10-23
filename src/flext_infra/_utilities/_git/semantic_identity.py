@@ -17,11 +17,11 @@ from git import (
 )
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticLaneMixin,
 )
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticLaneMixin
 
 
 class FlextInfraUtilitiesGitSemanticIdentityMixin(
@@ -45,12 +45,6 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            if cls._git_head_is_unborn(repo):
-                return r[m.Infra.GitIdentityReport].fail(
-                    f"Git repository has no committed HEAD: "
-                    f"{request.repo_root.resolve()}",
-                    error_code=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE,
-                )
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
                 return r[m.Infra.GitIdentityReport].from_failure(primary)
@@ -140,11 +134,6 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         """
         try:
             with cls._repo(requested) as repo:
-                if cls._git_head_is_unborn(repo):
-                    return r[Path].fail(
-                        f"Git repository has no committed HEAD: {requested.resolve()}",
-                        error_code=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE,
-                    )
                 return cls._exact_worktree_control(repo, requested)
         except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
             return r[Path].fail(
@@ -160,8 +149,10 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
             The control directory after exact-root and nesting validation.
 
         """
-        # Resolve the object too: an existing ref can point at corrupt data.
-        _ = repo.head.commit.hexsha
+        # Missing symbolic branches have no commit object. Existing refs still
+        # resolve their object here so corruption retains its native failure.
+        if not cls._git_head_is_unborn(repo):
+            _ = repo.head.commit.hexsha
         working_tree = Path(repo.git.rev_parse("--show-toplevel")).resolve()
         if working_tree != requested:
             return r[Path].fail(
@@ -312,7 +303,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
             The resulting ``m.Infra.GitIdentityReport``.
 
         """
-        head_oid = repo.head.commit.hexsha
+        head_oid = None if cls._git_head_is_unborn(repo) else repo.head.commit.hexsha
         working_tree = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
         git_dir = Path(repo.git_dir).resolve()
         common_dir = Path(repo.common_dir).resolve()

@@ -145,8 +145,8 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         }
         return before, protected
 
+    @staticmethod
     def _assert_render_retains_requirements(
-        self,
         rendered: str,
         declared: t.VariadicTuple[str],
     ) -> str:

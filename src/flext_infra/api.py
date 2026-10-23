@@ -25,7 +25,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenFixer,
     FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPipeline,
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
@@ -44,13 +43,11 @@ from flext_infra.workspace import (
 
 if TYPE_CHECKING:
     from flext_infra import p
-    from flext_infra.codegen import FlextInfraCodegenProjectNew
     from flext_infra.docs import FlextInfraDocFormatter
     from flext_infra.workspace import FlextInfraWorkspacePropagation
 
 
 class FlextInfra(
-    FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraConformWiring,
     FlextInfraPreviewWiring,
     FlextInfraCodegenHandlers,
@@ -60,6 +57,31 @@ class FlextInfra(
     """Thin public FLEXT facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
+
+    @staticmethod
+    def sync_environment_files(
+        request: m.Infra.WorkspaceEnvironmentSyncRequest,
+        *,
+        runner: p.Cli.CommandRunner | None = None,
+    ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
+        """Bind the canonical read-only planner and native environment consumer.
+
+        Returns:
+            The consumed projection and authorization status, or the original
+            declaration, projection or runtime failure.
+
+        """
+        return FlextInfraWorkspaceEnvironmentMixin.sync_environment_files(
+            request,
+            planner=FlextInfraCodegenConform(
+                repository_root=request.repository_root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=request.repository_root,
+                    generation_only=True,
+                ),
+            ),
+            runner=u.Cli if runner is None else runner,
+        )
 
     @staticmethod
     def bootstrap_candidate(
@@ -130,6 +152,22 @@ class FlextInfra(
         ).execute_payload(request)
 
     @staticmethod
+    def check_integrity(request: m.Infra.RunCommand) -> p.Result[bool]:
+        """Run the same check engine over its declared runtime-integrity subset."""
+        return FlextInfraWorkspaceChecker(
+            repository_root=request.repository_root
+        ).execute_integrity(request)
+
+    @staticmethod
+    def check_report(
+        request: m.Infra.RunCommand,
+    ) -> p.Result[m.Infra.CheckReportSummary]:
+        """Collect typed invocation facts; each gate retains its actual verdict."""
+        return FlextInfraWorkspaceChecker(
+            repository_root=request.repository_root
+        ).execute_report(request)
+
+    @staticmethod
     def codegen_census(request: m.Infra.CodegenCommand) -> p.Result[str]:
         """Run the read-only census within the facade-owned Rope lifecycle.
 
@@ -161,39 +199,6 @@ class FlextInfra(
             output_format=request.output_format,
             selected_projects=request.projects,
             rules_only=request.rules_only,
-        ).execute()
-
-    def codegen_pipeline(self, request: m.Infra.CodegenCommand) -> p.Result[str]:
-        """Run the codegen pipeline with the facade-wired conform ports.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        return FlextInfraCodegenPipeline(
-            repository_root=request.repository_root,
-            apply_changes=request.apply,
-            check_only=request.check_only,
-            dry_run=request.dry_run,
-            output_format=request.output_format,
-            conform_collaborators=m.Infra.CodegenConformPorts.model_validate(
-                self.codegen_conform_collaborators(),
-                from_attributes=True,
-            ),
-        ).execute()
-
-    def codegen_new(
-        self,
-        command: FlextInfraCodegenProjectNew,
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Scaffold one project through conform with the facade-wired ports.
-
-        Returns:
-            The resulting ``p.Result[p.Infra.CodegenResult]``.
-
-        """
-        return command.model_copy(
-            update={"conform_collaborators": self.codegen_conform_collaborators()},
         ).execute()
 
     def release_run(self, request: m.Infra.ReleaseRunCommand) -> p.Result[bool]:

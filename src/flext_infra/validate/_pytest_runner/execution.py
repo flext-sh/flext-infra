@@ -702,15 +702,12 @@ class FlextInfraPytestRunnerExecution(
         return self._execute_testmon(complete=False)
 
     def execute_full(self) -> p.Result[int]:
-        """Run incremental then full using one persistent database.
+        """Run the complete suite once using the persistent testmon database.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         """
-        incremental_exit = self.execute().unwrap()
-        if incremental_exit != pytest.ExitCode.OK:
-            return r.ok(incremental_exit)
         return self._execute_testmon(complete=True)
 
     def execute_file(self) -> p.Result[int]:

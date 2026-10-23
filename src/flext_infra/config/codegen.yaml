@@ -466,6 +466,8 @@ Infra:
       # findings. The receipt never converts the native command status to green.
       gate_acceptance_policy: complete_execution
       gate_receipts_directory: .reports/gates
+      check_report_output_environment_variable: FLEXT_CHECK_REPORT_OUTPUT
+      generation_profile_path: .reports/codegen/gen.pstats
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -569,6 +571,10 @@ Infra:
         local_directory: .flext/uv/local
         standalone_directory: .flext/uv/standalone
         editable_directory: .flext/uv/editable
+        supplier_selection_file: .flext/uv/supplier-root
+        bootstrap_artifact: .flext/bootstrap/native_bootstrap.py
+        control_distribution: flext-infra
+        control_module: flext_infra
         hosted_variable: GITHUB_ACTIONS
         hosted_value: 'true'
         virtual_distribution_suffix: '-resolution'
@@ -600,8 +606,8 @@ Infra:
         local_check_gates: [ mypy, pyright, codemod, smells, direnv ]
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
-        # An absent CI uses testmon for incremental developer runs.
-        # Pre-commit uses the CI gate partition and incremental test operation.
+        # Tests execute the complete applicable population once in every context.
+        # Pre-commit uses the CI check partition and the same complete test owner.
         # The pre-push hook runs every pre_push row below. make setup installs
         # both hooks locally with prek and installs none under CI=Y.
       pre_commit: true
@@ -623,45 +629,25 @@ Infra:
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }
-      - { verb: audit, contexts: [ local, ci ] }
-      - { verb: fmt, contexts: [ local ] }
       - { verb: fix, contexts: [ local ] }
+      - { verb: fmt, contexts: [ local ] }
       - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }
-      # CI also runs the incremental suite with the persistent testmon cache.
-      # The full suite remains a separate local verb that first runs this
-      # incremental phase and then exercises the complete inventory.
-      - { verb: test, contexts: [ local, ci, pre_push, pre_commit ] }
-      # Verify owned projections against their sources without requiring a clean
-      # worktree. Concurrent staged, unstaged, or untracked work is expected.
-      - { verb: verify-clean, contexts: [ local, ci, pre_push ] }
-      # Root mutation verbs own their existing member fanout. Per-repository
-      # consumers run from the invoking root with the member's Makefile.
+      - { verb: tests, contexts: [ local, ci, pre_push, pre_commit ] }
+      # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, scope: root, contexts: [ local, ci ] }
       - { verb: setup, scope: root, contexts: [ local, ci ] }
       - { verb: gen, scope: root, contexts: [ local, ci ] }
-      - { verb: upg, scope: root, contexts: [ local ] }
-      - { verb: gen, scope: root, contexts: [ local, ci ] }
       - { verb: mod, scope: root, contexts: [ local, ci ] }
-      # Docs also generate, repair and format; finish those effects before QA.
-      - { verb: docs, scope: each, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
       - { verb: fix, scope: root, contexts: [ local, ci ] }
       - { verb: fmt, scope: root, contexts: [ local, ci ] }
-      - { verb: gen, scope: root, contexts: [ local, ci ] }
-      # Repeated mutation probes precede runtime/tests on the final candidate.
-      - { verb: mod, scope: root, contexts: [ local, ci ] }
-      - { verb: fix, scope: root, contexts: [ local, ci ] }
-      - { verb: fmt, scope: root, contexts: [ local, ci ] }
+      # Consecutive generation proves convergence on unchanged declarations.
       - { verb: gen, scope: root, contexts: [ local, ci ] }
       - { verb: gen, scope: root, contexts: [ local, ci ] }
-      - { verb: examples, scope: each, contexts: [ local, ci ] }
       - { verb: check, scope: each, contexts: [ local, ci ] }
-      - { verb: smells, scope: each, contexts: [ local ] }
       - { verb: tests, scope: each, contexts: [ local, ci ] }
       - { verb: build, scope: each, contexts: [ local, ci ] }
-      - { verb: status, scope: each, contexts: [ local, ci ] }
-      - { verb: audit, scope: each, contexts: [ local, ci ] }
-      - { verb: verify-clean, scope: each, contexts: [ local, ci ] }
       lifecycle_observed_files: [ Makefile, pyproject.toml, uv.lock, mise.lock ]
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
@@ -681,7 +667,6 @@ Infra:
         - .reports
         root_files:
         - .coverage
-        - flext-infra-codegen-transaction-journal.json.lock
         trace_globs:
         - "*.pstats"
       docs:
@@ -708,158 +693,31 @@ Infra:
       # registry) belong in the gitignored config/codegen.local.yaml; the
       # lookup appends local entries and resolves first match.
       verbs:
-      - name: help
-        description: Show the complete selector-free public interface.
       - name: setup
-        description: Install the declared locks, publish local runtime bindings, and provision hooks.
-      - name: pre-commit
-        description: Approve a commit through the CI check partition and incremental tests with the persistent testmon database.
+        description: Install the declared frozen locks, synchronize the physical environment and configure local integrations.
       - name: upg
-        description: Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.
-      - name: upg-sources
-        arguments: [ SOURCE_ROOT, SOURCE_URL_PREFIX, SOURCE_REF_FROM, SOURCE_REF_TO ]
-        description: Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.
-      - name: validate-lifecycle
-        description: Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
-      # Workspace-only (topology owns applicability): a standalone Makefile
-      # never declares it. Never merges; a rerun continues the same lanes.
-      - name: propagate
-        description: Apply this workspace's flext-infra projections to every declared member and publish one pull-request lane per changed member; lock updates belong exclusively to make upg.
-        profiles: [ workspace ]
-      - name: build
-        description: Build the project distribution artifacts.
-      - name: examples
-        description: Run this repository's explicitly declared public runtime examples module.
-      - name: check
-        description: Check the configured quality gates and projection conformance without writes.
-      - name: check-pyright
-        description: Run the complete configured Pyright analysis and retain its native gate receipt.
-      - name: census
-        description: Inventory constants, duplicate declarations and placement across every declared first-party project.
-      - name: census-constants
-        description: Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.
-      - name: smells
-        description: Run the strict code-smell audit as a dedicated gate.
-      - name: test
-        description: Run incremental tests through the persistent testmon cache.
-      - name: tests
-        arguments: [ FILE ]
-        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
-      - name: test-full
-        arguments: [ FILE ]
-        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
-      - name: test-file
-        arguments: [ FILE ]
-        description: Run one complete declared test file once, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
-      - name: file-gate
-        arguments: [ FILE ]
-        description: Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
-      - name: profile-test
-        arguments: [ FILE ]
-        description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
-      - name: profile-test-report
-        description: Render the parent pytest profile and the aggregated child profiles from that run.
-      - name: profile-docs
-        description: Profile the complete configured mutating documentation lifecycle and retain reached phase profiles on native failure.
-      - name: profile-docs-report
-        description: Render only the latest documentation profiling run, including explicit lifecycle and phase completion states.
-      - name: profile-environment
-        description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
-      - name: profile-environment-report
-        description: Render the profile retained by the canonical environment provenance guard.
-      - name: profile-lanes
-        description: Profile the complete read-only workspace lane audit and retain its native failure outcome.
-      - name: profile-lanes-report
-        description: Render the retained profile of the complete workspace lane audit.
-      - name: profile-mod
-        description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
-      - name: profile-mod-report
-        description: Render the canonical codemod profile from the last profiling invocation.
-      - name: profile-mod-rules
-        description: Profile the complete read-only rule diagnostic and retain its native failure outcome.
-      - name: profile-mod-rules-report
-        description: Render the profile of the complete read-only rule diagnostic.
-      - name: profile-codemod
-        arguments: [ FILE ]
-        description: Profile the canonical read-only codemod gate for one literal FILE, preserving native findings and interruption evidence.
-      - name: profile-codemod-report
-        description: Render the retained profile of the canonical read-only codemod gate.
-      - name: fmt
-        description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
-      - name: fix
-        description: Apply conformance repairs and the configured fixable gates.
-      - name: fix-namespace
-        description: Apply the canonical namespace enforcer to the selected workspace; the same relocation cascade runs as a callback phase of make mod.
-      - name: fix-accessors
-        description: Migrate accessor names owned by the rename catalog's origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.
-      - name: fix-toolchain
-        description: Reinstall one explicitly selected declared tool from its current lock, then prove the complete native toolchain.
-      - name: audit
-        description: Inspect environment, dependency, and workspace ownership health.
-      - name: status
-        description: Report the resolved runtime and repository state.
-      - name: verify-clean
-        description: Audit documentation consistency and report the current Git state without rejecting concurrent work or requiring cleanup.
-      - name: docs
-        description: Generate, fix, format, and check documentation.
-      - name: clean
-        description: Remove every declared disposable artifact.
-      - name: bootstrap-candidate
-        description: Bootstrap declared candidate worktrees with this branch-matched generator.
-      - name: release-plan
-        description: Resolve the release decision through the public protocol.
-      - name: release-version
-        description: Materialize the planned version.
-      - name: release-tag
-        description: Tag the verified release commit.
-      - name: release-build
-        description: Build the release receipt and artifacts.
-      - name: publication
-        description: Publish only receipt-attested release artifacts.
+        description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen
-        description: Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
-        requires_activation: false
-      - name: gen-footprint
-        description: Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.
-        requires_activation: false
-      - name: gen-pyproject
-        description: Regenerate this project's analyzer and dependency metadata through guarded publication.
-        requires_activation: false
-      - name: gen-editor
-        description: Project editor settings, analyzer configuration, and Git ignores without generating Python facades.
-        requires_activation: false
-      - name: initialize
-        description: Bootstrap this target's own declaration and canonical Makefile.
-      - name: project-new
-        arguments: [ NAME, KIND, OUTPUT_ROOT, PROVIDER, REPOSITORY_URL, REPOSITORY_BRANCH, FLEXT_REPOSITORY_URL, FLEXT_REPOSITORY_REF, LICENSE, AUTHOR_NAME, AUTHOR_EMAIL, UPSTREAM, FLEXT_SOURCE, YEAR ]
-        description: Create a new project through the canonical scaffold service using explicitly declared identity inputs.
+        description: Materialize explicitly declared new projects and publish every applicable generated projection.
         requires_activation: false
       - name: mod
-        description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
-      - name: mod-types
-        description: Apply the declared source type-contract migrations through the native AST fixed point.
-      - name: mod-rules
-        description: Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.
-      - name: mod-text
-        description: Apply the declared Sed text rules with exact receipts and guarded publication.
-      - name: mod-text-candidate
-        description: Apply declared Sed text rules to the configured candidate workspace.
-      # The explicit snapshot regeneration: `mod` only verifies
-      # snapshots, so a changed rule output lands as a reviewed commit.
-      - name: mod-snapshots
-        description: Regenerate the owned ast-grep rule-test snapshots from their tests for a reviewed commit.
-      - name: waza
-        description: Validate provider-neutral governance semantics with Waza.
-      - name: duplication
-        description: Run the canonical jscpd duplicate-code gate.
-      - name: sonarcloud-sync
-        description: Write the SSOT SonarCloud issue exclusions to the server-side project settings (requires SONAR_TOKEN).
-      - name: sonarcloud-issues
-        description: Read unresolved new-code SonarCloud issues on the published integration branch (requires SONAR_TOKEN).
+        description: Transform declared source structure and publish the complete coherent semantic change through the shared engines.
+      - name: fix
+        description: Apply declared repairs to authored inputs through their canonical owners.
+      - name: fmt
+        description: Format authored content through the configured formatters.
+      - name: check
+        description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
+      - name: tests
+        description: Execute the complete applicable suite once with the persistent testmon database.
+      - name: help
+        description: Discover the declared public interface without effects.
+      - name: build
+        description: Build local distribution and documentation artifacts without publishing them.
+      - name: clean
+        description: Remove only declared disposable resources owned by the selected target.
       custom_handler_profile_overrides: {}
-      standalone_check_gates:
-        smells: smells
-      # Every built-in gate outside standalone_check_gates is active in
+      # Every declared built-in and project checking gate is active in
       # make check (tracker memory operator-ruling-2026-10-09-gate-baseline-0122);
       # there is no opt-in gate.
       custom_handler_policy:
@@ -1315,179 +1173,6 @@ Infra:
       # config/codegen.yaml so this file stays an immutable fleet-wide rule
       # set that never lists its consumers.
       project_overrides: {}
-
-    managed_files:
-    - path: .github/ci-template/ci.yml
-      owner: codegen
-      policy: full
-    - path: .github/dependabot.yml
-      owner: codegen
-      policy: full
-    - path: .github/scripts/check-beads-policy.sh
-      owner: codegen
-      policy: full
-      mode: 493 # 0o755
-    - path: .github/scripts/check-cqrs-compliance.sh
-      owner: codegen
-      policy: full
-      mode: 493 # 0o755
-    - path: .github/scripts/validate-git-hook.sh
-      owner: codegen
-      policy: full
-      mode: 493 # 0o755
-    - path: tests/fixtures/ci/docker/alpine.Dockerfile
-      owner: codegen
-      policy: full
-    - path: tests/fixtures/ci/docker/arch.Dockerfile
-      owner: codegen
-      policy: full
-    - path: tests/fixtures/ci/docker/debian.Dockerfile
-      owner: codegen
-      policy: full
-    - path: tests/fixtures/ci/docker/fedora.Dockerfile
-      owner: codegen
-      policy: full
-    - path: tests/fixtures/ci/docker/ubuntu.Dockerfile
-      owner: codegen
-      policy: full
-    - path: .github/workflows/ci-matrix.yml
-      owner: codegen
-      policy: full
-    - path: .github/workflows/ci.yml
-      owner: codegen
-      policy: full
-    - path: .github/workflows/docs.yml
-      owner: codegen
-      policy: full
-    - path: .github/workflows/release.yml
-      owner: codegen
-      policy: full
-    - path: .beads/config.yaml
-      owner: codegen
-      policy: full
-    - path: .beads/metadata.json
-      owner: codegen
-      policy: full
-    - path: config/beads.yaml
-      owner: codegen
-      policy: full
-    - path: config/infra.yaml
-      owner: codegen
-      policy: merge
-      conflict_sections: [Infra.release.maintenance_line, Infra.release.finalize_maintenance]
-    - path: .envrc
-      owner: codegen
-      policy: full
-    - path: .envrc.local
-      owner: codegen
-      policy: merge
-    # The fleet template owns its rendered sections. A project's
-    # ManagedArtifacts.Gitignore.preserved_blocks declares exact delimiter
-    # pairs for sections written by another generator; codegen retains those
-    # live bytes and rejects incomplete or duplicate delimiters. No external
-    # destination list belongs in this fleet manifest.
-    - path: .gitignore
-      owner: codegen
-      policy: merge
-    - path: .mise.toml
-      owner: codegen
-      policy: full
-    - path: .markdownlint.json
-      owner: codegen
-      policy: full
-    - path: .markdownlintignore
-      owner: codegen
-      policy: full
-    - path: .pre-commit-config.yaml
-      owner: pre-commit
-      policy: full
-    - path: .python-version
-      owner: codegen
-      policy: full
-    # The docs auditor's lexical defaults and repository-specific exact-file
-    # evidence declarations are rendered from the template and typed workspace
-    # manifest, then enforced from this full codegen-owned projection.
-    - path: docs/docs_config.json
-      owner: codegen
-      policy: full
-    # Qlty refuses to scan without a repository configuration. The generated
-    # make smells verb owns this strict, separately scheduled audit fleet-wide.
-    - path: .qlty/qlty.toml
-      owner: codegen
-      policy: full
-    # SonarCloud automatic analysis reads its scope from this file; generated
-    # fleet-wide from the sonarcloud block above.
-    - path: .sonarcloud.properties
-      owner: codegen
-      policy: full
-    - path: .vscode/settings.json
-      owner: vscode
-      policy: merge
-      tracking: versioned
-    # Release build policies: fully generated fleet-wide bytes. The release
-    # policy phase renders build constraints at build time from
-    # config.Infra.release.build_constraints; no repository copy exists.
-    - path: config/gitleaks-release.toml
-      owner: codegen
-      policy: full
-    - path: Makefile
-      owner: make
-      policy: full
-    # CUSTOM vs MANAGED (humans read comments; this block is the owner):
-    #   conflict_sections = MANAGED tables (template wins on make gen)
-    #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
-    #   [project] keys the template writes that are not in preserve_project_keys
-    #     (requires-python) are MANAGED; live dependencies stay CUSTOM and
-    #     the profile rows are seeded beside them
-    #   [tool.*] absent from conflict_sections (bandit, …) is CUSTOM
-    - path: pyproject.toml
-      owner: codegen
-      policy: merge
-      conflict_sections:
-      - build-system
-      - dependency-groups
-      - tool.pytest.ini_options
-      - tool.uv
-      - tool.ruff
-      - tool.ruff.lint.isort
-      - tool.mypy
-      - tool.pyright
-      - tool.pyrefly
-      - tool.pytest
-      - tool.coverage
-      - tool.codespell
-      - tool.tomlsort
-      - tool.yamlfix
-      - tool.deptry
-      - tool.hatch.version
-      - tool.pydantic-mypy
-      - tool.vulture
-      # Written by the conform pipeline from the project SSOT
-      # (_sync_namespace_scope), so a conflict inside it is the owner's
-      # own output and is recoverable. tool.flext.docs is deliberately
-      # absent: the template seeds it with package_name at project creation
-      # only, and afterwards it stays CUSTOM — keys such as site_title are
-      # owned by the live repository and survive every gen. The sole exception
-      # is documentation_language: _sync_documentation_language projects it
-      # from repository.project and removes the leaf for the English default.
-      - tool.flext.namespace
-      preserve_project_keys:
-      - name
-      - description
-      - authors
-      - maintainers
-      - scripts
-      - entry-points
-      - classifiers
-      - keywords
-      - license
-      - urls
-      - readme
-      - version
-      - dependencies
-      - optional-dependencies
-      overwrite_project_keys:
-      - requires-python
 
     scaffold:
       build:
@@ -2115,276 +1800,431 @@ Infra:
     templates:
       root: project
       entries:
-      - source: base/.github/ci-template/ci.yml.j2
-        destination: .github/ci-template/ci.yml
-        profiles: [ workspace ]
-        delegate: render
-      - source: base/.github/dependabot.yml.j2
-        destination: .github/dependabot.yml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.github/scripts/check-beads-policy.sh.j2
-        destination: .github/scripts/check-beads-policy.sh
-        profiles: [ workspace ]
-        delegate: render
-      - source: base/.github/scripts/check-cqrs-compliance.sh.j2
-        destination: .github/scripts/check-cqrs-compliance.sh
-        profiles: [ workspace ]
-        delegate: render
-      - source: base/.github/scripts/validate-git-hook.sh.j2
-        destination: .github/scripts/validate-git-hook.sh
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Multi-environment CI base: reusable ci-matrix workflow + per-distro
-      # clean-machine images validating bootstrap and make verbs everywhere.
-      - source: base/.github/workflows/ci-matrix.yml.j2
-        destination: .github/workflows/ci-matrix.yml
-        # The manual dispatch matrix is projected to EVERY
-        # repository (root and members alike); dispatch-only, never bound
-        # to the integration line.
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.github/workflows/ci.yml.j2
-        destination: .github/workflows/ci.yml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.pre-commit-config.yaml.j2
-        destination: .pre-commit-config.yaml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/LICENSE.j2
-        destination: LICENSE
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # The release build phase snapshots the
-      # Gitleaks policy before the first artifact build, and renders the
-      # hash-pinned build backend for `uv build --require-hashes` directly
-      # from config.Infra.release.build_constraints (no repository copy).
-      - source: base/config/gitleaks-release.toml.j2
-        destination: config/gitleaks-release.toml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/config/infra.yaml.j2
-        destination: config/infra.yaml
-        # Workspace policy is authored SSOT, never its own projection input/output.
-        profiles: [ standalone ]
-        delegate: render
-      # Repository-owned audit policy is validated from workspace.yaml,
-      # rendered per project, and parsed into DocsAuditPolicySpec by the auditor.
-      - source: base/docs/docs_config.json.j2
-        destination: docs/docs_config.json
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/gitignore.j2
-        destination: .gitignore
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/python-version.j2
-        destination: .python-version
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/qlty.toml.j2
-        destination: .qlty/qlty.toml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/sonarcloud.properties.j2
-        destination: .sonarcloud.properties
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/env.example.j2
-        destination: .env.example
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.mise.toml.j2
-        destination: .mise.toml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/markdownlint.json.j2
-        destination: .markdownlint.json
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/markdownlintignore.j2
-        destination: .markdownlintignore
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Ledger routing config: rendered only for repositories that own a
-      # ledger. The workspace root owns a shared ledger when a gitlink's
-      # Every repository renders its own `.beads` configuration; the shared
-      # ledger is reached by the declared city endpoint, never by a link.
-      - source: base/beads-config.yaml.j2
-        destination: .beads/config.yaml
-        requires_beads: true
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Static repository-local storage, database, and endpoint projection.
-      - source: base/beads-metadata.json.j2
-        destination: .beads/metadata.json
-        requires_beads: true
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.envrc.j2
-        destination: .envrc
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/.github/workflows/docs.yml.j2
-        destination: .github/workflows/docs.yml
-        # The workflow runs `uv sync`, and this projection installs uv first.
-        # Restricting it to the workspace left members with a stale copy
-        # without the Install uv step, and the job died on "uv: command not found".
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Every governed workflow surface includes Release. Publication itself
-      # requires explicit dispatch and successful exact-candidate canonical CI.
-      - source: base/.github/workflows/release.yml.j2
-        destination: .github/workflows/release.yml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
-        destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/tests/fixtures/ci/docker/debian.Dockerfile.j2
-        destination: tests/fixtures/ci/docker/debian.Dockerfile
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/tests/fixtures/ci/docker/fedora.Dockerfile.j2
-        destination: tests/fixtures/ci/docker/fedora.Dockerfile
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/tests/fixtures/ci/docker/alpine.Dockerfile.j2
-        destination: tests/fixtures/ci/docker/alpine.Dockerfile
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/tests/fixtures/ci/docker/arch.Dockerfile.j2
-        destination: tests/fixtures/ci/docker/arch.Dockerfile
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/Makefile.j2
-        destination: Makefile
-        # The generic conform engine is the single Makefile owner for every
-        # profile; every profile renders the same local verb bodies. A
-        # project never owns a verb: customisation lives exclusively in
-        # custom.mk, through pre-/post-verb hooks, and may not redefine one.
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/custom.mk.j2
-        destination: custom.mk
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/pyproject.toml.j2
-        destination: pyproject.toml
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Workspace composition exterminated (flext-a0cjp, operator ruling
-      # 2026-10-13): .gitmodules is the sole topology SSOT; no workspace.yaml
-      # is published, read, or validated anywhere.
-      # Repository-local Beads identity. conform requires this file to
-      # exist before it can plan, so a scaffolded project that never
-      # rendered it could not be conformed at all.
-      - source: base/config/beads.yaml.j2
-        destination: config/beads.yaml
-        requires_beads: true
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/api.py.j2
-        destination: "src/{package_name}/api.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/cli.py.j2
-        destination: "src/{package_name}/cli.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/__main__.py.j2
-        destination: "src/{package_name}/__main__.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/base.py.j2
-        destination: "src/{package_name}/base.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/models.py.j2
-        destination: "src/{package_name}/models.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/typings.py.j2
-        destination: "src/{package_name}/typings.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/protocols.py.j2
-        destination: "src/{package_name}/protocols.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/constants.py.j2
-        destination: "src/{package_name}/constants.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/utilities.py.j2
-        destination: "src/{package_name}/utilities.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_config.py.j2
-        destination: "src/{package_name}/{config}.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_settings.py.j2
-        destination: "src/{package_name}/{settings}.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/py.typed.j2
-        destination: "src/{package_name}/py.typed"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Domain behavior is generated in services, not base.py.
-      - source: base/src/services/ping.py.j2
-        destination: "src/{package_name}/services/ping.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Runtime defaults belong to the declaring import-package resource.
-      - source: base/src/config/ns.yaml.j2
-        destination: "src/{package_name}/config/{ns}.yaml"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # Config/settings declarations live in
-      # the canonical public models/config/settings facets, never parallel parts.
-      - source: base/src/_models/ping.py.j2
-        destination: "src/{package_name}/_models/ping.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_models/config.py.j2
-        destination: "src/{package_name}/_models/config.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_models/settings.py.j2
-        destination: "src/{package_name}/_models/settings.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_constants/config.py.j2
-        destination: "src/{package_name}/_constants/config.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_constants/settings.py.j2
-        destination: "src/{package_name}/_constants/settings.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_protocols/config.py.j2
-        destination: "src/{package_name}/_protocols/config.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_protocols/ping.py.j2
-        destination: "src/{package_name}/_protocols/ping.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_protocols/settings.py.j2
-        destination: "src/{package_name}/_protocols/settings.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      - source: base/src/_typings/base.py.j2
-        destination: "src/{package_name}/_typings/base.py"
-        profiles: [ workspace, standalone ]
-        delegate: render
-      # New projects receive a real runtime test; subsequent generation preserves
-      # this authored file because only managed_file_specs are reprojected.
-      - source: base/tests/test_api.py.j2
-        destination: tests/test_api.py
-        profiles: [ workspace, standalone ]
-        delegate: render
+        .github/ci-template/ci.yml:
+          source: base/.github/ci-template/ci.yml.j2
+          profiles: [ workspace ]
+          ownership:
+            owner: codegen
+            policy: full
+        .github/dependabot.yml:
+          source: base/.github/dependabot.yml.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .github/scripts/check-beads-policy.sh:
+          source: base/.github/scripts/check-beads-policy.sh.j2
+          profiles: [ workspace ]
+          ownership:
+            owner: codegen
+            policy: full
+            mode: 493 # 0o755
+        .github/scripts/check-cqrs-compliance.sh:
+          source: base/.github/scripts/check-cqrs-compliance.sh.j2
+          profiles: [ workspace ]
+          ownership:
+            owner: codegen
+            policy: full
+            mode: 493 # 0o755
+        .github/scripts/validate-git-hook.sh:
+          source: base/.github/scripts/validate-git-hook.sh.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+            mode: 493 # 0o755
+        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
+        # clean-machine images validating bootstrap and make verbs everywhere.
+        .github/workflows/ci-matrix.yml:
+          source: base/.github/workflows/ci-matrix.yml.j2
+          # The manual dispatch matrix is projected to EVERY
+          # repository (root and members alike); dispatch-only, never bound
+          # to the integration line.
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .github/workflows/ci.yml:
+          source: base/.github/workflows/ci.yml.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .pre-commit-config.yaml:
+          source: base/.pre-commit-config.yaml.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: pre-commit
+            policy: full
+        LICENSE:
+          source: base/LICENSE.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        # The release build phase snapshots the
+        # Gitleaks policy before the first artifact build, and renders the
+        # hash-pinned build backend for `uv build --require-hashes` directly
+        # from config.Infra.release.build_constraints (no repository copy).
+        config/gitleaks-release.toml:
+          source: base/config/gitleaks-release.toml.j2
+          profiles: [ workspace, standalone ]
+          # Release build policies: fully generated fleet-wide bytes. The release
+          # policy phase renders build constraints at build time from
+          # config.Infra.release.build_constraints; no repository copy exists.
+          ownership:
+            owner: codegen
+            policy: full
+        config/infra.yaml:
+          source: base/config/infra.yaml.j2
+          # Workspace policy is authored SSOT, never its own projection input/output.
+          profiles: [ standalone ]
+          ownership:
+            owner: codegen
+            policy: merge
+            conflict_sections: [Infra.release.maintenance_line, Infra.release.finalize_maintenance]
+        # Repository-owned audit policy is validated from workspace.yaml,
+        # rendered per project, and parsed into DocsAuditPolicySpec by the auditor.
+        docs/docs_config.json:
+          source: base/docs/docs_config.json.j2
+          profiles: [ workspace, standalone ]
+          # The docs auditor's lexical defaults and repository-specific exact-file
+          # evidence declarations are rendered from the template and typed workspace
+          # manifest, then enforced from this full codegen-owned projection.
+          ownership:
+            owner: codegen
+            policy: full
+        .gitignore:
+          source: base/gitignore.j2
+          profiles: [ workspace, standalone ]
+          # The fleet template owns its rendered sections. A project's
+          # ManagedArtifacts.Gitignore.preserved_blocks declares exact delimiter
+          # pairs for sections written by another generator; codegen retains those
+          # live bytes and rejects incomplete or duplicate delimiters. No external
+          # destination list belongs in this fleet manifest.
+          ownership:
+            owner: codegen
+            policy: merge
+        .python-version:
+          source: base/python-version.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .qlty/qlty.toml:
+          source: base/qlty.toml.j2
+          profiles: [ workspace, standalone ]
+          # Qlty refuses to scan without a repository configuration. The generated
+          # make smells verb owns this strict, separately scheduled audit fleet-wide.
+          ownership:
+            owner: codegen
+            policy: full
+        .sonarcloud.properties:
+          source: base/sonarcloud.properties.j2
+          profiles: [ workspace, standalone ]
+          # SonarCloud automatic analysis reads its scope from this file; generated
+          # fleet-wide from the sonarcloud block above.
+          ownership:
+            owner: codegen
+            policy: full
+        .env.example:
+          source: base/env.example.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        .mise.toml:
+          source: base/.mise.toml.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .markdownlint.json:
+          source: base/markdownlint.json.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .markdownlintignore:
+          source: base/markdownlintignore.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        # Ledger routing config: rendered only for repositories that own a
+        # ledger. The workspace root owns a shared ledger when a gitlink's
+        # Every repository renders its own `.beads` configuration; the shared
+        # ledger is reached by the declared city endpoint, never by a link.
+        .beads/config.yaml:
+          source: base/beads-config.yaml.j2
+          requires_beads: true
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        # Static repository-local storage, database, and endpoint projection.
+        .beads/metadata.json:
+          source: base/beads-metadata.json.j2
+          requires_beads: true
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .envrc:
+          source: base/.envrc.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        .github/workflows/docs.yml:
+          source: base/.github/workflows/docs.yml.j2
+          # The workflow runs `uv sync`, and this projection installs uv first.
+          # Restricting it to the workspace left members with a stale copy
+          # without the Install uv step, and the job died on "uv: command not found".
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        # Every governed workflow surface includes Release. Publication itself
+        # requires explicit dispatch and successful exact-candidate canonical CI.
+        .github/workflows/release.yml:
+          source: base/.github/workflows/release.yml.j2
+          requires_release_protocol: true
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        tests/fixtures/ci/docker/ubuntu.Dockerfile:
+          source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        tests/fixtures/ci/docker/debian.Dockerfile:
+          source: base/tests/fixtures/ci/docker/debian.Dockerfile.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        tests/fixtures/ci/docker/fedora.Dockerfile:
+          source: base/tests/fixtures/ci/docker/fedora.Dockerfile.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        tests/fixtures/ci/docker/alpine.Dockerfile:
+          source: base/tests/fixtures/ci/docker/alpine.Dockerfile.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        tests/fixtures/ci/docker/arch.Dockerfile:
+          source: base/tests/fixtures/ci/docker/arch.Dockerfile.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        Makefile:
+          source: base/Makefile.j2
+          requires_artifacts: [ .flext/bootstrap/native_bootstrap.py ]
+          # The generic conform engine is the single Makefile owner for every
+          # profile; every profile renders the same local verb bodies. A
+          # project never owns a verb: customisation lives exclusively in
+          # custom.mk, through pre-/post-verb hooks, and may not redefine one.
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: make
+            policy: full
+        .flext/bootstrap/native_bootstrap.py:
+          source_kind: resource
+          source: validate/native_bootstrap.py
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            tracking: runtime-local
+            policy: full
+            mode: 420 # 0o644
+        custom.mk:
+          source: base/custom.mk.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        pyproject.toml:
+          source: base/pyproject.toml.j2
+          profiles: [ workspace, standalone ]
+          # CUSTOM vs MANAGED (humans read comments; this block is the owner):
+          #   conflict_sections = MANAGED tables (template wins on make gen)
+          #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
+          #   [project] keys the template writes that are not in preserve_project_keys
+          #     (requires-python) are MANAGED; live dependencies stay CUSTOM and
+          #     the profile rows are seeded beside them
+          #   [tool.*] absent from conflict_sections (bandit, …) is CUSTOM
+          ownership:
+            owner: codegen
+            policy: merge
+            conflict_sections:
+            - build-system
+            - dependency-groups
+            - tool.pytest.ini_options
+            - tool.uv
+            - tool.ruff
+            - tool.ruff.lint.isort
+            - tool.mypy
+            - tool.pyright
+            - tool.pyrefly
+            - tool.pytest
+            - tool.coverage
+            - tool.codespell
+            - tool.tomlsort
+            - tool.yamlfix
+            - tool.deptry
+            - tool.hatch.version
+            - tool.pydantic-mypy
+            - tool.vulture
+            # Written by the conform pipeline from the project SSOT
+            # (_sync_namespace_scope), so a conflict inside it is the owner's
+            # own output and is recoverable. tool.flext.docs is deliberately
+            # absent: the template seeds it with package_name at project creation
+            # only, and afterwards it stays CUSTOM — keys such as site_title are
+            # owned by the live repository and survive every gen. The sole exception
+            # is documentation_language: _sync_documentation_language projects it
+            # from repository.project and removes the leaf for the English default.
+            - tool.flext.namespace
+            preserve_project_keys:
+            - name
+            - description
+            - authors
+            - maintainers
+            - scripts
+            - entry-points
+            - classifiers
+            - keywords
+            - license
+            - urls
+            - readme
+            - version
+            - dependencies
+            - optional-dependencies
+            overwrite_project_keys:
+            - requires-python
+        # Workspace composition exterminated (flext-a0cjp, operator ruling
+        # 2026-10-13): .gitmodules is the sole topology SSOT; no workspace.yaml
+        # is published, read, or validated anywhere.
+        # Repository-local Beads identity. conform requires this file to
+        # exist before it can plan, so a scaffolded project that never
+        # rendered it could not be conformed at all.
+        config/beads.yaml:
+          source: base/config/beads.yaml.j2
+          requires_beads: true
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
+        "src/{package_name}/api.py":
+          source: base/src/api.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/cli.py":
+          source: base/src/cli.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/__main__.py":
+          source: base/src/__main__.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/base.py":
+          source: base/src/base.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/models.py":
+          source: base/src/models.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/typings.py":
+          source: base/src/typings.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/protocols.py":
+          source: base/src/protocols.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/constants.py":
+          source: base/src/constants.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/utilities.py":
+          source: base/src/utilities.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/{config}.py":
+          source: base/src/_config.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/{settings}.py":
+          source: base/src/_settings.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/py.typed":
+          source: base/src/py.typed.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        # Domain behavior is generated in services, not base.py.
+        "src/{package_name}/services/ping.py":
+          source: base/src/services/ping.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        # Runtime defaults belong to the declaring import-package resource.
+        "src/{package_name}/config/{ns}.yaml":
+          source: base/src/config/ns.yaml.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        # Config/settings declarations live in
+        # the canonical public models/config/settings facets, never parallel parts.
+        "src/{package_name}/_models/ping.py":
+          source: base/src/_models/ping.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_models/config.py":
+          source: base/src/_models/config.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_models/settings.py":
+          source: base/src/_models/settings.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_constants/config.py":
+          source: base/src/_constants/config.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_constants/settings.py":
+          source: base/src/_constants/settings.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_protocols/config.py":
+          source: base/src/_protocols/config.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_protocols/ping.py":
+          source: base/src/_protocols/ping.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_protocols/settings.py":
+          source: base/src/_protocols/settings.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        "src/{package_name}/_typings/base.py":
+          source: base/src/_typings/base.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        # New projects receive a real runtime test; subsequent generation preserves
+        # this authored file because only managed_file_specs are reprojected.
+        tests/test_api.py:
+          source: base/tests/test_api.py.j2
+          profiles: [ workspace, standalone ]
+          ownership: null
+        .envrc.local:
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: merge
+        .vscode/settings.json:
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: vscode
+            policy: merge
+            tracking: versioned

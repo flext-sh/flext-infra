@@ -37,10 +37,9 @@ Infra:
         branch: feature/integration
 ```
 
-Private local adjustments belong in `config/codegen.local.yaml`. Generated
-`.vscode/settings.json` is a runtime-local binding: portable editor declarations
-remain in the repository's own codegen delta, while setup projects the interpreter
-for its actual workspace or standalone environment.
+Private configuration deltas belong in `config/codegen.local.yaml`. Generated
+editor settings follow the artifact catalog's tracking policy; portable editor
+declarations remain in the repository's own codegen delta.
 
 Workspace composition comes from `.gitmodules`. Documentation URL ownership and
 branches derive from native Git origins, declared submodule branches, and the
@@ -51,6 +50,9 @@ The shared package contains generic rules. Consumer-specific Sed campaigns and C
 inputs belong to that consumer's configuration; they are not shipped as library
 policy. Dependency resolution preserves real graph edges and never emits a
 project exclusion roster to hide incompatible requirements.
+Each Mise selector has one owner. A project declaration that duplicates a packaged
+selector is an ownership conflict and fails with its source path; generation never
+chooses a winner and reports the conflict as a warning.
 
 ## Mandatory Mypy policy
 
@@ -99,27 +101,26 @@ read-only verification of the repaired targets.
 
 ## Local dependency binding
 
-Canonical setup can opt into an external supplier workspace through the consumer's
-untracked `config/codegen.local.yaml`:
+Select an external supplier workspace through the typed runtime setting:
 
-```yaml
-Infra:
-  codegen:
-    make:
-      uv_resolution:
-        editable_supplier_root: /absolute/path/to/workspace
+```bash
+make gen FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT=/absolute/path/to/workspace
+make upg FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT=/absolute/path/to/workspace
+make setup FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT=/absolute/path/to/workspace
 ```
 
 Configure the physical runtime root, not an attached member. The existing consumer
 environment supplies the authenticated interpreter used for marker selection.
-Run `make gen` to project the isolated editable resolution view, then `make upg`
-to reconcile its development lock, and `make setup` to replay that lock frozen.
+Generation projects the isolated editable resolution view; upgrade reconciles its
+development lock, and setup replays that lock frozen and persists the selection
+only after successful provisioning and activation.
 This opt-in never resolves the root or default view locks and does not request
 version upgrades. Hosted setup continues selecting the standalone view. The
 supplier root is explicit; no home directory or package roster is shared policy.
 Only active declared dependencies supplied by that workspace are rebound; supplier
 development groups are not added to the consumer environment. The consumer keeps
-its own physical environment. Removing the opt-in returns setup to its default view.
+its own physical environment. An explicit empty supplier value selects local
+resolution and replaces persisted selection only after setup succeeds.
 
 The explicit `workspace flext-binding` CLI accepts `--repository-root`, `--flext-root`,
 and `--python`. It changes only the provisioned consumer environment; it never edits the
@@ -154,6 +155,58 @@ that explicit contract, avoiding host-interpreter marker evaluation.
 Use canonical `make setup`, `make upg`, and `make gen`. Setup installs existing
 locks; upgrade resolves them; generation projects the declared artifacts. Generated
 files are changed through their owning renderer and native conform surface.
+
+`Infra.codegen.templates.entries` is one mapping keyed by repository-relative
+destination. Each value owns that artifact's applicable profiles, source and
+ownership. The same destination key composes through the existing recursive
+mapping layers, so a repository changes only its own delta without copying the
+catalog. List declarations and duplicated destination fields are invalid.
+Every entry declares
+`ownership`: `null` seeds an authored file during project creation; an ownership
+mapping declares `full` generation or `merge` of owned sections with authored
+content. Managed views and native resolver projections derive from this catalog.
+An explicit repository delta can retain a product-owned workflow as an authored
+seed with `ownership: null`; its existing Git-managed content is neither rendered
+nor retired. Generated GitHub workflows require full ownership and a template
+source. The internal tuple of entries derives from this one mapping and is not a
+second serialized declaration.
+An owner without a template must resolve through its existing specialized
+planner. Missing owners, duplicate destinations and invalid paths fail rather
+than preserving an unrendered artifact as success. Includes and macros remain
+captured template dependencies, not separate output declarations.
+
+Recovery surfaces authorize the same exact dependency cohort that they plan:
+`requires_artifacts` expands the selected destination keys for both planning and
+publication checks. The `makefile` surface therefore publishes its declared native
+bootstrap helper together with the Makefile, without selecting facade generation
+or requiring environment activation. The catalog owns the helper's path, source
+and ownership; undeclared extra destinations and missing required outputs remain
+publication failures.
+
+New-project generation consumes the destination's own project, integration, kind
+and dependency-provenance declarations. Its Git checkout is prepared separately;
+generation never initializes a repository, adds a remote or creates a commit.
+An unborn symbolic HEAD is represented explicitly as absent commit identity,
+while corrupted references still fail. An established repository missing its
+project metadata is not a new scaffold. The selected operation owns the coherent
+publication of its generated dependencies through the existing shared planner
+and publisher; it does not repeat whole-tree lazy planning after publication or
+invoke another public verb.
+
+Private child packages publish their own implementation owners. Their parent
+initializer does not widen its authored API by flattening those private exports.
+Infrastructure implementation imports therefore name the owning child package;
+external projects consume the public facade. Generation resolves class ancestry
+against the planned initializer and rejects a consumer of a retired parent export
+instead of restoring that export or resolving it through stale installed code.
+
+Generation is the sole writer of `.envrc`. Environment synchronization consumes
+that projection and may authorize it with native `direnv allow`; it never renders,
+replaces, or removes environment files. The existing conform planner checks the
+selected repository's current declaration and exact projected bytes before
+authorization. A fresh clone with a valid committed `.envrc` needs no local
+generation journal. A missing or divergent projection fails without repair;
+`make gen` owns its regeneration.
 
 The publication owner authenticates each file's captured destination and declared
 inputs. A changed dependency rejects its affected file with a causal issue while

@@ -30,8 +30,8 @@ _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
 class TestsFlextInfraCodemodDuplicateApply:
     """Cure identity-proven duplicates; plan every structural clone."""
 
+    @staticmethod
     def test_cure_models_preserve_native_definition_identity(
-        self,
         tmp_path: Path,
     ) -> None:
         """Census cure contracts consume the same typed source objects directly."""

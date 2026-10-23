@@ -215,6 +215,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
             request.gates,
             "--reports-dir",
             str(report_root / c.Infra.VERB_CHECK),
+            *(
+                ("--report-output", str(request.report_output))
+                if request.report_output is not None
+                else ()
+            ),
         )
         native_request = m.Infra.RunCommand.model_validate(
             {"repository_root": root, "gates": request.gates},
@@ -295,7 +300,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             repository=(identity.value.origin_remote if identity.success else None),
             commit_sha=identity.value.head_oid if identity.success else None,
             tree_sha=cls._repo(root).commit(identity.value.head_oid).tree.hexsha
-            if identity.success
+            if identity.success and identity.value.head_oid is not None
             else None,
             dirty=identity.value.dirty if identity.success else None,
             runtime_identity=request.runtime_identity,
@@ -493,7 +498,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             after_commit_sha=after.head_oid if after is not None else None,
             after_tree_sha=(
                 cls._repo(started.repository_root).commit(after.head_oid).tree.hexsha
-                if after is not None
+                if after is not None and after.head_oid is not None
                 else None
             ),
             after_dirty=after.dirty if after is not None else None,

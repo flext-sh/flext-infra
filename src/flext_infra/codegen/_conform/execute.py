@@ -11,9 +11,8 @@ from functools import partial
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
@@ -71,7 +70,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def execute_request(
         cls: type[Self],
         request: p.Infra.CodegenConformRequest,
-        initial_workspace: p.Infra.WorkspaceSpec | None = None,
         *,
         execution_context: p.Infra.CodegenExecutionContext | None,
         generation_only: bool = False,
@@ -94,14 +92,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         validated_request = m.Infra.CodegenConformRequest.model_validate(
             request,
             from_attributes=True,
-        )
-        validated_workspace = (
-            None
-            if initial_workspace is None
-            else m.Infra.WorkspaceSpec.model_validate(
-                initial_workspace,
-                from_attributes=True,
-            )
         )
         if validated_request.mode is c.Infra.CodegenConformMode.CHECK:
             with FlextInfraWorkspaceNativeReference.compilation_scope():
@@ -134,17 +124,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             f"operation={operation} stage=inputs root={root} "
             f"scope={validated_request.scope} surface={validated_request.what}"
         )
-        prelude = cls._validated_request_prelude(root, validated_workspace)
-        if prelude.failure:
-            return r[p.Infra.CodegenResult].from_failure(prelude)
-        if validated_workspace is not None and not root.is_dir():
-            created = cls._bootstrap_request_root(root)
-            if created.failure:
-                return r[p.Infra.CodegenResult].from_failure(created)
-        if validated_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            initialized = cls._initialize_request_git(root, validated_workspace)
-            if initialized.failure:
-                return r[p.Infra.CodegenResult].from_failure(initialized)
+        identity = u.Infra.exact_worktree_root(root)
+        if identity.failure:
+            return r[p.Infra.CodegenResult].from_failure(identity)
         generation_root = (
             root if repository_root is None else repository_root.expanduser().resolve()
         )
@@ -153,7 +135,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             state=m.Infra.CodegenConformState(
                 repository_root=generation_root,
                 request=validated_request,
-                initial_workspace=validated_workspace,
                 ports=ports,
                 generation_only=generation_only,
             ),
@@ -161,166 +142,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             initial_context=initial_context,
         )
         return service.execute()
-
-    @staticmethod
-    def _validated_request_prelude(
-        root: Path,
-        initial_workspace: m.Infra.WorkspaceSpec | None,
-    ) -> p.Result[bool]:
-        """Validate the scaffold provenance and the declared integration branch.
-
-        The project's declared scaffold source is validated before any
-        filesystem effect: a silent acceptance would materialize a whole tree
-        whose declared provenance was never a direct Git requirement, and the
-        declaration is the scaffold's provenance input, not decoration. The
-        supplied WorkspaceSpec already owns the declared integration branch;
-        require it before materialization instead of a second divergent input.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if initial_workspace is None:
-            return r[bool].ok(value=True)
-        if not (root / c.PYPROJECT_FILENAME).exists():
-            source = FlextInfraCodegenConformExecute._validated_scaffold_source(
-                root,
-                initial_workspace,
-            )
-            if source.failure:
-                return r[bool].from_failure(source)
-        if (
-            not (root / c.Infra.GIT_DIR).exists()
-            and initial_workspace.integration is None
-        ):
-            return r[bool].fail(
-                "initial integration is required to initialize repository Git: "
-                "declare --repository-branch",
-            )
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _validated_scaffold_source(
-        root: Path,
-        initial_workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[bool]:
-        """Validate the declared scaffold provenance before any filesystem effect.
-
-        A silent acceptance would materialize a whole tree whose declared
-        provenance was never a direct Git requirement, and the declaration is
-        the scaffold's provenance input, not decoration.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        source = u.Infra.flext_integration_line(
-            codegen=config.Infra.codegen,
-            repository_root=root,
-            bootstrap_source=initial_workspace.flext_source,
-        )
-        if source.failure:
-            return r[bool].from_failure(source)
-        declared = (
-            initial_workspace.project.flext_source
-            if initial_workspace.project is not None
-            else None
-        )
-        if declared is None:
-            return r[bool].ok(value=True)
-        distribution = config.Infra.codegen.infra_repository.distribution
-        if u.Infra.dep_name(declared) != distribution:
-            return r[bool].fail(
-                f"scaffold source must declare {distribution}: {declared}",
-            )
-        parsed = u.Infra.declared_git_source(declared)
-        if parsed.failure:
-            return r[bool].from_failure(parsed)
-        requirement_url, requirement_ref = parsed.value
-        if (
-            not requirement_url.startswith("https://")
-            or not requirement_ref
-            or u.Infra.ref_is_commit(requirement_ref)
-        ):
-            return r[bool].fail(
-                "infrastructure source must declare an HTTPS Git URL "
-                f"and integration line (never a commit): {declared}",
-            )
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _bootstrap_request_root(
-        root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
-        """Plan and create the guarded root directory chain for a new project.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]
-            ``.
-
-        """
-        planned = u.Cli.atomic_plan_directory_chain(root)
-        if planned.failure:
-            return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(planned)
-        created = u.Cli.atomic_create_directory_chain_guarded(
-            planned.value,
-            permission_mode=config.Infra.codegen.modes.directory_generated,
-        )
-        if created.failure:
-            return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(created)
-        return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].ok(tuple(created.value))
-
-    @staticmethod
-    def _initialize_request_git(
-        root: Path,
-        initial_workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[bool]:
-        """Initialize the unborn repository Git from its declared integration.
-
-        Git owns no answer for an unborn repository: the caller declares the
-        integration branch and a missing declaration fails loudly.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if initial_workspace.integration is None:
-            return r[bool].fail(
-                "initial branch is required to initialize the repository "
-                "Git: declare --repository-branch",
-            )
-        commands: t.SequenceOf[t.StrSequence] = (
-            (
-                c.Infra.GIT,
-                "init",
-                "--initial-branch",
-                initial_workspace.integration.branch,
-                str(root),
-            ),
-            (
-                c.Infra.GIT,
-                "-C",
-                str(root),
-                "remote",
-                "add",
-                c.Infra.GIT_DEFAULT_REMOTE,
-                initial_workspace.repository.url,
-            ),
-            (
-                c.Infra.GIT,
-                "-C",
-                str(root),
-                "commit",
-                "--allow-empty",
-                "-m",
-                "chore: initialize generated project",
-            ),
-        )
-        for command in commands:
-            executed = u.Cli.run_checked(command)
-            if executed.failure:
-                return r[bool].from_failure(executed)
-        return r[bool].ok(value=True)
 
     @override
     def execute(self) -> p.Result[p.Infra.CodegenResult]:
@@ -342,6 +163,23 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             blocked = self._migrate_declarations_for_apply(request, inputs.value.spec)
             if blocked is not None:
                 return blocked
+        if (
+            self.state.generation_only
+            and request.what is c.Infra.CodegenConformSurface.ALL
+            and not (request.root / c.PYPROJECT_FILENAME).exists()
+        ):
+            observed = FlextInfraWorkspaceDetector.load_workspace_spec(
+                request.root,
+                inputs=inputs.value,
+            )
+            if observed.failure:
+                return r[p.Infra.CodegenResult].from_failure(observed)
+            supplied = self.state.initial_workspace
+            if supplied is not None and supplied != observed.value:
+                return r[p.Infra.CodegenResult].fail(
+                    f"scaffold context differs from its own declaration: {request.root}",
+                )
+            self.state.initial_workspace = observed.value
         return self._dispatch_conform_surface(request)
 
     def _migrate_declarations_for_apply(
@@ -832,7 +670,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     return result_type.from_failure(inputs)
                 continue
             spec = inputs.value.spec
-            destinations = self.surface_contract(surface, codegen=spec).destinations
+            destinations = spec.templates.required_destinations(
+                self.surface_contract(surface, codegen=spec).destinations,
+            )
             if not destinations:
                 return result_type.fail(
                     f"bootstrap requires declared destinations for {surface}",
@@ -1080,16 +920,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 operation.value,
             ),
         )
-        # Each phase authenticates its own consumed inputs. An unrelated failed
-        # target is not a prerequisite of every later publication.
-        lazy = self._settle_generation_stage(
-            lambda: self._publish_lazy_batch(
-                planned.value,
-                configured.value,
-                batches,
-                operation.value,
-            ),
-        )
         written = tuple(path for batch in batches for path in batch.written_files)
         repaired = (
             r[bool].ok(value=True)
@@ -1107,7 +937,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
         failures: list[p.FailureLike] = [
-            item for item in (published, lazy, repaired, documents) if item.failure
+            item for item in (published, repaired, documents) if item.failure
         ]
         self._generation_issues.extend(
             m.Infra.Issue(
@@ -1176,51 +1006,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         except runtime_errors as exc:
             return r[T].fail(str(exc), exception=exc)
 
-    def _publish_lazy_batch(
-        self,
-        plan: m.Infra.CodegenPlan,
-        policy: p.Infra.CodegenParticipantPolicy,
-        batches: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-        operation: m.Infra.CodegenPhaseOutcome,
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Plan after bootstrap and lease only the next publication batch.
-
-        Returns:
-            The written paths, or the original planning or publication failure.
-
-        """
-        result_type = r[t.VariadicTuple[Path]]
-        lazy = self._lazy_phase(plan.request, plan)
-        if lazy.failure:
-            return result_type.from_failure(lazy)
-        conform_paths = frozenset(file.path for file in plan.files)
-        files = tuple(
-            file for file in lazy.value.files if file.path not in conform_paths
-        )
-        if not files and not (lazy.value.issues or lazy.value.exception is not None):
-            current = FlextInfraMiseArtifactsVerification.states_current(
-                lazy.value.inputs,
-            )
-            if current.failure:
-                return result_type.from_failure(current)
-            if lazy.value.issues or lazy.value.exception is not None:
-                return result_type.fail(
-                    "\n".join(issue.formatted for issue in lazy.value.issues)
-                    or "lazy planning failed",
-                    exception=lazy.value.exception,
-                )
-            return result_type.ok(())
-        analysis = lazy.value.model_copy(
-            update={"files": files, "inputs": ()},
-        )
-        return self._publish_generation_batches(
-            plan.request,
-            analysis,
-            policy,
-            batches,
-            operation,
-        )
-
     def _managed_policy(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -1266,39 +1051,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if prepared.failure:
             return r[Path].from_failure(prepared)
         return r[Path].ok(scope_root)
-
-    @staticmethod
-    def _lazy_phase(
-        request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Compose selected repositories in one authenticated source epoch.
-
-        APPLY captures this analysis before phase publication.
-        ADR-014: lazy-init ownership stays inside conform's
-        transaction. Lazy-init plans exactly the repositories conform
-        rewrites: the selected mutable ``internal_flext`` repositories of
-        ``plan``, never a scope-excluded root or a third-party checkout.
-        Each repository plans independently across the fleet workers, folded
-        in canonical root order.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
-
-        """
-        roots = sorted({
-            (request.root / repository.path).resolve()
-            for repository in plan.repositories
-            if repository.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
-        })
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            FlextInfraCodegenLazyInit.composed_analysis(
-                u.Infra.fleet_map(
-                    FlextInfraCodegenLazyInit.plan_scope_root,
-                    tuple((request.root, root) for root in roots),
-                )
-            )
-        )
 
     def _prepare_managed_plan(
         self,

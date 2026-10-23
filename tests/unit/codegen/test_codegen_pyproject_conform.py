@@ -367,9 +367,9 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="sample.plugin:main",
         )
 
+    @staticmethod
     @pytest.mark.parametrize("live_readme", [None, "docs/consumer.md"])
     def test_custom_metadata_preserves_authored_absence(
-        self,
         live_readme: t.StrippedStr | None,
     ) -> None:
         """A scaffold default cannot introduce an authored resource requirement."""
@@ -428,9 +428,9 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
         tm.that(second, eq=first)
 
+    @staticmethod
     @pytest.mark.parametrize("invalid_surface", ["rendered", "live"])
     def test_overlay_retains_native_toml_failure_context(
-        self,
         invalid_surface: str,
     ) -> None:
         """A parse failure identifies its input and retains the native cause."""
@@ -486,6 +486,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="live",
         )
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("table_path", "key", "expected"),
         [
@@ -539,7 +540,6 @@ class TestsFlextInfraCodegenPyprojectConform:
         ],
     )
     def test_overlay_replaces_duplicated_managed_lists(
-        self,
         table_path: t.StrSequence,
         key: str,
         expected: t.StrSequence,

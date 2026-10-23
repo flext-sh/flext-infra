@@ -457,13 +457,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if not FlextInfraUtilitiesRopeRuntime.abstract_class(value):
                 message = "Rope did not resolve a required base to a class"
                 raise TypeError(message)
-            if isinstance(
-                value,
-                FlextInfraUtilitiesRopeRuntime.runtime_type(
-                    "rope.base.pyobjectsdef",
-                    "PyClass",
-                ),
-            ):
+            if FlextInfraUtilitiesRopeRuntime.py_class(value):
                 return self._pyclass_identity(value)
             return self._deduplicated_external_identity(value)
 
@@ -481,22 +475,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The constructed class identity, or None for other objects.
 
             """
-            if not isinstance(
-                value,
-                FlextInfraUtilitiesRopeRuntime.runtime_type(
-                    "rope.base.pyobjectsdef",
-                    "PyFunction",
-                ),
-            ):
+            if not FlextInfraUtilitiesRopeRuntime.py_function(value):
                 return None
             if value.get_name() not in {"TypedDict", "NamedTuple"}:
                 return None
             module = value.get_module()
-            module_name = module.get_name() if module is not None else ""
+            module_name = module.get_name()
             name = value.get_name()
             return f"{module_name}.{name}" if module_name else name
 
-        def _pyclass_identity(self, value: t.Infra.RopePyObject) -> str:
+        def _pyclass_identity(self, value: p.Infra.RopeSourceClass) -> str:
             """Return the declaration identity of one external Rope class.
 
             Returns:
@@ -508,10 +496,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             module = value.get_module()
             scope = value.get_scope()
-            resource = module.get_resource() if module is not None else None
+            resource = module.get_resource()
             if (
                 not FlextInfraUtilitiesRopeRuntime.source_module(module)
-                or scope is None
                 or resource is None
             ):
                 message = (
@@ -526,7 +513,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _declared_pyclass_identity(
             self,
-            value: t.Infra.RopePyObject,
+            value: p.Infra.RopeNamedObject,
             module: t.Infra.RopePyModule,
             name: str,
             line: int,

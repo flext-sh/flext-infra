@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraConstantsCensusOwnership:
     """The constants contract overrides a containing file's behavior family."""
 
+    @staticmethod
     def test_checkout_ancestor_cannot_elect_a_source_family(
-        self,
         tmp_path: Path,
     ) -> None:
         """A family-named checkout parent is outside the module's namespace."""
@@ -56,8 +56,8 @@ class TestsFlextInfraConstantsCensusOwnership:
             tm.that(item.actual_tier, eq=class_name)
             tm.that(item.expected_tier, eq=u.Infra.facade_families()["c"].suffix)
 
+    @staticmethod
     def test_family_directory_owns_a_conflicting_facade_filename(
-        self,
         tmp_path: Path,
     ) -> None:
         """A filename cannot replace the family that contains its declaration."""
@@ -95,8 +95,8 @@ class TestsFlextInfraConstantsCensusOwnership:
             tm.that(item.actual_tier, eq=containing.suffix)
             tm.that(item.expected_tier, eq=filename_owner.suffix)
 
+    @staticmethod
     def test_conflicting_family_directories_fail_before_classification(
-        self,
         tmp_path: Path,
     ) -> None:
         """Nested families cannot silently depend on catalog iteration order."""
@@ -126,9 +126,9 @@ class TestsFlextInfraConstantsCensusOwnership:
                 include_references=False,
             )
 
+    @staticmethod
     @pytest.mark.parametrize("nested", [False, True])
     def test_exported_constants_keep_their_declared_family(
-        self,
         tmp_path: Path,
         nested: bool,
     ) -> None:
@@ -167,6 +167,7 @@ class TestsFlextInfraConstantsCensusOwnership:
             tm.that(item.actual_tier, eq=family.suffix)
             tm.that(item.expected_tier, eq=family.suffix)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "relative_module",
         [
@@ -190,7 +191,6 @@ class TestsFlextInfraConstantsCensusOwnership:
         ],
     )
     def test_constant_is_owned_by_constants_in_every_source_family(
-        self,
         tmp_path: Path,
         relative_module: str,
         typing_import: str,
@@ -228,7 +228,8 @@ class TestsFlextInfraConstantsCensusOwnership:
             tm.that(item.expected_tier, eq=expected_family)
             tm.that(item.actual_tier, ne=expected_family)
 
-    def test_user_final_homonym_remains_an_attribute(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_user_final_homonym_remains_an_attribute(tmp_path: Path) -> None:
         """A user-defined Final name does not prove an immutable declaration."""
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,

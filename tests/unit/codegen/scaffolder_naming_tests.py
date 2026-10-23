@@ -52,6 +52,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
     class TestsGeneratedTopologyContracts:
         """Generated topology modules compile and follow the naming contract."""
 
+        @staticmethod
         @pytest.mark.parametrize(
             ("with_all_modules", "validate"),
             [
@@ -102,7 +103,6 @@ class TestsFlextInfraCodegenScaffolderNaming:
             ],
         )
         def test_generated_topology_satisfies_declared_contract(
-            self,
             tmp_path: Path,
             *,
             with_all_modules: bool,

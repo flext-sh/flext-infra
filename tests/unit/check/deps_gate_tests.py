@@ -420,9 +420,18 @@ class TestsFlextInfraDepsGate:
 
         repaired = gate.fix(root, context)
         after = pyproject.read_bytes()
+        tm.that(len(tuple((tmp_path / "reports").rglob("*.json"))), eq=1)
+        verified = gate.check(
+            root,
+            m.Infra.GateContext(
+                repository_root=root,
+                reports_dir=tmp_path / "verification",
+            ),
+        )
         repeated = gate.fix(root, context)
 
         tm.that(repaired.outcome, eq=c.Infra.ToolOutcome.CLEAN)
+        tm.that(verified.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(repeated.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(
             u.Tests.toml_strings_at(after.decode("utf-8"), "project", "dependencies"),
@@ -434,7 +443,7 @@ class TestsFlextInfraDepsGate:
         )
         tm.that(pyproject.read_bytes(), eq=after)
         tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
-        tm.that(repaired.raw_output, has="repair-rescan")
+        tm.that(len(tuple((tmp_path / "reports").rglob("*.json"))), eq=2)
 
     @staticmethod
     @pytest.mark.parametrize("invoked", [False, True])

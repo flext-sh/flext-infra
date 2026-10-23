@@ -66,6 +66,8 @@ class FlextInfraSettingsModels:
             """
             if info.data is not None and info.data.get("github_actions") == "true":
                 return None
+            if not value:
+                return None
             return value
 
         @m.field_validator("editable_supplier_root")

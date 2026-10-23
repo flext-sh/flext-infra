@@ -3,7 +3,7 @@
 #
 # Release protocol projection. The workflow selects which protocol phase to
 # run; every decision (next version, guard, tag identity, receipt, upload set)
-# is made by the direct `make release-*` and `make publication` verbs, never here.
+# is made by the repository's elected `make release-<phase>` commands, never here.
 #
 # - A push to the integration branch whose head is NOT the protocol's release
 #   commit opens or updates the release pull request (`make release-version
@@ -177,4 +177,4 @@ jobs:
       - name: Build receipt
         run: make release-build
       - name: Publish
-        run: make publication{% if publish_index %} INDEX=Y{% endif %}
+        run: make release-publish{% if publish_index %} INDEX=Y{% endif %}

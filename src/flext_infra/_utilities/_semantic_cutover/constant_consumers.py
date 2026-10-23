@@ -703,29 +703,53 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             package = layout.package_name
         if package not in paths:
             paths[package] = cls._constant_public_paths(project, package)
-        rewrites, removals = cls._constant_import_plan(
+        plan = cls._constant_import_plan(
             project, module, statements, paths[package], path
         )
-        if rewrites:
-            changed = refactors.content_change(resource, source, rewrites)
-            proposed = runtime.build_string_module(
-                project, changed.new_contents, resource=resource
+        if plan[0]:
+            source = cls._apply_constant_imports(
+                project, resource, source, package, plan
             )
-            cleaned = cls._remove_constant_imports(project, proposed, removals)
-            proposed = runtime.build_string_module(project, cleaned, resource=resource)
-            organized = runtime.module_imports_for_pymodule(project, proposed)
-            organized.add_import(runtime.from_import(package, 0, [("c", None)]))
-            organized.remove_duplicates()
-            source = organized.get_changed_source()
             module = runtime.build_string_module(project, source, resource=resource)
         qualified = cls._constant_qualified_edits(module, paths[package], path)
         if qualified:
             source = refactors.content_change(resource, source, qualified).new_contents
-        count = len(rewrites) + len(qualified)
+        count = len(plan[0]) + len(qualified)
         changes = (
             (f"constant consumers -> {package}.c: {count} references",) if count else ()
         )
         return source, changes
+
+    @classmethod
+    def _apply_constant_imports(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+        package: str,
+        plan: t.Pair[
+            t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]
+        ],
+    ) -> str:
+        """Apply the correlated reference/removal plan through native import owners.
+
+        Returns:
+            The rewritten source with one canonical facade import.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        changed = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource, source, plan[0]
+        )
+        proposed = runtime.build_string_module(
+            project, changed.new_contents, resource=resource
+        )
+        cleaned = cls._remove_constant_imports(project, proposed, plan[1])
+        proposed = runtime.build_string_module(project, cleaned, resource=resource)
+        organized = runtime.module_imports_for_pymodule(project, proposed)
+        organized.add_import(runtime.from_import(package, 0, [("c", None)]))
+        organized.remove_duplicates()
+        return organized.get_changed_source()
 
     @staticmethod
     def _constant_qualified_edits(
@@ -752,24 +776,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         owner_module = facade.get_object().get_module()
         if owner_module is None:
             return ()
-        namespaces = {
-            reference
-            for reference, binding in public.items()
-            if reference.count(".") == 1
-            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
-            and binding.get_object().get_module() is owner_module
-        }
-        destinations: t.MutableMappingKV[str, list[str]] = {}
-        for reference in public:
-            parts = reference.split(".")
-            if len(parts) != 4:
-                continue
-            namespace = ".".join(parts[:2])
-            if namespace not in namespaces:
-                continue
-            flat = f"{namespace}.{parts[-1]}"
-            if flat not in public:
-                destinations.setdefault(flat, []).append(reference)
+        destinations = (
+            FlextInfraUtilitiesSemanticConstantConsumers._constant_destinations(
+                public, owner_module
+            )
+        )
         edits: list[m.Infra.SourceRewrite] = []
         qualified_facade = f"{owner_module.get_name()}.c"
         for flat, references in destinations.items():
@@ -788,9 +799,13 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 )
                 raise ValueError(message)
             reference = references[0]
-            published_owner = public[reference.rpartition(".")[0]]
-            published = published_owner.get_object().get_attributes().get(member)
-            if not runtime.same_name(public[reference], published):
+            if not runtime.same_name(
+                public[reference],
+                public[reference.rpartition(".")[0]]
+                .get_object()
+                .get_attributes()
+                .get(member),
+            ):
                 message = f"constant destination lost its publication: {reference}"
                 raise ValueError(message)
             for start, end in regions:
@@ -803,6 +818,36 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     )
                 )
         return tuple(edits)
+
+    @staticmethod
+    def _constant_destinations(
+        public: t.MappingKV[str, p.Infra.RopePyName],
+        owner_module: p.Infra.RopeSemanticModule,
+    ) -> t.MutableMappingKV[str, list[str]]:
+        """Elect flat references only beneath natively published namespaces.
+
+        Returns:
+            Candidate qualified owners for each missing flat member.
+
+        """
+        namespaces = {
+            reference
+            for reference, binding in public.items()
+            if reference.count(".") == 1
+            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
+            and binding.get_object().get_module() is owner_module
+        }
+        destinations: t.MutableMappingKV[str, list[str]] = {}
+        for reference in public:
+            match reference.split("."):
+                case [facade, namespace, _, member]:
+                    prefix = f"{facade}.{namespace}"
+                    flat = f"{prefix}.{member}"
+                    if prefix in namespaces and flat not in public:
+                        destinations.setdefault(flat, []).append(reference)
+                case _:
+                    pass
+        return destinations
 
     @classmethod
     def _has_constant_imports(
@@ -1354,7 +1399,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         for scope in runtime.scope_at(module, 0).get_scopes():
             if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
                 continue
-            if binding.get_object() in scope.pyobject.get_superclasses():
+            if (
+                binding.get_object()
+                in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                    scope.pyobject, "constant facade composition"
+                ).get_superclasses()
+            ):
                 return True
         return False
 

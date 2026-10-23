@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import config, m, p, r
-from flext_infra._utilities import FlextInfraUtilitiesGitSemanticRefsMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefsMixin
 
 
 class FlextInfraUtilitiesGitLaneHygieneMixin:

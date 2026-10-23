@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     @classmethod
     def _header_argument_span(
         cls,
-        value: p.Infra.RopePyObject,
+        value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
     ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]] | None:
@@ -106,12 +106,14 @@ class FlextInfraUtilitiesDeclarationPayload:
             TypeError: If a source class lacks its native project owner.
 
         """
-        bases = list(value.get_superclasses())
+        bases = list(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                value, "declaration ancestry"
+            ).get_superclasses()
+        )
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
             return bases
         scope, module = value.get_scope(), value.get_module()
-        if scope is None or module is None:
-            return bases
         if not isinstance(module, p.Infra.RopeSourceModule):
             msg = "Rope class module has no native project owner"
             raise TypeError(msg)
@@ -317,7 +319,9 @@ class FlextInfraUtilitiesDeclarationPayload:
         if resolved is None:
             return None
         module, binding = resolved
-        value = binding.get_object()
+        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            binding.get_object(), qualified_name
+        )
         ancestry = cls.class_ancestry(value)
         base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
         settings = cls.identity_name(
@@ -326,8 +330,6 @@ class FlextInfraUtilitiesDeclarationPayload:
         if base not in ancestry or settings in ancestry:
             return None
         scope = value.get_scope()
-        if scope is None:
-            return None
         statements = cls._admitted_payload_statements(module, value, scope)
         if statements is None:
             return None
@@ -347,7 +349,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     def _admitted_payload_statements(
         cls,
         module: p.Infra.RopePyModule,
-        value: p.Infra.RopePyObject,
+        value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
     ) -> t.SequenceOf[m.Infra.LogicalStatement] | None:
         """Return the logical statements of one admitted payload body.
@@ -459,7 +461,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     @classmethod
     def _payload_body(
         cls,
-        value: p.Infra.RopePyObject,
+        value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
     ) -> bool:
@@ -532,8 +534,6 @@ class FlextInfraUtilitiesDeclarationPayload:
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         owning_module = method.get_module()
-        if owning_module is None:
-            return False
         module_scope = owning_module.get_scope()
         known_targets = {
             identity: cls.identity_name(project, identity)
@@ -543,8 +543,6 @@ class FlextInfraUtilitiesDeclarationPayload:
             )
         }
         scope = method.get_scope()
-        if scope is None:
-            return False
         begin, _end = scope.get_region()
         known = False
         for statement in statements:

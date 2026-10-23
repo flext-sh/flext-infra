@@ -54,17 +54,11 @@ jobs:
       # starts warm. Only written when the restore missed.
 {%- include "_fragments/toolchain_cache_save.j2" %}
 
-      - name: Generation drift (blocking)
-        run: |
-          make gen
-          make verify-clean
+      - name: Generate documentation
+        run: make gen
 
-      - name: Docs lifecycle (blocking)
-        run: make docs
-
-      # The preceding generation check cannot see changes made by make docs.
-      - name: Verify docs byte-identical repository
-        run: make verify-clean
+      - name: Check documentation and projections
+        run: make check
 
       # Failure diagnostics execute only after the original Make step has
       # already propagated its exact status to Actions.
@@ -79,7 +73,7 @@ jobs:
                 -type f -exec sh -eu -c '
                   for report_file do
                     printf "::group::%s\n" "${report_file}"
-                    tail -n 80 "${report_file}"
+                    cat "${report_file}"
                     printf "::endgroup::\n"
                   done
                 ' sh {} +
@@ -92,7 +86,7 @@ jobs:
         with:
           name: docs-reports
           # Structured docs reports only — omit raw docs log trees that may carry
-          # env-derived secrets from setup/docs phases.
+          # env-derived secrets from lifecycle commands.
           path: |{% for prefix in (".reports/**", "apps/*/.reports/**") %}{% for name in docs_report_filenames %}
             {{ prefix }}/{{ name }}{% endfor %}{% endfor %}
           if-no-files-found: error
@@ -124,11 +118,14 @@ jobs:
 
 {%- include "_fragments/toolchain_cache_save.j2" %}
 
-      - name: Build site
-        run: make docs
+      - name: Generate documentation
+        run: make gen
 
-      - name: Verify byte-identical repository
-        run: make verify-clean
+      - name: Build site
+        run: make build
+
+      - name: Check documentation and projections
+        run: make check
 
       # Pages configure/upload exist only to feed deploy on main. Running them on
       # every integration push fails closed when Pages is unset and is wasted

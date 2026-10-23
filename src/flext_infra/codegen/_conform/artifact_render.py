@@ -23,6 +23,87 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     """Governed artifact rendering and project overlay composition."""
 
     @staticmethod
+    def render_artifact_source(
+        codegen: m.Infra.CodegenConfigSpec,
+        entry: m.Infra.TemplateEntrySpec,
+        context: p.Model,
+    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+        """Capture an explicit package resource or authenticate a Jinja render."""
+        result_type = r[m.Infra.CodegenArtifactComposition]
+        source = u.Infra.codegen_artifact_source(codegen, entry)
+        if entry.source_kind == "resource":
+            captured = u.Cli.atomic_read_binary_file_state(source, required=True)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            content = captured.value.content
+            if content is None:
+                return result_type.fail(
+                    f"required resource has no captured bytes: {source}",
+                )
+            return result_type.ok(
+                m.Infra.CodegenArtifactComposition(
+                    rendered=content.decode(c.DEFAULT_ENCODING),
+                    source_states=(captured.value,),
+                ),
+            )
+        return u.Cli.template_render_authenticated(source, context).map(
+            lambda rendered: m.Infra.CodegenArtifactComposition(
+                rendered=rendered.rendered,
+                source_states=rendered.source_states,
+            ),
+        )
+
+    @staticmethod
+    def _artifact_dependency_plans(
+        codegen: m.Infra.CodegenConfigSpec,
+        root: Path,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Keep each selected artifact and its required outputs in one publication."""
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        by_path = {plan.path: plan for plan in planned}
+        groups: list[set[Path]] = []
+        for entry in codegen.templates.entries:
+            path = root / entry.destination
+            if path not in by_path or not entry.requires_artifacts:
+                continue
+            required = {
+                root / destination
+                for destination in codegen.templates.required_destinations(
+                    frozenset({entry.destination}),
+                )
+            }
+            missing = required.difference(by_path)
+            if missing:
+                return result_type.fail(
+                    f"artifact {entry.destination} has unplanned dependencies: "
+                    f"{', '.join(str(item) for item in sorted(missing))}",
+                )
+            for group in groups.copy():
+                if group.intersection(required):
+                    required.update(group)
+                    groups.remove(group)
+            groups.append(required)
+        for group in groups:
+            # Preserve and join any publication group already elected by a planner.
+            identities = {
+                by_path[path].dependency_group
+                for path in group
+                if by_path[path].dependency_group is not None
+            }
+            group.update(
+                path
+                for path, plan in by_path.items()
+                if plan.dependency_group in identities
+            )
+            identity = f"artifacts:{root}:{min(group).relative_to(root)}"
+            for path in group:
+                by_path[path] = by_path[path].model_copy(
+                    update={"dependency_group": identity},
+                )
+        return result_type.ok(tuple(by_path.values()))
+
+    @staticmethod
     def planned_source_render_inputs(
         render_inputs: m.Infra.CodegenRenderInputs,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
@@ -597,6 +678,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         destination: str,
         failure_prefix: str,
         project_context: m.Infra.ProjectRenderContext | None,
+        entry: m.Infra.TemplateEntrySpec | None = None,
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Resolve one artifact render context and render its template source.
 
@@ -608,6 +690,18 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             Rendered content and the exact templates consumed by Jinja.
 
         """
+        if entry is None:
+            entry = next(
+                item
+                for item in render_inputs.codegen.templates.entries
+                if item.destination == destination
+            )
+        if entry.source_kind == "resource":
+            return self.render_artifact_source(
+                render_inputs.codegen,
+                entry,
+                m.Infra.StaticTextRenderSpec(),
+            )
         policy_sources: t.VariadicTuple[m.Cli.AtomicFileState] = ()
         if destination == f"config/{c.Infra.INFRA_CONFIG_FILENAME}":
             policy = self._release_policy_render_inputs(render_inputs.target.root)
@@ -623,11 +717,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         if artifact_context.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(artifact_context)
-        template_path = (
-            u.Infra.codegen_templates_root(render_inputs.codegen) / template_relpath
-        )
-        rendered = u.Cli.template_render_authenticated(
-            template_path,
+        template_path = u.Infra.codegen_artifact_source(render_inputs.codegen, entry)
+        rendered = self.render_artifact_source(
+            render_inputs.codegen,
+            entry,
             artifact_context.value,
         )
         if rendered.failure:
@@ -971,6 +1064,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return r[p.Model].from_failure(excluded)
         return r[p.Model].ok(
             m.Infra.GithubWorkflowRenderSpec(
+                publishes_release=target.repository.publishes_release,
+                extra_verbs=self._elected_extra_verbs(
+                    target.repository,
+                    repository_root,
+                    codegen,
+                ),
                 publish_index=config.Infra.release.publish_index,
                 dist=dist,
                 gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
@@ -1082,10 +1181,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         pytest = config.Infra.tooling.tools.pytest
-        run_timeout_seconds = pytest.run_timeout_overrides.get(
-            target.canonical_project_name,
-            pytest.run_timeout_seconds,
-        )
         order = (
             u.Infra.workspace_dependency_order(target.root, workspace.subprojects)
             if target.make_profile is c.Infra.MakeProfile.WORKSPACE
@@ -1100,6 +1195,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
                 ),
                 pytest=pytest,
+                release_verbs=self._release_product_verbs(target.repository),
                 dist=target.repository.distribution,
                 infra_cli=config.Infra.name,
                 examples_module=target.repository.examples_module,
@@ -1135,25 +1231,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 toolchain=codegen.toolchain,
                 python_version=codegen.toolchain.python_version,
                 make=codegen.make,
-                extra_verbs=(
-                    self._merge_extra_verbs(
-                        target.repository.extra_verbs,
-                        (
-                            ()
-                            if target.repository.script_dispatch is None
-                            else self._discover_script_verbs(target.root)
-                        ),
-                        frozenset(verb.name for verb in codegen.make.verbs),
-                    )
+                extra_verbs=self._elected_extra_verbs(
+                    target.repository,
+                    target.root,
+                    codegen,
                 ),
                 script_dispatch=target.repository.script_dispatch,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                pytest_process_timeout_seconds=(
-                    run_timeout_seconds + (pytest.termination_grace_seconds * 2)
-                ),
             ),
         )
 

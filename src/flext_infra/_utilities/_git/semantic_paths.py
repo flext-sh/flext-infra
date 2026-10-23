@@ -23,10 +23,10 @@ from git import (
 from gitdb.util import LockedFD
 
 from flext_infra import m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitStateFilesMixin,
+    FlextInfraUtilitiesGitWorktreeIO,
 )
 from flext_infra._utilities._git.state_trees import (
     FlextInfraUtilitiesGitStateTreesMixin,
@@ -342,6 +342,34 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         )
 
     @classmethod
+    def git_path_has_history(
+        cls,
+        request: m.Infra.GitRelativePathRequest,
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Report whether any native repository ref contains the declared path.
+
+        Returns:
+            The native history observation, or its original Git failure.
+
+        """
+        try:
+            with cls._repo(request.repo_root) as repo:
+                history = repo.iter_commits(
+                    "--all",
+                    paths=request.relative_path,
+                    max_count=1,
+                )
+                present = next(history, None) is not None
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to inspect path history: {exc}",
+                exception=exc,
+            )
+        return r[m.Infra.GitBoolReport].ok(
+            m.Infra.GitBoolReport(value=present),
+        )
+
+    @classmethod
     def git_add_paths(
         cls,
         request: m.Infra.GitPathsRequest,
@@ -465,6 +493,9 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
 
         Yields:
             Control under the native request-local index environment.
+
+        Raises:
+            ValueError: If a native Git publication index is already selected.
 
         """
         cls._git_publication_current(state).unwrap()

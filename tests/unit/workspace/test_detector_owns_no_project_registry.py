@@ -18,6 +18,7 @@ from tests import c, m, tm, u
 class TestsFlextInfraDetectorOwnsNoProjectRegistry:
     """Prove derivation never consults a flext-infra-owned project catalog."""
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("path", "managed"),
         [
@@ -28,7 +29,6 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         ],
     )
     def test_pending_declarations_cannot_escape_or_exclude_the_workspace(
-        self,
         path: Path,
         *,
         managed: bool,
@@ -52,9 +52,9 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
                 pending_subprojects=(declaration,),
             )
 
+    @staticmethod
     @pytest.mark.parametrize("directory_exists", [False, True])
     def test_missing_managed_checkout_retains_only_its_git_declaration(
-        self,
         tmp_path: Path,
         *,
         directory_exists: bool,
@@ -117,12 +117,12 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         tm.that(pending.external_dependency_paths, empty=True)
         tm.that(pending.repository.role, eq=c.Infra.MakeProfile.WORKSPACE)
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("value", "managed"),
         [("yes", True), ("on", True), ("off", False), ("0", False)],
     )
     def test_management_values_follow_native_git_boolean_grammar(
-        self,
         tmp_path: Path,
         value: str,
         *,
@@ -148,8 +148,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
 
         tm.that(declarations[0].managed, eq=managed)
 
+    @staticmethod
     def test_malformed_management_flag_preserves_the_native_failure(
-        self,
         tmp_path: Path,
     ) -> None:
         """Invalid management input cannot silently exclude a repository."""
@@ -173,8 +173,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         tm.ok(declarations.failure)
         tm.ok(declarations.exception is not None)
 
+    @staticmethod
     def test_changed_git_participation_is_observed_without_a_catalog(
-        self,
         tmp_path: Path,
     ) -> None:
         """A changed Git declaration updates discovery in the same process."""
@@ -226,7 +226,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         tm.ok(member in u.Infra.discover_rope_project_roots(root))
         tm.that(u.Infra.import_project_roots(member), eq=(root, member))
 
-    def test_unknown_project_derives_its_own_identity(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_unknown_project_derives_its_own_identity(tmp_path: Path) -> None:
         """A repository absent from any catalog still derives from itself."""
         root = u.Tests.WorktreeFixture.self_named_project(
             tmp_path / "totally-unknown-project",

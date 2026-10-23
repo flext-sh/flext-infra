@@ -99,8 +99,10 @@ class TestsFlextInfraPytestRunner:
             "def test_shared_worktree() -> None:\n"
             f"    root = Path({str(root)!r})\n"
             f"    (root / {tracked.name!r}).write_text('during\\n', encoding='utf-8')\n"
-            "    (root / 'shared-untracked.txt').write_text('during\\n', encoding='utf-8')\n"
-            f"    subprocess.run(['git', '-C', str(root), 'update-ref', 'HEAD', {advanced_head!r}], check=True)\n",
+            "    (root / 'shared-untracked.txt').write_text('during\\n', "
+            "encoding='utf-8')\n"
+            f"    subprocess.run(['git', '-C', str(root), 'update-ref', 'HEAD', "
+            f"{advanced_head!r}], check=True)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         tm.that(tm.ok(runner.execute()), eq=0)
@@ -925,7 +927,8 @@ class TestsFlextInfraPytestRunner:
         existing = set(reports_root.glob("*/run-context.json"))
         runner = bounded.model_copy(update={"unbounded": unbounded})
         (cached_runner_project / runner.target / "test_unbounded_policy.py").write_text(
-            "import pytest\nfrom flext_infra import config\nfrom tests import c, r, tm\n\n"
+            "import pytest\nfrom flext_infra import config\nfrom tests import c, r, "
+            "tm\n\n"
             f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
             "def test_unbounded_policy(pytestconfig, request):\n"
             "    tm.that(pytestconfig.getoption('timeout'),\n"

@@ -1473,8 +1473,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 msg=f"{live_repository.distribution}: {package} outside {member_root}",
             )
 
+    @staticmethod
     @pytest.fixture
-    def ci_mode(self) -> bool:
+    def ci_mode() -> bool:
         """Read the hosted-runner contract used by the public consumer.
 
         Returns:
@@ -1484,8 +1485,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         policy = config.Infra.codegen.make.uv_resolution
         return u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
 
+    @staticmethod
     @pytest.fixture
-    def site_packages(self) -> Iterator[Path]:
+    def site_packages() -> Iterator[Path]:
         """Isolate metadata beneath the owned prefix without installing packages.
 
         Yields:
@@ -1786,8 +1788,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             has="pth exposes no declared package",
         )
 
+    @staticmethod
     def test_installed_bindings_do_not_admit_executable_declarations(
-        self,
         installed_artifact_consumer: Path,
     ) -> None:
         """Real installation bindings survive unrelated defects."""

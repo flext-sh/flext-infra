@@ -13,6 +13,9 @@ from flext_infra import c, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
@@ -20,9 +23,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
 from flext_infra._utilities._semantic_cutover.contracts import (
@@ -69,6 +69,8 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         ``rope_workspace`` supplies the repository root that reported findings
         are relative to and, for class nesting, the module ownership policy.
         Finding-driven phases select their own rule findings from ``findings``.
+        Original policy and layout reads share authenticated source authority;
+        the exploratory Rope SDK retains its independent mutable lifetime.
         ``dependency_codegen`` supplies explicitly projected, captured policy by
         owning project root; absent entries are captured through source authority.
 
@@ -79,37 +81,40 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             ValueError: If the phase is unsupported.
 
         """
-        if not phase:
+        if type(phase) is not c.Infra.SemanticCutoverPhase:
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
         root = rope_workspace.repository_root
         rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
         selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
-        if phase in {
-            c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
-        }:
-            if codegen is None:
-                captured = (
-                    FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                        root, source_project=rope_workspace.rope_project
+        if (
+            phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING
+            or phase is c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
+        ):
+            with cls._semantic_source_project(
+                rope_workspace.rope_project
+            ) as source_project:
+                if codegen is None:
+                    captured = (
+                        FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                            root, source_project=source_project
+                        )
                     )
+                    if captured.failure:
+                        return r[
+                            t.VariadicTuple[m.Infra.SemanticMigrationEdit]
+                        ].from_failure(captured)
+                    codegen = captured.value.spec
+                if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
+                    return cls._plan_class_nesting(rope_workspace, sources, codegen)
+                return cls._plan_dynamic_environment(
+                    sources,
+                    frozenset((root / finding.file).resolve() for finding in selected),
+                    source_project=source_project,
+                    owner_context=cls._settings_owner_contexts(
+                        root, codegen, source_project, dependency_codegen
+                    ),
                 )
-                if captured.failure:
-                    return r[
-                        t.VariadicTuple[m.Infra.SemanticMigrationEdit]
-                    ].from_failure(captured)
-                codegen = captured.value.spec
-            if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
-                return cls._plan_class_nesting(rope_workspace, sources, codegen)
-            return cls._plan_dynamic_environment(
-                root,
-                sources,
-                selected,
-                rope_workspace=rope_workspace,
-                codegen=codegen,
-                dependency_codegen=dependency_codegen,
-            )
         match phase:
             case (
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
@@ -132,8 +137,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
-        message = f"unsupported semantic cutover phase: {phase}"
-        raise ValueError(message)
 
     @classmethod
     def _plan_behavior_and_declarations(
@@ -151,13 +154,18 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             A result containing a tuple of semantic migration edits.
 
         """
-        with closing(
-            FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                rope_workspace.rope_project, sources
-            )
-        ) as project:
+        with (
+            cls._semantic_source_project(rope_workspace.rope_project) as source_project,
+            closing(
+                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    rope_workspace.rope_project, sources
+                )
+            ) as project,
+        ):
             consumers = cls._plan_behavior_consumers(
-                rope_workspace.repository_root, sources, native_project=project
+                sources,
+                native_project=project,
+                source_project=source_project,
             )
         if consumers.failure:
             return consumers
@@ -177,6 +185,11 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     file_path=path,
                     original_source=source,
                     updated_source=working[path],
+                    source_states=tuple(
+                        state
+                        for edit in (*consumers.value, *declarations.value)
+                        for state in edit.source_states
+                    ),
                     changes=("resolved behavior and declaration ownership",),
                 )
                 for path, source in sources.items()
@@ -254,6 +267,11 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     file_path=path,
                     original_source=source,
                     updated_source=working[path],
+                    source_states=tuple(
+                        state
+                        for edit in (*aliases.value, *api.value)
+                        for state in edit.source_states
+                    ),
                     changes=("composed native alias retirement",),
                 )
                 for path, source in sources.items()

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
+from pathlib import Path
 from typing import ClassVar
 
 from flext_core import FlextRuntime
@@ -81,7 +82,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
     def _sync_environment(
         params: m.Infra.WorkspaceEnvironmentCliRequest,
     ) -> p.Cli.ErasedCommandResult:
-        """Keep the internal beads render context off the public CLI surface.
+        """Consume generated environment files through the public API binding.
 
         Returns:
             The canonical CLI result view.
@@ -92,6 +93,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
         )
         return FlextInfraWorkspaceEnvironmentMixin.execute_request(
             request,
+            synchronize=infra.sync_environment_files,
             scope=params.scope,
         )
 
@@ -114,28 +116,29 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
         root = params.repository_root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(root).unwrap()
+        report_output = u.Infra.env_value(
+            inputs.spec.make.check_report_output_environment_variable
+        )
+        request = (
+            params.model_copy(update={"report_output": Path(report_output)})
+            if report_output
+            else params
+        )
         captured = u.Infra.git_capture_gate(
-            params,
-            inputs=u.Infra.load_codegen_inputs(root).unwrap(),
+            request,
+            inputs=inputs,
             load_inputs=u.Infra.load_codegen_inputs,
-            read_runtime_identity=FlextInfraWorkspaceRoutes._check_runtime_identity,
+            read_runtime_identity=lambda gates: FlextInfraGateRegistry(
+                project_gates=inputs.spec.make.project_check_gates
+            ).runtime_identity(
+                gates,
+                installed_identity=(
+                    FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
+                ),
+            ),
         ).unwrap()
         u.Cli.framework_exit(captured.process.raw_return_code)
-
-    @staticmethod
-    def _check_runtime_identity(gate_ids: t.StrSequence) -> p.Result[str]:
-        """Compose actual installed Python provenance and declared scanners.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        return FlextInfraGateRegistry.default().runtime_identity(
-            gate_ids,
-            installed_identity=(
-                FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
-            ),
-        )
 
     workspace_routes: ClassVar[
         MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]

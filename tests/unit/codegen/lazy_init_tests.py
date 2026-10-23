@@ -74,14 +74,16 @@ class TestsFlextInfraCodegenLazyInit:
     class TestsAllDirectoriesScanned:
         """All standard directories are always scanned."""
 
-        def test_src_dir_is_scanned(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_src_dir_is_scanned(tmp_path: Path) -> None:
             """Scan public source packages in check mode."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_tests_dir_is_scanned(self, governed_project: Path) -> None:
+        @staticmethod
+        def test_tests_dir_is_scanned(governed_project: Path) -> None:
             """Scan test packages in check mode."""
             _create_init_file(
                 governed_project / "tests" / "helpers",
@@ -91,7 +93,8 @@ class TestsFlextInfraCodegenLazyInit:
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_tests_init_files_are_processed(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_tests_init_files_are_processed(tmp_path: Path) -> None:
             """Regenerate discovered test package initializers."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             tests_init = _create_init_file(
@@ -106,7 +109,8 @@ class TestsFlextInfraCodegenLazyInit:
                 eq=True,
             )
 
-        def test_nested_tests_packages_are_found(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_nested_tests_packages_are_found(tmp_path: Path) -> None:
             """Discover nested test packages recursively."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             nested_init = _create_init_file(
@@ -121,7 +125,8 @@ class TestsFlextInfraCodegenLazyInit:
     class TestsCheckOnlyMode:
         """check_only=True reports without writing."""
 
-        def test_check_only_does_not_modify_files(self, governed_project: Path) -> None:
+        @staticmethod
+        def test_check_only_does_not_modify_files(governed_project: Path) -> None:
             """Leave initializer bytes unchanged in check mode."""
             tests_init = _create_init_file(
                 governed_project / "tests" / "helpers",
@@ -135,7 +140,8 @@ class TestsFlextInfraCodegenLazyInit:
     class TestsExcludedDirectories:
         """Vendor and .venv directories are excluded."""
 
-        def test_vendor_dir_excluded(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_vendor_dir_excluded(tmp_path: Path) -> None:
             """Exclude vendored test packages from discovery."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             _create_init_file(
@@ -146,7 +152,8 @@ class TestsFlextInfraCodegenLazyInit:
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_venv_dir_excluded(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_venv_dir_excluded(tmp_path: Path) -> None:
             """Exclude virtual-environment test packages from discovery."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             _create_init_file(
@@ -157,7 +164,8 @@ class TestsFlextInfraCodegenLazyInit:
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_nested_site_packages_dir_excluded(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_nested_site_packages_dir_excluded(tmp_path: Path) -> None:
             """Exclude nested site-packages directories from discovery."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             _create_init_file(
@@ -174,7 +182,8 @@ class TestsFlextInfraCodegenLazyInit:
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_runtime_scratch_dir_excluded_from_plans(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_runtime_scratch_dir_excluded_from_plans(tmp_path: Path) -> None:
             """Exclude ephemeral runtime packages declared by the artifact SSOT."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             scratch_init = _create_init_file(
@@ -185,8 +194,8 @@ class TestsFlextInfraCodegenLazyInit:
             tm.ok(result)
             tm.that({plan.path for plan in result.value.files}, lacks=scratch_init)
 
+        @staticmethod
         def test_generated_tool_state_is_excluded_from_plans(
-            self,
             tmp_path: Path,
         ) -> None:
             """Exclude disposable test and projected provider package trees."""
@@ -206,8 +215,8 @@ class TestsFlextInfraCodegenLazyInit:
             for init_file in generated:
                 tm.that(planned, lacks=init_file)
 
+        @staticmethod
         def test_declared_sources_do_not_include_foreign_runtime_trees(
-            self,
             tmp_path: Path,
         ) -> None:
             """Only governed source roots supply packages and snapshot inputs."""
@@ -266,7 +275,8 @@ class TestsFlextInfraCodegenLazyInit:
             tm.ok(generator.plan_files().success)
             tm.that(u.Tests.run_lazy_init(tmp_path), eq=0)
 
-        def test_tests_dir_without_init_py_is_skipped(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_tests_dir_without_init_py_is_skipped(tmp_path: Path) -> None:
             """Ignore a test directory that is not a package."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             tests_dir = tmp_path / "tests" / "helpers"
@@ -276,14 +286,16 @@ class TestsFlextInfraCodegenLazyInit:
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_no_tests_dir_at_all(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_no_tests_dir_at_all(tmp_path: Path) -> None:
             """Process source packages when no tests directory exists."""
             _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
             tm.ok(result.success)
 
-        def test_plan_files_returns_flext_result(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_plan_files_returns_flext_result(tmp_path: Path) -> None:
             """Expose planning status through the public result contract.
 
             Publication is owned by ``codegen conform``: the generation
@@ -299,7 +311,8 @@ class TestsFlextInfraCodegenLazyInit:
                 eq=True,
             )
 
-        def test_src_content_consistent_across_runs(self, tmp_path: Path) -> None:
+        @staticmethod
+        def test_src_content_consistent_across_runs(tmp_path: Path) -> None:
             """Render identical source packages to identical bytes."""
             src_content = (
                 '"""Package."""\n'

@@ -252,32 +252,35 @@ class FlextInfraUtilitiesSemanticContracts(
                     providers[path] = sources[path]
         return providers
 
-    @staticmethod
+    @classmethod
     def _require_owned_contract_transfers(
+        cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         rules: t.SequenceOf[p.Infra.RopeContractRule],
     ) -> None:
-        for rule in rules:
-            if rule.ownership_transfer is None:
-                continue
-            owner = FlextInfraUtilitiesSemanticDeclarationRelocation.contract_rule_root(
-                workspace.repository_root, rule
-            )
-            layout = FlextInfraUtilitiesCodegenNamespace.layout(
-                owner,
-                rope_project=workspace.rope_project
-                if workspace.rope_project.authenticated_sources
-                else None,
-            )
-            if layout is None:
-                msg = "ownership transfer requires its declared project namespace"
-                raise ValueError(msg)
-            if not (
-                rule.ownership_transfer[0] == layout.package_name
-                or rule.ownership_transfer[0].startswith(f"{layout.package_name}.")
-            ):
-                message = f"{rule.id}: an external library declaration cannot retire"
-                raise ValueError(message)
+        with cls._semantic_source_project(workspace.rope_project) as source_project:
+            for rule in rules:
+                if rule.ownership_transfer is None:
+                    continue
+                owner = (
+                    FlextInfraUtilitiesSemanticDeclarationRelocation.contract_rule_root(
+                        workspace.repository_root, rule, source_project=source_project
+                    )
+                )
+                layout = FlextInfraUtilitiesCodegenNamespace.layout(
+                    owner, rope_project=source_project
+                )
+                if layout is None:
+                    msg = "ownership transfer requires its declared project namespace"
+                    raise ValueError(msg)
+                if not (
+                    rule.ownership_transfer[0] == layout.package_name
+                    or rule.ownership_transfer[0].startswith(f"{layout.package_name}.")
+                ):
+                    message = (
+                        f"{rule.id}: an external library declaration cannot retire"
+                    )
+                    raise ValueError(message)
 
     @classmethod
     def _apply_contract_rules(
@@ -587,38 +590,39 @@ class FlextInfraUtilitiesSemanticContracts(
         )
         changed: list[Path] = []
         try:
-            layout = FlextInfraUtilitiesCodegenNamespace.layout(
-                workspace.repository_root, rope_project=project
-            )
-            if layout is None:
-                msg = "projected consumers have no elected project layout"
-                raise ValueError(msg)
-            facade = FlextInfraUtilitiesCodegenFacades.facade_module_path(
-                layout.package_dir, "p", project=project, sources=sources
-            )
-            rendered = FlextInfraUtilitiesCodegenFacades.render_utility_facade(
-                layout.package_dir, family="p", project=project, sources=sources
-            )
-            if facade is None or rendered is None:
-                msg = "projected receivers have no canonical public protocol facade"
-                raise ValueError(msg)
-            if sources[facade] != rendered:
-                sources[facade] = rendered
-                changed.append(facade)
-            project.close()
-            project = runtime.snapshot_project(
-                workspace.rope_project, sources, captured=epoch
-            )
-            changed.extend(
-                cls._normalize_projected_imports(
-                    project,
-                    sources,
-                    consumers,
-                    receivers,
-                    (layout.package_name, layout.package_dir, facade),
+            with cls._semantic_source_project(workspace.rope_project) as source_project:
+                layout = FlextInfraUtilitiesCodegenNamespace.layout(
+                    workspace.repository_root, rope_project=source_project
                 )
-            )
-            return tuple(changed)
+                if layout is None:
+                    msg = "projected consumers have no elected project layout"
+                    raise ValueError(msg)
+                facade = FlextInfraUtilitiesCodegenFacades.facade_module_path(
+                    layout.package_dir, "p", project=project, sources=sources
+                )
+                rendered = FlextInfraUtilitiesCodegenFacades.render_utility_facade(
+                    layout.package_dir, family="p", project=project, sources=sources
+                )
+                if facade is None or rendered is None:
+                    msg = "projected receivers have no canonical public protocol facade"
+                    raise ValueError(msg)
+                if sources[facade] != rendered:
+                    sources[facade] = rendered
+                    changed.append(facade)
+                project.close()
+                project = runtime.snapshot_project(
+                    workspace.rope_project, sources, captured=epoch
+                )
+                changed.extend(
+                    cls._normalize_projected_imports(
+                        project,
+                        sources,
+                        consumers,
+                        receivers,
+                        (layout.package_name, layout.package_dir, facade),
+                    )
+                )
+                return tuple(changed)
         finally:
             project.close()
 
@@ -744,7 +748,10 @@ class FlextInfraUtilitiesSemanticContracts(
             or Path(resource.real_path) not in receivers
         ):
             return None
-        qualified = f"{owner.get_name()}.{binding.get_object().get_name()}"
+        target = FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+            binding.get_object(), local
+        )
+        qualified = f"{owner.get_name()}.{target.get_name()}"
         reference = FlextInfraUtilitiesPrivateImportFacades.public_reference(
             owners=inventory[0].get(package, ()),
             package=package,
@@ -1508,7 +1515,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 context,
             )
             if alias is not None:
-                cls._enqueue_deferred_alias(alias, state[0], state[1], context[1])
+                cls._enqueue_deferred_alias(alias, state[0], state[1])
 
     @staticmethod
     def _deferred_primary_alias(
@@ -1587,12 +1594,9 @@ class FlextInfraUtilitiesSemanticContracts(
         alias: tuple[ast.TypeAlias, p.Infra.RopeScope],
         pending: list[tuple[ast.expr, p.Infra.RopeScope, frozenset[str]]],
         visited: set[tuple[str, int]],
-        message: str,
     ) -> None:
         declaration, owner_scope = alias
         owner = owner_scope.pyobject.get_module()
-        if owner is None:
-            raise ValueError(message)
         key = (owner.get_name(), declaration.lineno)
         if key in visited:
             return

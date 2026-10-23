@@ -18,9 +18,9 @@ from tests import c, tm, u
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
+    @staticmethod
     @pytest.mark.parametrize("index_mode", ["ordinary", "v4", "split"])
     def test_retire_index_artifact_preserves_live_and_staged_siblings(
-        self,
         tmp_path: Path,
         index_mode: str,
     ) -> None:

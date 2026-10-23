@@ -16,6 +16,8 @@ jobs:
     name: ci
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - name: Checkout repository
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
@@ -23,11 +25,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
-      - name: Setup
-        run: make setup
-
-      - name: Check
-        run: make check
-
-      - name: Test
-        run: make test
+{% for verb in make.approval_verbs %}
+      - name: make {{ verb }}
+        run: make {{ verb }}
+{% endfor %}

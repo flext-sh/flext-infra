@@ -32,10 +32,11 @@ fallback. The supplier workspace itself retains its own local resolution; an
 external consumer owns its own physical `.venv` and generated editable resolver
 view. Hosted execution still selects the standalone view.
 
-Export the setting in the invoking shell before the public `make setup`,
-`make gen`, and `make upg` lifecycle. Do not put the host choice in project YAML,
-application settings, generated Makefiles, or secret environment files. Generated
-dispatchers retain the environment contract, never the selected host path.
+Select the supplier explicitly through the public lifecycle parameter or the
+invoking environment. Successful setup persists this runtime-local choice; a
+fresh shell must not need to reconstruct it. Do not put the host choice in project
+YAML, application settings, generated Makefiles, or secret environment files.
+Generated dispatchers retain the environment contract, never the selected host path.
 Shared defaults own ordinary FLEXT dependency declarations; a project's codegen
 input retains only its identity and genuine dependency/tool deltas. Live editable
 source selection does not require clean, committed, or stationary worktrees.
@@ -78,20 +79,99 @@ Tag dispatch retains the existing publication path. Checkpoint dispatch validate
 the event's exact SHA through canonical CI, then runs versioning only, with the
 selector transported as environment data. Push versioning selects an explicit
 repository `LANE_CHECKPOINT_REF` variable; a no-op needs no ownership mutation.
-Generation publishes resolver manifests; only `make upg` writes their UV locks.
-Before installation, an isolated UV bootstrap consumes the supplier's native
-local resolver lock and live editable sources, never its `.venv`. It refreshes
-the consumer resolver through the existing metadata generator before consuming
-any previously selected supplier paths. Editable setup delegates reconciliation
-to public `make upg`, the exclusive lock writer, and then installs and verifies
-the selected lock. A missing supplier or its bootstrap lock fails before
-installation; it never falls back to Git. Run these lifecycle verbs sequentially for one
-physical runtime, without suspending unrelated authored work.
+The lifecycle contract separates three explicit operations: generation publishes
+resolver manifests, `make upg` resolves and writes their locks, and `make setup`
+installs their frozen contents. None invokes the other operation. A cold consumer
+requires authenticated generation of its native inputs before explicit lock
+preparation; neither setup nor upgrade is a hidden generator. Ordinary tracked
+locks, source pins and release versions are unchanged by setup.
 
-An executable consumer interpreter does not establish native lock provenance.
-Editable bootstrap projects the resolver inputs first; `make upg` then resolves
-and installs that lock before dependency and typing detection reads it. This
-ordering also applies when an interrupted bootstrap left a partial `.venv`.
+`make setup FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT=/absolute/workspace` selects the
+editable resolver. Before sync or producer execution, its manifest and lock origins
+must match that physical supplier; a resolver prepared for another supplier is an
+error, not a substitute. A missing manifest requires explicit generation. A missing
+lock requires explicit `make upg` with the same supplier selection. Runtime-local
+editable locks are not committed project locks.
+
+Cold setup admission belongs to the existing stdlib-only native-bootstrap owner.
+The managed-artifact catalog projects that owner's original source as a runtime-local
+resource; it does not acquire a second handwritten loader or inline resolver.
+Selection decoding, native supplier/consumer source admission and non-executing
+installed-producer metadata checks run through that resource using the Mise-pinned
+base Python. Policy supplies the resolver and resource locations plus control
+distribution/module identities. Before installation, require the chosen supplier's
+physical paths in both consumer manifest and lock. Before installed producer
+execution, require matching native metadata and elected module origin; then reuse
+the existing full environment-provenance verifier. Resource absence is an explicit
+generation prerequisite failure, not permission to execute an older producer.
+
+The selection file declared by `make.uv_resolution` contains exactly one UTF-8 line:
+the selected absolute physical path, or an empty line for local mode. Missing state
+means no persisted choice. Malformed, unreadable, aliased or non-file state is an
+error and never becomes an absent choice. Explicit input, including an empty value,
+takes precedence; hosted execution ignores local state before reading it. Make,
+Python and direnv must agree on this election.
+
+Persist the choice only after frozen installation, producer-origin authentication,
+runtime verification, activation and required post-setup hooks all succeed. On
+failure preserve the prior choice and every native cause; already completed owned
+effects are reported and repaired forward, not rolled back or called successful.
+Each consumer keeps its own physical `.venv`; supplier sources are editable, but
+the supplier environment is never borrowed. Serialize effects on the same physical
+runtime without requiring unrelated authored work to stop.
+
+Required consumer TOML is read through the canonical typed document reader. A
+syntax failure retains the native parser exception and exact declaration path;
+it never becomes an optional missing document, an empty mapping or a generic
+pathless validation message. Diagnostics identify the physical failing input
+before attributing it to a merge, source epoch or supplier. Never repair an
+unrelated active merge or select another parser to make that observation pass.
+
+These are the required boundaries for the in-progress lifecycle cutover; the active
+Bead owns current implementation and acceptance receipts. Their documentation is
+not a claim that every existing generated consumer already enforces them. Consult
+and reconcile the applicable guide, ADR, instructions and canonical skills before
+each code change. Only after implementing the real runtime behavior are tests
+updated and run to validate it, without mocks, tautologies or policy hardcodes.
+
+Resolve the test entry from the selected repository's current native help. The
+current generated catalog declares `make tests`, without file or match inputs;
+it executes its applicable persistent-testmon selection once. Historical commands
+are receipts for their own source epochs, not aliases or executable instructions
+for this catalog. An undeclared old target is corrected at the documentation
+owner, never bypassed through raw pytest or another dispatcher.
+
+The Make catalog owns public builtin names, descriptions, profile applicability and
+named inputs. General help and builtin `OPTIONS=Y`/`HELP=Y` views project those inputs
+without invoking the operation. Profiling and reports belong to their existing
+operation engines, not additional public lifecycle aliases. Domain selectors remain
+supported only where explicitly declared by the domain command registry.
+The catalog/help cutover is tracked in `algar-723.1.3`; runtime and gate receipts,
+not this required contract, establish which generated consumers have adopted it.
+
+For a declared script dispatcher, Make transports `WHAT` as literal environment
+data and invokes that dispatcher exactly once. The dispatcher owns discovery,
+selection, validation and its original exit status. Make does not interpolate the
+selector into shell source, scan script roots, select an `all.sh` substitute or
+probe selector-named private targets. Explicit verb-level custom handlers retain
+their declared hook contract; they are not a second selector registry.
+
+Facade planning preserves the complete import identity elected by the project
+discovery owner, including nested and namespace packages. A directory basename is
+not a module identity: declarations, proposed imports, C3 references and codemod
+contexts must use the same qualified package. Generation must not create package
+initializers or relax Rope's class boundary to compensate for a truncated name.
+
+Generation, structural modification, dependency resolution and authored repairs
+have separate operation owners. The retired `codegen pipeline` route must not
+combine those operations. `gen` and `mod` use the existing semantic planners and
+publisher for their own complete changes, including dependent generated exports;
+neither invokes another public lifecycle verb. Their canonical components remain
+available through their respective owners, without a second orchestration route.
+All declared checking gates belong to `check`; a separate public-verb exclusion
+map must not remove gates from that operation. Pytest's existing typed runner owns
+its process deadline. The Make projection passes that policy once, without an
+additional outer timeout or independent profiling-report location.
 
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
@@ -1014,10 +1094,15 @@ production import requires a consumer rewire instead of a runtime declaration.
 
 Deptry's generated optional-group setting uses `optional_dependencies_dev_groups`;
 the deprecated key is removed by the declaration phase in the same projection.
-The fixer holds the repository mutation lease, revalidates every metadata, source,
-lock and report input, publishes only `project.dependencies` through the guarded
-TOML owner, then scans again. A residual `FINDINGS` repair receipt describes the
-operation; the subsequent check remains red and provides no green acceptance.
+The fixer holds the repository mutation lease, captures native repair inputs once,
+revalidates every metadata, source, lock and report input, and publishes only
+`project.dependencies` through the guarded TOML owner. Its receipt retains the
+pre-repair diagnostic and whether publication changed the declaration. Completion
+describes that repair operation, not a subsequent dependency scan or project
+acceptance; independent verification runs only through an explicit check.
+Unresolved plans and publication failures retain their original failure. A repair
+request with a read-only context fails before scanning or writing; it never
+dispatches a different operation.
 `make initialize KIND=internal_flext` supplies a declaration value to the native
 `codegen init` owner for that Makefile's target only. The owner plans the target's
 `config/codegen.yaml` through the existing guarded declaration transaction before
@@ -1385,6 +1470,32 @@ memoized by their exact text as immutable JSON; each caller receives fresh mappi
 Current file reads and canonical rule digests still detect drift before publication.
 
 Generated facades compose declarations published by their current private family.
+Explicit class-owner recognition and rendering resolve each declaration through
+the physical path in the authenticated source map and its native Rope resource.
+The declaration's import spelling indexes that captured map; it is not a fresh
+global module election. Separate packages may share an import spelling without
+sharing a physical provider. Neither basename matching, reconstructed module paths
+nor fallback lookup may replace the captured resource identity.
+Namespace bases are read through the native source class's `get_superclasses()`
+on the authenticated candidate module. Rope evaluates its original header AST
+in the defining parent's lexical environment, before namespace-body bindings.
+A separately parsed AST has no native node-identity context and must not replace
+that lookup. Every declared base must resolve; an omitted native superclass is
+an error, not permission to drop a base. Same-name class publications inside the
+namespace remain authored bindings and do not change header lookup semantics.
+After completeness validation, each returned superclass is paired in declaration
+order with its AST base and admitted by the strict native-class guard before any
+ancestor traversal. A rejection names that exact expression, position, physical
+facade, namespace and Python SDK type without querying the rejected object.
+An ancestry admission failure retains its original exception and reports the
+rejected object's concrete SDK type through Python type metadata only. Diagnostics
+never call native name, module, type, attribute or ancestry APIs on that rejected
+object: those calls can trigger inference rather than observe stored metadata.
+The introducing class is already admitted; only its name and SDK type are queried.
+Uncaptured resources remain explicit `None`, without diagnostic module resolution.
+The physical facade and its declared AST base expressions supply source context.
+Diagnostics do not admit unknown objects, skip ancestors or widen the class
+contract without evidence from the real consumer.
 Rope resolves existing bases before composition: upstream bases remain, while an
 own provider moved outside that family leaves its MRO and unused imports.
 Unresolved providers fail before publication. Class-move previews and immutable
@@ -1547,6 +1658,28 @@ back to whole-project gates, and rejects unknown names before scanner execution.
 Every selected gate retains its native diagnostics and verdict; failures, missing
 tools/configuration and malformed reports remain blocking.
 Codemod uses its elected, staged provider configurations and native report owner.
+
+A project finding is an operation result, not an engine exception. Independent
+registered gates continue in declared order after a failed verdict, including
+repair operations; only an explicitly selected fail-fast contract stops that
+sequence. The combined result remains unsuccessful and retains each native
+diagnostic. A repair selection is validated for supported operations before its
+first effect. Unexpected engine exceptions retain their original traceback;
+continuation never catches or normalizes them into findings or success.
+
+The Make-engine stabilization scope covers dispatch, report fidelity, execution
+boundaries and measured performance. Local project violations are inputs to that
+engine validation, not an instruction to repair their application code or weaken
+their gates. A truthful nonzero project result can prove engine behavior while
+remaining a failed project acceptance result.
+
+Persistent analyzer caches are namespaced by the selected physical project root.
+Their allocation does not parse packaging metadata or require `[project].name`;
+Ruff also supports tool-only configuration, as its
+[native configuration contract](https://docs.astral.sh/ruff/configuration/) documents.
+The cache owner derives one deterministic digest from the resolved root, with no
+metadata-name route or fallback. Native tools retain responsibility for their input
+diagnostics. Packaging operations still require their own declared metadata.
 
 The former bare `typos` hook existed only in the Make recipe, help and tests,
 always under `|| true`. This branch declares no canonical typos runner,

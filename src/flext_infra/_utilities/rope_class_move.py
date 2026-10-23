@@ -22,6 +22,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticNestingTypes,
 )
 

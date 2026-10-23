@@ -232,22 +232,20 @@ class FlextInfraBindingService:
 
     @staticmethod
     def _document(consumer_root: Path) -> t.Cli.TomlDocument:
-        """Read the consumer declaration through its canonical parser.
+        """Read the required declaration without replacing native parser failures.
 
         Returns:
             The resulting ``t.Cli.TomlDocument``.
 
         Raises:
-            ValueError: If consumer dependency declaration is not valid TOML.
+            Exception: The native read or parser failure, with source-path context.
 
         """
-        document = u.Cli.toml_parse_text(
-            u.Cli.files_read_text(consumer_root / c.PYPROJECT_FILENAME).unwrap(),
-        )
-        if document is None:
-            msg = "consumer dependency declaration is not valid TOML"
-            raise ValueError(msg)
-        return document
+        source = consumer_root / c.PYPROJECT_FILENAME
+        document = u.Cli.toml_read_document(source)
+        if document.failure and document.exception is not None:
+            document.exception.add_note(f"Consumer dependency declaration: {source}")
+        return document.unwrap()
 
     @staticmethod
     def _binding_paths(

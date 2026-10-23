@@ -239,6 +239,7 @@ class TestsFlextInfraJointModFixedPoint:
         tm.that(console, lacks="ast: apply sed-by-list cascade")
         tm.that(console, lacks="mechanical fixed point verified")
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("option", "value"),
         [
@@ -250,7 +251,6 @@ class TestsFlextInfraJointModFixedPoint:
         ],
     )
     def test_ast_unimplemented_request_fails_before_full_corpus_effects(
-        self,
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],
         option: str,

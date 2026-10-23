@@ -377,8 +377,6 @@ class FlextInfraUtilitiesSemanticDelegations(
             return None
         node = value.get_ast()
         location = FlextInfraUtilitiesRopeRuntimeModules.definition_location(binding)
-        if location is None:
-            return None
         module = location[0]
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
             module
@@ -441,10 +439,9 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
         ):
             return None, ()
-        target_scope = binding.get_object().get_scope()
-        if target_scope is None:
-            msg = "delegation wrapper has no native scope"
-            raise ValueError(msg)
+        target_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            binding.get_object(), "delegation wrapper"
+        ).get_scope()
         descriptor, selected = cls._factory(
             project, target_scope, body[0].value, ancestors=(*ancestors, binding)
         )
@@ -990,10 +987,9 @@ class FlextInfraUtilitiesSemanticDelegations(
             for parameter in signature.type_params
             if isinstance(parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec)
         }
-        native_scope = binding.get_object().get_scope()
-        if native_scope is None:
-            msg = "prototype has no native annotation scope"
-            raise ValueError(msg)
+        native_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            binding.get_object(), "prototype annotation scope"
+        ).get_scope()
         required: list[p.Infra.RopeImportInfo] = []
         relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
         imported = {

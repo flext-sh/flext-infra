@@ -32,6 +32,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
     DEPS: ClassVar[str] = "deps"
+    RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
 
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
@@ -64,6 +65,12 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
             "pyright": ("Pyright", "https://github.com/microsoft/pyright", False, True),
         }),
         FlextInfraConstantsConfig.GateKind.INFRA: MappingProxyType({
+            RUNTIME_INTEGRITY: (
+                "Flext Runtime Integrity",
+                "internal://flext-infra/runtime-integrity",
+                False,
+                False,
+            ),
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",

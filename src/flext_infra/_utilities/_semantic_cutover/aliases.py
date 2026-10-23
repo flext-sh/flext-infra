@@ -189,11 +189,10 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
             return None
         provider, scope = value.get_module(), value.get_scope()
-        origin = None if provider is None else provider.get_resource()
+        origin = provider.get_resource()
         if (
             origin is None
             or Path(origin.real_path).resolve() != path
-            or scope is None
             or scope.get_start() != declaration.lineno
         ):
             message = f"service alias target is not its local declaration: {path}"
@@ -371,64 +370,23 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             consumer_project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 root,
                 path,
-                source_project=workspace.rope_project,
+                source_project=source_project,
             )
             active_modules = cls._consumer_alias_modules(
                 specs_by_module, service_projects, consumer_project
             )
-            import_aliases: MutableMapping[str, MutableMapping[str, str]] = {}
-            attribute_aliases: MutableMapping[t.Pair[str, str], str] = {}
-            qualified_aliases = dict(local_aliases)
-            qualified_aliases.update(
-                (f"{module}.{alias}", target)
-                for module, aliases in active_modules.items()
-                for alias, target in aliases.items()
+            plan = cls._compatibility_alias_plan(
+                path, source, tree, local_aliases, active_modules
             )
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom):
-                    selected = cls._import_from_aliases(node, active_modules)
-                    if selected and node.module is not None:
-                        import_aliases.setdefault(node.module, {}).update(selected)
-                        qualified_aliases.update(
-                            (f"{node.module}.{name}", target)
-                            for name, target in selected.items()
-                        )
-                elif isinstance(node, ast.Import):
-                    attribute_aliases.update(
-                        ((imported.asname or imported.name, alias), target)
-                        for imported in node.names
-                        for alias, target in active_modules.get(
-                            imported.name,
-                            {},
-                        ).items()
-                    )
-            if not qualified_aliases:
+            if plan is None:
                 return source, ()
-            FlextInfraUtilitiesCompatibilityAliasValidation.require_static_compatibility_alias_exports(
-                tree,
-                path,
-                frozenset(local_aliases),
-            )
-            upstream_aliases, preserved_reads = cls._upstream_alias_reads(
-                tree,
-                local_aliases,
-                source,
-            )
             rewritten = cls._rewrite_compatibility_alias_source(
                 source,
-                m.Infra.CompatibilityAliasRewritePlan(
-                    local_aliases=local_aliases,
-                    import_aliases=import_aliases,
-                    attribute_aliases=attribute_aliases,
-                    qualified_aliases=qualified_aliases,
-                    target_bindings=cls._bound_names(tree),
-                    upstream_aliases=upstream_aliases,
-                    preserved_reads=preserved_reads,
-                ),
+                plan,
             )
             if rewritten != source and (
                 path in service_aliases
-                or any(module in service_projects for module in import_aliases)
+                or any(module in service_projects for module in plan.import_aliases)
             ):
                 if consumer_project is None or import_normalizer is None:
                     message = (
@@ -447,15 +405,82 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             FlextInfraUtilitiesCompatibilityAliasValidation.require_zero_compatibility_alias_residue(
                 rewritten,
                 path,
-                qualified_aliases=qualified_aliases,
+                qualified_aliases=plan.qualified_aliases,
                 exported_aliases=frozenset(local_aliases),
             )
             return rewritten, tuple(
                 f"rewired {alias} to {target}"
-                for alias, target in sorted(qualified_aliases.items())
+                for alias, target in sorted(plan.qualified_aliases.items())
             )
 
-        return cls._semantic_edits(cls._editable_sources(sources), rewrite)
+        with cls._semantic_source_project(workspace.rope_project) as source_project:
+            if service_aliases:
+                return cls._semantic_edits(
+                    cls._editable_sources(sources),
+                    rewrite,
+                    source_project=source_project,
+                )
+            return cls._semantic_checked_edits(
+                cls._editable_sources(sources),
+                rewrite,
+                source_project=source_project,
+            )
+
+    @classmethod
+    def _compatibility_alias_plan(
+        cls,
+        path: Path,
+        source: str,
+        tree: ast.Module,
+        local_aliases: t.StrMapping,
+        active_modules: t.MappingKV[str, t.StrMapping],
+    ) -> m.Infra.CompatibilityAliasRewritePlan | None:
+        """Bind one typed alias rewrite intent before executing its CST visitor.
+
+        Returns:
+            The elected rewrite, or no intent when the module has no aliases.
+
+        """
+        import_aliases: MutableMapping[str, MutableMapping[str, str]] = {}
+        attribute_aliases: MutableMapping[t.Pair[str, str], str] = {}
+        qualified_aliases = dict(local_aliases)
+        qualified_aliases.update(
+            (f"{module}.{alias}", target)
+            for module, aliases in active_modules.items()
+            for alias, target in aliases.items()
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                selected = cls._import_from_aliases(node, active_modules)
+                if selected and node.module is not None:
+                    import_aliases.setdefault(node.module, {}).update(selected)
+                    qualified_aliases.update(
+                        (f"{node.module}.{name}", target)
+                        for name, target in selected.items()
+                    )
+            elif isinstance(node, ast.Import):
+                attribute_aliases.update(
+                    ((imported.asname or imported.name, alias), target)
+                    for imported in node.names
+                    for alias, target in active_modules.get(imported.name, {}).items()
+                )
+        if not qualified_aliases:
+            return None
+        FlextInfraUtilitiesCompatibilityAliasValidation.require_static_compatibility_alias_exports(
+            tree, path, frozenset(local_aliases)
+        )
+        upstream_aliases, preserved_reads = cls._upstream_alias_reads(
+            tree, local_aliases, source
+        )
+        return m.Infra.CompatibilityAliasRewritePlan(
+            local_aliases=local_aliases,
+            import_aliases=import_aliases,
+            attribute_aliases=attribute_aliases,
+            qualified_aliases=qualified_aliases,
+            target_bindings=cls._bound_names(tree),
+            upstream_aliases=upstream_aliases,
+            preserved_reads=preserved_reads,
+        )
 
     @staticmethod
     def _service_alias_projects(

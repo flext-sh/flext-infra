@@ -24,13 +24,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
 
     @staticmethod
     @pytest.mark.parametrize("partial_runtime", [False, True])
-    def test_editable_cold_setup_bootstraps_its_own_lock(
+    def test_editable_cold_setup_never_creates_its_own_lock(
         tmp_path: Path,
         editable_supplier: Callable[[Path | None], None],
         partial_runtime: bool,
     ) -> None:
-        """First opt-in provisions an owned runtime without installed Infra."""
-        credential = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
+        """First opt-in requires explicit lock preparation, even for a partial runtime."""
         source = tm.ok(infra.project_context(Path.cwd()))
         root, _ = u.Tests.render_make_environment(
             tmp_path, c.Infra.MakeProfile.STANDALONE, bootstrap=True
@@ -60,36 +59,24 @@ class TestsFlextInfraCodegenMakeUpgrade:
             )
             tm.that(created.outcome.raw_return_code, eq=0, msg=created.stderr)
         tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
+        locks = tuple(root.rglob("*.lock"))
+        before = {path: path.read_bytes() for path in locks}
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["setup"],
                 cwd=root,
                 env={type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(supplier)},
-                private_env={"GITHUB_TOKEN": credential},
             )
         )
         tm.that(
             process.outcome.raw_return_code,
-            eq=0,
+            ne=0,
             msg=process.stdout + process.stderr,
         )
-        tm.ok((environment / "pyvenv.cfg").is_file())
-        tm.ok((resolution / c.Infra.UV_LOCK_FILENAME).is_file())
-        verified = tm.ok(
-            u.Cli.run_raw(
-                [
-                    str(u.Infra.runtime_python(root, runtime_root=root)),
-                    "-m",
-                    "flext_infra",
-                    "workspace",
-                    "verify-environment",
-                    "--repository-root",
-                    str(root),
-                ],
-                cwd=root,
-            )
-        )
-        tm.that(verified.outcome.raw_return_code, eq=0, msg=verified.stderr)
+        tm.that(process.stderr, has="only `make upg` writes uv.lock")
+        tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
+        tm.that({path: path.read_bytes() for path in locks}, eq=before)
+        tm.fail((root / policy.supplier_selection_file).exists())
 
     @staticmethod
     def test_help_parses_before_runtime_provisioning(
@@ -442,7 +429,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that((foreign / "sentinel").read_text(), eq="untouched\n")
         tm.that(tuple((foreign / "bin").iterdir()), eq=())
 
-    def _assert_cold_setup_receipts(self, parent: Path) -> t.Pair[Path, Path]:
+    @staticmethod
+    def _assert_cold_setup_receipts(parent: Path) -> t.Pair[Path, Path]:
         """Require every cold-setup receipt to succeed and the hook to run.
 
         Returns:
@@ -469,8 +457,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(upgrade.stdout, has="upg-hook-ran")
         return (upgrade_source, setup_source)
 
+    @staticmethod
     def _assert_candidate_receipt_prefixes(
-        self,
         parent: Path,
         observed: t.SequenceOf[t.Pair[Path, Path]],
         source: t.Triple[str, str, str],
@@ -484,8 +472,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             tm.ok((environment / "pyvenv.cfg").is_file())
             tm.that(observation.stdout, has=f"candidate-prefix={environment.resolve()}")
 
+    @staticmethod
     def _assert_lock_floor_preserved(
-        self,
         root: Path,
         checkout: Path,
         source: t.Triple[str, str, str],
@@ -717,10 +705,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(halves["PUBLIC"], lacks="direnv exec")
         tm.that(halves["PUBLIC"].split(), eq=halves["PRODUCE"].split())
 
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     def test_setup_holds_no_lock_verdict_and_audit_owns_it(
-        self,
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
@@ -779,6 +767,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that({path: path.read_bytes() for path in locks}, eq=before)
         tm.that(view.read_bytes(), eq=drifted_manifest)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "generated_make_template",
         [c.Infra.MakeProfile.STANDALONE],
@@ -787,7 +776,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.remote
     @pytest.mark.slow
     def test_native_shared_workspace_guard_stops_before_uv_lock(
-        self,
         tmp_path: Path,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -835,10 +823,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.fail(workspace_lock.exists())
 
+    @staticmethod
     @pytest.mark.remote
     @pytest.mark.slow
     def test_failed_member_hook_prevents_containing_root_upgrade(
-        self,
         tmp_path: Path,
         generated_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -968,7 +956,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
             "\t@$(UV_RUN) python -c 'import importlib.metadata; "
             "from pathlib import Path; import tomllib; "
-            'project = tomllib.loads(Path( c.PYPROJECT_FILENAME).read_text())["project"]; '
+            "project = tomllib.loads(Path( "
+            'c.PYPROJECT_FILENAME).read_text())["project"]; '
             'assert importlib.metadata.version(project["name"]) == project["version"]'
             "'\n"
             "\t@printf '%s\\n' 'root-runtime-reconciled'\n",

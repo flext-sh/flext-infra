@@ -1,8 +1,4 @@
-"""Workspace environment sync owner for the public ``infra`` facade.
-
-This is the canonical in-process surface for keeping one workspace's direnv
-activation aligned with the codegen SSOT. ``codegen conform`` exclusively owns
-``.mise.toml`` so environment sync cannot race toolchain publication.
+"""Consume generated direnv files through the existing conformance planner.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,316 +6,143 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, m, r, t, u
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p
 
 
 class FlextInfraWorkspaceEnvironmentMixin:
-    """Generate and sync canonical direnv/mise workspace files."""
+    """Consume the current projection and authorize its native environment."""
 
-    @classmethod
+    @staticmethod
     def sync_environment_files(
-        cls,
         request: m.Infra.WorkspaceEnvironmentSyncRequest,
         *,
-        runner: p.Cli.CommandRunner | None = None,
+        planner: p.Infra.CandidateBootstrapPlanner,
+        runner: p.Cli.CommandRunner,
     ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
-        """Sync one workspace's generated environment files.
+        """Consume the canonical environment without generating or repairing it.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceEnvironmentSyncResult]``.
+            The consumed file and native authorization status, or the original
+            planning, drift, physical-state or process failure.
 
         """
-        repository_root = request.repository_root
-        if not (repository_root / c.PYPROJECT_FILENAME).is_file():
-            result = cls._remove_generated_environment_files(request)
-        else:
-            envrc_result = cls._sync_envrc(request)
-            if envrc_result.failure:
-                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(
-                    envrc_result,
-                )
-            changed = (
-                (repository_root / c.Infra.ENVRC_FILENAME,)
-                if envrc_result.value
-                else ()
+        result_type = r[m.Infra.WorkspaceEnvironmentSyncResult]
+        root = request.repository_root.expanduser().resolve()
+        envrc = root / c.Infra.ENVRC_FILENAME
+        if envrc.is_symlink():
+            return result_type.fail(
+                f"refusing to authorize symlinked environment: {envrc}",
             )
-            result = r[m.Infra.WorkspaceEnvironmentSyncResult].ok(
-                m.Infra.WorkspaceEnvironmentSyncResult(changed_files=changed),
-            )
-        if result.failure:
-            return result
-        allow_result = cls._allow_direnv_if_requested(request, runner=runner)
-        if allow_result.failure:
-            return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(allow_result)
-        return result
-
-    @classmethod
-    def _sync_envrc(
-        cls,
-        request: m.Infra.WorkspaceEnvironmentSyncRequest,
-    ) -> p.Result[bool]:
-        """Write the Python workspace ``.envrc`` without storage routing.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        rendered = cls._render_environment_template(
-            c.Infra.ENVRC_FILENAME, request.repository_root
-        )
-        if rendered.failure:
-            return r[bool].from_failure(rendered)
-        return cls._write_generated_text(
-            request.repository_root / c.Infra.ENVRC_FILENAME,
-            rendered.value,
-            apply=request.apply,
-            force=request.force,
-        )
-
-    @classmethod
-    def _render_environment_template(
-        cls, destination: str, repository_root: Path
-    ) -> p.Result[str]:
-        """Render one SSOT environment template from the toolchain spec.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        template_path = (
-            Path(__file__).resolve().parents[1]
-            / "templates"
-            / config.Infra.codegen.templates.root
-            / "base"
-            / f"{destination}.j2"
-        )
-        inputs = u.Infra.load_codegen_inputs(repository_root)
+        inputs = u.Infra.load_codegen_inputs(root)
         if inputs.failure:
-            return r[str].from_failure(inputs)
-        render_context = m.Infra.EnvrcRenderSpec(
-            toolchain=inputs.value.spec.toolchain,
-            uv_resolution=inputs.value.spec.make.uv_resolution,
-            repository_root_rel=".",
-            environment_path_prepends=(
-                inputs.value.spec.toolchain.environment_path_prepends
+            return result_type.from_failure(inputs)
+        planned = planner.plan_repositories(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.ENVRC,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            ),
+            inputs.value,
+        )
+        if planned.failure:
+            return result_type.from_failure(planned)
+        plan = planned.value
+        if plan.exception is not None:
+            raise plan.exception
+        if plan.issues:
+            return result_type.fail(plan.issues[0].formatted)
+        if tuple(file.path for file in plan.files) != (envrc,):
+            return result_type.fail(
+                f"environment consumption requires one declared projection: {envrc}",
+            )
+        current = u.Infra.codegen_fixed_point(
+            plan.files,
+            subject=f"environment projection {envrc}",
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        file = plan.files[0]
+        if not isinstance(file.before, m.Cli.AtomicFileState):
+            return result_type.fail(f"environment projection is not a file: {envrc}")
+        states = (*inputs.value.sources, *file.source_states, file.before)
+        verified = u.Cli.atomic_verify_binary_file_states(states)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        if request.allow_direnv:
+            allowed = runner.run_raw(
+                (c.Infra.CLI_DIRENV, "allow", str(root)),
+                cwd=root,
+                timeout=c.Infra.TIMEOUT_DEFAULT,
+            )
+            if allowed.failure:
+                return result_type.from_failure(allowed)
+            output = allowed.value
+            if not u.Cli.process_succeeded(output.outcome):
+                return result_type.fail(
+                    f"direnv allow failed for {root}: "
+                    f"{output.stderr.strip() or output.stdout.strip()}",
+                )
+            verified = u.Cli.atomic_verify_binary_file_states(states)
+            if verified.failure:
+                return result_type.from_failure(verified)
+        u.Cli.info(
+            f"environment projection consumed: {envrc}; "
+            f"authorized={request.allow_direnv}",
+        )
+        return result_type.ok(
+            m.Infra.WorkspaceEnvironmentSyncResult(
+                environment_file=envrc,
+                authorized=request.allow_direnv,
             ),
         )
-        return u.Cli.template_render(template_path, render_context)
 
-    @classmethod
-    def _allow_direnv_if_requested(
-        cls,
-        request: m.Infra.WorkspaceEnvironmentSyncRequest,
-        *,
-        runner: p.Cli.CommandRunner | None = None,
-    ) -> p.Result[bool]:
-        """Run ``direnv allow`` for one applied sync that owns the envrc.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        envrc = request.repository_root / c.Infra.ENVRC_FILENAME
-        if not request.apply or not request.allow_direnv or not envrc.is_file():
-            return r[bool].ok(value=False)
-        verified = cls._verify_generated_envrc(envrc)
-        if verified.failure:
-            return verified
-        runner_service = runner or u.Cli
-        result = runner_service.run_raw(
-            (c.Infra.CLI_DIRENV, "allow", str(request.repository_root)),
-            cwd=request.repository_root,
-            timeout=c.Infra.TIMEOUT_DEFAULT,
-        )
-        if result.failure:
-            return r[bool].from_failure(result)
-        output = result.value
-        if not u.Cli.process_succeeded(output.outcome):
-            return r[bool].fail(
-                f"direnv allow failed for {request.repository_root}: "
-                f"{output.stderr.strip() or output.stdout.strip()}",
-            )
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _verify_generated_envrc(cls, envrc: Path) -> p.Result[bool]:
-        """Authenticate the exact rendered owner bytes before native approval.
-
-        Returns:
-            Owned content identity or an explicit refusal to authorize it.
-
-        """
-        if envrc.is_symlink():
-            return r[bool].fail(f"refusing to authorize symlinked environment: {envrc}")
-        rendered = cls._render_environment_template(
-            c.Infra.ENVRC_FILENAME, envrc.parent
-        )
-        if rendered.failure:
-            return r[bool].from_failure(rendered)
-        observed = u.Cli.files_read_text(envrc)
-        if observed.failure:
-            return r[bool].from_failure(observed)
-        if observed.value != rendered.value:
-            return r[bool].fail(
-                f"refusing to authorize environment not produced by its owner: {envrc}",
-            )
-        return r[bool].ok(value=True)
-
-    @classmethod
+    @staticmethod
     def execute_request(
-        cls,
         request: m.Infra.WorkspaceEnvironmentSyncRequest,
         *,
+        synchronize: Callable[
+            [m.Infra.WorkspaceEnvironmentSyncRequest],
+            p.Result[m.Infra.WorkspaceEnvironmentSyncResult],
+        ],
         scope: c.Infra.CodegenConformScope = c.Infra.CodegenConformScope.SELF,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Run a serial sync scope through the public workspace owner.
+        """Consume one declared repository scope through the facade-bound owner.
 
         Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
+            The canonical operation result, with no source-file mutations.
 
         """
 
         def sync_repository(repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
-            result = cls.sync_environment_files(
+            result = synchronize(
                 request.model_copy(
                     update={"repository_root": repository_root},
                 ),
             )
             if result.failure:
                 return r[t.SequenceOf[Path]].from_failure(result)
-            return r[t.SequenceOf[Path]].ok(result.value.changed_files)
+            return r[t.SequenceOf[Path]].ok(())
 
         result = u.Infra.repository_operation_batch(
             request.repository_root,
             scope,
             "sync-environment",
             sync_repository,
-            mutating=request.apply,
+            mutating=request.allow_direnv,
         )
         if result.failure:
             return r[t.Cli.ResultValue].from_failure(result)
         return r[t.Cli.ResultValue].ok(
             tuple(str(path) for path in result.value),
-        )
-
-    @classmethod
-    def _remove_generated_environment_files(
-        cls,
-        request: m.Infra.WorkspaceEnvironmentSyncRequest,
-    ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
-        """Remove generated environment files from non-Python workspaces.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceEnvironmentSyncResult]``.
-
-        """
-        removed: list[Path] = []
-        for filename in c.Infra.WORKSPACE_ENV_FILES:
-            target_path = request.repository_root / filename
-            result = cls._remove_generated_environment_file(
-                target_path,
-                apply=request.apply,
-            )
-            if result.failure:
-                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(result)
-            if result.value:
-                removed.append(target_path)
-        return r[m.Infra.WorkspaceEnvironmentSyncResult].ok(
-            m.Infra.WorkspaceEnvironmentSyncResult(changed_files=tuple(removed)),
-        )
-
-    @classmethod
-    def _remove_generated_environment_file(
-        cls,
-        target_path: Path,
-        *,
-        apply: bool,
-    ) -> p.Result[bool]:
-        """Remove one generated environment file without touching custom files.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if not target_path.exists():
-            return r[bool].ok(value=False)
-        read = u.Cli.files_read_text(target_path)
-        if read.failure:
-            return r[bool].from_failure(read)
-        if not cls._is_generated_environment_text(read.value):
-            return r[bool].ok(value=False)
-        if not apply:
-            return r[bool].ok(value=True)
-        delete_result = u.Cli.files_delete(target_path)
-        if delete_result.failure:
-            return r[bool].from_failure(delete_result)
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _write_generated_text(
-        cls,
-        target_path: Path,
-        content: str,
-        *,
-        apply: bool,
-        force: bool,
-    ) -> p.Result[bool]:
-        """Write generated content without clobbering custom files.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if target_path.exists():
-            read = u.Cli.files_read_text(target_path)
-            if read.failure:
-                return r[bool].from_failure(read)
-            existing = read.value
-            if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
-                return r[bool].ok(value=False)
-            if not force and not cls._is_generated_environment_text(existing):
-                return r[bool].ok(value=False)
-        return cls._write_text_if_different(target_path, content, apply=apply)
-
-    @staticmethod
-    def _write_text_if_different(
-        target_path: Path,
-        content: str,
-        *,
-        apply: bool,
-    ) -> p.Result[bool]:
-        """Write text when content differs.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if target_path.is_file():
-            read = u.Cli.files_read_text(target_path)
-            if read.failure:
-                return r[bool].from_failure(read)
-            if read.value == content:
-                return r[bool].ok(value=False)
-        if not apply:
-            return r[bool].ok(value=True)
-        return u.Cli.atomic_write_text_file(target_path, content)
-
-    @staticmethod
-    def _is_generated_environment_text(content: str) -> bool:
-        """Return True when content carries a canonical generated marker.
-
-        Returns:
-            True when content carries a canonical generated marker.
-
-        """
-        return any(
-            marker in content for marker in c.Infra.WORKSPACE_ENV_GENERATED_MARKERS
         )
 
 

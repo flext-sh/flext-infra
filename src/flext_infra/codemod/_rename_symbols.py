@@ -697,13 +697,11 @@ class FlextInfraRenameSymbols:
             return ("class", ast.dump(function))
         owner_binding = cls.resolve_member(project, declaration.module_name, owner)
         scope = (
-            owner_binding.get_object().get_scope()
+            u.Infra.require_source_object(owner_binding.get_object(), owner).get_scope()
             if owner_binding is not None
             else module.get_scope()
         )
-        if scope is None or not u.Infra.same_name(
-            binding, scope.get_defined_names().get(name)
-        ):
+        if not u.Infra.same_name(binding, scope.get_defined_names().get(name)):
             msg = (
                 "semantic rename is inherited rather than introduced: "
                 f"{declaration.scope_path}"

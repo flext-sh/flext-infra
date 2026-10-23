@@ -390,7 +390,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                         '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
                         "\t@$(UV_RUN) python -c 'import importlib.metadata, sys; "
                         "from pathlib import Path; import tomllib; "
-                        "project = tomllib.loads(Path( c.PYPROJECT_FILENAME).read_text())"
+                        "project = tomllib.loads(Path( "
+                        "c.PYPROJECT_FILENAME).read_text())"
                         '["project"]; '
                         'assert Path(sys.prefix) == Path("$(RUNTIME_VENV)"); '
                         'assert importlib.metadata.version(project["name"]) == '

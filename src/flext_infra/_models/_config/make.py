@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
@@ -69,6 +68,29 @@ class FlextInfraConfigModelsMake(
 ):
     """Make workflow, verb, CI, and cache specification models."""
 
+    class MakeProjectCheckGateSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One repository-owned native module check in the shared registry."""
+
+        name: Annotated[
+            str, m.Field(pattern=r"^[a-z][a-z0-9-]*$", description="Unique gate ID")
+        ]
+        module: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$",
+                description="Module executed by the selected physical runtime",
+            ),
+        ]
+        arguments: Annotated[
+            t.VariadicTuple[str], m.Field(description="Native module argument tokens")
+        ] = ()
+        integrity: Annotated[
+            bool, m.Field(description="Include this check in quick runtime integrity")
+        ] = False
+        timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Native module check wall-time limit")
+        ] = c.Infra.TIMEOUT_DEFAULT
+
     class RuffCacheSpec(FlextInfraExternalCacheDirectorySpec[str]):
         """External Ruff cache with the declared default environment keys."""
 
@@ -99,6 +121,28 @@ class FlextInfraConfigModelsMake(
             Path,
             m.Field(
                 description="Runtime-root-relative opt-in supplier resolution directory"
+            ),
+        ]
+        supplier_selection_file: Annotated[
+            Path,
+            m.Field(description="Runtime-local persisted editable supplier selection"),
+        ]
+        bootstrap_artifact: Annotated[
+            Path,
+            m.Field(
+                description="Catalog destination of the cold setup admission resource"
+            ),
+        ]
+        control_distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Distribution authenticated before lifecycle execution"
+            ),
+        ]
+        control_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Native import module of the lifecycle control producer"
             ),
         ]
         hosted_variable: Annotated[
@@ -145,6 +189,15 @@ class FlextInfraConfigModelsMake(
                     raise ValueError(msg)
             if len(set(directories)) != len(directories):
                 msg = "UV resolution views must use distinct directories"
+                raise ValueError(msg)
+            for path in (self.supplier_selection_file, self.bootstrap_artifact):
+                if path.is_absolute() or ".." in path.parts or not path.parts:
+                    msg = (
+                        f"Setup admission paths must be nonempty relative paths: {path}"
+                    )
+                    raise ValueError(msg)
+            if not all(part.isidentifier() for part in self.control_module.split(".")):
+                msg = "Setup control module must be a native qualified module name"
                 raise ValueError(msg)
             return self
 
@@ -791,6 +844,17 @@ class FlextInfraConfigModelsMake(
             Path,
             m.Field(description="Repository-relative immutable execution receipts"),
         ] = Path(".reports/gates")
+        generation_profile_path: Annotated[
+            Path,
+            m.Field(description="Repository-relative canonical generation profile"),
+        ]
+        check_report_output_environment_variable: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description="Invocation-owned checker report destination transport",
+            ),
+        ]
         testmon_cache_policy: Annotated[
             FlextInfraConfigModelsMake.TestmonCachePolicySpec,
             m.Field(
@@ -856,31 +920,15 @@ class FlextInfraConfigModelsMake(
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeProjectCheckGateSpec],
             m.Field(
                 default=(),
                 description=(
-                    "Check gates this project implements itself, unioned into "
-                    "the built-in vocabulary. Without this seam the vocabulary "
-                    "is a closed Final tuple, so a project that ships a working "
-                    "`_custom_check_<gate>` handler still cannot reach it "
-                    "through `make check`: the gate is rejected as unknown. A "
-                    "gate that can never run is not a gate, which is how "
-                    "references, agents, census and waza ended up outside the "
-                    "gate matrix in consuming repositories. Each id must have a "
-                    "`_custom_check_<id>` handler in the project's "
-                    f"{c.Infra.CUSTOM_MAKE_FILENAME}."
+                    "Repository-owned native module checks, executed once by "
+                    "the same registry and physical-runtime runner as built-ins"
                 ),
             ),
         ] = ()
-        standalone_check_gates: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Public Make verb to checker gate mapping outside make check"
-                ),
-            ),
-        ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
@@ -895,11 +943,12 @@ class FlextInfraConfigModelsMake(
                     opt_in_check_gates name unknown gates.
 
             """
-            if len(set(self.project_check_gates)) != len(self.project_check_gates):
+            names = tuple(gate.name for gate in self.project_check_gates)
+            if len(set(names)) != len(names):
                 msg = "make project_check_gates must be unique"
                 raise ValueError(msg)
             builtin = set(c.Infra.CANONICAL_GATE_IDS)
-            shadowed = sorted(set(self.project_check_gates) & builtin)
+            shadowed = sorted(set(names) & builtin)
             if shadowed:
                 msg = (
                     "make project_check_gates shadow built-in gates: "
@@ -932,14 +981,10 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If make public verb names must be unique; or if make
-                    standalone_check_gates names undeclared verbs; or if make
-                    standalone_check_gates requires verbs in every profile; or if make
-                    standalone_check_gates names unknown gates; or if make
-                    standalone_check_gates must route each gate once; or if make
                     workflow verbs must be unique; or if make workflow verbs are not
                     declared public verbs; or if make workflow verbs must exist in every
                     profile; or if make fmt gates are not declared gate vocabulary; or
-                    if make docs verb must be declared; or if make docs reports_dir must
+                    if make docs reports_dir must
                     be repository-relative.
 
             """
@@ -962,7 +1007,6 @@ class FlextInfraConfigModelsMake(
                     "in every profile"
                 )
                 raise ValueError(msg)
-            self._validate_standalone_gates(declared)
             # Why (hq-36xk, flext-lq86m): the guard that lived here read
             # `if "setup" in serialized` and protected `make setup` from being
             # placed in the serialized mutation set, so it could never require
@@ -974,60 +1018,14 @@ class FlextInfraConfigModelsMake(
             # valid configuration and `flext_infra.config` could not be built at
             # all. The serialized set no longer exists; the guard has no object.
             self._validate_workflow(declared, admissible)
-            self._validate_docs_verb(declared)
+            self._validate_docs_policy()
             return self
-
-        def _validate_standalone_gates(self, declared: set[str]) -> None:
-            """Validate the standalone check-gate routing against declared verbs.
-
-            Raises:
-                ValueError: If make standalone_check_gates names undeclared verbs; or
-                    if make standalone_check_gates requires verbs in every profile; or
-                    if make standalone_check_gates names unknown gates; or if make
-                    standalone_check_gates must route each gate once.
-
-            """
-            unknown_standalone_verbs = sorted(
-                set(self.standalone_check_gates) - declared,
-            )
-            if unknown_standalone_verbs:
-                msg = (
-                    "make standalone_check_gates names undeclared verbs: "
-                    f"{', '.join(unknown_standalone_verbs)}"
-                )
-                raise ValueError(msg)
-            partial_standalone = sorted(
-                verb.name
-                for verb in self.verbs
-                if verb.name in self.standalone_check_gates
-                and set(verb.profiles) != set(FlextInfraConstantsConfig.MakeProfile)
-            )
-            if partial_standalone:
-                msg = (
-                    "make standalone_check_gates requires verbs in every profile: "
-                    f"{', '.join(partial_standalone)}"
-                )
-                raise ValueError(msg)
-            unknown_standalone_gates = sorted(
-                set(self.standalone_check_gates.values())
-                - set(self.check_gates_allowed),
-            )
-            if unknown_standalone_gates:
-                msg = (
-                    "make standalone_check_gates names unknown gates: "
-                    f"{', '.join(unknown_standalone_gates)}"
-                )
-                raise ValueError(msg)
-            standalone_gates = tuple(self.standalone_check_gates.values())
-            if len(standalone_gates) != len(set(standalone_gates)):
-                msg = "make standalone_check_gates must route each gate once"
-                raise ValueError(msg)
 
         def _validate_workflow(self, declared: set[str], admissible: set[str]) -> None:
             """Validate the workflow verbs against the declared public verbs.
 
-            CI provisions first and verifies a clean tree last. Configured phases
-            may surround the ordered audit, integrity, and test milestones.
+            CI provisions first and runs the read-only check and complete test
+            owners in order. Hooks consume those same workflow declarations.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
@@ -1063,8 +1061,7 @@ class FlextInfraConfigModelsMake(
             partial_workflow = sorted(
                 verb.name
                 for verb in self.verbs
-                if verb.name in {*workflow_verbs, "pre-commit"}
-                and verb.name not in admissible
+                if verb.name in workflow_verbs and verb.name not in admissible
             )
             if partial_workflow:
                 msg = (
@@ -1073,35 +1070,29 @@ class FlextInfraConfigModelsMake(
                 )
                 raise ValueError(msg)
             approval = self.approval_verbs
-            milestones = (
-                "audit",
-                c.Infra.VERB_CHECK,
-                c.Infra.VERB_TEST,
-            )
+            milestones = (c.Infra.VERB_CHECK, c.Infra.VERB_TEST)
             if (
                 approval[:1] != ("setup",)
-                or approval[-1:] != ("verify-clean",)
+                or approval[-1:] != (c.Infra.VERB_TEST,)
                 or tuple(verb for verb in approval if verb in milestones) != milestones
             ):
-                msg = "CI requires the setup/audit/check/test/verify-clean workflow"
+                msg = (
+                    "CI requires setup followed by the check and complete tests owners"
+                )
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != milestones[1:]:
-                msg = "the pre-commit hook requires the CI check and test workflow"
-                raise ValueError(msg)
-            if "pre-commit" not in declared:
-                msg = "make pre-commit must be declared in every profile"
+            if hook != milestones:
+                msg = "the pre-commit hook requires the CI check and tests workflow"
                 raise ValueError(msg)
 
-        def _validate_docs_verb(self, declared: set[str]) -> None:
-            """Validate the docs verb declaration and its report directory.
+        def _validate_docs_policy(self) -> None:
+            """Validate formatter ownership and repository-relative report paths.
 
             Raises:
                 ValueError: If make fmt gates are not declared gate vocabulary; or
-                    if make docs verb must be declared; or if make docs reports_dir
-                    must be repository-relative.
+                    if report paths are empty, absolute or escape the repository.
 
             """
             unknown_fmt_gates = set(self.fmt_gates) - set(
@@ -1113,15 +1104,13 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(sorted(unknown_fmt_gates))}"
                 )
                 raise ValueError(msg)
-            if "docs" not in declared:
-                msg = "make docs verb must be declared"
-                raise ValueError(msg)
-            if (
-                self.docs.reports_dir.is_absolute()
-                or ".." in self.docs.reports_dir.parts
+            for name, path in (
+                ("docs.reports_dir", self.docs.reports_dir),
+                ("generation_profile_path", self.generation_profile_path),
             ):
-                msg = "make docs reports_dir must be repository-relative"
-                raise ValueError(msg)
+                if path.is_absolute() or ".." in path.parts or not path.parts:
+                    msg = f"make {name} must be nonempty and repository-relative"
+                    raise ValueError(msg)
 
         @m.computed_field
         @property
@@ -1145,8 +1134,14 @@ class FlextInfraConfigModelsMake(
 
             """
             return (
-                *c.Infra.CANONICAL_GATE_IDS,
-                *self.project_check_gates,
+                c.Infra.RUNTIME_INTEGRITY,
+                *(gate.name for gate in self.project_check_gates if gate.integrity),
+                *(
+                    gate
+                    for gate in c.Infra.CANONICAL_GATE_IDS
+                    if gate != c.Infra.RUNTIME_INTEGRITY
+                ),
+                *(gate.name for gate in self.project_check_gates if not gate.integrity),
             )
 
         @m.computed_field
@@ -1158,10 +1153,7 @@ class FlextInfraConfigModelsMake(
                 The resulting ``t.VariadicTuple[str]``.
 
             """
-            excluded = frozenset(self.standalone_check_gates.values())
-            return tuple(
-                gate for gate in self.check_gates_allowed if gate not in excluded
-            )
+            return self.check_gates_allowed
 
         @m.computed_field
         @property

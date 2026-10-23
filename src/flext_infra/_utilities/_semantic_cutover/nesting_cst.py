@@ -277,14 +277,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             The complete owned prefix and code line offsets of the first member.
 
         Raises:
-            TypeError: The owning object has no source AST capability.
             ValueError: The elected owner is not a nonempty source class.
 
         """
         module, wrapper = native
-        if not isinstance(owner.pyobject, p.Infra.RopeSourceDefinition):
-            msg = "native nesting owner has no source AST"
-            raise TypeError(msg)
         node = owner.pyobject.get_ast()
         if not isinstance(node, ast.ClassDef) or not node.body:
             msg = "native nesting owner is not a nonempty source class"

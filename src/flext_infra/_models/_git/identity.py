@@ -27,7 +27,10 @@ class FlextInfraModelsGitIdentity:
             Path,
             m.Field(description="Canonical primary worktree root"),
         ]
-        head_oid: Annotated[t.NonEmptyStr, m.Field(description="HEAD commit hex SHA")]
+        head_oid: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="HEAD commit hex SHA, absent for an unborn branch"),
+        ]
         porcelain: Annotated[
             str,
             m.Field(description="Raw git status --porcelain output"),

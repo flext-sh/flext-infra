@@ -213,9 +213,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if scope.get_kind() != c.Infra.RopeScopeKind.FUNCTION:
                 return False
             definition = scope.pyobject
-            if not isinstance(definition, p.Infra.RopeSourceDefinition):
-                msg = "captured native function has no source definition"
-                raise TypeError(msg)
             node = definition.get_ast()
             if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 msg = "captured native function has no function syntax"

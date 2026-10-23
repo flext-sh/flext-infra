@@ -93,7 +93,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             not u.Infra.py_class(target)
             or target.get_module() is not owner
             or binding.get_object() is not target
-            or not isinstance(target, p.Infra.RopeSourceDefinition)
             or target.get_ast() is not declarations[0]
         ):
             return attr_name

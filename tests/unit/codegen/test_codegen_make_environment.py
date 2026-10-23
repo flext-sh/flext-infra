@@ -22,8 +22,8 @@ pytestmark = pytest.mark.slow
 class TestsFlextInfraCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
+    @staticmethod
     def test_credential_rewrite_rejection_never_prints_the_git_key(
-        self,
         tmp_path: Path,
     ) -> None:
         """Native Make refuses a credential-bearing rewrite without exposing it."""
@@ -53,8 +53,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.ok(bool(checked.stderr.strip()))
         tm.that(global_config.read_text(encoding="utf-8"), eq=source)
 
+    @staticmethod
     def test_make_hands_the_selected_credential_to_the_real_mise_child(
-        self,
         tmp_path: Path,
     ) -> None:
         """A public verb hands one selected GitHub credential to a real Mise child.
@@ -109,10 +109,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(process.stdout, has="mise-authenticated")
         tm.that(process.stdout + process.stderr, lacks=credential)
 
+    @staticmethod
     @pytest.mark.parametrize("verb", ["help", "status"])
     @pytest.mark.parametrize("credential", ["", "invalid-test-credential"])
     def test_make_without_gh_auth_stops_at_the_environment_boundary(
-        self,
         tmp_path: Path,
         verb: str,
         credential: str,
@@ -478,8 +478,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.fail(hostile_python.exists())
         tm.fail((project_root.parent / ".venv").exists())
 
+    @staticmethod
     def _assert_lockless_setup_provisions(
-        self,
         project_root: Path,
         active_env: t.StrMapping,
     ) -> None:
@@ -665,8 +665,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         tm.that(self._locks(drifted), eq=drifted_locks)
 
+    @staticmethod
     def _setup_with_cold_storage(
-        self,
         checkout: Path,
         *,
         active_env: t.StrMapping,

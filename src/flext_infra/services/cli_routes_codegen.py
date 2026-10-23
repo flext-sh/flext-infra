@@ -18,7 +18,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenMiseToolchainProof,
     FlextInfraCodegenMiseToolchainRepair,
-    FlextInfraCodegenProjectNew,
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
     FlextInfraCodegenVersionFile,
@@ -64,22 +63,6 @@ def execute_codegen_conform(
     return r[t.Cli.ResultValue].ok(value=True)
 
 
-def execute_codegen_new(
-    command: FlextInfraCodegenProjectNew,
-) -> p.Result[t.Cli.ResultValue]:
-    """Erase the typed project-scaffolding receipt for the declarative CLI route.
-
-    Returns:
-        The scaffolding failure verbatim, or an erased success marker whose
-        static route message is the CLI output.
-
-    """
-    created = infra.codegen_new(command)
-    if created.failure:
-        return r[t.Cli.ResultValue].from_failure(created)
-    return r[t.Cli.ResultValue].ok(value=True)
-
-
 class FlextInfraCodegenRoutes:
     """Own check, codegen, and dependency command routes."""
 
@@ -92,6 +75,12 @@ class FlextInfraCodegenRoutes:
                 help_text="Run workspace quality gates",
                 model_cls=m.Infra.RunCommand,
                 handler=infra.check,
+            ),
+            m.Cli.ResultCommandRoute(
+                name="integrity",
+                help_text="Run the same checker over runtime and project integrity",
+                model_cls=m.Infra.RunCommand,
+                handler=infra.check_integrity,
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-pyrefly-settings",
@@ -141,13 +130,6 @@ class FlextInfraCodegenRoutes:
                 )
                 for route_name, help_text, model_cls, handler, success_message in (
                     (
-                        "new",
-                        "Create a new FLEXT project from the canonical templates",
-                        FlextInfraCodegenProjectNew,
-                        execute_codegen_new,
-                        "project created",
-                    ),
-                    (
                         "init",
                         "Bootstrap the target's own declaration and canonical Makefile",
                         FlextInfraCodegenMakeBootstrap,
@@ -193,13 +175,6 @@ class FlextInfraCodegenRoutes:
                         FlextInfraCodegenPyTyped,
                         FlextInfraCodegenPyTyped.execute,
                         "py-typed markers updated",
-                    ),
-                    (
-                        "pipeline",
-                        "Run full codegen pipeline",
-                        m.Infra.CodegenCommand,
-                        infra.codegen_pipeline,
-                        None,
                     ),
                     (
                         "constants-quality-gate",

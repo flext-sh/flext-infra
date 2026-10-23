@@ -56,6 +56,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         path: Path,
         source: str,
         order: t.VariadicTuple[str],
+        source_project: p.Infra.RopeProject,
     ) -> tuple[Path, set[str], bool] | None:
         """Classify one source into elected utility or declared external modules.
 
@@ -64,7 +65,9 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
             self-utility modules; ``None`` when no module is recorded.
 
         """
-        project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(root, path)
+        project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            root, path, source_project=source_project
+        )
         if project is None:
             return None
         namespace = FlextInfraUtilitiesImportLaw.import_namespace(project, path)
@@ -91,11 +94,25 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        with (
+            FlextInfraUtilitiesRopeCore.open_import_project(root) as project,
+            cls._semantic_source_project(project) as source_project,
+        ):
+            return cls._plan_self_facade_sources(root, sources, project, source_project)
+
+    @classmethod
+    def _plan_self_facade_sources(
+        cls,
+        root: Path,
+        sources: t.MappingKV[Path, str],
+        project: p.Infra.RopeProject,
+        source_project: p.Infra.RopeProject,
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         selected: t.MutableMappingKV[Path, set[str]] = {}
         declarations: t.MutableMappingKV[Path, set[str]] = {}
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         for path, source in sources.items():
-            classified = cls._classify_source(root, path, source, order)
+            classified = cls._classify_source(root, path, source, order, source_project)
             if classified is None:
                 continue
             resolved, modules, elected = classified
@@ -146,6 +163,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                     declaration_imports=eligible,
                 ),
                 native_project=project,
+                source_project=source_project,
             )
             for node in ast.parse(updated, filename=str(path)).body:
                 if (
@@ -162,15 +180,15 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                     raise ValueError(msg)
             return updated, changes
 
-        with FlextInfraUtilitiesRopeCore.open_import_project(root) as project:
-            return cls._semantic_edits(
-                tuple(
-                    item
-                    for item in cls._editable_sources(sources)
-                    if item[0] in selected or item[0] in declarations
-                ),
-                rewrite,
-            )
+        return cls._semantic_edits(
+            tuple(
+                item
+                for item in cls._editable_sources(sources)
+                if item[0] in selected or item[0] in declarations
+            ),
+            rewrite,
+            source_project=source_project,
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverSelfFacade"]

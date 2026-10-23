@@ -284,10 +284,10 @@ class TestsFlextInfraBatchReplacements:
         tm.that(report.findings, eq=1)
         tm.that(path.read_bytes(), eq=original)
 
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("selected", [False, True])
     def test_generator_evidence_never_blocks_authored_rewrites(
-        self,
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],
         *,

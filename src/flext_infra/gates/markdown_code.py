@@ -442,9 +442,13 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
+        Raises:
+            ValueError: If the context does not request a mutating operation.
+
         """
         if ctx.check_only or not ctx.apply_fixes:
-            return self._check_only_fix_result(project_dir, ctx)
+            msg = "repair requires apply_fixes=True and check_only=False"
+            raise ValueError(msg)
         started = time.monotonic()
         with self._mutation_lease(project_dir):
             ran, passed, issues = self._run_extracted(project_dir, fix=True)

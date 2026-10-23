@@ -144,7 +144,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             return binding
         declaration, lexical = alias
         module = lexical.pyobject.get_module()
-        if module is None or (module.get_name(), declaration.lineno) in visiting:
+        if (module.get_name(), declaration.lineno) in visiting:
             return None
         identity = (module.get_name(), declaration.lineno)
         return cls.annotation_origin(

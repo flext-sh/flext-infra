@@ -129,8 +129,8 @@ class FlextInfraMiseArtifactsVerification(
 
         """
         root = root.expanduser().resolve()
-        captured = cls._governing_receipt(root, surface)
         result = r[m.Infra.CodegenPhaseOutcome]
+        captured = cls._governing_receipt(root, surface)
         if captured.failure:
             return result.from_failure(captured)
         report = captured.value.path

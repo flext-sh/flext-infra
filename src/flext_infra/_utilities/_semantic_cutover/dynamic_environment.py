@@ -31,8 +31,10 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from flext_infra import m, p, t
@@ -164,17 +166,12 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
     @classmethod
     def _plan_dynamic_environment(
         cls,
-        root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        selected: frozenset[Path],
         *,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        codegen: m.Infra.CodegenConfigSpec,
-        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
+        source_project: p.Infra.RopeProject,
+        owner_context: Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        selected = {(root / finding.file).resolve() for finding in findings}
-        # Declared distribution, import package, policy: one capture per owner.
-        owner_contexts: dict[Path, t.Triple[str, str, m.Infra.CodegenConfigSpec]] = {}
 
         def rewrite(_path: Path, source: str) -> t.Infra.TransformResult:
             del _path
@@ -193,11 +190,8 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             cls._require_settings_owner(
                 package,
                 sources,
-                source_project=rope_workspace.rope_project,
-                repository_root=root,
-                codegen=codegen,
-                owner_contexts=owner_contexts,
-                dependency_codegen=dependency_codegen,
+                source_project=source_project,
+                owner_context=owner_context,
             )
             for node in ast.walk(tree):
                 if "settings" in cls.bound_identifiers(node) and not (
@@ -233,7 +227,103 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 item for item in cls._editable_sources(sources) if item[0] in selected
             ),
             rewrite,
+            source_project=source_project,
         )
+
+    @classmethod
+    def _settings_owner_contexts(
+        cls,
+        repository_root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+        source_project: p.Infra.RopeProject,
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
+    ) -> Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]]:
+        """Own one phase's metadata elections and their replayable query receipts.
+
+        Returns:
+            A lazy settings-owner election bound to the original source authority.
+
+        """
+        contexts: dict[Path, t.Triple[str, str, m.Infra.CodegenConfigSpec]] = {}
+        receipts: dict[str, m.Infra.CodegenPhaseAnalysis] = {}
+
+        def owner_context(
+            owner_root: Path,
+        ) -> t.Triple[str, str, m.Infra.CodegenConfigSpec]:
+            with FlextInfraUtilitiesRopeCore.cached_source_query(
+                source_project,
+                contexts,
+                owner_root,
+                receipts,
+                str(owner_root),
+            ) as cached:
+                if not cached:
+                    contexts[owner_root] = cls._settings_owner_context(
+                        owner_root,
+                        source_project,
+                        repository_root,
+                        codegen,
+                        dependency_codegen,
+                    )
+            return contexts[owner_root]
+
+        return owner_context
+
+    @staticmethod
+    def _settings_owner_context(
+        owner_root: Path,
+        source_project: p.Infra.RopeProject,
+        repository_root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
+    ) -> t.Triple[str, str, m.Infra.CodegenConfigSpec]:
+        """Read the namespace and validate the exact policy inputs of one owner.
+
+        Returns:
+            The declared distribution, package and original policy by reference.
+
+        Raises:
+            ValueError: A supplied policy belongs to another root or epoch.
+
+        """
+        payload = FlextInfraUtilitiesPyproject.pyproject_payload(
+            owner_root / c.PYPROJECT_FILENAME, source_project=source_project
+        )
+        project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
+            owner_root, payload
+        )
+        package_name = FlextInfraUtilitiesPyproject.project_package_name(
+            owner_root, source_project=source_project
+        )
+        if owner_root == repository_root.resolve():
+            return project_name, package_name, codegen
+        captured = (
+            dependency_codegen.get(owner_root)
+            if dependency_codegen is not None
+            else None
+        )
+        if captured is None:
+            captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                owner_root, source_project=source_project
+            ).unwrap()
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            owner_root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )
+        if tuple(state.path for state in captured.sources) != tuple(
+            dict.fromkeys(layers)
+        ):
+            msg = f"settings owner policy belongs to another root: {owner_root}"
+            raise ValueError(msg)
+        for state in captured.sources:
+            if (
+                source_project.source_state(
+                    state.path, required=state.content is not None
+                )
+                != state
+            ):
+                msg = f"settings owner configuration changed: {state.path}"
+                raise ValueError(msg)
+        return project_name, package_name, captured.spec
 
     @staticmethod
     def _require_settings_owner(
@@ -241,12 +331,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         sources: t.MappingKV[Path, str],
         *,
         source_project: p.Infra.RopeProject,
-        repository_root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
-        owner_contexts: t.MutableMappingKV[
-            Path, t.Triple[str, str, m.Infra.CodegenConfigSpec]
-        ],
-        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
+        owner_context: Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]],
     ) -> None:
         """Require the destination settings API to exist in the source inventory.
 
@@ -266,48 +351,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             if owner_root is None:
                 msg = f"settings source has no declared owning project: {path}"
                 raise ValueError(msg)
-            if owner_root not in owner_contexts:
-                payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-                    owner_root / c.PYPROJECT_FILENAME, source_project=source_project
-                )
-                project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
-                    owner_root, payload
-                )
-                package_name = FlextInfraUtilitiesPyproject.project_package_name(
-                    owner_root, source_project=source_project
-                )
-                if owner_root == repository_root.resolve():
-                    owner_codegen = codegen
-                else:
-                    captured = (
-                        dependency_codegen.get(owner_root)
-                        if dependency_codegen is not None
-                        else None
-                    )
-                    if captured is None:
-                        captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                            owner_root, source_project=source_project
-                        ).unwrap()
-                    layers = FlextInfraConfig.config_layer_paths_for_repository(
-                        owner_root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
-                    )
-                    if tuple(state.path for state in captured.sources) != tuple(
-                        dict.fromkeys(layers)
-                    ):
-                        msg = f"settings owner policy belongs to another root: {owner_root}"
-                        raise ValueError(msg)
-                    for state in captured.sources:
-                        if (
-                            source_project.source_state(
-                                state.path, required=state.content is not None
-                            )
-                            != state
-                        ):
-                            msg = f"settings owner configuration changed: {state.path}"
-                            raise ValueError(msg)
-                    owner_codegen = captured.spec
-                owner_contexts[owner_root] = (project_name, package_name, owner_codegen)
-            project_name, package_name, owner_codegen = owner_contexts[owner_root]
+            project_name, package_name, owner_codegen = owner_context(owner_root)
             if package_name != package:
                 continue
             if (

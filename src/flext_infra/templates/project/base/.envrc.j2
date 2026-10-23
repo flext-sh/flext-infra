@@ -102,6 +102,13 @@ fi
 # Source: template. Load overrides after VENV_DIR and tools are available,
 # before the single resolution election consumes their supplier selection.
 source_env_if_exists .envrc.local
+supplier_selection="${RUNTIME_ROOT}/{{ uv_resolution.supplier_selection_file }}"
+watch_file "${supplier_selection}"
+if [[ ! -v {{ editable_supplier_environment }} && -f "${supplier_selection}" ]]; then
+  IFS= read -r {{ editable_supplier_environment }} < "${supplier_selection}" || return $?
+  export {{ editable_supplier_environment }}
+fi
+unset supplier_selection
 # End SECTION: local overrides
 
 # === SECTION: virtual environment (managed) ===

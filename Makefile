@@ -53,24 +53,6 @@ $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
 .DEFAULT_GOAL := help
 
-# Approval fixes its context before any topology, activation or credential read.
-ifneq ($(filter pre-commit,$(MAKECMDGOALS)),)
-override CI := Y
-export CI
-ifneq ($(strip $(HELP) $(OPTIONS)),)
-$(error Approval cannot run with HELP or OPTIONS)
-endif
-ifneq ($(strip $(foreach flag,n q t,$(findstring $(flag),$(firstword $(MAKEFLAGS))))),)
-$(error Approval requires execution; dry-run, question and touch are forbidden)
-endif
-ifneq ($(strip $(MAKEFILES)),)
-$(error Approval cannot load caller-supplied Makefiles)
-endif
-ifneq ($(filter command line override,$(origin MAKE_COMMAND)),)
-$(error Approval cannot replace the native Make invoker)
-endif
-endif
-
 ifeq ($(strip $(GITHUB_ACTIONS)),true)
 ifneq ($(filter upg _upg% dep propagate,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in hosted CI)
@@ -91,13 +73,6 @@ SETUP_BOOTSTRAP_ONLY := Y
 export SETUP_BOOTSTRAP_ONLY
 endif
 endif
-ifeq ($(filter command line override,$(origin GEN_INIT_ONLY)),)
-ifneq ($(filter initialize,$(MAKECMDGOALS)),)
-GEN_INIT_ONLY := Y
-export GEN_INIT_ONLY
-endif
-endif
-
 # One GitHub credential for every verb (operator 2026-10-03): the first
 # non-empty of the caller's GITHUB_TOKEN, GH_TOKEN, MISE_GITHUB_TOKEN, then the
 # declared credential command when it is installed. Every name gh, uv and mise
@@ -344,7 +319,7 @@ MISE_GLOBAL_CONFIG_FILE="$${MISE_CONFIG_DIR}/config.toml"; \
 MISE_CEILING_PATHS="$$(dirname "$${reader_root}")"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
 reader_mise=mise; \
-case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+case "$(strip $(MAKECMDGOALS))" in (setup) \
 	mise_stage=; \
 	trap 'bootstrap_status=$$?; trap - EXIT; if [ -n "$${mise_stage}" ]; then \
 			if rm -rf "$${mise_stage}"; then :; else \
@@ -441,7 +416,7 @@ case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
 	reader_mise="$${mise_bootstrap_bin}"; \
 ;; esac; \
 uv_requested="$$("$${reader_mise}" -C "$${reader_root}" tool "uv" --requested)"; \
-case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
+case "$(strip $(MAKECMDGOALS))" in (setup) \
 	uv_active="$$("$${reader_mise}" -C "$${reader_root}" tool "uv" --active)"; \
 	uv_installed="$$("$${reader_mise}" -C "$${reader_root}" tool "uv" --installed)"; \
 	uv_present=; \
@@ -467,8 +442,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-docs profile-docs-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-docs profile-docs-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := setup upg gen mod fix fmt check tests help build clean
+BUILTIN_VERBS := setup upg gen mod fix fmt check tests help build clean
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -481,25 +456,9 @@ CUSTOM_DECLARED_TARGETS := $(shell awk '/^[a-z_][a-z0-9_-]*:/ { target=$$1; sub(
 ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
-ifneq ($(filter pre-commit,$(CUSTOM_DECLARED_TARGETS)),)
-$(error Mandatory approval cannot be replaced by custom targets)
-endif
 ifeq ($(APPROVAL_CONTEXT),Y)
-ifneq ($(filter setup gen audit check test verify-clean,$(CUSTOM_DECLARED_TARGETS)),)
+ifneq ($(filter setup gen check tests,$(CUSTOM_DECLARED_TARGETS)),)
 $(error Approval stages cannot be replaced by custom targets)
-endif
-# Wrapper parity: a custom approval-stage hook is legitimate only while it
-# chains the canonical builtin inside its recipe (the host-service harness
-# pattern). A declared hook without the builtin reference is a replacement
-# and stays forbidden.
-ifneq ($(filter _custom-pre-commit,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-pre-commit" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-pre-commit must chain _builtin-pre-commit (wrapper parity; replacements are forbidden))
-endif
 endif
 
 ifneq ($(filter _custom-setup,$(CUSTOM_DECLARED_TARGETS)),)
@@ -522,16 +481,6 @@ $(error Approval stage _custom-gen must chain _builtin-gen (wrapper parity; repl
 endif
 endif
 
-ifneq ($(filter _custom-audit,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-audit" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-audit must chain _builtin-audit (wrapper parity; replacements are forbidden))
-endif
-endif
-
 ifneq ($(filter _custom-check,$(CUSTOM_DECLARED_TARGETS)),)
 override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-check" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
 ifneq ($(.SHELLSTATUS),0)
@@ -542,29 +491,18 @@ $(error Approval stage _custom-check must chain _builtin-check (wrapper parity; 
 endif
 endif
 
-ifneq ($(filter _custom-test,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-test" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
 ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-test must chain _builtin-test (wrapper parity; replacements are forbidden))
-endif
-endif
-
-ifneq ($(filter _custom-verify-clean,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-verify-clean" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-verify-clean must chain _builtin-verify-clean (wrapper parity; replacements are forbidden))
+$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
 endif
 endif
 
 endif
 endif
-DOCS_ACTIONS := generate fix fmt build validate audit
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -647,6 +585,9 @@ endif
 override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
 override UV_LOCAL_PROJECT := $(RUNTIME_ROOT)/.flext/uv/local
 override UV_STANDALONE_PROJECT := $(RUNTIME_ROOT)/.flext/uv/standalone
+override EDITABLE_SUPPLIER_SELECTION := $(RUNTIME_ROOT)/.flext/uv/supplier-root
+FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT ?= $(strip $(file <$(EDITABLE_SUPPLIER_SELECTION)))
+export FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT
 override EDITABLE_SUPPLIER_ACTIVE :=
 ifneq ($(strip $(FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT)),)
 ifneq ($(realpath $(FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT)),$(RUNTIME_ROOT))
@@ -870,10 +811,6 @@ EDITABLE_SUPPLIER_PREFLIGHT = set -eu; \
 .PHONY: _builtin_require_editable_supplier
 _builtin_require_editable_supplier:
 	@$(EDITABLE_SUPPLIER_PREFLIGHT)
-EDITABLE_RESOLUTION_RECIPE = $(EDITABLE_SUPPLIER_PREFLIGHT); \
-	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	bootstrap_infra() { env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT $(UV) run --isolated --frozen --all-groups --project "$$supplier_resolution" --python "$$desired_python" -m flext_infra "$$@"; }; \
-	bootstrap_infra codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	trap 'if [ -n "$${FLEXT_SETUP_CREDENTIAL_STORE:-}" ]; then rm -f "$$FLEXT_SETUP_CREDENTIAL_STORE"; fi' EXIT; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
@@ -891,15 +828,8 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 		exit 2; \
 	fi; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
-	if [ -n "$(EDITABLE_SUPPLIER_ACTIVE)" ]; then \
-		$$credential_env $(UV) lock --check --project "$(UV_PROJECT)" --python "$$desired_python"; \
-	fi; \
 	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
-SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
-	setup_scope="self"; \
-	if [ "$(strip $(GITHUB_ACTIONS))" = "true" ]; then setup_scope=self; fi; \
-	$(PROJECT_FLEXT_INFRA) codegen mise-artifacts --repository-root "$(PROJECT_ROOT)" --config-only --scope "$$setup_scope"; \
-	$(PROJECT_FLEXT_INFRA) workspace sync-environment --repository-root "$(PROJECT_ROOT)" --scope "$$setup_scope" $(if $(filter Y,$(strip $(CI))),--no-allow-direnv)
+SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE)
 
 # Reject borrowed environments before bootstrap, activation or custom hooks.
 # Members may use their containing workspace, never an unrelated checkout.
@@ -939,10 +869,8 @@ ifeq ($(strip $(GITHUB_ACTIONS)),true)
 override UV_SYNC_FLAGS := $(UV_SYNC_FLAGS) --no-editable
 endif
 
-ifeq ($(GEN_INIT_ONLY),)
 # Custom hooks are declared in CI too; load their selected physical Makefile.
 -include $(CUSTOM_MAKEFILE_ESCAPED)
-endif
 ifeq ($(APPROVAL_CONTEXT),Y)
 override CI := Y
 export CI
@@ -974,147 +902,52 @@ endef
 # --check`). Setup never writes it (lock law above).
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
-.PHONY: _builtin_gen_init _builtin_gen_all
+.PHONY: _builtin_gen_all
 
 
-VERB_DESCRIPTION_help := Show the complete selector-free public interface.
+VERB_DESCRIPTION_setup := Install the declared frozen locks, synchronize the physical environment and configure local integrations.
+VERB_ARGUMENTS_setup :=
 
-VERB_DESCRIPTION_setup := Install the declared locks, publish local runtime bindings, and provision hooks.
+VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish their resolution metadata and locks.
+VERB_ARGUMENTS_upg :=
 
-VERB_DESCRIPTION_pre-commit := Approve a commit through the CI check partition and incremental tests with the persistent testmon database.
+VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
+VERB_ARGUMENTS_gen :=
 
-VERB_DESCRIPTION_upg := Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.
+VERB_DESCRIPTION_mod := Transform declared source structure and publish the complete coherent semantic change through the shared engines.
+VERB_ARGUMENTS_mod :=
 
-VERB_DESCRIPTION_upg-sources := Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.
+VERB_DESCRIPTION_fix := Apply declared repairs to authored inputs through their canonical owners.
+VERB_ARGUMENTS_fix :=
 
-VERB_DESCRIPTION_validate-lifecycle := Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
+VERB_DESCRIPTION_fmt := Format authored content through the configured formatters.
+VERB_ARGUMENTS_fmt :=
 
-VERB_DESCRIPTION_build := Build the project distribution artifacts.
+VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
+VERB_ARGUMENTS_check :=
 
-VERB_DESCRIPTION_examples := Run this repository'"'"'s explicitly declared public runtime examples module.
+VERB_DESCRIPTION_tests := Execute the complete applicable suite once with the persistent testmon database.
+VERB_ARGUMENTS_tests :=
 
-VERB_DESCRIPTION_check := Check the configured quality gates and projection conformance without writes.
+VERB_DESCRIPTION_help := Discover the declared public interface without effects.
+VERB_ARGUMENTS_help :=
 
-VERB_DESCRIPTION_check-pyright := Run the complete configured Pyright analysis and retain its native gate receipt.
+VERB_DESCRIPTION_build := Build local distribution and documentation artifacts without publishing them.
+VERB_ARGUMENTS_build :=
 
-VERB_DESCRIPTION_census := Inventory constants, duplicate declarations and placement across every declared first-party project.
+VERB_DESCRIPTION_clean := Remove only declared disposable resources owned by the selected target.
+VERB_ARGUMENTS_clean :=
 
-VERB_DESCRIPTION_census-constants := Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.
-
-VERB_DESCRIPTION_smells := Run the strict code-smell audit as a dedicated gate.
-
-VERB_DESCRIPTION_test := Run incremental tests through the persistent testmon cache.
-
-VERB_DESCRIPTION_tests := Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
-
-VERB_DESCRIPTION_test-full := Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
-
-VERB_DESCRIPTION_test-file := Run one complete declared test file once, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
-
-VERB_DESCRIPTION_file-gate := Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
-
-VERB_DESCRIPTION_profile-test := Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
-
-VERB_DESCRIPTION_profile-test-report := Render the parent pytest profile and the aggregated child profiles from that run.
-
-VERB_DESCRIPTION_profile-docs := Profile the complete configured mutating documentation lifecycle and retain reached phase profiles on native failure.
-
-VERB_DESCRIPTION_profile-docs-report := Render only the latest documentation profiling run, including explicit lifecycle and phase completion states.
-
-VERB_DESCRIPTION_profile-environment := Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
-
-VERB_DESCRIPTION_profile-environment-report := Render the profile retained by the canonical environment provenance guard.
-
-VERB_DESCRIPTION_profile-lanes := Profile the complete read-only workspace lane audit and retain its native failure outcome.
-
-VERB_DESCRIPTION_profile-lanes-report := Render the retained profile of the complete workspace lane audit.
-
-VERB_DESCRIPTION_profile-mod := Profile the canonical mutating codemod lifecycle and retain the profile on failure.
-
-VERB_DESCRIPTION_profile-mod-report := Render the canonical codemod profile from the last profiling invocation.
-
-VERB_DESCRIPTION_profile-mod-rules := Profile the complete read-only rule diagnostic and retain its native failure outcome.
-
-VERB_DESCRIPTION_profile-mod-rules-report := Render the profile of the complete read-only rule diagnostic.
-
-VERB_DESCRIPTION_profile-codemod := Profile the canonical read-only codemod gate for one literal FILE, preserving native findings and interruption evidence.
-
-VERB_DESCRIPTION_profile-codemod-report := Render the retained profile of the canonical read-only codemod gate.
-
-VERB_DESCRIPTION_fmt := Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
-
-VERB_DESCRIPTION_fix := Apply conformance repairs and the configured fixable gates.
-
-VERB_DESCRIPTION_fix-namespace := Apply the canonical namespace enforcer to the selected workspace; the same relocation cascade runs as a callback phase of make mod.
-
-VERB_DESCRIPTION_fix-accessors := Migrate accessor names owned by the rename catalog'"'"'s origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.
-
-VERB_DESCRIPTION_fix-toolchain := Reinstall one explicitly selected declared tool from its current lock, then prove the complete native toolchain.
-
-VERB_DESCRIPTION_audit := Inspect environment, dependency, and workspace ownership health.
-
-VERB_DESCRIPTION_status := Report the resolved runtime and repository state.
-
-VERB_DESCRIPTION_verify-clean := Audit documentation consistency and report the current Git state without rejecting concurrent work or requiring cleanup.
-
-VERB_DESCRIPTION_docs := Generate, fix, format, and check documentation.
-
-VERB_DESCRIPTION_clean := Remove every declared disposable artifact.
-
-VERB_DESCRIPTION_bootstrap-candidate := Bootstrap declared candidate worktrees with this branch-matched generator.
-
-VERB_DESCRIPTION_release-plan := Resolve the release decision through the public protocol.
-
-VERB_DESCRIPTION_release-version := Materialize the planned version.
-
-VERB_DESCRIPTION_release-tag := Tag the verified release commit.
-
-VERB_DESCRIPTION_release-build := Build the release receipt and artifacts.
-
-VERB_DESCRIPTION_publication := Publish only receipt-attested release artifacts.
-
-VERB_DESCRIPTION_gen := Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
-
-VERB_DESCRIPTION_gen-footprint := Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.
-
-VERB_DESCRIPTION_gen-pyproject := Regenerate this project'"'"'s analyzer and dependency metadata through guarded publication.
-
-VERB_DESCRIPTION_gen-editor := Project editor settings, analyzer configuration, and Git ignores without generating Python facades.
-
-VERB_DESCRIPTION_initialize := Bootstrap this target'"'"'s own declaration and canonical Makefile.
-
-VERB_DESCRIPTION_project-new := Create a new project through the canonical scaffold service using explicitly declared identity inputs.
-
-VERB_DESCRIPTION_mod := Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
-
-VERB_DESCRIPTION_mod-types := Apply the declared source type-contract migrations through the native AST fixed point.
-
-VERB_DESCRIPTION_mod-rules := Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.
-
-VERB_DESCRIPTION_mod-text := Apply the declared Sed text rules with exact receipts and guarded publication.
-
-VERB_DESCRIPTION_mod-text-candidate := Apply declared Sed text rules to the configured candidate workspace.
-
-VERB_DESCRIPTION_mod-snapshots := Regenerate the owned ast-grep rule-test snapshots from their tests for a reviewed commit.
-
-VERB_DESCRIPTION_waza := Validate provider-neutral governance semantics with Waza.
-
-VERB_DESCRIPTION_duplication := Run the canonical jscpd duplicate-code gate.
-
-VERB_DESCRIPTION_sonarcloud-sync := Write the SSOT SonarCloud issue exclusions to the server-side project settings (requires SONAR_TOKEN).
-
-VERB_DESCRIPTION_sonarcloud-issues := Read unresolved new-code SonarCloud issues on the published integration branch (requires SONAR_TOKEN).
-
-VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'
+VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'$(if $(strip $(VERB_ARGUMENTS_$(1))),; printf '    Inputs: %s\n' '$(VERB_ARGUMENTS_$(1))')
 # OPTIONS=Y (or HELP=Y) displays a built-in verb's contract without effects:
 # no prerequisite, hook or handler of that verb runs. A script verb keeps its
 # entry, and the promoted dispatcher renders its contract per WHAT.
 VERB_CONTRACT := $(filter 1 TRUE Y YES true y yes True Yes,$(OPTIONS) $(HELP))
 ifeq ($(VERB_CONTRACT),)
-PROFILE_VERBS_PLAIN := gen gen-footprint gen-pyproject gen-editor project-new
+PROFILE_VERBS_PLAIN := gen
 PROFILE_VERBS_DISPATCH := help clean
-PROFILE_VERBS_ACTIVATED := pre-commit upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-docs profile-docs-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs bootstrap-candidate release-plan release-version release-tag release-build publication initialize mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-PROFILE_VERBS_INTERPRETER := profile-environment profile-environment-report status initialize
+PROFILE_VERBS_ACTIVATED := mod fix fmt check tests build
+PROFILE_VERBS_INTERPRETER :=
 PROFILE_VERBS_HOOKED := $(foreach v,$(filter-out $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
 PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED))
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
@@ -1130,7 +963,6 @@ $(PROFILE_VERBS_DISPATCH):
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	$(if $(filter status,$@),@$(GITHUB_AUTH_DIAGNOSTICS))
 	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -1145,8 +977,6 @@ $(addprefix _activated-,$(PROFILE_VERBS_INTERPRETER)): _builtin_require_interpre
 endif
 ifneq ($(strip $(PROFILE_VERBS_ROUTED)),)
 $(addprefix _activated-,$(PROFILE_VERBS_ROUTED)): _activated-%:
-	$(if $(filter status,$*),+@$(SELF_MAKE) _builtin_status_import_observation)
-	$(if $(filter status,$*),+@$(SELF_MAKE) _builtin_require_environment)
 	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-$*,$(call RUN_PUBLIC,$*))
 endif
 
@@ -1161,23 +991,12 @@ setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
 endif
 
-_builtin-pre-commit: _builtin_require_environment
-	+@CI=Y $(SELF_MAKE) check
-	+@CI=Y $(SELF_MAKE) test
-
-# `upg` builds the environment from the locks it writes, so like `setup` it
-# must not require an existing environment, and as the only resolver it must
-# not require a satisfied committed mise.lock either. Its bootstrap half runs
-# `mise lock --bump` first (native resolution; no stage and no prior install),
-# then installs from the fresh lock. The lifecycle verifies native UV ownership
-# before resolving its two physical view locks. Attached members delegate
-# before bootstrap, installation, hooks or lock resolution.
+# Upgrade only resolves dependencies and writes locks. Provisioning belongs
+# to setup and projections belong to gen. Attached members delegate the same
+# operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
-ifeq ($(EDITABLE_SUPPLIER_ACTIVE),)
-upg: TOOL_BOOTSTRAP_RESOLVE := 1
-endif
-upg: _bootstrap_setup_tools
+upg: _builtin_require_workspace
+	+@$(SELF_MAKE) _upg_lifecycle
 else
 upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
@@ -1218,6 +1037,9 @@ _setup_lifecycle:
 .PHONY: _setup_activated
 # Audit owns the final pin, completeness and runtime verdicts after provisioning.
 _setup_activated:
+ifneq ($(strip $(CI)),Y)
+	@direnv allow "$(PROJECT_ROOT)"
+endif
 	@set -eu; \
 	case "$(strip $(CI)): $(CUSTOM_DECLARED_TARGETS) " in \
 		Y:*) ;; \
@@ -1490,13 +1312,9 @@ ifneq ($(MAKECMDGOALS),help)
 	fi
 endif
 
-# Runtime commands authenticate the graph setup provisioned; only setup installs.
-# Generation guards its physical runtime and consumed inputs at publication;
-# the complete installed graph remains the explicit audit's responsibility.
+# Operation prerequisites require only this checkout's physical interpreter.
+# Environment provenance belongs to explicit audit and check operations.
 _builtin_require_environment: _builtin_require_interpreter
-ifneq ($(MAKECMDGOALS),help)
-	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-endif
 
 # === SECTION: setup environment (managed) ===
 # Source: computed (MAKE_PROFILE routing)
@@ -1512,98 +1330,30 @@ _builtin_setup_environment: $(if $(filter true,$(GITHUB_ACTIONS)),,_builtin_setu
 	if [ "$(PROJECT_ROOT)" != "$(RUNTIME_ROOT)" ]; then \
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(RUNTIME_ROOT)/Makefile" setup; \
 	else \
-		if [ -n "$(EDITABLE_SUPPLIER_ACTIVE)" ]; then \
-			printf 'setup: selected live supplier requires native view reconciliation; delegating lock writes to make upg\n'; \
-			$(SELF_MAKE) upg; \
-		fi; \
 		$(SETUP_ENVIRONMENT_RECIPE); \
+		if [ "$(strip $(GITHUB_ACTIONS))" != "true" ]; then \
+			mkdir -p "$$(dirname "$(EDITABLE_SUPPLIER_SELECTION)")"; \
+			selection="$$(mktemp "$(EDITABLE_SUPPLIER_SELECTION).XXXXXX")"; \
+			printf '%s\n' "$(FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT)" > "$$selection"; \
+			mv "$$selection" "$(EDITABLE_SUPPLIER_SELECTION)"; \
+		fi; \
 	fi
 # End SECTION: setup environment
 
-# Upgrade provisions its trusted locked tool closure before its producer runs.
-# The complete setup acceptance follows projection and native lock convergence.
-.PHONY: _upg_install_runtime
-_upg_install_runtime:
-	@$(INSTALL_RUNTIME_RECIPE)
-
-# Resolve both native views before the first install, so the producer that
-# runs the corrective projection is the one the declarations resolve to: a
-# consumer whose lock still pins an older producer (one without the routes
-# this template calls), or that has no view lock yet, upgrades in one run.
-# The corrective projection is then re-locked by _upg_reconcile_locks.
-# Only this elected runtime owner installs the resolved environment. Attached
-# members delegate before bootstrap; this owner also refreshes their own native
-# UV and tool locks for independent setup without installing member runtimes.
-# Reparse a changed dispatcher once; a second change fails the fixed point.
-.PHONY: _upg_lifecycle _upg_converge
-
-_builtin-upg-sources: _builtin_require_environment
-
-	@if [ -z "$(strip $(SOURCE_ROOT))" ]; then \
-		printf 'ERROR[upg-sources]: SOURCE_ROOT is required\n' >&2; \
-		exit 2; \
-	fi
-
-	@if [ -z "$(strip $(SOURCE_URL_PREFIX))" ]; then \
-		printf 'ERROR[upg-sources]: SOURCE_URL_PREFIX is required\n' >&2; \
-		exit 2; \
-	fi
-
-	@if [ -z "$(strip $(SOURCE_REF_FROM))" ]; then \
-		printf 'ERROR[upg-sources]: SOURCE_REF_FROM is required\n' >&2; \
-		exit 2; \
-	fi
-
-	@if [ -z "$(strip $(SOURCE_REF_TO))" ]; then \
-		printf 'ERROR[upg-sources]: SOURCE_REF_TO is required\n' >&2; \
-		exit 2; \
-	fi
-
-	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(SOURCE_ROOT)" \
-		--apply --git-source-url-prefix "$(SOURCE_URL_PREFIX)" \
-		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
-
-_upg_lifecycle: _builtin_setup_submodules
-ifneq ($(EDITABLE_SUPPLIER_ACTIVE),)
-	@$(EDITABLE_RESOLUTION_RECIPE)
-endif
+# Upgrade consumes the generated resolution inputs without installing packages,
+# generating projections, or auditing the running environment.
+.PHONY: _upg_lifecycle
+_upg_lifecycle:
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
-ifneq ($(EDITABLE_SUPPLIER_ACTIVE),)
+ifeq ($(EDITABLE_SUPPLIER_ACTIVE),)
+	@mise -C "$(PROJECT_ROOT)" lock --bump
+endif
 	+@$(SELF_MAKE) _upg_resolve_locks
-	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
-	@$(SELF_MAKE) _upg_reconcile_locks
-	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 	+@$(SELF_MAKE) _upg_refresh_member_locks
 	$(call RUN_PUBLIC_POST,upg)
-else
-	+@$(SELF_MAKE) _upg_resolve_locks
-	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
-	@$(SELF_MAKE) _upg_reconcile_locks
-	@$(SELF_MAKE) _upg_install_runtime
-	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what makefile --scope all
-	+@$(SELF_MAKE) _upg_provision_tools
-	+@$(SELF_MAKE) _upg_refresh_member_locks
-	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
-		--apply --rewrite-constraints --projects .
-	$(call RUN_PUBLIC_PRODUCE,gen)
-	+@$(SELF_MAKE) _upg_converge
-endif
-
-# Reparse the projected dispatcher before resolving the declared native tool
-# locks. Each writable FLEXT member retains its own lock for independent setup;
-# only the elected runtime receives an installation.
-.PHONY: _upg_provision_tools
-_upg_provision_tools:
-	@mise -C "$(PROJECT_ROOT)" lock --bump
-	@mise -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"
 
 # Writable FLEXT members keep their own native locks for independent setup.
 UPG_LOCK_MEMBERS :=
@@ -1625,22 +1375,7 @@ _upg_refresh_member_locks:
 		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/$$member/Makefile" _upg_resolve_locks; \
 	done
 
-# Complete the upgrade against the projections just published. Re-reading the
-# current Makefile selects the new recipes without restarting the upgrade or
-# repeating generation and installation.
-_upg_converge:
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
-	@$(SELF_MAKE) _upg_reconcile_locks
-	+@set -eu; \
-	for member in $(UPG_LOCK_MEMBERS); do \
-		"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/$$member/Makefile" _upg_reconcile_locks; \
-	done
-	@$(SELF_MAKE) _builtin_setup_environment
-	@$(SELF_MAKE) _builtin_require_mise
-	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
-	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
-
-.PHONY: _upg_resolve_locks _upg_reconcile_locks
+.PHONY: _upg_resolve_locks
 _upg_resolve_locks: _builtin_require_upg_lock_owner
 	@set -eu; \
 	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
@@ -1649,23 +1384,6 @@ _upg_resolve_locks: _builtin_require_upg_lock_owner
 		$(UV) lock --project "$$resolution" --python "$$desired_python" $(if $(EDITABLE_SUPPLIER_ACTIVE),,--upgrade --refresh); \
 		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
 	done
-
-_upg_reconcile_locks: _builtin_require_upg_lock_owner
-	@set -eu; \
-	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	for resolution in $(UPG_RESOLUTION_PROJECTS); do \
-		printf 'upg: reconciling UV lock for %s\n' "$$resolution"; \
-		$(UV) lock --project "$$resolution" --python "$$desired_python"; \
-		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
-	done
-
-.PHONY: _upg_activated
-_upg_activated:
-	$(call RUN_PUBLIC_POST,gen)
-	@set -eu; \
-	case " $(CUSTOM_DECLARED_TARGETS) " in \
-		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
-	esac
 
 
 # Gate, fix and build verbs act on this repository only, with one body per verb
@@ -1682,15 +1400,15 @@ _builtin_build_artifacts:
 # An absent CI token runs every active default gate.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
+		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,smells,codemod,layout,direnv"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
 			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"; \
 			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import deps index-declarations layout\n'; \
 		elif [ "$(strip $(CI))" = "N" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
-			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,smells,codemod,layout,direnv"; \
+			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations smells codemod layout direnv\n'; \
 		else \
-			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
+			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations smells codemod layout direnv\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
@@ -1699,263 +1417,8 @@ _builtin_check_all: _builtin_require_environment
 		$(PROJECT_FLEXT_INFRA) workspace capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
 		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 
-_builtin_test_all: _builtin_require_environment
+_builtin_tests_all: _builtin_require_environment
 	@set -eu; \
-	database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
-	case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
-	case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
-	case "$$database" in "$${TMPDIR:-/tmp}"/*|/tmp/*) printf 'ERROR: persistent testmon database must not live under the temporary directory: %s\n' "$$database" >&2; exit 2 ;; esac; \
-	mkdir -p "$$(dirname "$$database")"; \
-	scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"; \
-	case "$$scratch_root" in /*) ;; *) printf 'ERROR: pytest scratch root requires HOME: %s\n' "$$scratch_root" >&2; exit 2 ;; esac; \
-	mkdir -p "$$scratch_root"; \
-	scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"; \
-	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/tmp"; \
-	scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
-	TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
-	export TMPDIR TMP TEMP; \
-	TESTMON_DATAFILE="$$database" $(PYTEST_BOUNDED) $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry
-
-_builtin_test_full_all: _builtin_require_environment
-	@if [ -n "$(strip $(FILE))" ]; then \
-	if [ -z "$(strip $(FILE))" ]; then printf 'ERROR: test-full requires FILE=<repository-relative test file path>\n' >&2; exit 2; fi; \
-	case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative path: %s\n' "$(FILE)" >&2; exit 2 ;; esac; \
-	if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
-	export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
-	fi; \
-	set -eu; \
-	database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
-	case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
-	case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
-	case "$$database" in "$${TMPDIR:-/tmp}"/*|/tmp/*) printf 'ERROR: persistent testmon database must not live under the temporary directory: %s\n' "$$database" >&2; exit 2 ;; esac; \
-	mkdir -p "$$(dirname "$$database")"; \
-	scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"; \
-	case "$$scratch_root" in /*) ;; *) printf 'ERROR: pytest scratch root requires HOME: %s\n' "$$scratch_root" >&2; exit 2 ;; esac; \
-	mkdir -p "$$scratch_root"; \
-	scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"; \
-	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/tmp"; \
-	scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
-	TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
-	export TMPDIR TMP TEMP; \
-	TESTMON_DATAFILE="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry full
-
-_builtin_test_file_all: _builtin_require_environment
-	@if [ -z "$(strip $(FILE))" ]; then printf 'ERROR: test-file requires FILE=<repository-relative test file path>\n' >&2; exit 2; fi; \
-	case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative path: %s\n' "$(FILE)" >&2; exit 2 ;; esac; \
-	if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
-	export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
-	set -eu; \
-	database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
-	case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
-	case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
-	case "$$database" in "$${TMPDIR:-/tmp}"/*|/tmp/*) printf 'ERROR: persistent testmon database must not live under the temporary directory: %s\n' "$$database" >&2; exit 2 ;; esac; \
-	mkdir -p "$$(dirname "$$database")"; \
-	scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"; \
-	case "$$scratch_root" in /*) ;; *) printf 'ERROR: pytest scratch root requires HOME: %s\n' "$$scratch_root" >&2; exit 2 ;; esac; \
-	mkdir -p "$$scratch_root"; \
-	scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"; \
-	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/tmp"; \
-	scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
-	TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
-	export TMPDIR TMP TEMP; \
-	TESTMON_DATAFILE="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry file
-
-# Literal-file selection and verdicts belong to the existing canonical checker.
-# Export the raw Make value instead of interpolating operator input into shell code.
-export FLEXT_FILE_GATE_FILE := $(value FILE)
-_builtin_file_gate_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,format,pyrefly,mypy,pyright,codemod" --file "$$FLEXT_FILE_GATE_FILE"
-
-# Isolate the same read-only codemod gate when diagnosing file-gate preparation.
-_builtin-profile-codemod: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/codemod.pstats" check run \
-		--repository-root "$(PROJECT_ROOT)" --gates codemod \
-		--file "$$FLEXT_FILE_GATE_FILE"
-
-_builtin-profile-codemod-report: _builtin_require_environment
-	@cd "$(PROJECT_ROOT)" || exit $$?; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
-		"$(PROFILE_REPORTS_DIR)/codemod.pstats"
-
-# fmt is format-only (single-pass verb law): ruff formats Python, the
-# fmt_gates formatters run once through the checker's apply mode, and every
-# lint repair belongs to `make fix`. Every repair requires read-only native
-# verification; remaining findings and tool failures both fail the verb.
-_builtin_fmt_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "format,markdown-format" --apply
-	@set -eu; \
-		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
-		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"; \
-			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import deps index-declarations layout\n'; \
-		elif [ "$(strip $(CI))" = "N" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
-			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
-		else \
-			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
-			exit 2; \
-		fi; \
-		$(PROJECT_FLEXT_INFRA) workspace capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
-		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
-
-_builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode apply
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,deps" --apply
-	@set -eu; \
-		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
-		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"; \
-			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import deps index-declarations layout\n'; \
-		elif [ "$(strip $(CI))" = "N" ]; then \
-			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
-			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
-		else \
-			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
-			exit 2; \
-		fi; \
-		$(PROJECT_FLEXT_INFRA) workspace capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
-		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
-
-# SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
-# writes an external service with SONAR_TOKEN from the environment; it belongs
-# to no setup/gen/check/test workflow row and never runs implicitly.
-_builtin_sonarcloud_sync_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-sync --repository-root "$(PROJECT_ROOT)"
-
-# Read the complete unresolved new-code issue set on the published integration
-# branch. This diagnostic never writes SonarCloud settings or issue state.
-_builtin_sonarcloud_issues_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-issues --repository-root "$(PROJECT_ROOT)"
-
-
-_builtin_run_default: _builtin_require_environment
-	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
-
-# Profile the real runtime-census gate through the same installed CLI selected
-# by the root dispatcher. The report stays in this checkout's .reports tree.
-.PHONY: profile-census
-profile-census: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/runtime-census.pstats" check run \
-		--repository-root "$(PROJECT_ROOT)" --gates runtime-census
-
-.PHONY: profile-census-report
-profile-census-report: _builtin_require_environment
-	@$(RUNTIME_PYTHON) -c \
-		'import pstats, sys; pstats.Stats(sys.argv[1]).sort_stats("cumtime").print_stats(35)' \
-		"$(PROFILE_REPORTS_DIR)/runtime-census.pstats"
-
-# Profile the checker process itself while retaining the canonical Mypy gate,
-# its resource limit, native source inventory, and report directory.
-.PHONY: profile-mypy
-profile-mypy: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@export FLEXT_MYPY_PROFILE_OUTPUT="$(PROFILE_REPORTS_DIR)/mypy.pstats"; \
-		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" \
-		--gates mypy
-
-.PHONY: profile-mypy-report
-profile-mypy-report: _builtin_require_environment
-	@$(RUNTIME_PYTHON) -c \
-		'import pstats, sys; pstats.Stats(sys.argv[1]).sort_stats("cumtime").print_stats(50)' \
-		"$(PROFILE_REPORTS_DIR)/mypy.pstats"
-
-# Profile the complete generation operation, including its publication.
-.PHONY: profile-gen
-profile-gen: _builtin_require_interpreter
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@set -eu; \
-	scope=all; \
-	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
-	$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/conform.pstats" codegen generate \
-		--root "$(PROJECT_ROOT)" --scope "$$scope"
-
-.PHONY: profile-gen-report
-profile-gen-report: _builtin_require_environment
-	@$(RUNTIME_PYTHON) -c \
-		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
-		"$(PROFILE_REPORTS_DIR)/conform.pstats"
-
-# Measure the environment guard itself before changing its provenance checks.
-_builtin-profile-environment: _builtin_require_interpreter
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/environment.pstats" workspace verify-environment \
-		--repository-root "$(RUNTIME_ROOT)"
-
-_builtin-profile-environment-report: _builtin_require_interpreter
-	@cd "$(PROJECT_ROOT)" || exit $$?; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
-		"$(PROFILE_REPORTS_DIR)/environment.pstats"
-
-# Measure the same complete lane audit used by the public audit verb.
-_builtin-profile-lanes: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/lanes.pstats" \
-		workspace verify-lanes --repo-root "$(PROJECT_ROOT)"
-
-_builtin-profile-lanes-report: _builtin_require_environment
-	@cd "$(PROJECT_ROOT)" || exit $$?; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
-		"$(PROFILE_REPORTS_DIR)/lanes.pstats"
-
-# Measure the same mutating codemod lifecycle, retaining profiles on failure.
-_builtin-profile-mod: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/mod.pstats" refactor mod \
-		--repository-root "$(PROJECT_ROOT)" --apply
-
-_builtin-profile-mod-report: _builtin_require_environment
-	@cd "$(PROJECT_ROOT)" || exit $$?; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
-		"$(PROFILE_REPORTS_DIR)/mod.pstats"
-
-# Measure the same read-only diagnostic used by the public mod-rules verb.
-_builtin-profile-mod-rules: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
-		"$(PROFILE_REPORTS_DIR)/mod-rules.pstats" refactor ast \
-		--repository-root "$(PROJECT_ROOT)"
-
-_builtin-profile-mod-rules-report: _builtin_require_environment
-	@cd "$(PROJECT_ROOT)" || exit $$?; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
-		"$(PROFILE_REPORTS_DIR)/mod-rules.pstats"
-
-# Profile the cold canonical pytest execution through its thin entrypoint
-# for startup diagnosis: the same persistent testmon database
-# guard and environment as the bounded gate, but deliberately NOT wrapped in
-# PYTEST_BOUNDED. The runner's own deadline still applies. Central collection
-# children also write profiles beside their manifests and print their paths.
-# The parent adapter starts profiling before runner/model/pytest imports; each
-# child runs under a stdlib-only launcher, so pytest imports before any plugin
-# package. The runner binds every child profile to the exact run;
-# reports never combine a parent profile with the mutable latest.txt pointer.
-# Public names come from make.verbs; these targets are the implementations.
-_builtin-profile-test: _builtin_require_environment
-	@mkdir -p "$(PROFILE_REPORTS_DIR)"
-	@if [ -n "$(strip $(FILE))" ]; then \
-		if [ -z "$(strip $(FILE))" ]; then printf 'ERROR: profile-test requires FILE=<repository-relative test file path>\n' >&2; exit 2; fi; \
-case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative path: %s\n' "$(FILE)" >&2; exit 2 ;; esac; \
-if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
-export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
-	else unset FLEXT_PYTEST_TARGET_FILE; fi; \
-	set -eu; \
 database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
 case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
 case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
@@ -1970,75 +1433,18 @@ mkdir -p "$$scratch/tmp"; \
 scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
 TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
-	TESTMON_DATAFILE="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry profile \
-		"$(PROFILE_REPORTS_DIR)/pytest.pstats"
+unset FLEXT_PYTEST_TARGET_FILE; \
+TESTMON_DATAFILE="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry full
 
-_builtin-profile-test-report: _builtin_require_environment
-	@cd "$(PROJECT_ROOT)" || exit $$?; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
-		"$(PROFILE_REPORTS_DIR)/pytest.pstats" "$(PROFILE_REPORTS_DIR)/pytest.pstats.json"
+# fmt is format-only (single-pass verb law): ruff formats Python, the
+# fmt_gates formatters run once through the checker's apply mode, and every
+# lint repair belongs to `make fix`. Every repair requires read-only native
+# verification; remaining findings and tool failures both fail the verb.
+_builtin_fmt_all: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "format,markdown-format" --apply
 
-
-_builtin_status_import_observation: _builtin_require_interpreter
-	@$(RUNTIME_PYTHON) -c 'import json, sys; exec(json.loads(sys.argv[1]))' \
-		'"\nimport importlib\nimport inspect\nimport json\nimport sys\n\ndeclared = json.loads(sys.argv[2])\nnames = tuple(name for name, root in declared)\nprint(f\"runtime-import-observation executable={sys.executable!r} prefix={sys.prefix!r}\", flush=True)\ntry:\n    for name, root in declared:\n        print(f\"runtime-import-declaration module={name!r} source={root!r}\", flush=True)\n        importlib.import_module(name)\nfinally:\n    for name, module in tuple(sys.modules.items()):\n        if not any(name == package or name.startswith(package + \".\") for package in names):\n            continue\n        spec = getattr(module, \"__spec__\", None)\n        print(\n            f\"runtime-import-module name={name!r} \"\n            f\"origin={getattr(spec, \u0027origin\u0027, None)!r} \"\n            f\"file={getattr(module, \u0027__file__\u0027, None)!r} \"\n            f\"path={getattr(module, \u0027__path__\u0027, None)!r} \"\n            f\"cached={getattr(module, \u0027__cached__\u0027, None)!r}\",\n            flush=True,\n        )\n        for symbol, value in tuple(vars(module).items()):\n            function = value.__func__ if inspect.ismethod(value) else value\n            if inspect.isfunction(function):\n                print(\n                    f\"runtime-import-code module={name!r} symbol={symbol!r} \"\n                    f\"co_filename={function.__code__.co_filename!r}\",\n                    flush=True,\n                )\n"' '[["flext_infra", "."]]'
-
-_builtin_status_diagnostics: _builtin_require_environment
-	@$(GITHUB_AUTH_DIAGNOSTICS)
-	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@$(SHELL) -c 'command -v uv'
-	@$(UV) --version
-	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
-		$(UV) pip check --python "$(RUNTIME_VENV)"; \
-	fi
-	@git -C "$(PROJECT_ROOT)" status --short
-
-# `docs` is a docs-only lifecycle; the actions render from make.docs.actions and never
-# depend on the workspace-wide codegen conform — docs actions render their
-# own outputs from the live configuration and sources.
-_builtin_docs_all:
-	@set -eu; \
-	for action in $(DOCS_ACTIONS); do \
-		mode=; \
-		case "$$action" in fix|fmt) mode=--apply ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode --projects .; \
-	done
-
-# The same lifecycle and guarded effects, with one retained profile per phase.
-# Unique run directories and explicit completion markers exclude stale evidence.
-_builtin-profile-docs: _builtin_require_environment
-	@set -eu; \
-	mkdir -p "$(PROFILE_REPORTS_DIR)"; \
-	profile_dir="$$(mktemp -d "$(PROFILE_REPORTS_DIR)/docs.XXXXXX")"; \
-	printf '%s\n' incomplete > "$$profile_dir/status"; \
-	printf '%s\n' $(DOCS_ACTIONS) > "$$profile_dir/actions"; \
-	printf '%s\n' "$$profile_dir" > "$(PROFILE_REPORTS_DIR)/docs.latest"; \
-	printf 'docs profile run=%s\n' "$$profile_dir"; \
-	for action in $(DOCS_ACTIONS); do \
-		mode=; \
-		case "$$action" in fix|fmt) mode=--apply ;; esac; \
-		printf '%s\n' started > "$$profile_dir/$$action.status"; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry "$$profile_dir/$$action.pstats" docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode --projects .; \
-		printf '%s\n' complete > "$$profile_dir/$$action.status"; \
-	done; \
-	printf '%s\n' complete > "$$profile_dir/status"
-
-_builtin-profile-docs-report: _builtin_require_environment
-	@set -eu; \
-	cd "$(PROJECT_ROOT)"; \
-	IFS= read -r profile_dir < "$(PROFILE_REPORTS_DIR)/docs.latest"; \
-	IFS= read -r status < "$$profile_dir/status"; \
-	printf 'docs profile run=%s status=%s\n' "$$profile_dir" "$$status"; \
-	while IFS= read -r action; do \
-		if [ ! -f "$$profile_dir/$$action.status" ]; then \
-			printf 'docs phase=%s status=not-reached\n' "$$action"; \
-			continue; \
-		fi; \
-		IFS= read -r status < "$$profile_dir/$$action.status"; \
-		printf 'docs phase=%s status=%s\n' "$$action" "$$status"; \
-		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry "$$profile_dir/$$action.pstats"; \
-	done < "$$profile_dir/actions"
+_builtin_fix_all: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,deps" --apply
 
 _builtin_clean_generated:
 
@@ -2055,7 +1461,7 @@ _builtin_clean_generated:
 
 
 	@set -eu; \
-	for target in "$(PROJECT_ROOT)/.coverage" "$(PROJECT_ROOT)/flext-infra-codegen-transaction-journal.json.lock"; do \
+	for target in "$(PROJECT_ROOT)/.coverage"; do \
 		if [ -e "$$target" ]; then rm -- "$$target"; \
 		elif [ -L "$$target" ]; then rm -- "$$target"; fi; \
 	done
@@ -2066,96 +1472,11 @@ _builtin_clean_generated:
 		-delete
 
 
-# Release protocol. `plan` derives the next version from merged pull-request
-# titles and guards against any version change made outside the protocol;
-# `version` opens the release pull request; `tag` marks the merged release
-# commit; `build` writes the artifact receipt; `publish` uploads exactly what
-# the receipt attests (INDEX=Y adds the package index).
-_builtin_release_plan: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase plan $(if $(strip $(PR_TITLE)),--pr-title "$(PR_TITLE)")
-
-export FLEXT_LANE_CHECKPOINT_REF := $(value LANE_CHECKPOINT_REF)
-_builtin_release_version: _builtin_require_environment
-	@set -eu; set --; \
-	if [ -n "$$FLEXT_LANE_CHECKPOINT_REF" ]; then \
-		set -- --checkpoint-ref "$$FLEXT_LANE_CHECKPOINT_REF"; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase version --apply "$$@"
-
-_builtin_release_tag: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase tag --apply
-
-_builtin_release_build: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase build --apply
-
-_builtin_release_publish: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
-
-# Generation uses the shared planner and transaction publisher for the declared
-# projections. It never repairs authored declarations or resolves dependencies.
-# Only `upg` resolves and rewrites locks; `fix` owns conformance repairs.
-export KIND
-_builtin_gen_init:
-	@set -eu; set --; \
-	if [ -n "$${KIND-}" ]; then set -- --kind "$$KIND"; fi; \
-	$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" "$$@"
-
-
-# Identity inputs are environment data, never interpolated into shell code.
-
-export FLEXT_NEW_NAME := $(value NAME)
-
-export FLEXT_NEW_KIND := $(value KIND)
-
-export FLEXT_NEW_OUTPUT_ROOT := $(value OUTPUT_ROOT)
-
-export FLEXT_NEW_PROVIDER := $(value PROVIDER)
-
-export FLEXT_NEW_REPOSITORY_URL := $(value REPOSITORY_URL)
-
-export FLEXT_NEW_REPOSITORY_BRANCH := $(value REPOSITORY_BRANCH)
-
-export FLEXT_NEW_FLEXT_REPOSITORY_URL := $(value FLEXT_REPOSITORY_URL)
-
-export FLEXT_NEW_FLEXT_REPOSITORY_REF := $(value FLEXT_REPOSITORY_REF)
-
-export FLEXT_NEW_LICENSE := $(value LICENSE)
-
-export FLEXT_NEW_AUTHOR_NAME := $(value AUTHOR_NAME)
-
-export FLEXT_NEW_AUTHOR_EMAIL := $(value AUTHOR_EMAIL)
-
-export FLEXT_NEW_UPSTREAM := $(value UPSTREAM)
-
-export FLEXT_NEW_FLEXT_SOURCE := $(value FLEXT_SOURCE)
-
-export FLEXT_NEW_YEAR := $(value YEAR)
-
-
-_builtin-project-new: _builtin_require_interpreter
-	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply-changes --name "$$FLEXT_NEW_NAME" --kind "$$FLEXT_NEW_KIND" --output-root "$$FLEXT_NEW_OUTPUT_ROOT" --provider "$$FLEXT_NEW_PROVIDER" --repository-url "$$FLEXT_NEW_REPOSITORY_URL" --repository-branch "$$FLEXT_NEW_REPOSITORY_BRANCH" --flext-repository-url "$$FLEXT_NEW_FLEXT_REPOSITORY_URL" --flext-repository-ref "$$FLEXT_NEW_FLEXT_REPOSITORY_REF" --license "$$FLEXT_NEW_LICENSE" --author-name "$$FLEXT_NEW_AUTHOR_NAME" --author-email "$$FLEXT_NEW_AUTHOR_EMAIL" --upstream "$$FLEXT_NEW_UPSTREAM" --flext-source "$$FLEXT_NEW_FLEXT_SOURCE" --year "$$FLEXT_NEW_YEAR"
-
-
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
-
-_builtin-gen-footprint: _builtin_require_interpreter
-	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)"
-
-_builtin-gen-pyproject: _builtin_require_interpreter
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
-
-_builtin-gen-editor: _builtin_require_interpreter
-	@set -eu; \
-	scope=all; \
-	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
-	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what editor --scope "$$scope"
-
-_builtin-bootstrap-candidate: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen candidate-bootstrap --repository-root "$(PROJECT_ROOT)"
 
 # Structural rewrites use mod; mod-text replays the same declared text phase
 # independently when malformed Python prevents the Rope phases from loading.
@@ -2163,71 +1484,11 @@ _builtin-bootstrap-candidate: _builtin_require_environment
 _builtin_mod_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)" --apply
 
-_builtin-census: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
-		--rules duplicate --rules wrong_tier --rules constant-consumers \
-		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json"
-
-_builtin-census-constants: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor census --repository-root "$(PROJECT_ROOT)" \
-		--families c --rules duplicate --rules wrong_tier --rules constant-consumers \
-		--json-output "$(PROJECT_ROOT)/.reports/constants-census.json" --apply
-
-_builtin_mod_text: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod-text --repository-root "$(PROJECT_ROOT)" --apply
-
-_builtin_mod_text_candidate: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod-text-candidate --repository-root "$(PROJECT_ROOT)" --apply
-
-# `mod` verifies committed rule-test snapshots and never rewrites them; this is
-# the one explicit regeneration, whose diff is reviewed and committed.
-_builtin_mod_snapshots: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod-snapshots --repository-root "$(PROJECT_ROOT)" --apply
-
-# Namespace and accessor migration are the same selector-free refactor surface
-# as `mod`: each public verb owns one fixed rewrite of every resolved consumer.
-# The workspace profile sweeps every namespace-enabled project of the topology
-# (the root repository and each declared member) in one process: the report
-# aggregates per project and one project's findings never stop the sweep. A
-# member profile enforces only itself.
-
-_builtin_fix_namespace: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor namespace-enforce --repository-root "$(PROJECT_ROOT)" --projects . --apply
-
-
-_builtin_fix_accessors: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor accessor-migrate --repository-root "$(PROJECT_ROOT)" --projects . --apply
-
-# Selector-free public verbs map one-to-one to their canonical implementation;
-# each implementation owns one fixed operation.
+# Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts
-_builtin-validate-lifecycle: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace validate-lifecycle --repository-root "$(PROJECT_ROOT)"
-.PHONY: _builtin_require_examples
-_builtin_require_examples:
-
-	@printf '%s\n' 'ERROR: examples: declare repository.examples_module in config/codegen.yaml' >&2; exit 2
-
-
-_builtin-examples: _builtin_require_environment
-
-	@$(SELF_MAKE) _builtin_require_examples
+	@$(PROJECT_FLEXT_INFRA) docs build --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" --projects .
 
 _builtin-check: _builtin_check_all
-_builtin-check-pyright: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace capture-gate --repository-root "$(PROJECT_ROOT)" --gates "pyright"
-_builtin-test: _builtin_test_all
-_builtin-tests: _builtin_test_full_all
-_builtin-test-full: _builtin_test_full_all
-_builtin-test-file: _builtin_test_file_all
-_builtin-file-gate: _builtin_file_gate_all
-_builtin-fmt: _builtin_fmt_all
-_builtin-fix: _builtin_fix_all
-_builtin-fix-namespace: _builtin_fix_namespace
-_builtin-fix-accessors: _builtin_fix_accessors
-_builtin-fix-toolchain:
-	@$(PROJECT_FLEXT_INFRA) codegen mise-repair --repository-root "$(RUNTIME_ROOT)"
-_builtin-audit:
 ifneq ($(CI),Y)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-lanes --repo-root "$(PROJECT_ROOT)"
 endif
@@ -2235,35 +1496,13 @@ endif
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen mise-proof --repository-root "$(RUNTIME_ROOT)" --uv-executable "$$(command -v $(UV))"
-_builtin-status: _builtin_status_diagnostics
-	@$(PROJECT_FLEXT_INFRA) workspace signing-identity --repo-root "$(PROJECT_ROOT)"
-_builtin-verify-clean: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) docs validate --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" --projects .
 	@$(PROJECT_FLEXT_INFRA) docs audit --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" --projects .
 	@$(PROJECT_FLEXT_INFRA) workspace verify-clean --repo-root "$(PROJECT_ROOT)"
-_builtin-docs: _builtin_docs_all
+
+_builtin-tests: _builtin_tests_all
+_builtin-fmt: _builtin_fmt_all
+_builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated
-_builtin-release-plan: _builtin_release_plan
-_builtin-release-version: _builtin_release_version
-_builtin-release-tag: _builtin_release_tag
-_builtin-release-build: _builtin_release_build
-_builtin-publication: _builtin_release_publish
 _builtin-gen: _builtin_gen_all
-_builtin-initialize: _builtin_gen_init
 _builtin-mod: _builtin_mod_apply
-_builtin-mod-types: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor ast --repository-root "$(PROJECT_ROOT)" --rules "bind-typing-adapter-utilities,rewire-cli-json-mapping-adapter,rewire-cli-json-list-adapter,pydantic-field-positional-default,pydantic-unset-private-attribute,codegen-conform-state-request-workspace,codegen-conform-state-workspace-request,codegen-conform-state-request,codegen-conform-state-workspace,codegen-conform-state-workspace-only,codegen-conform-state-ports" --apply
-_builtin-mod-rules: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor ast --repository-root "$(PROJECT_ROOT)"
-_builtin-mod-text: _builtin_mod_text
-_builtin-mod-text-candidate: _builtin_mod_text_candidate
-_builtin-mod-snapshots: _builtin_mod_snapshots
-_builtin-waza:
-	@cd "$(PROJECT_ROOT)" && waza check --no-update-check
-
-_builtin-smells:
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "smells"
-
-_builtin-duplication:
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "duplication"
-_builtin-sonarcloud-sync: _builtin_sonarcloud_sync_all
-_builtin-sonarcloud-issues: _builtin_sonarcloud_issues_all

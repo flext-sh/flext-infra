@@ -1087,7 +1087,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     def _workspace_gitlink_verdict(
         repository: m.Infra.RepositoryRef,
         repository_root: Path,
-        head_oid: str,
+        head_oid: str | None,
     ) -> p.Result[bool]:
         """Require the member HEAD, index and committed gitlink to be identical.
 
@@ -1095,6 +1095,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             The resulting ``p.Result[bool]``.
 
         """
+        if head_oid is None:
+            return r[bool].fail(
+                "workspace member has no committed HEAD for its gitlink: "
+                f"{repository.distribution}",
+            )
         if repository.checkout != c.Infra.CheckoutKind.SUBMODULE:
             return r[bool].fail(
                 "workspace member has no declared gitlink checkout: "

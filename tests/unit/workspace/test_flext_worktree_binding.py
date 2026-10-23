@@ -1,13 +1,9 @@
-"""The explicit binding CLI rebinds a consumer onto one flext checkout.
+"""Editable suppliers retain consumer ownership and native source identities.
 
-An external project declares flext packages by pinned git URL, so it validates
-PUBLISHED code and never the checkout being worked on. Reviewing a cross-project
-change then required publishing first, which is backwards.
-
-The binding is a SESSION override, not a declaration: the consumer's
-``pyproject.toml`` keeps its pins untouched, so nothing local is ever committed
-and canonical setup restores the pinned resolution. Which distributions get
-rebound is derived from the worktree's own manifest, never a hardcoded list.
+The consumer's ``pyproject.toml`` keeps its distributed pins untouched. Runtime-local
+supplier selection elects a separate resolver while preserving the consumer's own
+physical environment. Supplier membership comes from its native manifests, never a
+hardcoded distribution list or a borrowed environment.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,6 +15,8 @@ import sys
 import sysconfig
 from collections.abc import Callable
 from pathlib import Path
+
+import pytest
 
 from flext_infra import config, workspace
 from tests import c, m, tm, u
@@ -75,6 +73,94 @@ class TestsFlextInfraWorktreeBinding:
             == inputs.spec.make.uv_resolution.editable_directory / c.PYPROJECT_FILENAME
         )
         tm.that(artifact.tracking, eq="runtime-local")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "selection_kind",
+        ["supplier", "supplier-alias", "self-alias", "empty", "absent"],
+    )
+    def test_persisted_supplier_elects_editables_without_shell_activation(
+        tmp_path: Path,
+        selection_kind: str,
+    ) -> None:
+        """Python consumes the same persisted selection as setup and activation."""
+        consumer = TestsFlextInfraWorktreeBinding._consumer(tmp_path)
+        supplier = TestsFlextInfraWorktreeBinding._flext_workspace(tmp_path)
+        policy = tm.ok(u.Infra.load_codegen_inputs(consumer)).spec.make.uv_resolution
+        selection = consumer / policy.supplier_selection_file
+        chosen = "" if selection_kind == "empty" else str(supplier)
+        if selection_kind.endswith("alias"):
+            alias = tmp_path / "supplier alias"
+            alias.symlink_to(
+                consumer if selection_kind == "self-alias" else supplier,
+                target_is_directory=True,
+            )
+            chosen = str(alias)
+        if selection_kind != "absent":
+            tm.ok(u.Cli.atomic_write_text_file(selection, f"{chosen}\n"))
+        external = selection_kind in {"supplier", "supplier-alias"}
+        expected_supplier = supplier.resolve(strict=True) if external else None
+        expected_source = f"Path({str(expected_supplier)!r})" if external else "None"
+        expected_resolution = consumer / (
+            policy.editable_directory if external else policy.local_directory
+        )
+        environment = consumer / c.Infra.ENVIRONMENT_DIRECTORY
+        environment_state = environment.stat()
+        protected = (
+            consumer / c.PYPROJECT_FILENAME,
+            environment / "pyvenv.cfg",
+            supplier / c.PYPROJECT_FILENAME,
+            supplier / c.Infra.GITMODULES,
+        )
+        before = tuple(path.read_bytes() for path in protected)
+        output = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-I",
+                    "-c",
+                    (
+                        "from pathlib import Path\n"
+                        "from flext_infra import settings, workspace\n"
+                        "assert settings.Infra.editable_supplier_root is None\n"
+                        f"consumer = Path({str(consumer)!r})\n"
+                        "result = workspace.FlextInfraWorkspaceDetector."
+                        "resolution_context(consumer)\n"
+                        "assert not result.failure, result.error\n"
+                        "selected = result.value\n"
+                        f"assert selected.editable_supplier_root == {expected_source}\n"
+                        "assert selected.environment_path == "
+                        f"Path({str(environment)!r})\n"
+                        "assert selected.runtime_root == consumer.resolve(strict=True)\n"
+                        "assert selected.resolution_root == "
+                        f"Path({str(expected_resolution)!r})\n"
+                    ),
+                ],
+                cwd=tmp_path,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        policy.hosted_variable: "false",
+                        "HOME": str(tmp_path),
+                        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+                    },
+                    inherit_environment=False,
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(tuple(path.read_bytes() for path in protected), eq=before)
+        tm.that(environment.stat().st_ino, eq=environment_state.st_ino)
+        tm.that(environment.stat().st_dev, eq=environment_state.st_dev)
+        tm.that(environment.is_symlink(), eq=False)
+        if selection_kind == "absent":
+            tm.that(selection.exists(), eq=False)
+        else:
+            tm.that(selection.read_bytes(), eq=f"{chosen}\n".encode())
+        if selection_kind.endswith("alias"):
+            tm.that(
+                Path(chosen).resolve(strict=True),
+                eq=consumer if selection_kind == "self-alias" else supplier,
+            )
 
     @staticmethod
     def _consumer(tmp_path: Path) -> Path:

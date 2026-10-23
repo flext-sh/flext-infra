@@ -69,6 +69,20 @@ class FlextInfraWorkspaceCheckReportsMixin:
             lines.append("")
         return "\n".join(lines)
 
+    @staticmethod
+    def _publish_invocation_summary(
+        summary: m.Infra.CheckReportSummary,
+        before: m.Cli.AtomicFileState,
+    ) -> m.Cli.AtomicFileState:
+        """Advance this invocation's exact report target under its existing lease."""
+        with u.Infra.codegen_transaction_lease(before.path, wait_seconds=0):
+            u.Cli.atomic_write_text_file_guarded(
+                before, summary.model_dump_json(round_trip=True) + "\n"
+            ).unwrap()
+            return u.Cli.atomic_read_binary_file_state(
+                before.path, required=True
+            ).unwrap()
+
     @classmethod
     def _generate_sarif(
         cls,
@@ -89,7 +103,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 execution = project.gates.get(gate)
                 if execution is None:
                     continue
-                tool_name, tool_url = c.Infra.SARIF_TOOL_INFO[gate]
+                tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(
+                    gate, (gate, f"internal://project-check/{gate}")
+                )
                 for issue in execution.issues:
                     rule_id = issue.code or gate
                     rules_by_id.setdefault(

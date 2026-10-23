@@ -19,13 +19,13 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportFacades,
-    FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverClassScope,
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -184,8 +184,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         tree: ast.Module,
         policy: m.Infra.NamespaceModulePolicy,
         *,
-        project_name: str,
-        codegen: m.Infra.CodegenConfigSpec,
+        singleton: str | None,
     ) -> frozenset[str]:
         """Preserve policy-owned native aliases and Python's export protocol.
 
@@ -209,9 +208,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             module.source_code,
         )
         aliases: set[str] = set()
-        singleton = FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
-            file_path.name, project_name=project_name, codegen=codegen
-        )
         for node in tree.body:
             target, value = (
                 FlextInfraUtilitiesPrivateImportFacades.assigned_target_value(node)
@@ -444,7 +440,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 for base in ancestry
             ):
                 model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
-                if model is not None and model.get_object() in ancestry:
+                if model.get_object() in ancestry:
                     entities.add(name)
             if (
                 payloads.protocol_declaration(
@@ -505,8 +501,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     @classmethod
     def _class_nesting_definitions(
         cls,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
+        convention: m.Infra.RopeModuleConvention,
         source: str,
         *,
         project: p.Infra.RopeProject,
@@ -520,7 +515,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         """
         planned = r[t.StrMapping]
-        convention = rope_workspace.convention(file_path)
+        file_path = convention.file_path
         if file_path.name == c.Infra.INIT_PY:
             return planned.ok({})
         tree = ast.parse(source, filename=str(file_path))
@@ -609,12 +604,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             file_path,
             tree,
             convention.module_policy,
-            project_name=(
-                convention.project_layout.project_name
-                if convention.project_layout is not None
-                else ""
+            singleton=FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
+                file_path.name,
+                project_name=(
+                    convention.project_layout.project_name
+                    if convention.project_layout is not None
+                    else ""
+                ),
+                codegen=codegen,
             ),
-            codegen=codegen,
         )
         # Collect syntax before admitting canonical native bindings.
         loose = tuple(
@@ -809,7 +807,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 f"{', '.join(sorted(blocked))}",
             )
         owner_node = classes.get(owner)
-        occupied = (
+        occupied: frozenset[str] = (
             frozenset(
                 name for node in owner_node.body for name in cls._scope_bindings(node)
             )
@@ -1365,12 +1363,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     path,
                     final_tree,
                     convention.module_policy,
-                    project_name=(
-                        convention.project_layout.project_name
-                        if convention.project_layout is not None
-                        else ""
+                    singleton=FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
+                        path.name,
+                        project_name=(
+                            convention.project_layout.project_name
+                            if convention.project_layout is not None
+                            else ""
+                        ),
+                        codegen=codegen,
                     ),
-                    codegen=codegen,
                 )
                 outside = tuple(
                     type(node).__name__
@@ -1548,7 +1549,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
         target = owner.get_attribute(site.namespace.name).get_object()
         destinations = [
-            base for base in target.get_superclasses() if base.get_name() == child.name
+            base
+            for base in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                target, site.namespace.name
+            ).get_superclasses()
+            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
+            and base.get_name() == child.name
         ]
         if len(destinations) != 1:
             return
@@ -1594,11 +1600,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 outside the editable inventory, or is already occupied.
 
         """
-        if destination.get_scope() is None:
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(destination):
             msg = "namespace declaration owner has no source scope"
             raise ValueError(msg)
         module = destination.get_module()
-        if module is None or (destination_resource := module.get_resource()) is None:
+        if (destination_resource := module.get_resource()) is None:
             msg = "namespace declaration owner has no module resource"
             raise ValueError(msg)
         destination_path = Path(destination_resource.real_path).resolve()
@@ -1811,8 +1817,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         def definitions_for(item: t.Pair[Path, str]) -> p.Result[t.StrMapping]:
             try:
                 return cls._class_nesting_definitions(
-                    rope_workspace,
-                    *item,
+                    rope_workspace.convention(item[0]),
+                    item[1],
                     project=project,
                     pytest_patterns=pytest_patterns,
                     codegen=codegen,
@@ -1829,8 +1835,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             path: cls._nesting_declaration_destinations(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    project.get_resource(
-                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        project.get_resource(
+                            path.relative_to(Path(project.root.real_path)).as_posix()
+                        ),
+                        path,
                     ),
                 ),
                 definitions,

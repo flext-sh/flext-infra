@@ -28,6 +28,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         Returns:
             The resulting ``t.SequenceOf[m.Infra.DocScope]``.
 
+        Raises:
+            ValueError: If a requested documentation scope does not resolve.
+
         """
         project_by_name = FlextInfraUtilitiesDocsScopeSelectionMixin._project_by_name(
             discovered,
@@ -40,8 +43,10 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
                 project_by_name,
                 output_dir,
             )
-            if scope is not None:
-                scopes.append(scope)
+            if scope is None:
+                msg = f"docs project selector does not resolve: {name}"
+                raise ValueError(msg)
+            scopes.append(scope)
         return tuple(scopes)
 
     @staticmethod

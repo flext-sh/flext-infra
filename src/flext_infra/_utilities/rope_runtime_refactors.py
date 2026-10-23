@@ -406,7 +406,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         if not projects:
             msg = "native rename requires a producer project"
             raise ValueError(msg)
-        producer: p.Infra.RopeSemanticModule = projects[0].get_pymodule(resource)
+        producer = cls.require_semantic_module(projects[0].get_pymodule(resource))
         module_name = producer.get_name()
         changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
         for project in projects:

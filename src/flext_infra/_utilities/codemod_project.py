@@ -1051,26 +1051,11 @@ class FlextInfraUtilitiesCodemodProject(
         if len(condition.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT:
             msg = "isolated-execution requires a module and native invocation producer"
             raise ValueError(msg)
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
         module_name, expression = condition.arg
-        # An unelected provider declares no role for this project. A present
-        # but broken declaration below is an error, never a live fallback.
-        if project.find_module(module_name) is None:
+        producer = cls._execution_producer(project, module_name, expression)
+        if producer is None:
             return False
-        producer = runtime.qualified_name(
-            project, expression, module_name=module_name
-        ).get_object()
-        module = producer.get_module()
-        scope = producer.get_scope()
-        if (
-            not types.py_function(producer)
-            or module is None
-            or scope is None
-            or not types.source_module(module)
-        ):
-            msg = "execution metadata producer is not a native source callable"
-            raise ValueError(msg)
+        module, scope = producer
         resource = module.get_resource()
         if resource is None or Path(resource.real_path) not in sources:
             msg = "execution metadata producer is outside the captured epoch"
@@ -1092,7 +1077,45 @@ class FlextInfraUtilitiesCodemodProject(
                 found = True
         if not found:
             return False
-        imports = ast.walk(ast.parse(sources[source]))
+        return cls._isolated_imports_hold(sources[source])
+
+    @staticmethod
+    def _execution_producer(
+        project: p.Infra.RopeProject, module_name: str, expression: str
+    ) -> t.Pair[p.Infra.RopeSourceModule, p.Infra.RopeScope] | None:
+        """Elect an advertised native invocation producer without a live fallback.
+
+        Returns:
+            Its original module and lexical scope, or no unelected provider.
+
+        Raises:
+            ValueError: An elected producer lacks the required source capabilities.
+
+        """
+        if project.find_module(module_name) is None:
+            return None
+        producer = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, expression, module_name=module_name
+        ).get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(producer):
+            msg = "execution metadata producer is not a native source callable"
+            raise ValueError(msg)
+        module = producer.get_module()
+        scope = producer.get_scope()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            msg = "execution metadata producer is not a native source callable"
+            raise ValueError(msg)
+        return module, scope
+
+    @staticmethod
+    def _isolated_imports_hold(source: str) -> bool:
+        """Prove the selected entrypoint's imports require only the native stdlib.
+
+        Returns:
+            Whether every import satisfies the existing isolated-execution contract.
+
+        """
+        imports = ast.walk(ast.parse(source))
         return all(
             all(
                 alias.name.partition(".")[0] in sys.stdlib_module_names
@@ -1206,9 +1229,6 @@ class FlextInfraUtilitiesCodemodProject(
             )
             raise ValueError(msg)
         declaration = primitive.get_module()
-        if declaration is None:
-            msg = "implementation primitive has no native declaring module"
-            raise ValueError(msg)
         namespace = declaration.get_name().partition(".")[0]
         owners: set[Path] = set()
         visited: set[int] = set()
@@ -1244,9 +1264,11 @@ class FlextInfraUtilitiesCodemodProject(
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
         pending: list[p.Infra.RopePyObject] = []
+        if not (types.py_class(target) or types.py_function(target)):
+            return None
         module = target.get_module()
         scope = target.get_scope()
-        if module is None or scope is None or not types.source_module(module):
+        if not types.source_module(module):
             return None
         resource = module.get_resource()
         if resource is None:

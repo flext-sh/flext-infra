@@ -651,10 +651,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _plan_behavior_consumers(
         cls,
-        root: Path,
         sources: t.MappingKV[Path, str],
         *,
-        native_project: p.Infra.RopeProject | None = None,
+        native_project: p.Infra.RopeProject,
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Resolve removed typing behavior to its unique declared utility owner.
 
@@ -671,11 +671,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             ValueError: If a consumer has no declared project owner.
 
         """
-        if native_project is None:
-            with FlextInfraUtilitiesRopeCore.open_import_project(root) as project:
-                return cls._plan_behavior_consumers(
-                    root, sources, native_project=project
-                )
         typing_directory = (
             FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.TYPINGS_PY
@@ -684,9 +679,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         owners: MutableMapping[Path, MutableMapping[Path, str]] = {}
         for path, source in sources.items():
             owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                Path(native_project.root.real_path),
+                Path(source_project.root.real_path),
                 path,
-                source_project=native_project,
+                source_project=source_project,
             )
             if owner is None:
                 msg = f"behavior consumer project owner is unresolved: {path}"
@@ -732,11 +727,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         declaration_imports=declaration_imports,
                     ),
                     native_project=native_project,
+                    source_project=source_project,
                 )
 
             planned = cls._semantic_edits(
                 cls._editable_sources(owner_sources),
                 rewrite,
+                source_project=source_project,
             )
             if planned.failure:
                 return planned
@@ -836,6 +833,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         request: m.Infra.SemanticBehaviorRewriteRequest,
         *,
         native_project: p.Infra.RopeProject,
+        source_project: p.Infra.RopeProject,
     ) -> t.Infra.TransformResult:
         """Rebind proven imported behavior and compose its semantic import edits.
 
@@ -858,7 +856,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for alias in node.names
         }
         identities.update(elected_imports)
-        model_source = cls._is_model_behavior_source(path, native_project)
+        model_source = cls._is_model_behavior_source(path, source_project)
         obsolete: set[t.Pair[str, str]] = set()
         lineages: MutableMapping[
             t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
@@ -984,7 +982,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
     @staticmethod
     def _is_model_behavior_source(
-        path: Path, native_project: p.Infra.RopeProject | None
+        path: Path, source_project: p.Infra.RopeProject
     ) -> bool:
         """Determine the consumer layer from its authenticated native project owner.
 
@@ -992,12 +990,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             Whether the source is declared in the configured model import layer.
 
         """
-        project_root = (
-            FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                Path(native_project.root.real_path), path
-            )
-            if native_project is not None
-            else None
+        project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            Path(source_project.root.real_path), path, source_project=source_project
         )
         located = (
             FlextInfraUtilitiesImportLaw.import_namespace(project_root, path)
@@ -1149,7 +1143,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         receiver = binding.get_object()
         if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(receiver) or not (
             runtime.same_name(
-                binding, runtime.resolve_symbol(module.get_scope(), local)
+                binding,
+                runtime.resolve_symbol(
+                    module.get_scope(), ast.Name(id=local, ctx=ast.Load())
+                ),
             )
         ):
             return False
@@ -1161,13 +1158,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         while pending:
             scope = pending.pop()
             pending.extend(scope.get_scopes())
+            owner = scope.pyobject
             if (
                 scope.get_kind() != c.Infra.RopeScopeKind.CLASS
-                or receiver not in scope.pyobject.get_superclasses()
-                or not isinstance(scope.pyobject, p.Infra.RopeSourceDefinition)
+                or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner)
+                or receiver not in owner.get_superclasses()
             ):
                 continue
-            declaration = scope.pyobject.get_ast()
+            declaration = owner.get_ast()
             if not isinstance(declaration, ast.ClassDef):
                 continue
             for base in declaration.bases:
@@ -1177,7 +1175,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 lexical = runtime.scope_at(
                     module, start, declaration_line=declaration.lineno
                 )
-                if runtime.same_name(binding, runtime.resolve_symbol(lexical, base.id)):
+                if runtime.same_name(binding, runtime.resolve_symbol(lexical, base)):
                     bases.add((start, start + len(base.id)))
         return bool(references) and set(references) <= bases
 

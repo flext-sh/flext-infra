@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import inspect
 import sys
+from os.path import commonpath
 from pathlib import Path
 
 import pytest
 
 from flext_infra import FlextInfraConfig, config, infra, settings
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, t, tm, u
 
 
@@ -31,20 +33,22 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             "data_home_environment_variable))"
         )
         current_owner = Path(inspect.getfile(type(settings)))
+        original = tm.ok(
+            u.Cli.atomic_read_binary_file_state(current_owner, required=True)
+        )
         supplier = tm.not_none(u.Infra.project_root(current_owner))
         supplier_name = u.Infra.project_name_from_payload(
             supplier, u.Infra.pyproject_payload(supplier / c.PYPROJECT_FILENAME)
         )
-        project_layer = FlextInfraConfig.config_layer_paths_for_repository(
-            supplier, filename=c.Infra.CODEGEN_CONFIG_FILENAME
-        )[1]
         declared = tm.ok(
             u.Infra.project_codegen_inputs(
                 supplier,
                 tm.ok(u.Infra.load_codegen_inputs(supplier)),
                 projections=(
                     m.Infra.CodegenLayerProjection(
-                        path=project_layer,
+                        path=FlextInfraConfig.config_layer_paths_for_repository(
+                            supplier, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+                        )[1],
                         values={
                             "Infra": {
                                 "codegen": {
@@ -72,7 +76,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                 "def read_value():\n"
                 f"    return {access}\n"
             ),
-            owner: current_owner.read_text(encoding="utf-8"),
+            owner: tm.not_none(original.content).decode(c.DEFAULT_ENCODING),
         }
         before = tm.ok(u.Cli.atomic_read_binary_file_state(owner, required=False))
         if declared_owner_present:
@@ -99,35 +103,68 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                         supplier: tm.ok(u.Infra.load_codegen_inputs(root))
                     },
                 )
-            with rope.rope_project.source_consumption() as consumption:
-                edits = tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
-                        rope_workspace=rope,
-                        sources=sources,
-                        findings=(self._finding(path.relative_to(root), access),),
-                        dependency_codegen={supplier: declared},
+            with (
+                u.Infra.facade_source_project(
+                    Path(commonpath((root, supplier))),
+                    source_options=m.Infra.StageSourceOptions(
+                        inputs=(
+                            original,
+                            *declared.sources,
+                            tm.ok(
+                                u.Cli.atomic_read_binary_file_state(
+                                    supplier / c.PYPROJECT_FILENAME, required=True
+                                )
+                            ),
+                        ),
+                    ),
+                    planned_sources=sources,
+                    project_roots=(root, supplier),
+                ) as (project, _, _),
+                FlextInfraRopeWorkspace.open_workspace(
+                    root,
+                    rope_repository_root=Path(project.root.real_path),
+                    source_project=project,
+                ) as captured,
+            ):
+                with captured.rope_project.source_consumption() as consumption:
+                    tm.that(captured.rope_project.source_text(owner), eq=sources[owner])
+                    tm.that(captured.rope_project.source_query(owner, "isfile"))
+                    edits = tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                            rope_workspace=captured,
+                            sources=sources,
+                            findings=(self._finding(path.relative_to(root), access),),
+                            dependency_codegen={supplier: declared},
+                        )
+                    )
+                inputs = {state.path: state for state in consumption.receipt().inputs}
+                tm.that(inputs[owner], eq=before)
+                tm.that(
+                    any(
+                        directory.root.path == owner.parent
+                        and all(entry.name != owner.name for entry in directory.entries)
+                        for directory in consumption.receipt().source_directories
                     )
                 )
-            inputs = {state.path: state for state in consumption.receipt().inputs}
-            tm.ok(supplier / c.PYPROJECT_FILENAME in inputs)
-            for state in declared.sources:
-                tm.that(inputs[state.path], eq=state)
-            tm.that(len(edits), eq=1)
-            sources[path] = edits[0].updated_source
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
-                        rope_workspace=rope,
-                        sources=sources,
-                        findings=(self._finding(path.relative_to(root), access),),
-                        dependency_codegen={supplier: declared},
-                    )
-                ),
-                eq=(),
-            )
-        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+                tm.ok(supplier / c.PYPROJECT_FILENAME in inputs)
+                for state in declared.sources:
+                    tm.that(inputs[state.path], eq=state)
+                tm.that(len(edits), eq=1)
+                sources[path] = edits[0].updated_source
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                            rope_workspace=captured,
+                            sources=sources,
+                            findings=(self._finding(path.relative_to(root), access),),
+                            dependency_codegen={supplier: declared},
+                        )
+                    ),
+                    eq=(),
+                )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original, before)))
 
     @pytest.mark.parametrize("value", [None, "", "literal value"])
     @pytest.mark.parametrize("required", [False, True])
@@ -218,14 +255,16 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "consumer.py"
         source = f"import os\ndef value(unknown_key: str):\n    return {access}\n"
-        with infra.rope_workspace(root) as rope:
-            result = u.Infra.plan_semantic_cutover(
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=r"typed-config provenance"),
+        ):
+            u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
                 rope_workspace=rope,
                 sources={path: source},
                 findings=(self._finding(path.relative_to(root), access),),
             )
-        tm.fail(result, has="typed-config provenance")
 
     @staticmethod
     def _finding(path: Path, access: str) -> m.Infra.ModOccurrence:

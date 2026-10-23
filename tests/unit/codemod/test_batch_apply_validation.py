@@ -39,7 +39,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 tm.ok(u.Cli.run((sys.executable, str(self.sample))))
                 self.validated = True
 
-        def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+        @staticmethod
+        def emit_rename(report: m.Infra.ApplyRenamesReport) -> None:
             """Accept the public campaign progress contract."""
             _ = report
 

@@ -643,7 +643,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 beads=workspace.beads,
                 project=workspace.project,
                 canonical_project_name=current_repository.distribution,
-                ci_enabled=True,
+                ci_enabled=inputs.spec.repository.ci_enabled,
                 publishes_release=current_repository.publishes_release,
                 gascity_enabled=workspace.gascity_enabled,
                 external_dependency_paths=workspace.external_dependency_paths,
@@ -900,33 +900,35 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             for task, outcome in zip(tasks, lazy, strict=True)
             if not outcome.failed
         }
-        root_task = next(
-            (
-                task
-                for task in ready.values()
-                if selected_pyproject
-                and task.initial_workspace is not None
-                and task.repository.name == task.workspace.repository.name
-            ),
-            None,
+        scaffold_tasks = tuple(
+            task
+            for task in ready.values()
+            if selected_pyproject
+            and task.initial_workspace is not None
+            and task.repository.name == task.initial_workspace.repository.name
         )
         metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
-        if root_task is not None:
-            metadata = plan(
-                root_task.model_copy(
-                    update={
-                        "surface": c.Infra.CodegenConformSurface.PYPROJECT,
-                        "provider_plans": providers,
-                    },
+        if scaffold_tasks:
+            metadata = u.Infra.fleet_map(
+                plan,
+                tuple(
+                    task.model_copy(
+                        update={
+                            "surface": c.Infra.CodegenConformSurface.PYPROJECT,
+                            "provider_plans": providers,
+                        },
+                    )
+                    for task in scaffold_tasks
                 ),
             )
-            if metadata.failed:
-                self._retain_diagnostics(metadata.exception)
-                return self._cohort_failure(metadata, lazy), ()
-            metadata_files = metadata.files
+            failed = next((item for item in metadata if item.failed), None)
+            if failed is not None:
+                self._retain_diagnostics(failed.exception)
+                return self._cohort_failure(failed, lazy), ()
+            metadata_files = tuple(file for item in metadata for file in item.files)
         try:
             manifests, waves = self._planned_dependency_waves(
-                tasks, root_task, metadata_files
+                tasks, scaffold_tasks, metadata_files
             )
         except (OSError, ValueError, TypeError) as exc:
             self._retain_diagnostics(exc)
@@ -954,38 +956,39 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     @staticmethod
     def _planned_dependency_waves(
         tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
-        root_task: m.Infra.CodegenRepositoryPlanTask | None,
+        scaffold_tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
         metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.Pair[
         t.VariadicTuple[m.Infra.CodegenFilePlan],
         t.SequenceOf[t.StrSequence],
     ]:
-        """Select the planned root manifest and derive the dependency waves.
+        """Select each declared scaffold manifest and derive dependency waves.
 
         Returns:
-            The single owned root manifest plan, if any, and the waves.
+            The single owned manifest per scaffold, and the shared waves.
 
         Raises:
-            ValueError: If root metadata has no single owned pyproject plan.
+            ValueError: If a scaffold has no single owned pyproject plan.
 
         """
-        manifests: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
-        if root_task is not None:
-            project = (root_task.root / root_task.repository.path).resolve()
-            manifests = tuple(
+        manifests: list[m.Infra.CodegenFilePlan] = []
+        for task in scaffold_tasks:
+            project = (task.root / task.repository.path).resolve()
+            selected = tuple(
                 file
                 for file in metadata_files
                 if file.project.resolve() == project
                 and file.path.resolve() == project / c.PYPROJECT_FILENAME
                 and file.desired_content is not None
             )
-            if len(manifests) != 1:
-                msg = "root metadata requires exactly one owned pyproject plan"
+            if len(selected) != 1:
+                msg = f"scaffold requires exactly one owned pyproject plan: {project}"
                 raise ValueError(msg)
-        return manifests, u.Infra.workspace_dependency_waves(
+            manifests.extend(selected)
+        return tuple(manifests), u.Infra.workspace_dependency_waves(
             tasks[0].root,
             tuple(task.repository for task in tasks),
-            planned_manifests=manifests,
+            planned_manifests=tuple(manifests),
         )
 
     def _managed_plan_outcomes(
@@ -1153,20 +1156,37 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     f"kind={repository.kind.value} is not rewritten by generation",
                 )
                 continue
+            initial_workspace = self.state.initial_workspace
+            selected_inputs = (
+                inputs if repository.name == current_target.repository.name else None
+            )
+            project_root = (root / repository.path).resolve()
+            if (
+                self.state.generation_only
+                and surface is c.Infra.CodegenConformSurface.ALL
+                and not (project_root / c.PYPROJECT_FILENAME).exists()
+                and repository.name != current_target.repository.name
+            ):
+                captured = u.Infra.load_codegen_inputs(project_root)
+                if captured.failure:
+                    return result_type.from_failure(captured)
+                selected_inputs = captured.value
+                local = self._member_local_workspace(
+                    workspace, repository, project_root, inputs=selected_inputs
+                )
+                if local.failure:
+                    return result_type.from_failure(local)
+                initial_workspace = local.value
             tasks.append(
                 m.Infra.CodegenRepositoryPlanTask(
                     root=root,
                     workspace=workspace,
-                    initial_workspace=self.state.initial_workspace,
+                    initial_workspace=initial_workspace,
                     current_target=current_target,
                     repository=repository,
                     surface=surface,
                     generation_only=self.state.generation_only,
-                    selected_inputs=(
-                        inputs
-                        if repository.name == current_target.repository.name
-                        else None
-                    ),
+                    selected_inputs=selected_inputs,
                 ),
             )
         # Every repository plans independently and read-only, so the fleet
@@ -1336,7 +1356,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
                 if task.initial_workspace is not None
                 and task.initial_workspace.project is not None
-                and repository.name == task.workspace.repository.name
+                and repository.name == task.initial_workspace.repository.name
                 else planner._planned_lazy_init_files(repository_root)
             )
             return m.Infra.CodegenRepositoryPlanOutcome(
@@ -1365,7 +1385,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 scaffold=(
                     task.initial_workspace is not None
                     and task.initial_workspace.project is not None
-                    and repository.name == task.workspace.repository.name
+                    and repository.name == task.initial_workspace.repository.name
                 ),
             )
         if planned.failure:
@@ -1529,14 +1549,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return declared_member
         # The parent owns topology; the member owns its local project metadata.
         return r[m.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(
-                name=repository.name,
-                docs_audit=declared_member.value.docs_audit,
-                beads=workspace.beads,
-                repository=repository.model_copy(update={"path": Path()}),
-                project=declared_member.value.project,
-                namespace_scan_dirs=declared_member.value.namespace_scan_dirs,
-                candidate_dependencies=workspace.candidate_dependencies,
+            declared_member.value.model_copy(
+                update={
+                    "name": repository.name,
+                    "repository": repository.model_copy(update={"path": Path()}),
+                    "candidate_dependencies": workspace.candidate_dependencies,
+                },
             ),
         )
 

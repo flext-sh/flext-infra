@@ -398,7 +398,10 @@ class TestsFlextInfraSemanticPublicationTransactions:
                     (
                         sys.executable,
                         "-c",
-                        f"from {package.name}.consumer import normalize; assert normalize(' live ') == 'live'",
+                        (
+                            f"from {package.name}.consumer import normalize; assert "
+                            f"normalize(' live ') == 'live'"
+                        ),
                     ),
                     cwd=candidate_root,
                     options=m.Cli.ProcessOptions(

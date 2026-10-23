@@ -123,7 +123,6 @@ handlers return their value but do not automatically print it.
 
 ```python
 from flext_cli import FlextCliCli
-from tests import c, r
 from tests import c, m, tm
 
 

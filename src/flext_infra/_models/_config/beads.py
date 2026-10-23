@@ -151,6 +151,8 @@ class FlextInfraConfigModelsBeads:
     class WorkspaceEnvironmentCliRequest(FlextInfraConfigModelsContract.ConfigContract):
         """CLI-safe request for one Python workspace environment sync."""
 
+        model_config = m.ConfigDict(extra="forbid")
+
         repository_root: Annotated[
             Path,
             m.Field(description="Repository root receiving the sync"),
@@ -159,17 +161,9 @@ class FlextInfraConfigModelsBeads:
             c.Infra.CodegenConformScope,
             m.Field(description="Sync this root or all Git-declared repository roots"),
         ] = c.Infra.CodegenConformScope.SELF
-        apply: Annotated[
-            bool,
-            m.Field(description="Write changes instead of reporting them"),
-        ] = True
-        force: Annotated[
-            bool,
-            m.Field(description="Replace custom files with generated content"),
-        ] = False
         allow_direnv: Annotated[
             bool,
-            m.Field(description="Authorize the rendered .envrc after an applied sync"),
+            m.Field(description="Authorize the current generated .envrc with direnv"),
         ] = True
 
     class WorkspaceEnvironmentSyncRequest(
@@ -177,46 +171,31 @@ class FlextInfraConfigModelsBeads:
     ):
         """Validated internal request for one workspace environment sync."""
 
+        model_config = m.ConfigDict(extra="forbid")
+
         repository_root: Annotated[
             Path,
             m.Field(description="Repository root receiving the sync"),
         ]
-        apply: Annotated[
-            bool,
-            m.Field(description="Write changes instead of reporting them"),
-        ] = True
-        force: Annotated[
-            bool,
-            m.Field(description="Replace custom files with generated content"),
-        ] = False
         allow_direnv: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Run `direnv allow` for the workspace after a successful "
-                    "applied sync so managed roots never carry a stale allow"
+                    "Run `direnv allow` after the existing conform planner proves "
+                    "the committed projection matches its current declaration"
                 ),
             ),
         ] = True
 
     class WorkspaceEnvironmentSyncResult(FlextInfraConfigModelsContract.ConfigContract):
-        """Outcome of one workspace environment sync."""
+        """The consumed environment projection and its native authorization."""
 
-        changed_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Environment files created, updated, or removed"),
-        ] = ()
-
-        @m.computed_field
-        @property
-        def changed(self) -> bool:
-            """Whether the sync altered any environment file.
-
-            Returns:
-                The resulting ``bool``.
-
-            """
-            return bool(self.changed_files)
+        environment_file: Annotated[
+            Path, m.Field(description="Existing canonical environment projection")
+        ]
+        authorized: Annotated[
+            bool, m.Field(description="Native direnv authorization completed")
+        ]
 
 
 __all__: list[str] = ["FlextInfraConfigModelsBeads"]

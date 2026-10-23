@@ -113,6 +113,7 @@ class FlextInfraAccessorOriginResolver:
             TypeError: If the defining module has no syntax tree.
 
         """
+        owner = u.Infra.require_class_object(owner, "accessor lineage")
         key = id(owner)
         if key in self._lineages:
             if not self._lineages[key]:
@@ -121,8 +122,8 @@ class FlextInfraAccessorOriginResolver:
             return self._lineages[key]
         self._lineages[key] = ()
         bases = tuple(owner.get_superclasses())
-        scope = owner.get_scope() if u.Infra.py_class(owner) else None
-        if scope is not None:
+        if u.Infra.py_class(owner):
+            scope = owner.get_scope()
             module = owner.get_module()
             if not u.Infra.source_module(module):
                 msg = f"accessor class has no defining module: {owner.get_name()}"
@@ -564,7 +565,6 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If its resource or binding is unavailable.
-            TypeError: If a parameter's scope has no native source definition.
 
         """
         resource = u.Infra.resolve_resource_from_path(self._rope_project, py_file)
@@ -584,9 +584,6 @@ class FlextInfraAccessorOriginResolver:
                 msg = f"Unresolved accessor parameter declaration: {py_file}"
                 raise ValueError(msg)
             scope = module.get_scope().get_inner_scope_for_line(line)
-            if not isinstance(scope.pyobject, p.Infra.RopeSourceDefinition):
-                msg = "Accessor receiver scope has no native source definition"
-                raise TypeError(msg)
             declaration = scope.pyobject.get_ast()
             if isinstance(declaration, ast.FunctionDef | ast.AsyncFunctionDef):
                 for argument in (
@@ -641,7 +638,10 @@ class FlextInfraAccessorOriginResolver:
             if self._matches_declaration(candidate, declaring_class):
                 return True
             pending.extend(
-                (base, ancestors | {id(candidate)})
+                (
+                    u.Infra.require_class_object(base, "accessor receiver lineage"),
+                    ancestors | {id(candidate)},
+                )
                 for base in candidate.get_superclasses()
             )
         return False

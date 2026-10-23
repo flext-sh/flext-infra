@@ -375,6 +375,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 case cst.ImportStar():
                     msg = "star import binding requires its native reference occurrence"
                     raise ValueError(msg)
+                case _:
+                    pass
             local = next(
                 self._alias_name(alias.asname) if alias.asname else name
                 for alias in node.names

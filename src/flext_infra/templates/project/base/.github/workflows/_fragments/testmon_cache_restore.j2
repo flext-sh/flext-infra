@@ -1,10 +1,8 @@
 
-      # Why: make test always selects through the persistent testmon database
-      # (make.testmon_cache), which lives outside the checkout under the
-      # declared project name. A runner without it starts from an empty history
-      # and selects the whole suite. Restore the newest database of any earlier
-      # run: testmon revalidates every recorded file by checksum, so a restored
-      # database never hides a changed dependency of a selected test.
+      # make tests executes the complete suite once while retaining the
+      # persistent testmon database (make.testmon_cache) outside the checkout.
+      # Restore its project history; the runner verifies its integrity and
+      # complete inventory before accepting or publishing the database.
       - name: Resolve project testmon database
         id: testmon_path
         env:

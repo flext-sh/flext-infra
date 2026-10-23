@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSet
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
@@ -114,6 +114,14 @@ class FlextInfraModelsCodegenRender:
     class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
+        publishes_release: Annotated[
+            bool,
+            m.Field(description="Repository explicitly owns the release protocol"),
+        ] = False
+        extra_verbs: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            m.Field(description="Elected repository-owned public commands"),
+        ] = ()
         publish_index: Annotated[
             bool,
             m.Field(
@@ -283,6 +291,19 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = False
+
+        @m.model_validator(mode="after")
+        def require_elected_release_commands(self) -> Self:
+            """Require the complete elected product protocol before rendering."""
+            if self.publishes_release:
+                required = {f"release-{phase.value}" for phase in c.Infra.ReleasePhase}
+                missing = required - {verb.name for verb in self.extra_verbs}
+                if missing:
+                    msg = "elected release protocol lacks phase commands: " + ", ".join(
+                        sorted(missing)
+                    )
+                    raise ValueError(msg)
+            return self
 
     class MakeWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input shared by generated local workflow surfaces."""

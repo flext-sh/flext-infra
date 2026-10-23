@@ -75,11 +75,11 @@ class TestsFlextInfraRuntimeRoot:
         tm.that(observed.project_root, eq=root.resolve())
         tm.that(observed.runtime_root, eq=root.resolve())
 
+    @staticmethod
     @pytest.mark.parametrize("excluded", [False, True])
     @pytest.mark.parametrize("hosted", [False, True])
     @pytest.mark.parametrize("ci", [False, True])
     def test_native_monorepo_owner_retains_the_requested_project(
-        self,
         tmp_path: Path,
         excluded: bool,
         hosted: bool,
@@ -187,11 +187,11 @@ class TestsFlextInfraRuntimeRoot:
             eq=observed.environment_path,
         )
 
+    @staticmethod
     @pytest.mark.parametrize("attached", [False, True])
     @pytest.mark.parametrize("hosted", [False, True])
     @pytest.mark.parametrize("ci", [False, True])
     def test_resolution_view_preserves_physical_environment(
-        self,
         tmp_path: Path,
         attached: bool,
         hosted: bool,
@@ -286,9 +286,9 @@ class TestsFlextInfraRuntimeRoot:
         with pytest.raises(m.ValidationError):
             m.Infra.MakeUvResolutionSpec.model_validate(payload)
 
+    @staticmethod
     @pytest.mark.parametrize("ci", [False, True])
     def test_attached_member_runtime_owner(
-        self,
         tmp_path: Path,
         ci: bool,
     ) -> None:
@@ -330,9 +330,9 @@ class TestsFlextInfraRuntimeRoot:
         finally:
             u.Tests.restore_env(policy.variable, original)
 
+    @staticmethod
     @pytest.mark.parametrize("ci", [False, True])
     def test_standalone_runtime_owner(
-        self,
         tmp_path: Path,
         ci: bool,
     ) -> None:
@@ -353,8 +353,8 @@ class TestsFlextInfraRuntimeRoot:
         finally:
             u.Tests.restore_env(policy.variable, original)
 
+    @staticmethod
     def test_workspace_packages_follow_runtime_dependencies(
-        self,
         tmp_path: Path,
     ) -> None:
         """Source binding follows provider-before-consumer order."""
@@ -388,12 +388,12 @@ class TestsFlextInfraRuntimeRoot:
             eq=(provider.distribution, consumer.distribution),
         )
 
+    @staticmethod
     @pytest.mark.parametrize(
         "invalid",
         ["", "malformed", "duplicate", "cycle", "foreign"],
     )
     def test_workspace_order_uses_owned_projected_manifest(
-        self,
         tmp_path: Path,
         invalid: str,
     ) -> None:
@@ -405,7 +405,8 @@ class TestsFlextInfraRuntimeRoot:
         (provider_root / c.PYPROJECT_FILENAME).write_text(
             "[project]\n"
             f'name = "{provider.distribution}"\n'
-            f"dependencies = {[consumer.distribution] if invalid == 'cycle' else []!r}\n",
+            f"dependencies = "
+            f"{[consumer.distribution] if invalid == 'cycle' else []!r}\n",
             encoding=c.DEFAULT_ENCODING,
         )
         path = tmp_path / c.PYPROJECT_FILENAME

@@ -501,8 +501,6 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySitesMixi
         if runtime.py_class(value) or runtime.py_function(value):
             module = value.get_module()
             scope = value.get_scope()
-            if module is None or scope is None:
-                return ""
             names: list[str] = []
             while scope.parent is not None:
                 names.append(scope.pyobject.get_name())

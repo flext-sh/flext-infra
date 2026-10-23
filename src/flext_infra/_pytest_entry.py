@@ -21,7 +21,7 @@ class FlextInfraPytestEntry:
     def main(cls) -> int:
         """Parse the Make boundary and return the exact child process status.
 
-        ``full`` runs incremental then complete testmon execution. ``coverage``
+        ``full`` runs one complete testmon execution. ``coverage``
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The

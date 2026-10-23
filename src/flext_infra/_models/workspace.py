@@ -191,9 +191,6 @@ class FlextInfraModelsWorkspace:
             ),
             description="Invocation-local references to the first binding evidence",
         )
-        indexed_evidence: int = m.Field(
-            default=0, description="Ordered evidence prefix covered by the lookup index"
-        )
         generated_owners: t.MutableMappingKV[
             int, t.Triple[str, str, p.AttributeProbe | None]
         ] = m.Field(

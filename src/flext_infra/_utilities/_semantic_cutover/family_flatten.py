@@ -218,7 +218,11 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         owner_header = next(
             item for item in facts if item.line == owner_scope.get_start()
         )
-        if len(owner_scope.pyobject.get_superclasses()) != len(
+        if len(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                owner_scope.pyobject, "family facade owner"
+            ).get_superclasses()
+        ) != len(
             FlextInfraUtilitiesRopeStructure.class_base_names(owner_header),
         ):
             msg = f"family owner inheritance is unresolved: {path}:{owner_name}"

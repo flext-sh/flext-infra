@@ -32,6 +32,12 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
 
+        release_verbs: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            m.Field(
+                description="Release phase commands elected by repository capability"
+            ),
+        ] = ()
         editable_supplier_environment: str = m.Field(
             default=FlextInfraSettingsModels.InfraSettings.EDITABLE_SUPPLIER_ENVIRONMENT,
             description="Typed settings environment alias, never a host path",
@@ -174,10 +180,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         timeout_kill_after_seconds: Annotated[
             int,
             m.Field(gt=0, description="Forced-termination grace period"),
-        ]
-        pytest_process_timeout_seconds: Annotated[
-            int,
-            m.Field(gt=0, description="Pytest process wall-time boundary"),
         ]
 
     class MakeRenderContext(MakeCommandContext):
@@ -593,31 +595,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             return FlextInfraConfigModelsContexts.validated_hatch_build_hook_path(
                 value,
             )
-
-    class SgconfigRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Typed input for the generated ast-grep project config.
-
-        Why: a provider manifest can declare ``sgconfig.yml`` as a
-        required surface, but no generator owned it, so the file was authored by
-        hand in one repository and simply absent in another -- provider discovery
-        then failed closed with ``missing declared file: sgconfig.yml``. The rule
-        and fixture directories are declared here so every repository renders the
-        same contract from the SSOT instead of a hand-written copy.
-        """
-
-        rule_dirs: Annotated[
-            t.VariadicTuple[str],
-            m.Field(
-                min_length=1,
-                description="Directories holding this project's ast-grep rules",
-            ),
-        ]
-        test_dirs: Annotated[
-            t.VariadicTuple[str],
-            m.Field(
-                description="Directories holding rule fixtures and snapshots",
-            ),
-        ] = ()
 
     class ProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Execution semantics for one generated Make profile."""

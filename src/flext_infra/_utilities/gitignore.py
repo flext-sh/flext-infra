@@ -34,6 +34,26 @@ class FlextInfraUtilitiesGitignore:
         ).resolve()
 
     @staticmethod
+    def codegen_artifact_source(
+        codegen: m.Infra.CodegenConfigSpec,
+        entry: m.Infra.TemplateEntrySpec,
+    ) -> Path:
+        """Resolve a declared source inside its explicit package or template root."""
+        if entry.source is None:
+            msg = f"artifact has no source: {entry.destination}"
+            raise ValueError(msg)
+        root = (
+            FlextInfraConfig.ssot_config_dir().parent.resolve()
+            if entry.source_kind == "resource"
+            else FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
+        )
+        source = root / entry.source
+        if not source.resolve().is_relative_to(root):
+            msg = f"declared artifact source escapes its owner root: {entry.source}"
+            raise ValueError(msg)
+        return source
+
+    @staticmethod
     def codegen_template_sources(codegen: m.Infra.CodegenConfigSpec) -> frozenset[Path]:
         """Resolve only manifest-declared template inputs, never output suffixes.
 
@@ -44,16 +64,16 @@ class FlextInfraUtilitiesGitignore:
             ValueError: If declared template source escapes its owner root.
 
         """
-        root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         sources: set[Path] = set()
         for entry in codegen.templates.entries:
             if entry.source is None:
                 continue
-            path = (root / entry.source).resolve()
-            if not path.is_relative_to(root):
-                msg = f"declared template source escapes its owner root: {entry.source}"
-                raise ValueError(msg)
-            sources.add(path)
+            sources.add(
+                FlextInfraUtilitiesGitignore.codegen_artifact_source(
+                    codegen,
+                    entry,
+                ).resolve(),
+            )
         return frozenset(sources)
 
     @staticmethod

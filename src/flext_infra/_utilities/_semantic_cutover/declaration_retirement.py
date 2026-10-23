@@ -85,32 +85,35 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         retired: t.Infra.RopeMutablePaths = set()
         destinations: t.Infra.RopeMutablePaths = set()
-        for rule in rules:
-            if rule.ownership_transfer is None:
-                continue
-            owner = cls.contract_rule_root(workspace.repository_root, rule)
-            project = runtime.snapshot_project(
-                workspace.rope_project, proposed, captured=epoch
-            )
-            try:
-                path, destination = cls._retire_contract_rule(
-                    project,
-                    rule,
-                    proposed,
-                    (owner, owned_modules),
-                    destinations=tuple(
-                        runtime.qualified_name(project, identity)
-                        for transfer in rules
-                        if transfer.ownership_transfer is not None
-                        for identity in transfer.bindings.values()
-                    ),
+        with cls._semantic_source_project(workspace.rope_project) as source_project:
+            for rule in rules:
+                if rule.ownership_transfer is None:
+                    continue
+                owner = cls.contract_rule_root(
+                    workspace.repository_root, rule, source_project=source_project
                 )
-                if path is not None:
-                    retired.add(path)
-                if destination is not None:
-                    destinations.add(destination)
-            finally:
-                project.close()
+                project = runtime.snapshot_project(
+                    workspace.rope_project, proposed, captured=epoch
+                )
+                try:
+                    path, destination = cls._retire_contract_rule(
+                        project,
+                        rule,
+                        proposed,
+                        (owner, owned_modules),
+                        destinations=tuple(
+                            runtime.qualified_name(project, identity)
+                            for transfer in rules
+                            if transfer.ownership_transfer is not None
+                            for identity in transfer.bindings.values()
+                        ),
+                    )
+                    if path is not None:
+                        retired.add(path)
+                    if destination is not None:
+                        destinations.add(destination)
+                finally:
+                    project.close()
         return frozenset(retired), frozenset(destinations)
 
     @classmethod
@@ -195,8 +198,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         if not (types.py_function(value) or types.py_class(value)):
             message = "ownership transfer requires a native class or function"
             raise TypeError(message)
-        scope, module = value.get_scope(), value.get_module()
-        if scope is None or not isinstance(module, p.Infra.RopePyModule):
+        module = value.get_module()
+        if not isinstance(module, p.Infra.RopePyModule):
             message = "ownership transfer has no native definition scope"
             raise TypeError(message)
         resource = module.get_resource()
@@ -537,10 +540,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 "ownership transfer changes a callable into a different native kind"
             )
             raise ValueError(message)
-        if not isinstance(value, p.Infra.RopeSourceDefinition):
-            message = "ownership callable has no native source AST"
+        kind = value.get_scope().get_kind()
+        if kind is None:
+            message = "ownership callable has no native source scope kind"
             raise TypeError(message)
-        return cls._contract_signature(value.get_ast()), value.get_kind()
+        return cls._contract_signature(value.get_ast()), kind
 
     @classmethod
     def _require_governed_inventory(
@@ -700,7 +704,13 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     resolves,
                     whole_owner,
                     carries,
-                    (*callees, binding.get_object().get_name(), path),
+                    (
+                        *callees,
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+                            binding.get_object(), str(path)
+                        ).get_name(),
+                        path,
+                    ),
                 )
 
     @staticmethod
@@ -743,7 +753,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     actual
                     .get_object()
                     .get_attributes()
-                    .get(binding.get_object().get_name()),
+                    .get(
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+                            binding.get_object(), "retirement owner"
+                        ).get_name()
+                    ),
                 )
             )
             for part in ast.walk(expression)
@@ -988,9 +1002,6 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             message = f"retiring base has a non-class owner: {path}:{node.name}"
             raise TypeError(message)
         class_scope = value.get_scope()
-        if class_scope is None:
-            message = f"retiring base has no native declaring scope: {path}:{node.name}"
-            raise ValueError(message)
         located = cls._header_argument_span(value, class_scope, module)
         if located is None:
             message = f"retiring base has no native class header: {path}:{node.name}"

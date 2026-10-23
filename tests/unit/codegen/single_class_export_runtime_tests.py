@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraSingleClassExportRuntime:
     """Exercise the real catalog, publication and Python import boundaries."""
 
+    @staticmethod
     @pytest.mark.parametrize("surface", tuple(c.Infra.NON_PUBLIC_LAZY_ROOTS))
     def test_internal_source_is_published_through_its_lazy_package(
-        self,
         tmp_path: Path,
         surface: str,
     ) -> None:
@@ -85,13 +85,13 @@ class TestsFlextInfraSingleClassExportRuntime:
         )
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "project_name",
         ["flext-outer-sample", "flext-connector-example"],
     )
     @pytest.mark.parametrize("scope_kind", ["standalone", "workspace", "nested-member"])
     def test_canonical_source_is_published_for_an_external_consumer(
-        self,
         tmp_path: Path,
         project_name: str,
         scope_kind: str,

@@ -173,14 +173,14 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         Every gate runs serially through the public CLI pipeline. Whole-program
         checkers must not compete for memory, and fixers share mutable files.
-        Read-only checks retain every verdict; fail-fast and mutating runs stop
-        at the first failed gate without fabricating unexecuted results.
+        Every independent operation retains its verdict. Only explicit fail-fast
+        stops after a failed verdict; project findings do not abort the engine.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
 
         Raises:
-            ValueError: If ``gate_instance is None``.
+            ValueError: If a gate is unregistered or a selected repair is unsupported.
 
         """
         project_name = project_dir.name
@@ -196,6 +196,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 raise ValueError(msg)
             if not ctx.selected_files and not gate_instance.selected_for(project_dir):
                 continue
+            if mutating and not gate_instance.can_fix:
+                msg = f"Gate {gate_id} does not support repair"
+                raise ValueError(msg)
             stages.append(
                 m.Cli.PipelineStageSpec(
                     stage_id=gate_id,
@@ -218,6 +221,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
             if execution.result.passed:
                 pipeline_result.unwrap()
             result.gates[stage.stage_id] = execution
+            if ctx.check_progress is not None:
+                ctx.check_progress(project_dir, result)
             u.Cli.gate_result(
                 stage.stage_id,
                 execution.finding_count,
@@ -232,7 +237,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                         f"{stage.stage_id}: {execution.outcome.value}; "
                         f"Native output receipt: {execution.raw_receipt}",
                     )
-                if not execution.result.passed and (ctx.fail_fast or mutating):
+                if not execution.result.passed and ctx.fail_fast:
                     break
         return result
 
@@ -301,17 +306,21 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Dispatch repair with native verification, or a read-only check.
+        """Dispatch exactly the requested repair or read-only operation.
 
-        The gate owns repair and same-scope read-only confirmation, including
-        literal file selections. Check-only contexts never mutate; gates without
-        a repair contract still execute their read-only check.
+        A gate without a repair contract cannot substitute a read-only check.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
+        Raises:
+            ValueError: If a repair selects a gate without a repair contract.
+
         """
-        if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
+        if ctx.apply_fixes and not ctx.check_only:
+            if not gate_instance.can_fix:
+                msg = f"Gate {gate_instance.gate_id} does not support repair"
+                raise ValueError(msg)
             return gate_instance.fix(project_dir, ctx)
         if ctx.selected_files:
             return gate_instance.check_files(ctx.selected_files, project_dir, ctx)

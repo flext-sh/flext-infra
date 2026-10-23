@@ -125,7 +125,9 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def abstract_class(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyObject]:
+    def abstract_class(
+        cls, value: p.AttributeProbe
+    ) -> TypeGuard[p.Infra.RopeClassObject]:
         """Return whether ``value`` is a Rope abstract class object.
 
         Returns:
@@ -158,7 +160,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def py_class(cls, value: t.Infra.RopePyObject) -> bool:
+    def py_class(cls, value: p.AttributeProbe) -> TypeGuard[p.Infra.RopeSourceClass]:
         """Return whether ``value`` is a Rope class declared in Python source.
 
         Builtin classes (``Exception``, ``object``) are abstract classes too,
@@ -174,7 +176,9 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def py_function(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyObject]:
+    def py_function(
+        cls, value: p.AttributeProbe
+    ) -> TypeGuard[p.Infra.RopeSourceObject]:
         """Return whether ``value`` is a Rope Python function object.
 
         Returns:

@@ -58,16 +58,23 @@ class TestsFlextInfraConformSupport:
         surface: c.Infra.CodegenConformSurface,
     ) -> None:
         """Materialize one exact public conform surface for a focused test."""
+        request = u.Tests.conform_request(
+            root,
+            what=surface,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
         tm.ok(
-            infra.codegen_conform(
-                u.Tests.conform_request(
-                    root,
-                    what=surface,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
+            FlextInfraCodegenConform(
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                    initial_workspace=workspace,
+                    ports=infra.codegen_conform_collaborators(),
                 ),
-                initial_workspace=workspace,
-            ),
+                runtime_settings=infra.settings,
+                initial_context=infra.context,
+            ).execute(),
         )
 
     @staticmethod

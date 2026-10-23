@@ -83,7 +83,7 @@ class TestsFlextInfraGateHookDefaults:
         )
 
     class _FixProbe(_Probe):
-        """Emit a distinct native repair before the normal verification run."""
+        """Emit a distinct native repair with no implicit verification run."""
 
         can_fix: ClassVar[bool] = True
 
@@ -387,12 +387,12 @@ class TestsFlextInfraGateHookDefaults:
         tm.that(execution.result.duration, lt=10)
 
     @pytest.mark.parametrize(
-        c.ContextScope.OPERATION, ["check", "skip", "preview", "fix", "failed-fix"]
+        c.ContextScope.OPERATION, ["check", "skip", "fix", "failed-fix"]
     )
     def test_returned_execution_already_has_its_native_receipt(
         self, tmp_path: Path, operation: str
     ) -> None:
-        """Direct callers receive durable bytes, including combined fix evidence."""
+        """Direct callers receive durable evidence of only their requested action."""
         project, reports = self._project(tmp_path)
         ctx = self._context(project, reports)
         gate = (
@@ -404,11 +404,9 @@ class TestsFlextInfraGateHookDefaults:
             execution = gate.check(project, ctx)
         elif operation == "skip":
             execution = gate.check_files((project / "absent.py",), project, ctx)
-        elif operation == "preview":
-            execution = gate.fix(project, ctx.model_copy(update={"check_only": True}))
         elif operation == "fix":
             execution = gate.fix(project, ctx.model_copy(update={"apply_fixes": True}))
-            tm.that(execution.raw_output, has=["probe-FIXED", "NATIVE"])
+            tm.that(execution.raw_output, has="probe-FIXED", lacks="NATIVE")
         else:
             execution = gate.fix(project, ctx.model_copy(update={"apply_fixes": True}))
             tm.that(execution.raw_output, has="probe-FAILED", lacks="NATIVE")
@@ -418,6 +416,23 @@ class TestsFlextInfraGateHookDefaults:
         state = u.Cli.atomic_read_binary_file_state(receipt, required=True).unwrap()
         tm.that(state.content, eq=execution.raw_output.encode("utf-8"))
         tm.that(execution.model_dump(mode="json"), lacks="raw_output")
+
+    @pytest.mark.parametrize(
+        ("apply_fixes", "check_only"), [(False, False), (True, True)]
+    )
+    def test_repair_refuses_a_different_operation_before_effects(
+        self, tmp_path: Path, *, apply_fixes: bool, check_only: bool
+    ) -> None:
+        """A repair never becomes a successful preview or a read-only check."""
+        project, reports = self._project(tmp_path)
+        context = self._context(project, reports).model_copy(
+            update={"apply_fixes": apply_fixes, "check_only": check_only}
+        )
+        with pytest.raises(ValueError, match="repair requires"):
+            self._FixProbe(project).fix(project, context)
+        tm.fail(
+            (reports / f"probe{config.Infra.tooling.raw_check_receipt_suffix}").exists()
+        )
 
     def test_failed_receipt_publication_does_not_return_an_execution(
         self, tmp_path: Path

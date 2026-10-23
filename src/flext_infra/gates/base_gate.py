@@ -772,24 +772,22 @@ class FlextInfraGate:
             yield
 
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
-        """Repair targets and verify their final state through the native check.
+        """Execute the declared repair once and retain its native result.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
+        Raises:
+            ValueError: If the context requests another operation or the gate
+                has no repair implementation.
+
         """
         if ctx.check_only or not ctx.apply_fixes:
-            return self._check_only_fix_result(project_dir, ctx)
+            msg = "repair requires apply_fixes=True and check_only=False"
+            raise ValueError(msg)
         if not self.can_fix:
-            return self._build_check_gate_execution(
-                project_dir,
-                passed=True,
-                issues=(),
-                evidence=self._publish_raw_receipt(
-                    ctx, f"Gate {self.gate_id} does not support fix"
-                ),
-                started=time.monotonic(),
-            )
+            msg = f"Gate {self.gate_id} does not support repair"
+            raise ValueError(msg)
         started = time.monotonic()
         targets = self._get_fix_targets(project_dir, ctx)
         if not targets:
@@ -803,8 +801,8 @@ class FlextInfraGate:
                 env=self._check_env(project_dir, ctx),
                 remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
             )
-            # Fix reports may include already-repaired findings. Parse the
-            # report, but only the read-only native pass proves what remains.
+            # Retain this operation's report. Independent verification belongs
+            # to an explicit check, never an implicit second tool invocation.
             execution = self._parsed_gate_execution(project_dir, ctx, result, started)
             native_error = (
                 result.outcome.timed_out
@@ -842,18 +840,7 @@ class FlextInfraGate:
                     ),
                     ctx=ctx,
                 )
-            if any(issue.code == f"{self.gate_id}-exec" for issue in execution.issues):
-                return execution
-            verified = self._execute_check_command(project_dir, ctx, targets, started)
-        raw_output = "\n".join(
-            output for output in (execution.raw_output, verified.raw_output) if output
-        )
-        return verified.model_copy(
-            update={
-                "raw_output": raw_output,
-                "raw_receipt": self._publish_raw_receipt(ctx, raw_output).path,
-            },
-        )
+        return execution
 
     @staticmethod
     def _findings_exit_codes() -> t.VariadicTuple[int]:
@@ -866,25 +853,6 @@ class FlextInfraGate:
 
         """
         return ()
-
-    def _check_only_fix_result(
-        self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
-        """Return a non-mutating fix preview for check-only gate contexts.
-
-        Returns:
-            A non-mutating fix preview for check-only gate contexts.
-
-        """
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=True,
-            issues=(),
-            evidence=self._publish_raw_receipt(
-                ctx, f"Gate {self.gate_id} fix preview only; no files written"
-            ),
-            started=time.monotonic(),
-        )
 
     # ------------------------------------------------------------------
     # Fix hooks — subclasses override these

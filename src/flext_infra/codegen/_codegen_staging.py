@@ -9,7 +9,6 @@ from __future__ import annotations
 import stat
 from collections.abc import Callable, MutableMapping
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from os.path import commonpath
 from pathlib import Path
 from types import MappingProxyType
@@ -350,21 +349,14 @@ class FlextInfraCodegenStaging:
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         runtime: m.Infra.CodegenSourceRuntime,
-        validator: Callable[
-            [Path, m.Infra.StageSourcePlan, Path, m.Infra.ValidationReport],
-            p.Result[bool],
-        ]
-        | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Require authenticated runtime admission, then the consumer's own checks.
+        """Validate the exact staged Python bytes without running project gates.
 
-        Unchanged outputs enter the same mandatory runtime admission.
-        Preparation never occurs inside this authenticated consumer.
-        A scaffold retains its declared executor runtime until its generated
-        checkout can provision its own environment through setup.
+        Publication owns byte identity and Python syntax. Import, type, lint and
+        environment checks belong to their explicit checking operations.
 
         Returns:
-            The original session, or the original runtime/checker failure.
+            The original session or a staged-source identity failure.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
@@ -378,51 +370,10 @@ class FlextInfraCodegenStaging:
         )
         if planned.failure:
             return result_type.from_failure(planned)
-        projects = tuple(dict.fromkeys(plan.project for plan in plans))
-        consume_source_runtime = (
-            codegen.FlextInfraCodegenTransaction.consume_source_runtime
-        )
-
-        def admit(root: Path, project: Path) -> p.Result[bool]:
-            consumed = consume_source_runtime(
-                planned.value,
-                root,
-                u.Infra.runtime_environment_dir(project).parent
-                if runtime.runtime_root is None
-                else runtime.runtime_root,
-                project_root=project,
-            )
-            if consumed.failure:
-                return r[bool].from_failure(consumed)
-            if not consumed.value.passed:
-                return r[bool].fail(
-                    f"candidate runtime rejected: {project}:\n"
-                    + "\n".join((consumed.value.summary, *consumed.value.violations))
-                )
-            if validator is None:
-                return r[bool].ok(value=True)
-            checked = validator(root, planned.value, project, consumed.value)
-            if checked.failure or checked.value:
-                return checked
-            return r[bool].fail(f"candidate check rejected: {project}")
-
-        def validate(root: Path) -> p.Result[bool]:
-            # Each admission waits on its own fresh-import child process, so
-            # the projects admit concurrently and report in declaration order.
-            with ThreadPoolExecutor(
-                max_workers=u.Infra.machine_worker_capacity(
-                    config.Infra.codegen.fleet_worker_memory_gb
-                )
-            ) as executor:
-                outcomes = tuple(executor.map(partial(admit, root), projects))
-            return next(
-                (outcome for outcome in outcomes if outcome.failure),
-                r[bool].ok(value=True),
-            )
-
-        checked = FlextInfraStagedPackage.consume_sources(planned.value, validate)
-        if checked.failure:
-            return result_type.from_failure(checked)
+        for plan in plans:
+            source = planned.value.updates.get(plan.path)
+            if source is not None and plan.path.suffix == c.Infra.EXT_PYTHON:
+                compile(source, str(plan.path), "exec", dont_inherit=True)
         return result_type.ok(session)
 
     @classmethod

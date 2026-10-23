@@ -160,6 +160,51 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
         )
 
+    @staticmethod
+    def _release_product_verbs(
+        repository: m.Infra.RepositoryRef,
+    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
+        """Derive the opted-in product surface from the native release phases."""
+        return (
+            tuple(
+                m.Infra.MakeVerbSpec(
+                    name=f"release-{phase.value}",
+                    description=f"Execute the declared release {phase.value} phase.",
+                    arguments=(
+                        ("PR_TITLE",)
+                        if phase is c.Infra.ReleasePhase.PLAN
+                        else ("LANE_CHECKPOINT_REF",)
+                        if phase is c.Infra.ReleasePhase.VERSION
+                        else ("INDEX",)
+                        if phase is c.Infra.ReleasePhase.PUBLISH
+                        else ()
+                    ),
+                )
+                for phase in c.Infra.ReleasePhase
+            )
+            if repository.publishes_release
+            else ()
+        )
+
+    def _elected_extra_verbs(
+        self,
+        repository: m.Infra.RepositoryRef,
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
+        """Compose authored commands and elected product capabilities once."""
+        release_verbs = self._release_product_verbs(repository)
+        return (
+            *self._merge_extra_verbs(
+                repository.extra_verbs,
+                ()
+                if repository.script_dispatch is None
+                else self._discover_script_verbs(root),
+                frozenset(verb.name for verb in (*codegen.make.verbs, *release_verbs)),
+            ),
+            *release_verbs,
+        )
+
     def make_render_context(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
@@ -191,14 +236,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        extra_verbs = self._merge_extra_verbs(
-            repository.extra_verbs,
-            (
-                ()
-                if repository.script_dispatch is None
-                else self._discover_script_verbs(repository_root)
-            ),
-            frozenset(verb.name for verb in codegen.make.verbs),
+        extra_verbs = self._elected_extra_verbs(
+            repository,
+            repository_root,
+            codegen,
         )
         try:
             delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
@@ -214,6 +255,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=tooling.tools.pytest,
+                release_verbs=self._release_product_verbs(repository),
                 make=codegen.make,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,

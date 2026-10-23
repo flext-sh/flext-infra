@@ -60,7 +60,8 @@ class TestsFlextInfraOrphanImport:
         )
         tm.that(self._render(source), lacks="TYPE_CHECKING")
 
-    def test_scanner_reads_the_guard_not_the_import(self) -> None:
+    @staticmethod
+    def test_scanner_reads_the_guard_not_the_import() -> None:
         """Guard detection follows the block's presence, not the import's."""
         guarded = cst.parse_module(
             "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    pass\n"

@@ -126,7 +126,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
     @runtime_checkable
     class RopePyObject(Protocol):
-        """Rope semantic object shape."""
+        """Attributes, module identity and type provided by every native object."""
 
         def get_attribute(
             self,
@@ -137,36 +137,49 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
         ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
 
-        def get_doc(self) -> str | None: ...
-
-        def get_name(self) -> str: ...
-
         def get_module(
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...
 
-        def get_kind(self) -> str: ...
+        def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope | None: ...
+    @runtime_checkable
+    class RopeNamedObject(RopePyObject, Protocol):
+        """Names and documentation owned by native classes, functions and modules."""
+
+        def get_doc(self) -> str | None: ...
+
+        def get_name(self) -> str: ...
+
+    @runtime_checkable
+    class RopeClassObject(RopeNamedObject, Protocol):
+        """Superclass queries supplied by native abstract classes."""
 
         def get_superclasses(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
-        def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
-
-    class RopeScopedObject(RopePyObject, Protocol):
+    class RopeScopedObject(RopeNamedObject, Protocol):
         """Source-defined object retained by a native lexical scope."""
+
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         def get_module(
             self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeParsedModule | None: ...
+        ) -> FlextInfraProtocolsRopeRuntime.RopeParsedModule: ...
 
     @runtime_checkable
     class RopeSourceDefinition(Protocol):
         """Cached AST capability of native source-defined classes and functions."""
 
         def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
+
+    @runtime_checkable
+    class RopeSourceObject(RopeScopedObject, RopeSourceDefinition, Protocol):
+        """The source and scope capabilities of native Python definitions."""
+
+    class RopeSourceClass(RopeSourceObject, RopeClassObject, Protocol):
+        """A source-defined class retaining its native superclass graph."""
 
     @runtime_checkable
     class NativeClassMetadata(Protocol):
@@ -327,7 +340,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
 
         @property
-        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopeScopedObject: ...
+        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceObject: ...
 
         @property
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
@@ -345,25 +358,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
     @runtime_checkable
-    class RopeSemanticModule(Protocol):
+    class RopeSemanticModule(RopeNamedObject, Protocol):
         """Module attributes shared by native builtins, packages, and source."""
-
-        def get_module(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...
-
-        def get_attribute(
-            self,
-            name: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
-
-        def get_name(self) -> str: ...
-
-        def get_doc(self) -> str | None: ...
-
-        def get_attributes(
-            self,
-        ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
 
         def get_resource(
             self,

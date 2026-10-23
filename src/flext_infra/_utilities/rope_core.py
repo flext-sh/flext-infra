@@ -46,13 +46,14 @@ class FlextInfraUtilitiesRopeCore(
         """
         if not project.authenticated_sources:
             yield False
-        elif key in cache:
-            project.replay_source_consumption(receipts[receipt_key])
-            yield True
         else:
+            cached = key in cache
             with project.source_consumption() as consumption:
-                yield False
-            receipts[receipt_key] = consumption.receipt()
+                if cached:
+                    project.replay_source_consumption(receipts[receipt_key])
+                yield cached
+            if not cached:
+                receipts[receipt_key] = consumption.receipt()
 
     @staticmethod
     def init_rope_project(repository_root: Path) -> t.Infra.RopeProject:

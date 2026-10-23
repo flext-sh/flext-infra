@@ -76,14 +76,17 @@ class FlextInfraDepsGate(FlextInfraGate):
             ctx: The gate context containing configuration and report directories.
 
         Returns:
-            The unchanged check receipt in check-only mode, the scan receipt
-            when nothing is repairable, an ERROR receipt when provenance from
-            the selected interpreter is missing, or the post-repair rescan
-            receipt.
+            The native planning scan when no repair is needed, an ERROR receipt
+            when interpreter provenance is missing, or the guarded publication
+            receipt retaining the pre-repair diagnostic.
+
+        Raises:
+            ValueError: If the context does not request a mutating operation.
 
         """
         if ctx.check_only or not ctx.apply_fixes:
-            return self.check(project_dir, ctx)
+            msg = "repair requires apply_fixes=True and check_only=False"
+            raise ValueError(msg)
         started = time.monotonic()
         with self._mutation_lease(project_dir):
             execution, scan = self._scan(project_dir, ctx)
@@ -116,17 +119,16 @@ class FlextInfraDepsGate(FlextInfraGate):
                     ctx=ctx,
                 )
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
-            u.Infra.publish_runtime_dependency_plan(plan).unwrap()
-            after = self.check(project_dir, ctx)
+            changed = u.Infra.publish_runtime_dependency_plan(plan).unwrap()
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
-                verdict=after.outcome is not c.Infra.ToolOutcome.ERROR,
-                outcome=after.outcome,
-                issues=after.issues,
+                verdict=True,
+                outcome=c.Infra.ToolOutcome.CLEAN,
+                issues=(),
                 raw_output=execution.raw_output
-                + "\nrepair-rescan\n"
-                + after.raw_output,
+                + f"\ndependency declaration changed={changed}; "
+                "independent verification requires an explicit check",
                 started=started,
             ),
             ctx=ctx,

@@ -31,7 +31,8 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         """
         return tm.ok(FlextInfraWorkspaceDetector.resolution_context(root)).lock_path
 
-    def test_native_leaf_omissions_have_fresh_empty_groups(self) -> None:
+    @staticmethod
+    def test_native_leaf_omissions_have_fresh_empty_groups() -> None:
         """UV omits empty edge collections without omitting package identity."""
         payload = (
             '{"name":"audit-leaf","version":"1.0",'
@@ -52,8 +53,9 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             eq=first,
         )
 
+    @staticmethod
     @pytest.mark.parametrize("missing", ["name", "version", "source"])
-    def test_required_locked_identity_never_defaults(self, missing: str) -> None:
+    def test_required_locked_identity_never_defaults(missing: str) -> None:
         """Collection defaults cannot turn an incomplete identity into a package."""
         package = m.Infra.LockedPackage.model_validate_json(
             '{"name":"audit-leaf","version":"1.0",'
@@ -63,7 +65,8 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         with pytest.raises(ValueError, match=missing):
             m.Infra.LockedPackage.model_validate_json(payload)
 
-    def test_native_edge_identity_and_groups_survive_round_trip(self) -> None:
+    @staticmethod
+    def test_native_edge_identity_and_groups_survive_round_trip() -> None:
         """Typed defaults preserve provided sources, extras, groups and markers."""
         payload = """{
             "name": "audit-root", "version": "1.0",
@@ -188,6 +191,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         tm.ok(FlextInfraWorkspaceLockCompleteness.validate(duplicate_project))
         tm.that(lock.read_bytes(), eq=before)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "text",
         [
@@ -201,13 +205,14 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             ),
         ],
     )
-    def test_an_invalid_lock_fails_loud(self, tmp_path: Path, text: str) -> None:
+    def test_an_invalid_lock_fails_loud(tmp_path: Path, text: str) -> None:
         """Malformed syntax, empty inventories and invalid typed rows fail."""
         lock = tmp_path / c.Infra.UV_LOCK_FILENAME
         lock.write_text(text, encoding="utf-8")
         tm.fail(FlextInfraWorkspaceLockCompleteness.validate_lock_file(lock))
 
-    def test_a_missing_lock_fails_loud(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_a_missing_lock_fails_loud(tmp_path: Path) -> None:
         """No committed lock is a loud absence, never an empty pass."""
         tm.fail(
             FlextInfraWorkspaceLockCompleteness.validate_lock_file(
@@ -215,7 +220,8 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             ),
         )
 
-    def test_the_infra_checkout_lock_is_complete(self) -> None:
+    @staticmethod
+    def test_the_infra_checkout_lock_is_complete() -> None:
         """The repository's own committed lock always passes its own gate."""
         root = Path(__file__).parents[3]
         tm.ok(FlextInfraWorkspaceLockCompleteness.validate(root))
@@ -236,8 +242,8 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         tm.that(lock.read_bytes(), eq=before)
         tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
 
+    @staticmethod
     def test_toml_array_transport_validates_through_the_json_boundary(
-        self,
         tmp_path: Path,
     ) -> None:
         """Committed TOML arrays stay lists until the JSON boundary coerces them."""

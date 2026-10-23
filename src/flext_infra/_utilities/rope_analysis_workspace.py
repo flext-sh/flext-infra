@@ -298,7 +298,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 c.Infra.INIT_PYI,
             }
             project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                resolved_root,
+                Path(rope_project.root.real_path),
                 resolved_file_path,
                 source_project=rope_project
                 if rope_project.authenticated_sources

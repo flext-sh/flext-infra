@@ -20,10 +20,8 @@ from flext_infra._models import (
     FlextInfraModelsWorkspace,
 )
 from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenFixModels,
     FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenLazyInitModels,
-    FlextInfraModelsCodegenScaffoldModels,
 )
 from flext_infra._models._config import FlextInfraConfigModels
 
@@ -427,41 +425,6 @@ class FlextInfraModelsCodegenPipelineModels:
         _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
             m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])
         )
-
-    class CodegenPipelineState(m.ArbitraryTypesModel):
-        """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
-
-        discovered_projects: Annotated[
-            t.SequenceOf[p.Infra.ProjectInfo],
-            m.Field(description="Projects discovered at pipeline start"),
-        ] = ()
-        census_service: Annotated[
-            p.Infra.CodegenCensusService | None,
-            m.Field(description="Cached census service for reuse across stages"),
-        ] = None
-        reports_before: Annotated[
-            t.SequenceOf[FlextInfraModelsCodegenScaffoldModels.CensusReport],
-            m.Field(description="Census reports collected before fixes"),
-        ] = ()
-        reports_after: Annotated[
-            t.SequenceOf[FlextInfraModelsCodegenScaffoldModels.CensusReport],
-            m.Field(description="Census reports collected after fixes"),
-        ] = ()
-        scaffold_results: Annotated[
-            t.SequenceOf[FlextInfraModelsCodegenScaffoldModels.ScaffoldResult],
-            m.Field(description="Scaffolding stage results"),
-        ] = ()
-        fix_results: Annotated[
-            t.SequenceOf[FlextInfraModelsCodegenFixModels.AutoFixResult],
-            m.Field(description="Auto-fix stage results"),
-        ] = ()
-        lazy_unmapped_count: Annotated[
-            int | None,
-            m.Field(
-                ge=0,
-                description="Observed lazy drift, absent before that stage executes",
-            ),
-        ] = None
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenPipelineModels"]

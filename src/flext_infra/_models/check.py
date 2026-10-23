@@ -102,6 +102,13 @@ class FlextInfraModelsCheck:
                 description="One literal repository-relative file; read-only gates"
             ),
         ] = None
+        report_output: Annotated[
+            Path | None,
+            m.Field(
+                alias="report-output",
+                description="Absent invocation-owned typed summary destination",
+            ),
+        ] = None
 
         @property
         def reports_dir_path(self) -> Path:
@@ -121,6 +128,10 @@ class FlextInfraModelsCheck:
 
         name: Annotated[str, m.Field(description="Display/project name")]
         path: Annotated[Path, m.Field(description="Resolved project root path")]
+        applicable_gates: Annotated[
+            t.StrSequence,
+            m.Field(description="Requested gates elected for this project's inputs"),
+        ] = ()
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
@@ -385,6 +396,28 @@ class FlextInfraModelsCheck:
         outcome: c.Infra.ToolOutcome = m.Field(
             description="Native process/report verdict, independent of findings policy",
         )
+        process: Annotated[
+            m.Cli.ProcessOutcome | None,
+            m.Field(description="Original native process, when this gate invoked one"),
+        ] = None
+        components: Annotated[
+            MutableMapping[str, FlextInfraModelsCheck.GateExecution],
+            m.Field(description="Executions owned by a composite gate"),
+        ] = m.Field(default_factory=dict)
+        requested_components: Annotated[
+            t.StrSequence,
+            m.Field(description="Native component inventory elected before execution"),
+        ] = ()
+
+        @m.computed_field
+        @property
+        def complete(self) -> bool:
+            """Every elected component has its actual execution record."""
+            return (
+                len(set(self.requested_components)) == len(self.requested_components)
+                and set(self.components) == set(self.requested_components)
+                and all(component.complete for component in self.components.values())
+            )
 
         @m.computed_field
         @property
@@ -617,6 +650,24 @@ class FlextInfraModelsCheck:
             t.VariadicTuple[Path],
             m.Field(description="File selection; empty means full-project execution"),
         ]
+
+        @m.computed_field
+        @property
+        def complete(self) -> bool:
+            """Every selected target executed its exact applicable inventory."""
+            return (
+                bool(self.targets)
+                and len(self.targets) == len(self.results)
+                and len({target.path for target in self.targets}) == len(self.targets)
+                and all(
+                    target.name == result.project
+                    and bool(target.applicable_gates)
+                    and set(target.applicable_gates).issubset(self.requested_gates)
+                    and set(result.gates) == set(target.applicable_gates)
+                    and all(execution.complete for execution in result.gates.values())
+                    for target, result in zip(self.targets, self.results, strict=True)
+                )
+            )
 
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report; serializes and validates the same JSON."""

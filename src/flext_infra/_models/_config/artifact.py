@@ -934,10 +934,25 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 if artifact.gitignore and not artifact.generated_source
             )
 
-        managed_files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec],
-            m.Field(description="Files owned by conform"),
-        ]
+        @m.computed_field
+        @property
+        def managed_files(
+            self,
+        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.ManagedFileSpec]:
+            """Derive managed views from the single artifact declaration catalog.
+
+            Returns:
+                The owned artifacts, excluding authored scaffold seeds.
+
+            """
+            return tuple(
+                FlextInfraConfigModelsTemplates.ManagedFileSpec(
+                    path=Path(entry.destination),
+                    **entry.ownership.model_dump(exclude_computed_fields=True),
+                )
+                for entry in self.templates.entries
+                if entry.ownership is not None
+            )
 
         @m.computed_field
         @property
@@ -1006,7 +1021,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         ]
         templates: Annotated[
             FlextInfraConfigModelsTemplates.TemplatesSpec,
-            m.Field(description="New-project-only scaffold template manifest"),
+            m.Field(description="Single artifact declaration and ownership catalog"),
         ]
         # flext-infra owns generic conform policy only. The set
         # of projects it serves is NOT its knowledge — each repository's own
@@ -1014,53 +1029,24 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
         @m.model_validator(mode="after")
         def _validate_github_artifact_ownership(self) -> Self:
-            """Require one full-managed conform owner for every GitHub template.
+            """Keep generated GitHub artifacts full-owned and authored seeds explicit.
 
             Returns:
                 The resulting ``Self``.
 
             Raises:
-                ValueError: If GitHub artifacts must have exactly one template and
-                    managed owner; or if GitHub template/managed ownership mismatch; or
-                    if GitHub artifacts must be full-managed.
+                ValueError: If a GitHub artifact lacks full template ownership.
 
             """
-            github_templates = tuple(
-                Path(entry.destination)
+            non_full = sorted(
+                entry.destination
                 for entry in self.templates.entries
                 if Path(entry.destination).parts[:1] == (".github",)
-            )
-            github_managed = tuple(
-                managed
-                for managed in self.managed_file_specs
-                if managed.path.parts[:1] == (".github",)
-            )
-            template_paths = set(github_templates)
-            managed_paths = {managed.path for managed in github_managed}
-            duplicate_templates = len(github_templates) != len(template_paths)
-            duplicate_managed = len(github_managed) != len(managed_paths)
-            if duplicate_templates or duplicate_managed:
-                msg = (
-                    "GitHub artifacts must have exactly one template and managed owner"
+                and entry.ownership is not None
+                and (
+                    entry.ownership.policy != c.Infra.MANAGED_FILE_POLICY_FULL
+                    or entry.source is None
                 )
-                raise ValueError(msg)
-            if template_paths != managed_paths:
-                missing_owners = sorted(
-                    path.as_posix() for path in template_paths - managed_paths
-                )
-                missing_templates = sorted(
-                    path.as_posix() for path in managed_paths - template_paths
-                )
-                msg = (
-                    "GitHub template/managed ownership mismatch: "
-                    f"missing owners={missing_owners}, "
-                    f"missing templates={missing_templates}"
-                )
-                raise ValueError(msg)
-            non_full = sorted(
-                managed.path.as_posix()
-                for managed in github_managed
-                if managed.policy != c.Infra.MANAGED_FILE_POLICY_FULL
             )
             if non_full:
                 msg = f"GitHub artifacts must be full-managed: {non_full}"

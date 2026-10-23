@@ -33,7 +33,6 @@ class FlextInfraCodegenHandlers:
     def codegen_conform(
         self: p.Infra.CodegenExecutionContext,
         request: p.Infra.CodegenConformRequest,
-        initial_workspace: p.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Observe or repair projections without retaining request state on the API.
 
@@ -45,7 +44,6 @@ class FlextInfraCodegenHandlers:
         """
         return FlextInfraCodegenConform.execute_request(
             request,
-            initial_workspace,
             execution_context=self,
         )
 

@@ -19,6 +19,6 @@
 {% if explicit_bash %}        shell: bash
 {% endif %}        run: |
           {{ make.ci.variable }}={{ make.ci.value }} make check
-          {{ make.ci.variable }}={{ make.ci.value }} make test
+          {{ make.ci.variable }}={{ make.ci.value }} make tests
           {{ make.ci.variable }}={{ make.ci.value }} make build
 {%- endmacro %}
