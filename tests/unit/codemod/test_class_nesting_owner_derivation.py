@@ -149,7 +149,6 @@ __all__: list[str] = ["LIMIT", "write"]
                 LOOSE_MODULE,
                 (
                     'class {owner}:\n    """Loose helpers of one family module."""',
-                    '__all__: list[str] = ["{owner}"]',
                     "    @staticmethod\n    def write(",
                     "    @staticmethod\n    def _helper(",
                     "    class _Marker:",
@@ -250,6 +249,12 @@ __all__: list[str] = ["LIMIT", "write"]
 
         nested = updated[module.resolve()]
         tm.that(self._top_level(nested), eq=(owner, "__all__"))
+        exports = tm.instance(ast.parse(nested).body[-1], ast.AnnAssign)
+        tm.that(ast.unparse(exports.annotation), eq="list[str]")
+        tm.that(
+            u.Infra.module_assignment_strings_source(nested, c.Infra.DUNDER_ALL),
+            eq=(owner,),
+        )
         for fragment in expected:
             tm.that(
                 nested,

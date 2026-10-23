@@ -595,10 +595,6 @@ class FlextInfraUtilitiesRepository:
             )
             if not candidates:
                 return r[t.Pair[str, str]].ok(("", ""))
-            if len(candidates) != 1:
-                return r[t.Pair[str, str]].fail(
-                    f"multiple candidate sources declare {distribution}",
-                )
             return cls._canonical_https_url(candidates[0].url).map(
                 lambda url: (url, policy_branch),
             )

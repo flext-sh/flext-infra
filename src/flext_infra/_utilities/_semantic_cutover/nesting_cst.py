@@ -9,6 +9,13 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import libcst as cst
+from libcst.metadata import (
+    MetadataWrapper,
+    PositionProvider,
+    WhitespaceInclusivePositionProvider,
+)
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
@@ -135,7 +142,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _nested_member_edits(
         cls,
         source: str,
-        module: p.Infra.RopePyModule,
+        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
         typing: p.Infra.RopeSemanticModule,
         selection: t.Triple[
             t.SequenceOf[m.Infra.LogicalStatement],
@@ -150,32 +157,31 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             Actual source-removal edits and their ordered reindented member bodies.
 
         """
-        selected, scopes = selection[0], selection[1]
+        module, wrapper = native
+        selected = selection[0]
         edits: list[m.Infra.SourceRewrite] = []
         members: list[str] = []
-        decorated = {
-            node.name: min(decorator.lineno for decorator in node.decorator_list)
-            for node in ast.parse(source).body
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
-            and node.decorator_list
+        positions = wrapper.resolve(PositionProvider)
+        inclusive = wrapper.resolve(WhitespaceInclusivePositionProvider)
+        statements = {
+            positions[node].start.line: node for node in wrapper.module.body
         }
         for item in selected:
-            name = cls._native_member_name(item)
-            scope = scopes.get(name)
-            begin = item.start_offset
-            end = min(item.end_offset + 1, len(source))
-            if scope is not None:
-                begin = module.lines.get_line_start(
-                    module.lines.get_line_number(scope.get_region()[0])
-                )
-                end = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
-            if name in decorated:
-                begin = min(begin, module.lines.get_line_start(decorated[name]))
+            node = statements[item.line]
+            region = inclusive[node]
+            begin = module.lines.get_line_start(region.start.line) + region.start.column
+            end = module.lines.get_line_start(region.end.line) + region.end.column
+            code = (
+                node.decorators[0]
+                if isinstance(node, cst.FunctionDef | cst.ClassDef) and node.decorators
+                else node
+            )
+            code_start = module.lines.get_line_start(positions[code].start.line)
             members.append(
                 FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
-                    cls._nested_member_body(
-                        item, source[begin:end], (module, typing), selection[2]
-                    ).rstrip()
+                    (source[begin:code_start] + cls._nested_member_body(
+                        item, source[code_start:end], (module, typing), selection[2]
+                    )).rstrip()
                     + "\n",
                     indentation,
                 )
@@ -222,9 +228,45 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         ]
 
     @staticmethod
+    def _owner_body_start(
+        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
+        owner: p.Infra.RopeScope,
+    ) -> t.Pair[int, int]:
+        """Elect the first owned member, including its native decorator region.
+
+        Returns:
+            The complete owned prefix and code line offsets of the first member.
+
+        Raises:
+            TypeError: The owning object has no source AST capability.
+            ValueError: The elected owner is not a nonempty source class.
+
+        """
+        module, wrapper = native
+        if not isinstance(owner.pyobject, p.Infra.RopeSourceDefinition):
+            msg = "native nesting owner has no source AST"
+            raise TypeError(msg)
+        node = owner.pyobject.get_ast()
+        if not isinstance(node, ast.ClassDef) or not node.body:
+            msg = "native nesting owner is not a nonempty source class"
+            raise ValueError(msg)
+        positions = wrapper.resolve(PositionProvider)
+        declaration = next(
+            item for item in wrapper.module.body
+            if isinstance(item, cst.ClassDef) and positions[item].start.line == node.lineno
+        )
+        member = declaration.body.body[0]
+        region = wrapper.resolve(WhitespaceInclusivePositionProvider)[member]
+        return (
+            module.lines.get_line_start(region.start.line) + region.start.column,
+            module.lines.get_line_start(positions[member].start.line),
+        )
+
+    @classmethod
     def _existing_owner_edits(
+        cls,
         source: str,
-        module: p.Infra.RopePyModule,
+        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
         facts: t.SequenceOf[m.Infra.LogicalStatement],
         owner: p.Infra.RopeScope,
         contents: t.Pair[str, int],
@@ -239,8 +281,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
 
         """
         nested, indentation = contents
+        module = native[0]
         header = next(item for item in facts if item.line == owner.get_start())
-        first = module.lines.get_line_start(owner.get_body_start())
+        first, code_start = cls._owner_body_start(native, owner)
         last = min(module.lines.get_line_end(owner.get_end()) + 1, len(source))
         if owner.get_body_start() == owner.get_start():
             regions = (
@@ -273,7 +316,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             if owner.get_body_start() <= item.line <= owner.get_end()
         ]
         if len(own_body) == 1 and own_body[0].text.strip() == "pass":
-            return (m.Infra.SourceRewrite(start=first, end=last, text=nested),)
+            return (m.Infra.SourceRewrite(
+                start=first, end=last, text=source[first:code_start] + nested
+            ),)
         if own_body and owner.pyobject.get_doc() is not None:
             first = min(own_body[0].end_offset + 1, len(source))
         return (
@@ -285,9 +330,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         module: p.Infra.RopePyModule,
-        structure: t.Pair[
+        structure: t.Triple[
             t.SequenceOf[m.Infra.LogicalStatement],
             t.MappingKV[str, p.Infra.RopeScope],
+            MetadataWrapper,
         ],
         contents: t.Triple[str, str, int],
         edits: t.SequenceOf[m.Infra.SourceRewrite],
@@ -304,7 +350,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         return [
             *edits,
             *cls._existing_owner_edits(
-                source, module, structure[0], owner, (contents[1], contents[2])
+                source, (module, structure[2]), structure[0], owner, (contents[1], contents[2])
             ),
         ]
 
@@ -440,6 +486,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             selection = cls._nesting_selection(module, facts, definitions)
         else:
             classvar_name = ""
+        wrapper = MetadataWrapper(cst.parse_module(source), unsafe_skip_copy=True)
         observed = {
             cls._native_member_name(part)
             for item in selection[0]
@@ -458,12 +505,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = "native Rope project has no positive indentation policy"
             raise TypeError(msg)
         edits, nested = cls._nested_member_edits(
-            source, module, typing, (*selection, classvar_name), indentation
+            source, (module, wrapper), typing, (*selection, classvar_name), indentation
         )
         edits = cls._owner_nesting_edits(
             source,
             module,
-            (facts, selection[1]),
+            (facts, selection[1], wrapper),
             (owner_name, nested, indentation),
             edits,
         )

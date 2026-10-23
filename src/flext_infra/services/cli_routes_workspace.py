@@ -13,7 +13,6 @@ from flext_core import FlextRuntime
 
 from flext_infra import FlextInfraGitService, c, infra, m, p, r, t, u
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.release import FlextInfraReleaseOrchestrator
 from flext_infra.services import FlextInfraRefactorRoutes
 from flext_infra.workspace import (
     FlextInfraBindingService,
@@ -146,7 +145,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Run release orchestration CLI flow",
-                model_cls=FlextInfraReleaseOrchestrator,
+                model_cls=m.Infra.ReleaseRunCommand,
                 handler=infra.release_run,
                 success_message="Release completed successfully",
             ),

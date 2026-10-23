@@ -85,7 +85,7 @@ class TestsFlextInfraStaticClassExports:
                 plan,
                 source_project=project,
             )
-        tm.that("Original as s" in rendered, eq=promoted)
+        tm.that("s = Original" in rendered, eq=promoted)
 
 
 class TestsFlextInfraCodegenGeneration:

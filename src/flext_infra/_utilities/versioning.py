@@ -8,12 +8,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from flext_cli import u
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, p, r, t
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesVersioning:
@@ -273,29 +274,88 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(updated)
 
     @staticmethod
-    def replace_project_version(project_path: Path, version: str) -> p.Result[bool]:
-        """Update the version field in a project's pyproject.toml.
-
-        Args:
-            project_path: Directory containing pyproject.toml.
-            version: The new version string.
+    def project_version_plan(
+        project_path: Path, version: str
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Plan the canonical version-field edit against its actual physical input.
 
         Returns:
-            r[bool] with True on success.
+            The original file witness and exact rendered bytes, without effects.
 
         """
-        pyproject = project_path / c.PYPROJECT_FILENAME
+        result = r[m.Infra.CodegenFilePlan]
+        root = project_path.resolve()
+        captured = u.Cli.atomic_read_binary_file_state(
+            root / c.PYPROJECT_FILENAME, required=True
+        )
+        if captured.failure:
+            return result.from_failure(captured)
+        if captured.value.content is None:
+            return result.fail("project version requires its actual file preimage")
         try:
-            content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
-        except OSError as exc:
-            return r[bool].fail_op("read", exc)
+            content = captured.value.content.decode(c.DEFAULT_ENCODING)
+        except UnicodeError as exc:
+            return result.fail_op("read project version", exc)
         rendered = FlextInfraUtilitiesVersioning.render_project_version(
-            content,
-            version,
+            content, version
         )
         if rendered.failure:
-            return r[bool].from_failure(rendered)
-        written = u.Cli.atomic_write_text_file(pyproject, rendered.value)
+            return result.from_failure(rendered)
+        return result.ok(
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=captured.value.path,
+                before=captured.value,
+                desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
+                phase=c.Infra.MiseSyncPhase.INFRA,
+            )
+        )
+
+    @staticmethod
+    def publish_project_version(
+        project_path: Path,
+        version: str,
+        publish: Callable[
+            [m.Infra.CodegenFilePlan], p.Result[m.Infra.CodegenPhaseOutcome]
+        ],
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Return the injected native writer's actual version publication receipt.
+
+        Returns:
+            The same authenticated native outcome, never a reconstructed proof.
+
+        """
+        planned = FlextInfraUtilitiesVersioning.project_version_plan(
+            project_path, version
+        )
+        if planned.failure:
+            return r[m.Infra.CodegenPhaseOutcome].from_failure(planned)
+        published = publish(planned.value)
+        if published.failure:
+            return published
+        u.read_project_document_cached.cache_clear()
+        return published
+
+    @staticmethod
+    def replace_project_version(project_path: Path, version: str) -> p.Result[bool]:
+        """Publish the same version plan through the existing boolean file API.
+
+        Returns:
+            The guarded atomic writer result; this is not Git publication authority.
+
+        """
+        planned = FlextInfraUtilitiesVersioning.project_version_plan(
+            project_path, version
+        )
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        if planned.value.desired_content is None:
+            return r[bool].fail("project version plan cannot delete its version anchor")
+        written = u.Cli.atomic_write_binary_file_guarded(
+            planned.value.before,
+            planned.value.desired_content,
+            permission_mode=planned.value.before.mode,
+        )
         if written.failure:
             return written
         # Why: flext-core caches the parsed pyproject per process. This is the

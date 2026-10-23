@@ -78,11 +78,15 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             return result.fail("Git publication requires its exact admitted repository")
         ref = f"refs/heads/{request.branch}"
         repo.git.check_ref_format(ref)
+        integration_ref = f"refs/remotes/{declared.remote}/{declared.branch}"
+        repo.git.check_ref_format(integration_ref)
         previous = next(
             (head.commit.hexsha for head in repo.heads if head.name == request.branch),
             None,
         )
-        if previous is not None and not repo.is_ancestor(previous, repo.commit(tip)):
+        if previous is not None and not repo.is_ancestor(
+            repo.commit(previous), repo.commit(tip)
+        ):
             return result.fail(
                 f"existing owned candidate requires integration proof: {request.branch}"
             )
@@ -107,7 +111,7 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
             branch=request.branch,
             subject=request.subject,
             base_oid=tip,
-            integration_ref=f"refs/remotes/{declared.remote}/{declared.branch}",
+            integration_ref=integration_ref,
             remote=declared.remote,
             previous_oid=previous,
             caller_branch=repo.active_branch.name,
@@ -117,9 +121,8 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         )
         storage = state.__pydantic_private__
         if storage is None:
-            return result.fail(
-                "native Git publication has no private admission storage"
-            )
+            msg = "native Git publication has no private admission storage"
+            raise ValueError(msg)
         storage["_publication_birth"] = (id(state), cls._git_publication_digest(state))
         return cls._git_publication_current(state).map(lambda _current: state)
 

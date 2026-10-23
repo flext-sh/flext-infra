@@ -123,10 +123,14 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
             TypeError: If write-tree returned a non-text object identifier.
 
         """
-        with cls.state_publication_index(
-            snapshot.repo_root, snapshot.head, snapshot.paths, entries
+        repo = cls._repo(snapshot.repo_root)
+        with (
+            cls.state_publication_index(
+                snapshot.repo_root, snapshot.head, snapshot.paths, entries
+            ) as index_path,
+            repo.git.custom_environment(GIT_INDEX_FILE=str(index_path)),
         ):
-            oid = cls._repo(snapshot.repo_root).git.write_tree()
+            oid = repo.git.write_tree()
         if not isinstance(oid, str):
             msg = "write-tree returned a non-text object identifier"
             raise TypeError(msg)

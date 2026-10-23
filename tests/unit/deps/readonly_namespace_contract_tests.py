@@ -10,11 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
-from flext_infra._models.deps_tool_config_linters import (
-    FlextInfraModelsDepsToolConfigLinters,
-)
-from flext_infra.gates import FlextInfraRuffLintGate
+from flext_infra import config, gates
 from tests import m, tm, u
 
 if TYPE_CHECKING:
@@ -36,9 +32,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
             "return-type-owner": "example._protocols.base.ExampleProtocols.Branch",
             "producer-qualname": f"example._settings.ExampleSettings.{name}",
         }
-        occurrence = FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence.model_validate(
-            payload
-        )
+        occurrence = m.Infra.RuffReadonlyNamespaceOccurrence.model_validate(payload)
         tm.that(occurrence.model_dump(by_alias=True), eq=payload)
 
     @staticmethod
@@ -65,13 +59,13 @@ class TestsFlextInfraReadonlyNamespaceContract:
     def test_path_is_exact_and_project_relative(path: str) -> None:
         """Aliases, escaping paths, globs, and unsupported formats fail closed."""
         with pytest.raises(ValueError, match="exact project-relative Python path"):
-            FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence(
-                path=path,
-                qualname="ExampleProtocols.Settings.Branch",
-                role="protocol-instance-readonly-namespace",
-                return_type_owner="example.Branch",
-                producer_qualname="example.ExampleSettings.Branch",
-            )
+            m.Infra.RuffReadonlyNamespaceOccurrence.model_validate({
+                "path": path,
+                "qualname": "ExampleProtocols.Settings.Branch",
+                "role": "protocol-instance-readonly-namespace",
+                "return-type-owner": "example.Branch",
+                "producer-qualname": "example.ExampleSettings.Branch",
+            })
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -94,9 +88,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
         }
         payload[field] = identity
         with pytest.raises(ValueError, match="qualified declaration identity"):
-            FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence.model_validate(
-                payload
-            )
+            m.Infra.RuffReadonlyNamespaceOccurrence.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -106,10 +98,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
     def test_producer_member_is_paired(name: str, producer: str) -> None:
         """A declaration cannot authorize an unrelated producer member."""
         with pytest.raises(ValueError, match="paired PascalCase producer member"):
-            contract = (
-                FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence
-            )
-            contract.model_validate({
+            m.Infra.RuffReadonlyNamespaceOccurrence.model_validate({
                 "path": "src/example/_protocols/base.py",
                 "qualname": f"ExampleProtocols.Settings.{name}",
                 "role": "protocol-instance-readonly-namespace",
@@ -122,7 +111,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
     def test_role_is_not_an_open_exemption(role: str) -> None:
         """Only the selected readonly Protocol occurrence role is representable."""
         with pytest.raises(ValueError, match="protocol-instance-readonly-namespace"):
-            FlextInfraModelsDepsToolConfigLinters.RuffReadonlyNamespaceOccurrence.model_validate({
+            m.Infra.RuffReadonlyNamespaceOccurrence.model_validate({
                 "path": "src/example/_protocols/base.py",
                 "qualname": "ExampleProtocols.Settings.Branch",
                 "role": role,
@@ -149,7 +138,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
             path = project / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("def BrokenName() -> None: ...\n", encoding="utf-8")
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
@@ -180,7 +169,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
             '{"cells": [], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}\n',
             encoding="utf-8",
         )
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraRuffLintGate(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
@@ -206,6 +195,6 @@ class TestsFlextInfraReadonlyNamespaceContract:
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
         with pytest.raises(ValueError, match="Ruff source manifest is unavailable"):
-            FlextInfraRuffLintGate(tmp_path).readonly_namespace_sources(
+            gates.FlextInfraRuffLintGate(tmp_path).readonly_namespace_sources(
                 project, context, targets=(".",)
             )

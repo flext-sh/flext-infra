@@ -13,6 +13,7 @@ import pytest
 from flext_infra import config
 from tests import c, m, t, tm, u
 
+
 @pytest.mark.slow
 class TestsFlextInfraScriptDispatchMakefile:
     """Prove per-repo extra verbs and script-dispatch WHAT normalization."""

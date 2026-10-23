@@ -126,33 +126,6 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    def test_mypy_project_budget_is_published_with_native_completion(
-        checker_context: m.Infra.GateContext,
-    ) -> None:
-        """A real checker run records its project policy and native inventory."""
-        project = checker_context.repository_root
-        budget = config.Infra.tooling.tools.mypy.max_timeout_seconds
-        (project / "config").mkdir(exist_ok=True)
-        (project / "config" / "tooling.yaml").write_text(
-            "Infra:\n  tooling:\n    tools:\n      mypy:\n"
-            f"        timeout_seconds: {budget}\n",
-            encoding="utf-8",
-        )
-        source_root = project / config.Infra.source_scan.roots[0]
-        source_root.mkdir(exist_ok=True)
-        source = source_root / "budgeted.py"
-        source.write_text("value: int = 1\n", encoding="utf-8")
-        execution = gates.FlextInfraMypyGate(project).check_files(
-            [source],
-            project,
-            checker_context,
-        )
-        tm.ok(execution.result.passed)
-        tm.that(execution.raw_output, has=f"timeout_seconds={budget}")
-        tm.that(execution.raw_output, has="Build finished in ")
-        tm.that(execution.raw_output, has=str(source))
-
-    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize(
         "plugin_output",

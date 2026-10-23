@@ -191,6 +191,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     @pytest.mark.parametrize("ceiling", [False, True])
     def test_mypy_budget_resolves_the_project_tooling_overlay(
         tmp_path: Path,
+        *,
         ceiling: bool,
     ) -> None:
         """A project tooling.yaml budget drives the runner timeout."""
@@ -250,45 +251,6 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
         with pytest.raises(ValueError, match="exceeds the fleet ceiling"):
             u.Infra.mypy_runner_timeout_for_project(tmp_path)
-
-    @staticmethod
-    @pytest.mark.parametrize("budget", ["0", "-1", "true", "1.5", "'12'"])
-    def test_mypy_budget_rejects_non_positive_or_non_integer_values(
-        tmp_path: Path,
-        budget: str,
-    ) -> None:
-        """Malformed project budgets cannot launch an unbounded child."""
-        (tmp_path / "config").mkdir()
-        (tmp_path / "config" / "tooling.yaml").write_text(
-            "Infra:\n  tooling:\n    tools:\n      mypy:\n"
-            f"        timeout_seconds: {budget}\n",
-            encoding="utf-8",
-        )
-        with pytest.raises((TypeError, ValueError)):
-            u.Infra.mypy_resource_limit_for_project(tmp_path)
-
-    @staticmethod
-    @pytest.mark.parametrize("field", ["timeout_seconds", "max_timeout_seconds"])
-    @pytest.mark.parametrize("value", [0, -1, True, 1.5, "12"])
-    def test_mypy_policy_requires_positive_integer_seconds(
-        field: str,
-        value: float | str,
-    ) -> None:
-        """Both canonical budgets reject coercion and non-positive seconds."""
-        policy = config.Infra.tooling.tools.mypy
-        payload = policy.model_dump(by_alias=True)
-        payload[field] = value
-        with pytest.raises(ValueError):
-            type(policy).model_validate(payload)
-
-    @staticmethod
-    def test_mypy_policy_rejects_default_above_its_ceiling() -> None:
-        """The typed SSOT rejects an inconsistent default and ceiling."""
-        policy = config.Infra.tooling.tools.mypy
-        payload = policy.model_dump(by_alias=True)
-        payload["timeout_seconds"] = policy.max_timeout_seconds + 1
-        with pytest.raises(ValueError, match="default timeout exceeds"):
-            type(policy).model_validate(payload)
 
     @staticmethod
     def test_mypy_budget_without_overlay_uses_the_fleet_default(

@@ -272,6 +272,10 @@ class FlextInfraModelsCodemod:
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
+        operation: Literal["restructure", "materialize-delegations"] = m.Field(
+            default="restructure",
+            description="Native contract operation executed in the shared source epoch",
+        )
         phase: c.Infra.SemanticCutoverPhase = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
             strict=False,

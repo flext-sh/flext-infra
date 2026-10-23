@@ -3,7 +3,7 @@ snapshots:
   assert isinstance(self.value, Entry):
     fixed: |-
       if not (isinstance(self.value, Entry)):
-          raise TypeError
+          tm.reject()
     labels:
     - source: assert isinstance(self.value, Entry)
       style: primary
@@ -16,7 +16,7 @@ snapshots:
   assert isinstance(value, (Entry, Schema)):
     fixed: |-
       if not (isinstance(value, (Entry, Schema))):
-          raise TypeError
+          tm.reject()
     labels:
     - source: assert isinstance(value, (Entry, Schema))
       style: primary
@@ -31,7 +31,7 @@ snapshots:
         raise AssertionError
   : fixed: |
       if not (isinstance(self.value, Entry)):
-          raise TypeError
+          tm.reject()
     labels:
     - source: |-
         if not (isinstance(self.value, Entry)):
@@ -48,7 +48,7 @@ snapshots:
         raise AssertionError
   : fixed: |
       if not (isinstance(value, (Entry, Schema))):
-          raise TypeError
+          tm.reject()
     labels:
     - source: |-
         if not (isinstance(value, (Entry, Schema))):

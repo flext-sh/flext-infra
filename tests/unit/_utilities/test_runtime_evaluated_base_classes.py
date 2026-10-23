@@ -540,6 +540,86 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             )
 
     @staticmethod
+    @pytest.mark.parametrize("duplicate", [False, True])
+    def test_planned_barrel_chain_preserves_the_leaf_class_identity(
+        tmp_path: Path, *, duplicate: bool
+    ) -> None:
+        """Generation follows explicit exports without inventing a second base."""
+        package = tmp_path / "src" / "barrel_contract"
+        planned = {
+            package / "__init__.py": "from .services import Base\n",
+            package / "services" / "__init__.py": (
+                "from typing import TYPE_CHECKING\n"
+                "from types import MappingProxyType\n"
+                "from flext_core.lazy import install_lazy_exports\n"
+                "if TYPE_CHECKING:\n    from ._parts import Base\n"
+                "install_lazy_exports(__name__, globals(), "
+                "MappingProxyType({'Base': '._parts'}), public_exports=('Base',))\n"
+            ),
+            package / "services" / "_parts" / "__init__.py": (
+                "from .base import Base\n"
+            ),
+            package / "services" / "_parts" / "base.py": (
+                u.Tests.runtime_root_import() + "class Base(RuntimeRoot): pass\n"
+            ),
+            package / "services" / "_parts" / "release.py": (
+                "from barrel_contract.services import Base\nclass Release(Base): pass\n"
+            ),
+            package / "consumer.py": (
+                "from barrel_contract import Base\n"
+                "from barrel_contract.services._parts.base import Base as Leaf\n"
+                + (
+                    "class Consumer(Base, Leaf): pass\n"
+                    if duplicate
+                    else "class Consumer(Base): pass\n"
+                )
+            ),
+        }
+        if duplicate:
+            with pytest.raises(ValueError, match="Duplicate class base:"):
+                u.Infra.runtime_evaluated_base_classes(
+                    tmp_path, planned, u.Tests.runtime_evaluated_roots()
+                )
+            return
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
+            eq=tuple(
+                sorted({
+                    *u.Tests.runtime_evaluated_roots(),
+                    "barrel_contract.Base",
+                    "barrel_contract.services.Base",
+                })
+            ),
+        )
+
+    @staticmethod
+    def test_planned_barrel_cannot_borrow_a_removed_live_export(tmp_path: Path) -> None:
+        """A stale export plan fails even when the live barrel is valid."""
+        package = tmp_path / "src" / "removed_export"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text(
+            "from .base import Base\n", encoding=c.DEFAULT_ENCODING
+        )
+        (package / "base.py").write_text(
+            "class Base: pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        with pytest.raises(
+            ValueError, match=r"Unresolved planned base: removed_export\.Base$"
+        ):
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    package / "__init__.py": "",
+                    package / "consumer.py": (
+                        "from removed_export import Base\nclass Consumer(Base): pass\n"
+                    ),
+                },
+                (),
+            )
+
+    @staticmethod
     def test_native_stdlib_aliases_preserve_the_same_qualified_bases(
         tmp_path: Path,
     ) -> None:

@@ -3,7 +3,7 @@ snapshots:
   assert self.value is not None:
     fixed: |-
       if not (self.value is not None):
-          raise AssertionError
+          tm.reject()
     labels:
     - source: assert self.value is not None
       style: primary
@@ -16,7 +16,7 @@ snapshots:
   assert value is None:
     fixed: |-
       if not (value is None):
-          raise AssertionError
+          tm.reject()
     labels:
     - source: assert value is None
       style: primary

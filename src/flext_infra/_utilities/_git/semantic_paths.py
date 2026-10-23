@@ -553,13 +553,21 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             path = before.path.relative_to(state.repo_root)
             preimage = cls._git_publication_entry(state.repo_root, before, write=False)
             if baseline.get(path) != preimage or staged.get(path) != preimage:
-                return result.fail(f"owned output overlaps pre-existing changes: {path}")
-        return result.ok(tuple(
-            entry
-            for after in outputs
-            if (entry := cls._git_publication_entry(state.repo_root, after, write=True))
-            is not None
-        ))
+                return result.fail(
+                    f"owned output overlaps pre-existing changes: {path}"
+                )
+        return result.ok(
+            tuple(
+                entry
+                for after in outputs
+                if (
+                    entry := cls._git_publication_entry(
+                        state.repo_root, after, write=True
+                    )
+                )
+                is not None
+            )
+        )
 
     @classmethod
     def _git_commit_publications_locked(
@@ -583,12 +591,15 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         lock = LockedFD(state.index_before.path)
         lock.open(write=True, stream=False)
         try:
-            with cls.state_publication_index(
-                state.repo_root,
-                state.base_oid,
-                tuple(item.path.relative_to(state.repo_root) for item in inputs),
-                entries.value,
-            ) as index_path:
+            with (
+                cls.state_publication_index(
+                    state.repo_root,
+                    state.base_oid,
+                    tuple(item.path.relative_to(state.repo_root) for item in inputs),
+                    entries.value,
+                ) as index_path,
+                repo.git.custom_environment(GIT_INDEX_FILE=str(index_path)),
+            ):
                 index = IndexFile(repo, index_path)
                 expected_tree = index.write_tree().hexsha
                 if expected_tree == repo.commit(state.base_oid).tree.hexsha:

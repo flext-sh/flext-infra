@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, c, config, m, main, workspace
-from tests import tm, u
+from tests import p, tm, u
 
 
 class TestsFlextInfraGitLaneHygiene:
@@ -358,3 +358,146 @@ class TestsFlextInfraGitLaneHygiene:
         )
         tm.that(u.Tests.git_capture(root, "rev-parse", "HEAD").strip(), eq=before)
         tm.that((root / "injected").exists(), eq=False)
+
+    @classmethod
+    @pytest.mark.parametrize(
+        "mode",
+        [
+            "owned",
+            "integrated",
+            "overlap",
+            "forged",
+            "copied",
+            "outside",
+            "tip",
+            "hook",
+        ],
+    )
+    def test_native_publication_commits_only_owned_outputs(
+        cls, tmp_path: Path, native_consumer: p.Tests.NativeConsumer, mode: str
+    ) -> None:
+        """Actual born effects use a private index, never staged caller contents."""
+        request = cls._retained_ownership(tmp_path)
+        script = """
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from flext_infra import FlextInfraGitService, codegen
+from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from tests import c, m, tm, u
+
+runtime_root = Path(sys.argv[1])
+root = Path(sys.argv[2])
+checkpoint = sys.argv[3]
+mode = sys.argv[4]
+remote = sys.argv[5]
+ownership = tm.ok(FlextInfraGitService.lane_ownership(
+    m.Infra.GitLaneOwnershipRequest(
+        repo_root=root, remote=remote, checkpoint_ref=checkpoint,
+    ),
+))
+base = u.Tests.integration_branch(root)
+u.Tests.git_run(root, "switch", "-c", "active-candidate")
+foreign = root / "foreign.txt"
+foreign.write_bytes(b"staged foreign bytes\\n")
+u.Tests.git_run(root, "add", "--", foreign.name)
+foreign.write_bytes(b"unstaged foreign bytes\\n")
+untracked = root / "untracked.txt"
+untracked.write_bytes(b"untracked foreign bytes\\n")
+target = root / "README.md"
+if mode == "overlap":
+    target.write_bytes(b"pre-existing foreign target bytes\\n")
+if mode == "integrated":
+    u.Tests.git_run(root, "branch", "owned-publication", "HEAD")
+state = tm.ok(FlextInfraGitService.prepare_publication(
+    m.Infra.GitLaneRequest(
+        repo_root=root, branch="owned-publication", base=base,
+        subject="chore: publish owned native output", body_file=target,
+        ownership=ownership,
+    ),
+))
+index = (root / ".git" / "index").read_bytes()
+head = u.Tests.git_capture(root, "rev-parse", "HEAD").strip()
+if mode == "outside":
+    publication_root = u.Tests.git_repository(root.parent / "outside")
+    target = publication_root / "README.md"
+else:
+    publication_root = root
+producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
+    runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
+))
+owner = codegen.FlextInfraCodegenTransaction(
+    repository_root=publication_root, producer=producer,
+)
+before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+if before.content is None:
+    raise AssertionError("the tracked owned fixture needs its real preimage")
+payload = before.content + b"owned native change\\n"
+phase = c.Infra.MiseSyncPhase.INFRA
+analysis = m.Infra.CodegenPhaseAnalysis(
+    phase=phase,
+    files=(m.Infra.CodegenFilePlan(
+        project=publication_root, path=target, before=before,
+        desired_content=payload, phase=phase,
+    ),),
+)
+receipts = []
+tm.ok(owner.publish_file_phase_locked(
+    publication_root,
+    owner.capability_roots(phase.value, (publication_root,)),
+    analysis,
+    policy=m.Infra.CodegenPhasePublicationPolicy(directories=()),
+    publication_receipts=receipts,
+))
+if mode == "forged":
+    publications = tuple(receipt.model_copy() for receipt in receipts)
+else:
+    publications = tuple(receipts)
+if mode == "copied":
+    state = state.model_copy()
+if mode == "tip":
+    tree = u.Tests.git_capture(root, "rev-parse", "HEAD^{tree}").strip()
+    oid = u.Tests.git_capture(
+        root, "commit-tree", tree, "-p", head, "-m", "advance integration",
+    ).strip()
+    u.Tests.git_run(root, "push", remote, f"{oid}:refs/heads/{base}")
+if mode == "hook":
+    hook = root / ".git" / "hooks" / "pre-commit"
+    hook.write_text("#!/bin/sh\\ngit add -- foreign.txt\\n", encoding="utf-8")
+    hook.chmod(0o755)
+result = FlextInfraGitService.commit_publications(
+    state, publications,
+    publication_verifier=codegen.FlextInfraMiseArtifactsVerification,
+)
+if mode in {"owned", "integrated"}:
+    committed = tm.ok(result)
+    names = u.Tests.git_capture(
+        root, "diff-tree", "--no-commit-id", "--name-only", "-r", committed.oid,
+    ).splitlines()
+    tm.that(names, eq=["README.md"])
+    actual = u.Tests.git_capture(root, "show", f"{committed.oid}:README.md")
+    tm.that(actual, eq=payload.decode("utf-8"))
+else:
+    tm.fail(result)
+    if mode == "overlap":
+        tm.that(result.error, has="overlaps pre-existing changes: README.md")
+    refs = u.Tests.git_capture(
+        root, "for-each-ref", "--format=%(refname)", "refs/heads/owned-publication",
+    )
+    tm.that(refs, eq="")
+tm.that((root / ".git" / "index").read_bytes(), eq=index)
+tm.that(u.Tests.git_capture(root, "rev-parse", "HEAD").strip(), eq=head)
+tm.that(
+    u.Tests.git_capture(root, "branch", "--show-current").strip(), eq="active-candidate",
+)
+tm.that(foreign.read_bytes(), eq=b"unstaged foreign bytes\\n")
+tm.that(untracked.read_bytes(), eq=b"untracked foreign bytes\\n")
+"""
+        native_consumer(
+            script,
+            str(request.repo_root),
+            request.checkpoint_ref,
+            mode,
+            request.remote,
+        )

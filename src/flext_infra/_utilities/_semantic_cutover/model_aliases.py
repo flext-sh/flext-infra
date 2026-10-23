@@ -287,65 +287,73 @@ class FlextInfraUtilitiesSemanticModelAliases:
                             f"inventory: {changed}"
                         )
                         raise ValueError(msg)
-                    before = runtime.build_string_module(
-                        snapshot, working[changed], resource=change.resource
+                    working[changed] = cls._retain_inline_imports(
+                        snapshot, current, change, working[changed]
                     )
-                    original_imports = {
-                        (information.module_name, information.level, binding)
-                        for statement in runtime.module_imports_for_pymodule(
-                            snapshot, before
-                        ).imports
-                        if isinstance(
-                            information := statement.import_info, p.Infra.RopeFromImport
-                        )
-                        for binding in information.names_and_aliases
-                    }
-                    after = runtime.build_string_module(
-                        snapshot, change.new_contents, resource=change.resource
-                    )
-                    imports = runtime.module_imports_for_pymodule(snapshot, after)
-                    used_imports = {
-                        (information.module_name, information.level, binding)
-                        for information in imports.get_used_imports(after)
-                        if isinstance(information, p.Infra.RopeFromImport)
-                        for binding in information.names_and_aliases
-                    }
-                    for statement in imports.imports:
-                        information = statement.import_info
-                        if (
-                            not isinstance(information, p.Infra.RopeFromImport)
-                            or (
-                                snapshot.get_relative_module(
-                                    information.module_name,
-                                    change.resource.parent,
-                                    information.level,
-                                )
-                                if information.level
-                                else snapshot.get_module(information.module_name)
-                            ).get_resource()
-                            != current
-                        ):
-                            continue
-                        retained = tuple(
-                            binding
-                            for binding in information.names_and_aliases
-                            if (
-                                key := (
-                                    information.module_name,
-                                    information.level,
-                                    binding,
-                                )
-                            )
-                            in original_imports
-                            or key in used_imports
-                        )
-                        if retained != tuple(information.names_and_aliases):
-                            statement.import_info = runtime.from_import(
-                                information.module_name, information.level, retained
-                            )
-                    working[changed] = imports.get_changed_source()
             finally:
                 snapshot.close()
+
+    @staticmethod
+    def _retain_inline_imports(
+        project: p.Infra.RopeProject,
+        origin: p.Infra.RopeResource,
+        change: p.Infra.RopeChangeContents,
+        source: str,
+    ) -> str:
+        """Retain authored and still-used imports after a native inline change.
+
+        Returns:
+            The native change with only its proven obsolete imports removed.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        before = runtime.build_string_module(project, source, resource=change.resource)
+        original_imports = {
+            (information.module_name, information.level, binding)
+            for statement in runtime.module_imports_for_pymodule(
+                project, before
+            ).imports
+            if isinstance(information := statement.import_info, p.Infra.RopeFromImport)
+            for binding in information.names_and_aliases
+        }
+        after = runtime.build_string_module(
+            project, change.new_contents, resource=change.resource
+        )
+        imports = runtime.module_imports_for_pymodule(project, after)
+        used_imports = {
+            (information.module_name, information.level, binding)
+            for information in imports.get_used_imports(after)
+            if isinstance(information, p.Infra.RopeFromImport)
+            for binding in information.names_and_aliases
+        }
+        for statement in imports.imports:
+            information = statement.import_info
+            if (
+                not isinstance(information, p.Infra.RopeFromImport)
+                or (
+                    project.get_relative_module(
+                        information.module_name,
+                        change.resource.parent,
+                        information.level,
+                    )
+                    if information.level
+                    else project.get_module(information.module_name)
+                ).get_resource()
+                != origin
+            ):
+                continue
+            retained = tuple(
+                binding
+                for binding in information.names_and_aliases
+                if (key := (information.module_name, information.level, binding))
+                in original_imports
+                or key in used_imports
+            )
+            if retained != tuple(information.names_and_aliases):
+                statement.import_info = runtime.from_import(
+                    information.module_name, information.level, retained
+                )
+        return imports.get_changed_source()
 
     @staticmethod
     def _remove_alias_namespace(

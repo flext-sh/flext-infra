@@ -138,8 +138,9 @@ class FlextInfraModelsCheck:
             m.Field(
                 gt=0,
                 description=(
-                    "Positive effective Mypy wall-time limit in seconds, resolved"
-                    " from the typed fleet default or bounded project budget"
+                    "Positive Mypy wall-time limit in seconds, resolved from"
+                    " tools.mypy.timeout_seconds in tooling.yaml or the env"
+                    " override"
                 ),
             ),
         ]

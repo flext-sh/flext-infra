@@ -99,7 +99,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             """
             parts = value.split(".")
-            if len(parts) < 2 or any(
+            if "." not in value or any(
                 not part.isascii() or not part.isidentifier() or iskeyword(part)
                 for part in parts
             ):

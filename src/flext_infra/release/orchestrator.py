@@ -14,31 +14,15 @@ from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.release import FlextInfraReleasePlanMixin
 
 
-class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
+class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseOptions):
     """Run one phase of the release protocol against the repository root.
 
     The version lives only in ``pyproject.toml``; the protocol derives every
     change from merged pull-request titles and is its sole writer.
     """
 
-    phase: Annotated[
-        c.Infra.ReleasePhase,
-        m.Field(description="Release phase to execute"),
-    ] = c.Infra.ReleasePhase.PLAN
-    index: Annotated[
-        bool,
-        m.Field(description="Publish receipt-verified artifacts to the package index"),
-    ] = False
-    pr_title: Annotated[
-        str,
-        m.Field(description="Pull-request title to validate against the protocol"),
-    ] = ""
-    ownership: Annotated[
-        m.Infra.GitLaneOwnershipReceipt | None,
-        m.Field(description="Authenticated integrated prior-state ownership receipt"),
-    ] = None
     conform_collaborators: Annotated[
-        m.Infra.CodegenConformPorts | None,
+        p.Infra.CodegenConformPorts | None,
         m.Field(
             exclude=True,
             description=(

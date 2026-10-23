@@ -835,11 +835,11 @@ class FlextInfraUtilitiesImportLaw:
 
         """
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
-        for part in module.split(".")[1:]:
+        for index, part in enumerate(module.split(".")[1:]):
             stem = part.lstrip("_")
             if any(stem == family.module for family in families.values()):
                 return "family"
-            if any(
+            if index == 0 and any(
                 stem == role or stem.startswith(f"{role}_")
                 for role in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
             ):

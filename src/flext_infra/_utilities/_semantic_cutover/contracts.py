@@ -39,6 +39,9 @@ from flext_infra._utilities._semantic_cutover import (
 from flext_infra._utilities._semantic_cutover.declaration_retirement import (
     FlextInfraUtilitiesSemanticDeclarationRetirement,
 )
+from flext_infra._utilities._semantic_cutover.delegations import (
+    FlextInfraUtilitiesSemanticDelegations,
+)
 from flext_infra._utilities._semantic_cutover.family_type_references import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -390,6 +393,11 @@ class FlextInfraUtilitiesSemanticContracts(
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
+        operation = m.Infra.RopeContractRule.model_validate(rule, from_attributes=True)
+        if operation.operation == "materialize-delegations":
+            return FlextInfraUtilitiesSemanticDelegations.materialize_delegations(
+                project, sources, tuple(context[2]), rule.id
+            )
         resources = tuple(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix()

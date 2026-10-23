@@ -5156,6 +5156,44 @@ class FlextInfraWorkspaceNativeReference:
         return result_type.ok(cls._code_units(root))
 
     @classmethod
+    def _candidate_code_differences(
+        cls,
+        executed: p.HasModelDump[t.DictKV[str, p.GuardInput]],
+        name: str,
+        codes: t.SequenceOf[t.Infra.NativeCode],
+    ) -> t.StrTuple:
+        """Describe every same-named compiler candidate without admitting one.
+
+        Returns:
+            Original candidate locations, differing fields, and witness digests.
+
+        """
+        differences: list[str] = []
+        executed_fields = executed.model_dump()
+        for code in codes:
+            if code.co_name != name:
+                continue
+            candidate = cls._code_evidence(code)
+            candidate_fields = candidate.model_dump()
+            differences.append(
+                f"qualname={code.co_qualname!r},"
+                f"firstlineno={code.co_firstlineno},"
+                f"differing_fields={
+                    tuple(
+                        field
+                        for field in m.Infra.NativeCodeEvidence.model_fields
+                        if executed_fields[field] != candidate_fields[field]
+                    )
+                },"
+                f"witness_sha256={
+                    u.Cli.sha256_bytes(candidate.witness)
+                    if candidate.witness is not None
+                    else None
+                }"
+            )
+        return tuple(differences)
+
+    @classmethod
     def _authored_sources_current(
         cls,
         observed: m.Infra.NativeImportObservation,
@@ -5208,29 +5246,9 @@ class FlextInfraWorkspaceNativeReference:
                 )
                 for code in compiled[key]
             ):
-                differences: list[str] = []
-                executed_fields = executed.model_dump()
-                for code in compiled[key]:
-                    if code.co_name != executed.name:
-                        continue
-                    candidate = cls._code_evidence(code)
-                    candidate_fields = candidate.model_dump()
-                    differences.append(
-                        f"qualname={code.co_qualname!r},"
-                        f"firstlineno={code.co_firstlineno},"
-                        f"differing_fields={
-                            tuple(
-                                field
-                                for field in m.Infra.NativeCodeEvidence.model_fields
-                                if executed_fields[field] != candidate_fields[field]
-                            )
-                        },"
-                        f"witness_sha256={
-                            u.Cli.sha256_bytes(candidate.witness)
-                            if candidate.witness is not None
-                            else None
-                        }"
-                    )
+                differences = cls._candidate_code_differences(
+                    executed, executed.name, compiled[key]
+                )
                 receipt = states.get(Path(executed.filename))
                 return r[bool].fail(
                     f"authored producer code differs from pinned native source: "

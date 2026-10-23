@@ -24,7 +24,7 @@ class TestsFlextInfraCandidateDependencyLine:
     ) -> None:
         """An exact commit declares provenance, never a replacement branch selector."""
         distribution = config.Infra.codegen.infra_repository.distribution
-        url = f"{u.Tests.integration().base_url}/{distribution}.git"
+        url = f"https://example.test/fixture/{distribution}.git"
         commit = "a" * 40
         u.Tests.initialize_git_repo(tmp_path)
         (tmp_path / "pyproject.toml").write_text(
@@ -53,4 +53,4 @@ class TestsFlextInfraCandidateDependencyLine:
                 eq=config.Infra.codegen.branch_policy.integration_branch,
             )
         else:
-            tm.fail(line, has="multiple candidate sources")
+            tm.fail(line, has="candidate dependency distributions must be unique")

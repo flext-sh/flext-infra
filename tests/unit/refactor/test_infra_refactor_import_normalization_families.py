@@ -441,6 +441,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.that(u.Infra.import_module_role(f"demo_pkg._{role}"), eq="layer0")
         tm.that(u.Infra.import_module_role(f"demo_pkg.{role}_sources"), eq="layer0")
         tm.that(u.Infra.import_module_role(f"demo_pkg.{role}uration"), eq="consumer")
+        tm.that(u.Infra.import_module_role(f"demo_pkg.helpers.{role}"), eq="consumer")
+        tm.that(u.Infra.import_module_role(f"infra.pulumi.lib.{role}"), eq="consumer")
         for family in u.Infra.facade_families().values():
             tm.that(
                 u.Infra.import_module_role(f"demo_pkg.{family.directory}._{role}.base"),

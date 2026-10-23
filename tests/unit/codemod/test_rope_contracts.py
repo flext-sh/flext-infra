@@ -142,6 +142,127 @@ class TestsFlextInfraRopeContractCatalog:
             u.Infra.declared_contract_rules(tmp_path)
 
 
+class TestsFlextInfraRopeDelegationContracts:
+    """Exercise the canonical operation with real native declarations and calls."""
+
+    @staticmethod
+    @pytest.mark.parametrize("asynchronous", [False, True])
+    @pytest.mark.parametrize(
+        "rejected", ["", "callback", "prototype", "snapshot", "default", "decorator"]
+    )
+    def test_native_delegation_contract(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        *,
+        asynchronous: bool,
+        rejected: str,
+    ) -> None:
+        """Preserve calling conventions and dynamic ports, or reject before effects."""
+        workspace, path = rope_contract_consumer
+        prefix = "async " if asynchronous else ""
+        source = (
+            "from __future__ import annotations\n"
+            "from functools import update_wrapper\n"
+            "from typing import get_type_hints\n"
+            "import asyncio\n"
+            "import inspect\n"
+            "class Binding:\n"
+            "    def __init__(self, operation, prototype):\n"
+            "        self.operation = operation\n"
+            "        def invoke(self, *args, **kwargs):\n"
+            "            return operation(self)(*args, **kwargs)\n"
+            "        update_wrapper(invoke, prototype)\n"
+            "        invoke.__annotations__ = get_type_hints(prototype)\n"
+            "        self.unbound = invoke\n"
+            "    def __get__(self, instance, owner=None):\n"
+            "        if instance is None:\n"
+            "            return self.unbound\n"
+            "        return self.operation(instance)\n"
+            "class Port:\n"
+            "    def __init__(self, bias):\n"
+            "        self.bias = bias\n"
+            f"    {prefix}def perform(self, item: int, /, extra: int = 0, *values: int, flag: bool = True, **labels: str) -> tuple:\n"
+            "        '''Perform the selected port operation.'''\n"
+            "        if item < 0:\n"
+            "            raise ValueError('native failure')\n"
+            "        return (self.bias, item, extra, values, flag, labels)\n"
+            "class Other:\n"
+            "    def perform(self, item):\n"
+            "        return item\n"
+            "class Application:\n"
+            "    port: Port\n"
+            "    @staticmethod\n"
+            "    def bind(operation, prototype):\n"
+            "        return Binding(operation, prototype)\n"
+            "    execute = bind(lambda self: self.port.perform, Port.perform)\n"
+            "    def __init__(self):\n"
+            "        self.port = Port(1)\n"
+            "application = Application()\n"
+            "def complete(value):\n"
+            "    return asyncio.run(value) if inspect.isawaitable(value) else value\n"
+            "first = complete(application.execute(3, 4, 5, flag=False, label='a'))\n"
+            "application.port = Port(2)\n"
+            "second = complete(Application.execute(application, 3, label='b'))\n"
+            "try:\n"
+            "    complete(application.execute(-1))\n"
+            "except ValueError as error:\n"
+            "    failure = str(error)\n"
+            "evidence = (first, second, failure, str(inspect.signature(Application.execute)), Application.execute.__doc__)\n"
+        )
+        if rejected == "callback":
+            source = source.replace(
+                "lambda self: self.port.perform", "lambda self: self.port.perform()"
+            )
+        elif rejected == "prototype":
+            source = source.replace(
+                "self.port.perform, Port.perform)", "self.port.perform, Other.perform)"
+            )
+        elif rejected == "snapshot":
+            source = source.replace(
+                "return self.operation(instance)", "return self.unbound"
+            )
+        elif rejected == "default":
+            source = source.replace("extra: int = 0", "extra: int = int()")
+        elif rejected == "decorator":
+            source = source.replace(
+                "class Port:",
+                "def decorate(function):\n    return function\nclass Port:",
+            )
+            source = source.replace(
+                f"    {prefix}def perform(self, item: int",
+                f"    @decorate\n    {prefix}def perform(self, item: int",
+            )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if m.Infra.RopeContractRule.model_validate(
+                rule, from_attributes=True
+            ).operation
+            == "materialize-delegations"
+        )
+        tm.that(len(rules), eq=1)
+        if rejected:
+            with pytest.raises(
+                ValueError,
+                match="delegation|descriptor|prototype|port|default|callback",
+            ):
+                u.Infra.plan_contract_rules(workspace, {path: source}, rules)
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            return
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains=f"{prefix}def execute(self, item: int, /,")
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
+            empty=True,
+        )
+
+
 class TestsFlextInfraRopeConstructorContracts:
     """Preserve constructor targets, injected ports and native adapter behavior."""
 

@@ -12,11 +12,73 @@ from typing import Annotated, Self
 from flext_core import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsGit,
+    FlextInfraModelsMixins,
+)
 
 
 class FlextInfraModelsRelease:
     """Models for release management."""
+
+    class ReleaseOptions(m.ArbitraryTypesModel):
+        """Shared release declarations used by requests and execution."""
+
+        phase: Annotated[
+            c.Infra.ReleasePhase,
+            m.Field(description="Release phase to execute"),
+        ] = c.Infra.ReleasePhase.PLAN
+        index: Annotated[
+            bool,
+            m.Field(
+                description="Publish receipt-verified artifacts to the package index"
+            ),
+        ] = False
+        pr_title: Annotated[
+            str,
+            m.Field(description="Pull-request title to validate against the protocol"),
+        ] = ""
+        ownership: Annotated[
+            FlextInfraModelsGit.GitLaneOwnershipReceipt | None,
+            m.Field(
+                description="Authenticated integrated prior-state ownership receipt"
+            ),
+        ] = None
+
+    class ReleaseRunCommand(FlextInfraModelsBase.CommandContext, ReleaseOptions):
+        """Typed release input before native ownership and service composition."""
+
+        projects: Annotated[
+            t.StrSequence | None,
+            m.BeforeValidator(
+                lambda value: (value,) if isinstance(value, str) else value
+            ),
+            m.Field(
+                description="Projects to process",
+                json_schema_extra={"typer_param_decls": ["--project", "--projects"]},
+            ),
+        ] = None
+        checkpoint_ref: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Existing published checkpoint resolved by native Git"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _exclusive_ownership_transport(self) -> Self:
+            """Accept one explicit ownership transport without inferring proof.
+
+            Returns:
+                The validated request.
+
+            Raises:
+                ValueError: If both ownership transports are selected.
+
+            """
+            if self.checkpoint_ref is not None and self.ownership is not None:
+                msg = "checkpoint_ref and ownership are mutually exclusive"
+                raise ValueError(msg)
+            return self
 
     class GithubReleaseAsset(m.StrictBoundaryModel):
         """Selected native GitHub asset metadata, before publication effects."""

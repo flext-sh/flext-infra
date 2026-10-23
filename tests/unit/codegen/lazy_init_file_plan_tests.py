@@ -29,6 +29,62 @@ class TestsLazyInitScopedSourceElection:
     """Keep native catalog observation distinct from semantic source consumption."""
 
     @staticmethod
+    @pytest.mark.parametrize("consumed", [False, True])
+    def test_nested_target_authenticates_only_consumed_sibling_sources(
+        tmp_path: Path, *, consumed: bool
+    ) -> None:
+        """Select one artifact without planning its unrelated production sibling."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = package / "provider.py"
+        provider.write_text(
+            "class Provider: pass\n__all__ = ['Provider']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        fixtures = root / c.Infra.DIR_TESTS / "fixtures"
+        fixtures.mkdir(parents=True)
+        (fixtures.parent / c.Infra.INIT_PY).write_text(
+            "__all__ = []\n", encoding=c.DEFAULT_ENCODING
+        )
+        target = fixtures / c.Infra.INIT_PY
+        target.write_text("", encoding=c.DEFAULT_ENCODING)
+        (fixtures / "reader.py").write_text(
+            (
+                f"from {package.name}.provider import Provider\n"
+                "class Reader(Provider): pass\n"
+                if consumed
+                else "class Reader: pass\n"
+            )
+            + "__all__ = ['Reader']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publications: list[tuple[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
+        with u.Infra.facade_source_project(
+            root, project_roots=(root,), source_publications=(publications, failures)
+        ) as (project, _, _):
+            analysis = tm.ok(
+                FlextInfraCodegenLazyInit(
+                    repository_root=root,
+                    target_module=f"{c.Infra.DIR_TESTS}.fixtures",
+                ).plan_files(source_project=project, source_publications=publications)
+            )
+            tm.that(tuple(file.path for file in analysis.files), eq=(target,))
+            tm.that(provider in {state.path for state in analysis.inputs}, eq=consumed)
+            receipt = next(
+                receipt for path, receipt in publications if path == fixtures
+            )
+            provider.write_text(
+                "class Provider: VALUE = 'changed'\n__all__ = ['Provider']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            if consumed:
+                with pytest.raises(ValueError, match=escape(str(provider))):
+                    project.verify_source_states(receipt)
+            else:
+                project.verify_source_states(receipt)
+        tm.that(len(failures), eq=int(consumed))
+
+    @staticmethod
     def _observe(
         observer: p.Infra.RopeResourceObserver, resource: p.Infra.RopeResource
     ) -> None:

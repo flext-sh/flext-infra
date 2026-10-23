@@ -1591,17 +1591,33 @@ class FlextInfraCodegenPreconditions:
                 covered.add(state.path)
                 continue
             content = state.content
+            buffered_size = len(content) if content is not None else None
+            buffered_sha256 = (
+                u.Cli.sha256_bytes(content) if content is not None else None
+            )
             if (
                 state.model_dump(include=identity_fields),
-                len(content) if content is not None else None,
-                u.Cli.sha256_bytes(content) if content is not None else None,
+                buffered_size,
+                buffered_sha256,
             ) != (
                 receipt.model_dump(include=identity_fields),
                 receipt.size,
                 receipt.sha256,
             ):
                 return result_type.fail(
-                    f"producer input differs from captured receipt: {state.path}"
+                    f"producer input differs from captured receipt: {state.path}",
+                    error_data={
+                        "receipt_sha256": receipt.sha256,
+                        "buffered_sha256": buffered_sha256,
+                        "receipt_size": receipt.size,
+                        "buffered_size": buffered_size,
+                        "receipt_identity": receipt.model_dump(
+                            mode="json", include=identity_fields
+                        ),
+                        "buffered_identity": state.model_dump(
+                            mode="json", include=identity_fields
+                        ),
+                    },
                 )
             covered.add(state.path)
         return result_type.ok(covered)

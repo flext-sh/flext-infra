@@ -274,10 +274,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         lines: t.MutableSequenceOf[str],
         module_exports: frozenset[str],
-        context: tuple[str | None, p.Infra.RopeProject | None, set[str]],
+        context: tuple[
+            str | None, p.Infra.RopeProject | None, set[str], t.MutableSequenceOf[str]
+        ],
     ) -> None:
         """Emit one TYPE_CHECKING import from its resolved owner."""
-        local_package_root, source_project, occupied_names = context
+        local_package_root, source_project, occupied_names, aliases = context
         if (
             len(f"    from {mod} import (")
             > u.Infra.native_tool_setting(
@@ -315,6 +317,10 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 if source_project is not None
                 else attr_name
             )
+            if imported_name[:1].isupper() and export_name[:1].islower():
+                parts.append(imported_name)
+                aliases.append(f"    {export_name} = {imported_name}")
+                continue
             parts.append(
                 f"{imported_name} as {export_name}"
                 if export_name in module_exports
@@ -412,6 +418,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             })
         )
         lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]
+        aliases: t.MutableSequenceOf[str] = []
         flext_types_emitted = include_flext_types and not cls._has_flext_types(
             collapsed,
         )
@@ -445,9 +452,11 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 merged_groups[mod],
                 lines,
                 module_exports,
-                (local_package_root, source_project, occupied_names),
+                (local_package_root, source_project, occupied_names, aliases),
             )
             previous_section = type_checking_module_key(mod)[0]
+        if aliases:
+            lines.extend(("", *aliases))
         return () if len(lines) == 1 else lines
 
 

@@ -698,7 +698,6 @@ class FlextInfraCodegenLazyInit(
         package_dirs = self._package_dirs_for_target(
             indexed_package_dirs,
             target_package_dir=target.value[0],
-            repository_root=resolved_repository_root,
         )
         with rope.rope_project.source_capture():
             snapshots = self._snapshot_planner_inputs(
@@ -821,9 +820,8 @@ class FlextInfraCodegenLazyInit(
         indexed_package_dirs: t.SequenceOf[Path],
         *,
         target_package_dir: Path | None,
-        repository_root: Path,
     ) -> t.VariadicTuple[Path]:
-        """Select the target's source/test scope and its production sibling.
+        """Plan only the target tree; native reads capture external dependencies.
 
         Returns:
             The resulting ``t.VariadicTuple[Path]``.
@@ -831,29 +829,10 @@ class FlextInfraCodegenLazyInit(
         """
         if target_package_dir is None:
             return tuple(indexed_package_dirs)
-        target_parts = target_package_dir.relative_to(repository_root).parts
-        boundary_names = frozenset({
-            c.Infra.DEFAULT_SRC_DIR,
-            *c.Infra.NON_PUBLIC_LAZY_ROOTS,
-        })
-        boundary_index = next(
-            (
-                index
-                for index, part in enumerate(target_parts)
-                if part in boundary_names
-            ),
-            len(target_parts) - 1,
-        )
-        scope_prefix = target_parts[: boundary_index + 1]
-        project_prefix = target_parts[:boundary_index]
-        production_prefix = (*project_prefix, c.Infra.DEFAULT_SRC_DIR)
         return tuple(
             package_dir
             for package_dir in indexed_package_dirs
-            if package_dir.relative_to(repository_root).parts[: len(scope_prefix)]
-            == scope_prefix
-            or package_dir.relative_to(repository_root).parts[: len(production_prefix)]
-            == production_prefix
+            if package_dir.is_relative_to(target_package_dir)
         )
 
 
