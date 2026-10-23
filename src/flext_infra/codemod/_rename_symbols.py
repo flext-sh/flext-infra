@@ -64,6 +64,9 @@ class FlextInfraRenameSymbols:
         module_resource = workspace.rope_project.find_module(qualified_name)
         if module_resource is not None:
             path = Path(module_resource.real_path).resolve()
+            if not module_resource.is_folder() and path.name == "__init__.py":
+                msg = f"native initializer rename requires its package identity: {qualified_name}"
+                raise ValueError(msg)
             if module_resource.is_folder():
                 path /= "__init__.py"
             indexed = workspace.module(path)
@@ -415,7 +418,7 @@ class FlextInfraRenameSymbols:
             if child.is_folder():
                 cls._record_package_moves(child, destination, sources, moves, root)
                 continue
-            if origin not in sources or origin.suffix != ".py":
+            if origin not in sources or origin.suffix not in {".py", ".pyi"}:
                 msg = f"native package cannot preserve uninventoried payload: {origin}"
                 raise ValueError(msg)
             if origin in moves or destination in moves.values() or destination.exists():

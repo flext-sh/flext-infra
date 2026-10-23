@@ -773,34 +773,16 @@ Member contributions include the requirements parsed from captured declarations;
 the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
-`make typings` discovers missing third-party typing information independently of
-Mypy's normal untyped-import traversal policy. Published stub requirements enter
-the development group through UV. For unmapped modules, the generator uses the
-installed implementation and native Pyright to publish an owned PEP 561 package.
-The generation directory and distribution prefix come from the dependency limits
-policy. Generated packages record implementation provenance and a content-derived
-version, and expose an entry point so subsequent runs refresh them.
-
-Conformance admits a generated-local typing dependency before internal Git
-classification only after validating its declared UV path against that same
-producer policy. The physical package and every stub must remain inside the
-owning repository and policy directory. The generated header, distribution and
-directory identity, unique stub entry point, exact implementation requirement,
-wheel package and producer-snapshot version must agree. The snapshot digest is
-producer provenance, not a demand to rehash or discard later authored SDK stub
-augmentations. Missing or forged metadata,
-identity mismatches and symlink escapes fail closed. This authenticated typed
-provenance travels through requirement normalization and template rendering;
-neither a reserved prefix nor an arbitrary local first-party source grants an
-exemption. UV source synchronization and native resolution retain the validated
-local source. Genuine internal Git requirements still require their declared URL
-and retain their extras, markers, bounds and refs.
-
-The detector declares these requirements without resolving or installing them.
-Make then regenerates the owning runtime manifest, reconciles native locks,
-installs the environment and verifies its provenance. Dependency findings remain
-failures throughout this sequence. Reports pass as validated models between
-stages and serialize directly through Pydantic.
+Third-party typing comes from the library itself (inline annotations or
+`py.typed`) or from a published `types-*`/`*-stubs` distribution declared as a
+dependency. No local stub package is generated. Pyright's
+`reportMissingTypeStubs` is the single checker exception (tracker memory
+`operator-ruling-20261022-missing-type-stubs`): `config/tooling.yaml` declares
+it once under `settings.pyright`, the pyproject projection carries it to every
+member, and a project needing another value declares it in its own
+`config/tooling.yaml` overlay. Pyright, Mypy (`follow_untyped_imports`) and
+Pyrefly still analyze the untyped library source, and each used surface stays
+typed through `p` protocols at one boundary module per library.
 
 PEP 621 optional extras and PEP 735 dependency groups retain their separate
 categories, including when both declare a name such as `dev` or `codegen`.
