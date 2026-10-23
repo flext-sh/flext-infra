@@ -869,6 +869,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             imported = self._provider_module(binding.imported_module)
             imported_name = imported.get_name()
+            if (
+                target == f"{imported_name}.{binding.imported_name}"
+                and self._project.find_module(target) is not None
+            ):
+                # ``from . import child`` binds a real submodule, not a
+                # reexport of the package attribute currently being resolved.
+                return self._external_reference(
+                    target, tuple(remaining), visiting | {target}, depth + 1
+                )
             if imported_name in self._namespaces:
                 return self._resolve(
                     m.Infra.SourceClassReference(

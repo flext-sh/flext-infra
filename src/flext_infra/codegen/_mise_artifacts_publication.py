@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
@@ -466,6 +466,19 @@ class FlextInfraMisePublication:
         return r[tuple[m.Infra.CodegenJournalSource, ...]].ok(tuple(outputs))
 
     @staticmethod
+    def _first_exception(
+        current: BaseException | None,
+        incoming: BaseException | None,
+    ) -> BaseException | None:
+        """Retain the first native cause, including falsey exception instances.
+
+        Returns:
+            The original cause when present, otherwise the incoming cause.
+
+        """
+        return incoming if current is None else current
+
+    @staticmethod
     def publish(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
@@ -480,17 +493,11 @@ class FlextInfraMisePublication:
 
         """
         result_type = r[m.Infra.CodegenPhaseOutcome]
-        admitted_plans = u.Infra.codegen_file_publication_admission(publications)
+        admitted_plans = FlextInfraMisePublication._validated_publication_admission(
+            publications, batch_admission, journal
+        )
         if admitted_plans.failure:
             return result_type.from_failure(admitted_plans)
-        if batch_admission is not None:
-            validated = FlextInfraMisePublication._validated_batch_admission(
-                publications,
-                batch_admission,
-                journal,
-            )
-            if validated.failure:
-                return result_type.from_failure(validated)
         written: list[Path] = []
         admitted: list[m.Infra.CodegenStagedFile] = []
         retained: list[Path] = []
@@ -499,9 +506,6 @@ class FlextInfraMisePublication:
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ] = {}
         exception: BaseException | None = None
-        ordered = tuple(
-            sorted(publications, key=lambda item: item.index_before is not None)
-        )
         prior = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             prior_publications,
             destinations=tuple(
@@ -517,14 +521,10 @@ class FlextInfraMisePublication:
         )
         if prior.failure:
             return result_type.from_failure(prior)
-        directory_publications = (
-            tuple(
-                item.created for item in journal.directories if item.created is not None
-            )
-            if journal is not None
-            else ()
-        )
-        for index, publication in enumerate(ordered, start=1):
+        for index, publication in enumerate(
+            sorted(publications, key=lambda item: item.index_before is not None),
+            start=1,
+        ):
             u.Cli.emit_raw(
                 f"  publish [{index}/{len(publications)}] {publication.before.path}\n",
                 error=True,
@@ -534,12 +534,13 @@ class FlextInfraMisePublication:
                 publications,
                 written,
                 published_states,
-                directory_publications=directory_publications,
                 journal=journal,
             )
             if blocking is not None:
                 issues.append(blocking)
-                exception = blocked_by if exception is None else exception
+                exception = FlextInfraMisePublication._first_exception(
+                    exception, blocked_by
+                )
                 continue
             observed = FlextInfraMiseArtifactsFiles.read_state(
                 publication.before.path, required=False
@@ -567,7 +568,9 @@ class FlextInfraMisePublication:
                         message=changed.error or "publication failed",
                     ),
                 )
-                exception = changed.exception if exception is None else exception
+                exception = FlextInfraMisePublication._first_exception(
+                    exception, changed.exception
+                )
                 continue
             FlextInfraMisePublication._invalidate_project_document(
                 publication.before.path,
@@ -586,8 +589,8 @@ class FlextInfraMisePublication:
                         message=str(published_receipt.error),
                     ),
                 )
-                exception = (
-                    published_receipt.exception if exception is None else exception
+                exception = FlextInfraMisePublication._first_exception(
+                    exception, published_receipt.exception
                 )
                 continue
             published_states[publication.before.path] = (
@@ -606,7 +609,9 @@ class FlextInfraMisePublication:
             blocking = FlextInfraMisePublication._retired_index_issue(publication)
             if blocking[0] is not None:
                 issues.append(blocking[0])
-                exception = blocking[1] if exception is None else exception
+                exception = FlextInfraMisePublication._first_exception(
+                    exception, blocking[1]
+                )
         return result_type.ok(
             m.Infra.CodegenPhaseOutcome(
                 written_files=tuple(written),
@@ -662,7 +667,6 @@ class FlextInfraMisePublication:
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ],
         *,
-        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
         journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
         """Name the first failed publication prerequisite of one target.
@@ -672,7 +676,6 @@ class FlextInfraMisePublication:
             publications: Every staged publication of the batch.
             written: Destination paths already written by earlier targets.
             published_states: Before and after states of published targets.
-            directory_publications: Directory states published by this batch.
             journal: Durable owner of the batch's directory creation receipts.
 
         Returns:
@@ -691,7 +694,6 @@ class FlextInfraMisePublication:
                 published_states,
                 directories=publication.source_directories,
                 topology=publication.source_query_topology,
-                directory_publications=directory_publications,
                 journal=journal,
             )
         if ready.success:
@@ -751,17 +753,20 @@ class FlextInfraMisePublication:
         )
 
     @staticmethod
-    def _validated_batch_admission(
+    def _validated_publication_admission(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        batch_admission: m.Infra.CodegenPhaseOutcome,
+        batch_admission: m.Infra.CodegenPhaseOutcome | None,
         journal: m.Infra.CodegenTransactionJournal | None,
     ) -> p.Result[bool]:
-        """Prove the staged publications exactly match the admitted batch.
+        """Admit native file plans, then verify any captured batch admission.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
+        admitted = u.Infra.codegen_file_publication_admission(publications)
+        if admitted.failure or batch_admission is None:
+            return admitted
         batch_analysis = batch_admission.analysis
         if batch_analysis is None or (
             FlextInfraMisePublication._batch_admission_is_inconsistent(
@@ -858,7 +863,6 @@ class FlextInfraMisePublication:
         *,
         directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = (),
         topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
-        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
         journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[bool]:
         """Verify this target's inputs, rebinding only this phase's own writes.
@@ -905,14 +909,26 @@ class FlextInfraMisePublication:
             | {
                 inventory.root.path
                 for inventory in directories
-                if inventory.membership_queried
+                if inventory.membership_queried or inventory.membership_queries
             }
-            | {witness.target for witness in topology if witness.membership_queried}
+            | {
+                witness.target
+                for witness in topology
+                if witness.membership_queried or witness.membership_queries
+            }
         )
+        # Excluded descendants cannot affect this election; explicit path queries
+        # still bind their exact publications and all input states remain checked.
         relevant = tuple(
             (before, after)
             for before, after in published.values()
-            if after.path in candidates or not candidates.isdisjoint(after.path.parents)
+            if after.path in candidates
+            or any(
+                candidate in after.path.parents
+                and after.path.relative_to(candidate).parts[0]
+                not in config.Infra.codegen.source_scan_ignored
+                for candidate in candidates
+            )
         )
         effects = FlextInfraMiseArtifactsVerification.states_current(
             tuple(after for _before, after in relevant)
@@ -923,8 +939,21 @@ class FlextInfraMisePublication:
             return u.Cli.atomic_verify_directory_queries(
                 directories,
                 topology,
-                publications=relevant,
-                directory_publications=directory_publications,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    files=relevant,
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    ),
+                ),
+                directory_publications=(
+                    tuple(
+                        item.created
+                        for item in journal.directories
+                        if item.created is not None
+                    )
+                    if journal is not None
+                    else ()
+                ),
             )
         except (OSError, ValueError) as exc:
             return r[bool].fail(str(exc), exception=exc)

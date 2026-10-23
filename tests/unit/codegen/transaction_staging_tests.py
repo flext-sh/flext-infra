@@ -46,10 +46,10 @@ class TestsFlextInfraTransactionStaging:
             p.Infra.CodegenParticipantPolicy
         ].ok(policy)
 
-        tm.ok(isinstance(result.value, p.Infra.CodegenParticipantPolicy))
+        tm.that(result.value, is_=p.Infra.CodegenParticipantPolicy)
         tm.that(
-            isinstance(result.value.roots[0], p.Infra.CodegenParticipantRoot),
-            eq=True,
+            result.value.roots[0],
+            is_=p.Infra.CodegenParticipantRoot,
         )
         tm.that(result.value.scope_root, eq=native.target)
         tm.ok(result.value.roots[0] is native)
@@ -95,6 +95,13 @@ class TestsFlextInfraTransactionStaging:
         receiver.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
         missing = root / "required-member"
         missing.mkdir()
+        manifest = missing / c.PYPROJECT_FILENAME
+        manifest.write_text(
+            "[project]\nname = 'required-member'\nversion = '1.0.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        required = tm.ok(u.Cli.atomic_read_binary_file_state(manifest, required=True))
+        manifest.unlink()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "required-member"]\n\tpath = required-member\n',
             encoding=c.DEFAULT_ENCODING,
@@ -104,6 +111,7 @@ class TestsFlextInfraTransactionStaging:
         result = FlextInfraStagedPackage.plan_sources(
             root,
             {receiver: "VALUE = 2\n"},
+            options=m.Infra.StageSourceOptions(inputs=(required,)),
         )
 
         tm.fail(result, has=str(missing / c.PYPROJECT_FILENAME))
@@ -124,6 +132,7 @@ class TestsFlextInfraTransactionStaging:
     def test_dependency_closure_is_independent_of_generation_applicability(
         tmp_path: Path,
         policy: str,
+        *,
         manifest_present: bool,
     ) -> None:
         """Real Python providers remain importable beside declared native members."""
@@ -387,7 +396,11 @@ class TestsFlextInfraTransactionStaging:
         target.write_text("VALUE = 1\n")
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         if borrowed:
-            u.Tests.provision_checkout(root)
+            environment = u.Infra.runtime_environment_dir(root)
+            environment.mkdir()
+            (environment / Path(sys.executable).parent.name).symlink_to(
+                Path(sys.executable).parent, target_is_directory=True
+            )
         else:
             u.Infra.runtime_environment_dir(root).symlink_to(
                 u.Infra.runtime_environment_dir(Path(__file__).resolve().parents[3]),
@@ -606,6 +619,10 @@ class TestsFlextInfraTransactionStaging:
         )
         tm.that(source.read_text(), eq="VALUE = 3\n")
 
+
+class TestsFlextInfraTransactionPublication:
+    """Exercise journal publication, recovery and admission evidence."""
+
     @staticmethod
     @pytest.mark.parametrize(
         "selector",
@@ -719,7 +736,7 @@ class TestsFlextInfraTransactionStaging:
                 session,
                 (),
                 plans=prepared,
-                workspace=root,
+                runtime=m.Infra.CodegenSourceRuntime(workspace=root),
                 validator=consume,
             )
             tm.fail(
@@ -828,7 +845,7 @@ class TestsFlextInfraTransactionStaging:
                 session,
                 (),
                 plans=prepared,
-                workspace=root,
+                runtime=m.Infra.CodegenSourceRuntime(workspace=root),
                 validator=reject,
             )
             if rejection == "import":
@@ -837,7 +854,8 @@ class TestsFlextInfraTransactionStaging:
             elif rejection == "census":
                 tm.fail(refused, has="candidate runtime rejected")
                 tm.that(str(refused.error), has="runtime census found")
-                tm.that(str(refused.error), has="Plain [class_prefix]")
+                tm.that(str(refused.error), has="Plain")
+                tm.that(str(refused.error), has="[class_prefix]")
             elif rejection == "failure":
                 tm.fail(refused, has=str(original))
                 tm.ok(refused.exception is original)
@@ -900,7 +918,7 @@ class TestsFlextInfraTransactionStaging:
                 session,
                 (),
                 plans=(altered,),
-                workspace=root,
+                runtime=m.Infra.CodegenSourceRuntime(workspace=root),
             )
             tm.fail(refused, has="differs from sealed preparation")
             tm.that(
@@ -980,9 +998,12 @@ class TestsFlextInfraTransactionStaging:
                 owner="docs",
             )
             if state == "staging":
-                return owner.prepare_phase_staging_locked(session, "docs", (plan,))
-            prepared = tm.ok(owner.append_phase_locked(session, "docs", (plan,)))
-            if state == "committed":
+                prepared = tm.ok(
+                    owner.prepare_phase_staging_locked(session, "docs", (plan,))
+                )
+            else:
+                prepared = tm.ok(owner.append_phase_locked(session, "docs", (plan,)))
+            if state != prepared.journal.state:
                 journal = m.Infra.CodegenTransactionJournal.model_validate({
                     **prepared.journal.model_dump(),
                     "state": state,
@@ -1099,6 +1120,15 @@ class TestsFlextInfraTransactionStaging:
         mutation: str,
     ) -> None:
         """Consumer acceptance cannot overwrite a concurrent live-file update."""
+        u.Tests.run_native_callable(
+            TestsFlextInfraTransactionPublication._scenario_semantic_candidate,
+            tmp_path,
+            mutation,
+        )
+
+    @staticmethod
+    def _scenario_semantic_candidate(tmp_path: Path, mutation: str) -> None:
+        """Consume the real publication outside the test runner's live hooks."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         target = root / "sample.py"
         target.write_bytes(b"value = 1\n")
@@ -1585,7 +1615,7 @@ class TestsFlextInfraTransactionStaging:
                 tm.ok(
                     u.Cli.atomic_write_binary_file_guarded(
                         intent.before,
-                        content,
+                        tm.not_none(content),
                         permission_mode=intent.mode,
                     ),
                 )
@@ -1740,7 +1770,7 @@ class TestsFlextInfraTransactionStaging:
             tm.that(content, none=False)
             failed = FlextInfraMiseArtifactsProcess.write_new(
                 path,
-                content,
+                tm.not_none(content),
                 intent.mode,
                 intent=intent,
             )

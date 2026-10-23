@@ -583,6 +583,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     *packaged_data_paths.directories,
                 ),
                 packaged_data_files=packaged_data_paths.files,
+                package_config_resource=(
+                    FlextInfraEnsurePackagingPhase.config_resource(
+                        repository_root, project.package_name, planned_data_files
+                    )
+                ),
                 project_declaration_resource=(
                     FlextInfraEnsurePackagingPhase.declaration_resource(
                         package_name=project.package_name,

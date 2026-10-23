@@ -136,7 +136,10 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
             The resulting ``m.Infra.ViolationsSweepReport``.
 
         """
-        path = root / c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        path = (
+            tm.ok(u.Infra.refactor_report_evidence_root(root))
+            / c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
+        )
         return m.Infra.ViolationsSweepReport.model_validate_json(
             path.read_bytes(),
         )

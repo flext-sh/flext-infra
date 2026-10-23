@@ -659,6 +659,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         Internal consumers depend on the lower owner, never the utility facade
         that composes them. External consumers keep the public facade contract.
+        Their manifest owners are resolved inside the authenticated graph, not
+        restricted to the producer repository selected for publication.
         No retired class or method-name registry participates in discovery.
 
         Returns:
@@ -680,7 +682,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
         owners: MutableMapping[Path, MutableMapping[Path, str]] = {}
         for path, source in sources.items():
-            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(root, path)
+            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                Path(native_project.root.real_path),
+                path,
+                source_project=native_project,
+            )
             if owner is None:
                 msg = f"behavior consumer project owner is unresolved: {path}"
                 raise ValueError(msg)

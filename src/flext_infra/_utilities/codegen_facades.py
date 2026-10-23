@@ -66,8 +66,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     def facade_source_project(
         root: Path,
         *,
-        source_states: tuple[m.Cli.AtomicFileState, ...] = (),
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        source_options: m.Infra.StageSourceOptions | None = None,
         planned_sources: t.MappingKV[Path, str | None] | None = None,
         project_roots: t.VariadicTuple[Path] = (),
         source_publications: t.Pair[
@@ -91,6 +90,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ]:
         """Share one authenticated native source graph across a planning pass.
 
+        ``source_options`` supplies the pinned inputs and declared file effects
+        of the existing staging contract; capture, overlay and publication
+        verification remain owned by this source graph.
+
         Yields:
             The native Rope project, original-state reader and planned sources.
 
@@ -99,6 +102,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 authority.
 
         """
+        source_states = source_options.inputs if source_options is not None else ()
+        declared_files = (
+            source_options.declared_files if source_options is not None else ()
+        )
         root = root.resolve()
         project_roots = tuple(sorted({project.resolve() for project in project_roots}))
         if any(not project.is_relative_to(root) for project in project_roots):
@@ -238,17 +245,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
 
             with project.frozen_layout():
-                yield (
-                    FlextInfraUtilitiesCodegenFacades.require_source_project(project),
-                    consumed,
-                    sources,
+                source_project = (
+                    FlextInfraUtilitiesCodegenFacades.require_source_project(project)
                 )
+                yield source_project, consumed, sources
             # A body failure escapes at the yield; only a completed pass verifies.
             if source_publications is None:
                 project.verify_source_states()
             else:
                 verified = FlextInfraUtilitiesCodegenFacades.verify_source_publications(
-                    project, source_publications[0]
+                    source_project, source_publications[0]
                 )
                 if verified.issues:
                     source_publications[1].append(verified)
@@ -321,6 +327,25 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             message = "facade source project has no native Rope capabilities"
             raise TypeError(message)
         return value
+
+    @staticmethod
+    def candidate_python_sources(
+        candidate: m.Infra.StageSourcePlan,
+        states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> t.MutableMappingKV[Path, str]:
+        """Elect original Python targets from the candidate's authenticated scopes.
+
+        Returns:
+            Original Python text, excluding read-only non-Python receipts.
+
+        """
+        return {
+            path: source
+            for scope in candidate.workspaces or (candidate.workspace,)
+            for path, source in (
+                FlextInfraUtilitiesCodegenFacades.facade_original_sources(scope, states)
+            ).items()
+        }
 
     @staticmethod
     def facade_original_sources(
@@ -2508,7 +2533,18 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             c.Infra.FacadeFamily.P
         ].directory
         context = CodemodContext()
+        published = {
+            alias.name
+            for node in ast.parse(source).body
+            if isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module == f"{package}.{directory}"
+            for alias in node.names
+            if alias.asname in {None, alias.name}
+        }
         for module, class_name in additions:
+            if class_name in published:
+                continue
             owner = f"{package}.{directory}.{module}"
             AddImportsVisitor.add_needed_import(
                 context,

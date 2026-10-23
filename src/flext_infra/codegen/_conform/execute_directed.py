@@ -217,7 +217,23 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         )
         if prepared.failure:
             return r[p.Infra.CodegenResult].from_failure(prepared)
-        analysis = analysis.model_copy(update={"files": prepared.value})
+        # Preparation seals original and newly consumed queries together. Elect
+        # that same manifest for the batch, not an original-first second merge.
+        analysis = analysis.model_copy(
+            update={
+                "files": prepared.value,
+                "source_directories": tuple(
+                    receipt
+                    for file in prepared.value
+                    for receipt in file.source_directories
+                ),
+                "source_query_topology": tuple(
+                    receipt
+                    for file in prepared.value
+                    for receipt in file.source_query_topology
+                ),
+            }
+        )
         plan = plan.model_copy(update={"files": prepared.value})
         if request.what == c.Infra.CodegenConformSurface.FACADES:
             u.Cli.info(f"stage=facades-plan files={len(plan.files)} environments=0")
@@ -300,7 +316,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                 session,
                 publications,
                 plans=analysis.files,
-                workspace=request.root,
+                runtime=m.Infra.CodegenSourceRuntime(workspace=request.root),
             )
             if checked.failure or stage_plan is None:
                 return checked

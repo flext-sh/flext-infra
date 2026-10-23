@@ -23,7 +23,7 @@ from rope.base.project import NoProject, Project
 from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder
 
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModuleQueries
 from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
 
@@ -147,6 +147,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             The selected payload bytes.
 
         """
+        if isinstance(self.fscommands, FlextInfraRopeProject.SnapshotFiles):
+            return self.fscommands.read(str(path))
         return self._authenticated_reads.read(str(path))
 
     def source_walk(self, path: Path) -> Generator[tuple[Path, list[str], list[str]]]:
@@ -240,8 +242,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             prefs["extension_modules"] = tuple(
                 sorted(
                     name
-                    for name, module in tuple(sys.modules.items())
+                    for name in tuple(sys.modules)
                     if name.partition(".")[0] in sys.stdlib_module_names
+                    and (module := sys.modules.get(name)) is not None
                     and module.__spec__ is not None
                     and module.__spec__.origin in {"built-in", "frozen"}
                 )
@@ -520,14 +523,19 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 set[t.Pair[str, Literal["exists", "isfile", "isdir"]]],
             ] = {}
             membership: set[t.Pair[int, int]] = set()
+            membership_queries: t.MutableMappingKV[
+                t.Pair[int, int], set[t.StrTuple]
+            ] = {}
             for inventory in self._directories.values():
                 key = (id(inventory.root), id(inventory.entries))
                 if key not in elected:
                     elected[key] = inventory
                     queries[key] = set()
+                    membership_queries[key] = set()
                 for name, predicate in inventory.queries:
                     _ = u.Cli.atomic_directory_query_value(inventory, name, predicate)
                 queries[key].update(inventory.queries)
+                membership_queries[key].update(inventory.membership_queries)
                 if inventory.membership_queried:
                     membership.add(key)
             return tuple(
@@ -535,6 +543,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     update={
                         "queries": tuple(sorted(queries[key])),
                         "membership_queried": key in membership,
+                        "membership_queries": tuple(sorted(membership_queries[key])),
                     }
                 )
                 for key, inventory in elected.items()
@@ -728,7 +737,11 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                         (
                             *self._topology.values(),
                             plan.before.model_copy(
-                                update={"queries": (), "membership_queried": False}
+                                update={
+                                    "queries": (),
+                                    "membership_queried": False,
+                                    "membership_queries": (),
+                                }
                             ),
                         ),
                     )
@@ -964,7 +977,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 )
             inventory = self._inventory(directory)
             names: list[str] = (
-                [] if inventory is None else [item.name for item in inventory.entries]
+                []
+                if inventory is None
+                else list(
+                    u.Cli.atomic_directory_membership_value(
+                        inventory, tuple(sorted(self._GENERATED_ARTIFACT_PARTS))
+                    )
+                )
             )
             self._record_membership(directory, inventory)
             if self._overlay.isdir(path):
@@ -1000,24 +1019,44 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             if inventory is not None:
                 if not self._capturing:
                     self._inventories[directory] = inventory.model_copy(
-                        update={"membership_queried": True}
+                        update={
+                            "membership_queries": (
+                                tuple(sorted(self._GENERATED_ARTIFACT_PARTS)),
+                            )
+                        }
                     )
                 self._record(
                     directories=(
                         inventory.model_copy(
-                            update={"queries": (), "membership_queried": True},
+                            update={
+                                "queries": (),
+                                "membership_queried": False,
+                                "membership_queries": (
+                                    tuple(sorted(self._GENERATED_ARTIFACT_PARTS)),
+                                ),
+                            },
                         ),
                     ),
                 )
                 return
             if not self._capturing:
                 self._topology[directory] = self._topology[directory].model_copy(
-                    update={"membership_queried": True}
+                    update={
+                        "membership_queries": (
+                            tuple(sorted(self._GENERATED_ARTIFACT_PARTS)),
+                        )
+                    }
                 )
             self._record(
                 topology=(
                     self._topology[directory].model_copy(
-                        update={"queries": (), "membership_queried": True},
+                        update={
+                            "queries": (),
+                            "membership_queried": False,
+                            "membership_queries": (
+                                tuple(sorted(self._GENERATED_ARTIFACT_PARTS)),
+                            ),
+                        },
                     ),
                 ),
             )
@@ -1037,7 +1076,11 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self._record(
                 topology=(
                     witness.model_copy(
-                        update={"queries": (), "membership_queried": False},
+                        update={
+                            "queries": (),
+                            "membership_queried": False,
+                            "membership_queries": (),
+                        },
                     ),
                 ),
             )
@@ -1058,13 +1101,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 )
             return self._inventories[directory]
 
-        _GENERATED_ARTIFACT_PARTS = frozenset({
-            "__pycache__",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".pyrefly_cache",
-            ".ruff_cache",
-        })
+        _GENERATED_ARTIFACT_PARTS = frozenset(config.Infra.codegen.source_scan_ignored)
 
         @classmethod
         def _is_generated_artifact(cls, candidate: Path) -> bool:
@@ -1201,6 +1238,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 update={
                     "queries": ((candidate.name, predicate),),
                     "membership_queried": False,
+                    "membership_queries": (),
                 },
             )
             self._query_witnesses[candidate, predicate] = selection
@@ -1232,6 +1270,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 update={
                     "queries": ((candidate.name, predicate),),
                     "membership_queried": False,
+                    "membership_queries": (),
                 },
             )
             self._query_witnesses[candidate, predicate] = selection
@@ -1461,7 +1500,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             return tuple(self._consumed.values())
 
         def verify(self, receipt: m.Infra.CodegenPhaseAnalysis | None = None) -> None:
-            """Reprove an issued scope, or all original inputs for direct consumers."""
+            """Reprove an issued scope, or all original inputs for direct consumers.
+
+            Raises:
+                ValueError: An original source or directory query changed.
+
+            """
             if receipt is not None:
                 with self.consumption() as scope:
                     self.replay(receipt)
@@ -1482,25 +1526,41 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 directories = self.receipt_directories()
                 topology = self.receipt_topology()
                 effects = tuple(self._consumed_effects)
-            u.Cli.atomic_verify_binary_file_states(
+            verified = u.Cli.atomic_verify_binary_file_states(
                 states,
                 nonsecret_source_paths=tuple(
                     Path(state.path)
                     for state in states
                     if Path(state.path).suffix in {".py", ".pyi"}
                 ),
-            ).unwrap()
-            u.Cli.atomic_verify_directory_queries(directories, topology).unwrap()
+            )
+            if verified.failure:
+                if verified.exception is not None:
+                    raise verified.exception
+                raise ValueError(verified.error)
+            verified = u.Cli.atomic_verify_directory_queries(
+                directories,
+                topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
+            )
+            if verified.failure:
+                if verified.exception is not None:
+                    raise verified.exception
+                raise ValueError(verified.error)
             for path in sorted({*(state.path for state in states), *effects}):
                 self._verify_declarations(path)
 
         def _verify_declarations(
             self, path: Path, *, check_current: bool = True
         ) -> None:
-            """Use the existing owner for every consumed virtual birth witness.
+            """Authenticate every consumed declared source effect at its owner.
 
             Args:
-                path: The path to the consumed virtual birth witness to verify.
+                path: The path of the consumed declared source effect.
                 check_current: Whether the current source must still match
                   its declaration.
 
@@ -1515,7 +1575,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     msg = f"Rope proposed source disagrees with its declaration: {path}"
                     raise ValueError(msg)
                 if check_current:
-                    FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_destination(
+                    FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_declared_effect(
                         plan.project, plan
                     )
 
@@ -1550,7 +1610,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             """
             path = resource.real_path
             if self._files.isfile(path):
-                return True, self._files.read(path)
+                # Observer registration pins bytes; only semantic reads consume them.
+                with (
+                    self._files.capture()
+                    if isinstance(self._files, FlextInfraRopeProject.AtomicReadFiles)
+                    else nullcontext()
+                ):
+                    return True, self._files.read(path)
             if self._files.isdir(path):
                 return False, self._files.children(path)
             msg = f"Resource <{resource.path}> is absent from the closed snapshot"

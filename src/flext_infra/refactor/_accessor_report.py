@@ -8,32 +8,23 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, settings, t, u
+from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
-from flext_infra.refactor import FlextInfraAccessorOriginResolver
+from flext_infra.refactor import (
+    FlextInfraAccessorMigrationRewriteMixin,
+    FlextInfraAccessorOriginResolver,
+)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraAccessorMigrationReportMixin:
+class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteMixin):
     """Compose a complete accessor candidate before any shared-source write."""
-
-    if TYPE_CHECKING:
-        _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]]
-
-        def _apply_automated_rewrites(
-            self,
-            rope_project: t.Infra.RopeProject,
-            py_file: Path,
-            source: str,
-            *,
-            resolver: FlextInfraAccessorOriginResolver,
-        ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
-            del rope_project, py_file, source, resolver
 
     @staticmethod
     def _accumulate_lint_totals(
@@ -162,10 +153,16 @@ class FlextInfraAccessorMigrationReportMixin:
             for plan in plans
             if plan.desired_content is not None
         }
-        staged = FlextInfraStagedPackage.plan_sources(
+        controlplanes = FlextInfraCodegenFileLeases.prepare_source_controlplanes((
             params.repository_root,
-            updates,
-            options=m.Infra.StageSourceOptions(inputs=plans[0].source_states),
+            *(plan.project for plan in plans),
+        ))
+        staged = controlplanes.flat_map(
+            lambda _: FlextInfraStagedPackage.plan_sources(
+                params.repository_root,
+                updates,
+                options=m.Infra.StageSourceOptions(inputs=plans[0].source_states),
+            )
         )
         if staged.failure:
             return result_type.from_failure(staged)

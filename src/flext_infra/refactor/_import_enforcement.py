@@ -102,12 +102,9 @@ class FlextInfraImportNormalization(
                         ),
                     }
                 )
-                for plan in declared_files
                 if plan.path in sources
-                and (
-                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                    or plan.before.content is None
-                )
+                else plan
+                for plan in declared_files
             ),
         )
         import_graph, _modules = u.Infra.snapshot_import_graph(snapshot)

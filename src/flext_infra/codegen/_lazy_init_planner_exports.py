@@ -12,6 +12,12 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
+from flext_infra.codegen._lazy_init_planner_cache import (
+    FlextInfraCodegenLazyInitPlannerCacheMixin,
+)
+from flext_infra.codegen._lazy_init_planner_collision import (
+    FlextInfraCodegenLazyInitPlannerCollisionMixin,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,7 +25,10 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraCodegenLazyInitPlannerExportsMixin:
+class FlextInfraCodegenLazyInitPlannerExportsMixin(
+    FlextInfraCodegenLazyInitPlannerCollisionMixin,
+    FlextInfraCodegenLazyInitPlannerCacheMixin,
+):
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
@@ -28,20 +37,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             tuple[str, bool, bool, bool, bool, bool],
             t.LazyAliasMap,
         ]
-
-        def _package_entry(
-            self,
-            pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None:
-            del pkg_dir
-
-        def _add(
-            self,
-            index: t.MutableLazyAliasMap,
-            name: str,
-            target: t.StrPair,
-        ) -> None:
-            del index, name, target
 
     def _package_exports(
         self,

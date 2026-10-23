@@ -127,10 +127,9 @@ class TestsFlextInfraWorkspaceLifecycle:
         )
         tm.that(report.scope, eq=(root, member))
         first, *unreached = report.receipts
-        tm.ok(first.outcome is not None)
-        if first.outcome is not None:
-            tm.fail(u.Cli.process_succeeded(first.outcome))
-        tm.ok(first.applicable)
+        outcome = tm.not_none(first.outcome)
+        tm.that(u.Cli.process_succeeded(outcome), eq=False)
+        tm.that(first.applicable, eq=True)
         tm.that(first.error, empty=False)
         tm.ok(first.output_file.is_file())
         tm.that(first.before_files, eq=first.after_files)
@@ -174,14 +173,14 @@ class TestsFlextInfraWorkspaceLifecycle:
             tm.that(receipt.execution_context, eq="ci")
             tm.that(receipt.outcome, eq=None)
             if "ci" not in step.contexts:
-                tm.fail(receipt.applicable)
+                tm.that(receipt.applicable, eq=False)
                 tm.that(receipt.applicability_reason, empty=False)
             else:
                 tm.that(receipt.applicable, eq=None)
         tm.that(report.executed_commands, eq=0)
 
+    @staticmethod
     def test_route_rejects_partial_project_selection_without_effects(
-        self,
         tmp_path: Path,
     ) -> None:
         """The public request never accepts a partial fleet selector."""
@@ -218,7 +217,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         )
         tm.that(member_rows, empty=False)
         for row in member_rows:
-            tm.fail(row.applicable)
+            tm.that(row.applicable, eq=False)
             tm.that(row.applicability_reason, empty=False)
             tm.that(row.outcome, eq=None)
         tm.that(report.executed_commands, eq=0)

@@ -79,6 +79,7 @@ class TestsFlextInfraCodegenConsolidator:
             'mypy_path = ["src"]\n',
             encoding="utf-8",
         )
+        u.Tests.declare_workspace_projects(repository_root, (project_root.name,))
         return repository_root, project_root, package_dir
 
     def _execute_consolidator(
@@ -114,8 +115,6 @@ class TestsFlextInfraCodegenConsolidator:
             encoding="utf-8",
         )
         (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
-        u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
-
         result = u.Tests.consolidate_codegen(
             repository_root=repository_root,
             dry_run=True,
@@ -151,7 +150,6 @@ class TestsFlextInfraCodegenConsolidator:
             'from __future__ import annotations\n\nVALUE = "demo"\n',
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
         u.Tests.provision_checkout(repository_root)
         return repository_root
 

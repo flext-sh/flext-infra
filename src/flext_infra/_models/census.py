@@ -318,7 +318,7 @@ class FlextInfraModelsCensus:
             m.Field(description="Shared object name across projects"),
         ]
         kind: Annotated[str, m.Field(description="Object kind")]
-        definitions: list[FlextInfraModelsCensus.Object] = m.Field(
+        definitions: t.MutableSequenceOf[FlextInfraModelsCensus.Object] = m.Field(
             description="All definitions of this object",
         )
         canonical: Annotated[

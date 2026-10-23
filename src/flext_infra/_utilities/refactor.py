@@ -161,7 +161,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def violations_totals[FindingT: m.Infra.ModOccurrence](
-        report: m.Infra.ModOccurrenceReport[FindingT],
+        report: m.Infra.ModScanCounts[FindingT],
     ) -> m.Infra.ViolationsTotals:
         """Capture native totals without service behavior in data models.
 
@@ -179,7 +179,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _indexed_source_states[FindingT: m.Infra.ModOccurrence](
-        report: m.Infra.ModOccurrenceReport[FindingT],
+        report: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModScanEvidence,
     ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
         """Index one report's captured source states by path.
 
@@ -194,11 +194,16 @@ class FlextInfraUtilitiesRefactor:
                 two captured states disagree for one path.
 
         """
-        if report.source_states is None:
+        source_states = (
+            report.inputs.states
+            if isinstance(report, m.Infra.ModScanEvidence)
+            else report.source_states
+        )
+        if source_states is None:
             msg = "semantic correspondence lacks complete source inventory"
             raise ValueError(msg)
         indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        for state in report.source_states:
+        for state in source_states:
             if indexed.setdefault(state.path, state) != state:
                 msg = f"scan inventory identity disagrees: {state.path}"
                 raise ValueError(msg)
@@ -313,8 +318,8 @@ class FlextInfraUtilitiesRefactor:
     @classmethod
     def _authenticated_endpoints[FindingT: m.Infra.ModOccurrence](
         cls,
-        before: m.Infra.ModOccurrenceReport[FindingT],
-        after: m.Infra.ModOccurrenceReport[FindingT],
+        before: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModScanEvidence,
+        after: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModScanEvidence,
         publication_chain: tuple[m.Infra.CodegenStagedFile, ...],
     ) -> t.Pair[
         t.ListOf[t.MappingKV[Path, m.Cli.AtomicFileState]],
@@ -448,7 +453,9 @@ class FlextInfraUtilitiesRefactor:
     @classmethod
     def _report_occurrence_indexes[FindingT: m.Infra.ModOccurrence](
         cls,
-        report: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
+        report: m.Infra.ModOccurrenceReport[FindingT]
+        | m.Infra.ModScanEvidence
+        | m.Infra.ModTextReport,
         repository_root: Path | None,
         topology: t.SequenceOf[Path],
         proven: set[tuple[str, str]],
@@ -562,8 +569,12 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def rule_deltas[FindingT: m.Infra.ModOccurrence](
-        before: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
-        after: m.Infra.ModOccurrenceReport[FindingT] | m.Infra.ModTextReport,
+        before: m.Infra.ModOccurrenceReport[FindingT]
+        | m.Infra.ModScanEvidence
+        | m.Infra.ModTextReport,
+        after: m.Infra.ModOccurrenceReport[FindingT]
+        | m.Infra.ModScanEvidence
+        | m.Infra.ModTextReport,
         *,
         options: m.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
     ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
@@ -585,18 +596,16 @@ class FlextInfraUtilitiesRefactor:
                 ownership, or the publication chain fails authentication.
 
         """
-        engine = (
-            "ast-grep" if isinstance(before, m.Infra.ModOccurrenceReport) else "text"
-        )
-        if isinstance(before, m.Infra.ModOccurrenceReport) != isinstance(
-            after, m.Infra.ModOccurrenceReport
+        engine = "ast-grep" if isinstance(before, m.Infra.ModScanCounts) else "text"
+        if isinstance(before, m.Infra.ModScanCounts) != isinstance(
+            after, m.Infra.ModScanCounts
         ):
             msg = "rule comparison requires the same native engine"
             raise ValueError(msg)
         publication_chain = options.publication_chain
         if publication_chain is not None:
-            if not isinstance(before, m.Infra.ModOccurrenceReport) or not isinstance(
-                after, m.Infra.ModOccurrenceReport
+            if not isinstance(before, m.Infra.ModScanCounts) or not isinstance(
+                after, m.Infra.ModScanCounts
             ):
                 msg = "semantic correspondence requires native AST findings"
                 raise ValueError(msg)
@@ -1122,8 +1131,28 @@ class FlextInfraUtilitiesRefactor:
         Returns:
             The resulting ``p.Result[m.Infra.ModScanEvidenceReceipt]``.
 
+        """
+        evidence = FlextInfraUtilitiesRefactor.mod_scan_evidence(
+            root, report, publication=publication
+        )
+        return FlextInfraUtilitiesRefactor.publish_mod_scan_evidence_receipt(
+            root, evidence, publication=publication
+        )
+
+    @staticmethod
+    def mod_scan_evidence(
+        root: Path,
+        report: m.Infra.ModScanReport,
+        *,
+        publication: m.Infra.ModScanPublication,
+    ) -> m.Infra.ModScanEvidence:
+        """Normalize live scan references through the canonical closed inventory.
+
+        Returns:
+            The persistent audit contract, not live operational epoch handles.
+
         Raises:
-            ValueError: When the report lacks a captured native artifact.
+            ValueError: When a native finding lacks its authenticated artifact.
 
         """
         repository_totals = Counter(dict.fromkeys(publication.repositories, 0))
@@ -1171,7 +1200,7 @@ class FlextInfraUtilitiesRefactor:
                     native_artifact=artifacts[entry.native_receipt.path],
                 )
             )
-        evidence = m.Infra.ModScanEvidence.model_validate({
+        return m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             "binding_graphs": tuple(graphs),
             "native_artifacts": report.native_artifacts,
@@ -1184,6 +1213,33 @@ class FlextInfraUtilitiesRefactor:
             "totals_by_rule": dict(sorted(rule_totals.items())),
             "entries": tuple(references),
         })
+
+    @staticmethod
+    def publish_mod_scan_evidence_receipt(
+        root: Path,
+        evidence: m.Infra.ModScanEvidence,
+        *,
+        publication: m.Infra.ModScanPublication,
+    ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
+        """Publish the same normalized evidence used by read-only audit snapshots.
+
+        Returns:
+            The canonical atomic publication receipt and its validated payload.
+
+        """
+        if (
+            evidence.root != root.resolve()
+            or evidence.scope != tuple(publication.scope)
+            or evidence.command != publication.command
+            or set(evidence.totals_by_repository)
+            != set(publication.repositories)
+            | {entry.repository for entry in evidence.entries}
+            or set(evidence.totals_by_rule)
+            != set(publication.rule_ids) | {entry.rule_id for entry in evidence.entries}
+        ):
+            return r[m.Infra.ModScanEvidenceReceipt].fail(
+                "normalized scan evidence differs from its publication declaration"
+            )
         content = (
             evidence.model_dump_json(
                 indent=2, exclude=set(type(evidence).model_computed_fields)
@@ -1249,9 +1305,7 @@ class FlextInfraUtilitiesRefactor:
             The exact worktree Git directory, or the original identity failure.
 
         """
-        return FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_root(
-            root
-        ).map(lambda identity: identity.git_dir)
+        return FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_git_dir(root)
 
     @staticmethod
     def publish_refactor_report_evidence(

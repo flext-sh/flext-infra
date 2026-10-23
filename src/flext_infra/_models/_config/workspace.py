@@ -300,7 +300,9 @@ class FlextInfraConfigModelsWorkspace:
 
         @m.model_validator(mode="before")
         @classmethod
-        def toml_array(cls, value: t.JsonValue) -> t.JsonPayload:
+        def toml_array(
+            cls, value: t.JsonValue
+        ) -> t.JsonValue | t.VariadicTuple[t.JsonValue]:
             """Freeze an array while retaining each native inclusion table.
 
             Returns:
@@ -328,7 +330,9 @@ class FlextInfraConfigModelsWorkspace:
 
         @m.field_validator("dependency_groups", mode="before")
         @classmethod
-        def toml_group_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+        def toml_group_arrays(
+            cls, value: t.JsonValue
+        ) -> t.JsonValue | t.MappingKV[str, t.JsonValue | t.VariadicTuple[t.JsonValue]]:
             """Freeze TOML containers without converting inclusion tables to strings.
 
             Returns:

@@ -65,7 +65,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         retired_typing_root: Annotated[
             bool,
             m.Field(
-                description="Owned retired typing tree retained in path-policy inventory",
+                description=(
+                    "Owned retired typing tree retained in path-policy inventory"
+                ),
             ),
         ] = False
         generated_source: Annotated[

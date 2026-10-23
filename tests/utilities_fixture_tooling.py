@@ -516,24 +516,34 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         python and pytest fail-closed from the checkout's runtime environment
         (``u.Infra.runtime_environment_dir``), which requires a Git checkout.
         The fixture becomes one through the single fixture Git owner and
-        receives the real binaries this suite was provisioned with, linked
-        inside the pytest-managed tree; a missing tool fails the fixture.
+        receives a genuine physical Python environment from the existing fixture
+        environment owner. Gate executables remain linked to the provisioned
+        suite binaries; Python itself belongs to the fixture environment.
 
         Raises:
             FileExistsError: If fixture tool conflicts with provisioned executable; or
                 if fixture tool path is already occupied.
             FileNotFoundError: If setup did not provision.
+            ValueError: If the fixture environment redirects to another checkout.
 
         """
         # Provisioning a runtime never rewrites a checkout's declared identity:
         # an existing checkout keeps its origin, only a bare root becomes one.
         if not (root / c.Infra.GIT_DIR).exists():
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(root)
+        environment = u.Infra.runtime_environment_dir(root)
+        if environment.is_symlink():
+            msg = f"Fixture environment must be physical: {environment}"
+            raise ValueError(msg)
+        if not (environment / "pyvenv.cfg").is_file():
+            TestsFlextInfraUtilitiesToolingFixtureMixin.create_python_environment(
+                root,
+            ).unwrap()
         provisioned = Path(sys.executable).parent
-        bin_dir = u.Infra.runtime_environment_dir(root) / provisioned.name
+        bin_dir = environment / provisioned.name
         bin_dir.mkdir(parents=True, exist_ok=True)
         tools = {command[0] for _, command in c.Infra.LINT_TOOLS}
-        for name in sorted(tools | {c.Infra.PYTHON, c.Infra.PYTEST}):
+        for name in sorted((tools | {c.Infra.PYTEST}) - {c.Infra.PYTHON}):
             source = provisioned / name
             if not source.is_file():
                 msg = f"setup did not provision {name}: {source}"
@@ -546,6 +556,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     f"fixture tool conflicts with provisioned executable: {destination}"
                 )
                 raise FileExistsError(msg)
+            if destination.is_file() and os.access(destination, os.X_OK):
+                continue
             if destination.exists():
                 msg = f"fixture tool path is already occupied: {destination}"
                 raise FileExistsError(msg)

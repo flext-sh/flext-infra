@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from typing_extensions import TypeForm
+
 from flext_infra import config
 from flext_infra.deps import FlextInfraConfigFixer, FlextInfraExtraPathsManager
 from tests import c, t, tm, u
@@ -85,7 +87,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 tuple(u.Tests.strings(pyrefly["search-path"])),
                 eq=TestsFlextInfraExtendedConfigFixer._extra_paths_manager(
                     tmp_path,
-                ).pyrefly_search_paths(project_dir=tmp_path, is_root=True),
+                ).pyrefly_search_paths(project_dir=tmp_path),
             )
 
         @staticmethod
@@ -233,7 +235,7 @@ class TestsFlextInfraExtendedConfigFixer:
                             config.Infra.tooling,
                             c.Infra.PYREFLY,
                             c.Infra.PROJECT_EXCLUDES,
-                            t.StrSequence,
+                            TypeForm(t.StrSequence),
                         ),
                     )
                 ),

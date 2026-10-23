@@ -321,6 +321,9 @@ _native_atomic = (
         Returns:
             The original native import observation or process failure.
 
+        Raises:
+            ValidationError: If the child's native import evidence is invalid.
+
         """
         result_type = r[m.Infra.NativeImportObservation]
         consumer = cls(
@@ -447,7 +450,8 @@ _native_atomic = (
             (
                 "receipts",
                 (
-                    "reference = reference.model_copy(update={'executed_sources': tuple("
+                    "reference = reference.model_copy("
+                    "update={'executed_sources': tuple("
                     "m.Cli.AtomicFileReceipt.model_validate_json(receipt) "
                     "for path, receipt in sorted(_native_trace.items()))})\n"
                 ),

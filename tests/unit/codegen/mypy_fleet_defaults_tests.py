@@ -224,7 +224,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         )
         path.write_text(source, encoding="utf-8")
         manager = deps.FlextInfraExtraPathsManager(repository_root=tmp_path)
-        expected = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
+        expected = manager.mypy_search_paths(project_dir=tmp_path)
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(source_dir,),
             declared_python_dirs_are_complete=True,
@@ -253,7 +253,6 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             manager.sync_payload(
                 payload,
                 project_dir=tmp_path,
-                is_root=True,
                 mypy_search_paths=expected,
             ),
             empty=True,

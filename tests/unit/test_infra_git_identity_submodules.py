@@ -251,3 +251,66 @@ class TestsFlextInfraGitIdentitySubmodules:
         )
         tm.that(identity.repo_root, eq=root.resolve())
         tm.that(identity.requested_path, eq=(nested / "module.py").resolve())
+
+
+class TestsGitTopology(TestsFlextInfraGitIdentitySubmodules):
+    """Control storage authenticates ownership independently of mutable inventory."""
+
+    def test_evidence_root_does_not_read_mutable_index(self, tmp_path: Path) -> None:
+        """Control storage survives inventory failure without hiding that failure."""
+        root = self._repo(tmp_path / "repo")
+        (root / ".git" / "index").write_bytes(b"invalid index")
+
+        tm.that(tm.ok(u.Infra.refactor_report_evidence_root(root)), eq=root / ".git")
+        identity = u.Infra.exact_worktree_root(root)
+        tm.fail(identity)
+        tm.not_none(identity.exception)
+
+    def test_evidence_root_rejects_discovered_and_unregistered_roots(
+        self, tmp_path: Path
+    ) -> None:
+        """Parent discovery never authenticates a nested checkout."""
+        root = self._repo(tmp_path / "repo")
+        nested = root / "nested"
+        nested.mkdir()
+        tm.fail(u.Infra.refactor_report_evidence_root(nested), has="exact")
+        self._repo(nested)
+        tm.fail(u.Infra.refactor_report_evidence_root(nested), has="not a registered")
+
+    def test_evidence_root_accepts_submodule_and_linked_worktree(
+        self, tmp_path: Path
+    ) -> None:
+        """Registered member and linked storage retain their own control roots."""
+        root = self._superproject(tmp_path)
+        member = root / "vendored"
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=member)))
+        tm.that(
+            tm.ok(u.Infra.refactor_report_evidence_root(member)), eq=identity.git_dir
+        )
+        lane = tmp_path / "lane"
+        u.Tests.git_run(member, "worktree", "add", "-b", "topology-lane", str(lane))
+        lane_identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=lane))
+        )
+        tm.that(
+            tm.ok(u.Infra.refactor_report_evidence_root(lane)), eq=lane_identity.git_dir
+        )
+
+    @staticmethod
+    def test_evidence_root_preserves_unborn_and_corrupt_ref_failures(
+        tmp_path: Path,
+    ) -> None:
+        """Missing branches and corrupt refs retain distinct causal failures."""
+        root = tmp_path / "unborn"
+        root.mkdir()
+        u.Tests.git_run(root, "init", "--initial-branch=initial")
+        unborn = u.Infra.refactor_report_evidence_root(root)
+        tm.fail(unborn)
+        tm.that(unborn.error_code, eq=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
+        (root / ".git" / "refs" / "heads" / "initial").write_text(
+            "invalid object identifier\n", encoding="utf-8"
+        )
+        corrupt = u.Infra.refactor_report_evidence_root(root)
+        tm.fail(corrupt)
+        tm.fail(corrupt.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
+        tm.not_none(corrupt.exception)

@@ -25,7 +25,7 @@ class TestsFlextInfraStubChain:
             repository_root=tmp_path,
             selected_projects=[" alpha, beta ", "gamma delta"],
         )
-        tm.that(chain.project_names, eq=["alpha", "beta", "gamma", "delta"])
+        tm.that(chain.project_names, eq=("alpha", "beta", "gamma", "delta"))
         tm.that(
             chain.project_dirs,
             eq=[

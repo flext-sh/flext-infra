@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraProjectClassifierDepsMixin:
@@ -21,14 +21,6 @@ class FlextInfraProjectClassifierDepsMixin:
     Composed into FlextInfraProjectClassifier via inheritance; borrows
     ``_as_mapping`` from the facade via FLEXT.
     """
-
-    if TYPE_CHECKING:
-
-        def _as_mapping(
-            self,
-            raw_value: t.JsonValue | None,
-        ) -> t.MappingKV[str, t.JsonValue]:
-            del raw_value
 
     def _append_project_dependencies(
         self,
@@ -50,7 +42,7 @@ class FlextInfraProjectClassifierDepsMixin:
             )
 
     def _append_poetry_dependencies(
-        self,
+        self: p.Infra.ProjectClassificationDependencies,
         *,
         raw_poetry: t.MappingKV[str, t.JsonValue],
         dependencies: t.MutableSequenceOf[str],

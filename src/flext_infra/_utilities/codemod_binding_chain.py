@@ -170,19 +170,24 @@ class FlextInfraUtilitiesCodemodBindingChain:
                         else None
                     ),
                 )
-            if condition.predicate in {
-                c.Infra.CodemodContextPredicate.SAME_BINDING,
-                c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
-            } and not cls._subscript_bindings_stable(
-                project, module, text, (start, end), sources
-            ):
-                return False
-            return resolved_symbol or cls._predicate_binding_verdict(
-                (project, module, scope),
-                condition,
-                capture.text,
-                start,
-                sources,
+            return (
+                condition.predicate
+                not in {
+                    c.Infra.CodemodContextPredicate.SAME_BINDING,
+                    c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+                }
+                or cls._subscript_bindings_stable(
+                    project, module, text, (start, end), sources
+                )
+            ) and (
+                resolved_symbol
+                or cls._predicate_binding_verdict(
+                    (project, module, scope),
+                    condition,
+                    capture.text,
+                    start,
+                    sources,
+                )
             )
 
         @classmethod

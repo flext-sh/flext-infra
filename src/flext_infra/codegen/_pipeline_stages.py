@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConform,
+    FlextInfraCodegenExecutionBase,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPyTyped,
@@ -22,36 +23,54 @@ from flext_infra.deps import FlextInfraRuntimeDevDependencyDetector
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_infra import p
 
-
-class FlextInfraCodegenPipelineStagesMixin:
+class FlextInfraCodegenPipelineStagesMixin(FlextInfraCodegenExecutionBase[str]):
     """Canonical codegen stage handlers, each a single fail-fast boundary.
 
     Composed into FlextInfraCodegenPipeline via FLEXT; every handler runs through
     the facade's ``_run_stage`` harness and caches its output in ``self._state``.
     """
 
-    if TYPE_CHECKING:
-        # Provided by the composed facade (FlextInfraCodegenPipeline); declared
-        # here so the handlers type-resolve against the facade state + harness.
-        _state: m.Infra.CodegenPipelineState
+    conform_collaborators: m.Infra.CodegenConformPorts = m.Field(
+        exclude=True,
+        description="Docs and fresh-import ports the toolchain conform crosses into",
+    )
 
-        def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts: ...
+    _state: m.Infra.CodegenPipelineState = m.PrivateAttr(
+        default_factory=m.Infra.CodegenPipelineState,
+    )
 
-        @property
-        def settings(self) -> p.Settings: ...
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
+        """Expose the supplied conform capabilities.
 
-        @property
-        def context(self) -> p.Context: ...
+        Returns:
+            The exact ports bound to this invocation.
 
-        def _run_stage[V](
-            self,
-            stage_id: str,
-            action: Callable[[], p.Result[V]],
-            emit: Callable[[V], t.JsonMapping],
-        ) -> p.Result[m.Cli.PipelineStageResult]:
-            del stage_id, action, emit
+        """
+        return self.conform_collaborators
+
+    @staticmethod
+    def _run_stage[V](
+        stage_id: str,
+        action: Callable[[], p.Result[V]],
+        emit: Callable[[V], t.JsonMapping],
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Run one stage, preserving its first failure and emitted state.
+
+        Returns:
+            The original failure or the emitted successful stage result.
+
+        """
+        outcome = action()
+        if outcome.failure:
+            return r[m.Cli.PipelineStageResult].from_failure(outcome)
+        return r[m.Cli.PipelineStageResult].ok(
+            m.Cli.PipelineStageResult(
+                stage_id=stage_id,
+                status=c.Cli.PipelineStageStatus.OK,
+                output=emit(outcome.value),
+            ),
+        )
 
     def _stage_discover(
         self,

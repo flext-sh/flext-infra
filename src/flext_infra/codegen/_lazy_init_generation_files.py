@@ -223,7 +223,11 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin(
                 )
                 raise ValueError(msg)
             original = parent.model_copy(
-                update={"queries": (), "membership_queried": False}
+                update={
+                    "queries": (),
+                    "membership_queried": False,
+                    "membership_queries": (),
+                }
             )
         return m.Infra.CodegenFilePlan(
             project=project,

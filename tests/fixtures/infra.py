@@ -20,7 +20,7 @@ from shlex import quote
 import pytest
 
 from flext_infra import codegen, config, infra, settings, workspace
-from tests import c, m, p, r, t, tm, u
+from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -158,16 +158,7 @@ def source_preview_workspace(
             session_runtime=session_runtime,
         ),
     )
-    transaction = codegen.FlextInfraCodegenTransaction(
-        codegen.FlextInfraCodegenMiseArtifacts(repository_root=root),
-    )
-    # Authenticate the real transaction control plane before source receipts.
-    tm.ok(
-        transaction.run_files_locked(
-            transaction.capability_roots("fixture-source", (root,)),
-            lambda _: r[bool].ok(value=True),
-        ),
-    )
+    u.Tests.prepare_source_preview(root)
     return root, package
 
 

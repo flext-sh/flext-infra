@@ -13,7 +13,7 @@ from types import MappingProxyType
 import flext_core
 import pytest
 
-from flext_infra import config, u
+from flext_infra import config
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 from flext_infra.gates import FlextInfraRuffLintGate
@@ -23,9 +23,10 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 
+    @staticmethod
     @pytest.mark.parametrize("asynchronous", [False, True])
     def test_deep_function_exports_keep_their_static_owner(
-        self, tmp_path: Path, *, asynchronous: bool
+        tmp_path: Path, *, asynchronous: bool
     ) -> None:
         """Static and lazy publication retain a deep function's native identity."""
         repository, package = u.Tests.create_lazy_init_workspace(
@@ -224,7 +225,7 @@ class TestsFlextInfraCodegenGeneration:
         """Build one validated render plan for a synthetic package path.
 
         Returns:
-            The resulting ``m.Infra.LazyInitPlan``.
+            A validated write plan with immutable alias maps for the package.
 
         """
         package_dir = package_dir or Path.cwd() / current_pkg.replace(".", "/")
@@ -348,23 +349,48 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(checked.success, truth=True, msg=checked.error)
         tm.that(FlextInfraCodegenGeneration.render_init(plan), eq=rendered)
 
-    def test_sibling_private_exports_import_their_absolute_owner(self) -> None:
-        """The static import names the absolute owner; the lazy key stays compact."""
+    @pytest.mark.parametrize(
+        ("package", "export", "owner", "present", "absent"),
+        [
+            (
+                "demo_pkg.servers._rfc",
+                "BaseConstants",
+                "demo_pkg.servers._base.constants",
+                ('"BaseConstants": ".._base.constants"',),
+                ("from .._base.constants import",),
+            ),
+            (
+                "demo_pkg._fixtures",
+                "DemoFixture",
+                "demo_pkg._fixtures.settings",
+                ('__all__: tuple[str, ...] = ("DemoFixture",)', "install_lazy_exports"),
+                (),
+            ),
+        ],
+    )
+    def test_private_exports_import_their_absolute_owner(
+        self,
+        package: str,
+        export: str,
+        owner: str,
+        present: t.StrSequence,
+        absent: t.StrSequence,
+    ) -> None:
+        """Private packages publish declared owners without eager relative imports."""
         plan = self._plan(
-            "demo_pkg.servers._rfc",
-            ("BaseConstants",),
-            {"BaseConstants": ("demo_pkg.servers._base.constants", "BaseConstants")},
+            package,
+            (export,),
+            {export: (owner, export)},
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content,
-            has="from demo_pkg.servers._base.constants import BaseConstants",
-        )
-        tm.that(content, has='"BaseConstants": ".._base.constants"')
-        tm.that(content, lacks="from .._base.constants import")
+        tm.that(content, contains=f"from {owner} import {export}")
+        for text in present:
+            tm.that(content, contains=text)
+        for text in absent:
+            tm.that(content, lacks=text)
 
     @staticmethod
     def test_generated_runtime_surfaces_import_without_bootstrap_cycles() -> None:
@@ -427,16 +453,38 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
-    def test_nested_package_initializer_is_static(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        ("package", "provider", "export", "expected"),
+        [
+            (
+                "flext_core._lazy_parts",
+                "flext_core._lazy_parts.flextlazy_part_02",
+                "FlextLazy",
+                ('__all__: tuple[str, ...] = ("FlextLazy",)',),
+            ),
+            (
+                "flext_core._lazy_parts",
+                "flext_core._lazy_parts.flextlazy_part_02",
+                "FlextLazy",
+                (),
+            ),
+            ("flext_core._typings", "flext_core._typings.lazy", "FlextTypesLazy", ()),
+        ],
+        ids=["nested-static", "lazy-bootstrap", "typings-bootstrap"],
+    )
+    def test_nested_package_initializer_is_static(
+        self,
+        tmp_path: Path,
+        package: str,
+        provider: str,
+        export: str,
+        expected: t.StrSequence,
+    ) -> None:
         """A loader dependency statically publishes its declared class identity."""
-        content = self._bootstrap_content(
-            tmp_path,
-            "flext_core._lazy_parts",
-            "flext_core._lazy_parts.flextlazy_part_02",
-            "FlextLazy",
-        )
+        content = self._bootstrap_content(tmp_path, package, provider, export)
         tm.that(content, lacks="from flext_core.lazy import")
-        tm.that(content, contains='__all__: tuple[str, ...] = ("FlextLazy",)')
+        for text in expected:
+            tm.that(content, contains=text)
 
     def test_root_initializer_rejects_private_entries_outside_all(self) -> None:
         """Render no package attribute that is absent from the public contract."""
@@ -459,14 +507,47 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, lacks="DemoConversion")
         tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
 
-    def test_root_type_checking_imports_local_declarations_absolutely(self) -> None:
-        """Emit local declarations as absolute public re-exports."""
+    @pytest.mark.parametrize(
+        ("package", "owner", "export", "letter", "absent"),
+        [
+            (
+                "flext_cli",
+                "flext_cli._settings",
+                "FlextCliSettings",
+                "settings",
+                ("from ._settings import", "    _ = ("),
+            ),
+            (
+                "demo_pkg",
+                "demo_pkg.protocols",
+                "FlextDemoProtocols",
+                "p",
+                ("FlextDemoProtocols as p",),
+            ),
+            (
+                "demo_pkg",
+                "demo_pkg.base",
+                "FlextDemoServiceBase",
+                "s",
+                ("FlextDemoServiceBase as s",),
+            ),
+        ],
+    )
+    def test_root_type_checking_imports_declared_public_names(
+        self,
+        package: str,
+        owner: str,
+        export: str,
+        letter: str,
+        absent: t.StrSequence,
+    ) -> None:
+        """Import public declarations and their native letters absolutely."""
         plan = self._plan(
-            "flext_cli",
-            ("FlextCliSettings", "settings"),
+            package,
+            (export, letter),
             MappingProxyType({
-                "FlextCliSettings": ("flext_cli._settings", "FlextCliSettings"),
-                "settings": ("flext_cli._settings", "settings"),
+                export: (owner, export),
+                letter: (owner, letter),
             }),
         )
 
@@ -475,10 +556,10 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from flext_cli._settings import FlextCliSettings, settings",
+            contains=f"from {owner} import {export}, {letter}",
         )
-        tm.that(content, lacks="from ._settings import")
-        tm.that(content, lacks="    _ = (")
+        for text in absent:
+            tm.that(content, lacks=text)
 
     @pytest.mark.parametrize("current_pkg", ["demo_pkg", "demo_pkg.services"])
     def test_public_nested_package_preserves_lazy_exports(
@@ -525,48 +606,6 @@ class TestsFlextInfraCodegenGeneration:
                 cwd=repository,
             ),
             eq=["True", "True", "True"],
-        )
-
-    def test_private_fixture_package_initializer_is_side_effect_free(self) -> None:
-        """Keep pytest plugin siblings unloaded until pytest registers them."""
-        plan = self._plan(
-            "demo_pkg._fixtures",
-            ("DemoFixture",),
-            MappingProxyType({
-                "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture"),
-            }),
-        )
-
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        tm.that(
-            init_content,
-            contains="from demo_pkg._fixtures.settings import DemoFixture",
-        )
-        tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
-        tm.that(init_content, contains="install_lazy_exports")
-
-    def test_lazy_bootstrap_package_initializer_is_side_effect_free(
-        self, tmp_path: Path
-    ) -> None:
-        """Keep the lazy runtime importable while its implementation initializes."""
-        self._bootstrap_content(
-            tmp_path,
-            "flext_core._lazy_parts",
-            "flext_core._lazy_parts.flextlazy_part_02",
-            "FlextLazy",
-        )
-
-    def test_lazy_typings_bootstrap_initializer_is_side_effect_free(
-        self, tmp_path: Path
-    ) -> None:
-        """Keep the lazy runtime's typing dependency free of import callbacks."""
-        self._bootstrap_content(
-            tmp_path,
-            "flext_core._typings",
-            "flext_core._typings.lazy",
-            "FlextTypesLazy",
         )
 
     def test_tests_root_renders_only_its_facade_contract(self, tmp_path: Path) -> None:
@@ -644,43 +683,6 @@ class TestsFlextInfraCodegenGeneration:
             eq=["True", "True", "True"],
         )
 
-    def test_root_type_checking_imports_the_declared_letter(self) -> None:
-        """Static imports name the letter the facade module declares."""
-        plan = self._plan(
-            "demo_pkg",
-            ("FlextDemoProtocols", "p"),
-            MappingProxyType({
-                "FlextDemoProtocols": ("demo_pkg.protocols", "FlextDemoProtocols"),
-                "p": ("demo_pkg.protocols", "p"),
-            }),
-        )
-
-        content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(content, "__init__.py", "exec")
-        tm.that(
-            content,
-            contains="from demo_pkg.protocols import FlextDemoProtocols, p",
-        )
-        tm.that(content, lacks="FlextDemoProtocols as p")
-
-    def test_root_service_letter_is_the_declared_service_letter(self) -> None:
-        """The service letter is imported as the base module declares it."""
-        plan = self._plan(
-            "demo_pkg",
-            ("FlextDemoServiceBase", "s"),
-            MappingProxyType({
-                "FlextDemoServiceBase": ("demo_pkg.base", "FlextDemoServiceBase"),
-                "s": ("demo_pkg.base", "s"),
-            }),
-        )
-
-        content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from demo_pkg.base import FlextDemoServiceBase, s")
-        tm.that(content, lacks="FlextDemoServiceBase as s")
-
     @staticmethod
     def test_type_checking_renderer_keeps_declared_letters() -> None:
         """Static imports keep each letter under the name its module declares."""
@@ -697,35 +699,27 @@ class TestsFlextInfraCodegenGeneration:
             ),
         )
 
-    def test_root_type_checking_sections_follow_known_first_party_policy(self) -> None:
-        """The TYPE_CHECKING block mirrors the first-party owner's sections.
-
-        The generated block follows the project's ruff isort sections as the
-        single first-party owner derives them: third-party imports, then the
-        blank line ruff requires (I001), then first-party imports.
-        """
-        imports = {"cli_c": ("flext_cli", "c"), "core_d": ("flext_core", "d")}
-        plan = self._plan("demo_pkg", tuple(imports), MappingProxyType(imports))
-
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains=self._owner_sections(plan, imports))
-
-    def test_root_type_checking_keeps_the_project_package_first_party(self) -> None:
-        """Roots outside the source tree import the project package first-party.
-
-        ``examples``/``scripts`` initializers import the distribution package
-        absolutely; the single first-party owner decides each import's
-        section, so the rendered block is the owner's partition: third-party
-        imports, one blank line, then first-party imports.
-        """
-        imports = {
-            "cli_c": ("flext_cli", "c"),
-            "core_d": ("flext_core", "d"),
-            "project_p": ("flext_infra", "p"),
-        }
-        plan = self._plan("demo_root", tuple(imports), MappingProxyType(imports))
+    @pytest.mark.parametrize(
+        ("package", "imports"),
+        [
+            ("demo_pkg", {"cli_c": ("flext_cli", "c"), "core_d": ("flext_core", "d")}),
+            (
+                "demo_root",
+                {
+                    "cli_c": ("flext_cli", "c"),
+                    "core_d": ("flext_core", "d"),
+                    "project_p": ("flext_infra", "p"),
+                },
+            ),
+        ],
+    )
+    def test_root_type_checking_sections_follow_known_first_party_policy(
+        self,
+        package: str,
+        imports: t.MappingKV[str, t.StrPair],
+    ) -> None:
+        """Separate third-party and live first-party imports by the owner's policy."""
+        plan = self._plan(package, tuple(imports), MappingProxyType(imports))
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 

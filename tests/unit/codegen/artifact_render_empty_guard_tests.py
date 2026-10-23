@@ -14,13 +14,17 @@ import pytest
 
 from flext_infra import FlextInfraConfig, c, r
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenStaging
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenStaging,
+    FlextInfraMisePublication,
+)
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from tests import m, tm, u
 
 if TYPE_CHECKING:
-    from tests import p
+    from tests import p, t
 
 
 class TestsFlextInfraArtifactRenderEmptyGuard:
@@ -156,6 +160,151 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.fail(bool(plan.issues))
         tm.that(u.Tests.planned_text(plan, destination.name), eq=content)
         tm.fail(destination.exists())
+
+    @staticmethod
+    @pytest.mark.parametrize("publishes_contract", [False, True])
+    def test_source_plan_seals_installed_family_root_imports(
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+        *,
+        publishes_contract: bool,
+    ) -> None:
+        """The actual family census contributes native supplier bytes before effects."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family_name = f"{c.NAMESPACE_FAMILY_PREFIX}family_contract"
+        project_name = family_name.replace("_", "-")
+        family_root, family = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name=project_name,
+            package_name=family_name,
+        )
+        (family / "__init__.py").write_text(
+            "from typing import TYPE_CHECKING\n"
+            "from .__version__ import __version__\n"
+            "from .marker import c\n__all__ = ['c']\n"
+            "if TYPE_CHECKING:\n    from .typing_only import OnlyForTyping\n"
+            + (
+                f"_LAZY_IMPORTS = {{'c': ('{family_name}.marker', 'Constants')}}\n"
+                if publishes_contract
+                else ""
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (family / "marker.py").write_text(
+            "class Constants: pass\nc = Constants\n", encoding=c.DEFAULT_ENCODING
+        )
+        (family / "__version__.py").write_text(
+            "__version__ = '1'\n", encoding=c.DEFAULT_ENCODING
+        )
+        (family / "typing_only.py").write_text(
+            "class OnlyForTyping: pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        metadata = family.parent / f"{family_name}-1.dist-info"
+        metadata.mkdir()
+        (metadata / "METADATA").write_text(
+            f"Metadata-Version: 2.1\nName: {project_name}\nVersion: 1\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (metadata / "top_level.txt").write_text(
+            family.name + "\n", encoding=c.DEFAULT_ENCODING
+        )
+        native_consumer(
+            "from flext_core import u\n"
+            "from flext_infra.codegen import FlextInfraStagedPackage as staging\n"
+            "root, family_root, package, family = map(Path, sys.argv[1:])\n"
+            "candidates = u.family_discovery_candidates()\n"
+            "assert family.name in {name for _, name in candidates}\n"
+            "published = family.name in u.project_alias_owners()\n"
+            f"assert published is {publishes_contract!r}\n"
+            "target = package / 'chosen.py'\n"
+            "plan = staging.plan_sources(root, {target: 'value = 1\\n'},\n"
+            "    options=m.Infra.StageSourceOptions(\n"
+            "        workspaces=(root, family_root))).unwrap()\n"
+            "assert family.name in {layout.package_name for layout in plan.layouts}\n"
+            "sealed = {state.path: state for state in plan.inputs}\n"
+            "for name in ('__init__.py', '__version__.py', 'marker.py'):\n"
+            "    path = family / name\n"
+            "    assert sealed[path].content == path.read_bytes()\n"
+            "assert family / 'typing_only.py' not in sealed\n"
+            "assert not target.exists()\n",
+            str(root),
+            str(family_root),
+            str(package),
+            str(family),
+            cwd=family.parent,
+        )
+
+    @staticmethod
+    def test_prepared_query_manifest_admits_only_its_exact_effect_dependencies(
+        tmp_path: Path,
+    ) -> None:
+        """Keep original query owners in the sealed joint publication candidate."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        destination = package / "generated.py"
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as consumed:
+                project.source_children(package)
+            original = consumed.receipt()
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False))
+        proposal = m.Infra.CodegenFilePlan(
+            project=root,
+            path=destination,
+            before=before,
+            desired_content=b"value = 1\n",
+            desired_mode=c.Infra.CONFIG_SPEC[1],
+            source_states=original.inputs,
+            source_directories=original.source_directories,
+            source_query_topology=original.source_query_topology,
+        )
+        prepared = tm.ok(
+            FlextInfraCodegenStaging.prepare_python_plans(root, (proposal,))
+        )
+        receipt = tm.not_none(prepared[0].prepared_sources)
+        tm.that(
+            tuple(item.root.path for item in original.source_directories),
+            eq=tuple(
+                item.root.path
+                for item in receipt.source_directories
+                if item.root.path
+                in {
+                    original_item.root.path
+                    for original_item in original.source_directories
+                }
+            ),
+        )
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM,
+            files=prepared,
+            inputs=receipt.inputs,
+            source_directories=receipt.source_directories,
+            source_query_topology=receipt.source_query_topology,
+        )
+        previous_directories, previous_topology = (
+            u.Cli.atomic_merge_directory_query_receipts(
+                (*original.source_directories, *receipt.source_directories),
+                (*original.source_query_topology, *receipt.source_query_topology),
+            )
+        )
+        tm.ok(FlextInfraMisePublication.admit_batch(analysis))
+        for altered in (
+            analysis.model_copy(
+                update={
+                    "source_directories": previous_directories,
+                    "source_query_topology": previous_topology,
+                }
+            ),
+            analysis.model_copy(update={"source_query_topology": ()}),
+            analysis.model_copy(update={"source_directories": ()}),
+            analysis.model_copy(update={"files": (proposal,)}),
+        ):
+            tm.fail(
+                FlextInfraMisePublication.admit_batch(altered),
+                has="batch native source queries differ from publication dependencies",
+            )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
+            eq=before,
+        )
 
     @staticmethod
     def test_semantic_output_is_prepared_under_planned_policy_and_idempotent(
@@ -378,7 +527,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         workspace = u.Tests.create_lazy_init_workspace(tmp_path)[0]
         plans: list[m.Infra.CodegenFilePlan] = []
         destinations: list[Path] = []
-        metadata_paths: list[Path] = []
         for name, selected in (("first", "F"), ("second", "UP")):
             root, package = u.Tests.create_lazy_init_workspace(
                 workspace,
@@ -392,7 +540,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             document["tool"] = {"ruff": {"lint": {"select": [selected]}}}
             destination = package / "prepared.py"
             destinations.append(destination)
-            metadata_paths.append(metadata)
             for path, content in (
                 (metadata, u.Cli.toml_dumps(document)),
                 (destination, "import os\n\nvalue = 1\n"),
@@ -419,8 +566,8 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.fail(b"import os" in tm.not_none(first.desired_content))
         tm.ok(b"import os" in tm.not_none(second.desired_content))
         for local, foreign_metadata in (
-            (first, metadata_paths[1]),
-            (second, metadata_paths[0]),
+            (first, second.project / c.PYPROJECT_FILENAME),
+            (second, first.project / c.PYPROJECT_FILENAME),
         ):
             receipt = tm.not_none(local.prepared_sources)
             tm.fail(foreign_metadata in receipt.updates)
@@ -432,12 +579,23 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             eq=tuple(plan.dependency_group for plan in plans),
         )
         tm.fail(any(path.exists() for path in destinations))
+        TestsFlextInfraArtifactRenderEmptyGuard._assert_project_layout_authority(
+            workspace, prepared, first.project, second.project
+        )
+
+    @staticmethod
+    def _assert_project_layout_authority(
+        workspace: Path,
+        prepared: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        first: Path,
+        second: Path,
+    ) -> None:
         updates = {
             plan.path: tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
             for plan in prepared
         }
         unselected = tm.ok(FlextInfraStagedPackage.plan_sources(workspace, updates))
-        rejected = FlextInfraStagedPackage.project_layouts(unselected, first.project)
+        rejected = FlextInfraStagedPackage.project_layouts(unselected, first)
         tm.ok(rejected.failure)
         tm.that(str(rejected.error), has="no original source authority")
         joint = tm.ok(
@@ -445,13 +603,13 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 workspace,
                 updates,
                 options=m.Infra.StageSourceOptions(
-                    workspaces=(first.project, second.project),
+                    workspaces=(first, second),
                 ),
             )
         )
-        elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first.project))
-        tm.ok(first.project in {layout.project_root for layout in elected})
-        tm.fail(second.project in {layout.project_root for layout in elected})
+        elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first))
+        tm.ok(first in {layout.project_root for layout in elected})
+        tm.fail(second in {layout.project_root for layout in elected})
 
     @staticmethod
     def test_candidate_checker_requires_original_physical_environment(

@@ -12,15 +12,11 @@ from typing import Annotated, override
 from flext_cli import cli
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
-from flext_infra.refactor import (
-    FlextInfraAccessorMigrationReportMixin,
-    FlextInfraAccessorMigrationRewriteMixin,
-)
+from flext_infra.refactor import FlextInfraAccessorMigrationReportMixin
 
 
 class FlextInfraAccessorMigrationOrchestrator(
     FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
-    FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraAccessorMigrationReportMixin,
 ):
     """Dry-run/apply orchestrator for public accessor migration candidates."""
@@ -86,7 +82,10 @@ class FlextInfraAccessorMigrationOrchestrator(
             preview_limit=self.preview_limit,
             apply=not self.effective_dry_run,
         )
-        with u.Infra.open_project(self.repository_root) as rope_project:
+        with u.Infra.open_project(
+            self.repository_root,
+            project_roots=tuple(project.path for project in resolved.value),
+        ) as rope_project:
             processed = self._process_files(
                 rope_project,
                 iter_result.value,

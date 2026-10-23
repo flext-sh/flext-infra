@@ -6,44 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_cli import cli
 
 from flext_infra import c, m, p, r, t
-from flext_infra.codegen import (
-    FlextInfraCodegenExecutionBase,
-    FlextInfraCodegenPipelineStagesMixin,
-)
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from flext_infra.codegen import FlextInfraCodegenPipelineStagesMixin
 
 
 class FlextInfraCodegenPipeline(
     FlextInfraCodegenPipelineStagesMixin,
-    FlextInfraCodegenExecutionBase[str],
 ):
     """Run the full codegen pipeline directly from the validated CLI model."""
-
-    conform_collaborators: m.Infra.CodegenConformPorts = m.Field(
-        exclude=True,
-        description="Docs and fresh-import ports the toolchain conform crosses into",
-    )
-
-    _state: m.Infra.CodegenPipelineState = m.PrivateAttr(
-        default_factory=m.Infra.CodegenPipelineState,
-    )
-
-    @override
-    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
-        """Expose the capabilities bound to this pipeline invocation.
-
-        Returns:
-            The exact supplied conform ports.
-
-        """
-        return self.conform_collaborators
 
     @override
     def execute(self) -> p.Result[str]:
@@ -95,37 +69,6 @@ class FlextInfraCodegenPipeline(
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
         return cli.linear_pipeline(c.Infra.PIPELINE_STAGE_ORDER, handlers)
-
-    # ------------------------------------------------------------------
-    # Stage harness — single fail-fast boundary, no per-stage duplication
-    # ------------------------------------------------------------------
-
-    @override
-    def _run_stage[V](
-        self,
-        stage_id: str,
-        action: Callable[[], p.Result[V]],
-        emit: Callable[[V], t.JsonMapping],
-    ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Run one pipeline stage and preserve the first exception.
-
-        ``action`` performs the work and may mutate ``self._state``; ``emit``
-        builds the output payload from the action's return value.
-
-        Returns:
-            The resulting ``p.Result[m.Cli.PipelineStageResult]``.
-
-        """
-        outcome = action()
-        if outcome.failure:
-            return r[m.Cli.PipelineStageResult].from_failure(outcome)
-        return r[m.Cli.PipelineStageResult].ok(
-            m.Cli.PipelineStageResult(
-                stage_id=stage_id,
-                status=c.Cli.PipelineStageStatus.OK,
-                output=emit(outcome.value),
-            ),
-        )
 
     # ------------------------------------------------------------------
     # Output collection

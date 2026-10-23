@@ -146,7 +146,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
 
         """
         all_fixes: t.MutableSequenceOf[str] = []
-        search_result = self._sync_search_path(pyrefly, project_dir, is_root=is_root)
+        search_result = self._sync_search_path(pyrefly, project_dir)
         if search_result.failure:
             return r[t.StrSequence].from_failure(search_result)
         all_fixes.extend(search_result.value)

@@ -9,34 +9,23 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 from flext_cli import cli
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraCodemodSemanticApply,
 )
 from flext_infra.refactor import (
     FlextInfraRefactorCensusCollectHelpersMixin,
-    FlextInfraRefactorCensusCollectMixin,
-    FlextInfraRefactorCensusFiltersMixin,
-    FlextInfraRefactorCensusObjectsMixin,
-    FlextInfraRefactorCensusProjectMixin,
-    FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 )
 
 
 class FlextInfraRefactorCensus(
-    FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
-    FlextInfraRefactorCensusCollectMixin,
     FlextInfraRefactorCensusCollectHelpersMixin,
-    FlextInfraRefactorCensusFiltersMixin,
-    FlextInfraRefactorCensusObjectsMixin,
-    FlextInfraRefactorCensusProjectMixin,
-    FlextInfraRefactorCensusRemovalMixin,
     FlextInfraRefactorCensusRenderMixin,
 ):
     """Rope object census across the workspace: inventory and its analyses.
@@ -48,14 +37,6 @@ class FlextInfraRefactorCensus(
     Immutable census options are composed as data, independently of the service
     lifecycle and injected source-preview capability.
     """
-
-    # Keep the options policy that the former right-hand model base supplied.
-    model_config: ClassVar[m.ConfigDict] = m.Infra.CensusOptions.model_config
-
-    options: m.Infra.CensusOptions = m.Field(
-        default_factory=m.Infra.CensusOptions,
-        description="Validated census filters and report destinations",
-    )
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
         exclude=True,
@@ -78,19 +59,6 @@ class FlextInfraRefactorCensus(
             self.options.impact_map_output,
         )
         return path
-
-    @property
-    @override
-    def dry_run_gate_names(self) -> t.StrSequence:
-        """Per-candidate gate set (``lint`` + ``pyrefly``).
-
-        Mypy and pyright analyse modules transitively and flag ``__init__.py``
-        lazy-import references to just-removed symbols before the lazy
-        initializers are regenerated, which would reject every safe candidate.
-        The per-candidate gate therefore runs the two tools that validate the
-        modified file itself; normalization of every touched file follows.
-        """
-        return (c.Infra.LINT, c.Infra.PYREFLY)
 
     def _rope_root_for_selection(self) -> Path | None:
         """Return a project-scoped Rope root when exactly one project is selected.

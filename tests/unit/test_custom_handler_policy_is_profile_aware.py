@@ -1,19 +1,4 @@
-"""Tests that the custom-handler policy is declared per Make profile.
-
-``custom_handler_policy`` was a single flat rule applied to every profile, but
-the profiles have genuinely different contracts:
-
-* a standalone repository may only define private
-  ``_custom_<verb>_<what>`` handlers and hooks;
-* a workspace *root* may carry developer-local Makefile extensions, so its
-  ``custom.mk`` may own public targets and the variables they read.
-
-Applying the member rule to the root made ``codegen conform`` reject the root's
-own surface on every run and block the whole transaction -- which is why no
-other generated artifact could be landed.
-
-The policy is therefore keyed by profile, and the engine selects the entry for
-the profile it is conforming instead of assuming one shape fits every project.
+"""Validate configured profile policies and independent permission flags.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,6 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
+
+import pytest
 
 from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -54,50 +41,54 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         tm.that(declared - covered, empty=True)
 
     @staticmethod
-    def test_repository_root_may_own_public_targets() -> None:
-        """The root profile permits developer-local public targets."""
-        policy: m.Infra.CustomHandlerPolicy = (
-            config.Infra.codegen.make.custom_handler_policies[
-                c.Infra.MakeProfile.WORKSPACE
-            ]
-        )
-
-        tm.ok(policy.allow_public_targets)
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_profile_permissions_follow_declared_overrides(
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Effective permissions derive from the base and the declared override."""
+        make = config.Infra.codegen.make
+        policy = make.custom_handler_policies[profile]
+        override = make.custom_handler_profile_overrides.get(profile)
+        for actual, declared, inherited in (
+            (
+                policy.allow_public_targets,
+                None if override is None else override.allow_public_targets,
+                make.custom_handler_policy.allow_public_targets,
+            ),
+            (
+                policy.allow_toolchain_declarations,
+                None if override is None else override.allow_toolchain_declarations,
+                make.custom_handler_policy.allow_toolchain_declarations,
+            ),
+        ):
+            tm.that(
+                actual,
+                eq=inherited if declared is None else declared,
+            )
 
     @staticmethod
-    def test_standalone_stays_private_only() -> None:
-        """A standalone custom surface may only define private handlers."""
-        policy: m.Infra.CustomHandlerPolicy = (
-            config.Infra.codegen.make.custom_handler_policies[
-                c.Infra.MakeProfile.STANDALONE
-            ]
-        )
-
-        tm.fail(policy.allow_public_targets)
-
-    @staticmethod
-    def test_validator_honours_the_permissions_it_is_given() -> None:
-        """A permissive policy accepts what a strict one rejects.
-
-        The ``allow_*`` flags were declarative only: the validator read just
-        ``target_pattern``, so a repository root's own public targets and
-        variables were rejected no matter what the config permitted.
-        """
-        content = "WORKSPACE_BASE ?= 0.12.0-dev\ndone-check:\n\t@echo hi\n"
-        strict: m.Infra.CustomHandlerPolicy = (
-            config.Infra.codegen.make.custom_handler_policies[
-                c.Infra.MakeProfile.STANDALONE
-            ]
-        )
-        permissive: m.Infra.CustomHandlerPolicy = (
-            config.Infra.codegen.make.custom_handler_policies[
-                c.Infra.MakeProfile.WORKSPACE
-            ]
+    @pytest.mark.parametrize("allow_public_targets", [False, True])
+    @pytest.mark.parametrize("allow_toolchain_declarations", [False, True])
+    def test_validator_honours_the_permissions_it_is_given(
+        *, allow_public_targets: bool, allow_toolchain_declarations: bool
+    ) -> None:
+        """Each permission controls its own public grammar independently."""
+        base = config.Infra.codegen.make.custom_handler_policy
+        policy = m.Infra.CustomHandlerPolicy(
+            filename=base.filename,
+            target_pattern=base.target_pattern,
+            allow_public_targets=allow_public_targets,
+            allow_toolchain_declarations=allow_toolchain_declarations,
         )
         validate = FlextInfraCodegenConform.validate_custom_make
-
-        tm.ok(validate(content, strict).failure)
-        tm.ok(validate(content, permissive).success)
+        tm.that(
+            validate("public-task:\n\t@:\n", policy).success,
+            eq=allow_public_targets,
+        )
+        tm.that(
+            validate("SAMPLE_SETTING := supplied\n", policy).success,
+            eq=allow_toolchain_declarations,
+        )
 
     @staticmethod
     def test_policy_keys_are_normalised_to_profile_values() -> None:

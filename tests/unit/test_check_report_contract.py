@@ -188,8 +188,8 @@ class TestsFlextInfraCheckReportContract:
             report_path.read_text(encoding=c.DEFAULT_ENCODING),
             strict=True,
         )
-        tm.that(report.properties, none=False)
-        project_result = report.properties.results[0]
+        summary = tm.not_none(report.properties)
+        project_result = summary.results[0]
         execution = project_result.gates["pyright"]
         tm.fail(project_result.passed)
         tm.that(execution.outcome, eq=native.outcome)
@@ -239,8 +239,7 @@ class TestsFlextInfraCheckReportContract:
             report_path.read_text(encoding=c.DEFAULT_ENCODING),
             strict=True,
         )
-        tm.that(report.properties, none=False)
-        summary = report.properties
+        summary = tm.not_none(report.properties)
         tm.that(tuple(summary.requested_gates), eq=(c.Infra.LINT,))
         tm.that(summary.selected_files, eq=())
         tm.that(len(summary.targets), eq=1)

@@ -520,12 +520,19 @@ class FlextInfraModTextGateEngine:
 
         """
         paths: set[Path] = set()
-        for target in u.Infra.ast_grep_scan_targets(root):
-            candidate = root / target
-            if candidate.is_dir():
-                paths.update(candidate.rglob(f"*{c.Infra.EXT_PYTHON}"))
-            else:
-                paths.add(candidate)
+        if sources is None:
+            for target in u.Infra.ast_grep_scan_targets(root):
+                candidate = root / target
+                if candidate.is_dir():
+                    paths.update(candidate.rglob(f"*{c.Infra.EXT_PYTHON}"))
+                else:
+                    paths.add(candidate)
+        else:
+            paths.update(
+                path
+                for path in sources
+                if path.is_relative_to(root) and path.suffix == c.Infra.EXT_PYTHON
+            )
         markdown = cls._markdown_source_paths(root, rules, sources)
         if markdown.failure:
             return markdown
@@ -569,7 +576,8 @@ class FlextInfraModTextGateEngine:
                 matches = tuple(
                     sorted(
                         set(root.glob(pattern))
-                        | {
+                        if sources is None
+                        else {
                             path
                             for path in sources or ()
                             if path.is_relative_to(root)
@@ -1196,6 +1204,32 @@ class FlextInfraModTextGateEngine:
                 allowed.append(plan)
         return allowed
 
+    @staticmethod
+    def _verify_declared_retirements(
+        sources: t.MappingKV[Path, str] | None,
+        receipt: m.Infra.CodegenPhaseAnalysis,
+    ) -> None:
+        """Require the original receipt for every source omitted by retirement.
+
+        Raises:
+            ValueError: If a retirement lacks its declared original or conflicts
+                with the desired source inventory.
+
+        """
+        originals = {state.path: state for state in receipt.inputs}
+        for declaration in receipt.files:
+            if declaration.desired_content is None and (
+                sources is None
+                or declaration.path in sources
+                or not isinstance(declaration.before, m.Cli.AtomicFileState)
+                or declaration.before != originals.get(declaration.path)
+            ):
+                msg = (
+                    "text retirement lacks its original receipt or staged absence: "
+                    f"{declaration.path}"
+                )
+                raise ValueError(msg)
+
     @classmethod
     def _scan_project(
         cls,
@@ -1226,6 +1260,8 @@ class FlextInfraModTextGateEngine:
                 ]
             ].from_failure(context)
         catalogues, identity, rules = context.value
+        if receipt is not None:
+            cls._verify_declared_retirements(sources, receipt)
         include_issues = cls._include_issues(root, rules)
         paths = cls._source_paths(root, rules, sources=sources)
         if paths.failure:

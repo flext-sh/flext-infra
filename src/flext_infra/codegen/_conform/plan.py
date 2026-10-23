@@ -12,7 +12,7 @@ from operator import itemgetter
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraMiseArtifactsVerification,
@@ -337,7 +337,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.fail(
                 f"facade input has no authenticated mode: {destination}",
             )
-        with u.Infra.facade_source_project(root, source_states=tuple(states)) as (
+        with u.Infra.facade_source_project(
+            root, source_options=m.Infra.StageSourceOptions(inputs=tuple(states))
+        ) as (
             project,
             consumed_states,
             sources,
@@ -665,13 +667,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             project_root = repository_paths[outcome.repository].resolve()
             probe = u.Infra.git_is_inside_work_tree(
                 m.Infra.GitRepoRequest(repo_root=project_root),
+                search_parent_directories=False,
             )
             if probe.failure:
                 return r[m.Infra.CodegenPlanningReport].from_failure(probe)
             candidate_sha: str | None = None
             candidate_dirty: bool | None = None
             candidate_kind: Literal["git", "unversioned"] = "unversioned"
-            if probe.value.value:
+            # A scaffold does not inherit its containing checkout's identity.
+            # Existing Git metadata must still expose its original identity failure.
+            if probe.value.value or (project_root / ".git").exists():
                 identity = u.Infra.git_identity(
                     m.Infra.GitRepoRequest(repo_root=project_root),
                 )
@@ -1056,6 +1061,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         u.Cli.atomic_verify_directory_queries(
             manifest.source_directories,
             manifest.source_query_topology,
+            publications=m.Cli.AtomicDirectoryQueryEffects(
+                membership_policy=tuple(
+                    sorted(config.Infra.codegen.source_scan_ignored)
+                )
+            ),
         ).unwrap()
         repository = next(
             task.repository.name
@@ -1170,7 +1180,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if evidence.failure:
             return result_type.from_failure(evidence)
         published = u.Infra.publish_refactor_report_evidence(
-            root,
+            self.state.repository_root,
             evidence.value,
             relative_path=c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH,
         )
@@ -1388,6 +1398,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             elapsed=time.monotonic() - started,
             issues=tuple(planner.state.planning_issues),
             exception=planner.state.planning_exception,
+            error=(
+                str(planner.state.planning_exception)
+                if planner.state.planning_exception is not None
+                else ""
+            ),
+            error_traceback=(
+                "".join(traceback.format_exception(planner.state.planning_exception))
+                if planner.state.planning_exception is not None
+                else ""
+            ),
         )
 
     def _repository_planning_inputs(

@@ -9,6 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
+from flext_infra.refactor._project_classifier_deps import (
+    FlextInfraProjectClassifierDepsMixin,
+)
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -17,12 +20,11 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraProjectClassifierFamilyMixin:
+class FlextInfraProjectClassifierFamilyMixin(FlextInfraProjectClassifierDepsMixin):
     """Parse facade family files and confirm FLEXT family chains + project kind.
 
-    Composed into FlextInfraProjectClassifier via inheritance; borrows
-    ``_src_path`` and ``_normalize_dependency_name`` from the facade/deps-mixin
-    via FLEXT.
+    Composed into FlextInfraProjectClassifier via inheritance; dependency
+    normalization comes from its native base and source paths from the facade.
     """
 
     _CLASS_DEF_RE: t.RegexPattern = c.Infra.CLASS_WITH_BASES_RE
@@ -30,10 +32,6 @@ class FlextInfraProjectClassifierFamilyMixin:
     if TYPE_CHECKING:
         _project_root: Path
         _src_path: Path
-
-        @staticmethod
-        def _normalize_dependency_name(raw_name: str) -> str:
-            del raw_name
 
     def _discover_facade_inheritance(
         self,

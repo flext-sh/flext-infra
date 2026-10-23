@@ -47,6 +47,21 @@ copied into the audited stage. Required build assets must belong to the committe
 source or be produced by its build backend inside the isolated build, not injected
 from unauthenticated checkout outputs. Release metadata and snapshotted build
 policy retain their existing explicit rendering and attestation boundaries.
+Release-version ownership is selected by `LANE_CHECKPOINT_REF`, an existing
+dedicated Git checkpoint reference, not caller-authored receipt JSON. The public
+`workspace lane-ownership` command reconstructs its original metadata and index
+parent, verifies the full repository scope, live remote retention, and inclusion
+in the current integration tip, then emits the typed receipt consumed by release.
+It never captures, publishes, integrates, switches branches, or modifies current
+staged, unstaged, or untracked work. A checkpoint from a different repository
+identity, an unpublished capture, or an unintegrated capture is refused. Receipt
+production does not waive the separate lane-creation or produced-path admission
+contracts; shared-WIP publication still requires authenticated producer outputs.
+The release workflow dispatch selects exactly one `tag` or `checkpoint_ref`.
+Tag dispatch retains the existing publication path. Checkpoint dispatch validates
+the event's exact SHA through canonical CI, then runs versioning only, with the
+selector transported as environment data. Push versioning selects an explicit
+repository `LANE_CHECKPOINT_REF` variable; a no-op needs no ownership mutation.
 Generation publishes resolver manifests; only `make upg` writes their UV locks.
 Before installation, an isolated UV bootstrap consumes the supplier's native
 local resolver lock and live editable sources, never its `.venv`. It refreshes
@@ -385,6 +400,27 @@ searches are not default owners. Missing required defaults retain their native f
 Installed-wheel acceptance must identify and exercise the actual distributed artifact;
 an editable source read or a prior editable pass cannot retroactively prove wheel
 resources, template identity or consumer behavior.
+
+The packaging owner force-includes the declared package's existing or planned
+`config/` source directory at its installed package-relative destination. Hatch's
+editable builder records forced resources but does not archive data selected only
+through Python source directories. The same mapping applies to standard wheels;
+the manifest excludes that source from ordinary wheel selection, so each resource
+ships once. The sdist retains the original package source. Configuration values
+remain owned by the YAML sources, not by the manifest.
+
+Modernization preserves authored Hatch `include`, `exclude`, `only-include`,
+source mappings and forced resources while adding declared distribution inputs.
+Migration validates these inputs before publishing its declaration. A legacy
+manifest explicitly selected as distribution data retains its original bytes;
+retaining that resource does not make it a runtime configuration source again.
+Scaffold directory preparation applies only before a project's `pyproject.toml`
+exists, never to an existing repository's prospective template directories.
+
+Rope qualification reads a receipt only after its consumption context closes,
+while the source view remains open. Publication effects use the same configured
+source-election exclusions as the captured membership query; explicit path reads
+and original input states remain authenticated by the unchanged native observer.
 
 Editable Hatch declarations retain explicit package directories and package remappings
 from `tool.hatch.build.targets.wheel.sources`. Every installed `.pth` entry must expose

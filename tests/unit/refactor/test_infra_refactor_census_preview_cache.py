@@ -55,7 +55,7 @@ class TestsFlextInfraRefactorCensusPreview:
             suggested_action="remove",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with u.Tests.authenticated_rope_workspace(repository_root) as rope:
             updates = u.Infra.build_simple_removal_sources(rope, candidate)
 
         tm.that(updates, none=False)
@@ -122,7 +122,7 @@ class TestsFlextInfraRefactorCensusPreview:
             ),
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with u.Tests.authenticated_rope_workspace(repository_root) as rope:
             updates = u.Infra.build_simple_removal_sources(rope, candidate)
 
         tm.that(updates, none=False)
@@ -154,7 +154,7 @@ class TestsFlextInfraRefactorCensusPreview:
             "        return run()\n"
         )
         module_path.write_text(original_source, encoding="utf-8")
-        u.Tests.provision_checkout(repository_root)
+        u.Tests.provision_source_preview(repository_root)
         candidate = m.Infra.RemovalCandidate(
             project="flext-demo",
             file_path=str(module_path.resolve()),
@@ -166,7 +166,7 @@ class TestsFlextInfraRefactorCensusPreview:
             suggested_action="remove",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with u.Tests.authenticated_rope_workspace(repository_root) as rope:
             preview = u.Infra.preview_simple_removal_candidate(
                 rope,
                 repository_root,

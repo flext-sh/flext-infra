@@ -343,8 +343,9 @@ class FlextInfraSemanticPublication:
         # A physical runtime can only consume the fully composed candidate below.
         with u.Infra.facade_source_project(
             repository_root,
-            source_states=analysis.inputs,
-            declared_files=analysis.files,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=analysis.inputs, declared_files=analysis.files
+            ),
             project_roots=tuple(
                 dict.fromkeys((
                     *options.projection_roots,
@@ -564,7 +565,7 @@ class FlextInfraSemanticPublication:
                         current,
                         staged,
                         plans=analysis.files,
-                        workspace=repository_root,
+                        runtime=m.Infra.CodegenSourceRuntime(workspace=repository_root),
                         validator=cls._check_semantic_sources,
                     )
                 ),

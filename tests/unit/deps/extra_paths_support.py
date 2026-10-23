@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 if TYPE_CHECKING:
@@ -19,6 +20,32 @@ _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 class TestsFlextInfraExtraPathsSupport:
     """Factory helpers for validated extra-path manager instances."""
+
+    @staticmethod
+    def expected_pyrefly_paths(
+        project_dir: Path, generated_roots: t.StrSequence = ()
+    ) -> t.StrSequence:
+        """Derive expected import identities from the configured path contract.
+
+        Returns:
+            Configured local roots in source-first, project-last order.
+
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        available = {
+            root
+            for root in (rules.source_dir, *rules.project_shared_search_paths)
+            if (project_dir / root).is_dir() or root in generated_roots
+        }
+        return (
+            *((rules.source_dir,) if rules.source_dir in available else ()),
+            *sorted(available - {rules.source_dir, rules.project_root}),
+            *(
+                (rules.project_root,)
+                if (project_dir / rules.project_root).is_dir()
+                else ()
+            ),
+        )
 
     @staticmethod
     def manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:

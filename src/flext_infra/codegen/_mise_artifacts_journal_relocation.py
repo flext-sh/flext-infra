@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra import c, e, m, p, r, t, u
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 
 def _relocate_generation_directory_error(error: str) -> str:
@@ -80,7 +80,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
                 role=previous.role if previous is not None else None,
                 parent_device=source.parent_device,
                 parent_inode=source.parent_inode,
-                sha256=files.digest(source.content)
+                sha256=FlextInfraMiseArtifactsFiles.digest(source.content)
                 if source.content is not None
                 else None,
                 mode=source.mode,
@@ -116,19 +116,36 @@ class FlextInfraMiseArtifactsJournalRelocation:
         if relocated.failure:
             return result_type.from_failure(relocated)
         sources, directories, staging_intents = relocated.value
-        validated: p.Result[m.Infra.CodegenTransactionJournal] = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            {
-                **journal.model_dump(),
-                "file_participants": layout.file_participants,
-                "sources": sources,
-                "directories": directories,
-                "staging_intents": staging_intents,
-            },
-        )
-        if validated.failure:
-            return result_type.fail_op("relocate generation journal", validated.error)
-        return result_type.ok(validated.value)
+        try:
+            relocated_journal = m.Infra.CodegenTransactionJournal(
+                version=journal.version,
+                transaction_id=journal.transaction_id,
+                scope_device=journal.scope_device,
+                scope_inode=journal.scope_inode,
+                state=journal.state,
+                projects=journal.projects,
+                file_participants=layout.file_participants,
+                sources=sources,
+                outputs=journal.outputs,
+                generator_sources=journal.generator_sources,
+                generator_trees=journal.generator_trees,
+                generator_modules=journal.generator_modules,
+                generator_reference=journal.generator_reference,
+                source_topology=journal.source_topology,
+                source_directories=journal.source_directories,
+                source_query_topology=journal.source_query_topology,
+                scope_roots=journal.scope_roots,
+                source_scope=journal.source_scope,
+                phase=journal.phase,
+                directories=directories,
+                entries=journal.entries,
+                staging_intents=staging_intents,
+            )
+        except c.EXC_ATTR_RUNTIME_VALIDATION as exc:
+            return e.fail_validation(error=exc, result_type=result_type).map_error(
+                lambda error: f"relocate generation journal failed: {error}",
+            )
+        return result_type.ok(relocated_journal)
 
     @classmethod
     def _relocation_context(
@@ -144,7 +161,9 @@ class FlextInfraMiseArtifactsJournalRelocation:
             the current scope, nothing to relocate).
 
         """
-        identity = files.physical_directory_identity(layout.scope_root)
+        identity = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            layout.scope_root
+        )
         if identity.failure:
             return r[t.Pair[Path, bool]].from_failure(identity)
         if identity.value != (journal.scope_device, journal.scope_inode):
@@ -270,11 +289,12 @@ class FlextInfraMiseArtifactsJournalRelocation:
             if created is not None:
                 created = created.model_copy(update={"path": rebound.value})
             intents.append(
-                m.Infra.CodegenStagingIntent.model_validate({
-                    **intent.model_dump(),
-                    "before": intent.before.model_copy(update={"path": rebound.value}),
-                    "created": created,
-                }),
+                m.Infra.CodegenStagingIntent(
+                    before=intent.before.model_copy(update={"path": rebound.value}),
+                    sha256=intent.sha256,
+                    mode=intent.mode,
+                    created=created,
+                ),
             )
         return result_type.ok((tuple(sources), tuple(directories), tuple(intents)))
 
@@ -327,15 +347,22 @@ class FlextInfraMiseArtifactsJournalRelocation:
                     relocated_manifest,
                 )
             manifest = relocated_manifest.value
-        return u.validate_value(
-            m.Infra.CodegenJournalDirectory,
-            {
-                **directory.model_dump(),
-                "before": before,
-                "created": created,
-                "manifest": manifest,
-            },
-        ).map_error(_relocate_generation_directory_error)
+        try:
+            relocated_directory = m.Infra.CodegenJournalDirectory(
+                phase=directory.phase,
+                project=directory.project,
+                path=directory.path,
+                disposition=directory.disposition,
+                before=before,
+                created=created,
+                manifest=manifest,
+            )
+        except c.EXC_ATTR_RUNTIME_VALIDATION as exc:
+            return e.fail_validation(
+                error=exc,
+                result_type=r[m.Infra.CodegenJournalDirectory],
+            ).map_error(_relocate_generation_directory_error)
+        return r[m.Infra.CodegenJournalDirectory].ok(relocated_directory)
 
     @classmethod
     def _recorded_scope_root(
@@ -472,16 +499,16 @@ class FlextInfraMiseArtifactsJournalRelocation:
             if rebound.failure:
                 return result_type.from_failure(rebound)
             relocated.append(entry.model_copy(update={"path": rebound.value}))
-        validated: p.Result[m.Cli.AtomicPhysicalTreeManifest] = u.validate_value(
-            m.Cli.AtomicPhysicalTreeManifest,
-            {"root": relocated[0], "entries": tuple(relocated[1:])},
-        )
-        if validated.failure:
-            return result_type.fail_op(
-                "relocate generation tree manifest",
-                validated.error,
+        try:
+            relocated_manifest = m.Cli.AtomicPhysicalTreeManifest(
+                root=relocated[0],
+                entries=tuple(relocated[1:]),
             )
-        return result_type.ok(validated.value)
+        except c.EXC_ATTR_RUNTIME_VALIDATION as exc:
+            return e.fail_validation(error=exc, result_type=result_type).map_error(
+                lambda error: f"relocate generation tree manifest failed: {error}",
+            )
+        return result_type.ok(relocated_manifest)
 
 
 __all__: list[str] = ["FlextInfraMiseArtifactsJournalRelocation"]

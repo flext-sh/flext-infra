@@ -88,7 +88,6 @@ class FlextInfraRopeWorkspace(
         )
 
     @classmethod
-    @override
     def open_workspace(
         cls,
         repository_root: Path,
@@ -137,13 +136,11 @@ class FlextInfraRopeWorkspace(
         return workspace
 
     @property
-    @override
     def rope_repository_root(self) -> Path:
         """Canonical root used for the shared Rope project."""
         return self._rope_repository_root
 
     @property
-    @override
     def rope_project(self) -> t.Infra.RopeProject:
         """Shared Rope project, opening it lazily once."""
         rope_project = self._rope_project
@@ -159,7 +156,6 @@ class FlextInfraRopeWorkspace(
         return rope_project
 
     @property
-    @override
     def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
         """Cached workspace index for the shared Rope project."""
         workspace_index = self._workspace_index
@@ -196,7 +192,6 @@ class FlextInfraRopeWorkspace(
         return workspace_index
 
     @property
-    @override
     def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis:
         """Require the original authenticated structural-selection receipt.
 
@@ -233,7 +228,6 @@ class FlextInfraRopeWorkspace(
             workspace_index=self.workspace_index,
         )
 
-    @override
     def refresh(
         self,
         *,
@@ -269,7 +263,6 @@ class FlextInfraRopeWorkspace(
             self._import_dependents_index = None
         return self.session_snapshot()
 
-    @override
     def reload(self) -> m.Infra.RopeWorkspaceSession:
         """Reopen the shared Rope project and drop all transient caches.
 
@@ -281,7 +274,6 @@ class FlextInfraRopeWorkspace(
         _ = self.rope_project
         return self.session_snapshot()
 
-    @override
     def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Return the canonical codegen project selection for this workspace.
 
@@ -294,7 +286,6 @@ class FlextInfraRopeWorkspace(
             self._codegen_projects = tuple(projects_result.unwrap())
         return self._codegen_projects
 
-    @override
     def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None:
         """Return one centralized project layout contract for codegen pipelines.
 
@@ -320,7 +311,6 @@ class FlextInfraRopeWorkspace(
         self._project_layout_cache[cache_key] = layout
         return layout
 
-    @override
     def package_context(self, package_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return one centralized lazy-init package context for a package dir.
 
@@ -388,7 +378,6 @@ class FlextInfraRopeWorkspace(
             path,
         )
 
-    @override
     def policy(
         self,
         file_path: Path,
@@ -434,7 +423,6 @@ class FlextInfraRopeWorkspace(
             self._module_policy_cache[cache_key] = policy
             return policy
 
-    @override
     def convention(
         self,
         file_path: Path,
@@ -500,7 +488,6 @@ class FlextInfraRopeWorkspace(
             self._module_convention_cache[cache_key] = convention
             return convention
 
-    @override
     def exports(
         self,
         file_path: Path,
@@ -520,7 +507,6 @@ class FlextInfraRopeWorkspace(
             export_options=resolved_export_options,
         )
 
-    @override
     def close(self) -> None:
         """Close the shared Rope project and clear transient caches."""
         if self._rope_project is not None:
@@ -539,7 +525,6 @@ class FlextInfraRopeWorkspace(
         self._name_index = None
         self._import_dependents_index = None
 
-    @override
     def __enter__(self) -> Self:
         """Open the Rope project on context-manager entry.
 
@@ -550,7 +535,6 @@ class FlextInfraRopeWorkspace(
         _ = self.rope_project
         return self
 
-    @override
     def __exit__(
         self,
         _exc_type: type[BaseException] | None,
@@ -561,7 +545,6 @@ class FlextInfraRopeWorkspace(
         del _exc_type, _exc, _tb
         self.close()
 
-    @override
     def _resource_for(self, file_path: Path) -> t.Infra.RopeFile:
         """Require a resource inside the active Rope workspace.
 

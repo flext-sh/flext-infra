@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import MutableMapping
-from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -45,7 +44,7 @@ class FlextInfraCodegenLazyInitProjectionManifest:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        projected: MutableMapping[Path, list[t.JsonDict]] = {}
+        projected: MutableMapping[Path, list[p.Infra.ProjectionManifestEntry]] = {}
         for plan in files:
             if plan.desired_content is None:
                 continue
@@ -54,25 +53,25 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                 continue
             if relative.name == c.Infra.MANIFEST_FILENAME:
                 continue
-            projected.setdefault(plan.project, []).append({
-                "path": relative.as_posix(),
-                "sha256": hashlib.sha256(plan.desired_content).hexdigest(),
-                "bytes": len(plan.desired_content),
-            })
+            projected.setdefault(plan.project, []).append(
+                m.Infra.ProjectionManifestEntry(
+                    path=relative.as_posix(),
+                    sha256=hashlib.sha256(plan.desired_content).hexdigest(),
+                    bytes=len(plan.desired_content),
+                ),
+            )
         plans: t.MutableSequenceOf[m.Infra.CodegenFilePlan] = []
         for project in sorted(projected):
-            payload: t.JsonDict = {
+            payload = m.Infra.ProjectionManifest.model_validate({
                 "apiVersion": c.Infra.MANIFEST_API_VERSION,
-                "entries": [
-                    {
-                        "path": entry["path"],
-                        "sha256": entry["sha256"],
-                        "bytes": entry["bytes"],
-                    }
-                    for entry in sorted(projected[project], key=itemgetter("path"))
-                ],
-            }
-            serialized = u.Cli.json_dumps(payload, indent=2)
+                "entries": tuple(
+                    sorted(projected[project], key=lambda entry: entry.path),
+                ),
+            })
+            serialized = u.Cli.json_dumps(
+                payload.model_dump(mode="json", by_alias=True),
+                indent=2,
+            )
             if serialized.failure:
                 return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(
                     serialized,

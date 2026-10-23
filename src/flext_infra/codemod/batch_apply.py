@@ -159,7 +159,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             workspace_factory=self.workspace_factory,
             source_preview=self.source_preview,
             repository_root=self.repository_root,
-            apply=False,
+            apply_changes=False,
             options=m.Infra.CensusOptions(
                 families=("c",),
                 rules=(
@@ -228,15 +228,20 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 for source in (plan.before, *plan.source_states):
                     if source.path not in plans:
                         inputs.setdefault(source.path, source)
-                plans[plan.path] = (
-                    plan.model_copy(update={"before": inputs[plan.path]})
-                    if original is None
-                    else plan.model_copy(
-                        update={
-                            "before": original.before,
-                            "changes": (*original.changes, *plan.changes),
-                        }
-                    )
+                plans[plan.path] = plan.model_copy(
+                    update={
+                        "before": (
+                            inputs[plan.path] if original is None else original.before
+                        ),
+                        "changes": (
+                            plan.changes
+                            if original is None
+                            else (*original.changes, *plan.changes)
+                        ),
+                        "source_states": tuple(
+                            inputs[source.path] for source in plan.source_states
+                        ),
+                    }
                 )
             after_ast = FlextInfraModGateEngine.authored(
                 self._preview_ast_candidate(root, plans, inputs, seed)
@@ -338,6 +343,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             options=m.Infra.CodegenSourcePreviewOptions(
                 inputs=candidate.inputs,
                 workspaces=candidate.workspaces,
+                modes=candidate.modes,
                 runtime_check=False,
             ),
         ).unwrap()
@@ -372,6 +378,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             root,
             sources=sources,
             source_states=original.states,
+            declared_files=candidate.candidate.declared_files,
             validate_receipts=text_precondition_pending,
         )
         if planned.failure:
@@ -521,8 +528,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """
         outcome = r[t.Pair[m.Infra.SemanticSourcePlan, m.Cli.AtomicFileState | None]]
         seed, driver = loaded
-        authenticated = FlextInfraCodemodSemanticApply._verify_native_rename_plan(
-            root, rope_workspace, loaded
+        authenticated = FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
+            root, seed, driver, rope_workspace
         )
         if authenticated.failure:
             return outcome.from_failure(authenticated)
@@ -602,9 +609,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             {state.path: state for state in syntax.inputs},
             syntax,
         )
-        original = FlextInfraCodemodSemanticApply._candidate_python_sources(
-            syntax, seed.candidate.inputs
-        )
+        original = u.Infra.candidate_python_sources(syntax, seed.candidate.inputs)
         working = dict(original)
         for path, source in syntax.updates.items():
             if path.suffix not in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}:
@@ -1024,7 +1029,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     *candidate.source_states,
                 )
             )
-            sources = FlextInfraCodemodSemanticApply._candidate_python_sources(
+            sources = u.Infra.candidate_python_sources(
                 candidate.candidate, original.states
             )
             for path, source in candidate.candidate.updates.items():
@@ -1051,7 +1056,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                         sources=sources,
                         receipt=m.Infra.CodegenPhaseAnalysis(
                             phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                            files=(),
+                            files=candidate.candidate.declared_files,
                             inputs=original.states,
                         ),
                     )

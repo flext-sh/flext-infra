@@ -311,6 +311,14 @@ class FlextInfraMiseArtifactsVerification(
         states: list[m.Cli.AtomicFileState] = []
         for original in inputs:
             if original.parent_device is None:
+                observed = FlextInfraMiseArtifactsFiles.read_state(
+                    original.path, required=original.content is not None
+                )
+                if observed.failure:
+                    return result_type.from_failure(observed)
+                if observed.value == original:
+                    states.append(original)
+                    continue
                 bound = cls.bind_source_parent(original, session.journal)
                 if bound.failure:
                     return result_type.from_failure(bound)

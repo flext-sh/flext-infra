@@ -77,7 +77,8 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 m.Field(
                     alias="project-root-env-dirs",
                     description=(
-                        "Included directories resolved from their project package parent."
+                        "Included directories resolved from their project "
+                        "package parent."
                     ),
                 ),
             ] = ()

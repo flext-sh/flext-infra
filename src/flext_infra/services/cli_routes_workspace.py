@@ -45,10 +45,22 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             params.repository_root,
         )
         if selected.failure:
-            return selected
+            return r[int].from_failure(selected)
         for repository in selected.value:
             u.Cli.emit_raw(f"{repository.path}\n")
         return r[int].ok(len(selected.value))
+
+    @staticmethod
+    def _detect_workspace(params: FlextInfraWorkspaceDetector) -> p.Result[str]:
+        """Expose the detected profile's wire value through the CLI transport.
+
+        Returns:
+            The profile string or the unchanged detection failure.
+
+        """
+        return FlextInfraWorkspaceDetector.execute_command(params).map(
+            lambda profile: profile.value,
+        )
 
     @staticmethod
     def _apply_flext_binding(
@@ -161,6 +173,13 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 success_message="workspace serial lifecycle validated",
             ),
             m.Cli.ResultCommandRoute(
+                name="lane-ownership",
+                help_text="Authenticate a retained and integrated Git checkpoint",
+                model_cls=m.Infra.GitLaneOwnershipRequest,
+                handler=FlextInfraGitService.lane_ownership,
+                success_formatter=_payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="verify-lane",
                 help_text=(
                     "Verify stash absence and declared live integration ancestry "
@@ -238,7 +257,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                         "detect",
                         "Detect workspace or standalone mode",
                         FlextInfraWorkspaceDetector,
-                        FlextInfraWorkspaceDetector.execute_command,
+                        _detect_workspace,
                     ),
                     (
                         "propagate",

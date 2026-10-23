@@ -9,6 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
+from flext_infra.codegen._lazy_init_planner_cache import (
+    FlextInfraCodegenLazyInitPlannerCacheMixin,
+)
 
 if TYPE_CHECKING:
     from abc import abstractmethod
@@ -18,7 +21,9 @@ if TYPE_CHECKING:
     from flext_infra import m, p, t
 
 
-class FlextInfraCodegenLazyInitPlannerParentsMixin:
+class FlextInfraCodegenLazyInitPlannerParentsMixin(
+    FlextInfraCodegenLazyInitPlannerCacheMixin,
+):
     """Resolve inherited packages from Rope scopes and import names only."""
 
     if TYPE_CHECKING:
@@ -28,13 +33,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         @abstractmethod
-        def _module_file(self, module_path: str) -> Path | None: ...
-
-        @abstractmethod
         def _parent_packages(self, pkg_dir: Path) -> t.StrSequence: ...
-
-        @abstractmethod
-        def _provider_package_dir(self, package_name: str) -> Path | None: ...
 
     def _parents_from_constants_module(
         self,
@@ -254,71 +253,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             self.rope_workspace.rope_project.source_text(init_path),
             name=alias_name,
         )
-
-    def _declared_alias_names_for_package(self, package_name: str) -> frozenset[str]:
-        """Return the facade letters a package's own modules declare in __all__.
-
-        Only class aliases qualify (``u.Infra.facade_letter_names_source``):
-        singleton instances and entry points such as ``cli``, ``infra`` and
-        ``main`` belong to their declaring namespace root only.
-
-        Returns:
-            The facade letters a package's own modules declare in __all__.
-
-        """
-        cache_key = f"declared:{package_name}"
-        with u.Infra.cached_source_query(
-            self.rope_workspace.rope_project,
-            self._source_exports_cache,
-            cache_key,
-            self._query_receipts,
-            f"source:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._source_exports_cache[cache_key]
-            return self._declared_alias_query(package_name, cache_key)
-
-    def _declared_alias_query(
-        self, package_name: str, cache_key: str
-    ) -> frozenset[str]:
-        """Read declaration names while the caller owns their cache receipt.
-
-        Returns:
-            The declared class aliases for this package.
-
-        """
-        # A parent outside the scan scope is read from the one package the
-        # active environment declares (R32), so a standalone plan and a
-        # workspace plan elect the same owner.
-        indexed_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            package_name,
-        )
-        package_dir = indexed_dir or self._provider_package_dir(package_name)
-        declared: set[str] = set()
-        if package_dir is not None:
-            project = self.rope_workspace.rope_project
-            for module_path in project.source_children(package_dir):
-                if module_path.suffix != c.Infra.EXT_PYTHON or not project.source_query(
-                    module_path,
-                    "isfile",
-                ):
-                    continue
-                # The generated initializer of this run is an output, never a
-                # declaration owner. An external package's published
-                # initializer IS its own root namespace: the letters it binds
-                # directly to a class are that package's declared letters,
-                # read by path, never imported.
-                if module_path.name == c.Infra.INIT_PY and indexed_dir is not None:
-                    continue
-                declared.update(
-                    u.Infra.facade_letter_names_source(
-                        project.source_text(module_path),
-                        filename=str(module_path),
-                    ),
-                )
-        names = frozenset(declared)
-        self._source_exports_cache[cache_key] = names
-        return names
 
     def _package_name_from_target(self, target: str) -> str:
         """Return the longest workspace package name matching the dotted target.

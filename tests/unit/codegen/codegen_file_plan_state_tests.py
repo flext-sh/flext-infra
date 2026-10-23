@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, m, u
-from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles, FlextInfraMisePublication
 from tests import tm
 
@@ -50,13 +49,13 @@ class TestsFlextInfraCodegenFilePlanState:
         """Test equal binary content is not drift."""
         before = self._observed_state(tmp_path, content=content)
 
-        differs = FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
+        differs = u.Infra.atomic_file_state_differs(
             before,
             desired_content=content,
             desired_mode=before.mode,
         )
 
-        assert differs is False
+        tm.that(differs, eq=False)
 
     @pytest.mark.parametrize(
         ("content", "desired_content"),
@@ -77,25 +76,25 @@ class TestsFlextInfraCodegenFilePlanState:
         """Test real content delta still differs."""
         before = self._observed_state(tmp_path, content=content)
 
-        differs = FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
+        differs = u.Infra.atomic_file_state_differs(
             before,
             desired_content=desired_content,
             desired_mode=before.mode,
         )
 
-        assert differs is True
+        tm.that(differs, eq=True)
 
     def test_mode_delta_differs_even_with_equal_content(self, tmp_path: Path) -> None:
         """Test mode delta differs even with equal content."""
         before = self._observed_state(tmp_path, content=b'name = "demo"\n')
 
-        drifted = FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
+        drifted = u.Infra.atomic_file_state_differs(
             before,
             desired_content=before.content,
             desired_mode=0o755,
         )
 
-        assert drifted is True
+        tm.that(drifted, eq=True)
 
     @staticmethod
     def test_absent_file_is_not_an_empty_file(tmp_path: Path) -> None:
@@ -113,13 +112,13 @@ class TestsFlextInfraCodegenFilePlanState:
             raise AssertionError(state.error)
 
         tm.that(
-            FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
+            u.Infra.atomic_file_state_differs(
                 state.value, desired_content=b"", desired_mode=state.value.mode
             ),
             truth=True,
         )
         tm.that(
-            FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
+            u.Infra.atomic_file_state_differs(
                 state.value, desired_content=None, desired_mode=state.value.mode
             ),
             truth=False,
@@ -130,7 +129,7 @@ class TestsFlextInfraCodegenFilePlanState:
         before = self._observed_state(tmp_path, content=b"")
 
         tm.that(
-            FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
+            u.Infra.atomic_file_state_differs(
                 before, desired_content=None, desired_mode=None
             ),
             truth=True,
@@ -266,7 +265,8 @@ class TestsFlextInfraCodegenFilePlanState:
         content = (
             b""
             if name == "py.typed"
-            else b"from typing import Protocol\nclass Port(Protocol):\n    def load(self) -> bytes: ...\n"
+            else b"from typing import Protocol\nclass Port(Protocol):\n"
+            b"    def load(self) -> bytes: ...\n"
         )
         plan = m.Infra.CodegenFilePlan(
             project=tmp_path,
@@ -306,13 +306,11 @@ class TestsFlextInfraCodegenFilePlanState:
             desired_mode=before.mode,
         )
 
-        report = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report((
-            planned,
-        ))
+        report = u.Infra.codegen_file_drift_report((planned,))
 
-        assert repr(content) in report
-        assert repr(desired_content) in report
-        assert "mode-only drift" not in report
+        tm.that(report, has=repr(content))
+        tm.that(report, has=repr(desired_content))
+        tm.that(report, lacks="mode-only drift")
 
     def test_drift_report_names_mode_only_delta(self, tmp_path: Path) -> None:
         """Test drift report names mode only delta."""
@@ -325,19 +323,17 @@ class TestsFlextInfraCodegenFilePlanState:
             desired_mode=0o755,
         )
 
-        report = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report((
-            planned,
-        ))
+        report = u.Infra.codegen_file_drift_report((planned,))
 
-        assert "mode-only drift" in report
-        assert "desired=0o755" in report
+        tm.that(report, has="mode-only drift")
+        tm.that(report, has="desired=0o755")
 
     @staticmethod
     @pytest.mark.parametrize("limit", [0, -1])
     def test_drift_report_rejects_non_positive_limit(limit: int) -> None:
         """Test drift report rejects non positive limit."""
         with pytest.raises(ValueError, match="limit must be positive"):
-            FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report(
+            u.Infra.codegen_file_drift_report(
                 (),
                 limit=limit,
             )

@@ -1,4 +1,4 @@
-"""Declared sibling sources resolve parents without expanding publication scope.
+"""Installed sibling providers resolve parents without expanding publication scope.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,11 +10,78 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, tm, u
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraLazyInitWorkspaceElection:
-    """Workspace planning uses declared sibling source without publishing it."""
+    """Workspace planning consumes installed parents without publishing them."""
+
+    @staticmethod
+    def _provision_runtime(
+        workspace: Path,
+        repositories: t.StrSequence,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> None:
+        """Install real tooling and editable providers in the fixture runtime."""
+        checkout = Path(__file__).resolve().parents[3]
+        u.Tests.initialize_git_repo(workspace)
+        tm.ok(
+            u.Tests.create_python_environment(
+                workspace,
+                dependency_projects=(
+                    *u.Tests.python_dependency_projects(checkout),
+                    checkout,
+                ),
+                session_runtime=session_runtime,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                (
+                    u.Tests.managed_uv(),
+                    "pip",
+                    "install",
+                    "--python",
+                    str(u.Infra.runtime_environment_dir(workspace)),
+                    "--no-deps",
+                    *(
+                        argument
+                        for root in repositories
+                        for argument in ("--editable", root)
+                    ),
+                ),
+                cwd=workspace,
+            )
+        )
+
+    @staticmethod
+    def _run_plan(
+        workspace: Path, repository: Path, *, check_only: bool = False
+    ) -> int:
+        """Plan with installed providers and materialize through the shared fixture.
+
+        Returns:
+            The number of remaining effects after successful publication.
+
+        """
+        output = u.Tests.run_lazy_init_probe(
+            "from pathlib import Path\n"
+            "from flext_infra.codegen import FlextInfraCodegenLazyInit\n"
+            "import sys\n"
+            "root = Path(sys.argv[1])\n"
+            "service = FlextInfraCodegenLazyInit(repository_root=root)\n"
+            "plans = service.plan_files().unwrap()\n"
+            "print(plans.model_dump_json())\n",
+            arguments=(str(repository),),
+            runtime_root=workspace,
+        )
+        planned = m.Infra.CodegenPhaseAnalysis.model_validate_json(output[-1])
+        if check_only:
+            return sum(
+                u.Infra.codegen_file_requires_effect(plan) for plan in planned.files
+            )
+        tm.ok(u.Tests.materialize_codegen_plans(r.ok(planned.files)))
+        return 0
 
     @staticmethod
     def _write_constants(package_root: Path, *, parent: str, class_name: str) -> None:
@@ -28,11 +95,12 @@ class TestsFlextInfraLazyInitWorkspaceElection:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
-    def test_workspace_plan_uses_declared_sibling_without_installing_it(
+    def test_workspace_plan_uses_installed_sibling_without_publishing_it(
         self,
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
-        """Declared parent chains converge without installation or sibling writes."""
+        """Installed parent chains converge without sibling publication effects."""
         workspace = tmp_path / "workspace"
         owner_repo, owner = u.Tests.create_lazy_init_workspace(
             workspace,
@@ -90,10 +158,26 @@ class TestsFlextInfraLazyInitWorkspaceElection:
 
         tm.that(dict(entries).get(".constants", ()), has="c")
 
-        tm.that(u.Tests.run_lazy_init(middle_repo), eq=0)
-        tm.that(u.Tests.run_lazy_init(middle_repo, check_only=True), eq=0)
-        tm.that(u.Tests.run_lazy_init(child_repo), eq=0)
-        tm.that(u.Tests.run_lazy_init(child_repo, check_only=True), eq=0)
+        self._provision_runtime(
+            workspace,
+            (str(owner_repo), str(middle_repo), str(child_repo)),
+            session_runtime,
+        )
+        tm.that(self._run_plan(workspace, middle_repo), eq=0)
+        tm.that(self._run_plan(workspace, middle_repo, check_only=True), eq=0)
+        tm.that(self._run_plan(workspace, child_repo), eq=0)
+        tm.that(self._run_plan(workspace, child_repo, check_only=True), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import flext_ws_child as child\n"
+                "import flext_ws_middle as middle\n"
+                "import flext_ws_owner as owner\n"
+                "print(child.r is middle.r is owner.r)\n"
+                "print(issubclass(child.c, middle.c))\n",
+                runtime_root=workspace,
+            ),
+            eq=["True", "True"],
+        )
         tm.that(
             owner.joinpath(c.Infra.INIT_PY).read_text(
                 encoding=c.DEFAULT_ENCODING,
@@ -111,5 +195,5 @@ class TestsFlextInfraLazyInitWorkspaceElection:
             parent=f"{child.name}_absent",
             class_name="FlextWsChildConstants",
         )
-        with pytest.raises(ValueError, match="resolves nowhere"):
-            _ = u.Tests.run_lazy_init(child_repo)
+        with pytest.raises(AssertionError, match="resolves nowhere"):
+            _ = self._run_plan(workspace, child_repo, check_only=True)

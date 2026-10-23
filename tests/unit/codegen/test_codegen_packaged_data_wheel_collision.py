@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, infra, main
+from flext_infra import c, config, infra, m, main
 from tests import t, tm, u
 
 if TYPE_CHECKING:
@@ -62,6 +62,28 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         )
 
     @staticmethod
+    def _prepare_runtime(root: Path) -> None:
+        """Provision a physical runtime from the existing verified resolver lock."""
+        _ = u.Tests.provision_runtime_environment(root)
+        environment = u.Infra.runtime_environment_dir(root)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / ".gitignore", f"/{environment.relative_to(root).as_posix()}/\n"
+            ),
+        )
+        resolver = u.Infra.env_value("UV_PROJECT")
+        tm.that(bool(resolver), eq=True)
+        tm.ok(
+            u.Cli.run_checked(
+                ["uv", "sync", "--project", resolver, "--frozen", "--offline"],
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env={"UV_PROJECT_ENVIRONMENT": str(environment)},
+                ),
+            ),
+        )
+
+    @staticmethod
     def _prepare_project(
         root: Path,
         *,
@@ -72,6 +94,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
     ) -> None:
         """Materialize one governed project, optionally shipping in-package data."""
         _ = u.Tests.standalone_workspace(root, FIXTURE_DISTRIBUTION)
+        TestsFlextInfraCodegenPackagedDataWheel._prepare_runtime(root)
         if package_config:
             tm.ok(
                 u.Cli.atomic_write_text_file(
@@ -95,7 +118,10 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             'version = "0.1.0"\n'
             'requires-python = "'
             f'{config.Infra.codegen.toolchain.python_required_version}"\n'
-            f'dependencies = ["{declared_source}"]\n',
+            f'dependencies = ["{declared_source}"]\n'
+            "[build-system]\n"
+            'requires = ["hatchling"]\n'
+            'build-backend = "hatchling.build"\n',
             encoding="utf-8",
         )
         # The existing fixture package ships no cli module, so its manifest
@@ -278,13 +304,29 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         sdist_dir = output / "sdist"
         tm.ok(
             u.Cli.run_checked(
-                ["uv", "build", "--wheel", "--out-dir", str(wheel_dir)],
+                [
+                    "uv",
+                    "build",
+                    "--project",
+                    str(infra_git_repo),
+                    "--wheel",
+                    "--out-dir",
+                    str(wheel_dir),
+                ],
                 cwd=infra_git_repo,
             ),
         )
         tm.ok(
             u.Cli.run_checked(
-                ["uv", "build", "--sdist", "--out-dir", str(sdist_dir)],
+                [
+                    "uv",
+                    "build",
+                    "--project",
+                    str(infra_git_repo),
+                    "--sdist",
+                    "--out-dir",
+                    str(sdist_dir),
+                ],
                 cwd=infra_git_repo,
             ),
         )
@@ -296,8 +338,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
                 for item in archive.getmembers()
                 if item.name.endswith("/infra/pulumi/__main__.py")
             )
-            stream = archive.extractfile(member)
-            tm.that(stream, none=False)
+            stream = tm.not_none(archive.extractfile(member))
             with stream:
                 tm.that(stream.read(), eq=source.read_bytes())
 
@@ -317,16 +358,11 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.fail("infra" in self._sdist_include(infra_git_repo))
 
     @pytest.mark.slow
-    def test_in_package_data_dir_is_never_force_included(
+    def test_in_package_defaults_ship_once_in_standard_and_editable_manifest(
         self,
         infra_git_repo: Path,
     ) -> None:
-        """A data dir already shipped by the package is never force-included again.
-
-        Force-including the root copy maps it onto the same wheel path the
-        package entry already archives, and hatchling rejects the duplicate
-        with ``ValueError`` at build time.
-        """
+        """Hatch forces the package source itself, never a competing root copy."""
         self._prepare_project(infra_git_repo, package_config=True)
         tm.ok(self._package_config_path(infra_git_repo).is_dir())
 
@@ -339,14 +375,41 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             FIXTURE_DISTRIBUTION_DATA_DIR in self._sdist_include(infra_git_repo),
             eq=False,
         )
-        # The package copy still ships through the packages entry.
+        # The package remains selected; defaults have one forced archive route.
         package_name = u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
+        config_source = self._package_config_path(infra_git_repo)
+        destination = f"{package_name}/{c.CONFIG_DIR_NAME}"
+        tm.that(
+            force_include[config_source.relative_to(infra_git_repo).as_posix()],
+            eq=destination,
+        )
         wheel = self._wheel_target(infra_git_repo)
         tm.that(
             f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
             in u.Tests.toml_list(wheel["only-include"]),
             eq=True,
         )
+        output = infra_git_repo.parent / "package-default-artifacts"
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "uv",
+                    "build",
+                    "--project",
+                    str(infra_git_repo),
+                    "--wheel",
+                    "--out-dir",
+                    str(output),
+                ],
+                cwd=infra_git_repo,
+            ),
+        )
+        with zipfile.ZipFile(next(output.glob("*.whl"))) as archive:
+            for source in config_source.rglob("*.yaml"):
+                relative = source.relative_to(config_source).as_posix()
+                installed = f"{destination}/{relative}"
+                tm.that(archive.namelist().count(installed), eq=1)
+                tm.that(archive.read(installed), eq=source.read_bytes())
 
     @pytest.mark.slow
     def test_declared_file_keeps_sibling_governance_out(
@@ -364,8 +427,8 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.that(self._conform_self(infra_git_repo), eq=0)
         package_name = u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
         tm.that(
-            self._wheel_force_include(infra_git_repo),
-            eq={catalog: f"{package_name}/{catalog}"},
+            self._wheel_force_include(infra_git_repo).get(catalog),
+            eq=f"{package_name}/{catalog}",
         )
         # A declared data file ships through the sdist force-include, never
         # by widening the source include to its whole directory.
@@ -482,11 +545,26 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         )
         tm.that(self._conform_self(infra_git_repo), eq=0)
         ignored = "infra/state.json"
-        self._prepare_project(
-            infra_git_repo,
-            package_config=False,
-            packaged_data_paths=(catalog, "infra"),
-            packaged_data_excludes=(ignored,),
+        declaration = tm.ok(
+            u.Infra.load_repository_declaration_inputs(infra_git_repo),
+        ).spec
+        project = tm.not_none(declaration.project).model_copy(
+            update={"packaged_data_excludes": (ignored,)},
+        )
+        updated = declaration.model_copy(update={"project": project})
+        tm.ok(
+            u.Cli.yaml_dump(
+                infra_git_repo / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": updated.model_dump(
+                                mode="json", exclude_unset=True
+                            )
+                        }
+                    }
+                },
+            ),
         )
         tm.ok(u.Cli.atomic_write_text_file(infra_git_repo / catalog, "profiles: {}\n"))
         tm.ok(
@@ -502,13 +580,29 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         rebuilt = output / "rebuilt"
         tm.ok(
             u.Cli.run_checked(
-                ["uv", "build", "--wheel", "--out-dir", str(direct)],
+                [
+                    "uv",
+                    "build",
+                    "--project",
+                    str(infra_git_repo),
+                    "--wheel",
+                    "--out-dir",
+                    str(direct),
+                ],
                 cwd=infra_git_repo,
             ),
         )
         tm.ok(
             u.Cli.run_checked(
-                ["uv", "build", "--sdist", "--out-dir", str(source)],
+                [
+                    "uv",
+                    "build",
+                    "--project",
+                    str(infra_git_repo),
+                    "--sdist",
+                    "--out-dir",
+                    str(source),
+                ],
                 cwd=infra_git_repo,
             ),
         )
@@ -540,8 +634,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
                 if member.isfile()
             }
             for name, content in expected.items():
-                stream = archive.extractfile(members[name])
-                tm.that(stream, none=False)
+                stream = tm.not_none(archive.extractfile(members[name]))
                 with stream:
                     tm.that(stream.read(), eq=content)
             tm.fail(ignored in members)
@@ -560,11 +653,21 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             role=c.Infra.MakeProfile.STANDALONE,
         )
         package_name = "declared_scaffold_package"
+        declared_file = next(
+            entry.destination
+            for entry in config.Infra.codegen.templates.entries
+            if entry.destination.startswith(f"{c.CONFIG_DIR_NAME}/")
+            and "{" not in entry.destination
+            and c.Infra.MakeProfile.STANDALONE in entry.profiles
+            and entry.delegate == c.Infra.TemplateDelegate.RENDER
+            and not entry.requires_beads
+            and not entry.requires_release_protocol
+        )
         project = u.Tests.project_spec(repository.name).model_copy(
             update={
                 "package_name": package_name,
                 "class_stem": u.derive_class_stem(package_name),
-                "packaged_data_paths": ("config/workspace.yaml",),
+                "packaged_data_paths": (declared_file,),
             },
         )
         workspace = u.Tests.workspace_spec(repository, project=project)
@@ -573,25 +676,37 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.fail(root.exists())
+        root.mkdir()
+        _ = u.Tests.initialize_git_repo(root)
+        self._prepare_runtime(root)
+        tm.fail((root / c.PYPROJECT_FILENAME).exists())
+        tm.fail((root / declared_file).exists())
         tm.ok(infra.codegen_conform(request, workspace))
-        tm.ok((root / "config/workspace.yaml").is_file())
+        tm.ok((root / declared_file).is_file())
         tm.that(
-            self._wheel_force_include(root).get("config/workspace.yaml"),
-            eq=f"{project.package_name}/config/workspace.yaml",
+            self._wheel_force_include(root).get(declared_file),
+            eq=f"{project.package_name}/{declared_file}",
         )
         wheel_dir = tmp_path / "scaffold-artifacts"
         tm.ok(
             u.Cli.run_checked(
-                ["uv", "build", "--wheel", "--out-dir", str(wheel_dir)],
+                [
+                    "uv",
+                    "build",
+                    "--project",
+                    str(root),
+                    "--wheel",
+                    "--out-dir",
+                    str(wheel_dir),
+                ],
                 cwd=root,
             ),
         )
         wheel = next(wheel_dir.glob("*.whl"))
-        manifest = root / "config/workspace.yaml"
+        manifest = root / declared_file
         with zipfile.ZipFile(wheel) as archive:
             tm.that(
-                archive.read(f"{project.package_name}/config/workspace.yaml"),
+                archive.read(f"{project.package_name}/{declared_file}"),
                 eq=manifest.read_bytes(),
             )
         consumer_root = tmp_path / "scaffold-consumer"
@@ -608,7 +723,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
                         f"sys.path.insert(0, {str(wheel)!r})\n"
                         f"import {project.package_name} as package\n"
                         "payload = files(package).joinpath("
-                        "'config', 'workspace.yaml').read_bytes()\n"
+                        f"{declared_file!r}).read_bytes()\n"
                         f"print(payload == Path({str(manifest)!r}).read_bytes())\n"
                     ),
                 ],

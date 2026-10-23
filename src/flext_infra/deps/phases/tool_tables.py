@@ -166,9 +166,7 @@ class FlextInfraToolTablesPhase:
         })
 
     @staticmethod
-    def _native_phase(
-        tool: str, payload: t.JsonMapping
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    def _native_phase(tool: str, payload: t.JsonDict) -> m.Infra.DepsToml.PhaseConfig:
         """Replace a governed native table through the shared TOML primitive.
 
         Returns:
@@ -308,10 +306,13 @@ class FlextInfraToolTablesPhase:
         native_phases: list[m.Infra.DepsToml.PhaseConfig] = []
         for table in tables:
             path_parts = table.split(".")
-            image = u.Cli.toml_mapping_path(native_roots[path_parts[0]], path_parts[1:])
-            if image is None:
-                msg = f"Declared native tool table is unavailable: {table}"
-                raise KeyError(msg)
+            image = native_roots[path_parts[0]]
+            for segment in path_parts[1:]:
+                nested = image.get(segment)
+                if not isinstance(nested, dict):
+                    msg = f"Declared native tool table is unavailable: {table}"
+                    raise KeyError(msg)
+                image = nested
             native_phases.append(self._native_phase(table, image))
         return (
             *native_phases,
@@ -337,7 +338,7 @@ class FlextInfraToolTablesPhase:
         """
         elected_mypy_paths = (
             FlextInfraExtraPathsManager(repository_root=path.parent).mypy_search_paths(
-                project_dir=path.parent, is_root=True
+                project_dir=path.parent
             )
             if mypy_search_paths is None
             else mypy_search_paths

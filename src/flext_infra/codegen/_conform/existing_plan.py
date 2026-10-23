@@ -30,7 +30,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ExitStack,
             t.MutableMappingKV[
                 t.Pair[Path, frozenset[t.Pair[Path, bytes | None]]],
-                t.Triple[
+                tuple[
                     p.Infra.RopeProject,
                     Callable[
                         [],
@@ -41,6 +41,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         ],
                     ],
                     t.MappingKV[Path, str],
+                    t.Pair[
+                        list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
+                        list[m.Infra.CodegenPhaseAnalysis],
+                    ],
                 ],
             ],
         ]
@@ -62,10 +66,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         with ExitStack() as stack:
             self._source_views = (stack, {})
+            opened = self._source_views[1]
             try:
                 yield
             finally:
-                self._source_views = None
+                try:
+                    stack.close()
+                except (OSError, ValueError, TypeError, RuntimeError) as exc:
+                    self._retain_diagnostics(exc)
+                    self._record_file_failure(
+                        self.state.repository_root, traceback.format_exc()
+                    )
+                finally:
+                    for binding in opened.values():
+                        for failure in binding[3][1]:
+                            self._retain_diagnostics(
+                                failure.exception, issues=failure.issues
+                            )
+                    self._source_views = None
 
     @contextmanager
     def _source_view(
@@ -73,6 +91,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        source_publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]]
+        | None = None,
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -112,12 +132,26 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ),
         )
         if key not in opened:
-            opened[key] = stack.enter_context(
+            publications: t.Pair[
+                list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
+                list[m.Infra.CodegenPhaseAnalysis],
+            ] = ([], [])
+            source_binding = stack.enter_context(
                 u.Infra.facade_source_project(
-                    root, source_states=source_states, declared_files=declared_files
+                    root,
+                    source_options=m.Infra.StageSourceOptions(
+                        inputs=source_states, declared_files=declared_files
+                    ),
+                    source_publications=publications,
                 )
             )
-        yield opened[key]
+            opened[key] = (*source_binding, publications)
+        try:
+            binding = opened[key]
+            yield binding[0], binding[1], binding[2]
+        finally:
+            if source_publications is not None:
+                opened[key][3][0].extend(source_publications)
 
     def _plan_existing_repository(
         self,
@@ -269,100 +303,116 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        root = target.root
-        repository = target.repository
         managed_started = time.monotonic()
-        u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
+        u.Cli.info(f"  stage=managed-artifacts repository={target.repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(
-            root,
+            target.root,
             read_committed_directory=u.Infra.git_committed_directory_blobs,
         )
         if managed_artifacts.failure:
             return result_type.from_failure(managed_artifacts)
         u.Cli.info(
-            f"  stage=managed-artifacts repository={repository.name} "
+            f"  stage=managed-artifacts repository={target.repository.name} "
             f"elapsed={time.monotonic() - managed_started:.2f}s",
         )
         if not (contract.tooling or contract.custom):
-            return self._plan_existing_untooled(
-                target, workspace, codegen, contract, identity, managed_artifacts.value
+            untooled_runtime = self._existing_untooled_runtime(
+                target, codegen, contract, identity, managed_artifacts.value
             )
-        tooling_started = time.monotonic()
+            return (
+                result_type.from_failure(untooled_runtime)
+                if untooled_runtime is not None and untooled_runtime.failure
+                else self._plan_existing_templates(
+                    render_inputs=self.resolve_render_inputs(
+                        target=target,
+                        workspace=workspace,
+                        codegen=codegen,
+                        tooling_runtime=(
+                            None if untooled_runtime is None else untooled_runtime.value
+                        ),
+                        managed_artifacts=managed_artifacts.value,
+                    ),
+                    contract=contract,
+                )
+            )
+        managed_started = time.monotonic()
         sources = self._existing_managed_sources(target, codegen, contract)
         if sources.failure:
             return result_type.from_failure(sources)
         custom, initializers = sources.value[1], sources.value[2]
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
-            root,
+            target.root,
             source_states=sources.value[3],
             declared_files=sources.value[0],
+            source_publications=publications,
         ) as binding:
-            if contract.custom:
-                import_graph, _modules = u.Infra.snapshot_import_graph(binding[0])
-                cycles = u.Infra.project_import_cycles(import_graph)
-                if cycles:
-                    return result_type.fail(
-                        f"projected runtime import cycle: {sorted(cycles)}"
+            with binding[0].source_consumption() as consumption:
+                if contract.custom:
+                    import_graph, _modules = u.Infra.snapshot_import_graph(binding[0])
+                    cycles = u.Infra.project_import_cycles(import_graph)
+                    if cycles:
+                        return result_type.fail(
+                            f"projected runtime import cycle: {sorted(cycles)}"
+                        )
+                if (
+                    contract.custom
+                    and self.state.planning_exception is None
+                    and not self.state.planning_issues
+                ):
+                    self.state.completed_source_plans = sources.value[0]
+                tooling_runtime = None
+                if contract.tooling:
+                    tooling_context = self._existing_tooling_context(
+                        self._existing_tooling_request(
+                            target, identity, codegen, (*initializers, *custom)
+                        ),
+                        managed_artifacts.value.resolution,
+                        source_project=binding[0],
                     )
-            if (
-                contract.custom
-                and self.state.planning_exception is None
-                and not self.state.planning_issues
-            ):
-                self.state.completed_source_plans = sources.value[0]
-            tooling_runtime = None
-            if contract.tooling:
-                tooling_context = self._existing_tooling_context(
-                    self._existing_tooling_request(
-                        target, identity, codegen, (*initializers, *custom)
-                    ),
-                    managed_artifacts.value.resolution,
+                    if tooling_context.failure:
+                        return result_type.from_failure(tooling_context)
+                    tooling_runtime = tooling_context.value
+                    u.Cli.info(
+                        f"  stage=tooling-context repository={target.repository.name} "
+                        f"elapsed={time.monotonic() - managed_started:.2f}s",
+                    )
+                render_inputs = self.resolve_render_inputs(
+                    target=target,
+                    workspace=workspace,
+                    codegen=codegen,
+                    tooling_runtime=tooling_runtime,
+                    managed_artifacts=managed_artifacts.value,
+                )
+                rendered = self._render_existing_managed(
+                    render_inputs,
+                    contract,
+                    initializers,
+                    custom,
                     source_project=binding[0],
                 )
-                if tooling_context.failure:
-                    return result_type.from_failure(tooling_context)
-                tooling_runtime = tooling_context.value
-                u.Cli.info(
-                    f"  stage=tooling-context repository={repository.name} "
-                    f"elapsed={time.monotonic() - tooling_started:.2f}s",
-                )
-            render_inputs = self.resolve_render_inputs(
-                target=target,
-                workspace=workspace,
-                codegen=codegen,
-                tooling_runtime=tooling_runtime,
-                managed_artifacts=managed_artifacts.value,
-            )
-            return self._render_existing_managed(
-                render_inputs,
-                contract,
-                initializers,
-                custom,
-                source_project=binding[0],
-            ).flat_map(
+            return rendered.flat_map(
                 lambda completed: self._qualified_existing_tooling(
-                    render_inputs, contract, completed, binding[1]()
+                    render_inputs, contract, completed, consumption, publications
                 )
             )
 
-    def _plan_existing_untooled(
+    def _existing_untooled_runtime(
         self,
         target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: m.Infra.CodegenConformSurfaceContract,
         identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
         managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan templates for a surface that elects neither tooling nor custom.
+    ) -> p.Result[m.Infra.ToolingRuntimeContext] | None:
+        """Resolve only the runtime consumed by an untooled template surface.
 
         Returns:
-            The managed template plans, or the tooling-context failure.
+            The elected pyproject runtime, no runtime, or its original failure.
 
         """
-        tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
         if contract.pyproject:
-            tooling_context = FlextInfraPyprojectModernizer(
+            return FlextInfraPyprojectModernizer(
                 repository_root=target.root,
                 skip_check=True,
                 managed_artifacts=managed_artifacts.resolution,
@@ -370,21 +420,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 self._existing_tooling_request(target, identity, codegen, ()),
                 derive_runtime=False,
             )
-            if tooling_context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    tooling_context
-                )
-            tooling_runtime = tooling_context.value
-        return self._plan_existing_templates(
-            render_inputs=self.resolve_render_inputs(
-                target=target,
-                workspace=workspace,
-                codegen=codegen,
-                tooling_runtime=tooling_runtime,
-                managed_artifacts=managed_artifacts,
-            ),
-            contract=contract,
-        )
+        return None
 
     def _existing_managed_sources(
         self,
@@ -451,25 +487,49 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 )
             }.values()
         )
+        if not contract.custom:
+            return (
+                self._projected_exports(root, lazy_result.value[1], cohort).map(
+                    lambda projected: (
+                        (*cohort, *projected[0]),
+                        (),
+                        tuple(projected[0]),
+                        projected[1],
+                    )
+                )
+                if metadata_only
+                else result_type.ok((
+                    cohort,
+                    (),
+                    tuple(lazy_result.value[0]),
+                    lazy_result.value[1],
+                ))
+            )
         started = time.monotonic()
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
             source_states=lazy_result.value[1],
             declared_files=cohort,
+            source_publications=publications,
         ) as binding:
-            custom_result = (
-                self._plan_existing_custom(
-                    root,
-                    codegen,
-                    profile=target.make_profile.value,
-                    binding=binding,
-                    declared_files=cohort,
+            with binding[0].source_consumption() as consumption:
+                custom_result = (
+                    self._plan_existing_custom(
+                        root,
+                        codegen,
+                        profile=target.make_profile.value,
+                        binding=binding,
+                        declared_files=cohort,
+                    )
+                    if contract.custom
+                    else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
                 )
-                if contract.custom
-                else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+                if custom_result.failure:
+                    return result_type.from_failure(custom_result)
+            publications.extend(
+                (plan.path, consumption.receipt()) for plan in custom_result.value
             )
-            if custom_result.failure:
-                return result_type.from_failure(custom_result)
             custom_inputs = u.Infra.unique_states((
                 *lazy_result.value[1],
                 *binding[1]()[0],
@@ -540,12 +600,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
-            root, source_states=inputs, declared_files=declared
+            root,
+            source_states=inputs,
+            declared_files=declared,
+            source_publications=publications,
         ) as projected:
             exports = FlextInfraCodegenLazyInit(
                 repository_root=root, project_scope_roots=(root,)
-            ).plan_files(source_project=projected[0])
+            ).plan_files(source_project=projected[0], source_publications=publications)
             if exports.failure:
                 return result_type.from_failure(exports)
             self._retain_diagnostics(
@@ -653,19 +717,23 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         render_inputs: m.Infra.CodegenRenderInputs,
         contract: m.Infra.CodegenConformSurfaceContract,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
-        evidence: t.Triple[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            t.VariadicTuple[m.Cli.AtomicDirectoryInventory],
-            t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
-        ],
+        consumption: p.Infra.RopeSourceConsumption,
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Bind consumed evidence to the pyproject output inside its source epoch.
+
+        The consumption context must be closed while its source view remains
+        open, so the receipt contains the completed native capture.
 
         Returns:
             File plans retaining their original and consumed native receipts.
 
         """
-        states, directories, topology = evidence
+        receipt = consumption.receipt()
+        publications.extend((file.path, receipt) for file in planned)
+        states = receipt.inputs
+        directories = receipt.source_directories
+        topology = receipt.source_query_topology
         qualified: list[m.Infra.CodegenFilePlan] = []
         for file in planned:
             if (
@@ -1453,22 +1521,37 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ]
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
             source_states=inputs,
             declared_files=tuple(staged.values()),
+            source_publications=publications,
         ) as current:
-            planned = self._utility_facade_plan(root, package_dir, family, current)
+            with current[0].source_consumption() as consumption:
+                planned = self._utility_facade_plan(root, package_dir, family, current)
+            receipt = consumption.receipt()
             if planned.failure:
                 return result_type.from_failure(planned)
-            staged.update((plan.path, plan) for plan in planned.value)
+            publications.extend((plan.path, receipt) for plan in planned.value)
+            files = tuple(
+                plan.model_copy(
+                    update={
+                        "source_states": receipt.inputs,
+                        "source_directories": receipt.source_directories,
+                        "source_query_topology": receipt.source_query_topology,
+                    }
+                )
+                for plan in planned.value
+            )
+            staged.update((plan.path, plan) for plan in files)
             captured = u.Infra.unique_states((
                 *inputs,
                 *current[1]()[0],
             ))
             if captured.failure:
                 return result_type.from_failure(captured)
-        return result_type.ok((planned.value, captured.value))
+        return result_type.ok((files, captured.value))
 
     def _validated_custom_make_plan(
         self,

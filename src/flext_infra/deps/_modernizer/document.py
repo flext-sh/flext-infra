@@ -295,6 +295,7 @@ class FlextInfraPyprojectModernizerDocument(
                 return r[t.StrSequence].from_failure(inputs)
             repository = inputs.value.spec.repository
             project = repository.project
+            build_changes = self._normalize_build_payload(state.payload)
             packaging = m.Infra.ProjectPackagingDeclaration.model_validate(
                 state.payload
             )
@@ -323,10 +324,13 @@ class FlextInfraPyprojectModernizerDocument(
             })
             rendered = self._render_document_state(
                 state,
-                self._apply_document_phases(
-                    state,
-                    canonical_dev=canonical_dev,
-                    topology=topology,
+                (
+                    *build_changes,
+                    *self._apply_document_phases(
+                        state,
+                        canonical_dev=canonical_dev,
+                        topology=topology,
+                    ),
                 ),
                 skip_comments=skip_comments,
             )
@@ -385,9 +389,7 @@ class FlextInfraPyprojectModernizerDocument(
         )
         path_rules = tooling.tools.pyrefly.path_rules
         if paths_manager is not None:
-            mypy_search_paths = paths_manager.mypy_search_paths(
-                project_dir=path.parent, is_root=is_root
-            )
+            mypy_search_paths = paths_manager.mypy_search_paths(project_dir=path.parent)
         elif path_rules.source_dir in topology.declared_python_dirs:
             mypy_search_paths = tuple(
                 root
@@ -404,7 +406,7 @@ class FlextInfraPyprojectModernizerDocument(
         else:
             mypy_search_paths = FlextInfraExtraPathsManager(
                 repository_root=self.root
-            ).mypy_search_paths(project_dir=path.parent, is_root=is_root)
+            ).mypy_search_paths(project_dir=path.parent)
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:
             managed_artifacts = u.Infra.load_project_managed_artifacts(
@@ -460,7 +462,6 @@ class FlextInfraPyprojectModernizerDocument(
                 paths_manager.sync_payload(
                     payload,
                     project_dir=path.parent,
-                    is_root=is_root,
                     mypy_search_paths=mypy_search_paths,
                 ),
             )

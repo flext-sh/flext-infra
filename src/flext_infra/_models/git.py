@@ -315,6 +315,17 @@ class FlextInfraModelsGit(
             m.Field(description="Remote tip the mutation is leased on"),
         ] = None
 
+    class GitLaneOwnershipRequest(GitRemoteRequest):
+        """Authenticate an existing retained checkpoint, without publishing state."""
+
+        checkpoint_ref: Annotated[
+            t.NonEmptyStr, m.Field(description="Existing dedicated checkpoint ref")
+        ]
+        expected_tip: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Previously observed integration tip, when selected"),
+        ] = None
+
     class GitLaneVerificationRequest(GitRemoteRequest):
         """Read-only admission and census against the live integration tip."""
 

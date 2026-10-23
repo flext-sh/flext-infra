@@ -9,7 +9,9 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from flext_infra import m
+import pytest
+
+from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenLazyInitProjectionManifest
 from tests import tm, u
 
@@ -46,9 +48,19 @@ class TestsFlextInfraLazyInitProjectionManifest:
     """The manifest is a pure, deterministic function of the phase plans."""
 
     @staticmethod
-    def test_manifest_is_deterministic_and_digest_bound(tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            ".agents/aihub-hooks/__init__.py",
+            ".agents/with spaces /projection ",
+            ".agents/caf\u00e9.py",
+        ],
+    )
+    def test_manifest_is_deterministic_and_digest_bound(
+        tmp_path: Path, relative: str
+    ) -> None:
         """Identical plans render identical bytes bound to content digests."""
-        first = _plan(tmp_path, ".agents/aihub-hooks/__init__.py", b"alpha")
+        first = _plan(tmp_path, relative, b"alpha")
         second = _plan(tmp_path, ".codex/rules/rule.mdc", b"beta")
         composed = (first, second)
         one = FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
@@ -60,23 +72,37 @@ class TestsFlextInfraLazyInitProjectionManifest:
         tm.fail(one.failure)
         tm.that(one.value, eq=two.value)
         manifest = one.value[0]
-        tm.that(manifest.path, eq=tmp_path / ".agents" / "projections.lock.json")
-        tm.that(manifest.desired_content, none=False)
-        parsed = u.Tests.json_payload(manifest.desired_content.decode("utf-8"))
-        tm.that(parsed["apiVersion"], eq="flext-infra/projections-lock/v1")
-        entries = parsed["entries"]
-        tm.that(isinstance(entries, list), truth=True)
+        tm.that(manifest.path, eq=tmp_path / ".agents" / c.Infra.MANIFEST_FILENAME)
+        content = tm.not_none(manifest.desired_content)
+        parsed = m.Infra.ProjectionManifest.model_validate_json(content)
+        tm.that(parsed.api_version, eq=c.Infra.MANIFEST_API_VERSION)
+        entries = parsed.entries
         tm.that(len(entries), eq=2)
         first_entry = entries[0]
-        tm.that(isinstance(first_entry, dict), truth=True)
         second_entry = entries[1]
-        tm.that(isinstance(second_entry, dict), truth=True)
-        tm.that(first_entry.get("path"), eq=".agents/aihub-hooks/__init__.py")
-        tm.that(second_entry.get("path"), eq=".codex/rules/rule.mdc")
-        tm.that(first_entry.get("sha256"), eq=hashlib.sha256(b"alpha").hexdigest())
-        tm.that(first_entry.get("bytes"), eq=5)
-        tm.that(manifest.desired_content, none=False)
-        tm.ok(manifest.desired_content.endswith(b"\n"))
+        tm.that(first_entry.path, eq=relative)
+        tm.that(second_entry.path, eq=".codex/rules/rule.mdc")
+        tm.that(first_entry.sha256, eq=hashlib.sha256(b"alpha").hexdigest())
+        tm.that(first_entry.bytes, eq=len(b"alpha"))
+        expected = tm.ok(
+            u.Cli.json_dumps(
+                {
+                    "apiVersion": c.Infra.MANIFEST_API_VERSION,
+                    "entries": [
+                        {
+                            "path": plan.path.relative_to(tmp_path).as_posix(),
+                            "sha256": hashlib.sha256(
+                                tm.not_none(plan.desired_content),
+                            ).hexdigest(),
+                            "bytes": len(tm.not_none(plan.desired_content)),
+                        }
+                        for plan in composed
+                    ],
+                },
+                indent=2,
+            )
+        )
+        tm.that(content, eq=f"{expected}\n".encode(c.DEFAULT_ENCODING))
 
     @staticmethod
     def test_manifest_excludes_itself_and_non_projected_plans(
@@ -95,15 +121,12 @@ class TestsFlextInfraLazyInitProjectionManifest:
         )
         tm.fail(result.failure)
         tm.that(len(result.value), eq=1)
-        tm.that(result.value[0].desired_content, none=False)
-        parsed = u.Tests.json_payload(
-            result.value[0].desired_content.decode("utf-8"),
+        parsed = m.Infra.ProjectionManifest.model_validate_json(
+            tm.not_none(result.value[0].desired_content),
         )
-        entries = parsed["entries"]
-        tm.that(isinstance(entries, list), truth=True)
+        entries = parsed.entries
         only_entry = entries[0]
-        tm.that(isinstance(only_entry, dict), truth=True)
-        tm.that(only_entry.get("path"), eq=".agents/aihub-hooks/x.py")
+        tm.that(only_entry.path, eq=".agents/aihub-hooks/x.py")
 
     @staticmethod
     def test_project_without_projections_gets_no_manifest(tmp_path: Path) -> None:

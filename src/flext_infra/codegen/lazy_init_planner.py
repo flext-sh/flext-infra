@@ -198,7 +198,6 @@ class FlextInfraCodegenLazyInitPlanner(
             raise ValueError(msg)
         return receipt
 
-    @override
     def build_plan(
         self,
         pkg_dir: Path,

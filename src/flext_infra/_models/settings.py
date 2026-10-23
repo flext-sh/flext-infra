@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m, t
+from flext_cli import m, p, t
 
 
 class FlextInfraSettingsModels:
@@ -56,7 +56,7 @@ class FlextInfraSettingsModels:
         @m.field_validator("editable_supplier_root", mode="before")
         @classmethod
         def _elect_editable_supplier_root(
-            cls, value: str | Path | None, info: m.ValidationInfo
+            cls, value: str | Path | None, info: p.ValidationInfo
         ) -> str | Path | None:
             """Ignore a host supplier before path parsing on the hosted runner.
 

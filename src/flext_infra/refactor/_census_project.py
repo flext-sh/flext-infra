@@ -7,57 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter
-from typing import TYPE_CHECKING
 
 from flext_infra import m
+from flext_infra.refactor import (
+    FlextInfraRefactorCensusFiltersMixin,
+    FlextInfraRefactorCensusObjectsMixin,
+)
 
-if TYPE_CHECKING:
-    from flext_infra import t
 
-
-class FlextInfraRefactorCensusProjectMixin:
+class FlextInfraRefactorCensusProjectMixin(
+    FlextInfraRefactorCensusObjectsMixin,
+    FlextInfraRefactorCensusFiltersMixin,
+):
     """Build one project report (violations + removal candidates) for census.
 
-    Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    rule-inclusion + object-classification helpers from sibling mixins via FLEXT.
+    Inherits the actual object-classification and rule-inclusion providers used
+    to build each report, rather than mirroring their signatures.
     """
-
-    if TYPE_CHECKING:
-
-        @staticmethod
-        def _include_rule(
-            rule: str,
-            *,
-            rule_names: t.StrSequence | None,
-            selected_rules: frozenset[str] | None = None,
-        ) -> bool:
-            del rule, rule_names, selected_rules
-
-        @staticmethod
-        def unused(item: m.Infra.Object) -> bool:
-            del item
-
-        @staticmethod
-        def _object_key(item: m.Infra.Object) -> str:
-            del item
-
-        @staticmethod
-        def _violation(
-            item: m.Infra.Object,
-            *,
-            kind: str,
-            description: str,
-        ) -> m.Infra.Violation:
-            del item, kind, description
-
-        @classmethod
-        def _removal_candidate(
-            cls,
-            item: m.Infra.Object,
-            *,
-            include_unused: bool,
-        ) -> m.Infra.RemovalCandidate | None:
-            del item, include_unused
 
     def _project_report(
         self,

@@ -61,7 +61,8 @@ class FlextInfraModelsBase:
                 alias="module",
                 description=(
                     "Dotted module path to scope the verb to a single module "
-                    "(e.g. flext_core.result). Composes with --repository-root/--projects."
+                    "(e.g. flext_core.result). Composes with "
+                    "--repository-root/--projects."
                 ),
             ),
         ] = None

@@ -15,241 +15,253 @@ from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, t, tm, u
 
 
-class TestsFlextInfraCodemodDeclaredNamespace:
-    """Declared package and source roles preserve strict admission boundaries."""
+class TestsFlextInfraCodemodContextOwnPackage:
+    """An import between a project's own namespaces never crosses an owner."""
 
-    @staticmethod
-    @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
-    @pytest.mark.parametrize(
-        ("consumer", "target", "expected"),
-        [
-            ("contracts/models.py", "contracts._models.entity", (True, True)),
-            ("contracts/_models/part.py", "contracts._models.entity", (True, True)),
-            ("contracts/_typings/part.py", "contracts._models.entity", (True, False)),
-            ("other/models.py", "contracts._models.entity", (True, False)),
-            ("contracts/models.py", "foreign.contracts._models.entity", (False, False)),
-        ],
-    )
-    def test_declared_namespace_preserves_private_family_boundaries(
-        tmp_path: Path,
-        namespace: str,
-        consumer: str,
-        target: str,
-        expected: tuple[bool, bool],
-    ) -> None:
-        """Independent implicit packages admit assembly, not foreign families."""
-        own, member = expected
-        root = u.Tests.mk_project(
-            tmp_path,
-            "application",
-            with_src=True,
-            pyproject='[project]\nname = "application"\nversion = "1.0.0"\n',
+    class TestDeclaredNamespace:
+        """Declared packages and source roles keep strict admission boundaries."""
+
+        @staticmethod
+        @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
+        @pytest.mark.parametrize(
+            ("consumer", "target", "expected"),
+            [
+                ("contracts/models.py", "contracts._models.entity", (True, True)),
+                ("contracts/_models/part.py", "contracts._models.entity", (True, True)),
+                (
+                    "contracts/_typings/part.py",
+                    "contracts._models.entity",
+                    (True, False),
+                ),
+                ("other/models.py", "contracts._models.entity", (True, False)),
+                (
+                    "contracts/models.py",
+                    "foreign.contracts._models.entity",
+                    (False, False),
+                ),
+            ],
         )
-        declaration = u.Tests.project_spec("application").model_copy(
-            update={"repository_namespace_packages": (namespace,)}
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / "codegen.yaml",
-                {
-                    "Infra": {
-                        "codegen": {
-                            "repository": {
-                                "project": declaration.model_dump(mode="json"),
+        def test_declared_namespace_preserves_private_family_boundaries(
+            tmp_path: Path,
+            namespace: str,
+            consumer: str,
+            target: str,
+            expected: tuple[bool, bool],
+        ) -> None:
+            """Independent implicit packages admit assembly, not foreign families."""
+            own, member = expected
+            root = u.Tests.mk_project(
+                tmp_path,
+                "application",
+                with_src=True,
+                pyproject='[project]\nname = "application"\nversion = "1.0.0"\n',
+            )
+            declaration = u.Tests.project_spec("application").model_copy(
+                update={"repository_namespace_packages": (namespace,)}
+            )
+            tm.ok(
+                u.Cli.yaml_dump(
+                    root / "config" / "codegen.yaml",
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "repository": {
+                                    "project": declaration.model_dump(mode="json"),
+                                }
                             }
                         }
                     },
-                },
-            )
-        )
-        source = root / namespace / consumer
-        source.parent.mkdir(parents=True, exist_ok=True)
-        imported = target if target.startswith("foreign.") else f"{namespace}.{target}"
-        content = f"from {imported} import Entity\n"
-        source.write_text(content, encoding="utf-8")
-        stem = "".join(part.title() for part in namespace.split("_"))
-        tm.that(u.Infra.project_prefix(source), eq=stem)
-        tm.that(
-            u.Infra.import_namespace(root, source),
-            eq=(root / namespace, f"{namespace}.{consumer[:-3].replace('/', '.')}"),
-        )
-        for predicate, expected in (
-            (c.Infra.CodemodContextPredicate.OWN_PACKAGE, own),
-            (c.Infra.CodemodContextPredicate.FAMILY_MEMBER, member),
-            (c.Infra.CodemodContextPredicate.CLASS_STEM, True),
-        ):
-            value = (
-                f"{stem}ContractsModels"
-                if predicate is c.Infra.CodemodContextPredicate.CLASS_STEM
-                else imported
-            )
-            rule = m.Infra.CodemodRule(
-                id="declared-namespace-probe",
-                digest="probe",
-                provider="probe",
-                resource=Path("probe.yml"),
-                fixable=False,
-                context=(
-                    m.Infra.CodemodContextCondition(
-                        variable="MOD",
-                        predicate=predicate,
-                        holds=True,
-                    ),
-                ),
-            )
-            tm.that(
-                u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=root,
-                        rule=rule,
-                        file_path=source,
-                        captures={"MOD": {"text": value}},
-                        facts=u.Infra.codemod_project_facts(root, (rule,)),
-                    )
-                ),
-                eq=expected,
-            )
-        report = tm.ok(
-            FlextInfraModGateEngine.scan(
-                root,
-                fix=False,
-                selection=("ban-private-import", "ban-own-family-internal-import"),
-                source_files=(source,),
-            )
-        )
-        tm.that(
-            {row.rule_id for row in report.entries},
-            eq=(
-                {"ban-private-import"}
-                if not own
-                else {"ban-own-family-internal-import"}
-                if not member
-                else set()
-            ),
-        )
-        tm.that(source.read_text(encoding="utf-8"), eq=content)
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "filename", ["configuration.py", "runtime_settings.py", "consumer.py"]
-    )
-    @pytest.mark.parametrize("declares", [False, True])
-    @pytest.mark.parametrize(
-        ("provider", "base"),
-        [("flext_core", "FlextConfig"), ("flext_ldap", "FlextLdapSettings")],
-    )
-    def test_source_layer_zero_requires_native_configuration_ancestry(
-        mod_workspace: Path, filename: str, provider: str, base: str, *, declares: bool
-    ) -> None:
-        """Importing a settings base alone never grants its consumer Layer0."""
-        namespace = u.Infra.project_package_name(mod_workspace)
-        source = mod_workspace / "src" / namespace / filename
-        source.write_text(
-            f"from {provider} import {base}, m, t\n"
-            + (
-                f"class LocalSettings({base}):\n    pass\n"
-                if declares
-                else "class Consumer:\n    pass\n"
-            ),
-            encoding="utf-8",
-        )
-        snapshot = u.Infra.codemod_binding_snapshot(
-            mod_workspace,
-            (tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),),
-            (provider,),
-        )
-        with u.Infra.codemod_binding_project(
-            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
-        ) as (project, _sources):
-            resource = u.Infra.require_file_resource(
-                project.get_resource(source.relative_to(mod_workspace).as_posix()),
-                source,
-            )
-            module = u.Infra.resolve_pymodule(project, resource)
-            tm.that(
-                u.Infra.import_source_role(project, module),
-                eq="layer0" if declares else "consumer",
-            )
-
-    @staticmethod
-    @pytest.mark.parametrize("with_utilities", [False, True])
-    @pytest.mark.parametrize("constructor", ["native", "m", "t"])
-    def test_adapter_construction_excludes_only_native_layer_zero_calls(
-        mod_workspace: Path, *, with_utilities: bool, constructor: str
-    ) -> None:
-        """Both rules keep consumers, ancestor roles and facade aliases visible."""
-        namespace = u.Infra.project_package_name(mod_workspace)
-        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
-        imports = "from pydantic import TypeAdapter\n"
-        if constructor != "native":
-            imports += f"from flext_core import {constructor}\n"
-        if with_utilities:
-            imports += "from flext_core import u\n"
-        receiver = "" if constructor == "native" else f"{constructor}."
-        source = f"{imports}\nADAPTER = {receiver}TypeAdapter(int)\n"
-        paths = tuple(
-            package / relative
-            for relative in (
-                "_settings.py",
-                "_config.py",
-                "consumer.py",
-                "_models/_settings.py",
-                "_utilities/_config.py",
-            )
-        )
-        # A consumer imports its real package, so the native graph authenticates
-        # its initializer instead of treating these files as standalone modules.
-        original = {
-            path: (
-                f"import {namespace}\n"
-                f"import {namespace}._models\n"
-                f"import {namespace}._utilities\n\n{source}"
-                if path.name == "consumer.py"
-                else source
-            )
-            for path in paths
-        }
-        for path, content in original.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if path.parent != package:
-                (path.parent / c.Infra.INIT_PY).write_text(
-                    "", encoding=c.DEFAULT_ENCODING
                 )
-            path.write_text(content, encoding=c.DEFAULT_ENCODING)
-        rule_ids = (
-            "rewire-type-adapter-construction",
-            "rewire-type-adapter-construction-missing-u-import",
-        )
-        selected = tuple(
-            dict.fromkeys((
-                *(path.parent / c.Infra.INIT_PY for path in paths),
-                *paths,
-            ))
-        )
-        report = tm.ok(
-            FlextInfraModGateEngine.scan(
-                mod_workspace,
-                fix=False,
-                selection=rule_ids,
-                source_files=selected,
             )
-        )
-        expected = set(paths if constructor != "native" else paths[2:])
-        expected_id = rule_ids[0] if with_utilities else rule_ids[1]
-        tm.that(
-            {
-                (u.Infra.codemod_source_path(mod_workspace, row.file), row.rule_id)
-                for row in report.entries
-            },
-            eq={(path.resolve(), expected_id) for path in expected},
-        )
-        tm.that(report.findings, eq=len(expected))
-        for path in paths:
-            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original[path])
+            source = root / namespace / consumer
+            source.parent.mkdir(parents=True, exist_ok=True)
+            imported = (
+                target if target.startswith("foreign.") else f"{namespace}.{target}"
+            )
+            content = f"from {imported} import Entity\n"
+            source.write_text(content, encoding="utf-8")
+            stem = "".join(part.title() for part in namespace.split("_"))
+            tm.that(u.Infra.project_prefix(source), eq=stem)
+            tm.that(
+                u.Infra.import_namespace(root, source),
+                eq=(root / namespace, f"{namespace}.{consumer[:-3].replace('/', '.')}"),
+            )
+            for predicate, verdict in (
+                (c.Infra.CodemodContextPredicate.OWN_PACKAGE, own),
+                (c.Infra.CodemodContextPredicate.FAMILY_MEMBER, member),
+                (c.Infra.CodemodContextPredicate.CLASS_STEM, True),
+            ):
+                value = (
+                    f"{stem}ContractsModels"
+                    if predicate is c.Infra.CodemodContextPredicate.CLASS_STEM
+                    else imported
+                )
+                rule = m.Infra.CodemodRule(
+                    id="declared-namespace-probe",
+                    digest="probe",
+                    provider="probe",
+                    resource=Path("probe.yml"),
+                    fixable=False,
+                    context=(
+                        m.Infra.CodemodContextCondition(
+                            variable="MOD",
+                            predicate=predicate,
+                            holds=True,
+                        ),
+                    ),
+                )
+                tm.that(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=root,
+                            rule=rule,
+                            file_path=source,
+                            captures={"MOD": {"text": value}},
+                            facts=u.Infra.codemod_project_facts(root, (rule,)),
+                        )
+                    ),
+                    eq=verdict,
+                )
+            report = tm.ok(
+                FlextInfraModGateEngine.scan(
+                    root,
+                    fix=False,
+                    selection=("ban-private-import", "ban-own-family-internal-import"),
+                    source_files=(source,),
+                )
+            )
+            tm.that(
+                {row.rule_id for row in report.entries},
+                eq=(
+                    {"ban-private-import"}
+                    if not own
+                    else {"ban-own-family-internal-import"}
+                    if not member
+                    else set()
+                ),
+            )
+            tm.that(source.read_text(encoding="utf-8"), eq=content)
 
+        @staticmethod
+        @pytest.mark.parametrize(
+            "filename", ["configuration.py", "runtime_settings.py", "consumer.py"]
+        )
+        @pytest.mark.parametrize("declares", [False, True])
+        @pytest.mark.parametrize(
+            ("provider", "base"),
+            [("flext_core", "FlextConfig"), ("flext_ldap", "FlextLdapSettings")],
+        )
+        def test_source_layer_zero_requires_native_configuration_ancestry(
+            mod_workspace: Path,
+            filename: str,
+            provider: str,
+            base: str,
+            *,
+            declares: bool,
+        ) -> None:
+            """Importing a settings base alone never grants its consumer Layer0."""
+            namespace = u.Infra.project_package_name(mod_workspace)
+            source = mod_workspace / "src" / namespace / filename
+            source.write_text(
+                f"from {provider} import {base}, m, t\n"
+                + (
+                    f"class LocalSettings({base}):\n    pass\n"
+                    if declares
+                    else "class Consumer:\n    pass\n"
+                ),
+                encoding="utf-8",
+            )
+            snapshot = u.Infra.codemod_binding_snapshot(
+                mod_workspace,
+                (tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),),
+                (provider,),
+            )
+            with u.Infra.codemod_binding_project(
+                mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+            ) as (project, _sources):
+                resource = u.Infra.require_file_resource(
+                    project.get_resource(source.relative_to(mod_workspace).as_posix()),
+                    source,
+                )
+                module = u.Infra.resolve_pymodule(project, resource)
+                tm.that(
+                    u.Infra.import_source_role(project, module),
+                    eq="layer0" if declares else "consumer",
+                )
 
-class TestsFlextInfraCodemodContextOwnPackage:
-    """An import between a project's own namespaces never crosses an owner."""
+        @staticmethod
+        @pytest.mark.parametrize("with_utilities", [False, True])
+        @pytest.mark.parametrize("constructor", ["native", "m", "t"])
+        def test_adapter_construction_excludes_only_native_layer_zero_calls(
+            mod_workspace: Path, *, with_utilities: bool, constructor: str
+        ) -> None:
+            """Keep consumers, ancestor roles and facade aliases visible."""
+            namespace = u.Infra.project_package_name(mod_workspace)
+            package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+            imports = "from pydantic import TypeAdapter\n"
+            if constructor != "native":
+                imports += f"from flext_core import {constructor}\n"
+            if with_utilities:
+                imports += "from flext_core import u\n"
+            receiver = "" if constructor == "native" else f"{constructor}."
+            source = f"{imports}\nADAPTER = {receiver}TypeAdapter(int)\n"
+            paths = tuple(
+                package / relative
+                for relative in (
+                    "_settings.py",
+                    "_config.py",
+                    "consumer.py",
+                    "_models/_settings.py",
+                    "_utilities/_config.py",
+                )
+            )
+            # The native graph authenticates the real package initializer.
+            original = {
+                path: (
+                    f"import {namespace}\nimport {namespace}._models\n"
+                    f"import {namespace}._utilities\n\n{source}"
+                    if path.name == "consumer.py"
+                    else source
+                )
+                for path in paths
+            }
+            for path, content in original.items():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if path.parent != package:
+                    (path.parent / c.Infra.INIT_PY).write_text(
+                        "", encoding=c.DEFAULT_ENCODING
+                    )
+                path.write_text(content, encoding=c.DEFAULT_ENCODING)
+            rule_ids = (
+                "rewire-type-adapter-construction",
+                "rewire-type-adapter-construction-missing-u-import",
+            )
+            selected = tuple(
+                dict.fromkeys((
+                    *(path.parent / c.Infra.INIT_PY for path in paths),
+                    *paths,
+                ))
+            )
+            report = tm.ok(
+                FlextInfraModGateEngine.scan(
+                    mod_workspace,
+                    fix=False,
+                    selection=rule_ids,
+                    source_files=selected,
+                )
+            )
+            expected = set(paths if constructor != "native" else paths[2:])
+            expected_id = rule_ids[0] if with_utilities else rule_ids[1]
+            tm.that(
+                {
+                    (u.Infra.codemod_source_path(mod_workspace, row.file), row.rule_id)
+                    for row in report.entries
+                },
+                eq={(path.resolve(), expected_id) for path in expected},
+            )
+            tm.that(report.findings, eq=len(expected))
+            for path in paths:
+                tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original[path])
 
     @staticmethod
     @pytest.mark.parametrize(

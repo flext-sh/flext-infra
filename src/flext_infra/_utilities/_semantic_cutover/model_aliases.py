@@ -287,7 +287,63 @@ class FlextInfraUtilitiesSemanticModelAliases:
                             f"inventory: {changed}"
                         )
                         raise ValueError(msg)
-                    working[changed] = change.new_contents
+                    before = runtime.build_string_module(
+                        snapshot, working[changed], resource=change.resource
+                    )
+                    original_imports = {
+                        (information.module_name, information.level, binding)
+                        for statement in runtime.module_imports_for_pymodule(
+                            snapshot, before
+                        ).imports
+                        if isinstance(
+                            information := statement.import_info, p.Infra.RopeFromImport
+                        )
+                        for binding in information.names_and_aliases
+                    }
+                    after = runtime.build_string_module(
+                        snapshot, change.new_contents, resource=change.resource
+                    )
+                    imports = runtime.module_imports_for_pymodule(snapshot, after)
+                    used_imports = {
+                        (information.module_name, information.level, binding)
+                        for information in imports.get_used_imports(after)
+                        if isinstance(information, p.Infra.RopeFromImport)
+                        for binding in information.names_and_aliases
+                    }
+                    for statement in imports.imports:
+                        information = statement.import_info
+                        if (
+                            not isinstance(information, p.Infra.RopeFromImport)
+                            or (
+                                snapshot.get_relative_module(
+                                    information.module_name,
+                                    change.resource.parent,
+                                    information.level,
+                                )
+                                if information.level
+                                else snapshot.get_module(information.module_name)
+                            ).get_resource()
+                            != current
+                        ):
+                            continue
+                        retained = tuple(
+                            binding
+                            for binding in information.names_and_aliases
+                            if (
+                                key := (
+                                    information.module_name,
+                                    information.level,
+                                    binding,
+                                )
+                            )
+                            in original_imports
+                            or key in used_imports
+                        )
+                        if retained != tuple(information.names_and_aliases):
+                            statement.import_info = runtime.from_import(
+                                information.module_name, information.level, retained
+                            )
+                    working[changed] = imports.get_changed_source()
             finally:
                 snapshot.close()
 

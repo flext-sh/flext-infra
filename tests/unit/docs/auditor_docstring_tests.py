@@ -131,15 +131,11 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (report_dir / "audit-summary.json").read_text(encoding="utf-8"),
         )
-        metric = u.Tests.toml_mapping(
+        metric = m.Infra.DocstringCoverage.model_validate(
             u.Tests.toml_mapping(summary["summary"])["docstring_coverage"],
         )
-        checked = metric["checked"]
-        percent = metric["percent"]
-        tm.that(isinstance(checked, int), truth=True)
-        tm.that(isinstance(percent, float), truth=True)
-        tm.ok(checked > 0)
-        tm.ok(0.0 <= percent < self._FULL_COVERAGE_PERCENT)
+        tm.ok(metric.checked > 0)
+        tm.ok(0.0 <= metric.percent < self._FULL_COVERAGE_PERCENT)
 
     def test_checks_docstrings_runs_only_that_check(self, tmp_path: Path) -> None:
         """Test checks docstrings runs only that check."""
@@ -157,10 +153,10 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.toml_mapping(summary["summary"])
         tm.that(summary["checks"], eq=["docstrings"])
         tm.that(u.Tests.number(summary["issues"]), gt=0)
-        coverage = u.Tests.toml_mapping(summary["docstring_coverage"])
-        checked = coverage["checked"]
-        tm.that(isinstance(checked, int), truth=True)
-        tm.ok(checked > 0)
+        coverage = m.Infra.DocstringCoverage.model_validate(
+            summary["docstring_coverage"],
+        )
+        tm.ok(coverage.checked > 0)
 
     def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
         """Test default checks runs full suite."""

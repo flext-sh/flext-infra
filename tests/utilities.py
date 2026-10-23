@@ -14,7 +14,6 @@ from pathlib import Path
 from flext_tests import FlextTestsUtilities
 
 from flext_infra import FlextInfraUtilities, config
-from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, r, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
@@ -33,141 +32,8 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 
 
-class TestsFlextInfraUtilitiesCodegenTestSupport:
-    """Own shared typed construction for codegen test contracts."""
-
-    class Ci:
-        """Construct GitHub workflow render contracts from canonical config."""
-
-        @dataclasses.dataclass(frozen=True)
-        class WorkflowRenderOverrides:
-            """Optional workflow render knobs grouped into one contract."""
-
-            system_packages: t.VariadicTuple[t.NonEmptyStr] = ()
-            packages_read: bool = False
-            custom_steps: str = ""
-            has_devcontainer: bool = False
-            workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef] = ()
-            cooldown_excluded_dependencies: t.VariadicTuple[t.NonEmptyStr] = ()
-
-        @staticmethod
-        def ci_trigger_branches(repository_branch: str) -> t.VariadicTuple[str]:
-            """Derive the repository trigger set from the configured policy.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            return tuple(
-                dict.fromkeys((
-                    *config.Infra.codegen.branch_policy.ci_trigger_branches,
-                    repository_branch,
-                )),
-            )
-
-        @staticmethod
-        def synthetic_private_submodules() -> m.Infra.CiPrivateSubmodulesSpec:
-            """One schema-valid deploy-key contract carrying zero org data.
-
-            The private-submodule init mechanism is proven against this
-            synthetic contract instead of any real workspace entry: real
-            deploy-key contracts are operator-private config living in the
-            gitignored local override layer, never in this public repository.
-
-            Returns:
-                The resulting ``m.Infra.CiPrivateSubmodulesSpec``.
-
-            """
-            key = m.Infra.CiPrivateSubmoduleDeployKeySpec.model_validate({
-                "secret": "EXAMPLE_SIBLING_DEPLOY_KEY",
-                "submodule": "example-sibling",
-                "path": "libs/example-sibling",
-                "remote": "git@github.com:example-org/example-sibling.git",
-            })
-            return m.Infra.CiPrivateSubmodulesSpec(
-                known_hosts=("github.com ssh-ed25519 AAAA-public-host-key-line",),
-                paths=("libs/example-sibling",),
-                deploy_keys=(key,),
-            )
-
-        @staticmethod
-        def workflow_spec(
-            *,
-            dist: t.NonEmptyStr,
-            make_profile: c.Infra.MakeProfile,
-            repository_branch: t.NonEmptyStr,
-            ci_trigger_branches: t.VariadicTuple[t.NonEmptyStr],
-            overrides: WorkflowRenderOverrides | None = None,
-        ) -> m.Infra.GithubWorkflowRenderSpec:
-            """Build the common strictly typed workflow rendering contract.
-
-            Returns:
-                The resulting ``m.Infra.GithubWorkflowRenderSpec``.
-
-            """
-            overrides = (
-                u.CodegenTestSupport.Ci.WorkflowRenderOverrides()
-                if overrides is None
-                else overrides
-            )
-            codegen = config.Infra.codegen
-            return m.Infra.GithubWorkflowRenderSpec(
-                dist=dist,
-                gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
-                setup_operations_report_directory=(
-                    c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
-                ),
-                make_profile=make_profile,
-                repository_branch=repository_branch,
-                ci_trigger_branches=ci_trigger_branches,
-                system_packages=overrides.system_packages,
-                packages_read=overrides.packages_read,
-                python_version=codegen.toolchain.python_version,
-                github_actions=codegen.github_actions,
-                toolchain=codegen.toolchain,
-                make=codegen.make,
-                workspace_repositories=overrides.workspace_repositories,
-                checkout_submodules=codegen.checkout_submodules,
-                custom_steps=overrides.custom_steps,
-                has_devcontainer=overrides.has_devcontainer,
-                dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-                cooldown_excluded_dependencies=(
-                    overrides.cooldown_excluded_dependencies
-                ),
-            )
-
-        @staticmethod
-        def ci_job_steps(rendered: str) -> t.VariadicTuple[t.JsonMapping]:
-            """Parse the rendered ci workflow into its ordered job steps.
-
-            One owner for the YAML parse and the jobs/ci/steps navigation every
-            CI-contract test shares; consumers assert on the returned steps.
-
-            Returns:
-                The resulting ``t.VariadicTuple[t.JsonMapping]``.
-
-            Raises:
-                TypeError: If workflow job steps must be a sequence.
-
-            """
-            document = u.json_mapping_adapter().validate_python(
-                tm.ok(u.Cli.yaml_parse(rendered)),
-            )
-            jobs = u.json_mapping_adapter().validate_python(document["jobs"])
-            job = u.json_mapping_adapter().validate_python(jobs["ci"])
-            steps = job["steps"]
-            if not isinstance(steps, list):
-                msg = "workflow job steps must be a sequence"
-                raise TypeError(msg)
-            return tuple(
-                u.json_mapping_adapter().validate_python(step) for step in steps
-            )
-
-
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
-
-    CodegenTestSupport = TestsFlextInfraUtilitiesCodegenTestSupport
 
     class Tests(
         TestsFlextInfraUtilitiesTomlMixin,
@@ -186,6 +52,133 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         FlextTestsUtilities.Tests,
     ):
         """Canonical test helper namespace."""
+
+        class Ci:
+            """Construct GitHub workflow render contracts from canonical config."""
+
+            @dataclasses.dataclass(frozen=True)
+            class WorkflowRenderOverrides:
+                """Optional workflow render knobs grouped into one contract."""
+
+                system_packages: t.VariadicTuple[t.NonEmptyStr] = ()
+                packages_read: bool = False
+                custom_steps: str = ""
+                has_devcontainer: bool = False
+                workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef] = ()
+                cooldown_excluded_dependencies: t.VariadicTuple[t.NonEmptyStr] = ()
+
+            @staticmethod
+            def ci_trigger_branches(repository_branch: str) -> t.VariadicTuple[str]:
+                """Derive the repository trigger set from the configured policy.
+
+                Returns:
+                    The resulting ``t.VariadicTuple[str]``.
+
+                """
+                return tuple(
+                    dict.fromkeys((
+                        *config.Infra.codegen.branch_policy.ci_trigger_branches,
+                        repository_branch,
+                    )),
+                )
+
+            @staticmethod
+            def synthetic_private_submodules() -> m.Infra.CiPrivateSubmodulesSpec:
+                """One schema-valid deploy-key contract carrying zero org data.
+
+                The private-submodule init mechanism is proven against this
+                synthetic contract instead of any real workspace entry: real
+                deploy-key contracts are operator-private config living in the
+                gitignored local override layer, never in this public repository.
+
+                Returns:
+                    The resulting ``m.Infra.CiPrivateSubmodulesSpec``.
+
+                """
+                key = m.Infra.CiPrivateSubmoduleDeployKeySpec.model_validate({
+                    "secret": "EXAMPLE_SIBLING_DEPLOY_KEY",
+                    "submodule": "example-sibling",
+                    "path": "libs/example-sibling",
+                    "remote": "git@github.com:example-org/example-sibling.git",
+                })
+                return m.Infra.CiPrivateSubmodulesSpec(
+                    known_hosts=("github.com ssh-ed25519 AAAA-public-host-key-line",),
+                    paths=("libs/example-sibling",),
+                    deploy_keys=(key,),
+                )
+
+            @staticmethod
+            def workflow_spec(
+                *,
+                dist: t.NonEmptyStr,
+                make_profile: c.Infra.MakeProfile,
+                repository_branch: t.NonEmptyStr,
+                ci_trigger_branches: t.VariadicTuple[t.NonEmptyStr],
+                overrides: WorkflowRenderOverrides | None = None,
+            ) -> m.Infra.GithubWorkflowRenderSpec:
+                """Build the common strictly typed workflow rendering contract.
+
+                Returns:
+                    The resulting ``m.Infra.GithubWorkflowRenderSpec``.
+
+                """
+                overrides = (
+                    u.CodegenTestSupport.Ci.WorkflowRenderOverrides()
+                    if overrides is None
+                    else overrides
+                )
+                codegen = config.Infra.codegen
+                return m.Infra.GithubWorkflowRenderSpec(
+                    dist=dist,
+                    gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
+                    setup_operations_report_directory=(
+                        c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
+                    ),
+                    make_profile=make_profile,
+                    repository_branch=repository_branch,
+                    ci_trigger_branches=ci_trigger_branches,
+                    system_packages=overrides.system_packages,
+                    packages_read=overrides.packages_read,
+                    python_version=codegen.toolchain.python_version,
+                    github_actions=codegen.github_actions,
+                    toolchain=codegen.toolchain,
+                    make=codegen.make,
+                    workspace_repositories=overrides.workspace_repositories,
+                    checkout_submodules=codegen.checkout_submodules,
+                    custom_steps=overrides.custom_steps,
+                    has_devcontainer=overrides.has_devcontainer,
+                    dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
+                    cooldown_excluded_dependencies=(
+                        overrides.cooldown_excluded_dependencies
+                    ),
+                )
+
+            @staticmethod
+            def ci_job_steps(rendered: str) -> t.VariadicTuple[t.JsonMapping]:
+                """Parse the rendered ci workflow into its ordered job steps.
+
+                One owner for the YAML parse and the jobs/ci/steps navigation every
+                CI-contract test shares; consumers assert on the returned steps.
+
+                Returns:
+                    The resulting ``t.VariadicTuple[t.JsonMapping]``.
+
+                Raises:
+                    TypeError: If workflow job steps must be a sequence.
+
+                """
+                document = u.json_mapping_adapter().validate_python(
+                    tm.ok(u.Cli.yaml_parse(rendered)),
+                )
+                jobs = u.json_mapping_adapter().validate_python(document["jobs"])
+                job = u.json_mapping_adapter().validate_python(jobs["ci"])
+                steps = job["steps"]
+                if not isinstance(steps, list):
+                    msg = "workflow job steps must be a sequence"
+                    raise TypeError(msg)
+                return tuple(
+                    u.json_mapping_adapter().validate_python(step) for step in steps
+                )
 
         @staticmethod
         def number(value: t.JsonValue) -> float:
@@ -245,6 +238,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             examples_module: str | None = None
             extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
             script_dispatch: m.Infra.ScriptDispatchSpec | None = None
+            version: str | None = None
 
         @staticmethod
         def render_make_environment(
@@ -258,6 +252,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
             Returns:
                 The resulting ``t.Pair[Path, Path]``.
+
+            Raises:
+                ValueError: If the declared bootstrap source package is absent.
 
             """
             shape = u.Tests.MakeEnvironmentShape() if shape is None else shape
@@ -279,6 +276,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 project_root,
                 repository.distribution,
             )
+            if shape.version is not None:
+                tm.ok(u.Infra.replace_project_version(project_root, shape.version))
             # The generated Makefile consumes the tracked Mise launcher for every
             # verb (setup/check/fix/...), not only at bootstrap: the
             # fixture must carry the governed toolchain seeds exactly as a managed
@@ -325,20 +324,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 repository,
                 project=u.Tests.project_spec(shape.project_name),
             )
-            request = u.Tests.conform_request(
+            plan = u.Tests.conform_plan(
                 project_root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
-            plan = tm.ok(
-                FlextInfraCodegenConform(
-                    repository_root=repository_root,
-                    state=m.Infra.CodegenConformState(
-                        repository_root=repository_root,
-                        request=request,
-                        initial_workspace=workspace,
-                    ),
-                ).plan(request),
+                workspace,
+                executor_root=repository_root,
             )
             # Materialize the complete activation contract through its guarded
             # publisher, including Beads metadata consumed by the generated
@@ -360,6 +349,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                         config.Infra.codegen.make.uv_resolution.standalone_directory,
                     )
                 )
+                if shape.package:
+                    layout = u.Infra.layout(project_root)
+                    if layout is None:
+                        msg = f"bootstrap fixture has no source package: {project_root}"
+                        raise ValueError(msg)
+                    paths.update(
+                        file.path
+                        for file in plan.files
+                        if file.path.is_relative_to(layout.package_dir)
+                    )
             artifacts = tuple(
                 file
                 for file in plan.files
@@ -551,6 +550,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             init_file = directory / c.Infra.INIT_PY
             init_file.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
             return init_file
+
+    CodegenTestSupport = Tests
 
 
 u = TestsFlextInfraUtilities

@@ -79,6 +79,8 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
         ]
         if request.mode is not c.Infra.CodegenConformMode.APPLY:
             return result_type.ok(((None, None), False))
+        if (request.root / c.PYPROJECT_FILENAME).is_file():
+            return result_type.ok(((None, None), False))
         scaffolding = self.state.initial_workspace
         workspace = scaffolding
         if workspace is None:

@@ -158,6 +158,11 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     lambda _current: u.Cli.atomic_verify_directory_queries(
                         source_plan.source_directories,
                         source_plan.source_query_topology,
+                        publications=m.Cli.AtomicDirectoryQueryEffects(
+                            membership_policy=tuple(
+                                sorted(config.Infra.codegen.source_scan_ignored)
+                            )
+                        ),
                     )
                 )
             )
@@ -205,7 +210,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             return r[m.Infra.SemanticSourcePlan].fail(
                 "module naming discovery requires the original source seed"
             )
-        sources = cls._candidate_python_sources(
+        sources = u.Infra.candidate_python_sources(
             source_plan.candidate, source_plan.source_states
         )
         with FlextInfraRopeWorkspace.open_workspace(
@@ -555,23 +560,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             raise TypeError(msg)
         return project
 
-    @staticmethod
-    def _candidate_python_sources(
-        candidate: m.Infra.StageSourcePlan,
-        states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> t.MutableMappingKV[Path, str]:
-        """Elect Python planning targets without promoting authenticated resources.
-
-        Returns:
-            Original Python text owned by the explicit candidate scopes.
-
-        """
-        return {
-            path: source
-            for scope in candidate.workspaces or (candidate.workspace,)
-            for path, source in u.Infra.facade_original_sources(scope, states).items()
-        }
-
     @classmethod
     def _snapshot_receipts(
         cls,
@@ -652,7 +640,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             lambda planned: m.Infra.SemanticRenamePlan(
                 decisions=decisions,
                 edits=cls._rename_edits(
-                    cls._candidate_python_sources(
+                    u.Infra.candidate_python_sources(
                         planned[0].candidate, planned[0].source_states
                     ),
                     planned[0].candidate.updates,
@@ -697,7 +685,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             ].from_failure(captured_sources)
         baseline = captured_sources.value
         captured = m.Infra.CodemodBindingSnapshot(states=baseline.inputs)
-        original = cls._candidate_python_sources(baseline, captured.states)
+        original = u.Infra.candidate_python_sources(baseline, captured.states)
         with ExitStack() as stack:
             declared_projects = tuple(
                 dict.fromkeys(
@@ -1141,7 +1129,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         root = u.Infra.import_project_roots(root)[0]
         artifact, driver = pair
-        verified = cls._verify_native_rename_plan(root, workspace, pair)
+        verified = cls.authenticate_rename_candidate(root, artifact, driver, workspace)
         if verified.failure:
             return verified
         # The publication owner consumes the complete semantic/projection group.
@@ -1160,20 +1148,23 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         )
 
     @classmethod
-    def _verify_native_rename_plan(
+    def authenticate_rename_candidate(
         cls,
         root: Path,
+        artifact: m.Infra.SemanticRenamePlan,
+        driver: m.Cli.AtomicFileState,
         workspace: p.Infra.RopeWorkspaceDsl,
-        pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Authenticate and compare the complete persisted native artifact.
+
+        Both standalone consumption and batch seeding require current identities
+        and exact equivalence to the reconstructed native plan.
 
         Returns:
             The original authentication failure or exact persisted plan acceptance.
 
         """
-        artifact, driver = pair
-        guarded = cls.authenticate_rename_candidate(root, artifact, driver)
+        guarded = cls._authenticate_rename_inputs(root, artifact, driver)
         if guarded.failure:
             return guarded
         rebuilt = cls.build_rename_plan(
@@ -1199,7 +1190,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         return r[bool].ok(value=True)
 
     @staticmethod
-    def authenticate_rename_candidate(
+    def _authenticate_rename_inputs(
         root: Path,
         artifact: m.Infra.SemanticRenamePlan,
         driver: m.Cli.AtomicFileState,
@@ -1672,6 +1663,28 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             ),
         )
 
+    @staticmethod
+    def _semantic_source_preimages(
+        project: p.Infra.RopeProject,
+        paths: t.IterableOf[Path],
+    ) -> t.MappingKV[Path, p.Infra.SemanticSourceState]:
+        """Select original receipts only for sources present in the native graph.
+
+        Returns:
+            Original witnesses, including absence for declared virtual births.
+
+        Raises:
+            ValueError: If a proposed source is absent from the authenticated graph.
+
+        """
+        inputs: dict[Path, p.Infra.SemanticSourceState] = {}
+        for path in paths:
+            if not project.source_query(path, "isfile"):
+                msg = f"semantic source is absent from its authenticated graph: {path}"
+                raise ValueError(msg)
+            inputs[path] = project.source_state(path, required=False)
+        return inputs
+
     @classmethod
     def plan[FindingT: m.Infra.ModOccurrence](
         cls,
@@ -1694,10 +1707,9 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         retired: t.Infra.RopeMutablePaths = set()
         inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] = {}
         if rope_workspace.rope_project.authenticated_sources:
-            inputs.update({
-                path: rope_workspace.rope_project.source_state(path, required=True)
-                for path in original
-            })
+            inputs.update(
+                cls._semantic_source_preimages(rope_workspace.rope_project, original)
+            )
 
         # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
         # The original authority remains physical; every phase sees the latest

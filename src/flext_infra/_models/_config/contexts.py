@@ -438,6 +438,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
                 ),
             ),
         ]
+        package_config_resource: Annotated[
+            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            m.Field(description="Package-owned defaults source and wheel destination"),
+        ] = None
         packaged_data_excludes: Annotated[
             t.StrSequence,
             m.Field(description="Validated files excluded from packaged data roots"),

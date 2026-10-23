@@ -231,7 +231,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         receipt = report.receipts[0]
         tm.that(receipt.stage, eq="network-auth")
         tm.that(receipt.native_exit_code, eq=int(extraction_exit))
-        tm.fail(receipt.completed)
+        tm.that(receipt.completed, eq=False)
         tm.that(receipt.files, eq=())
         tm.that(receipt.root, eq=Path())
         tm.fail(u.Infra.runtime_environment_dir(project_root).exists())

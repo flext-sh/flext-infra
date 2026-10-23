@@ -8,11 +8,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import m
+from flext_cli import m, t
 
 
 class TestsFlextInfraModelsBase:
     """Test-owned input records composed into the generated model facade."""
+
+    class AstGrepFixtureSnapshots(m.Value):
+        """Native snapshot identity and its complete per-source metadata."""
+
+        id: str = m.Field(description="Native rule identity")
+        snapshots: t.MappingKV[str, t.JsonMapping] = m.Field(
+            description="Source cases and their native snapshot metadata",
+        )
 
     class PytestDiagOptions(m.Value):
         """Immutable output destinations and native report-event inputs."""

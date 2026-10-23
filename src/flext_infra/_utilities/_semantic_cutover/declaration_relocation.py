@@ -112,7 +112,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         # One closed epoch serves every snapshot of this pass: the sources, their
         # import closure and the identities payload relocation resolves.
         epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
-            Path(workspace.rope_project.root.real_path),
+            workspace.rope_project,
             tuple(sources),
             c.Infra.DECLARATION_RELOCATION_IDENTITIES,
         )

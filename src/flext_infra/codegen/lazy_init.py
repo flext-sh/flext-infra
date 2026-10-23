@@ -170,9 +170,6 @@ class FlextInfraCodegenLazyInit(
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
-        Raises:
-            ValueError: If the lazy-init target lacks its original native receipt.
-
         """
         roots = (
             (self.repository_root.resolve(),)
@@ -195,27 +192,26 @@ class FlextInfraCodegenLazyInit(
             roots,
             (publications, failures),
         ) as project:
-            planned = self._plan_roots(roots, source_project=project)
+            with project.source_consumption() as consumption:
+                planned = self._plan_roots(roots, source_project=project)
             if planned.success:
                 publications.extend(
                     (Path(path), receipt)
                     for path, receipt in self._publication_receipts.items()
                 )
                 for target, receipt in planned.value.failed_targets:
-                    if not isinstance(receipt, m.Infra.CodegenPhaseAnalysis):
-                        msg = "lazy-init target lacks its original native receipt"
-                        raise ValueError(msg)
                     publications.append((target, receipt))
-                if source_project is not None:
-                    verified = u.Infra.verify_source_publications(project, publications)
-                    if verified.issues:
-                        failures.append(verified)
-            elif source_project is not None:
-                project.verify_source_states()
-        if planned.failure:
-            return planned
+            else:
+                receipt = consumption.receipt()
+                publications.append((self.repository_root.resolve(), receipt))
+            if source_project is not None:
+                verified = u.Infra.verify_source_publications(project, publications)
+                if verified.issues:
+                    failures.append(verified)
         if source_publications is not None:
             source_publications.extend(publications)
+        if planned.failure:
+            return planned
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             self.composed_analysis((planned.value, *failures))
             if failures
@@ -399,12 +395,14 @@ class FlextInfraCodegenLazyInit(
         consumption: p.Infra.RopeSourceConsumption | None = None
         target_roots = sum(len(paths) for paths, _ in candidates.values())
         for root in roots:
+            if root in candidates and not candidates[root][0]:
+                continue
             consumption = None
             if (
                 not root.is_relative_to(self.repository_root.resolve())
                 or not root.is_dir()
             ):
-                analyzed = r[m.Infra.CodegenPhaseAnalysis | None].fail(
+                analyzed = r[m.Infra.CodegenPhaseAnalysis].fail(
                     "lazy-init repository scope is missing or outside "
                     f"{self.repository_root.resolve()}: {root}",
                 )
@@ -420,7 +418,6 @@ class FlextInfraCodegenLazyInit(
                         )
                     analyzed = self._authenticated_root_analysis(
                         rope,
-                        root,
                         analyses=analyses,
                     )
             if analyzed.failure:
@@ -452,8 +449,6 @@ class FlextInfraCodegenLazyInit(
                 )
             else:
                 analysis = analyzed.value
-                if analysis is None:
-                    continue
             if (
                 target_roots > 1
                 and root in candidates
@@ -510,24 +505,16 @@ class FlextInfraCodegenLazyInit(
     def _authenticated_root_analysis(
         self,
         rope: FlextInfraRopeWorkspace,
-        root: Path,
         *,
         analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis | None]:
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Plan one repository against its authenticated source authority.
 
-        ``None`` marks a target module that selects no package here, so the
-        root contributes no analysis.
-
         Returns:
-            One repository's analysis, or ``None`` when unselected.
+            One selected repository's analysis.
 
         """
-        result_type = r[m.Infra.CodegenPhaseAnalysis | None]
-        if self.target_module:
-            targets = self._target_package_dirs(rope.workspace_index, root)
-            if not targets:
-                return result_type.ok(None)
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
         planned = self._plan_open_workspace(rope)
         if planned.failure:
             original = self._first_recorded_exception(analyses)
@@ -809,28 +796,25 @@ class FlextInfraCodegenLazyInit(
         if file_plans.failure:
             return result_type.from_failure(file_plans)
         all_plans = file_plans.value
-        return result_type.ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
-                files=all_plans,
-                inputs=rope.rope_project.consumed_source_states(),
-                source_directories=rope.rope_project.consumed_source_directories(),
-                source_query_topology=rope.rope_project.consumed_source_topology(),
-                publications=tuple(
-                    plan.model_copy(
-                        update={
-                            "source_states": receipt.inputs,
-                            "source_directories": receipt.source_directories,
-                            "source_query_topology": receipt.source_query_topology,
-                        }
-                    )
-                    for plan in package_plans.value
-                    for receipt in (
-                        self._publication_receipts[str(plan.context.pkg_dir.resolve())],
-                    )
-                ),
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+            files=all_plans,
+            inputs=(),
+            publications=tuple(
+                plan.model_copy(
+                    update={
+                        "source_states": receipt.inputs,
+                        "source_directories": receipt.source_directories,
+                        "source_query_topology": receipt.source_query_topology,
+                    }
+                )
+                for plan in package_plans.value
+                for receipt in (
+                    self._publication_receipts[str(plan.context.pkg_dir.resolve())],
+                )
             ),
         )
+        return result_type.ok(self.composed_analysis((analysis,)))
 
     @staticmethod
     def _package_dirs_for_target(

@@ -677,8 +677,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         facade_plans: list[m.Infra.CodegenFilePlan] = []
         with u.Infra.facade_source_project(
             tmp_path,
-            source_states=originals,
-            declared_files=plans,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=originals, declared_files=plans
+            ),
             project_roots=tuple(layout.project_root for layout in layouts),
         ) as binding:
             for layout in layouts:
@@ -750,8 +751,9 @@ class TestsFlextInfraUtilityFacadeProjection:
         service.project_scope_roots = tuple(roots)
         with u.Infra.facade_source_project(
             tmp_path,
-            source_states=originals,
-            declared_files=(*plans, *facade_plans),
+            source_options=m.Infra.StageSourceOptions(
+                inputs=originals, declared_files=(*plans, *facade_plans)
+            ),
             project_roots=tuple(roots),
         ) as binding:
             analysis = tm.ok(service.plan_files(source_project=binding[0]))
@@ -766,8 +768,9 @@ class TestsFlextInfraUtilityFacadeProjection:
             tm.that(projected.desired_content, eq=plan.desired_content)
         with u.Infra.facade_source_project(
             tmp_path,
-            source_states=originals,
-            declared_files=analysis.files,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=originals, declared_files=analysis.files
+            ),
             project_roots=tuple(roots),
         ) as binding:
             for file in tm.ok(service.plan_files(source_project=binding[0])).files:
@@ -808,8 +811,9 @@ class TestsFlextInfraUtilityFacadeProjection:
             pytest.raises(RuntimeError, match="atomic source changed"),
             u.Infra.facade_source_project(
                 tmp_path,
-                source_states=originals,
-                declared_files=plans,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=originals, declared_files=plans
+                ),
                 project_roots=tuple(roots),
             ),
         ):
@@ -967,7 +971,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         for candidate in (stale, refreshed):
             with u.Infra.facade_source_project(
                 root,
-                source_states=originals,
+                source_options=m.Infra.StageSourceOptions(inputs=originals),
                 planned_sources={barrel: candidate},
             ) as (project, _, contents):
                 rendered = tm.not_none(
@@ -979,7 +983,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
             with u.Infra.facade_source_project(
                 root,
-                source_states=originals,
+                source_options=m.Infra.StageSourceOptions(inputs=originals),
                 planned_sources={barrel: candidate, facade: rendered},
             ) as (project, _, contents):
                 tm.that(

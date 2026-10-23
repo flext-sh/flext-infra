@@ -44,7 +44,10 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
             else u.Infra.git_source_scope_paths(project_dir)
         )
         if paths is None or not paths:
-            message = f"conflict-marker gate requires a nonempty source inventory: {project_dir}"
+            message = (
+                "conflict-marker gate requires a nonempty source inventory: "
+                f"{project_dir}"
+            )
             raise ValueError(message)
         return self._check_paths(paths, project_dir, ctx)
 
