@@ -2,7 +2,8 @@
 # (`m.ContractModel` plus `extra="ignore"`) is the external-contract preset:
 # `m.ExternalContractModel` owns strict validation with ignored foreign keys,
 # so the hand-written relaxed config disappears into the preset
-# (ban-relaxed-model-extra). The frozen variant keeps its remaining key.
+# (ban-relaxed-model-extra). `m.ContractModel` is already frozen, so the
+# frozen variant's remaining `frozen=True` is redundant and goes too.
 id: rewire-relaxed-contract-to-external-contract
 language: python
 severity: error
@@ -49,8 +50,34 @@ rule:
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE
-      model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
       $$$AFTER
 message: >-
   Strict frozen contract `$NAME` relaxes extra by hand: `make mod` rebases it on
-  `m.ExternalContractModel` and keeps only `frozen=True`.
+  `m.ExternalContractModel`, whose frozen strict config already covers it.
+---
+id: rewire-relaxed-configured-contract-to-external-contract
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  pattern: |
+    class $NAME(m.ContractModel):
+        $$$BEFORE
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True, $KEY, $$$KEYS)
+        $$$AFTER
+fix: |-
+  class $NAME(m.ExternalContractModel):
+      $$$BEFORE
+      model_config: ClassVar[m.ConfigDict] = m.ConfigDict($KEY, $$$KEYS)
+      $$$AFTER
+message: >-
+  Strict contract `$NAME` relaxes extra by hand beside its own config keys:
+  `make mod` rebases it on `m.ExternalContractModel` and keeps only the keys
+  the preset does not already own.

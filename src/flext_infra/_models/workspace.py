@@ -695,13 +695,9 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Distribution is installed as editable"),
         ] = False
 
-    class DirectUrlVcsInfo(m.ContractModel):
+    class DirectUrlVcsInfo(m.ExternalContractModel):
         """Native PEP 610 VCS identity, independent of a moving requested ref."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="ignore",
-            frozen=True,
-        )
         vcs: Annotated[str, m.Field(description="Native VCS kind")]
         commit_id: Annotated[str, m.Field(description="Installed full commit identity")]
 
@@ -724,14 +720,12 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Native package search locations by declared package"),
         ]
 
-    class DirectUrlReceipt(m.ContractModel):
+    class DirectUrlReceipt(m.ExternalContractModel):
         """Any installed distribution's PEP 610 receipt, read for its kind only.
 
         VCS and archive receipts carry other keys; only the directory metadata
         decides whether the receipt names a checkout path.
         """
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
 
         dir_info: Annotated[
             FlextInfraModelsWorkspace.DirectUrlDirectoryInfo | None,
@@ -746,10 +740,9 @@ class FlextInfraModelsWorkspace:
             description="Installed immutable VCS identity",
         )
 
-    class LockedPackageSource(m.ContractModel):
+    class LockedPackageSource(m.ExternalContractModel):
         """Only the lock's immutable installation source fields cross this boundary."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         git: str | None = m.Field(default=None, description="Locked VCS URL and SHA")
         registry: str | None = m.Field(
             default=None,
@@ -763,10 +756,9 @@ class FlextInfraModelsWorkspace:
         virtual: str | None = m.Field(default=None, description="Virtual local project")
         url: str | None = m.Field(default=None, description="Locked archive URL")
 
-    class LockedDependency(m.ContractModel):
+    class LockedDependency(m.ExternalContractModel):
         """A native UV resolved edge, including its fork and requested extras."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         name: Annotated[t.NonEmptyStr, m.Field(description="Required distribution")]
         version: Annotated[
             str | None,
@@ -784,10 +776,9 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Requested extras; absent means none"),
         ] = ()
 
-    class LockedPackage(m.ContractModel):
+    class LockedPackage(m.ExternalContractModel):
         """Installed identity selected from the committed uv lock."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         name: Annotated[t.NonEmptyStr, m.Field(description="Locked distribution name")]
         version: Annotated[
             t.NonEmptyStr, m.Field(description="Locked distribution version")
@@ -842,10 +833,9 @@ class FlextInfraModelsWorkspace:
             ),
         ] = ()
 
-    class LockedEnvironment(m.ContractModel):
+    class LockedEnvironment(m.ExternalContractModel):
         """Typed installation identities, never a dependency resolver."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         package: Annotated[
             t.VariadicTuple[FlextInfraModelsWorkspace.LockedPackage],
             m.Field(min_length=1, description="Nonempty lock-owned package inventory"),

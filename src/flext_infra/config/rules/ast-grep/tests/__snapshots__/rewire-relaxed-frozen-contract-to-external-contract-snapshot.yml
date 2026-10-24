@@ -9,7 +9,6 @@ snapshots:
   : fixed: |
       class Issue(m.ExternalContractModel):
           """One issue in a search response."""
-          model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
           key: str
     labels:
     - source: |-

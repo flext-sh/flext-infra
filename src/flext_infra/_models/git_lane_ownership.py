@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 from flext_cli import m
 
@@ -17,10 +17,9 @@ from flext_infra._models import FlextInfraModelsGitLaneInputs
 class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):
     """Ownership schemas resolve strictly from the preceding leaf declarations."""
 
-    class GitLaneBead(m.ContractModel):
+    class GitLaneBead(m.ExternalContractModel):
         """Selected Bead fields; no age-only abandonment classification."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         id: Annotated[str, m.Field(description="Canonical Bead identifier")]
         status: Annotated[str, m.Field(description="Current Bead lifecycle status")]
         assignee: Annotated[
@@ -36,10 +35,9 @@ class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):
             m.Field(description="Explicit branch/worktree ownership correlation"),
         ] = None
 
-    class GitLaneGovernance(m.ContractModel):
+    class GitLaneGovernance(m.ExternalContractModel):
         """Minimal typed view of the global governance SSOT."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
         coordination: Annotated[
             FlextInfraModelsGitLaneInputs.GitLaneCoordinationPolicy,
             m.Field(description="Global coordination policy"),

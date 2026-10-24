@@ -59,12 +59,10 @@ class FlextInfraModelsDeps(
             default=(), description="Names with explicit native UV source declarations"
         )
 
-    class ProjectPackagingDeclaration(m.ContractModel):
+    class ProjectPackagingDeclaration(m.ExternalContractModel):
         """Native packaging facts retained independently of Python export health."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="ignore",
-            frozen=True,
             populate_by_name=True,
         )
         uv_package: Annotated[
