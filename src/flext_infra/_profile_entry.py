@@ -29,11 +29,11 @@ class FlextInfraProfileEntry:
 
         """
         if not settings.Infra.profile:
-            return flext_infra.main(sys.argv[2:])
+            return flext_infra.FlextInfraCli.infra_main(sys.argv[2:])
         output = Path(sys.argv[1])
         output.parent.mkdir(parents=True, exist_ok=True)
         return FlextInfraPytestClock.profile_command(
-            lambda: flext_infra.main(sys.argv[2:]), output
+            lambda: flext_infra.FlextInfraCli.infra_main(sys.argv[2:]), output
         )
 
 

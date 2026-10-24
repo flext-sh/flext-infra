@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+import warnings
 
 from flext_infra import c, t
 from flext_infra.services import FlextInfraCliDispatchService
@@ -26,16 +27,30 @@ class FlextInfraCli(FlextInfraCliDispatchService):
         cli_args = list(args) if args is not None else sys.argv[1:]
         return FlextInfraCli().main([c.Infra.CLI_GROUP_DOCS, *cli_args])
 
+    @staticmethod
+    def infra_main(args: t.StrSequence | None = None) -> int:
+        """Run the canonical flext-infra CLI (console script ``flext-infra``).
 
+        Returns:
+            The resulting ``int``.
+
+        """
+        cli_args = list(args) if args is not None else sys.argv[1:]
+        return FlextInfraCli().main(cli_args)
+
+
+@warnings.deprecated(
+    "compat: flext_infra.main -> FlextInfraCli.infra_main; "
+    "fix: call FlextInfraCli.infra_main(argv)"
+)
 def main(args: t.StrSequence | None = None) -> int:
-    """Run the canonical flext-infra CLI.
+    """Delegate to the CLI facade until the last consumer is rewired.
 
     Returns:
         The resulting ``int``.
 
     """
-    cli_args = list(args) if args is not None else sys.argv[1:]
-    return FlextInfraCli().main(cli_args)
+    return FlextInfraCli.infra_main(args)
 
 
 __all__: list[str] = ["FlextInfraCli", "main"]

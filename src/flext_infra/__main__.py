@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flext_cli import cli
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 
 
 class FlextInfraMain:
@@ -17,7 +17,7 @@ class FlextInfraMain:
     @staticmethod
     def run() -> None:
         """Load and execute the sole facade-backed CLI."""
-        cli.exit(main())
+        cli.exit(FlextInfraCli.infra_main())
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ name = "FLEXT Team"
 
 [project.scripts]
 flext-docs = "flext_infra.cli:FlextInfraCli.docs_main"
-flext-infra = "flext_infra.cli:main"
+flext-infra = "flext_infra.cli:FlextInfraCli.infra_main"
 
 [project.urls]
 Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
