@@ -46,6 +46,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
@@ -2783,7 +2784,7 @@ class FlextInfraUtilitiesCodemodProject(
             layout = FlextInfraUtilitiesCodegenNamespace.layout(owner)
         else:
             project, layouts, receipts = context
-            with FlextInfraUtilitiesRopeCore.cached_source_query(
+            with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
                 project, layouts, owner, receipts, str(owner)
             ) as cached:
                 if not cached:

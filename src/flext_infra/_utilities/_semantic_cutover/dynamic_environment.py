@@ -26,7 +26,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
-    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntimeBase,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         def owner_context(
             owner_root: Path,
         ) -> t.Triple[str, str, m.Infra.CodegenConfigSpec]:
-            with FlextInfraUtilitiesRopeCore.cached_source_query(
+            with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
                 source_project,
                 contexts,
                 owner_root,

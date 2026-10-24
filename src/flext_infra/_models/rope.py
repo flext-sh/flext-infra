@@ -40,15 +40,20 @@ class FlextInfraModelsRope:
         )
 
     class SourceObservation(FlextInfraModelsBase.FrozenArbitrary):
-        """One batch of exact physical observations a native source read produced."""
+        """One batch of exact physical observations a native source read produced.
 
-        states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        Observations transport already-authenticated witnesses by reference;
+        they are never revalidated on every recorded read.
+        """
+
+        states: tuple[m.InstanceOf[m.Cli.AtomicFileState], ...] = m.Field(
             default=(), description="Original file states the read depended on"
         )
-        directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
-            default=(), description="Original directory inventories that were read"
+        directories: tuple[m.InstanceOf[m.Cli.AtomicDirectoryInventory], ...] = m.Field(
+            default=(),
+            description="Original directory inventories that were read",
         )
-        topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
+        topology: tuple[m.InstanceOf[m.Cli.AtomicDirectoryChainPlan], ...] = m.Field(
             default=(), description="Original physical ancestry of absent parents"
         )
         effects: tuple[Path, ...] = m.Field(

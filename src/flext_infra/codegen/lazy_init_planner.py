@@ -63,11 +63,6 @@ class FlextInfraCodegenLazyInitPlanner(
     _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
-    _ancestry_receipts: MutableMapping[
-        tuple[Path, int], m.Infra.CodegenPhaseAnalysis
-    ] = m.PrivateAttr(
-        default_factory=dict[tuple[Path, int], m.Infra.CodegenPhaseAnalysis],
-    )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
     )
@@ -265,6 +260,7 @@ class FlextInfraCodegenLazyInitPlanner(
                     action=empty_action,
                     lazy_map={},
                     eager_dunders={},
+                    **self._generator_ownership(empty_action),
                 ),
             )
         is_facade_root = self._is_facade_root(context)
@@ -392,8 +388,21 @@ class FlextInfraCodegenLazyInitPlanner(
                 action=residue_action,
                 lazy_map={},
                 eager_dunders={},
+                **self._generator_ownership(residue_action),
             ),
         )
+
+    @staticmethod
+    def _generator_ownership(action: c.Infra.LazyInitAction) -> t.StrMapping:
+        """Return the generator ownership a written or removed plan carries.
+
+        Returns:
+            ``ownership``/``disposition`` for WRITE and REMOVE, else nothing.
+
+        """
+        if action in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.REMOVE}:
+            return {"ownership": "generator", "disposition": "planned"}
+        return {}
 
     def _merge_version_module(
         self,
@@ -420,90 +429,18 @@ class FlextInfraCodegenLazyInitPlanner(
     def _publish_plan(self, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitPlan:
         """Publish one bottom-up plan so parents follow it in the same pass.
 
-        Later alias resolution never rebuilds a package
-        without its children. Every plan, including REMOVE and
-        SKIP decided before rendering, is published so the parent inventory in
-        ``_merge_children`` sees the child's action instead of the on-disk
-        initializer.
+        Every plan, including REMOVE and SKIP decided before rendering, is
+        published so the parent inventory in ``_merge_children`` sees the
+        child's action instead of the on-disk initializer. The rendered
+        initializer depends only on module ``__all__`` declarations, so no
+        class ancestry is consumed.
 
         Returns:
-            The resulting ``m.Infra.LazyInitPlan``.
+            The published plan.
 
         """
-        if plan.ownership is None and plan.action in {
-            c.Infra.LazyInitAction.WRITE,
-            c.Infra.LazyInitAction.REMOVE,
-        }:
-            plan = plan.model_copy(
-                update={"ownership": "generator", "disposition": "planned"},
-            )
-        self._consume_exported_bases(plan)
         self._source_plan_cache[str(plan.context.pkg_dir.resolve())] = plan
         return plan
-
-    def _consume_exported_bases(self, plan: m.Infra.LazyInitPlan) -> None:
-        """Attribute native class ancestry before sealing a package's source receipt.
-
-        Explicit export-name inventories do not evaluate Rope's lazy base bindings.
-        Resolve only this package's published local bindings; child decisions already
-        replay their own receipts, and unrelated supplier modules are not traversed.
-
-        Raises:
-            ValueError: A published dependency source has no workspace resource.
-
-        """
-        project = self.rope_workspace.rope_project
-        pending: list[p.Infra.RopePyObject] = []
-        for module_name, name in dict.fromkeys(plan.lazy_map.values()):
-            source = self._module_file(module_name)
-            if source is None or source.parent != plan.context.pkg_dir:
-                continue
-            resource = self.rope_workspace.resource(source)
-            if resource is None:
-                msg = f"unindexed publication dependency source: {source}"
-                raise ValueError(msg)
-            module = u.Infra.resolve_pymodule(project, resource).get_module()
-            binding = module.get_attributes().get(name)
-            if binding is not None:
-                pending.append(binding.get_object())
-        visited: set[int] = set()
-        for owner in pending:
-            self._consume_class_bases(owner, visited)
-
-    def _consume_class_bases(
-        self, owner: p.Infra.RopePyObject, visited: set[int]
-    ) -> None:
-        """Reuse ancestry evidence only within this publication's native consumer."""
-        if u.Infra.instance_object(owner):
-            owner = owner.get_type()
-        if not u.Infra.abstract_class(owner):
-            return
-        module = owner.get_module()
-        resource = module.get_resource() if module is not None else None
-        scope = (
-            owner.get_scope()
-            if resource is not None and u.Infra.py_class(owner)
-            else None
-        )
-        key = (
-            (Path(resource.real_path), scope.get_start())
-            if resource is not None and scope is not None
-            else None
-        )
-        project = self.rope_workspace.rope_project
-        if key is not None and key in self._ancestry_receipts:
-            project.replay_source_consumption(self._ancestry_receipts[key])
-            return
-        if id(owner) in visited:
-            return
-        visited.add(id(owner))
-        with project.source_consumption() as consumption:
-            if resource is not None:
-                project.source_bytes(Path(resource.real_path))
-            for base in owner.get_superclasses():
-                self._consume_class_bases(base, visited)
-        if key is not None:
-            self._ancestry_receipts[key] = consumption.receipt()
 
     @override
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:

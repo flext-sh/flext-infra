@@ -391,17 +391,15 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         *,
         export_options: m.Infra.ExportOptions | None = None,
     ) -> t.StrSequence:
-        """Return public export names for one module path.
+        """Return public export names for one module path from its parsed source.
 
         Returns:
             Public export names for one module path.
 
         """
-        resolved_export_options = export_options or m.Infra.ExportOptions()
-        return u.Infra.resolve_module_export_names(
-            self.rope_project,
-            self._resource_for(file_path),
-            export_options=resolved_export_options,
+        return u.Infra.module_export_names_source(
+            self.rope_project.source_text(file_path),
+            export_options=export_options,
         )
 
     def close(self) -> None:

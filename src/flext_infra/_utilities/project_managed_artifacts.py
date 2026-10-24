@@ -12,12 +12,17 @@ from collections.abc import Callable, Mapping, MutableMapping
 from copy import deepcopy
 from functools import lru_cache, partial
 from pathlib import Path
+from typing import ClassVar
+from weakref import WeakKeyDictionary
 
 from flext_cli import u
 from flext_core import FlextStrictYamlConfigSource
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities import (
+    FlextInfraUtilitiesNativeTooling,
+    FlextInfraUtilitiesRopeRuntimeBase,
+)
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
@@ -125,6 +130,45 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         An absent optional repository subsection declares no self-owned deltas.
         Invalid declared policy retains its cause; unrelated editor or tool policy
         belongs to its own typed consumer and does not determine topology.
+
+        Returns:
+            Strict repository policy with current consulted source snapshots.
+
+        """
+        if source_project is None:
+            return cls._repository_declaration_inputs(repository_root)
+        cache = cls._DECLARATION_CACHE.setdefault(source_project, {})
+        receipts = cls._DECLARATION_RECEIPTS.setdefault(source_project, {})
+        key = str(repository_root)
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+            source_project, cache, key, receipts, key
+        ) as cached:
+            if cached:
+                return r[m.Infra.RepositoryDeclarationInputs].ok(cache[key])
+            loaded = cls._repository_declaration_inputs(
+                repository_root, source_project=source_project
+            )
+        if loaded.success and source_project.authenticated_sources:
+            cache[key] = loaded.value
+        return loaded
+
+    _DECLARATION_CACHE: ClassVar[
+        WeakKeyDictionary[
+            p.Infra.RopeProject, dict[str, m.Infra.RepositoryDeclarationInputs]
+        ]
+    ] = WeakKeyDictionary()
+    _DECLARATION_RECEIPTS: ClassVar[
+        WeakKeyDictionary[p.Infra.RopeProject, dict[str, m.Infra.CodegenPhaseAnalysis]]
+    ] = WeakKeyDictionary()
+
+    @classmethod
+    def _repository_declaration_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
+        """Load repository policy once through the captured YAML layers.
 
         Returns:
             Strict repository policy with current consulted source snapshots.

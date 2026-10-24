@@ -12,10 +12,9 @@ from __future__ import annotations
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, d, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInitGenerationMixin,
     FlextInfraCodegenLazyInitPlanner,
@@ -96,6 +95,7 @@ class FlextInfraCodegenLazyInit(
             )
         return r[bool].ok(value=True)
 
+    @d.log_operation("lazy_init_plan", track_perf=True)
     def plan_files(
         self,
         *,
@@ -125,10 +125,6 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].fail(
                 f"lazy-init workspace is not a directory: {self.repository_root}",
             )
-        started_at = perf_counter()
-        u.Cli.info(
-            f"lazy-init: planning read-only artifacts for {self.repository_root}",
-        )
         planned = self._plan_in_workspace(
             source_project=source_project,
             source_publications=source_publications,
@@ -142,10 +138,7 @@ class FlextInfraCodegenLazyInit(
             if u.Infra.codegen_file_requires_effect(plan)
         )
         self._modified_files.update(str(plan.path) for plan in changed)
-        u.Cli.info(
-            f"Lazy-init plan: {len(changed)} effects "
-            f"({perf_counter() - started_at:.2f}s)",
-        )
+        u.Cli.info(f"Lazy-init plan: {len(changed)} effects")
         return r[m.Infra.CodegenPhaseAnalysis].ok(analysis)
 
     def _plan_in_workspace(

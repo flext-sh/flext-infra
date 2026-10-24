@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Container, Generator, MutableMapping
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -27,33 +27,6 @@ class FlextInfraUtilitiesRopeCore(
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 ):
     """Core Rope lifecycle helpers."""
-
-    @staticmethod
-    @contextmanager
-    def cached_source_query[KeyT](
-        project: p.Infra.RopeProject,
-        cache: Container[KeyT],
-        key: KeyT,
-        receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis],
-        receipt_key: str,
-    ) -> Generator[bool]:
-        """Bind cached query data to its originating authenticated source reads.
-
-        Yields:
-            Whether a cache hit has authenticated evidence. Exploratory native
-            projects have no receipt authority and must run the query again.
-
-        """
-        if not project.authenticated_sources:
-            yield False
-        else:
-            cached = key in cache
-            with project.source_consumption() as consumption:
-                if cached:
-                    project.replay_source_consumption(receipts[receipt_key])
-                yield cached
-            if not cached:
-                receipts[receipt_key] = consumption.receipt()
 
     @staticmethod
     def init_rope_project(repository_root: Path) -> t.Infra.RopeProject:

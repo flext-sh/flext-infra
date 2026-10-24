@@ -139,15 +139,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen._mise_artifacts_verification_topology import (
         FlextInfraMiseArtifactsVerificationTopology,
     )
-    from flext_infra.codegen._pipeline_stages import (
-        FlextInfraCodegenPipelineStagesMixin,
-    )
-    from flext_infra.codegen._protocol_model_annotations import (
-        FlextInfraCodegenProtocolModelAnnotations,
-    )
-    from flext_infra.codegen._protocol_model_render import (
-        FlextInfraCodegenProtocolModelRender,
-    )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
@@ -171,9 +162,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.mise_toolchain_repair import (
         FlextInfraCodegenMiseToolchainRepair,
     )
-    from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
-    from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-    from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -234,13 +222,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenMiseToolchainProof",
     "FlextInfraCodegenMiseToolchainRepair",
-    "FlextInfraCodegenPipeline",
-    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenPreconditions",
-    "FlextInfraCodegenProjectNew",
-    "FlextInfraCodegenProtocolModelAnnotations",
-    "FlextInfraCodegenProtocolModelRender",
-    "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
@@ -339,13 +321,7 @@ install_lazy_exports(
         "FlextInfraCodegenMiseArtifacts": ".mise_artifacts",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
         "FlextInfraCodegenMiseToolchainRepair": ".mise_toolchain_repair",
-        "FlextInfraCodegenPipeline": ".pipeline",
-        "FlextInfraCodegenPipelineStagesMixin": "._pipeline_stages",
         "FlextInfraCodegenPreconditions": ".codegen_preconditions",
-        "FlextInfraCodegenProjectNew": ".project_new",
-        "FlextInfraCodegenProtocolModelAnnotations": "._protocol_model_annotations",
-        "FlextInfraCodegenProtocolModelRender": "._protocol_model_render",
-        "FlextInfraCodegenProtocolModels": ".protocol_models",
         "FlextInfraCodegenPyTyped": ".py_typed",
         "FlextInfraCodegenQualityGate": ".constants_quality_gate",
         "FlextInfraCodegenScaffolder": ".scaffolder",

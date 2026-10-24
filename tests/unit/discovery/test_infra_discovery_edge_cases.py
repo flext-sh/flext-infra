@@ -23,35 +23,21 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
     @staticmethod
-    def test_export_cache_reuses_only_identical_authenticated_content(
-        tmp_path: Path,
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            ("class Alpha: ...\n__all__ = ['Alpha']\n", ("Alpha",)),
+            ("class Alpha: ...\nclass Beta: ...\n", ("Alpha", "Beta")),
+            ("from x import Gamma\nclass Alpha: ...\n", ("Alpha",)),
+            ("__all__ = ['Beta', 'Alpha']\nclass Alpha: ...\n", ("Beta", "Alpha")),
+        ],
+    )
+    def test_module_exports_follow_declared_source(
+        source: str,
+        expected: tuple[str, ...],
     ) -> None:
-        """Planned content, not an unchanged physical mtime, owns export facts."""
-        module_path = tmp_path / "module.py"
-        module_path.write_text("class Alpha: ...\n", encoding=c.DEFAULT_ENCODING)
-        before = module_path.stat()
-        with Profile() as profile:
-            for name in ("Alpha", "Beta", "Alpha"):
-                with u.Infra.facade_source_project(
-                    tmp_path, planned_sources={module_path: f"class {name}: ...\n"}
-                ) as binding:
-                    project = binding[0]
-                    tm.that(
-                        u.Infra.resolve_module_export_names(
-                            project, project.get_file("module.py")
-                        ),
-                        eq=(name,),
-                    )
-        tm.that(module_path.stat().st_mtime_ns, eq=before.st_mtime_ns)
-        tm.that(
-            sum(
-                entry.callcount
-                for entry in profile.getstats()
-                if not isinstance(entry.code, str)
-                and entry.code.co_name == "_module_export_names"
-            ),
-            eq=2,
-        )
+        """Explicit ``__all__`` wins; otherwise only local classes are exported."""
+        tm.that(u.Infra.module_export_names_source(source), eq=expected)
 
     @staticmethod
     def test_authenticated_publication_reuses_syntax_and_records_each_consumption(
