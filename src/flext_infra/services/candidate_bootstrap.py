@@ -133,24 +133,48 @@ class FlextInfraCandidateBootstrapService:
         if planned.value.issues:
             return result_type.fail(planned.value.issues[0].formatted)
         files = planned.value.files
-        if contract.destinations is not None and not contract.destinations and not files:
+        if (
+            contract.destinations is not None
+            and not contract.destinations
+            and not files
+        ):
             return result_type.fail(
                 f"candidate bootstrap has no declared destinations: {root}",
             )
-        for file in files:
-            if file.project != root or not file.path.is_relative_to(root):
-                return result_type.fail(
-                    f"candidate bootstrap destination has a foreign owner: {file.path}"
-                )
-            if (
-                contract.destinations is not None
-                and file.path.relative_to(root).as_posix() not in contract.destinations
-            ):
-                return result_type.fail(
-                    f"candidate bootstrap destination is outside its surface: "
-                    f"{file.path}"
-                )
+        diagnostic = next(
+            (
+                failure
+                for file in files
+                if (failure := self._destination_failure(root, file, contract))
+            ),
+            None,
+        )
+        if diagnostic is not None:
+            return result_type.fail(diagnostic)
         return result_type.ok(tuple(files))
+
+    @staticmethod
+    def _destination_failure(
+        root: Path,
+        file: m.Infra.CodegenFilePlan,
+        contract: m.Infra.CodegenConformSurfaceContract,
+    ) -> str | None:
+        """Name the first destination violation of one planned file.
+
+        Returns:
+            The failure message, or ``None`` when the destination is admitted.
+
+        """
+        if file.project != root or not file.path.is_relative_to(root):
+            return f"candidate bootstrap destination has a foreign owner: {file.path}"
+        if (
+            contract.destinations is not None
+            and file.path.relative_to(root).as_posix() not in contract.destinations
+        ):
+            return (
+                f"candidate bootstrap destination is outside its surface: {file.path}"
+            )
+        return None
 
     def _verify(
         self,

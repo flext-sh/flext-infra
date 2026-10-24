@@ -276,7 +276,9 @@ class TestsFlextInfraCodegenConform:
         tm.that(evidence.outcomes[0].error_type, eq="builtins.OSError")
         tm.that(capsys.readouterr().out, lacks="[OK]")
 
-    @pytest.mark.parametrize("scenario", ["concurrent-edit", "lazy-failure", "docs-failure"])
+    @pytest.mark.parametrize(
+        "scenario", ["concurrent-edit", "lazy-failure", "docs-failure"]
+    )
     def test_public_apply_fails_without_overwriting_live_state(
         self,
         tmp_path: Path,

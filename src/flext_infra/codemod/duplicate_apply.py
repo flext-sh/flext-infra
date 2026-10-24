@@ -108,7 +108,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             rope_repository_root=Path(snapshot.root.real_path),
             source_project=snapshot,
             workspace_index=rope_workspace.workspace_index,
-            index_receipt=rope_workspace.source_index_receipt,
         ) as planning_workspace:
             return cls._plan_census_sources(
                 root, planning_workspace, groups, sources=sources

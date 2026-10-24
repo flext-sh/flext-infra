@@ -37,11 +37,7 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool])
         if entry is None:
             message = f"toolchain repair refuses undeclared tool: {requested}"
             raise ValueError(message)
-        tuple(
-            u.Cli.atomic_read_binary_file_state(root / name, required=True).unwrap()
-            for name in (c.Infra.MISE_TOML_FILENAME, c.Infra.MISE_LOCK_FILENAME)
-        )
-        lock = u.Cli.toml_read_json(root / c.Infra.MISE_LOCK_FILENAME).unwrap()
+        lock =u.Cli.toml_read_json(root / c.Infra.MISE_LOCK_FILENAME).unwrap()
         FlextInfraCodegenMiseToolchainProof.lock_identity(
             entry,
             lock,
@@ -73,7 +69,6 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool])
                 f"fix-toolchain requires {alias} to name one declared tool",
             )
         plan = self._prepare(requested)
-        u.Cli.atomic_verify_binary_file_states(plan.source_states).unwrap()
         if not self.effective_dry_run:
             installed = u.Cli.run_live(
                 (

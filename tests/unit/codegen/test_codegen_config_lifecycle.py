@@ -361,8 +361,7 @@ print(
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
         tm.ok(u.Cli.atomic_verify_binary_file_states(authored))
         before = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(file.path))
-            for file in plan.files
+            tm.ok(u.Cli.atomic_read_binary_file_state(file.path)) for file in plan.files
         )
         checked = tm.ok(
             infra.codegen_conform(

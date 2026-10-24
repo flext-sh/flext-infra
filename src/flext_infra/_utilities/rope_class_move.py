@@ -12,10 +12,9 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeImports,
@@ -1021,22 +1020,22 @@ class FlextInfraUtilitiesRopeClassMove:
         cls,
         target_plan: m.Infra.CodegenFilePlan,
         source: Path,
-        before: m.Cli.AtomicFileState,
         changed: t.MappingKV[Path, str],
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         root, target = target_plan.project, target_plan.path
-        states = {state.path.resolve(): state for state in source_states}
         files = [
-            target_plan.model_copy(
-                update={
-                    "desired_content": changed[target].encode(c.DEFAULT_ENCODING),
-                    "source_states": source_states,
-                }
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=target_plan.before,
+                desired_content=changed[target].encode(c.DEFAULT_ENCODING),
+                desired_mode=target_plan.desired_mode,
             ),
             m.Infra.CodegenFilePlan(
                 project=root,
                 path=source,
-                before=before,
+                before=states[source],
                 desired_content=None,
                 desired_mode=None,
             ),
@@ -1046,7 +1045,7 @@ class FlextInfraUtilitiesRopeClassMove:
                 continue
             state = states.get(path)
             if state is None or state.mode is None:
-                msg = f"module move consumer is not authenticated: {path}"
+                msg = f"module move consumer has no observed state: {path}"
                 raise ValueError(msg)
             if state.content is not None and state.content.decode(
                 c.DEFAULT_ENCODING,
@@ -1187,25 +1186,18 @@ class FlextInfraUtilitiesRopeClassMove:
         source: str,
         mode: int,
     ) -> m.Infra.CodegenFilePlan:
-        """Capture an absent file or absent parent chain without creating either.
+        """Plan an absent destination file; publication creates its parents.
 
         Returns:
-            The authenticated plan for the absent destination.
+            The plan for the absent destination.
 
         Raises:
             FileExistsError: If the destination already has file content.
 
         """
-        parents = u.Cli.atomic_plan_directory_chain(target.parent).unwrap()
-        before: m.Cli.AtomicDirectoryChainPlan | m.Cli.AtomicFileState
-        if parents.directories:
-            before = parents
-        else:
-            before = u.Cli.atomic_read_binary_file_state(
-                target, required=False
-            ).unwrap()
-            if before.content is not None:
-                raise FileExistsError(target)
+        before = u.Cli.atomic_read_binary_file_state(target, required=False).unwrap()
+        if before.content is not None:
+            raise FileExistsError(target)
         return m.Infra.CodegenFilePlan(
             project=root,
             path=target,

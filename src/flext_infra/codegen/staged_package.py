@@ -462,9 +462,11 @@ class FlextInfraStagedPackage:
                 roots=tuple(
                     dict.fromkeys(root for plan in plans for root in plan.roots)
                 ),
-                inputs=tuple({
-                    state.path: state for plan in plans for state in plan.inputs
-                }.values()),
+                inputs=tuple(
+                    {
+                        state.path: state for plan in plans for state in plan.inputs
+                    }.values()
+                ),
                 updates=MappingProxyType({
                     path: source
                     for plan in plans
@@ -531,9 +533,7 @@ class FlextInfraStagedPackage:
             provider: m.Infra.RopeProjectLayout,
             owned: t.MappingKV[Path, str | None] | None,
         ) -> p.Result[tuple[str, ...]]:
-            return cls._layout_states(
-                provider, states, source_project, updates=owned
-            )
+            return cls._layout_states(provider, states, source_project, updates=owned)
 
         roots: list[t.Pair[m.Infra.RopeProjectLayout, bool]] = []
         for path in normalized:

@@ -148,9 +148,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin(
             for child in self.source_project.source_children(parent):
                 if child.relative_to(directory).full_match(pattern):
                     paths.append(child)
-                if len(parts) > 1 and self.source_project.source_query(
-                    child, "isdir"
-                ):
+                if len(parts) > 1 and self.source_project.source_query(child, "isdir"):
                     pending.append(child)
         return paths
 

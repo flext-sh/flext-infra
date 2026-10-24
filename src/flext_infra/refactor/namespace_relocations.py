@@ -377,7 +377,7 @@ class FlextInfraNamespaceRelocationCascade:
             source = u.Infra.codegen_target_snapshot(path)
             if source.failure:
                 return r[bool].from_failure(source)
-            state.befores[target] = destination.value
+            state.originals[target] = destination.value
             state.modes[target] = source.value.mode
             working[target] = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         return r[bool].ok(value=True)
@@ -462,7 +462,7 @@ class FlextInfraNamespaceRelocationCascade:
                     desired_mode=state.modes[destination],
                     owner="namespace-relocations",
                 )
-                for destination, before in state.befores.items()
+                for destination, before in state.originals.items()
             ),
         )
 
@@ -514,7 +514,7 @@ class FlextInfraNamespaceRelocationCascade:
         for path, source in state.working.items():
             if request.sources.get(path) == source:
                 continue
-            before = state.befores.get(path)
+            before = state.originals.get(path)
             if before is None:
                 observed = u.Infra.codegen_target_snapshot(path)
                 if observed.failure:

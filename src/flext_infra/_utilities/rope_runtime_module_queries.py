@@ -398,12 +398,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         for path, source in sources.items():
             resolved = path.resolve()
             content = source.encode("utf-8")
-            plan = declared.get(resolved)
-            if plan is not None:
-                if plan.desired_content != content:
-                    msg = f"Rope proposed source disagrees with its plan: {path}"
-                    raise ValueError(msg)
-                continue
+            declared.pop(resolved, None)
             if not resolved.is_relative_to(root):
                 msg = f"Rope proposed source is outside its project: {path}"
                 raise ValueError(msg)

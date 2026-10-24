@@ -162,9 +162,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin(
         if cache_key in self._parent_package_cache:
             return self._parent_package_cache[cache_key]
         package_entry = self._package_entry(pkg_dir)
-        current_pkg = (
-            package_entry.package_name if package_entry is not None else ""
-        )
+        current_pkg = package_entry.package_name if package_entry is not None else ""
         constants_path = (pkg_dir / c.Infra.CONSTANTS_PY).resolve()
         if self.rope_workspace.resource(constants_path) is None:
             self._parent_package_cache[cache_key] = ()

@@ -279,7 +279,9 @@ class TestsMakeBootstrapPublication:
         tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has=str(target))
         tm.that(root_makefile.read_bytes(), eq=root_before)
-        tm.that(foreign.read_text(encoding=c.DEFAULT_ENCODING), eq="# authored fixture\n")
+        tm.that(
+            foreign.read_text(encoding=c.DEFAULT_ENCODING), eq="# authored fixture\n"
+        )
 
     def test_workspace_bootstrap_rejects_an_editable_from_another_checkout(
         self,
