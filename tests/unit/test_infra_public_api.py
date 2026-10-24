@@ -135,7 +135,7 @@ class TestsFlextInfraPublicApi:
         runtime_settings = api.settings
         initial_context = api.context
         engines = tuple(
-            codegen.FlextInfraCodegenConform(
+            codegen.FlextInfraCodegenConformExecute(
                 state=flext_infra.m.Infra.CodegenConformState(
                     repository_root=root,
                     request=flext_infra.m.Infra.CodegenConformRequest(root=root),
