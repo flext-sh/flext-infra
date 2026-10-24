@@ -160,8 +160,6 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             return r[Path].from_failure(parent)
         added = cls._git(
             checkout,
-            "-c",
-            "core.hooksPath=/dev/null",
             "worktree",
             "add",
             "--detach",
