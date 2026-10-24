@@ -163,9 +163,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             msg = f"Resource <{resource.path}> is absent from the overlaid view"
             raise ResourceNotFoundError(msg)
 
-    def source_state(
-        self, path: Path, *, required: bool = True
-    ) -> m.Cli.AtomicFileState:
+    @staticmethod
+    def source_state(path: Path, *, required: bool = True) -> m.Cli.AtomicFileState:
         """Observe the live destination state used as a publication guard.
 
         Returns:
@@ -183,7 +182,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             Whether the predicate holds for the path.
 
         """
-        files = cast("p.Infra.RopeProjectFiles", self.fscommands)
+        files = self.fscommands
         return {
             "exists": files.exists,
             "isfile": files.isfile,
@@ -197,7 +196,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             The child paths in lexical order.
 
         """
-        files = cast("p.Infra.RopeProjectFiles", self.fscommands)
+        files = self.fscommands
         return tuple(path / name for name in files.listdir(str(path)))
 
     def source_text(self, path: Path) -> str:
@@ -216,7 +215,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             The source bytes.
 
         """
-        files = cast("p.Infra.RopeProjectFiles", self.fscommands)
+        files = self.fscommands
         return files.read(str(path))
 
     def source_walk(self, path: Path) -> Generator[tuple[Path, list[str], list[str]]]:

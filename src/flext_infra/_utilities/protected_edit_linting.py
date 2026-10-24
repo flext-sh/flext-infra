@@ -25,6 +25,10 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_infra import c, codegen, config, gates, m, r, t
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScopeMixin,
+    FlextInfraUtilitiesGitSemanticPathsMixin,
+)
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
@@ -55,6 +59,83 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if before_source is not None:
             source = cls.remove_orphaned_text_imports(before_source, source)
         return cls.normalize_python_text(path, source)
+
+    @classmethod
+    def normalized_codegen_changes(
+        cls,
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]:
+        """Normalize Python destinations once; pass every other plan through.
+
+        Check and publication share this view, so they never disagree.
+
+        Returns:
+            The file changes with normalized Python bytes, or the first failure.
+
+        """
+        result_type = r[tuple[m.Cli.FileChange, ...]]
+        changes: list[m.Cli.FileChange] = []
+        for plan in plans:
+            if (
+                plan.path.suffix != c.Infra.EXT_PYTHON
+                or plan.desired_content is None
+                or plan.desired_mode is None
+            ):
+                changes.append(plan)
+                continue
+            normalized = cls.normalize_python_text(
+                plan.path, plan.desired_content.decode(c.DEFAULT_ENCODING)
+            )
+            if normalized.failure:
+                return result_type.from_failure(normalized)
+            changes.append(
+                m.Cli.FileChange(
+                    path=plan.path,
+                    before=plan.before,
+                    desired_content=normalized.value.encode(c.DEFAULT_ENCODING),
+                    desired_mode=plan.desired_mode,
+                )
+            )
+        return result_type.ok(tuple(changes))
+
+    @classmethod
+    def publish_codegen_plans(
+        cls,
+        root: Path,
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish generated plans through the shared file-change publisher.
+
+        Python is normalized first; runtime-local index entries are retired and
+        the cached project document is invalidated after its file changes.
+
+        Returns:
+            The written or deleted paths, or the first failure.
+
+        """
+        result_type = r[tuple[Path, ...]]
+        lock = FlextInfraUtilitiesGitMutationScopeMixin.mutation_lock_path(root)
+        if lock.failure:
+            return result_type.from_failure(lock)
+        changes = cls.normalized_codegen_changes(plans)
+        if changes.failure:
+            return result_type.from_failure(changes)
+        published = u.Cli.publish_file_changes(changes.value, lock_path=lock.value)
+        if published.failure:
+            return published
+        for plan in plans:
+            if plan.index_before is None:
+                continue
+            retired = FlextInfraUtilitiesGitSemanticPathsMixin.git_retire_index_file(
+                m.Infra.GitIndexRetirementRequest(
+                    repo_root=plan.project, entry=plan.index_before
+                ),
+            )
+            if retired.failure:
+                return result_type.from_failure(retired)
+        if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
+            u.read_project_document_cached.cache_clear()
+        return published
 
     @classmethod
     def normalize_python_text(cls, path: Path, source: str) -> p.Result[str]:

@@ -7,24 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
-import errno
-import os
-import sys
-import time
-from collections.abc import Generator
-from contextlib import contextmanager
-from functools import partial
 from itertools import islice
 from typing import TYPE_CHECKING
 
 from flext_cli import m as cli_m, u
 
 from flext_infra import c, m, p, r, t
-
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import fcntl
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,30 +22,14 @@ class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
     @staticmethod
-    def codegen_target_snapshot(
-        path: Path,
-    ) -> p.Result[cli_m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
-        """Capture the original leaf or the exact still-missing parent chain.
+    def codegen_target_snapshot(path: Path) -> p.Result[cli_m.Cli.AtomicFileState]:
+        """Observe the destination state a plan guards; absence is a state.
 
         Returns:
-            The observed file state when the leaf exists, the missing-parent
-            chain plan when it does not, or the propagated read failure.
+            The observed file state, or the propagated read failure.
 
         """
-        result_type = r[cli_m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
-        observed = u.Cli.atomic_read_binary_file_state(path, required=False)
-        if observed.failure:
-            return result_type.from_failure(observed)
-        if observed.value.parent_device is not None:
-            return result_type.ok(observed.value)
-        witness = u.Cli.atomic_plan_directory_chain(path.parent)
-        if witness.failure:
-            return result_type.from_failure(witness)
-        if not witness.value.directories:
-            return result_type.fail(
-                f"codegen destination parent changed during snapshot: {path}",
-            )
-        return result_type.ok(witness.value)
+        return u.Cli.atomic_read_binary_file_state(path, required=False)
 
     @staticmethod
     def codegen_initializer_is_authored(content: bytes | None) -> bool:
@@ -128,8 +100,6 @@ class FlextInfraUtilitiesCodegenFilePlan:
         """
         if plan.index_before is not None:
             return True
-        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
-            return plan.desired_content is not None
         return FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
             plan.before,
             desired_content=plan.desired_content,
