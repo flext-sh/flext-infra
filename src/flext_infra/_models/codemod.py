@@ -87,10 +87,10 @@ class FlextInfraModelsCodemod:
         snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
             description="Authenticated binding snapshot defining this source epoch"
         )
-        sources: MappingProxyType[Path, str] = m.Field(
+        sources: t.Port[MappingProxyType[Path, str]] = m.Field(
             description="Immutable decoded text for every present captured input"
         )
-        contents: MappingProxyType[Path, bytes] = m.Field(
+        contents: t.Port[MappingProxyType[Path, bytes]] = m.Field(
             description="Immutable original bytes for every present captured input"
         )
 

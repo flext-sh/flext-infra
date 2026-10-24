@@ -355,16 +355,18 @@ class FlextInfraModelsTransformers:
 
         path: Annotated[Path, m.Field(description="Source path holding the facade")]
         source: Annotated[str, m.Field(description="Source bytes holding the facade")]
-        facade: Annotated[ast.ClassDef, m.Field(description="Facade composition class")]
+        facade: Annotated[
+            t.Port[ast.ClassDef], m.Field(description="Facade composition class")
+        ]
         namespace: Annotated[
-            ast.ClassDef,
+            t.Port[ast.ClassDef],
             m.Field(description="Single composed namespace class"),
         ]
         children: Annotated[
-            tuple[ast.ClassDef, ...],
+            tuple[t.Port[ast.ClassDef], ...],
             m.Field(description="Facade body classes"),
         ]
-        tree: Annotated[ast.Module, m.Field(description="Parsed source module")]
+        tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed source module")]
 
 
 __all__: list[str] = ["FlextInfraModelsTransformers"]

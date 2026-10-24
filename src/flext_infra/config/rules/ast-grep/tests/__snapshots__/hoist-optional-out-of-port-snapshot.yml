@@ -1,0 +1,20 @@
+id: hoist-optional-out-of-port
+snapshots:
+  ? |
+    loader: Annotated[t.Port[p.Plugin.Loader | None], m.Field(exclude=True)] = None
+  : fixed: |
+      loader: Annotated[t.Port[p.Plugin.Loader] | None, m.Field(exclude=True)] = None
+    labels:
+    - source: t.Port[p.Plugin.Loader | None]
+      style: primary
+      start: 18
+      end: 48
+  ? |
+    settings: t.Port[p.Settings | None] = None
+  : fixed: |
+      settings: t.Port[p.Settings] | None = None
+    labels:
+    - source: t.Port[p.Settings | None]
+      style: primary
+      start: 10
+      end: 35

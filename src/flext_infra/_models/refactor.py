@@ -971,7 +971,7 @@ class FlextInfraModelsRefactor(
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[
-            t.Infra.RopePyModule,
+            t.Port[t.Infra.RopePyModule],
             m.Field(description="Parsed PyObject module representation"),
         ]
 
@@ -1035,13 +1035,13 @@ class FlextInfraModelsRefactor(
             FlextInfraModelsRefactor.ImportLawScope,
             m.Field(description="Module facts of the pass"),
         ]
-        tree: Annotated[ast.Module, m.Field(description="Parsed module")]
+        tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed module")]
         parents: Annotated[
-            t.MappingKV[int, ast.AST],
+            t.MappingKV[int, t.Port[ast.AST]],
             m.Field(description="Child node id to parent node map"),
         ]
         bindings: Annotated[
-            t.MappingKV[str, ast.stmt],
+            t.MappingKV[str, t.Port[ast.stmt]],
             m.Field(description="Module-level statement binding each top name"),
         ]
         root_exports: Annotated[
