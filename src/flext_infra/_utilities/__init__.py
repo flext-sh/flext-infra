@@ -202,9 +202,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
     )
-    from flext_infra._utilities.codegen_path_cutover import (
-        FlextInfraUtilitiesCodegenPathCutover,
-    )
     from flext_infra._utilities.codemod_binding_chain import (
         FlextInfraUtilitiesCodemodBindingChain,
     )
@@ -379,7 +376,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
-    "FlextInfraUtilitiesCodegenPathCutover",
     "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
@@ -592,7 +588,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
-        "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",

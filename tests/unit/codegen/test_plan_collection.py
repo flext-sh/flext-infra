@@ -296,7 +296,6 @@ class TestsFlextInfraPlanCollection:
         tm.ok(bool(pruning.files))
         tm.that(pruning.revisions, eq=())
         tm.that(pruning.coverage, eq=())
-        tm.that(pruning.inventories, eq=())
         tm.ok(bool(pruning.prunable_directories))
         for plan in pruning.files:
             tm.that(plan.desired_content, eq=None)

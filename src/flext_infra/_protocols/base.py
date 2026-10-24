@@ -25,13 +25,6 @@ class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
-    class ProjectionManifestEntry(Protocol):
-        """Projected-file ordering consumed by the manifest planner."""
-
-        @property
-        def path(self) -> str: ...
-
-    @runtime_checkable
     class CommandPayloadContext(Protocol):
         """Normalized command values consumed by the shared payload builder."""
 
@@ -1042,6 +1035,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute refactoring pass."""
             ...
 
+    @runtime_checkable
     class CensusObjectRules(Protocol):
         """Object classification operations consumed by project reporting."""
 

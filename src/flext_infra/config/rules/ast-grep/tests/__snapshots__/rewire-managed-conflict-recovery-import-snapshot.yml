@@ -6,4 +6,4 @@ snapshots:
     - source: from flext_infra.codegen import FlextInfraCodegenManagedConflicts
       style: primary
       start: 0
-      end: 83
+      end: 65

@@ -58,7 +58,9 @@ class FlextInfraStagedPackage:
             workspace,
             updates,
             options=m.Infra.StageSourceOptions(
-                workspaces=options.workspaces, modes=options.modes
+                workspaces=options.workspaces,
+                modes=options.modes,
+                inputs=options.inputs,
             ),
         )
         if planned.failure:
@@ -288,7 +290,7 @@ class FlextInfraStagedPackage:
                 return cls._source_plan_project(
                     workspace,
                     updates,
-                    options.declared_files,
+                    options,
                     modes.value,
                     source_project,
                 )
@@ -300,7 +302,7 @@ class FlextInfraStagedPackage:
         cls,
         workspace: Path,
         updates: t.MappingKV[Path, str | None],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        options: m.Infra.StageSourceOptions,
         modes: t.MappingKV[Path, int],
         source_project: p.Infra.RopeProject,
     ) -> p.Result[m.Infra.StageSourcePlan]:
@@ -318,7 +320,9 @@ class FlextInfraStagedPackage:
         if discovered.failure:
             return r[m.Infra.StageSourcePlan].from_failure(discovered)
         normalized, layouts = discovered.value
-        closure = cls._source_closure(workspace, normalized, layouts, source_project)
+        closure = cls._source_closure(
+            workspace, normalized, options.inputs, layouts, source_project
+        )
         if closure.failure:
             return r[m.Infra.StageSourcePlan].from_failure(closure)
         selected, states = closure.value
@@ -341,7 +345,7 @@ class FlextInfraStagedPackage:
                 updates=MappingProxyType(dict(normalized)),
                 modes=MappingProxyType(dict(modes)),
                 declared_files=cls._declared_source_effects(
-                    workspace, normalized, states, modes, declared_files
+                    workspace, normalized, states, modes, options.declared_files
                 ),
                 layouts=tuple(
                     item for item in selected if item.project_root not in introduced
@@ -440,6 +444,11 @@ class FlextInfraStagedPackage:
                         for file in options.declared_files
                         if file.path.is_relative_to(root)
                     ),
+                    inputs=tuple(
+                        state
+                        for state in options.inputs
+                        if state.path.is_relative_to(root)
+                    ),
                 ),
             )
             if planned.failure:
@@ -500,6 +509,7 @@ class FlextInfraStagedPackage:
         cls,
         workspace: Path,
         normalized: t.MappingKV[Path, str | None],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
         source_project: p.Infra.RopeProject,
     ) -> p.Result[
@@ -513,6 +523,8 @@ class FlextInfraStagedPackage:
         Args:
             workspace: Resolved root of the Git workspace containing the projects.
             normalized: Elected physical destinations of the desired sources.
+            inputs: Original observations, never replaced by a fresh read; the
+                layouts of their workspace Python sources join the closure.
             layouts: Retained provider layouts keyed by package name.
             source_project: The Rope view of the workspace.
 
@@ -527,7 +539,9 @@ class FlextInfraStagedPackage:
             ]
         ]
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
+            state.path: state for state in inputs
+        }
 
         def read_layout(
             provider: m.Infra.RopeProjectLayout,
@@ -546,6 +560,7 @@ class FlextInfraStagedPackage:
             if path.is_symlink():
                 return result_type.fail(f"candidate source is a symlink: {path}")
             states.setdefault(path, source_project.source_state(path, required=False))
+        roots.extend(cls._input_layouts(workspace, inputs, layouts))
         roots.extend(
             (layouts[name], False)
             for _, name in u.family_discovery_candidates()
@@ -569,6 +584,35 @@ class FlextInfraStagedPackage:
         for path in paths.value:
             states.setdefault(path, source_project.source_state(path, required=False))
         return result_type.ok((selected, states))
+
+    @classmethod
+    def _input_layouts(
+        cls,
+        workspace: Path,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
+    ) -> t.VariadicTuple[t.Pair[m.Infra.RopeProjectLayout, bool]]:
+        """Elect the read-only closure roots of the original Python observations.
+
+        Installed packages (the site-packages segment of a standalone
+        consumer's venv) and scratch outside the workspace are evidence only.
+
+        Returns:
+            One non-rewritten root per owned workspace Python observation.
+
+        """
+        roots: list[t.Pair[m.Infra.RopeProjectLayout, bool]] = []
+        for state in inputs:
+            if (
+                state.path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
+                or not state.path.is_relative_to(workspace)
+                or "site-packages" in state.path.parts
+            ):
+                continue
+            resolved = cls._source_layout(state.path, layouts)
+            if resolved.success:
+                roots.append((resolved.value, False))
+        return tuple(roots)
 
     @staticmethod
     def _declared_source_effects(

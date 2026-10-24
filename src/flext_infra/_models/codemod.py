@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -264,11 +264,13 @@ class FlextInfraModelsCodemod:
     class RopeContractRule(m.ContractModel):
         """Identity-constrained native Rope restructuring of a Python contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True
-        )
-        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
-            default=(), exclude=True, description="Original recipe input receipts"
+        owner_root: Path | None = m.Field(
+            default=None,
+            exclude=True,
+            description=(
+                "Project root whose catalogue declares this rule; None for the "
+                "packaged universal policy"
+            ),
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]

@@ -391,7 +391,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             The overlaid project; the caller owns closing it.
 
         Raises:
-            TypeError: If the Rope project owner violates its contract.
             ValueError: If a proposed source escapes the project.
 
         """
@@ -418,6 +417,31 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
                     else config.Infra.codegen.modes.file_default
                 ),
             )
+        return cls.planned_project(
+            project,
+            election=cls.native_election(project),
+            declared_files=tuple(declared.values()),
+        )
+
+    @classmethod
+    def planned_project(
+        cls,
+        live: p.Infra.RopeProject,
+        *,
+        election: p.Infra.RopeProjectElection,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        additional_source_folders: tuple[str, ...] = (),
+    ) -> p.Infra.RopeProject:
+        """Open the overlay project owner over ``live`` with planned file effects.
+
+        Returns:
+            The overlaid project admitted at its project contract; the caller
+            owns closing it.
+
+        Raises:
+            TypeError: If the Rope project owner violates its contract.
+
+        """
         owner = cls.runtime_type(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
@@ -427,9 +451,10 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             msg = "Rope project owner does not expose overlay construction"
             raise TypeError(msg)
         snapshot = factory(
-            project,
-            declared_files=tuple(declared.values()),
-            election=cls.native_election(project),
+            live,
+            election=election,
+            declared_files=declared_files,
+            additional_source_folders=additional_source_folders,
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"

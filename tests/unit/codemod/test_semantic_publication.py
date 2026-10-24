@@ -544,9 +544,7 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(u.Cli.atomic_verify_binary_file_states(published))
         tm.that(driver.path.read_bytes(), eq=driver.content)
 
-    def test_mod_rejects_changed_persisted_rename_payload(
-        self, tmp_path: Path
-    ) -> None:
+    def test_mod_rejects_changed_persisted_rename_payload(self, tmp_path: Path) -> None:
         """A persisted rename payload whose edits drifted from its plan is rejected."""
         u.Tests.run_native_callable(self._scenario_payload_drift, tmp_path)
 
@@ -663,7 +661,7 @@ class TestsFlextInfraSemanticPublication:
         source = tmp_path / "source.py"
         source.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
         original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-        with pytest.raises(ValueError, match="desired bytes and mode"):
+        with pytest.raises(ValueError, match="bytes and mode must agree"):
             m.Infra.CodegenFilePlan(
                 project=tmp_path,
                 path=source,
@@ -712,10 +710,8 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
         )
-        tm.that(composed, is_=m.Infra.SemanticRenamePlan)
-        tm.that(composed.decisions, eq=artifact.decisions)
-        tm.that(composed.edits, eq=artifact.edits)
-        tm.that(composed.moves, eq=artifact.moves)
+        tm.that(composed, is_=m.Infra.SemanticSourcePlan)
+        tm.that(composed.consumer_roots, eq=artifact.consumer_roots)
         tm.that(composed.candidate.modes[target], eq=originals[origin].mode)
         if drift == "source":
             origin.write_bytes(tm.not_none(originals[origin].content) + b"\n")
@@ -901,7 +897,7 @@ class TestsFlextInfraSemanticPublication:
             tm.that(
                 tm.ok(
                     codemod.FlextInfraCodemodSemanticApply.consume_rename_plan(
-                        request, workspace, infra.source_preview(root)
+                        request, workspace
                     )
                 ),
                 eq=True,
@@ -910,14 +906,19 @@ class TestsFlextInfraSemanticPublication:
                 path: path.read_bytes() if path.exists() else None
                 for path in artifact.candidate.updates
             }
+            # The shared publisher normalizes every Python effect it writes.
             for path, desired in artifact.candidate.updates.items():
                 tm.that(
                     published[path],
-                    eq=None if desired is None else desired.encode(c.DEFAULT_ENCODING),
+                    eq=None
+                    if desired is None
+                    else tm.ok(u.Infra.normalize_python_text(path, desired)).encode(
+                        c.DEFAULT_ENCODING
+                    ),
                 )
             tm.fail(
                 codemod.FlextInfraCodemodSemanticApply.consume_rename_plan(
-                    request, workspace, infra.source_preview(root)
+                    request, workspace
                 )
             )
         for path, content in published.items():
@@ -1000,7 +1001,6 @@ class TestsFlextInfraSemanticPublication:
                         repository_root=producer, rename_plan=driver, apply=True
                     ),
                     workspace,
-                    infra.source_preview(producer),
                 )
             )
         tm.that(declaration.read_bytes(), eq=before)

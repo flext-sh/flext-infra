@@ -142,16 +142,12 @@ class TestsFlextInfraServiceBaseAlias:
                 "apply": True,
                 "check": False,
                 "dry_run": False,
-                "module": "sample.worker",
-                "namespace": "u.Sample",
                 "output_format": " JSON ",
                 "project_filter": ("one,two",),
                 "report_path": tmp_path / "report.json",
                 "output_dir": " reports ",
             },
         )
-        tm.that(service.target_module, eq="sample.worker")
-        tm.that(service.target_namespace, eq="u.Sample")
         tm.that(service.output_format, eq="json")
         tm.that(
             service.command_payload(),
@@ -169,8 +165,6 @@ class TestsFlextInfraServiceBaseAlias:
         serialized = service.model_dump(mode="json", by_alias=True)
         tm.that(serialized["apply"], eq=service.apply_changes)
         tm.that(serialized["check"], eq=service.check_only)
-        tm.that(serialized["module"], eq=service.target_module)
-        tm.that(serialized["namespace"], eq=service.target_namespace)
         tm.that(serialized["root"], eq=str(service.root))
         tm.that(serialized["effective_dry_run"], eq=service.effective_dry_run)
         tm.ok("project_filter" not in serialized)
@@ -178,7 +172,7 @@ class TestsFlextInfraServiceBaseAlias:
         tm.ok("output_dir" not in serialized)
         schema = service.model_json_schema()
         context_schema = m.Infra.CommandContext.model_json_schema()
-        for name in ("repository_root", "apply", "check", "module", "namespace"):
+        for name in ("repository_root", "apply", "check"):
             tm.that(schema["properties"][name], eq=context_schema["properties"][name])
         tm.that(
             schema["properties"]["apply"]["typer_param_decls"],

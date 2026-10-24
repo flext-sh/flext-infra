@@ -192,10 +192,10 @@ class TestsFlextInfraDocumentationLanguage:
                 '[tool.flext.docs]\npackage_name = "sample"\n' + declaration,
                 encoding=c.DEFAULT_ENCODING,
             )
-            state = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+            declared = TestsFlextInfraDocumentationLanguage._scope(root)
             scopes.append(
                 u.Infra.docs_scope_from_sources(
-                    TestsFlextInfraDocumentationLanguage._scope(root), (state,)
+                    declared, governance_source=declared.governance_source
                 )
             )
         tm.that(scopes[0].documentation_language, eq="pt-BR")

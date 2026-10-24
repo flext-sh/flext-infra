@@ -20,25 +20,25 @@ class TestsFlextInfraModels:
         end: t.Pair[int, int] | None,
     ) -> None:
         """Source models retain their coordinates and emit native SARIF aliases."""
-        primary = m.Infra.SarifLocation(
-            uri="src/first.py",
-            start_line=3,
-            start_column=0,
-            end_line=end[0] if end else None,
-            end_column=end[1] if end else None,
-        )
-        related = m.Infra.SarifLocation(
-            uri="other-project/src/second.py",
-            start_line=7,
-            start_column=2,
-        )
-        result = m.Infra.SarifResult(
-            ruleId="similar-code",
-            level="error",
-            message="Native comparison",
-            locations=(primary,),
-            related_locations=(related, primary),
-        )
+        primary = m.Infra.SarifLocation.model_validate({
+            "uri": "src/first.py",
+            "start_line": 3,
+            "start_column": 0,
+            "end_line": end[0] if end else None,
+            "end_column": end[1] if end else None,
+        })
+        related = m.Infra.SarifLocation.model_validate({
+            "uri": "other-project/src/second.py",
+            "start_line": 7,
+            "start_column": 2,
+        })
+        result = m.Infra.SarifResult.model_validate({
+            "rule_id": "similar-code",
+            "level": "error",
+            "message": "Native comparison",
+            "locations": (primary,),
+            "related_locations": (related, primary),
+        })
         published = result.model_dump_json()
         tm.that(result.locations, eq=(primary,))
         tm.that(result.related_locations, eq=(related, primary))

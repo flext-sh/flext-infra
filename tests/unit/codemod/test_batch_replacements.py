@@ -125,8 +125,8 @@ class TestsFlextInfraBatchReplacements:
         mutation: str,
     ) -> None:
         """A destination changed after scanning never receives stale replacements."""
-        report, consumer = (
-            TestsFlextInfraBatchReplacements._scanned_consumer(mod_workspace)
+        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
+            mod_workspace
         )
         original = consumer.read_bytes()
         if mutation == "source-change":

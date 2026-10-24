@@ -75,7 +75,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
                 c.PYPROJECT_FILENAME,
                 first,
             ),
-        ).rendered
+        )
         tm.that(second, eq=first)
         tm.that(second.count(c.Infra.BANNER), eq=1)
 

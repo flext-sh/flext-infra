@@ -111,11 +111,16 @@ class FlextInfraCodegenConform:
                 )
             ):
                 continue
-            planned = u.Infra.load_codegen_inputs(target.root).flat_map(
-                lambda inputs, root=target.root: (
-                    executor.repository_kind_declaration_plans(root, inputs, kind)
-                    if kind is not None
-                    else executor.repository_declaration_migration_plans(root, inputs)
+            inputs = u.Infra.load_codegen_inputs(target.root)
+            if inputs.failure:
+                return r[bool].from_failure(inputs)
+            planned = (
+                executor.repository_kind_declaration_plans(
+                    target.root, inputs.value, kind
+                )
+                if kind is not None
+                else executor.repository_declaration_migration_plans(
+                    target.root, inputs.value
                 )
             )
             if planned.failure:

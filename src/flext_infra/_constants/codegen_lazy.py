@@ -17,12 +17,6 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegenLazy:
     """Lazy-init and export-policy constants for codegen."""
 
-    MANIFEST_API_VERSION: ClassVar[str] = "flext-infra/projections-lock/v1"
-    "Version tag of the projected ``.agents/projections.lock.json`` contract."
-    MANIFEST_FILENAME: ClassVar[str] = "projections.lock.json"
-    "Projection lock filename emitted beside the lazy-init projections."
-    PROJECTED_ROOTS: ClassVar[frozenset[str]] = frozenset({".agents", ".codex"})
-    "Roots whose projected files carry a manifest entry."
     MAX_ALIAS_LENGTH: ClassVar[int] = 2
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: ClassVar[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
@@ -32,10 +26,6 @@ class FlextInfraConstantsCodegenLazy:
         "# @generated AUTO-GENERATED FILE — Regenerate with: make gen",
     )
     "Current and former generated initializer headers accepted during migration."
-    ROOT_EXPORTS_FILENAME: ClassVar[str] = "_exports.py"
-    "Root public ABI contract module consumed by lazy-init planning."
-    ROOT_EXPORTS_DIR: ClassVar[str] = "_constants"
-    "Directory under each package where lazy-init registries must live."
     GENERATED_EXPORT_SIDECAR_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$",
     )
@@ -58,13 +48,8 @@ class FlextInfraConstantsCodegenLazy:
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$",
     )
     "Test-module filenames forbidden from installable package export maps."
-    # Cleanup is the only owner of retired init artifacts.
-    OBSOLETE_GENERATED_INIT_FILES: ClassVar[t.StrSequence] = ("__unit__.py",)
-    "Generated initializer artifacts removed during every codegen pass."
     INIT_PYI: ClassVar[str] = "__init__.pyi"
     "Typing stub paired with generated thin package initializers."
-    ROOT_PUBLIC_EXPORTS_SUFFIX: ClassVar[str] = "_PUBLIC_EXPORTS"
-    "Suffix for tuple constants that declare frozen public root exports."
     ALL_SCAN_PATTERNS: ClassVar[t.StrSequence] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
@@ -87,12 +72,6 @@ class FlextInfraConstantsCodegenLazy:
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
     "Defining module imported directly only by the bootstrap root initializer."
-
-    BARE_IMPORT_FROM_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^from\s+import\s",
-        re.MULTILINE,
-    )
-    "Regex: malformed ``from import`` statement (missing module name)."
 
     LINT_TOOLS: ClassVar[t.StrSequencePairTuple] = (
         # Ruff runs with NO --select override: the project's pyproject.toml
@@ -121,8 +100,6 @@ class FlextInfraConstantsCodegenLazy:
         "tools",
     })
     "Module segments recognized as local inferred imports in lazy-load chain."
-    PUBLIC_ROOT_MODULE_EXPORTS: ClassVar[frozenset[str]] = frozenset()
-    "Internal child packages exported at the root as module objects only."
     PUBLIC_ROOT_ALIAS_ORDER: ClassVar[t.StrSequence] = (
         "c",
         "t",

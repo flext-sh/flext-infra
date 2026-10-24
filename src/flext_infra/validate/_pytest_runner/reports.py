@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, config, m, r, u
+from flext_infra import c, m, r, u
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
@@ -120,16 +120,15 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             context.model_dump_json(indent=2) + "\n",
         ).unwrap()
         latest = report_dir.parent / "latest.txt"
-        wait_seconds = max(
-            0.0,
-            context.deadline_monotonic
-            - config.Infra.tooling.tools.pytest.termination_grace_seconds
-            - time.monotonic(),
-        )
-        # This publication runs both before and inside the separate cache lease.
+        # The pointer lock guards one atomic write, inside and outside the cache
+        # lease alike. Diagnostic publication may consume the termination grace
+        # up to the hard deadline; only the cache lease reserves that grace for
+        # child termination. A contender whose lease wait is spent therefore
+        # still publishes its context before the cache refusal, while a pointer
+        # held past the hard deadline expires with the pointer lock named.
         with u.Cli.file_changes_lock(
             latest.with_name(f"{latest.name}.lock"),
-        ).acquire(timeout=wait_seconds):
+        ).acquire(timeout=max(0.0, context.deadline_monotonic - time.monotonic())):
             u.Cli.atomic_write_text_file(latest, f"{report_dir.name}\n").unwrap()
 
     @staticmethod

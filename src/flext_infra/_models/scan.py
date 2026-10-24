@@ -203,7 +203,7 @@ class FlextInfraModelsScan:
     class ModScanSourceContext(m.ArbitraryTypesModel):
         """One scan's per-file authentication and ownership indexes."""
 
-        source_states: Annotated[
+        inventory: Annotated[
             t.MappingKV[Path, m.Cli.AtomicFileState],
             m.Field(description="Exact sources captured before the native scan"),
         ]
@@ -299,13 +299,6 @@ class FlextInfraModelsScan:
     class ModOccurrenceReport[FindingT: ModOccurrence](ModScanCounts[FindingT]):
         """Operational occurrence inventory shared by planning and native scanning."""
 
-        source_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...] | None,
-            m.Field(
-                description="Complete authenticated scan inventory, including zero "
-                "findings"
-            ),
-        ] = None
         files: Annotated[
             frozenset[Path],
             m.Field(description="Files containing findings"),

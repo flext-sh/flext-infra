@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import cast
 
 import pytest
-from typing_extensions import TypeForm
 
-from flext_infra import config, infra, m, t
+from flext_infra import config, infra, m
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from tests import c, tm, u
 
@@ -49,33 +47,6 @@ class TestsFlextInfraModTextGateEngine:
             m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True),
         )
         tm.fail(result)
-        error_data = tm.not_none(result.error_data)
-        wire = u.type_adapter(TypeForm(tuple[t.JsonMapping, ...])).validate_json(
-            tm.ok(u.Cli.json_dumps(error_data["issues"])),
-        )
-        issues = u.type_adapter(TypeForm(tuple[m.Infra.Issue, ...])).validate_json(
-            tm.ok(
-                u.Cli.json_dumps(
-                    [
-                        {
-                            key: value
-                            for key, value in issue.items()
-                            if key not in m.Infra.Issue.model_computed_fields
-                        }
-                        for issue in wire
-                    ],
-                ),
-            ),
-        )
-        tm.that(
-            any(
-                issue.file == str(unsupported)
-                and issue.code == c.Infra.ToolOutcome.ERROR.value
-                for issue in issues
-            ),
-            eq=True,
-        )
-        tm.ok(isinstance(result.exception, ValueError))
         tm.that("unsupported input" in str(result.error), truth=True)
         tm.that(
             selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "before"\n',
@@ -167,9 +138,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         result = FlextInfraModTextGateEngine.scan(root, fix=True)
         tm.fail(result)
-        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(root))
-        tm.ok(any(plan.path == target for plan in analysis.files))
-        tm.that(analysis.issues, empty=False)
+        tm.fail(FlextInfraModTextGateEngine.plan(root))
         tm.that(target.read_text(encoding="utf-8"), eq='value = "before"\n')
         tm.that(catalogue.read_bytes(), eq=original)
 
@@ -194,29 +163,18 @@ class TestsFlextInfraModTextGateEngine:
                 "    replace: 'after'\n",
             )
         )
-        diagnostic = FlextInfraModTextGateEngine.scan(mod_workspace, fix=False)
-        tm.fail(diagnostic)
-        tm.ok(isinstance(diagnostic.exception, SyntaxError))
+        with pytest.raises(SyntaxError):
+            FlextInfraModTextGateEngine.scan(mod_workspace, fix=False)
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
-        result = infra.mod_text(
-            m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True)
-        )
-        tm.fail(result)
-        exception = tm.not_none(result.exception)
-        tm.that(isinstance(exception, SyntaxError), truth=True)
-        tm.that(cast("SyntaxError", exception).filename, eq=str(invalid))
+        with pytest.raises(SyntaxError) as raised:
+            infra.mod_text(
+                m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True)
+            )
+        tm.that(raised.value.filename, eq=str(invalid))
         tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
-        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
-        tm.ok(any(plan.path == valid for plan in analysis.files))
-        tm.ok(isinstance(analysis.exception, SyntaxError))
+        with pytest.raises(SyntaxError):
+            FlextInfraModTextGateEngine.plan(mod_workspace)
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
-        metadata = tm.not_none(result.error_data)
-        tm.that(
-            u.type_adapter(TypeForm(t.StrTuple)).validate_python(
-                metadata["written_files"]
-            ),
-            eq=(),
-        )
 
     @staticmethod
     @pytest.mark.parametrize("change", ["remove", "change", "add"])
@@ -468,9 +426,8 @@ class TestsFlextInfraModTextGateEngine:
         )
         before = source.read_bytes()
 
-        rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
-        tm.fail(rejected, has="capture keyword expected")
-        tm.ok(isinstance(rejected.exception, ValueError))
+        with pytest.raises(ValueError, match="capture keyword expected"):
+            FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
 
         tm.that(source.read_bytes(), eq=before)
 

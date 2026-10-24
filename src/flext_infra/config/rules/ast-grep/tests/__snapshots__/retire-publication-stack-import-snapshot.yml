@@ -1,0 +1,71 @@
+id: retire-publication-stack-import
+snapshots:
+  ? |
+    from flext_infra.codegen import (
+        FlextInfraCodegenLazyInit,
+        FlextInfraMiseArtifactsVerification,
+    )
+  : fixed: |
+      from flext_infra.codegen import (
+          FlextInfraCodegenLazyInit,
+          ,
+      )
+    labels:
+    - source: FlextInfraMiseArtifactsVerification
+      style: primary
+      start: 69
+      end: 104
+    - source: FlextInfraCodegenLazyInit
+      style: secondary
+      start: 38
+      end: 63
+    - source: |-
+        from flext_infra.codegen import (
+            FlextInfraCodegenLazyInit,
+            FlextInfraMiseArtifactsVerification,
+        )
+      style: secondary
+      start: 0
+      end: 107
+  ? |
+    from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenFileLeases
+  : fixed: "from flext_infra.codegen import FlextInfraCodegenLazyInit, \n"
+    labels:
+    - source: FlextInfraCodegenFileLeases
+      style: primary
+      start: 59
+      end: 86
+    - source: FlextInfraCodegenLazyInit
+      style: secondary
+      start: 32
+      end: 57
+    - source: from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenFileLeases
+      style: secondary
+      start: 0
+      end: 86
+  ? |
+    from flext_infra.codegen import FlextInfraCodegenTransaction
+  : fixed: |2+
+
+    labels:
+    - source: from flext_infra.codegen import FlextInfraCodegenTransaction
+      style: primary
+      start: 0
+      end: 60
+    - source: FlextInfraCodegenTransaction
+      style: secondary
+      start: 32
+      end: 60
+  ? |
+    if TYPE_CHECKING:
+        from flext_infra.codegen import FlextInfraCodegenStaging
+  : fixed: "if TYPE_CHECKING:\n    \n"
+    labels:
+    - source: from flext_infra.codegen import FlextInfraCodegenStaging
+      style: primary
+      start: 22
+      end: 78
+    - source: FlextInfraCodegenStaging
+      style: secondary
+      start: 54
+      end: 78

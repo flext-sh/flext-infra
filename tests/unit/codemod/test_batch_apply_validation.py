@@ -147,7 +147,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                     root,
                     rope,
                     apply=True,
-                    source_preview=infra.source_preview(root),
                     workspace_factory=infra.rope_workspace,
                 )
             if broken:
@@ -176,7 +175,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
-                        source_preview=infra.source_preview(root),
                         workspace_factory=infra.rope_workspace,
                     ),
                 )
@@ -189,7 +187,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
-                        source_preview=infra.source_preview(root),
                         workspace_factory=infra.rope_workspace,
                     ),
                     has="quality",

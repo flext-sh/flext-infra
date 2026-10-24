@@ -104,8 +104,10 @@ class TestsFlextInfraProjectGitignorePatterns:
             {"tooling.yaml": "ManagedArtifacts:\n  Gitignore:\n    patterns: ['']\n"},
         )
 
-        with pytest.raises(m.ValidationError):
-            u.Infra.load_project_managed_artifacts(root)
+        loaded = u.Infra.load_project_managed_artifacts(root)
+
+        tm.fail(loaded)
+        tm.that(loaded.error or "", has="at least 1 character")
 
     @staticmethod
     def _external_project(root: Path) -> Path:
@@ -162,7 +164,7 @@ class TestsFlextInfraProjectGitignorePatterns:
                 template,
             ),
         )
-        tm.that(planned.rendered == first, truth=True)
+        tm.that(planned == first, truth=True)
         tm.that(external in first, truth=True)
         tm.that("old policy" not in first, truth=True)
         (root / ".gitignore").write_bytes(first.encode())

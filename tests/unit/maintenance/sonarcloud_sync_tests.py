@@ -255,7 +255,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         """A whitespace-only token is absent, never trimmed into a request."""
         u.Tests.initialize_git_repo(tmp_path)
 
-        code, output = self._cli(tmp_path, env={"SONAR_TOKEN": "   "})
+        code, output = self._cli(tmp_path, env={"SONAR_TOKEN": " " * 3})
 
         tm.that(code, ne=0)
         tm.that(output, has="SONAR_TOKEN is required")

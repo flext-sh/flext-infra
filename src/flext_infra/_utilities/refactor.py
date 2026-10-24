@@ -816,8 +816,8 @@ class FlextInfraUtilitiesRefactor:
             report: Completed mod scan whose entries carry captured states.
 
         Returns:
-            One binding snapshot uniting the report's source states with each
-            distinct captured binding state.
+            One binding snapshot uniting each entry's captured source state with
+            each distinct captured binding state.
 
         """
         bindings = {
@@ -826,7 +826,6 @@ class FlextInfraUtilitiesRefactor:
         return m.Infra.CodemodBindingSnapshot(
             states=tuple(
                 chain(
-                    report.source_states or (),
                     (
                         entry.source_state
                         for entry in report.entries

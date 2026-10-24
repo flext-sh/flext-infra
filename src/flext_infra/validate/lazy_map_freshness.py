@@ -48,7 +48,7 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
             return r[m.Infra.ValidationReport].from_failure(planned)
         modified = tuple(
             str(plan.path)
-            for plan in planned.value.files
+            for plan in planned.value
             if u.Infra.codegen_file_requires_effect(plan)
         )
         violations: t.MutableSequenceOf[str] = [

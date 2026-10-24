@@ -467,7 +467,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 root,
                 report,
                 rope,
-                source_preview=infra.source_preview(root),
                 workspace_factory=infra.rope_workspace,
             )
         if rejected:

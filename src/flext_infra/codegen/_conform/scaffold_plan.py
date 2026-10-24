@@ -390,8 +390,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
             return final.map(
                 lambda rendered: tuple(
-                    rendered if plan.path == rendered.path else plan
-                    for plan in planned
+                    rendered if plan.path == rendered.path else plan for plan in planned
                 )
             )
 

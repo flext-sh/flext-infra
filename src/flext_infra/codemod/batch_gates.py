@@ -1312,7 +1312,7 @@ class FlextInfraModGateEngine:
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
             path_findings = u.Infra.codemod_path_findings(
-                root, tuple(context.source_states), plan.rules
+                root, tuple(context.inventory), plan.rules
             )
             if not path_findings:
                 return scanned
@@ -1410,7 +1410,7 @@ class FlextInfraModGateEngine:
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
         context = m.Infra.ModScanSourceContext(
-            source_states={
+            inventory={
                 path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in sorted(cls._scan_source_paths(root, targets))
             },
@@ -1541,7 +1541,7 @@ class FlextInfraModGateEngine:
         states = captured.value
         owned_sources = u.Infra.facade_original_sources(root, states)
         context = m.Infra.ModScanSourceContext(
-            source_states={
+            inventory={
                 state.path: state for state in states if state.path in owned_sources
             },
             repository_roots=tuple(
@@ -1571,7 +1571,7 @@ class FlextInfraModGateEngine:
                 view_root / project.relative_to(root): rule_ids
                 for project, rule_ids in plan.project_rule_ids.items()
             },
-            tuple(context.source_states.values()),
+            tuple(context.inventory.values()),
         )
         for entry in report.entries:
             relative = (

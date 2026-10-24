@@ -92,7 +92,7 @@ class TestsFlextInfraFreshImportPublication:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
         before = initializer.read_bytes()
-        analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
+        analysis = tm.ok(u.Tests.create_lazy_init_service(repository_root).plan_files())
         tm.that(
             any(
                 file.path == initializer and u.Infra.codegen_file_requires_effect(file)

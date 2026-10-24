@@ -181,10 +181,6 @@ class FlextInfraTypesBase:
     "Stage handler contract for the flext-infra check/codegen DAG pipelines."
     type PipelineHandlerMap = t.MappingKV[str, PipelineHandler]
     "Stage-id to handler mapping used to build DAG pipeline stage specs."
-    type LazyInitProcessResult = tuple[int | None, t.LazyAliasMap]
-    "Result for per-directory lazy init processing."
-    type LazyInitWriteResult = tuple[int, t.LazyAliasMap]
-    "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
     type CanonicalValue = t.Scalar | t.StrSequence

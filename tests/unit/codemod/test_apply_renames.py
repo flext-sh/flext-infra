@@ -163,7 +163,8 @@ class TestsFlextInfraApplyRenames:
                 )
                 (root / "config").mkdir(exist_ok=True)
                 (root / "config" / "codegen.yaml").write_text(
-                    "Infra:\n  codegen:\n    workspace_inventory_command: "
+                    "Infra:\n  codegen:\n    repository:\n"
+                    "      workspace_inventory_command: "
                     + json.dumps((str(python), "-B", str(provider)))
                     + "\n",
                     encoding=c.DEFAULT_ENCODING,
@@ -313,7 +314,6 @@ class TestsFlextInfraApplyRenames:
                                 apply=apply,
                             ),
                             workspace,
-                            infra.source_preview(root),
                         )
                     )
                     if not apply:

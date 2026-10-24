@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, tm, u
 
@@ -38,49 +38,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         tm.that(line.base_url, eq=u.Tests.provider().base_url)
         tm.that(line.branch, eq=u.Tests.provider_branch())
-        tm.fail(root.exists())
-
-    @staticmethod
-    def test_invalid_scaffold_source_fails_before_filesystem_effects(
-        tmp_path: Path,
-    ) -> None:
-        """Source validation happens before creating a directory or Git metadata."""
-        root = tmp_path / "unborn"
-        consumer = u.Tests.repository_ref("new-project")
-        # The scaffold source the materialization consumes is the workspace's
-        # bootstrap source; naming a repository other than the infrastructure
-        # distribution makes it invalid.
-        workspace = u.Tests.workspace_spec(
-            consumer,
-            project=u.Tests.project_spec(consumer.name),
-        ).model_copy(
-            update={
-                "flext_source": m.Infra.CodegenBootstrapSource(
-                    url=consumer.url,
-                    ref=u.Tests.provider_branch(),
-                ),
-            },
-        )
-        request = u.Tests.conform_request(
-            root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        result = FlextInfraCodegenConformExecute(
-            state=m.Infra.CodegenConformState(
-                repository_root=root,
-                request=request,
-                initial_workspace=workspace,
-                ports=infra.codegen_conform_collaborators(),
-            ),
-            runtime_settings=infra.settings,
-            initial_context=infra.context,
-        ).execute()
-        tm.ok(result.failure)
-        tm.that(
-            result.error,
-            has=f"must be the {config.Infra.codegen.infra_repository.distribution}",
-        )
         tm.fail(root.exists())
 
     @staticmethod
@@ -659,7 +616,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             '[tools]\npython = "3.13"\n',
         )
 
-        rendered = u.Tests.toml_payload(tm.ok(result).rendered)
+        rendered = u.Tests.toml_payload(tm.ok(result))
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(

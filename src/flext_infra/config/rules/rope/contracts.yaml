@@ -5,13 +5,15 @@
 rules:
   # Factory migration retains named/bound logger receivers. Direct u.* collapse
   # needs separate runtime equivalence proof and is deliberately not elected.
+  # Rope types builtin values through its ``__builtins__`` namespace; the
+  # introspected ``builtins`` extension module never equals an inferred type.
   - id: stdlib-module-logger-factory
     phase: contract-normalization
     pattern: '${factory}(${name})'
     goal: 'u.fetch_logger(${name})'
     arguments:
       factory: name=logging.getLogger
-      name: type=builtins.str
+      name: type=__builtins__.str
     imports: &logging_imports
       u: from flext_core import u
     bindings: &logging_bindings
@@ -26,7 +28,7 @@ rules:
     goal: 'u.fetch_logger(${name})'
     arguments:
       factory: name=logging.getLogger
-      name: type=builtins.str
+      name: type=__builtins__.str
     imports: *logging_imports
     bindings: *logging_bindings
     implementation_owner: *logging_implementation
@@ -37,7 +39,7 @@ rules:
     goal: 'u.fetch_logger(${name})'
     arguments:
       factory: name=structlog.get_logger
-      name: type=builtins.str
+      name: type=__builtins__.str
     imports: *logging_imports
     bindings: *logging_bindings
     implementation_owner: *logging_implementation

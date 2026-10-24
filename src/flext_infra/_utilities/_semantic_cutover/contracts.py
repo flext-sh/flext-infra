@@ -122,17 +122,17 @@ class FlextInfraUtilitiesSemanticContracts(
                 repository_root
             ),
         ))
-        catalogues = (
-            packaged,
+        catalogues: t.VariadicTuple[t.Pair[Path, Path | None]] = (
+            (packaged, None),
             *(
-                root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+                (root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH, root)
                 for root in roots
                 if root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH != packaged
                 and (root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH).is_file()
             ),
         )
         rules: t.MutableSequenceOf[p.Infra.RopeContractRule] = []
-        for catalogue in catalogues:
+        for catalogue, owner_root in catalogues:
             state = u.Cli.atomic_read_binary_file_state(
                 catalogue, required=True
             ).unwrap()
@@ -141,10 +141,23 @@ class FlextInfraUtilitiesSemanticContracts(
                 raise ValueError(message)
             parsed = u.Cli.yaml_parse(state.content.decode(c.DEFAULT_ENCODING)).unwrap()
             declared = m.Infra.RopeContractRules.model_validate_json(
-                u.json_mapping_adapter().dump_json(parsed)
+                u.json_mapping_adapter().dump_json({
+                    **parsed,
+                    "rules": [
+                        {
+                            **rule,
+                            "owner_root": None
+                            if owner_root is None
+                            else str(owner_root),
+                        }
+                        for rule in u.json_mapping_sequence_adapter().validate_python(
+                            parsed.get("rules")
+                        )
+                    ],
+                })
             )
             for rule in declared.rules:
-                if rule.ownership_transfer is not None and catalogue == packaged:
+                if rule.ownership_transfer is not None and owner_root is None:
                     message = (
                         f"{rule.id}: ownership transfer requires its project catalogue"
                     )
@@ -1676,7 +1689,11 @@ class FlextInfraUtilitiesSemanticContracts(
             raise TypeError(message)
         if any(
             FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-                project, module, argument, f"type=builtins.{native}", name=""
+                project,
+                module,
+                argument,
+                f"{c.Infra.ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX}{native}",
+                name="",
             )
             for native in ("str", "bool", "int", "float")
         ):
@@ -1753,7 +1770,11 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(message)
         for argument in invocation.args:
             if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-                project, module, argument, "type=builtins.str", name=""
+                project,
+                module,
+                argument,
+                f"{c.Infra.ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX}str",
+                name="",
             ):
                 message = (
                     "unproven native bound key: "
@@ -1829,7 +1850,11 @@ class FlextInfraUtilitiesSemanticContracts(
             )
             raise ValueError(message)
         if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-            project, module, invocation.args[0], "type=builtins.str", name=""
+            project,
+            module,
+            invocation.args[0],
+            f"{c.Infra.ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX}str",
+            name="",
         ):
             message = (
                 "logging migration requires a proven string message: "

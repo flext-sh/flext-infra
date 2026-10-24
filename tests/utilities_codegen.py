@@ -407,23 +407,46 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         return 0 if materialized.success else 1
 
     @staticmethod
-    def plan_lazy_init(
-        repository_root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Return the lazy-init file plans WITHOUT unwrapping them.
-
-        Refusing to plan is a first-class planning outcome — ambiguous export
-        ownership stops the phase before a single file plan is built. A helper
-        that unwraps turns that refusal into an exception and makes the
-        pre-effect contract unobservable through the public surface.
+    def lazy_init_effects(
+        planned: p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]],
+    ) -> t.StrSequence:
+        """Return the destinations a successful lazy-init plan would change.
 
         Returns:
-            The lazy-init file plans WITHOUT unwrapping them.
+            The changed destination paths, sorted.
 
         """
-        return codegen.FlextInfraCodegenLazyInit(
-            repository_root=repository_root,
-        ).plan_files()
+        return tuple(
+            str(plan.path)
+            for plan in tm.ok(planned)
+            if u.Infra.codegen_file_requires_effect(plan)
+        )
+
+    @staticmethod
+    def demo_lazy_init_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+        """Create the ``flext-demo`` lazy-init workspace.
+
+        Returns:
+            The repository root and the ``flext_demo`` package directory.
+
+        """
+        return TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+
+    @staticmethod
+    def generated_init(package_root: Path) -> str:
+        """Read one package's initializer.
+
+        Returns:
+            The initializer source.
+
+        """
+        return package_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
 
     @staticmethod
     def materialize_lazy_init(

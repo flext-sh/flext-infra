@@ -95,8 +95,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     The resulting ``m.Infra.CiPrivateSubmodulesSpec``.
 
                 """
+                variable_name = "EXAMPLE_SIBLING_DEPLOY_KEY"
                 key = m.Infra.CiPrivateSubmoduleDeployKeySpec.model_validate({
-                    "secret": "EXAMPLE_SIBLING_DEPLOY_KEY",
+                    "secret": variable_name,
                     "submodule": "example-sibling",
                     "path": "libs/example-sibling",
                     "remote": "git@github.com:example-org/example-sibling.git",

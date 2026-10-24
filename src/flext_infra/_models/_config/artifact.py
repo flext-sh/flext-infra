@@ -255,12 +255,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
             m.Field(description="Declared vscode settings spec when present"),
         ] = None
-        source_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True, description="Exact inputs of the injected declaration"
-            ),
-        ] = ()
 
     class CodegenLocCapSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Per-module logical-LOC ceiling policy (scc code lines)."""
@@ -1130,25 +1124,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 msg = "kind bootstrap requires the target's self Makefile surface"
                 raise ValueError(msg)
             return self
-
-    class CodegenArtifactComposition(FlextInfraConfigModelsContract.ConfigContract):
-        """Rendered artifact plus the exact source states used to compose it."""
-
-        validation_context: (
-            FlextInfraConfigModelsTemplates.ArtifactResourceValidationContext | None
-        ) = m.Field(
-            default=None,
-            exclude=True,
-            description="Explicit original resource source role",
-        )
-        rendered: Annotated[
-            str,
-            m.Field(description="Fully composed managed-file content"),
-        ]
-        source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Ordered immutable sources consumed by composition"),
-        ] = ()
 
     class CodegenRenderInputs(m.StrictModel):
         """One repository planner's managed state over frozen policy references."""

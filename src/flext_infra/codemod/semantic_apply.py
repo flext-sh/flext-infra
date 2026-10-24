@@ -17,12 +17,10 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_sources import FlextInfraRenameSources
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
@@ -142,14 +140,19 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         if elected.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(elected)
         scopes = elected.value
-        if (
-            source_plan is not None
-            and (source_plan.candidate.workspaces or (source_plan.candidate.workspace,))
-            != scopes
-        ):
-            return r[m.Infra.SemanticRenamePlan].fail(
-                "semantic rename source receipt belongs to another scope"
+        if source_plan is not None:
+            if (
+                source_plan.candidate.workspaces or (source_plan.candidate.workspace,)
+            ) != scopes:
+                return r[m.Infra.SemanticRenamePlan].fail(
+                    "semantic rename source receipt belongs to another scope"
+                )
+            # A persisted plan is rebuilt only over the bytes it observed.
+            current = u.Cli.atomic_verify_binary_file_states(
+                source_plan.candidate.inputs
             )
+            if current.failure:
+                return r[m.Infra.SemanticRenamePlan].from_failure(current)
         return cls._build_native_rename_plan(workspace, selections, scopes)
 
     @classmethod
@@ -442,36 +445,26 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         cls,
         scopes: t.VariadicTuple[Path],
     ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Capture every elected source before computing any native candidate.
+        """Plan the source closure of the elected scopes without any update.
 
         Returns:
             The original source closure.
 
         """
-        inventories = {
-            project: dict(
-                cls.source_inventory(project, FlextInfraModGateEngine.recounted(()))
-            )
-            for scope in scopes
-            for project in u.Infra.import_project_roots(scope)
-        }
-        original = dict(
-            sorted(
-                (path, source)
-                for inventory in inventories.values()
-                for path, source in inventory.items()
-            )
-        )
-        inputs = tuple(
-            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            for path in original
-        )
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},
             options=m.Infra.StageSourceOptions(
-                inputs=inputs,
                 workspaces=scopes if len(scopes) > 1 else (),
+                inputs=tuple(
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in dict.fromkeys(
+                        project.resolve() / target
+                        for scope in scopes
+                        for project in u.Infra.import_project_roots(scope)
+                        for target in u.Infra.ast_grep_scan_targets(project.resolve())
+                    )
+                ),
             ),
         )
 
@@ -591,7 +584,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             snapshots = tuple(
                 stack.enter_context(
                     closing(
-                        FlextInfraRopeProject.from_atomic_reads(
+                        u.Infra.planned_project(
                             project,
                             election=cls._planning_election(
                                 project,
@@ -618,7 +611,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             scopes[0],
             updates,
             options=m.Infra.StageSourceOptions(
-                inputs=staged_inputs.value,
                 workspaces=scopes if len(scopes) > 1 else (),
                 modes={
                     target: state.mode
@@ -626,6 +618,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     for state in staged_inputs.value
                     if state.path == source and state.mode is not None
                 },
+                inputs=staged_inputs.value,
             ),
         ).map(
             lambda candidate: (
@@ -740,7 +733,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             project = stack.enter_context(
                 closing(
-                    FlextInfraRopeProject.from_atomic_reads(
+                    u.Infra.planned_project(
                         live,
                         election=cls._planning_election(
                             live,
@@ -1217,36 +1210,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         )
 
     @classmethod
-    def plan_transaction_paths[FindingT: m.Infra.ModOccurrence](
-        cls,
-        root: Path,
-        preflight: m.Infra.ModOccurrenceReport[FindingT],
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-        """Return one immutable Rope callback for the mod loop's progress identity.
-
-        Returns:
-            One immutable Rope callback for the mod loop's progress identity.
-
-        """
-        original = cls.source_inventory(root, preflight)
-
-        return u.Infra.plan_transaction_path_cutover(
-            rope_workspace=rope_workspace,
-            sources=original,
-        )
-
-    @classmethod
-    def apply_transaction_paths(
-        cls,
-        root: Path,
-        edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit],
-    ) -> None:
-        """Publish the exact callback included in the existing progress fingerprint."""
-        cls.publish_planned_edits(root, edits).unwrap()
-        cli.display_text(f"mod: Rope transaction paths changed_files={len(edits)}")
-
-    @classmethod
     def publish_planned_edits(
         cls,
         root: Path,
@@ -1304,9 +1267,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 authority, project_roots=u.Infra.import_project_roots(root)
             ) as live,
             closing(
-                FlextInfraRopeProject.from_atomic_reads(
-                    live, election=u.Infra.native_election(live)
-                )
+                u.Infra.planned_project(live, election=u.Infra.native_election(live))
             ) as source_project,
             FlextInfraRopeWorkspace.open_workspace(
                 root, rope_repository_root=authority, source_project=source_project

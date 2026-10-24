@@ -18,35 +18,6 @@ from flext_infra._models import FlextInfraModelsMixins
 class FlextInfraModelsCodegenLazyInitModels:
     """Lazy-init planning and quality-gate models."""
 
-    class ProjectionManifestEntry(m.ContractModel):
-        """Exact path, content digest, and byte count of one projected file."""
-
-        model_config = m.ConfigDict(str_strip_whitespace=False)
-
-        path: Annotated[str, m.Field(description="Exact project-relative output path.")]
-        sha256: Annotated[
-            str, m.Field(description="Digest of the desired output bytes.")
-        ]
-        bytes: Annotated[
-            int, m.Field(description="Length of the desired output bytes.")
-        ]
-
-    class ProjectionManifest(m.ContractModel):
-        """Generator-owned wire contract for the projection lock."""
-
-        model_config = m.ConfigDict(str_strip_whitespace=False)
-
-        api_version: Annotated[
-            str,
-            m.Field(alias="apiVersion", description="Projection lock wire version."),
-        ]
-        entries: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsCodegenLazyInitModels.ProjectionManifestEntry
-            ],
-            m.Field(description="Projected files in deterministic path order."),
-        ]
-
     class LazyInitPackageContext(m.ContractModel):
         """Declarative package context for one lazy-init directory."""
 
@@ -106,23 +77,6 @@ class FlextInfraModelsCodegenLazyInitModels:
         child_packages_for_lazy: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Direct child package imports merged at runtime.",
-        )
-        source_states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
-            default=(),
-            strict=True,
-            description=(
-                "Original native source reads consumed by this package decision"
-            ),
-        )
-        source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
-            default=(),
-            strict=True,
-            description="Exact native queries consumed by this package decision",
-        )
-        source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
-            default=(),
-            strict=True,
-            description="Original ancestry witnesses consumed by this package decision",
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):

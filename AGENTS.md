@@ -37,7 +37,8 @@ src/flext_infra/
 | ------------------------------- | ----- | ------------------------------ | ---------------------------------------------------------- |
 | `FlextInfra`                    | class | `api.py`                       | Rope workspace / health facade                             |
 | `FlextInfraCli`                 | class | `cli.py`                       | CLI entry                                                  |
-| `FlextInfraCodegenLazyInitPlanner` | class | `codegen/lazy_init_planner.py` | lazy-init export planning (service composite)              |
+| `FlextInfraCodegenLazyInit`     | class | `codegen/lazy_init.py`         | lazy-init planning of every generated `__init__.py`        |
+| `FlextInfraCodegenPythonModel`  | class | `codegen/python_model.py`      | parse-once Griffe static model shared by one run           |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
 | `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
 | `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |

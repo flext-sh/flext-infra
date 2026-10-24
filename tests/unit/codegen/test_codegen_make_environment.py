@@ -89,13 +89,14 @@ class TestsFlextInfraCodegenMakeEnvironment:
             encoding="utf-8",
         )
         credential = "caller-selected-test-credential"
+        unset = ""
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "status"],
                 cwd=project_root,
                 env={
-                    "GITHUB_TOKEN": "",
-                    "GH_TOKEN": "",
+                    "GITHUB_TOKEN": unset,
+                    "GH_TOKEN": unset,
                     "MISE_GITHUB_TOKEN": credential,
                     "EXPECTED_CREDENTIAL": credential,
                 },
@@ -129,6 +130,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         empty_config = tmp_path / "empty-gh-config"
         empty_config.mkdir()
+        unset = ""
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", verb],
@@ -137,10 +139,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
                     "GH_CONFIG_DIR": str(empty_config),
                     "GH_TOKEN": credential,
                     "GITHUB_TOKEN": credential,
-                    "GH_ENTERPRISE_TOKEN": "",
-                    "GITHUB_ENTERPRISE_TOKEN": "",
+                    "GH_ENTERPRISE_TOKEN": unset,
+                    "GITHUB_ENTERPRISE_TOKEN": unset,
                     "GH_HOST": "github.com",
-                    "MISE_GITHUB_TOKEN": "",
+                    "MISE_GITHUB_TOKEN": unset,
                     "SETUP_BOOTSTRAP_ONLY": "Y",
                 },
             ),

@@ -1,0 +1,27 @@
+id: retire-publication-stack-publish-file-plan
+snapshots:
+  ? |
+    published = FlextInfraMisePublication.publish_file_plan(planned, phase="version-file")
+  : fixed: |
+      published = u.Cli.publish_file_changes((planned,), lock_path=u.Infra.mutation_lock_path(planned.project).unwrap())
+    labels:
+    - source: FlextInfraMisePublication.publish_file_plan(planned, phase="version-file")
+      style: primary
+      start: 12
+      end: 86
+  ? |
+    written = FlextInfraMisePublication.publish_file_plan(
+        planned,
+        phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
+    )
+  : fixed: |
+      written = u.Cli.publish_file_changes((planned,), lock_path=u.Infra.mutation_lock_path(planned.project).unwrap())
+    labels:
+    - source: |-
+        FlextInfraMisePublication.publish_file_plan(
+            planned,
+            phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
+        )
+      style: primary
+      start: 10
+      end: 118

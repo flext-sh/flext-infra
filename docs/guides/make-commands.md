@@ -180,7 +180,10 @@ contents and can create the destination's semantic package through canonical
 projection planning. From the SDK's owning workspace environment:
 
 ```bash
-flext-infra refactor move-module --repository-root /path/to/member --source-file src/package/_utilities/_json/_core.py --destination-file src/package/_utilities/_json/core.py
+flext-infra refactor move-module \
+  --repository-root /path/to/member \
+  --source-file src/package/_utilities/_json/_core.py \
+  --destination-file src/package/_utilities/_json/core.py
 ```
 
 The typed `ModuleMoveCommand` rejects both destination facts together, or neither;

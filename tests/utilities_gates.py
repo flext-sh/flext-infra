@@ -83,20 +83,20 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
         """
         findings = tuple(issues or ())
-        return m.Infra.GateExecution(
-            result=m.Infra.GateResult(
+        return m.Infra.GateExecution.model_validate({
+            "result": m.Infra.GateResult(
                 gate=gate,
                 project=project,
                 passed=passed,
                 errors=() if passed else tuple(item.formatted for item in findings),
                 duration=0.0,
             ),
-            issues=findings,
-            raw_output="",
-            outcome=(
+            "issues": findings,
+            "raw_output": "",
+            "outcome": (
                 c.Infra.ToolOutcome.FINDINGS if findings else c.Infra.ToolOutcome.CLEAN
             ),
-        )
+        })
 
     @staticmethod
     def make_issue(

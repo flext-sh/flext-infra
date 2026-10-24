@@ -22,6 +22,7 @@ pytest_plugins = [
     "tests.fixtures.workspace",
     "tests.fixtures.facades",
     "tests.fixtures.infra",
+    "tests.fixtures.provisioning",
     "tests.fixtures.git",
 ]
 

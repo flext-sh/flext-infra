@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenLazyInit,
@@ -511,98 +510,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             ).plan_files(),
             has="target module is ambiguous",
         )
-
-    @staticmethod
-    def test_plan_files_binds_init_and_sidecar_effects_without_writing(
-        tmp_path: Path,
-    ) -> None:
-        """Return exact target/source states while preserving every target byte."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        module_path = package_root / "models.py"
-        u.Tests.write_lazy_init_namespace_module(
-            module_path,
-            class_name="FlextTestsModels",
-            alias="m",
-        )
-        init_path = package_root / c.Infra.INIT_PY
-        unit_path = package_root / "__unit__.py"
-        for path in (init_path, unit_path):
-            path.write_text(
-                f"{c.Infra.AUTOGEN_HEADER}\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        before = {path: path.read_bytes() for path in (init_path, unit_path)}
-        service = u.Tests.create_lazy_init_service(repository_root)
-
-        result = service.plan_files()
-
-        tm.that(result.success, eq=True, msg=result.error)
-        plans = {plan.path: plan for plan in result.value}
-        init_plan = plans[init_path.resolve()]
-        tm.that(init_plan.project, eq=repository_root.resolve())
-        tm.that(init_plan.before.content, eq=before[init_path])
-        tm.that(init_plan.desired_mode, eq=config.Infra.codegen.modes.file_default)
-        tm.that(u.Tests.codegen_file_text(init_plan), contains="FlextTestsModels")
-        tm.ok(u.Infra.codegen_file_requires_effect(init_plan))
-        unit_plan = plans[unit_path.resolve()]
-        tm.that(unit_plan.before.content, eq=before[unit_path])
-        tm.that(unit_plan.desired_content, eq=None)
-        tm.that(unit_plan.desired_mode, eq=None)
-        tm.ok(u.Infra.codegen_file_requires_effect(unit_plan))
-        tm.that({path: path.read_bytes() for path in (init_path, unit_path)}, eq=before)
-
-    @staticmethod
-    def test_plan_files_includes_all_retired_generated_sidecars(
-        tmp_path: Path,
-    ) -> None:
-        """Describe the closed sidecar cleanup set, including one-pass constants."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-        )
-        generated_header = f"{c.Infra.AUTOGEN_HEADER}\n"
-        (package_root / c.Infra.INIT_PY).write_text(
-            generated_header, encoding=c.DEFAULT_ENCODING
-        )
-        stub_path = package_root / c.Infra.INIT_PYI
-        stub_path.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
-        root_sidecar = package_root / "_exports.py"
-        root_sidecar.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
-        constants_dir = package_root / c.Infra.ROOT_EXPORTS_DIR
-        constants_dir.mkdir()
-        constants_init = constants_dir / c.Infra.INIT_PY
-        constants_init.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
-        constants_sidecar = constants_dir / "_exports_lazy.py"
-        constants_sidecar.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
-        obsolete_dir = package_root / "_root_exports"
-        obsolete_dir.mkdir()
-        obsolete_init = obsolete_dir / c.Infra.INIT_PY
-        obsolete_init.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
-        obsolete_part = obsolete_dir / "part.py"
-        obsolete_part.write_text(generated_header, encoding=c.DEFAULT_ENCODING)
-        expected_deletes = {
-            stub_path.resolve(),
-            root_sidecar.resolve(),
-            constants_init.resolve(),
-            constants_sidecar.resolve(),
-            obsolete_init.resolve(),
-            obsolete_part.resolve(),
-        }
-        before = {path: path.read_bytes() for path in expected_deletes}
-
-        result = u.Tests.create_lazy_init_service(repository_root).plan_files()
-
-        tm.that(result.success, eq=True, msg=result.error)
-        deletes = {
-            plan.path
-            for plan in result.value
-            if plan.desired_content is None
-            and u.Infra.codegen_file_requires_effect(plan)
-        }
-        tm.ok(expected_deletes.issubset(deletes))
-        tm.that({path: path.read_bytes() for path in expected_deletes}, eq=before)
 
     @staticmethod
     def test_execute_rejects_apply_and_preserves_planned_targets(

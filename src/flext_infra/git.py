@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_infra import FlextInfraGitLanes, m, s, u
 
 if TYPE_CHECKING:
-
     from flext_infra import p
 
 

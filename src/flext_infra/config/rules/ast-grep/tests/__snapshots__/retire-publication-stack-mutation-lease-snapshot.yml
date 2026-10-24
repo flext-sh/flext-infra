@@ -1,0 +1,24 @@
+id: retire-publication-stack-mutation-lease
+snapshots:
+  ? |
+    with FlextInfraCodegenFileLeases.mutation_lease(project_dir / "src"):
+        publish()
+  : fixed: |
+      with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir / "src").unwrap()):
+          publish()
+    labels:
+    - source: FlextInfraCodegenFileLeases.mutation_lease(project_dir / "src")
+      style: primary
+      start: 5
+      end: 68
+  ? |
+    with FlextInfraCodegenFileLeases.mutation_lease(root):
+        clean(root)
+  : fixed: |
+      with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
+          clean(root)
+    labels:
+    - source: FlextInfraCodegenFileLeases.mutation_lease(root)
+      style: primary
+      start: 5
+      end: 53

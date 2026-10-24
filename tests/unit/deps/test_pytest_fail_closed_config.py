@@ -10,6 +10,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.deps import FlextInfraToolTablesPhase
@@ -97,7 +98,10 @@ class TestsFlextInfraPytestFailClosedConfig:
             list(u.Tests.strings(ini["filterwarnings"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "pytest.ini_options", "filterwarnings", t.StrSequence
+                    tooling,
+                    "pytest.ini_options",
+                    "filterwarnings",
+                    TypeForm(t.StrSequence),
                 )
             ),
         )
@@ -105,7 +109,7 @@ class TestsFlextInfraPytestFailClosedConfig:
             list(u.Tests.strings(ini["testpaths"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "pytest.ini_options", "testpaths", t.StrSequence
+                    tooling, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
                 )
             ),
         )
@@ -119,7 +123,7 @@ class TestsFlextInfraPytestFailClosedConfig:
             set(u.Tests.strings(ini["addopts"])),
             eq=set(
                 u.Infra.native_tool_setting(
-                    tooling, "pytest.ini_options", "addopts", t.StrSequence
+                    tooling, "pytest.ini_options", "addopts", TypeForm(t.StrSequence)
                 )
             ),
         )

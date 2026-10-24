@@ -46,27 +46,22 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         *,
         source_project: p.Infra.RopeProject,
     ) -> t.Infra.RopeSourcePath:
-        """Bind retirement to the project owning its authenticated catalogue.
+        """Bind retirement to the project owning the rule's declaring catalogue.
 
         Returns:
-            The unique project owner, or the repository when no inputs are declared.
+            The catalogue's project owner, or the repository for packaged rules.
 
         Raises:
-            ValueError: If the catalogue has no unique owner inside the workspace.
+            ValueError: If the catalogue has no project owner inside the workspace.
 
         """
-        owners = {
-            FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                repository_root, state.path, source_project=source_project
-            )
-            for state in rule.source_states
-        }
-        if not owners:
+        if rule.owner_root is None:
             return repository_root
-        if len(owners) != 1 or None in owners:
-            msg = f"{rule.id}: contract catalogue has no unique project owner"
-            raise ValueError(msg)
-        owner = owners.pop()
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            repository_root,
+            rule.owner_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH,
+            source_project=source_project,
+        )
         if owner is None or not owner.is_relative_to(repository_root):
             msg = f"{rule.id}: contract owner is outside its workspace"
             raise ValueError(msg)
