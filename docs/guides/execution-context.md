@@ -1338,7 +1338,12 @@ Tracked Pyright configurations contain analysis policy and import roots, without
 `venv` or `venvPath` bindings to the checkout that generated them. The native gate
 passes the runtime owner's interpreter explicitly. Pylance uses the editor-selected
 environment. Attached members share the workspace environment; independent
-checkouts and worktrees own their physical environment.
+checkouts and worktrees own their physical environment. One tracked member
+`pyproject.toml` serves both the attached and the standalone topology, so any
+tracked interpreter binding would be wrong in one of them. A direct Pyright run
+without the gate's interpreter binding resolves whichever interpreter its process
+finds first and is therefore invalid evidence; checker results count only from the
+gate's own invocation in the real tree under the project configuration.
 
 ## Mise toolchain
 
