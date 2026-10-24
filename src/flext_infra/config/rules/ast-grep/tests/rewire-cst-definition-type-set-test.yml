@@ -1,0 +1,11 @@
+id: rewire-cst-definition-type-set
+# `valid` MUST NOT match: the constants owner is already read, the set differs,
+# or the construct is not an isinstance check.
+valid:
+  - ok = isinstance(node, c.Infra.CST_DEFINITION_TYPES)
+  - ok = isinstance(node, c.Infra.Cst.ClassDef | c.Infra.Cst.TypeAlias)
+  - kinds = (c.Infra.Cst.ClassDef, c.Infra.Cst.FunctionDef)
+# `invalid` MUST match: the exact node set spelled inline.
+invalid:
+  - ok = isinstance(node, c.Infra.Cst.FunctionDef | c.Infra.Cst.ClassDef)
+  - ok = isinstance(node, (c.Infra.Cst.ClassDef, c.Infra.Cst.FunctionDef))

@@ -533,7 +533,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 c.Infra.Cst.Attribute | c.Infra.Cst.ImportAlias | c.Infra.Cst.AsName,
             ):
                 current = self.get_metadata(ParentNodeProvider, current, None)
-            if isinstance(current, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom):
+            if isinstance(current, c.Infra.CST_IMPORT_TYPES):
                 return None
             expression = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node)
             if expression is None:
@@ -726,7 +726,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             The class, function or single-target binding name, else ``None``.
 
         """
-        if isinstance(node, c.Infra.Cst.ClassDef | c.Infra.Cst.FunctionDef):
+        if isinstance(node, c.Infra.CST_DEFINITION_TYPES):
             return node.name.value
         if not isinstance(node, c.Infra.Cst.SimpleStatementLine) or len(node.body) != 1:
             return None

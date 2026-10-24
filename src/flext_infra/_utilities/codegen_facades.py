@@ -376,7 +376,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         exports = tuple(
             node
             for node in tree.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in (
@@ -402,7 +402,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             and node.value.id == facade.name
         )
         if len(bindings) != 1 or any(
-            not isinstance(node, ast.Import | ast.ImportFrom)
+            not isinstance(node, c.Infra.AST_IMPORT_TYPES)
             and not (
                 isinstance(node, ast.Expr)
                 and isinstance(node.value, ast.Constant)
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 and node.test.id == "TYPE_CHECKING"
                 and not node.orelse
                 and all(
-                    isinstance(item, ast.Import | ast.ImportFrom) for item in node.body
+                    isinstance(item, c.Infra.AST_IMPORT_TYPES) for item in node.body
                 )
             )
             and node is not facade
@@ -948,7 +948,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             cls._facade_namespace_context(project, source, facade_path)
         )
         if not any(
-            isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+            isinstance(member, c.Infra.AST_FUNCTION_TYPES)
             or (
                 isinstance(member, ast.AnnAssign)
                 and cls._namespace_class_alias(member) is None
@@ -1449,7 +1449,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         declared = {
             member.name
             for member in namespace.body
-            if isinstance(member, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+            if isinstance(member, c.Infra.AST_DEFINITION_TYPES)
         }
         declared.update(
             target.id
@@ -1904,7 +1904,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             return False
         for node in ast.walk(ast.parse(module.source_code)):
             if (
-                isinstance(node, ast.Assign | ast.AnnAssign)
+                isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                 and node.lineno == line
                 and isinstance(node.value, ast.Call)
             ):

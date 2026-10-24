@@ -519,10 +519,7 @@ class FlextInfraDuplicationEvidence:
                 excluded.append(cls._coordinates(node, lines))
                 removed.add("import_syntax")
             if (
-                isinstance(
-                    node,
-                    (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
-                )
+                isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES)
                 and ast.get_docstring(node, clean=False) is not None
             ):
                 excluded.append(cls._coordinates(node.body[0], lines))

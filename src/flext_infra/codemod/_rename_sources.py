@@ -304,10 +304,7 @@ class FlextInfraRenameSources:
         tree = ast.parse(source)
         docstrings: t.MutableSequenceOf[t.Pair[t.Pair[int, int], t.Pair[int, int]]] = []
         for node in ast.walk(tree):
-            if not isinstance(
-                node,
-                (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
-            ):
+            if not isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES):
                 continue
             if not node.body or not isinstance(node.body[0], ast.Expr):
                 continue

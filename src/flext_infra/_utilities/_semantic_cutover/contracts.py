@@ -604,7 +604,7 @@ class FlextInfraUtilitiesSemanticContracts(
             if isinstance(factory, ast.Constant) and factory.value is None:
                 return False
             if rule.readonly_contract is not None and not isinstance(
-                factory, ast.Name | ast.Attribute
+                factory, c.Infra.AST_NAME_REFERENCE_TYPES
             ):
                 return False
         if rule.implementation_owner is not None:
@@ -1174,7 +1174,7 @@ class FlextInfraUtilitiesSemanticContracts(
         identifiers = {
             ast.unparse(node)
             for node in ast.walk(tree)
-            if isinstance(node, ast.Name | ast.Attribute)
+            if isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES)
         }
         for (
             begin,
@@ -1283,9 +1283,7 @@ class FlextInfraUtilitiesSemanticContracts(
         visited.add(key)
         parameters: set[str] = set()
         for parameter in declaration.type_params:
-            if not isinstance(
-                parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
-            ):
+            if not isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES):
                 failure = "native alias has an unknown type parameter"
                 raise TypeError(failure)
             parameters.add(parameter.name)
@@ -1327,7 +1325,7 @@ class FlextInfraUtilitiesSemanticContracts(
         constructors: list[tuple[p.Infra.RopePyName, bool]] = [(field, False)]
         dataclass = runtime.qualified_name(project, "dataclasses.dataclass")
         for value in table.value.values:
-            if not isinstance(value, ast.Name | ast.Attribute):
+            if not isinstance(value, c.Infra.AST_NAME_REFERENCE_TYPES):
                 continue
             binding = runtime.resolve_symbol(table_scope, value)
             if binding is None:
@@ -1510,7 +1508,7 @@ class FlextInfraUtilitiesSemanticContracts(
             (
                 item
                 for item in ast.walk(holder_tree)
-                if isinstance(item, ast.Assign | ast.AnnAssign)
+                if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES)
                 and item.lineno == location
                 and item.value is not None
                 and any(
@@ -1566,7 +1564,7 @@ class FlextInfraUtilitiesSemanticContracts(
             while isinstance(primary, ast.Attribute):
                 primary = primary.value
             if (
-                isinstance(node, ast.Name | ast.Attribute)
+                isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES)
                 and isinstance(primary, ast.Name)
                 and isinstance(primary.ctx, ast.Load)
                 and primary.id not in bound
@@ -1891,7 +1889,7 @@ class FlextInfraUtilitiesSemanticContracts(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         parents, _nodes, methods, result_contract = context
         assignment = parents.get(id(call))
-        if not isinstance(assignment, ast.Assign | ast.AnnAssign):
+        if not isinstance(assignment, c.Infra.AST_ASSIGNMENT_TYPES):
             if not cls._discarded_logging_emission(
                 call, parents, methods, result_contract
             ):

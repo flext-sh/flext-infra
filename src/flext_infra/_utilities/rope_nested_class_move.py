@@ -28,67 +28,79 @@ class FlextInfraUtilitiesRopeNestedClassMove:
     def extract_nested_class(
         cls,
         source: str,
-        member_path: t.StrPair,
+        member_path: t.StrSequence,
         target_module: str,
     ) -> t.StrPair:
-        """Split ``Outer.Inner`` out of ``source`` into its own module source.
+        """Split ``Outer[.Middle...].Inner`` out of ``source`` into its own module.
 
-        The source keeps ``Outer`` without ``Inner``, references ``Inner``
-        through an import of ``target_module``, and every ``Outer.Inner`` in
-        the module becomes ``Inner``. The extracted module carries ``Inner``
+        ``member_path`` names the top-level family class, every enclosing
+        nested class, and the member last. The source keeps the enclosing
+        classes without the member, references it through an import of
+        ``target_module``, and every fully qualified reference to it in the
+        module becomes its bare name. The extracted module carries the member
         at top level with only the imports it uses.
 
         Returns:
             The updated source and the extracted module source.
 
         Raises:
-            ValueError: When the owner or member is absent, the owner would be
-                left empty, or the member depends on another ``Outer`` member
-                or on a module-local binding that the extracted module cannot
-                import without a cycle.
+            ValueError: When the path is shorter than two names, a class on it
+                is absent, the direct parent would be left empty, or the member
+                reads another member of its enclosing family or a module-local
+                binding that the extracted module cannot import without a cycle.
             TypeError: When a rewrite does not preserve the class or module.
 
         """
-        outer, inner = member_path
-        module = cst.parse_module(source)
-        owner = cls._top_level_class(module, outer)
-        member = next(
-            (
-                statement
-                for statement in owner.body.body
-                if isinstance(statement, c.Infra.Cst.ClassDef)
-                and statement.name.value == inner
-            ),
-            None,
-        )
-        if member is None:
-            msg = f"nested class {outer}.{inner} is not declared"
+        path = tuple(member_path)
+        if not path[1:]:
+            msg = f"nested member path needs a family and a member: {path}"
             raise ValueError(msg)
+        qualified = ".".join(path)
+        inner = path[-1]
+        module = cst.parse_module(source)
+        parent = cls._top_level_class(module, path[0])
+        for name in path[1:-1]:
+            parent = cls._nested_class(parent, name, qualified)
+        member = cls._nested_class(parent, inner, qualified)
         remaining = tuple(
-            statement for statement in owner.body.body if statement is not member
+            statement for statement in parent.body.body if statement is not member
         )
         if all(cls._is_docstring(statement) for statement in remaining):
-            msg = f"extracting {outer}.{inner} would leave {outer} empty"
+            msg = f"extracting {qualified} would leave {'.'.join(path[:-1])} empty"
             raise ValueError(msg)
-        foreign = cstm.findall(
-            member,
-            cstm.Attribute(value=cstm.Name(outer), attr=~cstm.Name(inner)),
+        reference = cls._qualified_matcher(path)
+        attributes = tuple(
+            found
+            for found in cstm.findall(member, cstm.Attribute())
+            if isinstance(found, c.Infra.Cst.Attribute)
         )
+        objects = {id(found.value) for found in attributes}
+        foreign = sorted({
+            name
+            for found in attributes
+            if id(found) not in objects
+            and (name := csth.get_full_name_for_node_or_raise(found)).split(".")[0]
+            == path[0]
+            and name != qualified
+            and not name.startswith(f"{qualified}.")
+        })
         if foreign:
-            msg = f"{outer}.{inner} references other {outer} members"
+            msg = (
+                f"{qualified} references other {path[0]} members: "
+                f"{', '.join(foreign)}"
+            )
             raise ValueError(msg)
-        reference = cstm.Attribute(value=cstm.Name(outer), attr=cstm.Name(inner))
         lifted = cstm.replace(member, reference, cst.Name(inner))
         if not isinstance(lifted, c.Infra.Cst.ClassDef):
-            msg = f"extracting {outer}.{inner} did not yield a class"
+            msg = f"extracting {qualified} did not yield a class"
             raise TypeError(msg)
         used = cls._loaded_names(lifted) - {inner}
         local = cls._module_local_bindings(module) & used
         if local:
-            msg = f"{outer}.{inner} depends on module-local {', '.join(sorted(local))}"
+            msg = f"{qualified} depends on module-local {', '.join(sorted(local))}"
             raise ValueError(msg)
         updated = cstm.replace(
-            module.with_deep_changes(owner.body, body=remaining),
+            module.with_deep_changes(parent.body, body=remaining),
             reference,
             cst.Name(inner),
         )
@@ -155,8 +167,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             for statement in module.body
             if isinstance(statement, c.Infra.Cst.SimpleStatementLine)
             and all(
-                isinstance(item, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom)
-                for item in statement.body
+                isinstance(item, c.Infra.CST_IMPORT_TYPES) for item in statement.body
             )
         )
 
@@ -173,7 +184,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         for statement in module.body:
             if statement in imports:
                 continue
-            if isinstance(statement, c.Infra.Cst.ClassDef | c.Infra.Cst.FunctionDef):
+            if isinstance(statement, c.Infra.CST_DEFINITION_TYPES):
                 bound.add(statement.name.value)
                 continue
             bound.update(
@@ -258,9 +269,9 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         ):
             msg = "a star import cannot be narrowed for an extracted member"
             raise TypeError(msg)
-        if not isinstance(
-            statement, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom
-        ) or isinstance(statement.names, c.Infra.Cst.ImportStar):
+        if not isinstance(statement, c.Infra.CST_IMPORT_TYPES) or isinstance(
+            statement.names, c.Infra.Cst.ImportStar
+        ):
             return None
         aliases = tuple(
             alias

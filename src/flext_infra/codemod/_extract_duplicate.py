@@ -728,7 +728,7 @@ class FlextInfraExtractDuplicatePhase:
         first = members[0]
         decorators = (
             first.decorator_list
-            if isinstance(first, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+            if isinstance(first, c.Infra.AST_DEFINITION_TYPES)
             else ()
         )
         return min([first.lineno, *(item.lineno for item in decorators)]) - 1

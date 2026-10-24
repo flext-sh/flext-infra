@@ -206,8 +206,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             end = module.lines.get_line_start(region.end.line) + region.end.column
             code = (
                 node.decorators[0]
-                if isinstance(node, c.Infra.Cst.FunctionDef | c.Infra.Cst.ClassDef)
-                and node.decorators
+                if isinstance(node, c.Infra.CST_DEFINITION_TYPES) and node.decorators
                 else node
             )
             code_start = module.lines.get_line_start(positions[code].start.line)

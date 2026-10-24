@@ -214,3 +214,55 @@ rule:
 fix: isinstance($VALUE, c.Infra.AST_TRY_TYPES)
 message: >-
   Inline ast try node set: read c.Infra.AST_TRY_TYPES.
+---
+id: rewire-ast-scope-owner-type-set
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/constants.py"
+  - "**/_constants/**"
+rule:
+  any:
+    - pattern: isinstance($VALUE, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+    - pattern: isinstance($VALUE, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+    - pattern: isinstance($VALUE, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+    - pattern: isinstance($VALUE, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+fix: isinstance($VALUE, c.Infra.AST_SCOPE_OWNER_TYPES)
+message: >-
+  Inline ast scope-owner node set: read c.Infra.AST_SCOPE_OWNER_TYPES.
+---
+id: rewire-cst-import-type-set
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/constants.py"
+  - "**/_constants/**"
+rule:
+  any:
+    - pattern: isinstance($VALUE, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom)
+    - pattern: isinstance($VALUE, c.Infra.Cst.ImportFrom | c.Infra.Cst.Import)
+    - pattern: isinstance($VALUE, (c.Infra.Cst.Import, c.Infra.Cst.ImportFrom))
+fix: isinstance($VALUE, c.Infra.CST_IMPORT_TYPES)
+message: >-
+  Inline libcst import node set: read c.Infra.CST_IMPORT_TYPES.
+---
+id: rewire-cst-definition-type-set
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/constants.py"
+  - "**/_constants/**"
+rule:
+  any:
+    - pattern: isinstance($VALUE, c.Infra.Cst.ClassDef | c.Infra.Cst.FunctionDef)
+    - pattern: isinstance($VALUE, c.Infra.Cst.FunctionDef | c.Infra.Cst.ClassDef)
+    - pattern: isinstance($VALUE, (c.Infra.Cst.ClassDef, c.Infra.Cst.FunctionDef))
+fix: isinstance($VALUE, c.Infra.CST_DEFINITION_TYPES)
+message: >-
+  Inline libcst definition node set: read c.Infra.CST_DEFINITION_TYPES.

@@ -1,0 +1,16 @@
+id: rewire-cst-import-type-set
+snapshots:
+  ok = isinstance(node, (c.Infra.Cst.Import, c.Infra.Cst.ImportFrom)):
+    fixed: ok = isinstance(node, c.Infra.CST_IMPORT_TYPES)
+    labels:
+    - source: isinstance(node, (c.Infra.Cst.Import, c.Infra.Cst.ImportFrom))
+      style: primary
+      start: 5
+      end: 67
+  ok = isinstance(node, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom):
+    fixed: ok = isinstance(node, c.Infra.CST_IMPORT_TYPES)
+    labels:
+    - source: isinstance(node, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom)
+      style: primary
+      start: 5
+      end: 66

@@ -337,6 +337,26 @@ class FlextInfraConstantsSourceCode:
         ast.TryStar,
     )
     "Python try statements, plain and exception-group."
+    AST_SCOPE_OWNER_TYPES: ClassVar[
+        tuple[
+            type[ast.Module],
+            type[ast.ClassDef],
+            type[ast.FunctionDef],
+            type[ast.AsyncFunctionDef],
+        ]
+    ] = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    "Python nodes that own a lexical scope: module, class and function bodies."
+    CST_IMPORT_TYPES: ClassVar[
+        tuple[type[t.Infra.Cst.Import], type[t.Infra.Cst.ImportFrom]]
+    ] = (
+        libcst.Import,
+        libcst.ImportFrom,
+    )
+    "libcst import statements, absolute and from-import."
+    CST_DEFINITION_TYPES: ClassVar[
+        tuple[type[t.Infra.Cst.ClassDef], type[t.Infra.Cst.FunctionDef]]
+    ] = (libcst.ClassDef, libcst.FunctionDef)
+    "libcst class and function definition nodes."
 
 
 __all__: list[str] = ["FlextInfraConstantsSourceCode"]

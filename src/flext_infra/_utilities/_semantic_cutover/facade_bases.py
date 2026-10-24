@@ -525,7 +525,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     continue
                 for member in declaration.body:
                     if not isinstance(
-                        member, ast.FunctionDef | ast.AsyncFunctionDef
+                        member, c.Infra.AST_FUNCTION_TYPES
                     ) or member.name.startswith("_"):
                         continue
                     if cls._behavior_member_binding(declaration, member.name) is member:
@@ -654,11 +654,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         for node in reversed(declaration.body):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 if node.name == member:
                     return node
             elif (
-                isinstance(node, ast.Assign | ast.AnnAssign)
+                isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                 and node.value is not None
                 and cls._assigns_name(node, member)
             ):
@@ -1342,7 +1342,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if declaration is not None
             else None
         )
-        return isinstance(binding, ast.FunctionDef | ast.AsyncFunctionDef) and any(
+        return isinstance(binding, c.Infra.AST_FUNCTION_TYPES) and any(
             isinstance(decorator, ast.Name) and decorator.id == "staticmethod"
             for decorator in binding.decorator_list
         )
@@ -1409,7 +1409,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for shape in shapes[path]:
                 tree = ast.parse(rewritten, filename=str(path))
                 local_rebound = any(
-                    isinstance(node, ast.Assign | ast.AnnAssign)
+                    isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
                     and cls._assigns_name(node, shape[2])
                     and isinstance(node.value, ast.Name)
                     and node.value.id == shape[3]
@@ -1524,7 +1524,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         rebind_line = max(
             node.lineno
             for node in tree.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == letter
                 for target in (
@@ -1536,7 +1536,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         pending: list[ast.AST] = list(tree.body)
         while pending:
             node = pending.pop()
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 pending.extend(node.decorator_list)
                 pending.extend(node.args.defaults)
                 pending.extend(
@@ -1589,9 +1589,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """
         names: set[str] = set()
         for node in tree.body:
-            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 names.add(node.name)
-            elif isinstance(node, ast.ImportFrom | ast.Import):
+            elif isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 names.update(
                     imported.asname or imported.name.split(".")[0]
                     for imported in node.names

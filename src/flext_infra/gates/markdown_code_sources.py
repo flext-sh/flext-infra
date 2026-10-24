@@ -140,10 +140,7 @@ class FlextInfraMarkdownCodeSources:
             for node in ast.walk(tree):
                 # Only these carry docstrings; ast.walk also yields expression
                 # nodes and ast.get_docstring raises TypeError on those.
-                if not isinstance(
-                    node,
-                    ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
-                ):
+                if not isinstance(node, c.Infra.AST_SCOPE_OWNER_TYPES):
                     continue
                 docstring = ast.get_docstring(node, clean=False)
                 if docstring is None or not node.body:
