@@ -120,7 +120,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
         changes = cls.normalized_codegen_changes(plans)
         if changes.failure:
             return result_type.from_failure(changes)
-        published = u.Cli.publish_file_changes(changes.value, lock_path=lock.value)
+        published = u.Cli.publish_file_changes(
+            changes.value,
+            lock_path=lock.value,
+            directory_mode=config.Infra.codegen.modes.directory_generated,
+        )
         if published.failure:
             return published
         for plan in plans:
