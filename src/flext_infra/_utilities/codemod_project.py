@@ -62,6 +62,9 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 from flext_infra._utilities._rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
+from flext_infra._utilities.codemod_native_package_utilities import (
+    FlextInfraUtilitiesCodemodNativePackageUtilities,
+)
 from flext_infra._utilities.codemod_native_utilities import (
     FlextInfraUtilitiesCodemodNativeUtilities,
 )
@@ -74,6 +77,7 @@ from flext_infra._utilities.rope_runtime_matching import (
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodNativeUtilities,
+    FlextInfraUtilitiesCodemodNativePackageUtilities,
     FlextInfraUtilitiesImportLaw,
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
