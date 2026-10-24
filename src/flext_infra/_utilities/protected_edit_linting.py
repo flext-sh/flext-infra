@@ -13,7 +13,7 @@ import os
 import sys
 import traceback
 from collections import Counter
-from collections.abc import Iterable, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -48,16 +48,41 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         before_source: str | None = None,
     ) -> p.Result[str]:
-        """Prepare a candidate through the destination's configured repair owners.
+        """Normalize only what a rewrite changed, then format the candidate.
+
+        A rewrite of existing bytes repairs exactly the Ruff rules its edit
+        introduced (codes absent from ``before_source``), so no unchanged
+        binding or pre-existing finding is touched; a whole new file receives
+        the declared full repair.
 
         Returns:
             Normalized source, or the original configured repair failure.
 
         """
         del repository_root
-        if before_source is not None:
-            source = cls.remove_orphaned_text_imports(before_source, source)
-        return cls.normalize_python_text(path, source)
+        if before_source is None:
+            return cls.normalize_python_text(path, source)
+        source = cls.remove_orphaned_text_imports(before_source, source)
+        before_codes = cls._ruff_stdin_codes(path, before_source)
+        if before_codes.failure:
+            return r[str].from_failure(before_codes)
+        after_codes = cls._ruff_stdin_codes(path, source)
+        if after_codes.failure:
+            return r[str].from_failure(after_codes)
+        declared = config.Infra.codegen.make.ruff
+        introduced = sorted(after_codes.value - before_codes.value)
+        if introduced:
+            repaired = cls._ruff_stdin_pass(
+                path,
+                source,
+                (c.Infra.CHECK, *declared.lint_fix, "--select", ",".join(introduced)),
+            )
+            if repaired.failure:
+                return repaired
+            source = repaired.value
+        return cls._ruff_stdin_pass(
+            path, source, (c.Infra.FORMAT, *declared.format_apply)
+        )
 
     @classmethod
     def normalized_codegen_changes(
@@ -66,7 +91,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
     ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]:
         """Normalize Python destinations once; pass every other plan through.
 
-        Check and publication share this view, so they never disagree.
+        Check and publication share this view, so they never disagree. A plan
+        over existing bytes repairs only the findings its change introduced
+        (``normalize_source``); a new file receives the declared full repair.
 
         Returns:
             The file changes with normalized Python bytes, or the first failure.
@@ -82,8 +109,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
             ):
                 changes.append(plan)
                 continue
-            normalized = cls.normalize_python_text(
-                plan.path, plan.desired_content.decode(c.DEFAULT_ENCODING)
+            before = plan.before.content if plan.before is not None else None
+            normalized = cls.normalize_source(
+                plan.project,
+                plan.path,
+                plan.desired_content.decode(c.DEFAULT_ENCODING),
+                before_source=(
+                    None if before is None else before.decode(c.DEFAULT_ENCODING)
+                ),
             )
             if normalized.failure:
                 return result_type.from_failure(normalized)
@@ -153,47 +186,100 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The repaired and formatted source, or Ruff's native failure.
 
         """
+        declared = config.Infra.codegen.make.ruff
+        return cls._ruff_stdin_pass(
+            path, source, (c.Infra.CHECK, *declared.lint_fix)
+        ).flat_map(
+            lambda repaired: cls._ruff_stdin_pass(
+                path, repaired, (c.Infra.FORMAT, *declared.format_apply)
+            )
+        )
+
+    @classmethod
+    def _ruff_stdin_codes(cls, path: Path, source: str) -> p.Result[frozenset[str]]:
+        """Return the Ruff rule codes one candidate reports on stdin.
+
+        Returns:
+            The reported rule codes, or Ruff's native failure.
+
+        Raises:
+            TypeError: If Ruff's JSON report is not a list of finding objects.
+
+        """
+        declared = config.Infra.codegen.make.ruff
+        reported = cls._ruff_stdin_pass(
+            path,
+            source,
+            (
+                c.Infra.CHECK,
+                *declared.lint_check,
+                "--output-format",
+                c.Infra.OUTPUT_JSON,
+                "--exit-zero",
+                "--quiet",
+            ),
+        )
+        if reported.failure:
+            return r[frozenset[str]].from_failure(reported)
+        report = u.Cli.json_parse(reported.value or "[]").unwrap()
+        if not isinstance(report, list):
+            msg = f"Ruff JSON report is not a list: {type(report).__name__}"
+            raise TypeError(msg)
+        codes: set[str] = set()
+        for entry in report:
+            if not isinstance(entry, Mapping):
+                msg = f"Ruff JSON finding is not an object: {type(entry).__name__}"
+                raise TypeError(msg)
+            code = u.Cli.json_pick_str(entry, "code")
+            if code:
+                codes.add(code)
+        return r[frozenset[str]].ok(frozenset(codes))
+
+    @classmethod
+    def _ruff_stdin_pass(
+        cls, path: Path, source: str, arguments: t.StrSequence
+    ) -> p.Result[str]:
+        """Run one declared Ruff surface on stdin with the destination's config.
+
+        Returns:
+            Ruff's stdout, or its native failure; findings never fail the pass.
+
+        """
         command_cwd = cls._command_cwd(path, path.parent)
         environment = dict(cls._command_env())
         environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
             FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
         )
-        declared = config.Infra.codegen.make.ruff
-        for arguments in (
-            ("check", *declared.lint_fix),
-            ("format", *declared.format_apply),
-        ):
-            executed = u.Cli.run_raw(
-                (
-                    *cls._workspace_tool_command(c.Infra.RUFF),
-                    *arguments,
-                    "--stdin-filename",
-                    str(path),
-                    "-",
-                ),
-                cwd=command_cwd,
-                options=m.Cli.ProcessOptions(
-                    env=environment,
-                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                    input_data=source,
-                ),
-                timeout=cls._gate_deadline(c.Infra.RUFF),
+        executed = u.Cli.run_raw(
+            (
+                *cls._workspace_tool_command(c.Infra.RUFF),
+                *arguments,
+                "--stdin-filename",
+                str(path),
+                "-",
+            ),
+            cwd=command_cwd,
+            options=m.Cli.ProcessOptions(
+                env=environment,
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                input_data=source,
+            ),
+            timeout=cls._gate_deadline(c.Infra.RUFF),
+        )
+        if executed.failure:
+            return r[str].from_failure(executed)
+        output = executed.value
+        outcome = FlextInfraUtilitiesProcess.tool_outcome(
+            output.outcome,
+            findings=int(bool(output.stderr.strip())),
+            findings_exit_codes=config.Infra.tooling.tools.ruff.findings_exit_codes,
+        )
+        if outcome is c.Infra.ToolOutcome.ERROR:
+            return r[str].fail(
+                f"ruff {arguments[0]} failed for {path}: "
+                f"{(output.stderr or output.stdout).strip()}"
             )
-            if executed.failure:
-                return r[str].from_failure(executed)
-            output = executed.value
-            outcome = FlextInfraUtilitiesProcess.tool_outcome(
-                output.outcome,
-                findings=int(bool(output.stderr.strip())),
-                findings_exit_codes=config.Infra.tooling.tools.ruff.findings_exit_codes,
-            )
-            if outcome is c.Infra.ToolOutcome.ERROR:
-                return r[str].fail(
-                    f"ruff {arguments[0]} failed for {path}: "
-                    f"{(output.stderr or output.stdout).strip()}"
-                )
-            source = output.stdout
-        return r[str].ok(source)
+        return r[str].ok(output.stdout)
 
     @classmethod
     def normalize_sources(

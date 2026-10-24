@@ -1252,6 +1252,23 @@ class FlextInfraModGateEngine:
             return r[bool].fail(
                 "publication requires an authenticated native scan report"
             )
+        # A stale report never publishes: every captured finding and binding
+        # snapshot must still match its file before any effect.
+        captured = tuple(
+            state
+            for entry in report.entries
+            if entry.actionable
+            for state in (entry.source_state, *entry.binding_states)
+            if state is not None
+        )
+        verified = u.Cli.atomic_verify_binary_file_states(
+            captured,
+            nonsecret_source_paths=tuple(
+                dict.fromkeys(Path(state.path) for state in captured)
+            ),
+        )
+        if verified.failure:
+            return r[bool].from_failure(verified)
         return FlextInfraModReplacements.publish(
             root, cls.authored(report), exact_replacements=exact_replacements
         )
