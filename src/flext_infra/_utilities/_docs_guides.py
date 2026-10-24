@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -79,49 +78,24 @@ class FlextInfraUtilitiesDocsGuidesMixin:
 
     @staticmethod
     def _classified_guide_sources(
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
         source_root: Path,
         destination_root: Path,
-    ) -> p.Result[
-        t.Pair[
-            t.MutableMappingKV[Path, str],
-            t.MutableMappingKV[Path, str],
-        ]
-    ]:
-        """Split authenticated guide states into source and destination bytes.
+    ) -> t.Pair[t.MutableMappingKV[Path, str], t.MutableMappingKV[Path, str]]:
+        """Read the canonical guides and their current scope projections.
 
         Returns:
             The resulting ``(sources, destinations)`` mapping pair.
 
         """
-        sources: MutableMapping[Path, str] = {}
-        destinations: MutableMapping[Path, str] = {}
-        for state in source_states:
-            path = state.path
-            if (
-                path.parent not in {source_root, destination_root}
-                or path.suffix != ".md"
-                or path.name == "README.md"
-            ):
-                continue
-            if state.content is None:
-                return r[
-                    t.Pair[
-                        t.MutableMappingKV[Path, str],
-                        t.MutableMappingKV[Path, str],
-                    ]
-                ].fail(f"docs guide source is absent: {path}")
-            content = state.content.decode(c.DEFAULT_ENCODING)
-            if path.parent == source_root:
-                sources[path] = content
-            else:
-                destinations[path] = content
-        return r[
-            t.Pair[
-                t.MutableMappingKV[Path, str],
-                t.MutableMappingKV[Path, str],
-            ]
-        ].ok((sources, destinations))
+        sources, destinations = (
+            {
+                path: path.read_text(encoding=c.DEFAULT_ENCODING)
+                for path in sorted(root.glob("*.md"))
+                if path.name != "README.md" and path.is_file()
+            }
+            for root in (source_root, destination_root)
+        )
+        return sources, destinations
 
     @staticmethod
     def _owned_destinations(
@@ -253,9 +227,8 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
-        """Plan root-owned guide projections from authenticated snapshot bytes.
+        """Plan root-owned guide projections from the canonical guides.
 
         Returns:
             The resulting
@@ -271,16 +244,9 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].fail(
                 f"docs guide scope escapes repository {repository_root}: {scope.path}",
             )
-        classified = cls._classified_guide_sources(
-            source_states,
-            source_root,
-            destination_root,
+        sources, destinations = cls._classified_guide_sources(
+            source_root, destination_root
         )
-        if classified.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
-                classified,
-            )
-        sources, destinations = classified.value
         owned = cls._owned_destinations(scope, destinations)
         artifacts = cls._rendered_guide_artifacts(
             scope,

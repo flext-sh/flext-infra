@@ -61,7 +61,7 @@ class TestsFlextInfraRefactorImportNormalization(
             )
 
     @classmethod
-    def test_import_plan_uses_working_sources_without_replacing_original_receipts(
+    def test_import_plan_uses_working_sources_without_touching_physical_sources(
         cls,
         tmp_path: Path,
     ) -> None:
@@ -101,16 +101,11 @@ class TestsFlextInfraRefactorImportNormalization(
                     project,
                     (target,),
                     sources=working,
-                    receipt=m.Infra.CodegenPhaseAnalysis(
-                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                        inputs=states,
-                        files=(),
-                    ),
                     rope_project=rope,
                 )
             )
-        tm.that(analysis.files, length=1)
-        plan = analysis.files[0]
+        tm.that(analysis, length=1)
+        plan = analysis[0]
         tm.that(plan.before, eq=next(state for state in states if state.path == target))
         desired = tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
         tm.that(desired, has="value = DemoHelper.marker")

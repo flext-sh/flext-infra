@@ -196,21 +196,9 @@ class TestsFlextInfraCodemodDuplicateApply:
                 for resource in rope.rope_project.get_python_files()
             }
             frozen = dict(sources)
-            states = tuple(
-                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-                for path in sources
-            )
             planned, deletions = tm.ok(
                 FlextInfraCodemodDuplicateApply.plan_census(
-                    root,
-                    rope,
-                    (group,),
-                    sources=sources,
-                    receipt=m.Infra.CodegenPhaseAnalysis(
-                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                        inputs=states,
-                        files=(),
-                    ),
+                    root, rope, (group,), sources=sources
                 )
             )
             tm.that(planned.edits, empty=False)

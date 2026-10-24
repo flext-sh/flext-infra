@@ -128,68 +128,6 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(sorted(names), eq=sorted(expected))
             tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    @pytest.mark.slow
-    def test_failure_transport_uses_resolved_inherited_owner(
-        self, tmp_path: Path
-    ) -> None:
-        """The native root guard admits inherited recovery, not foreign homonyms."""
-        u.Tests.WorktreeFixture.write_python_project(tmp_path, "failure-transport")
-        self._owner(tmp_path)
-        owner = Path(__file__).resolve().parents[3]
-        source_catalog = self._source_catalog(owner)
-        rule = source_catalog / "rules" / "result-failure-rebind.yml"
-        plan = tm.ok(u.Infra.codemod_rule_plan(owner))
-        selected = tuple(item.id for item in plan.rules if item.resource == rule)
-        u.Tests.provision_checkout(tmp_path)
-        sample = tmp_path / "src" / "consumer.py"
-        source = (
-            "from flext_infra import p\n"
-            "from flext_infra.codegen import FlextInfraCodegenTransaction\n"
-            "class Consumer(FlextInfraCodegenTransaction):\n"
-            "    def accept(self, layout, result: p.Result[bool]):\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure(layout, "
-            "result.error or 'context', "
-            "exception=result.exception, error_code=result.error_code, "
-            "error_data=result.error_data)\n"
-            "    def unstable(self, layout, result, other):\n"
-            "        if result.failure:\n"
-            "            result = other\n"
-            "            return self._recover_failure("
-            "layout, result.error or 'context')\n"
-            "    def effectful(self, layout, result, context):\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure("
-            "layout, result.error or context())\n"
-            "    def getter(self, layout):\n"
-            "        if self.result.failure:\n"
-            "            return self._recover_failure("
-            "layout, self.result.error or 'context')\n"
-            "    def rebound(self, layout, result, other):\n"
-            "        self = other\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure("
-            "layout, result.error or 'context')\n"
-            "class Foreign:\n"
-            "    def _recover_failure(self, layout, text, **kwargs):\n"
-            "        return text\n"
-            "    def accept(self, layout, result):\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure("
-            "layout, result.error or 'context')\n"
-        )
-        tm.ok(u.Cli.atomic_write_text_file(sample, source))
-        report = tm.ok(
-            FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=selected)
-        )
-        tm.that(len(report.entries), eq=1)
-        finding = report.entries[0]
-        tm.that(finding.file, eq=sample.relative_to(tmp_path))
-        tm.that(
-            tm.not_none(finding.replacement), has="context=result.error or 'context'"
-        )
-        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-
     @pytest.mark.parametrize("relative_catalog", ["policy", "nested/native/policy"])
     def test_native_snapshots_follow_declared_catalog_root(
         self,

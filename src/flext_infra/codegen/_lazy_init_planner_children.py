@@ -34,7 +34,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             raise NotImplementedError(type(self).__qualname__)
 
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
-        _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         def _add(
             self,
@@ -166,10 +165,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         publish_child_exports = (
             parent_context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
-        # Direct source exports delimit an authored facade's API. A private
-        # child cannot widen it; an explicit reexport is already in lazy_map.
-        # Namespace-only packages can still bridge their implementation owners.
-        owns_export_surface = self._is_facade_root(parent_context) or bool(lazy_map)
+        # Only the public facade root keeps private ``_x`` children out of its
+        # surface; every nested package publishes them into its importing
+        # package (operator ruling 2026-10-24: export what ``__all__`` holds).
+        owns_export_surface = self._is_facade_root(parent_context)
         direct: list[str] = []
         children = dict.fromkeys((
             *package_entry.descendant_child_dirs,
@@ -221,21 +220,12 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             The resulting ``t.Pair[str, t.LazyAliasMap] | None`` where None
             marks a child that does not merge.
 
-        Raises:
-            ValueError: If the child decision lacks its original provenance.
-
         """
         # Do not merge retired root registries into the
         # inline map that replaces them.
         resolved_child_dir = child_dir.resolve()
         child_key = str(resolved_child_dir)
         child_plan = self._source_plan_cache.get(child_key)
-        if child_plan is not None:
-            receipt = self._plan_receipts.get(child_key)
-            if receipt is None:
-                msg = f"lazy-init child decision lacks original provenance: {child_dir}"
-                raise ValueError(msg)
-            self.rope_workspace.rope_project.replay_source_consumption(receipt)
         planned_action = child_plan.action if child_plan is not None else None
         planned_write = planned_action == c.Infra.LazyInitAction.WRITE
         retired = child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES

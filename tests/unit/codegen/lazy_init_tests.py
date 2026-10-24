@@ -192,7 +192,7 @@ class TestsFlextInfraCodegenLazyInit:
             )
             result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
             tm.ok(result)
-            tm.that({plan.path for plan in result.value.files}, lacks=scratch_init)
+            tm.that({plan.path for plan in result.value}, lacks=scratch_init)
 
         @staticmethod
         def test_generated_tool_state_is_excluded_from_plans(
@@ -211,7 +211,7 @@ class TestsFlextInfraCodegenLazyInit:
             result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
 
             tm.ok(result)
-            planned = {plan.path for plan in result.value.files}
+            planned = {plan.path for plan in result.value}
             for init_file in generated:
                 tm.that(planned, lacks=init_file)
 
@@ -259,11 +259,9 @@ class TestsFlextInfraCodegenLazyInit:
             result = FlextInfraCodegenLazyInit(repository_root=repository).plan_files()
 
             tm.ok(result)
-            planned = {plan.path for plan in result.value.files}
+            planned = {plan.path for plan in result.value}
             tm.ok(owned_inits <= planned)
-            inputs = {state.path for state in result.value.inputs}
             tm.ok(planned.isdisjoint(foreign_paths))
-            tm.ok(inputs.isdisjoint(foreign_paths))
 
     class TestsEdgeCases:
         """Edge cases for directory scanning."""
@@ -307,7 +305,7 @@ class TestsFlextInfraCodegenLazyInit:
             tm.ok(generator.execute().failure)
             planned = tm.ok(generator.plan_files())
             tm.that(
-                all(plan.path.name == c.Infra.INIT_PY for plan in planned.files),
+                all(plan.path.name == c.Infra.INIT_PY for plan in planned),
                 eq=True,
             )
 
@@ -383,7 +381,7 @@ class TestsFlextInfraCodegenLazyInit:
             tm.that(
                 tuple(
                     plan.path
-                    for plan in replanned.files
+                    for plan in replanned
                     if u.Infra.codegen_file_requires_effect(plan)
                 ),
                 eq=(),

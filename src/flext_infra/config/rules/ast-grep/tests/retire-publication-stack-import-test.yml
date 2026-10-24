@@ -1,0 +1,19 @@
+id: retire-publication-stack-import
+valid:
+  - |
+    from flext_infra.codegen import FlextInfraCodegenLazyInit
+  - |
+    from flext_infra.codegen import FlextInfraCodegenTransactionalView
+invalid:
+  - |
+    from flext_infra.codegen import FlextInfraCodegenTransaction
+  - |
+    from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenFileLeases
+  - |
+    from flext_infra.codegen import (
+        FlextInfraCodegenLazyInit,
+        FlextInfraMiseArtifactsVerification,
+    )
+  - |
+    if TYPE_CHECKING:
+        from flext_infra.codegen import FlextInfraCodegenStaging

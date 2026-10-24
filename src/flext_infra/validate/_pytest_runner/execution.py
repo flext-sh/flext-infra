@@ -806,10 +806,9 @@ class FlextInfraPytestRunnerExecution(
         self._cache_publication = None
         lease_started = time.monotonic()
         sys.stderr.write(f"pytest cache lease: acquiring {self.testmon_db}\n")
-        with u.Infra.codegen_transaction_lease(
-            self.testmon_db,
-            wait_seconds=wait_seconds,
-        ):
+        with u.Cli.file_changes_lock(
+            self.testmon_db.with_name(f"{self.testmon_db.name}.lock"),
+        ).acquire(timeout=wait_seconds):
             self._write_run_context(
                 report_dir,
                 context.model_copy(update={"testmon_lease_acquired": True}),

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import MutableMapping
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin(
@@ -28,7 +28,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
         rope_workspace: p.Infra.RopeWorkspaceDsl
         _source_exports_cache: MutableMapping[str, frozenset[str]]
         _parent_package_cache: MutableMapping[str, t.StrSequence]
-        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         @abstractmethod
         def _parent_packages(self, pkg_dir: Path) -> t.StrSequence: ...

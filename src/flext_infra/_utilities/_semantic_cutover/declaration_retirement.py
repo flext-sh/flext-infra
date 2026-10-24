@@ -71,7 +71,6 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         workspace: p.Infra.RopeWorkspaceDsl,
         proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
         rules: t.SequenceOf[p.Infra.RopeContractRule],
-        epoch: p.Infra.CodemodSourceEpoch,
         owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
     ) -> t.Pair[t.Infra.RopeImplementationPaths, t.Infra.RopeImplementationPaths]:
         """Retire elected declarations only after native receiver completeness.
@@ -85,35 +84,37 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         retired: t.Infra.RopeMutablePaths = set()
         destinations: t.Infra.RopeMutablePaths = set()
-        with cls._semantic_source_project(workspace.rope_project) as source_project:
-            for rule in rules:
-                if rule.ownership_transfer is None:
-                    continue
-                owner = cls.contract_rule_root(
-                    workspace.repository_root, rule, source_project=source_project
+        source_project = workspace.rope_project
+        for rule in rules:
+            if rule.ownership_transfer is None:
+                continue
+            owner = cls.contract_rule_root(
+                workspace.repository_root, rule, source_project=source_project
+            )
+            project = runtime.snapshot_project(
+                workspace.rope_project,
+                proposed,
+            )
+            try:
+                path, destination = cls._retire_contract_rule(
+                    project,
+                    rule,
+                    proposed,
+                    (owner, owned_modules),
+                    destinations=tuple(
+                        runtime.qualified_name(project, identity)
+                        for transfer in rules
+                        if transfer.ownership_transfer is not None
+                        for identity in transfer.bindings.values()
+                    ),
                 )
-                project = runtime.snapshot_project(
-                    workspace.rope_project, proposed, captured=epoch
-                )
-                try:
-                    path, destination = cls._retire_contract_rule(
-                        project,
-                        rule,
-                        proposed,
-                        (owner, owned_modules),
-                        destinations=tuple(
-                            runtime.qualified_name(project, identity)
-                            for transfer in rules
-                            if transfer.ownership_transfer is not None
-                            for identity in transfer.bindings.values()
-                        ),
-                    )
-                    if path is not None:
-                        retired.add(path)
-                    if destination is not None:
-                        destinations.add(destination)
-                finally:
-                    project.close()
+                if path is not None:
+                    retired.add(path)
+                if destination is not None:
+                    destinations.add(destination)
+            finally:
+                project.close()
+
         return frozenset(retired), frozenset(destinations)
 
     @classmethod

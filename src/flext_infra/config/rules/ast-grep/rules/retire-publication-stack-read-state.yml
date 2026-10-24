@@ -1,0 +1,9 @@
+id: retire-publication-stack-read-state
+language: Python
+severity: error
+rule:
+  pattern: FlextInfraMiseArtifactsFiles.read_state($PATH, required=$REQUIRED)
+fix: u.Cli.atomic_read_binary_file_state($PATH, required=$REQUIRED)
+message: >-
+  The mise-artifacts read wrapper only forwarded to the canonical flext-cli
+  state reader; call the owner directly.

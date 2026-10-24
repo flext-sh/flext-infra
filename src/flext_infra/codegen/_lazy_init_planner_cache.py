@@ -23,7 +23,6 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _source_exports_cache: MutableMapping[str, frozenset[str]]
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
         _module_file_by_name: MutableMapping[str, Path]
-        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
     def _declared_alias_names_for_package(self, package_name: str) -> frozenset[str]:
         """Return the facade letters a package's own modules declare in __all__.
@@ -37,16 +36,9 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
 
         """
         cache_key = f"declared:{package_name}"
-        with u.Infra.cached_source_query(
-            self.rope_workspace.rope_project,
-            self._source_exports_cache,
-            cache_key,
-            self._query_receipts,
-            f"source:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._source_exports_cache[cache_key]
-            return self._declared_alias_query(package_name, cache_key)
+        if cache_key in self._source_exports_cache:
+            return self._source_exports_cache[cache_key]
+        return self._declared_alias_query(package_name, cache_key)
 
     def _declared_alias_query(
         self, package_name: str, cache_key: str
@@ -97,21 +89,14 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             All export names for a package (init + source plans).
 
         """
-        with u.Infra.cached_source_query(
-            self.rope_workspace.rope_project,
-            self._package_exports_cache,
-            package_name,
-            self._query_receipts,
-            f"package:{package_name}",
-        ) as cached:
-            if cached:
-                return self._package_exports_cache[package_name]
-            exports = frozenset((
-                *self._package_init_exports(package_name),
-                *self._source_export_names_for_package(package_name),
-            ))
-            self._package_exports_cache[package_name] = exports
-            return exports
+        if package_name in self._package_exports_cache:
+            return self._package_exports_cache[package_name]
+        exports = frozenset((
+            *self._package_init_exports(package_name),
+            *self._source_export_names_for_package(package_name),
+        ))
+        self._package_exports_cache[package_name] = exports
+        return exports
 
     def _package_init_exports(self, package_name: str) -> frozenset[str]:
         """Return names exported from the package __init__.py.

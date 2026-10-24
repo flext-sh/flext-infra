@@ -218,7 +218,6 @@ class TestsFlextInfraAuditorCommandContract:
         projected = u.Infra.docs_project_guides_artifacts(
             scope,
             repository_root=source_scope.path,
-            source_states=(state.value,),
         )
 
         tm.ok(projected)
@@ -232,7 +231,6 @@ class TestsFlextInfraAuditorCommandContract:
         blocked = u.Infra.docs_project_guides_artifacts(
             scope,
             repository_root=source_scope.path,
-            source_states=(state.value,),
         )
         tm.fail(blocked)
         tm.that(blocked.error, eq=loaded.error)

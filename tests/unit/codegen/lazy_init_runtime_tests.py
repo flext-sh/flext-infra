@@ -9,9 +9,7 @@ from __future__ import annotations
 import ast
 import difflib
 import sys
-import threading
 from pathlib import Path
-from types import FrameType
 from typing import Literal
 
 import pytest
@@ -389,48 +387,8 @@ class TestsFlextInfraLazyInitRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("exports", [False, True])
-    def test_isolated_package_decisions_keep_only_consumed_original_reads(
-        tmp_path: Path,
-        *,
-        exports: bool,
-    ) -> None:
-        """Cold artifact graphs retain negative modules with no cross-surface leak."""
-        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        source = package / "service.py"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                source,
-                "class Published: pass\n__all__ = ['Published']\n",
-            ),
-        )
-        tests = repository / c.Infra.DIR_TESTS
-        tests.mkdir()
-        conftest = tests / "conftest.py"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                conftest,
-                "class TestProvider: pass\n__all__ = ['TestProvider']\n"
-                if exports
-                else "__all__ = []\n",
-            ),
-        )
-        analysis = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
-        production = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == package
-        )
-        testing = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == tests
-        )
-        tm.ok(source in {state.path for state in production.source_states})
-        tm.that(
-            conftest in {state.path for state in production.source_states}, eq=False
-        )
-        tm.ok(conftest in {state.path for state in testing.source_states})
-
-    @staticmethod
-    def test_parent_consumes_original_receipt_of_removed_child(tmp_path: Path) -> None:
-        """A cached negative child decision remains an authenticated parent input."""
+    def test_parent_drops_removed_child_from_its_lazy_map(tmp_path: Path) -> None:
+        """A retired child initializer is deleted and leaves the parent exports."""
         repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -444,25 +402,15 @@ class TestsFlextInfraLazyInitRuntime:
         tm.ok(
             u.Cli.atomic_write_text_file(initializer, c.Infra.AUTOGEN_HEADER + "\n"),
         )
-        analysis = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
-        child_plan = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == child
-        )
+        plans = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
+        child_plan = next(plan for plan in plans if plan.path == initializer)
         parent_plan = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == package
+            plan for plan in plans if plan.path == package / c.Infra.INIT_PY
         )
-        tm.that(child_plan.action, eq=c.Infra.LazyInitAction.REMOVE)
-        tm.fail("retired" in parent_plan.lazy_map)
-        child_original = next(
-            state for state in child_plan.source_states if state.path == initializer
-        )
+        tm.that(child_plan.desired_content, eq=None)
         tm.that(
-            next(
-                state
-                for state in parent_plan.source_states
-                if state.path == initializer
-            ),
-            eq=child_original,
+            tm.not_none(parent_plan.desired_content).decode(c.DEFAULT_ENCODING),
+            lacks="retired",
         )
 
     @staticmethod
@@ -761,10 +709,9 @@ class TestsFlextInfraLazyInitRuntime:
         roots = u.Tests.runtime_evaluated_roots()
         with pytest.raises(ValueError, match="Unresolved planned base"):
             u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
-        analysis = tm.ok(u.Tests.plan_lazy_init(repository))
         planned = {
             plan.path.resolve(): plan.desired_content.decode(c.DEFAULT_ENCODING)
-            for plan in analysis.files
+            for plan in tm.ok(u.Tests.plan_lazy_init(repository))
             if plan.path.suffix == c.Infra.EXT_PYTHON
             and plan.desired_content is not None
         }
@@ -1083,7 +1030,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         *,
         absent: bool,
     ) -> None:
-        """Generate and consume artifacts without rewriting authored source."""
+        """Generate artifacts without rewriting authored source."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-source-only",
@@ -1129,36 +1076,11 @@ class TestsFlextInfraLazyInitPublishedRuntime:
                 session_runtime=session_runtime,
             )
         )
-        calls: list[str] = []
-
-        def observe(frame: FrameType, event: str, _value: p.AttributeProbe) -> None:
-            if event == "call" and frame.f_code.co_qualname in {
-                "FlextInfraCodegenStaging.validate_python_plans",
-                "FlextInfraCodegenTransaction.consume_source_runtime",
-                "FlextInfraUtilitiesProtectedEditLinting.normalize_source",
-                "FlextInfraUtilitiesProtectedEditLinting.normalize_sources",
-                "FlextInfraUtilitiesProtectedEditLinting.normalize_source_plan",
-                "FlextInfraWorkspaceChecker.execute_candidate",
-                "FlextInfraWorkspaceChecker._execute_payload",
-            }:
-                calls.append(frame.f_code.co_qualname)
-
-        previous = sys.getprofile()
-        previous_threads = threading.getprofile()
-        try:
-            sys.setprofile(observe)
-            threading.setprofile(observe)
-            tm.ok(infra.codegen_generate(request))
-            tm.fail(initializer.read_bytes() == original)
-            tm.ok((child / c.Infra.INIT_PY).is_file())
-            generated = {
-                path: path.read_bytes() for path in package.rglob(c.Infra.INIT_PY)
-            }
-            first_calls = tuple(calls)
-            tm.ok(infra.codegen_generate(request))
-        finally:
-            sys.setprofile(previous)
-            threading.setprofile(previous_threads)
+        tm.ok(infra.codegen_generate(request))
+        tm.fail(initializer.read_bytes() == original)
+        tm.ok((child / c.Infra.INIT_PY).is_file())
+        generated = {path: path.read_bytes() for path in package.rglob(c.Infra.INIT_PY)}
+        tm.ok(infra.codegen_generate(request))
         for path, original in generated.items():
             current = path.read_bytes()
             tm.that(
@@ -1176,15 +1098,6 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         for path, content in before.items():
             if path != initializer:
                 tm.that(path.read_bytes(), eq=content)
-        for phase_calls in (first_calls, calls[len(first_calls) :]):
-            tm.that(
-                "FlextInfraCodegenStaging.validate_python_plans" in phase_calls,
-                eq=True,
-            )
-            tm.that(
-                "FlextInfraCodegenTransaction.consume_source_runtime" in phase_calls,
-                eq=True,
-            )
         tm.that(
             u.Tests.run_lazy_init_probe(
                 "import sys\nimport flext_source_only as package\n"

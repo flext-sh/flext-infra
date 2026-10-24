@@ -1,0 +1,18 @@
+id: retire-publication-stack-snapshot-captured
+valid:
+  - |
+    project = u.Infra.snapshot_project(rope_project, sources)
+  - |
+    project = runtime.snapshot_project(rope_project, sources, declared_files=plans)
+  - |
+    report = scan(root, captured=epoch)
+invalid:
+  - |
+    project = u.Infra.snapshot_project(rope_project, sources, captured=epoch)
+  - |
+    project = runtime.snapshot_project(
+        rope_project,
+        sources,
+        captured=context[1],
+        declared_files=plans,
+    )

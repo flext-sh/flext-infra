@@ -1,0 +1,12 @@
+id: retire-publication-stack-receipt-attribute
+language: Python
+severity: error
+rule:
+  kind: expression_statement
+  has:
+    kind: assignment
+    pattern: "$NAME: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]"
+fix: ""
+message: >-
+  Phase-analysis receipt caches are retired with CodegenPhaseAnalysis; planners
+  keep only their real result caches.

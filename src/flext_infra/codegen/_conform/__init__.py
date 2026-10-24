@@ -25,12 +25,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
     from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
-    from flext_infra.codegen._conform.execute_directed import (
-        FlextInfraCodegenConformExecuteDirected,
-    )
-    from flext_infra.codegen._conform.execute_scaffold import (
-        FlextInfraCodegenConformExecuteScaffold,
-    )
     from flext_infra.codegen._conform.existing_plan import (
         FlextInfraCodegenConformExistingPlan,
     )
@@ -53,8 +47,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformContextRender",
     "FlextInfraCodegenConformEditor",
     "FlextInfraCodegenConformExecute",
-    "FlextInfraCodegenConformExecuteDirected",
-    "FlextInfraCodegenConformExecuteScaffold",
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformPlan",
@@ -72,8 +64,6 @@ install_lazy_exports(
         "FlextInfraCodegenConformContextRender": ".context_render",
         "FlextInfraCodegenConformEditor": ".editor",
         "FlextInfraCodegenConformExecute": ".execute",
-        "FlextInfraCodegenConformExecuteDirected": ".execute_directed",
-        "FlextInfraCodegenConformExecuteScaffold": ".execute_scaffold",
         "FlextInfraCodegenConformExistingPlan": ".existing_plan",
         "FlextInfraCodegenConformFilePlans": ".file_plans",
         "FlextInfraCodegenConformPlan": ".plan",

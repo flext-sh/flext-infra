@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, m, p, r, t, tm, u
+from tests import c, p, t, tm, u
 
 
 class TestsFlextInfraLazyInitWorkspaceElection:
@@ -58,30 +58,29 @@ class TestsFlextInfraLazyInitWorkspaceElection:
     def _run_plan(
         workspace: Path, repository: Path, *, check_only: bool = False
     ) -> int:
-        """Plan with installed providers and materialize through the shared fixture.
+        """Plan with installed providers and publish through the shared owner.
 
         Returns:
-            The number of remaining effects after successful publication.
+            The number of remaining effects, or zero after publication.
 
         """
         output = u.Tests.run_lazy_init_probe(
             "from pathlib import Path\n"
+            "from flext_infra import u\n"
             "from flext_infra.codegen import FlextInfraCodegenLazyInit\n"
             "import sys\n"
             "root = Path(sys.argv[1])\n"
             "service = FlextInfraCodegenLazyInit(repository_root=root)\n"
             "plans = service.plan_files().unwrap()\n"
-            "print(plans.model_dump_json())\n",
-            arguments=(str(repository),),
+            "if sys.argv[2] == 'check':\n"
+            "    print(sum(u.Infra.codegen_file_requires_effect(p) for p in plans))\n"
+            "else:\n"
+            "    u.Infra.publish_codegen_plans(root, plans).unwrap()\n"
+            "    print(0)\n",
+            arguments=(str(repository), "check" if check_only else "publish"),
             runtime_root=workspace,
         )
-        planned = m.Infra.CodegenPhaseAnalysis.model_validate_json(output[-1])
-        if check_only:
-            return sum(
-                u.Infra.codegen_file_requires_effect(plan) for plan in planned.files
-            )
-        tm.ok(u.Tests.materialize_codegen_plans(r.ok(planned.files)))
-        return 0
+        return int(output[-1])
 
     @staticmethod
     def _write_constants(package_root: Path, *, parent: str, class_name: str) -> None:
@@ -146,7 +145,7 @@ class TestsFlextInfraLazyInitWorkspaceElection:
         )
 
         # The owner has no cross-repository parent: two self-scoped planning
-        # cycles reach the fixed point (the second is a no-op receipt), and the
+        # cycles reach the fixed point (the second writes nothing), and the
         # generated facade exports only the owner's own namespace.
         tm.that(u.Tests.run_lazy_init(owner_repo), eq=0)
         tm.that(u.Tests.run_lazy_init(owner_repo), eq=0)
@@ -187,7 +186,7 @@ class TestsFlextInfraLazyInitWorkspaceElection:
 
         # The workspace root owns no package dirs at all: its members are
         # declared submodules, consumed as installed libraries, and its
-        # planning receipt is empty by contract.
+        # plan is empty by contract.
         tm.that(u.Tests.run_lazy_init(workspace), eq=0)
         tm.that(u.Tests.run_lazy_init(workspace, check_only=True), eq=0)
         self._write_constants(

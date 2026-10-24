@@ -1,4 +1,4 @@
-"""One atomic campaign for declared candidate recovery projections.
+"""One campaign for declared candidate recovery projections.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,28 +8,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra import m, p, r, t, u
 
 
 class FlextInfraCandidateBootstrapService:
-    """Plan every declared target before one journaled publication."""
+    """Plan every declared target before one shared publication."""
 
-    def __init__(
-        self,
-        planner: p.Infra.CandidateBootstrapPlanner,
-        transaction: p.Infra.CandidateBootstrapTransaction,
-    ) -> None:
-        """Wire the declared-target planner to its atomic publisher."""
+    def __init__(self, planner: p.Infra.CandidateBootstrapPlanner) -> None:
+        """Wire the declared-target planner."""
         self._planner = planner
-        self._transaction = transaction
 
     def execute(
         self,
         source_root: Path,
         workspace: m.Infra.WorkspaceSpec,
         command: m.Infra.CandidateBootstrapCommand,
-        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Publish a fixed point for the entire typed target declaration.
 
@@ -43,56 +36,20 @@ class FlextInfraCandidateBootstrapService:
         roots = self._resolved_roots(source_root, targets)
         if roots.failure:
             return r[bool].from_failure(roots)
-        if command.dry_run or command.check_only or not command.apply_changes:
-            return self._verify(roots.value, targets, declaration_states)
-
-        def publish(scope_root: Path) -> p.Result[bool]:
-            planned = self.plan_candidates(roots.value, targets, declaration_states)
+        if command.apply_changes and not (command.dry_run or command.check_only):
+            planned = self.plan_candidates(roots.value, targets)
             if planned.failure:
                 return r[bool].from_failure(planned)
-            analysis = planned.value
-            changed = tuple(
-                plan
-                for plan in analysis.files
-                if u.Infra.codegen_file_requires_effect(plan)
-            )
-            if not changed:
-                return self._verify(roots.value, targets, declaration_states)
-            receipts: list[m.Infra.CodegenPhaseOutcome] = []
-            committed = self._transaction.publish_file_phase_locked(
-                scope_root,
-                roots.value,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=tuple(
-                        sorted({
-                            file.path.parent
-                            for file in changed
-                            if not file.path.parent.is_dir()
-                        }),
-                    ),
-                ),
-                publication_receipts=receipts,
-            )
-            if committed.failure:
-                return r[bool].from_failure(committed)
-            continued = self._planner.continue_after_publication(tuple(receipts))
-            if continued.failure:
-                return r[bool].from_failure(continued)
-            return self._verify(
-                roots.value,
-                targets,
-                declaration_states,
-                receipts=tuple(receipts),
-            )
+            published = u.Infra.publish_codegen_plans(source_root, planned.value)
+            if published.failure:
+                return r[bool].from_failure(published)
+        return self._verify(roots.value, targets)
 
-        return self._transaction.run_files_locked(roots.value, publish)
-
+    @staticmethod
     def _resolved_roots(
-        self,
         source_root: Path,
         targets: m.Infra.CandidateBootstrapTargets,
-    ) -> p.Result[t.MappingKV[str, Path]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Resolve each declared target to its exact elected worktree root.
 
         Args:
@@ -100,11 +57,11 @@ class FlextInfraCandidateBootstrapService:
             targets: The declared candidate bootstrap targets.
 
         Returns:
-            The elected worktree root keyed by candidate identity, or the
-            first resolution failure.
+            The elected worktree roots in target order, or the first
+            resolution failure.
 
         """
-        result_type = r[t.MappingKV[str, Path]]
+        result_type = r[t.VariadicTuple[Path]]
         elected: list[Path] = []
         for target in targets:
             identity = u.Infra.exact_worktree_root(
@@ -117,181 +74,93 @@ class FlextInfraCandidateBootstrapService:
             return result_type.fail(
                 "candidate bootstrap targets resolve to duplicate worktrees",
             )
-        return result_type.ok(self._transaction.capability_roots("candidate", elected))
+        return result_type.ok(tuple(elected))
 
     def plan_candidates(
         self,
-        roots: t.MappingKV[str, Path],
+        roots: t.SequenceOf[Path],
         targets: m.Infra.CandidateBootstrapTargets,
-        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Compose one immutable receipt from all conform planners.
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Compose the file plans of every declared target.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
+            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         files: list[m.Infra.CodegenFilePlan] = []
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
-            state.path: state for state in declaration_states
-        }
-        for root, target in zip(roots.values(), targets, strict=True):
-            planned = self._planned_target(root, target, inputs)
+        for root, target in zip(roots, targets, strict=True):
+            planned = self._planned_target(root, target)
             if planned.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            for file in planned.value:
-                sources = u.Infra.unique_states((
-                    *declaration_states,
-                    *file.source_states,
-                ))
-                if sources.failure:
-                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
-                files.append(file.model_copy(update={"source_states": sources.value}))
-        sources = u.Infra.unique_states(
-            tuple(source for file in files for source in file.source_states),
-        )
-        if sources.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
-        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            tuple(directory for file in files for directory in file.source_directories),
-            tuple(chain for file in files for chain in file.source_query_topology),
-        )
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
-                files=tuple(files),
-                inputs=sources.value,
-                source_directories=directories,
-                source_query_topology=topology,
-            ),
-        )
+                return result_type.from_failure(planned)
+            files.extend(planned.value)
+        return result_type.ok(tuple(files))
 
     def _planned_target(
         self,
         root: Path,
         target: m.Infra.CandidateBootstrapTargetSpec,
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Plan one candidate target and admit its states into the inventory.
-
-        Args:
-            root: The elected worktree root of the target.
-            target: The declared candidate bootstrap targets being planned.
-            inputs: The mutable input state inventory, updated in place.
-
-        Returns:
-            The planned files of the target, or the first bootstrap failure.
-
-        """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        captured = self._captured_target_states(root, inputs)
-        if captured.failure:
-            return result_type.from_failure(captured)
-        admitted = self._admitted_target_plan(root, target, captured.value)
-        if admitted.failure:
-            return result_type.from_failure(admitted)
-        contract, planned_files = admitted.value
-        files: list[m.Infra.CodegenFilePlan] = []
-        for file in planned_files:
-            diagnostic = self._planned_file_failure(root, file, contract, inputs)
-            if diagnostic is not None:
-                return result_type.fail(diagnostic)
-            files.append(file)
-        return result_type.ok(tuple(files))
-
-    @staticmethod
-    def _captured_target_states(
-        root: Path,
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[m.Infra.CodegenInputs]:
-        """Load one target's codegen inputs and admit its source states.
-
-        Args:
-            root: The elected worktree root of the target.
-            inputs: The mutable input state inventory, updated in place.
-
-        Returns:
-            The target's captured codegen inputs, or the first admission
-            failure.
-
-        """
-        captured = u.Infra.load_codegen_inputs(root)
-        if captured.failure:
-            return r[m.Infra.CodegenInputs].from_failure(captured)
-        for state in captured.value.sources:
-            previous = inputs.setdefault(state.path, state)
-            if previous != state:
-                return r[m.Infra.CodegenInputs].fail(
-                    f"candidate bootstrap observed two states for {state.path}",
-                )
-        return r[m.Infra.CodegenInputs].ok(captured.value)
-
-    def _admitted_target_plan(
-        self,
-        root: Path,
-        target: m.Infra.CandidateBootstrapTargetSpec,
-        captured: m.Infra.CodegenInputs,
-    ) -> p.Result[
-        t.Pair[
-            m.Infra.CodegenConformSurfaceContract,
-            t.VariadicTuple[m.Infra.CodegenFilePlan],
-        ]
-    ]:
         """Plan one target under its surface contract and prove destinations.
 
         Args:
             root: The elected worktree root of the target.
-            target: The declared candidate bootstrap targets being planned.
-            captured: The target's captured codegen inputs.
+            target: The declared candidate bootstrap target being planned.
 
         Returns:
-            The target's surface contract with its planned files, or the
-            first contract violation.
+            The planned files of the target, or the first contract violation.
 
         """
-        result_type = r[
-            t.Pair[
-                m.Infra.CodegenConformSurfaceContract,
-                t.VariadicTuple[m.Infra.CodegenFilePlan],
-            ]
-        ]
-        contract = self._planner.surface_contract(target.what, codegen=captured.spec)
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        captured = u.Infra.load_codegen_inputs(root)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        contract = self._planner.surface_contract(
+            target.what, codegen=captured.value.spec
+        )
         if contract.complete_governed:
             return result_type.fail(
                 f"candidate bootstrap requires one declared surface: {root}",
             )
-        request = m.Infra.CodegenGenerateRequest(
-            root=root,
-            what=target.what,
+        planned = self._planner.plan_repositories(
+            m.Infra.CodegenGenerateRequest(root=root, what=target.what),
+            captured.value,
         )
-        planned = self._planner.plan_repositories(request, captured)
         if planned.failure:
             return result_type.from_failure(planned)
         if planned.value.exception is not None:
             raise planned.value.exception
         if planned.value.issues:
             return result_type.fail(planned.value.issues[0].formatted)
-        if (
-            contract.destinations is not None
+        files = planned.value.files
+        diagnostic = (
+            f"candidate bootstrap has no declared destinations: {root}"
+            if contract.destinations is not None
             and not contract.destinations
-            and not planned.value.files
-        ):
-            return result_type.fail(
-                f"candidate bootstrap has no declared destinations: {root}",
+            and not files
+            else next(
+                (
+                    failure
+                    for file in files
+                    if (failure := self._destination_failure(root, file, contract))
+                ),
+                None,
             )
-        return result_type.ok((contract, planned.value.files))
+        )
+        if diagnostic is not None:
+            return result_type.fail(diagnostic)
+        return result_type.ok(tuple(files))
 
     @staticmethod
-    def _planned_file_failure(
+    def _destination_failure(
         root: Path,
         file: m.Infra.CodegenFilePlan,
         contract: m.Infra.CodegenConformSurfaceContract,
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> str | None:
-        """Admit the file's source states or name its first bootstrap violation.
+        """Name the first destination violation of one planned file.
 
         Returns:
-            The failure message, or ``None`` when the file is planable.
+            The failure message, or ``None`` when the destination is admitted.
 
         """
         if file.project != root or not file.path.is_relative_to(root):
@@ -303,81 +172,26 @@ class FlextInfraCandidateBootstrapService:
             return (
                 f"candidate bootstrap destination is outside its surface: {file.path}"
             )
-        for state in file.source_states:
-            previous = inputs.setdefault(state.path, state)
-            if previous != state:
-                return f"candidate bootstrap observed two states for {state.path}"
         return None
 
     def _verify(
         self,
-        roots: t.MappingKV[str, Path],
+        roots: t.SequenceOf[Path],
         targets: m.Infra.CandidateBootstrapTargets,
-        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        *,
-        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
     ) -> p.Result[bool]:
-        """Require unchanged declarations and a complete post-publication fixed point.
+        """Require a complete fixed point for every declared target.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
-            receipts,
-        )
-        if outputs.failure:
-            return r[bool].from_failure(outputs)
-        declarations = self._verified_declarations(declaration_states, receipts)
-        if declarations.failure:
-            return r[bool].from_failure(declarations)
-        planned = self.plan_candidates(roots, targets, declarations.value)
+        planned = self.plan_candidates(roots, targets)
         if planned.failure:
             return r[bool].from_failure(planned)
         return u.Infra.codegen_fixed_point(
-            planned.value.files,
+            planned.value,
             subject="candidate bootstrap",
         )
-
-    @staticmethod
-    def _verified_declarations(
-        declaration_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Authenticate each original declaration or its own published replacement.
-
-        Returns:
-            The exact post-publication declaration states, or their first mismatch.
-
-        """
-        result = r[t.VariadicTuple[m.Cli.AtomicFileState]]
-        published = {
-            item.before.path: item
-            for receipt in receipts
-            for item in receipt.published_files
-        }
-        expected_states: list[m.Cli.AtomicFileState] = []
-        for state in declaration_states:
-            publication = published.get(state.path)
-            expected = state
-            if publication is not None:
-                if publication.before != state or publication.replacement is None:
-                    return result.fail(
-                        "candidate bootstrap declaration lacks its "
-                        "captured publication",
-                    )
-                expected = publication.replacement
-            observed = u.Cli.atomic_read_binary_file_state(
-                state.path,
-            )
-            if observed.failure:
-                return result.from_failure(observed)
-            if observed.value != expected:
-                return result.fail(
-                    "candidate bootstrap declaration changed during publication",
-                )
-            expected_states.append(expected)
-        return result.ok(tuple(expected_states))
 
 
 __all__: list[str] = ["FlextInfraCandidateBootstrapService"]

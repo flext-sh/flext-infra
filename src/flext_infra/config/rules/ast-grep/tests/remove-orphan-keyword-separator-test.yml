@@ -1,0 +1,17 @@
+id: remove-orphan-keyword-separator
+valid:
+  - |
+    def f(a, *, b): ...
+  - |
+    def f(a, *, b=1, **rest): ...
+  - |
+    def f(*args): ...
+invalid:
+  - |
+    def f(a, *,): ...
+  - |
+    def f(
+        self,
+        root,
+        *,
+    ) -> None: ...

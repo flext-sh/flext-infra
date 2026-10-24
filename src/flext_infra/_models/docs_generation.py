@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
-from flext_cli import m as cli_m
 from flext_core import m
 
 from flext_infra import c, t
@@ -178,33 +177,17 @@ class FlextInfraModelsDocsGeneration:
         ]
 
     class DocsGenerationBundle(FlextInfraModelsBase.FrozenArbitrary):
-        """Single render and source snapshot consumed through publication."""
+        """Single render consumed through publication."""
 
         scopes: Annotated[
             t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
-        source_states: Annotated[
-            t.VariadicTuple[cli_m.Cli.AtomicFileState],
-            m.Field(min_length=1, description="Authenticated physical render inputs"),
-        ]
         metadata_files: t.VariadicTuple[
             FlextInfraConfigModelsArtifact.CodegenFilePlan
         ] = m.Field(default=(), description="Owned metadata published with this render")
-        source_roots: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Exact roots elected for this batch source topology"),
-        ] = ()
-        source_scope: Path | None = m.Field(
-            default=None, description="Member elected for this source readset"
-        )
-        source_directories: Annotated[
-            t.VariadicTuple[cli_m.Cli.AtomicDirectoryChainPlan],
-            m.Field(description="Physical directory presence consumed by the batch"),
-        ] = ()
-        # Why (X-47): the physical workspace root is required for source
-        # verification even when the root is excluded from `scopes` (DECLARED
-        # conform scope), so it can no longer be inferred from `scopes[0]`.
+        # The workspace root stays explicit: it may be excluded from `scopes`
+        # (DECLARED conform scope), so it cannot be inferred from `scopes[0]`.
         repository_root: Annotated[
             Path,
             m.Field(description="Absolute lexical physical workspace root"),
@@ -242,37 +225,6 @@ class FlextInfraModelsDocsGeneration:
             destinations = (*destinations, *metadata_paths)
             if len(set(destinations)) != len(destinations):
                 msg = "docs generation destinations must be unique"
-                raise ValueError(msg)
-            source_paths = tuple(state.path for state in self.source_states)
-            if len(set(source_paths)) != len(source_paths):
-                msg = "docs generation source paths must be unique"
-                raise ValueError(msg)
-            # ``AtomicFileState`` models absence as every physical field unset;
-            # an absent optional input (the collection's own manifest before
-            # its first generation) is a legitimate source state. A present
-            # file must carry its full physical identity with a single link.
-            if any(
-                not (
-                    (
-                        state.content is None
-                        and state.mode is None
-                        and state.device is None
-                        and state.inode is None
-                        and state.link_count is None
-                        and state.reparse_tag is None
-                    )
-                    or (
-                        state.content is not None
-                        and state.mode is not None
-                        and state.device is not None
-                        and state.inode is not None
-                        and state.link_count == 1
-                        and state.reparse_tag in {None, 0}
-                    )
-                )
-                for state in self.source_states
-            ):
-                msg = "docs generation source state is absent or unauthenticated"
                 raise ValueError(msg)
             return self
 

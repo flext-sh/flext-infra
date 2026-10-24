@@ -407,8 +407,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         rope_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
-        if rope_project is not None and not rope_project.authenticated_sources:
-            rope_project = None
+
         if not (
             file_path.is_file()
             if rope_project is None
@@ -462,7 +461,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         resolved_root = project_root.resolve()
-        if rope_project is not None and rope_project.authenticated_sources:
+        if rope_project is not None:
             project = None
         else:
             rope_project = None
@@ -558,9 +557,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project_layout is not None
             else FlextInfraUtilitiesDiscovery.project_root(
                 file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             )
         )
         if project_root is not None:
@@ -851,9 +848,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project_layout is not None
             else FlextInfraUtilitiesDiscovery.project_root(
                 file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             )
         )
         if project_layout is None and project_root is not None:
@@ -893,9 +888,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_prefix=cls.project_prefix(
                 file_path,
                 project_layout=project_layout,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             ),
             expected_alias=expected_alias,
             expected_family=expected_family,

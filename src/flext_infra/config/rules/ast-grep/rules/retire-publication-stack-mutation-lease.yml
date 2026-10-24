@@ -1,0 +1,9 @@
+id: retire-publication-stack-mutation-lease
+language: Python
+severity: error
+rule:
+  pattern: FlextInfraCodegenFileLeases.mutation_lease($ROOT)
+fix: u.Cli.file_changes_lock(u.Infra.mutation_lock_path($ROOT).unwrap())
+message: >-
+  Every writer serializes on the one shared file-change lock in Git storage;
+  the codegen journal lease is retired with the publication stack.

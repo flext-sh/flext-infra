@@ -1,0 +1,44 @@
+id: retire-publication-stack-cached-source-query
+valid:
+  - |
+    if key in cache:
+        return cache[key]
+    cache[key] = build(key)
+  - |
+    with u.Infra.cached_layout(project, cache, key) as cached:
+        if not cached:
+            cache[key] = build(key)
+invalid:
+  - |
+    def names(self, key):
+        with u.Infra.cached_source_query(
+            self.project, self._cache, key, self._receipts, f"k:{key}"
+        ) as cached:
+            if cached:
+                return self._cache[key]
+            value = build(key)
+            self._cache[key] = value
+            return value
+  - |
+    def query(cls, key):
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+            project, cache, key, receipts, key
+        ) as hit:
+            if hit:
+                return r[int].ok(cache[key])
+            loaded = load(key)
+        return loaded
+  - |
+    def query(self, key):
+        with u.Infra.cached_source_query(project, cache, key, receipts, key) as cached:
+            if not cached:
+                cache[key] = build(key)
+        return cache[key]
+  - |
+    def context(owner):
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+            source_project, contexts, owner, receipts, str(owner)
+        ) as cached:
+            if not cached:
+                contexts[owner] = build(owner)
+            return contexts[owner]

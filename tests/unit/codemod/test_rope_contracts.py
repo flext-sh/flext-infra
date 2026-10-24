@@ -120,7 +120,6 @@ class TestsFlextInfraRopeContractCatalog:
         tm.that(
             tuple(rule.id for rule in rules), eq=(*packaged, "governed-member-contract")
         )
-        tm.that(rules[-1].source_states[0].path, eq=overlay)
 
     @staticmethod
     def test_repository_overlay_cannot_redeclare_a_packaged_rule(
@@ -302,15 +301,6 @@ class TestsFlextInfraRopeContractCatalog:
         after = runpy.run_path(str(path))
         tm.that(after["evidence"], eq=before)
         tm.that(after["default_identity"], eq=True)
-        tm.that(
-            u.Cli.atomic_verify_binary_file_states(
-                tuple(
-                    m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
-                    for state in edits[0].source_states
-                )
-            ).failure,
-            eq=True,
-        )
         sources[path] = updated
         tm.that(
             tm.ok(u.Infra.plan_contract_rules(workspace, sources, rules)),

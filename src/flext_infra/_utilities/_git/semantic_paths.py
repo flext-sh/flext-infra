@@ -7,26 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-import stat
-from collections.abc import Generator
-from contextlib import contextmanager
 from pathlib import Path
 
 from flext_cli import u
-from git import (
-    GitCommandError,
-    HookExecutionError,
-    IndexFile,
-    InvalidGitRepositoryError,
-    Repo,
-)
+from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
 from gitdb.util import LockedFD
 
-from flext_infra import c, m, p, r, t
+from flext_infra import m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitStateFilesMixin,
-    FlextInfraUtilitiesGitWorktreeIO,
 )
 from flext_infra._utilities._git.state_trees import (
     FlextInfraUtilitiesGitStateTreesMixin,
@@ -388,10 +378,6 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
 
         """
         try:
-            if cls._publication_index.get() is not None:
-                return r[m.Infra.GitBoolReport].fail(
-                    "publication producers must emit native effects, not stage paths"
-                )
             repo = cls._repo(request.repo_root)
             repo.git.add("--force", "--", *request.paths)
         except GitCommandError as exc:
@@ -441,10 +427,6 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
 
         """
         try:
-            if cls._publication_index.get() is not None:
-                return r[m.Infra.GitOidReport].fail(
-                    "publication producers cannot commit the shared index"
-                )
             repo = cls._repo(request.repo_root)
             commit = repo.index.commit(request.message)
         except (GitCommandError, HookExecutionError) as exc:
@@ -455,325 +437,6 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
                 exception=exc,
             )
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
-
-    @staticmethod
-    def _git_publication_digest(state: m.Infra.GitPublicationState) -> str:
-        index = state.index_before.content
-        return u.Cli.sha256_content(
-            state.model_dump_json()
-            + (u.Cli.sha256_bytes(index) if index is not None else "absent")
-        )
-
-    @classmethod
-    def _git_publication_current(
-        cls, state: m.Infra.GitPublicationState
-    ) -> p.Result[bool]:
-        storage = state.__pydantic_private__
-        if storage is None or storage.get("_publication_birth") != (
-            id(state),
-            cls._git_publication_digest(state),
-        ):
-            return r[bool].fail(
-                "Git publication admission was not emitted by this owner"
-            )
-        repo = cls._repo(state.repo_root)
-        if (
-            repo.head.commit.hexsha != state.caller_oid
-            or repo.active_branch.name != state.caller_branch
-        ):
-            return r[bool].fail("caller branch or HEAD changed after Git admission")
-        return u.Cli.atomic_verify_binary_file_states((state.index_before,))
-
-    @classmethod
-    @contextmanager
-    def git_publication_scope(
-        cls, state: m.Infra.GitPublicationState
-    ) -> Generator[None]:
-        """Route the selected producer's Git index effects to an owned view.
-
-        Yields:
-            Control under the native request-local index environment.
-
-        Raises:
-            ValueError: If a native Git publication index is already selected.
-
-        """
-        cls._git_publication_current(state).unwrap()
-        if cls._publication_index.get() is not None:
-            msg = "a native Git publication index is already selected"
-            raise ValueError(msg)
-        with cls.state_publication_index(
-            state.repo_root, state.base_oid, (), ()
-        ) as index_file:
-            token = cls._publication_index.set(
-                m.Infra.GitIndexScope(
-                    repo_root=state.repo_root,
-                    index_file=index_file,
-                )
-            )
-            try:
-                yield
-            finally:
-                cls._publication_index.reset(token)
-
-    @classmethod
-    def _git_publication_targets(
-        cls,
-        root: Path,
-        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-    ) -> t.VariadicTuple[m.Infra.CodegenStagedFile]:
-        if not publications:
-            msg = "Git publication requires actual native output receipts"
-            raise ValueError(msg)
-        targets: dict[Path, m.Infra.CodegenStagedFile] = {}
-        pending = list(reversed(publications))
-        while pending:
-            publication = pending.pop()
-            if (
-                publication.root != root
-                or not publication.completed
-                or publication.error
-                or publication.issues
-                or publication.pending_files
-            ):
-                msg = (
-                    "Git publication requires complete repository-bound native effects"
-                )
-                raise ValueError(msg)
-            pending.extend(reversed(publication.batches))
-            for published in publication.published_files:
-                before = published.before
-                if (
-                    published.project != root
-                    or not before.path.is_relative_to(root)
-                    or before.path not in publication.effect_targets
-                ):
-                    msg = f"native Git output is outside the repository: {before.path}"
-                    raise ValueError(msg)
-                relative = before.path.relative_to(root)
-                cls._state_pathspecs((relative,))
-                original = targets.setdefault(before.path, published)
-                if original.tracking != published.tracking:
-                    msg = (
-                        f"native Git tracking changed within publication: {before.path}"
-                    )
-                    raise ValueError(msg)
-        return tuple(targets.values())
-
-    @classmethod
-    def _git_publication_entry(
-        cls, root: Path, state: m.Cli.AtomicFileState, *, write: bool
-    ) -> m.Infra.GitWorktreeIndexEntry | None:
-        if state.content is None:
-            return None
-        if state.mode is None:
-            msg = f"native publication has no file mode: {state.path}"
-            raise ValueError(msg)
-        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(state.content) as stream:
-            oid = cls._repo(root).git.hash_object(
-                *(("-w", "--stdin") if write else ("--stdin",)), istream=stream
-            )
-        return m.Infra.GitWorktreeIndexEntry(
-            path=state.path.relative_to(root),
-            mode="100755" if state.mode & stat.S_IXUSR else "100644",
-            oid=oid,
-        )
-
-    @classmethod
-    def git_commit_publications(
-        cls,
-        state: m.Infra.GitPublicationState,
-        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        *,
-        publication_verifier: p.Infra.GitPublicationVerifier,
-    ) -> p.Result[m.Infra.GitOidReport]:
-        """Commit authenticated outputs without staging into the caller's index.
-
-        Returns:
-            The owned commit, or the first origin, affected-path, hook, or CAS failure.
-
-        """
-        try:
-            current = cls._git_publication_current(state)
-            if current.failure:
-                return r[m.Infra.GitOidReport].from_failure(current)
-            with cls._state_leases((state.repo_root,)):
-                return cls._git_commit_publications_locked(
-                    state, publications, publication_verifier
-                )
-        except (GitCommandError, HookExecutionError, OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail_op("publish native Git outputs", exc)
-
-    @classmethod
-    def _git_publication_entries(
-        cls,
-        state: m.Infra.GitPublicationState,
-        targets: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        outputs: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]]:
-        result = r[t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]]
-        paths = tuple(item.before.path.relative_to(state.repo_root) for item in targets)
-        baseline = {
-            entry.path: entry
-            for entry in cls._state_tree_entries(state.repo_root, state.base_oid, paths)
-        }
-        staged = (
-            {
-                entry.path: entry
-                for entry in cls.state_snapshot_index(
-                    state.repo_root, paths, index_file=state.index_before.path
-                )
-            }
-            if paths
-            else {}
-        )
-        for target in targets:
-            path = target.before.path.relative_to(state.repo_root)
-            preimage = (
-                target.index_before
-                if target.tracking == "runtime-local"
-                else cls._git_publication_entry(
-                    state.repo_root, target.before, write=False
-                )
-            )
-            if baseline.get(path) != preimage or (
-                (target.tracking == "versioned" or preimage is not None)
-                and staged.get(path) != preimage
-            ):
-                return result.fail(
-                    f"owned output overlaps pre-existing changes: {path}"
-                )
-        retired = {
-            target.before.path
-            for target in targets
-            if target.tracking == "runtime-local"
-        }
-        return result.ok(
-            tuple(
-                entry
-                for after in outputs
-                if after.path not in retired
-                if (
-                    entry := cls._git_publication_entry(
-                        state.repo_root, after, write=True
-                    )
-                )
-                is not None
-            )
-        )
-
-    @classmethod
-    def _git_commit_publications_locked(
-        cls,
-        state: m.Infra.GitPublicationState,
-        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        publication_verifier: p.Infra.GitPublicationVerifier,
-    ) -> p.Result[m.Infra.GitOidReport]:
-        result = r[m.Infra.GitOidReport]
-        current = cls._git_publication_current(state)
-        if current.failure:
-            return result.from_failure(current)
-        targets = cls._git_publication_targets(state.repo_root, publications)
-        inputs = tuple(target.before for target in targets)
-        observed = publication_verifier.publication_input_states(inputs, publications)
-        if observed.failure:
-            return result.from_failure(observed)
-        entries = cls._git_publication_entries(state, targets, observed.value)
-        if entries.failure:
-            return result.from_failure(entries)
-        repo = cls._repo(state.repo_root)
-        lock = LockedFD(state.index_before.path)
-        lock.open(write=True, stream=False)
-        try:
-            with (
-                cls.state_publication_index(
-                    state.repo_root,
-                    state.base_oid,
-                    tuple(item.path.relative_to(state.repo_root) for item in inputs),
-                    entries.value,
-                ) as index_path,
-                repo.git.custom_environment(GIT_INDEX_FILE=str(index_path)),
-            ):
-                index = IndexFile(repo, index_path)
-                expected_tree = index.write_tree().hexsha
-                if expected_tree == repo.commit(state.base_oid).tree.hexsha:
-                    return result.ok(m.Infra.GitOidReport(oid=state.base_oid))
-                commit = index.commit(
-                    state.subject,
-                    parent_commits=[repo.commit(state.base_oid)],
-                    head=False,
-                )
-                if (
-                    commit.tree.hexsha != expected_tree
-                    or repo.git.write_tree() != expected_tree
-                ):
-                    return result.fail(
-                        "commit hook changed authenticated owned outputs"
-                    )
-                return cls._git_publication_finalize(
-                    state, inputs, publications, publication_verifier, commit.hexsha
-                )
-        finally:
-            lock.rollback()
-
-    @classmethod
-    def _git_publication_finalize(
-        cls,
-        state: m.Infra.GitPublicationState,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        publication_verifier: p.Infra.GitPublicationVerifier,
-        oid: str,
-    ) -> p.Result[m.Infra.GitOidReport]:
-        result = r[m.Infra.GitOidReport]
-        verified = publication_verifier.publication_input_states(inputs, publications)
-        if verified.failure:
-            return result.from_failure(verified)
-        original = cls._git_publication_current(state)
-        if original.failure:
-            return result.from_failure(original)
-        request = m.Infra.GitLaneVerificationRequest(
-            repo_root=state.repo_root,
-            remote=state.remote,
-            candidate=state.caller_oid,
-            expected_tip=state.base_oid,
-            ownership=state.ownership,
-        )
-        fresh = cls.git_verify_lane(request).flat_map(
-            lambda tip: cls._git_lane_retained_ownership(request, tip.oid)
-        )
-        if fresh.failure:
-            return result.from_failure(fresh)
-        cls._git_publication_ref(state, oid)
-        return result.ok(m.Infra.GitOidReport(oid=oid))
-
-    @classmethod
-    def _git_publication_branch_current(cls, root: Path, branch: str) -> None:
-        repo = cls._repo(root)
-        entries = cls._worktree_registry(
-            repo, repo.git.worktree(c.Action.LIST, "--porcelain")
-        )
-        if any(entry.branch == branch and entry.path != root for entry in entries):
-            msg = f"owned candidate is active in another checkout: {branch}"
-            raise ValueError(msg)
-
-    @classmethod
-    def _git_publication_ref(cls, state: m.Infra.GitPublicationState, oid: str) -> None:
-        cls._git_publication_branch_current(state.repo_root, state.branch)
-        owned = f"refs/heads/{state.branch}"
-        previous = (
-            state.previous_oid
-            if state.previous_oid is not None
-            else c.ParserBooleanToken.ZERO * len(oid)
-        )
-        commands = f"start\nverify {state.integration_ref} {state.base_oid}\n"
-        if state.branch != state.caller_branch:
-            commands += f"verify refs/heads/{state.caller_branch} {state.caller_oid}\n"
-        commands += f"update {owned} {oid} {previous}\nprepare\ncommit\n"
-        with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
-            commands.encode("utf-8")
-        ) as stream:
-            cls._repo(state.repo_root).git.update_ref("--stdin", istream=stream)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticPathsMixin"]

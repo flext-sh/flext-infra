@@ -103,7 +103,6 @@ class FlextInfraRefactorCensus(
                     self.root,
                     rope,
                     apply=self.apply_changes and not self.effective_dry_run,
-                    source_preview=self.source_preview,
                     workspace_factory=self.workspace_factory,
                 )
                 if planned_constants.failure:

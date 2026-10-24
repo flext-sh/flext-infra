@@ -109,7 +109,7 @@ class TestsFlextInfraRopeSnapshot:
         skills.mkdir(parents=True)
         (skills / "provider-helper").symlink_to(provider, target_is_directory=True)
 
-        with u.Infra.facade_source_project(root) as (project, _receipts, _sources):
+        with u.Infra.facade_source_project(root) as (project, _sources):
             paths = tuple(
                 Path(resource.real_path) for resource in project.get_python_files()
             )
@@ -129,62 +129,20 @@ class TestsFlextInfraRopeSnapshot:
 
         with (
             pytest.raises(OSError, match="physical alias"),
-            u.Infra.facade_source_project(root) as (project, _receipts, _sources),
+            u.Infra.facade_source_project(root) as (project, _sources),
         ):
             tuple(project.get_python_files())
 
     @staticmethod
-    def test_source_queries_use_the_closed_snapshot(tmp_path: Path) -> None:
-        """Snapshot membership follows captured inputs, never later disk state."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        source = package / "captured.py"
-        content = "value = 1\n"
-        source.write_text(content, encoding="utf-8")
-        late_source = package / "late.py"
-        with infra.rope_workspace(root) as rope:
-            snapshot = u.Infra.snapshot_project(rope.rope_project, {source: content})
-            try:
-                source.unlink()
-                late_source.write_text(content, encoding="utf-8")
-                tm.fail(snapshot.authenticated_sources)
-                tm.ok(snapshot.source_query(source, "exists"))
-                tm.ok(snapshot.source_query(source, "isfile"))
-                tm.fail(snapshot.source_query(late_source, "exists"))
-                tm.fail(snapshot.source_query(late_source, "isfile"))
-                tm.fail(snapshot.source_query(source, "isdir"))
-                tm.ok(snapshot.source_query(package, "exists"))
-                tm.ok(snapshot.source_query(package, "isdir"))
-                tm.fail(snapshot.source_query(package, "isfile"))
-                with pytest.raises(
-                    TypeError, match="does not own authenticated live reads"
-                ):
-                    snapshot.source_state(source)
-            finally:
-                snapshot.close()
-
-    @staticmethod
-    def test_unbound_live_source_query_requires_authentication(tmp_path: Path) -> None:
-        """A native physical project is not an authenticated source inventory."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        with infra.rope_workspace(root) as rope:
-            tm.fail(rope.rope_project.authenticated_sources)
-            with pytest.raises(
-                TypeError, match="does not own authenticated live reads"
-            ):
-                rope.rope_project.source_query(package, "isdir")
-
-    @staticmethod
     @pytest.mark.parametrize("external", [False, True])
     @pytest.mark.parametrize("planned", [False, True])
-    @pytest.mark.parametrize("consumed", [False, True])
-    def test_physical_receipt_never_becomes_the_planned_source(
+    def test_declared_plan_overlays_without_touching_the_physical_source(
         tmp_path: Path,
         *,
         external: bool,
         planned: bool,
-        consumed: bool,
     ) -> None:
-        """An overlay is not a publication receipt, even after same-inode drift."""
+        """A declared plan is visible in the view; the live file keeps its bytes."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         provider = tmp_path / "external" if external else package
         provider.mkdir(exist_ok=True)
@@ -206,61 +164,23 @@ class TestsFlextInfraRopeSnapshot:
             if planned
             else ()
         )
-        with u.Infra.facade_source_project(
-            root,
-            source_options=m.Infra.StageSourceOptions(
-                inputs=(original,), declared_files=declarations
-            ),
-        ) as (project, receipts, _):
-            with project.source_consumption() as consumer:
-                tm.that(
-                    project.source_text(source).encode("utf-8"),
-                    eq=proposed if planned else physical,
-                )
-            tm.that(consumer.receipt().inputs, eq=(original,))
-            tm.that(receipts()[0], eq=(original,))
+        with u.Infra.facade_source_project(root, declared_files=declarations) as (
+            project,
+            _,
+        ):
             tm.that(
-                tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
-                eq=original,
+                project.source_bytes(source),
+                eq=proposed if planned else physical,
             )
-
-        def consume_changed_source() -> None:
-            with u.Infra.facade_source_project(
-                root,
-                source_options=m.Infra.StageSourceOptions(
-                    inputs=(original,), declared_files=declarations
-                ),
-            ) as (project, receipts, _):
-                if consumed:
-                    tm.that(project.source_state(source), eq=original)
-                # Preserve inode, mode and length while changing the physical bytes.
-                with source.open("r+b") as stream:
-                    tm.that(stream.write(proposed), eq=len(physical))
-                observed = tm.ok(
-                    u.Cli.atomic_read_binary_file_state(source, required=True)
-                )
-                tm.that(
-                    observed.model_dump(exclude={"content"}),
-                    eq=original.model_dump(exclude={"content"}),
-                )
-                tm.that(observed.content, eq=proposed)
-                if consumed:
-                    tm.that(receipts()[0], eq=(original,))
-                else:
-                    project.source_state(source)
-
-        with pytest.raises(ValueError, match="atomic source changed") as rejected:
-            consume_changed_source()
-        tm.that(str(rejected.value), has=str(source))
-        tm.that(str(rejected.value), has="content_changed=True")
-        tm.that(str(rejected.value), has="same_model_type=True")
+            tm.that(project.source_state(source), eq=original)
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 
     @staticmethod
     @pytest.mark.parametrize("declared", [False, True])
-    def test_lazy_planning_keeps_physical_receipts_for_both_overlay_routes(
+    def test_lazy_planning_reads_both_overlay_routes(
         tmp_path: Path, *, declared: bool
     ) -> None:
-        """Repeated export planning never authenticates its own proposed bytes."""
+        """Repeated export planning renders the proposed, never the physical, bytes."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         layout = tm.not_none(u.Infra.layout(root))
         source = package / "provider.py"
@@ -293,54 +213,30 @@ class TestsFlextInfraRopeSnapshot:
         service = u.Tests.create_lazy_init_service(root)
         with u.Infra.facade_source_project(
             root,
-            source_options=m.Infra.StageSourceOptions(
-                inputs=(original,), declared_files=declarations
-            ),
+            declared_files=declarations,
             planned_sources=overlay,
-        ) as (project, receipts, _):
+        ) as (project, _):
             for _ in range(2):
                 analysis = tm.ok(service.plan_files(source_project=project))
                 initializer = next(
                     plan
-                    for plan in analysis.files
+                    for plan in analysis
                     if plan.path == package / "__init__.py"
                 )
                 rendered = tm.not_none(initializer.desired_content).decode("utf-8")
                 tm.that(rendered, has=planned_name)
                 tm.fail(physical_name in rendered)
-                tm.that(
-                    tuple(state for state in receipts()[0] if state.path == source),
-                    eq=(original,),
-                )
                 tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 
-        def plan_changed_source() -> None:
-            with u.Infra.facade_source_project(
-                root,
-                source_options=m.Infra.StageSourceOptions(
-                    inputs=(original,), declared_files=declarations
-                ),
-                planned_sources=overlay,
-            ) as (project, _, _):
-                tm.ok(service.plan_files(source_project=project))
-                with source.open("r+b") as stream:
-                    stream.write(proposed)
-                    stream.truncate()
-                project.verify_source_states()
-
-        with pytest.raises(ValueError, match="atomic source changed"):
-            plan_changed_source()
-
     @staticmethod
-    def test_native_lazy_ancestry_consumes_unpublished_declared_source(
+    def test_native_lazy_ancestry_reads_unpublished_declared_source(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:
-        """Proposed classes retain physical absence without admitting missing inputs."""
+        """Proposed classes are planned from the overlay without being published."""
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
 import pytest
-from tests import c, r
 from tests import c, m, tm, u
 root, package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
 layout = tm.not_none(u.Infra.layout(root))
@@ -358,26 +254,18 @@ declaration = m.Infra.CodegenFilePlan(
     desired_content=proposed, desired_mode=c.Infra.CONFIG_SPEC[1])
 service = u.Tests.create_lazy_init_service(root)
 with u.Infra.facade_source_project(
-    root, source_options=m.Infra.StageSourceOptions(
-        inputs=(original,), declared_files=(declaration,))
-) as (project, receipts, _):
+    root, declared_files=(declaration,)
+) as (project, _):
     for _ in range(2):
         analysis = tm.ok(service.plan_files(source_project=project))
         initializer = next(
-            plan for plan in analysis.files
+            plan for plan in analysis
             if plan.path == package / c.Infra.INIT_PY)
         tm.that(tm.not_none(initializer.desired_content).decode(
             c.DEFAULT_ENCODING), has=name)
-        tm.that(tuple(state for state in receipts()[0]
-                      if state.path == source), eq=(original,))
-        tm.that(tuple(state for state in initializer.source_states
-                      if state.path == source), eq=(original,))
         tm.that(project.source_bytes(source), eq=proposed)
-        with pytest.raises(FileNotFoundError, match="required source is absent"):
-            project.source_state(source)
         with pytest.raises(FileNotFoundError):
             project.source_bytes(package / "unplanned.py")
-        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 tm.that(source.exists(), eq=False)
 """,
             str(Path(__file__).resolve().parents[2]),
@@ -484,57 +372,25 @@ tm.that(source.exists(), eq=False)
                 snapshot.close()
 
     @staticmethod
-    def test_snapshot_admits_proposal_for_captured_absence(tmp_path: Path) -> None:
-        """A descriptor-proven absence admits only its proposed virtual source."""
+    def test_snapshot_admits_proposal_for_an_absent_source(tmp_path: Path) -> None:
+        """A proposal for an absent path is visible only inside the view."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        initializer = package / "__init__.py"
         source = package / "proposed.py"
-        states = tuple(
-            tm.ok(
-                u.Cli.atomic_read_binary_file_state(path, required=path == initializer)
-            )
-            for path in (initializer, source)
-        )
-        epoch = u.Infra.codemod_source_epoch(
-            m.Infra.CodemodBindingSnapshot(states=states)
-        )
         content = "value = 1\n"
         with infra.rope_workspace(root) as rope:
-            snapshot = u.Infra.snapshot_project(
-                rope.rope_project, {source: content}, captured=epoch
-            )
+            snapshot = u.Infra.snapshot_project(rope.rope_project, {source: content})
             try:
                 resource = u.Infra.require_file_resource(
                     snapshot.get_resource(source.relative_to(root).as_posix()), source
                 )
                 tm.that(resource.read(), eq=content)
                 tm.that(source.exists(), eq=False)
-                tm.ok(u.Cli.atomic_verify_binary_file_states(states))
             finally:
                 snapshot.close()
 
     @staticmethod
-    def test_snapshot_rejects_uncaptured_absent_proposal(tmp_path: Path) -> None:
-        """No live path or absence is silently added to an authenticated epoch."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        initializer = package / "__init__.py"
-        state = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
-        epoch = u.Infra.codemod_source_epoch(
-            m.Infra.CodemodBindingSnapshot(states=(state,))
-        )
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="outside its input inventory"),
-        ):
-            u.Infra.snapshot_project(
-                rope.rope_project,
-                {package / "uncaptured.py": "value = 1\n"},
-                captured=epoch,
-            )
-
-    @staticmethod
     def test_snapshot_rejects_sources_outside_the_project(tmp_path: Path) -> None:
-        """A path outside the workspace root never enters the closed inventory."""
+        """A path outside the workspace root never enters the overlaid view."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
@@ -551,7 +407,7 @@ tm.that(source.exists(), eq=False)
             infra.rope_workspace(repository_root) as rope,
             pytest.raises(
                 ValueError,
-                match=r"outside its input inventory",
+                match=r"outside its project",
             ) as guard_error,
         ):
             u.Infra.snapshot_project(rope.rope_project, sources)

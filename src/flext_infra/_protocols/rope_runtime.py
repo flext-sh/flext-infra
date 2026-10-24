@@ -428,12 +428,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
     @runtime_checkable
-    class RopeSourceConsumption(Protocol):
-        """One consumer's original reads and exact native query receipts."""
-
-        def receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
-
-    @runtime_checkable
     class RopePreferences(Protocol):
         """Native preference updates required by project source election."""
 
@@ -441,47 +435,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
     @runtime_checkable
     class RopeSourceAccess(Protocol):
-        """Authenticated source observations and per-consumer receipt scopes."""
-
-        def source_consumption(
-            self,
-        ) -> AbstractContextManager[
-            FlextInfraProtocolsRopeRuntime.RopeSourceConsumption
-        ]: ...
-
-        def source_selection(self) -> AbstractContextManager[None]: ...
-
-        def source_capture(self) -> AbstractContextManager[None]: ...
-
-        def verify_source_states(
-            self, receipt: m.Infra.CodegenPhaseAnalysis | None = None
-        ) -> None: ...
-
-        def source_consumer(
-            self,
-            *,
-            consumer_root: Path | None = None,
-            source_states: tuple[m.Cli.AtomicFileState, ...] = (),
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
-            additional_source_folders: tuple[str, ...] = (),
-        ) -> AbstractContextManager[Self]: ...
-
-        @property
-        def authenticated_sources(self) -> bool: ...
-
-        def replay_source_consumption(
-            self, receipt: m.Infra.CodegenPhaseAnalysis
-        ) -> None: ...
-
-        def consumed_source_states(self) -> t.VariadicTuple[m.Cli.AtomicFileState]: ...
-
-        def consumed_source_directories(
-            self,
-        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryInventory]: ...
-
-        def consumed_source_topology(
-            self,
-        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]: ...
+        """Source reads through the project's overlaid filesystem view."""
 
         def source_state(
             self, path: Path, *, required: bool = True
@@ -491,12 +445,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
         ) -> bool: ...
 
-        def source_children(
-            self,
-            path: Path,
-            *,
-            follow_aliases: bool = True,
-        ) -> tuple[Path, ...]: ...
+        def source_children(self, path: Path) -> tuple[Path, ...]: ...
 
         def source_text(self, path: Path) -> str: ...
 

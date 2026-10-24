@@ -167,14 +167,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     ``u.Cli.toml_dot_path``; it is never written a second time.
     """
 
-    DOCS_SOURCE_STATE_RACE_MARKER: ClassVar[str] = (
-        "docs source state changed during planning"
-    )
-    """Emitted when a captured docs source changes content or physical identity."""
-    DOCS_SOURCE_TOPOLOGY_RACE_MARKER: ClassVar[str] = (
-        "docs source topology changed during planning"
-    )
-    """Emitted when the captured docs source membership changes."""
     CONFIG_SNAPSHOT_ROOT_RACE_MARKER: ClassVar[str] = (
         "project root changed during config snapshot"
     )

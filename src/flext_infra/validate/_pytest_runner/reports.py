@@ -127,7 +127,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             - time.monotonic(),
         )
         # This publication runs both before and inside the separate cache lease.
-        with u.Infra.codegen_transaction_lease(latest, wait_seconds=wait_seconds):
+        with u.Cli.file_changes_lock(
+            latest.with_name(f"{latest.name}.lock"),
+        ).acquire(timeout=wait_seconds):
             u.Cli.atomic_write_text_file(latest, f"{report_dir.name}\n").unwrap()
 
     @staticmethod

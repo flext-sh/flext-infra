@@ -126,19 +126,16 @@ class FlextInfraWorkspaceCheckReportsMixin:
         summary: m.Infra.CheckReportSummary,
         before: m.Cli.AtomicFileState,
     ) -> m.Cli.AtomicFileState:
-        """Advance this invocation's exact report target under its existing lease.
+        """Advance this invocation's exact report target from its read state.
 
         Returns:
-            The authenticated state of the report that was just published.
+            The state of the report that was just written.
 
         """
-        with u.Infra.codegen_transaction_lease(before.path, wait_seconds=0):
-            u.Cli.atomic_write_text_file_guarded(
-                before, summary.model_dump_json(round_trip=True) + "\n"
-            ).unwrap()
-            return u.Cli.atomic_read_binary_file_state(
-                before.path, required=True
-            ).unwrap()
+        u.Cli.atomic_write_text_file_guarded(
+            before, summary.model_dump_json(round_trip=True) + "\n"
+        ).unwrap()
+        return u.Cli.atomic_read_binary_file_state(before.path, required=True).unwrap()
 
     @classmethod
     def _generate_sarif(

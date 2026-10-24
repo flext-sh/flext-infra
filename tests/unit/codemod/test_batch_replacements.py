@@ -21,11 +21,11 @@ class TestsFlextInfraBatchReplacements:
     @staticmethod
     def _scanned_consumer(
         root: Path,
-    ) -> t.Quad[m.Infra.ModScanReport, Path, Path, Path]:
+    ) -> t.Pair[m.Infra.ModScanReport, Path]:
         """Scan a real public consumer against a locally declared rewrite.
 
         Returns:
-            The admitted report and its consumer, rule and config paths.
+            The admitted report and its consumer path.
 
         """
         rule_name = "publish-consumer-value"
@@ -55,8 +55,6 @@ class TestsFlextInfraBatchReplacements:
             f'__all__ = ["{stem}Consumer"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        config_path = root / c.Infra.CODEMOD_CONFIG_RELPATH
-        rule_path = config_path.parent / c.Cli.RULES_DIR_NAME / f"{rule_name}.yml"
         report = tm.ok(
             codemod.FlextInfraModGateEngine.scan(
                 root,
@@ -64,13 +62,13 @@ class TestsFlextInfraBatchReplacements:
                 selection=(rule_name,),
             )
         )
-        return report, consumer, rule_path, config_path
+        return report, consumer
 
     @staticmethod
     @pytest.mark.slow
     def test_admitted_report_publishes_the_real_consumer(mod_workspace: Path) -> None:
         """Reuse admitted bytes through the same public CAS publisher."""
-        report, consumer, _, _ = TestsFlextInfraBatchReplacements._scanned_consumer(
+        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
             mod_workspace
         )
         tm.ok(codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report))
@@ -94,7 +92,7 @@ class TestsFlextInfraBatchReplacements:
             "from __future__ import annotations\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        report, consumer, _, _ = TestsFlextInfraBatchReplacements._scanned_consumer(
+        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
             mod_workspace
         )
         original = consumer.read_bytes()
@@ -121,59 +119,20 @@ class TestsFlextInfraBatchReplacements:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize(
-        "mutation",
-        [
-            "missing-proof",
-            "source-change",
-            "source-add",
-            "source-remove",
-            "rule-change",
-            "rule-add",
-            "rule-remove",
-            "config-change",
-        ],
-    )
-    def test_admitted_report_rejects_changed_inputs(
+    @pytest.mark.parametrize("mutation", ["source-change", "source-remove"])
+    def test_admitted_report_rejects_changed_destination(
         mod_workspace: Path,
         mutation: str,
     ) -> None:
-        """Changed ownership or physical inputs never publish stale replacements."""
-        report, consumer, rule_path, config_path = (
+        """A destination changed after scanning never receives stale replacements."""
+        report, consumer = (
             TestsFlextInfraBatchReplacements._scanned_consumer(mod_workspace)
         )
         original = consumer.read_bytes()
-        if mutation == "missing-proof":
-            report = report.model_copy(update={"source_states": None})
-        elif mutation == "source-change":
+        if mutation == "source-change":
             consumer.write_bytes(original + b"\n# changed consumer\n")
-        elif mutation == "source-add":
-            (mod_workspace / "new_consumer.py").write_text(
-                '"""New scanner input."""\n',
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif mutation == "source-remove":
-            consumer.unlink()
-        elif mutation == "rule-change":
-            rule_path.write_text(
-                rule_path.read_text(encoding=c.DEFAULT_ENCODING) + "\n# changed rule\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif mutation == "rule-add":
-            added = rule_path.with_name("new-consumer-rule.yml")
-            added.write_text(
-                "id: new-consumer-rule\nlanguage: Python\n"
-                "severity: warning\nrule:\n  pattern: NEVER_MATCHED\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif mutation == "rule-remove":
-            rule_path.unlink()
         else:
-            config_path.write_text(
-                config_path.read_text(encoding=c.DEFAULT_ENCODING)
-                + "\n# changed scanner configuration\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
+            consumer.unlink()
         before = consumer.read_bytes() if consumer.exists() else None
         tm.fail(codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report))
         tm.that(

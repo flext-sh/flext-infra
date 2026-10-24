@@ -1,0 +1,49 @@
+id: retire-publication-stack-definition
+language: Python
+severity: error
+utils:
+  retired-method:
+    regex: ^(source_consumption|source_selection|source_capture|replay_source_consumption|consumed_source_states|consumed_source_directories|consumed_source_topology|verify_source_states|verify_source_receipts|source_consumer|receipt_evidence|verify_many|publication_current|publication_outputs_current|plans_current|states_current|seal_sources|consume_sources|source_inputs_current|publication_input_states|codegen_file_publication_admission|codegen_file_before_state|codegen_transaction_lease|prepare_source_controlplanes|mutation_lease|unique_states)$
+  retired-class:
+    regex: ^(SourceConsumption|IssuedReceipt|OriginalAuthority|RopeSourceConsumption|JournalLeaseTimeoutError)$
+rule:
+  any:
+    # A retired method or function, with its decorators.
+    - all:
+        - kind: decorated_definition
+        - has:
+            field: definition
+            kind: function_definition
+            has:
+              field: name
+              matches: retired-method
+    - all:
+        - kind: function_definition
+        - not:
+            inside:
+              kind: decorated_definition
+        - has:
+            field: name
+            matches: retired-method
+    # A retired receipt class.
+    - all:
+        - kind: decorated_definition
+        - has:
+            field: definition
+            kind: class_definition
+            has:
+              field: name
+              matches: retired-class
+    - all:
+        - kind: class_definition
+        - not:
+            inside:
+              kind: decorated_definition
+        - has:
+            field: name
+            matches: retired-class
+fix: ""
+message: >-
+  Source-epoch authentication is retired: this definition only served
+  receipts, replay, verification or leases. The shared publisher verifies
+  each destination; delete the definition with its callers.

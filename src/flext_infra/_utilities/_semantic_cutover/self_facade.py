@@ -94,11 +94,8 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        with (
-            FlextInfraUtilitiesRopeCore.open_import_project(root) as project,
-            cls._semantic_source_project(project) as source_project,
-        ):
-            return cls._plan_self_facade_sources(root, sources, project, source_project)
+        with FlextInfraUtilitiesRopeCore.open_import_project(root) as project:
+            return cls._plan_self_facade_sources(root, sources, project)
 
     @classmethod
     def _plan_self_facade_sources(
@@ -106,13 +103,12 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         root: Path,
         sources: t.MappingKV[Path, str],
         project: p.Infra.RopeProject,
-        source_project: p.Infra.RopeProject,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         selected: t.MutableMappingKV[Path, set[str]] = {}
         declarations: t.MutableMappingKV[Path, set[str]] = {}
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         for path, source in sources.items():
-            classified = cls._classify_source(root, path, source, order, source_project)
+            classified = cls._classify_source(root, path, source, order, project)
             if classified is None:
                 continue
             resolved, modules, elected = classified
@@ -163,7 +159,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                     declaration_imports=eligible,
                 ),
                 native_project=project,
-                source_project=source_project,
+                source_project=project,
             )
             for node in ast.parse(updated, filename=str(path)).body:
                 if (
@@ -187,7 +183,6 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                 if item[0] in selected or item[0] in declarations
             ),
             rewrite,
-            source_project=source_project,
         )
 
 

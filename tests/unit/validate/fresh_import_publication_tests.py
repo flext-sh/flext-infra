@@ -96,14 +96,13 @@ class TestsFlextInfraFreshImportPublication:
         tm.that(
             any(
                 file.path == initializer and u.Infra.codegen_file_requires_effect(file)
-                for file in analysis.files
+                for file in analysis
             ),
             eq=False,
         )
 
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
-                publications=analysis.publications,
                 repository_roots=(repository_root,),
             ),
         )
@@ -115,32 +114,6 @@ class TestsFlextInfraFreshImportPublication:
             tm.that(report.violations[0], has="Traceback")
         else:
             tm.that(report.violations, length=0)
-
-    @staticmethod
-    def test_removed_initializer_is_not_a_publication_contract(
-        tmp_path: Path,
-    ) -> None:
-        """A planned removal cannot certify the package's public exports."""
-        repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        initializer = package / c.Infra.INIT_PY
-        initializer.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
-        publication = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == package
-        )
-        tm.that(publication.action, eq=c.Infra.LazyInitAction.REMOVE)
-
-        result = FlextInfraValidateFreshImport(
-            repository_root=repository_root,
-        ).build_report(
-            publications=analysis.publications,
-            repository_roots=(repository_root,),
-        )
-
-        tm.fail(result, has=f"missing public export contract for {package.name}")
 
     @staticmethod
     def test_layout_without_a_plan_verifies_its_on_disk_contract(

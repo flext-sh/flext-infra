@@ -68,11 +68,11 @@ class TestsFlextInfraPlanCollection:
             ),
         )
 
-    def test_public_collector_authenticates_configuration_and_repeats(
+    def test_public_collector_publishes_configured_plans_and_repeats(
         self,
         infra_git_repo: Path,
     ) -> None:
-        """The public collector publishes verified plans without policy callbacks."""
+        """The public collector publishes plans and repeats without new effects."""
         root = infra_git_repo
         configuration = self._config()
         configuration_path = root / "collection.yaml"
@@ -96,7 +96,6 @@ class TestsFlextInfraPlanCollection:
 
         tm.ok(FlextInfraDocCollector.collect(request))
         bundle = u.Infra.docs_collect_plan_files(root, configuration)
-        u.Infra.verify_plan_collection_publication(root, configuration, bundle)
         outputs = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(plan.path, required=True))
             for plan in bundle.files
@@ -223,9 +222,6 @@ class TestsFlextInfraPlanCollection:
 
         tm.that(len(bundle.revisions), eq=1)
         tm.that(bundle.revisions[0].attachments, eq=("research.md",))
-        captured = {state.path for state in bundle.source_states}
-        tm.ok(tmp_path / "input" / "design.md" in captured)
-        tm.ok(tmp_path / "input" / "design" / "research.md" in captured)
         tm.fail((tmp_path / config.canonical_dir).exists())
         repeated = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(repeated.revisions[0].digest, eq=bundle.revisions[0].digest)
@@ -336,7 +332,6 @@ class TestsFlextInfraPlanCollection:
         tm.that(bundle.coverage[0].status, eq="private-inventory")
         tm.that(bundle.coverage[0].private_paths, eq=(session,))
         tm.that(bundle.revisions, eq=())
-        tm.fail(any(state.path == session for state in bundle.source_states))
         for plan in bundle.files:
             tm.that(
                 private_session_text.encode() not in tm.not_none(plan.desired_content),
@@ -376,7 +371,6 @@ class TestsFlextInfraPlanCollection:
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
             self._write(plan.path, tm.not_none(plan.desired_content).decode())
-        u.Infra.verify_plan_collection_publication(tmp_path, config, first)
 
         second = u.Infra.docs_collect_plan_files(tmp_path, config)
 
@@ -407,29 +401,6 @@ class TestsFlextInfraPlanCollection:
         tm.that(fourth.revisions, eq=third.revisions)
         for plan in fourth.files:
             tm.fail(u.Infra.codegen_file_requires_effect(plan))
-
-    @pytest.mark.parametrize(
-        ("additional_path", "content"),
-        [
-            ("input/additional.md", "# Additional\n"),
-            ("input/design/new.md", "# Research\n"),
-        ],
-        ids=["plan", "companion"],
-    )
-    def test_source_topology_change_fails_publication_preflight(
-        self,
-        tmp_path: Path,
-        additional_path: str,
-        content: str,
-    ) -> None:
-        """Test source topology change fails publication preflight."""
-        self._write(tmp_path / "input" / "design.md", "# Design\n")
-        config = self._config()
-        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
-        self._write(tmp_path / additional_path, content)
-
-        with pytest.raises(ValueError, match="topology changed"):
-            u.Infra.verify_plan_collection_sources(tmp_path, config, bundle)
 
     @pytest.mark.parametrize(
         ("value", "expected"),
@@ -502,33 +473,18 @@ class TestsFlextInfraPlanCollection:
             any(plan.desired_content == amendment.encode() for plan in changed.files),
             eq=True,
         )
-        u.Infra.verify_plan_collection_sources(tmp_path, config, changed)
         for plan in changed.files:
             self._write(plan.path, tm.not_none(plan.desired_content).decode())
-        u.Infra.verify_plan_collection_publication(tmp_path, config, changed)
         stable = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(stable.revisions, eq=changed.revisions)
         for plan in stable.files:
             tm.fail(u.Infra.codegen_file_requires_effect(plan))
 
-    def test_concurrent_canonical_edit_rejects_stale_plan(self, tmp_path: Path) -> None:
-        """Test concurrent canonical edit rejects stale plan."""
-        self._write(tmp_path / "input" / "design.md", "# Source\n")
-        config = self._config()
-        first = u.Infra.docs_collect_plan_files(tmp_path, config)
-        canonical = tmp_path / config.canonical_dir / first.revisions[0].canonical_path
-        self._write(canonical, "# Curated\n")
-        pending = u.Infra.docs_collect_plan_files(tmp_path, config)
-        self._write(canonical, "# Concurrent curated amendment\n")
-
-        with pytest.raises(ValueError, match="source changed"):
-            u.Infra.verify_plan_collection_sources(tmp_path, config, pending)
-
-    def test_corpus_relocation_preserves_identity_and_exact_receipts(
+    def test_corpus_relocation_preserves_identity_and_exact_revisions(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test corpus relocation preserves identity and exact receipts."""
+        """Test corpus relocation preserves identity and exact revisions."""
         first_root, next_root = tmp_path / "first", tmp_path / "next"
         config = self._config()
         for root in (first_root, next_root):

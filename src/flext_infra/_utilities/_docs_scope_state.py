@@ -20,13 +20,13 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):
-    """Load one authenticated pyproject state for every docs decision."""
+    """Load one pyproject state for every docs decision."""
 
     @staticmethod
     def _project_state(
         project_root: Path,
     ) -> m.Infra.ProjectPyprojectState:
-        """Return project state bound to the current authenticated file bytes.
+        """Return project state bound to the current file bytes.
 
         When the pyproject is absent or empty, the returned state carries
         empty ``project_name``/``package_name`` (legitimate "not a project"
@@ -35,7 +35,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         silent fallback to directory-name.
 
         Returns:
-            Project state bound to the current authenticated file bytes.
+            Project state bound to the current file bytes.
 
         Raises:
             ValueError: If ``snapshot.failure``.
@@ -60,7 +60,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         root: Path,
         pyproject_path: Path,
         content: bytes | None,
-        source_paths: t.VariadicTuple[Path] | None = None,
     ) -> m.Infra.ProjectPyprojectState:
         """Parse once per byte-identical canonical pyproject snapshot.
 
@@ -124,7 +123,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                     root,
                     payload,
                     docs_meta,
-                    source_paths=source_paths,
                 )
             ),
             dependency_names=dependency_names,
@@ -134,36 +132,25 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
     def project_state(
         project_root: Path,
         *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
         metadata_projection: m.Infra.CodegenFilePlan | None = None,
     ) -> m.Infra.ProjectPyprojectState:
-        """Return the shared state bound to authenticated pyproject bytes.
+        """Return the shared state of the live or projected pyproject bytes.
 
         Returns:
-            The immutable cached state for the authenticated pyproject bytes.
+            The immutable cached state for the selected pyproject bytes.
 
         Raises:
-            ValueError: If a projected view lacks or differs from its physical source.
+            ValueError: If the projected view targets another pyproject.
 
         """
-        if source_states is None and metadata_projection is not None:
-            msg = "projected metadata requires authenticated source states"
-            raise ValueError(msg)
-        if source_states is None:
+        if metadata_projection is None:
             return FlextInfraUtilitiesDocsScopeStateMixin._project_state(project_root)
         path = project_root / c.PYPROJECT_FILENAME
-        state = next(item for item in source_states if item.path == path)
-        content = state.content
-        if metadata_projection is not None:
-            if metadata_projection.path != path or metadata_projection.before != state:
-                msg = f"projected metadata differs from authenticated source: {path}"
-                raise ValueError(msg)
-            content = metadata_projection.desired_content
+        if metadata_projection.path != path:
+            msg = f"projected metadata targets another pyproject: {path}"
+            raise ValueError(msg)
         return FlextInfraUtilitiesDocsScopeStateMixin._state_from_content(
-            project_root,
-            path,
-            content,
-            tuple(item.path for item in source_states),
+            project_root, path, metadata_projection.desired_content
         )
 
     @staticmethod
@@ -179,8 +166,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
     @staticmethod
     def project_payload(
         project_root: Path,
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Return a project's ``pyproject.toml`` payload as a plain mapping.
 
@@ -190,7 +175,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         """
         return FlextInfraUtilitiesDocsScopeStateMixin.project_state(
             project_root,
-            source_states=source_states,
         ).payload
 
     @staticmethod

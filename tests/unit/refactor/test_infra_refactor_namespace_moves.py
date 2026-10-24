@@ -5,7 +5,6 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-import __future__
 
 from typing import TYPE_CHECKING
 
@@ -493,18 +492,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             declaration = m.Infra.CodegenFilePlan(
                 project=root,
                 path=target,
-                before=tm.ok(u.Cli.atomic_plan_directory_chain(target.parent)),
+                before=tm.ok(u.Cli.atomic_read_binary_file_state(target)),
                 desired_content=content,
                 desired_mode=tm.not_none(original.mode),
-                source_states=states,
             )
             snapshot = u.Infra.snapshot_project(
-                workspace.rope_project,
-                sources,
-                captured=u.Infra.codemod_source_epoch(
-                    m.Infra.CodemodBindingSnapshot(states=states)
-                ),
-                declared_files=(declaration,),
+                workspace.rope_project, sources, declared_files=(declaration,)
             )
             try:
                 parent = snapshot.get_resource(
@@ -538,50 +531,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
-    def test_snapshot_external_provider_reads_captured_source_after_live_change(
-        cls,
-        tmp_path: Path,
-        installed_dependency_path: Path,
-    ) -> None:
-        """External module resolution preserves captured declarations after drift."""
-        root, _package, _source, _target = cls._module_move_workspace(tmp_path)
-        provider = installed_dependency_path / "external_contract.py"
-        original = "class CapturedProvider:\n    pass\n"
-        newer = "class NewerProvider:\n    pass\n"
-        provider.write_text(original, encoding=c.DEFAULT_ENCODING)
-        provider_state = tm.ok(
-            u.Cli.atomic_read_binary_file_state(provider, required=True),
-        )
-        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
-            sources, states = cls._module_move_inputs(workspace.rope_project)
-            provider.write_text(newer, encoding=c.DEFAULT_ENCODING)
-            snapshot = u.Infra.snapshot_project(
-                workspace.rope_project,
-                {**sources, provider: original},
-                captured=u.Infra.codemod_source_epoch(
-                    m.Infra.CodemodBindingSnapshot(states=(*states, provider_state))
-                ),
-            )
-            try:
-                resource = u.Infra.require_file_resource(
-                    tm.not_none(snapshot.find_module(provider.stem)), provider
-                )
-                tm.that(resource.read(), eq=original)
-                module = u.Infra.resolve_pymodule(snapshot, resource)
-                tm.that(
-                    u.Infra.require_named_object(
-                        module.get_attribute("CapturedProvider").get_object(),
-                        "CapturedProvider",
-                    ).get_name(),
-                    eq="CapturedProvider",
-                )
-                snapshot.validate()
-                tm.that(resource.read(), eq=original)
-            finally:
-                snapshot.close()
-        tm.that(provider.read_text(encoding=c.DEFAULT_ENCODING), eq=newer)
-
-    @classmethod
     def test_module_move_plan_is_observational_and_publishes_real_imports(
         cls,
         tmp_path: Path,
@@ -595,14 +544,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 source,
                 target.parent,
                 inputs=(sources, states),
-            )
-        for plan in plans:
-            tm.that(
-                any(
-                    str(state.path) == tm.not_none(__future__.__file__)
-                    for state in plan.source_states
-                ),
-                eq=True,
             )
         tm.fail(target.parent.exists())
         for state in states:

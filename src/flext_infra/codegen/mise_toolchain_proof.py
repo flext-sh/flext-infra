@@ -221,7 +221,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         """Steps 3-4: self-containment of the binary, then its real version.
 
         Returns:
-            The receipt line of the proven tool.
+            The proof line of the proven tool.
 
         """
         install_root, binary = location
@@ -230,7 +230,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
                 f"{entry.name}: probe location does not match its declared owner"
             )
         root = install_root.resolve(strict=True)
-        resources = cls._captured_tool_resources(entry, root)
+        resources = cls._contained_tool_resources(entry, root)
         if resources.failure:
             return r[str].from_failure(resources)
         executable = cls._contained_binary(
@@ -241,39 +241,28 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         reported = cls._reported_version(entry, version, executable.value, root)
         if reported.failure:
             return r[str].from_failure(reported)
-        if resources.value:
-            current = u.Cli.atomic_verify_binary_file_states(tuple(resources.value))
-            if current.failure:
-                return r[str].from_failure(current)
         return r[str].ok(f"{entry.name} {version} {root}")
 
     @classmethod
-    def _captured_tool_resources(
+    def _contained_tool_resources(
         cls,
         entry: m.Infra.MiseToolEntry,
         root: Path,
-    ) -> p.Result[list[m.Cli.AtomicFileState]]:
-        """Capture every declared probe resource inside its tool root.
+    ) -> p.Result[bool]:
+        """Require every declared probe resource to exist inside its tool root.
 
         Returns:
-            The captured resource states in declaration order, or the first
-            containment or capture failure.
+            Acceptance, or the first containment failure.
 
         """
-        result_type = r[list[m.Cli.AtomicFileState]]
-        resources: list[m.Cli.AtomicFileState] = []
         for relative in entry.version_probe.resources:
             resource = root.joinpath(*relative.split("/")).resolve(strict=True)
             if not resource.is_relative_to(root):
-                return result_type.fail(
+                return r[bool].fail(
                     f"{entry.name}: installed resource escapes its tool root:"
                     f" {resource}",
                 )
-            captured = u.Cli.atomic_read_binary_file_state(resource, required=True)
-            if captured.failure:
-                return result_type.from_failure(captured)
-            resources.append(captured.value)
-        return result_type.ok(resources)
+        return r[bool].ok(value=True)
 
     @classmethod
     def prove(

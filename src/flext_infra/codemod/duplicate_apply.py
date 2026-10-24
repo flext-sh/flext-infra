@@ -60,24 +60,14 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             The resulting ``p.Result[m.Infra.DuplicateCureOutcome]``.
 
         """
-        states = tuple(
-            u.Cli.atomic_read_binary_file_state(
-                resource.real_path, required=True
-            ).unwrap()
-            for resource in rope_workspace.rope_project.get_python_files()
-        )
         planned = cls.plan_census(
             root,
             rope_workspace,
             groups,
             sources={
-                state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in states
-                if state.content is not None
+                Path(resource.real_path): resource.read()
+                for resource in rope_workspace.rope_project.get_python_files()
             },
-            receipt=m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC, files=(), inputs=states
-            ),
         )
         if planned.failure:
             return r[m.Infra.DuplicateCureOutcome].from_failure(planned)
@@ -103,7 +93,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         groups: t.SequenceOf[m.Infra.DuplicateGroup],
         *,
         sources: t.MappingKV[Path, str],
-        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[
         t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
     ]:
@@ -113,55 +102,12 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             The retained cure outcome with its deletions, or the first failure.
 
         """
-        source_states, declared_files = receipt.inputs, receipt.files
-        captured = u.Infra.unique_states((
-            *source_states,
-            *(state for plan in declared_files for state in plan.source_states),
-        ))
-        if captured.failure:
-            return r[
-                t.Pair[
-                    m.Infra.DuplicateCureOutcome,
-                    t.VariadicTuple[m.Infra.DuplicateDeletion],
-                ]
-            ].from_failure(captured)
-        source_states = captured.value
-        snapshot = u.Infra.snapshot_project(
-            rope_workspace.rope_project,
-            sources,
-            captured=u.Infra.codemod_source_epoch(
-                m.Infra.CodemodBindingSnapshot(
-                    states=tuple(
-                        state
-                        for state in source_states
-                        if state.path in sources
-                        or state.path.suffix
-                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                    )
-                )
-            ),
-            declared_files=tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": sources[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                for plan in declared_files
-                if plan.path in sources
-                and (
-                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                    or plan.before.content is None
-                )
-            ),
-        )
+        snapshot = u.Infra.snapshot_project(rope_workspace.rope_project, sources)
         with type(rope_workspace).open_workspace(
             root,
             rope_repository_root=Path(snapshot.root.real_path),
             source_project=snapshot,
             workspace_index=rope_workspace.workspace_index,
-            index_receipt=rope_workspace.source_index_receipt,
         ) as planning_workspace:
             return cls._plan_census_sources(
                 root, planning_workspace, groups, sources=sources
@@ -987,103 +933,62 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             ValueError: If source changed after semantic preflight.
 
         """
-        semantic_plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[m.Infra.CodegenFilePlan] = []
         for path in sorted(working):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            content = state.content
             original = next(
                 edit.original_source for edit in edits if edit.file_path == path
             )
-            if content is None or content.decode(c.DEFAULT_ENCODING) != original:
+            if (
+                state.content is None
+                or state.content.decode(c.DEFAULT_ENCODING) != original
+            ):
                 msg = f"source changed after duplicate-cure preflight: {path}"
                 raise ValueError(msg)
-            project_root = u.Infra.project_root(path)
-            if project_root is None:
-                project_root = root
-            normalized = u.Infra.normalize_source(
-                root,
-                path,
-                working[path],
-            )
-            if normalized.failure:
-                return r[bool].from_failure(normalized)
-            new_content = normalized.value.encode(c.DEFAULT_ENCODING)
-            if content == new_content:
-                continue
-            semantic_plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=project_root.resolve(),
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=(u.Infra.project_root(path) or root).resolve(),
                     path=path.resolve(),
                     before=state,
-                    desired_content=new_content,
+                    desired_content=working[path].encode(c.DEFAULT_ENCODING),
                     desired_mode=state.mode,
-                    changes=("duplicate cure",),
+                    owner=cls.name,
                 ),
             )
 
-        def verify(candidate_root: Path) -> p.Result[bool]:
-            """Prove the complete candidate, then run its joint consumer gates.
+        def verify(published_root: Path) -> p.Result[bool]:
+            """Prove the published rewrite, then run its joint consumer gates.
 
             Returns:
                 The resulting ``p.Result[bool]``.
 
             """
-            residue = cls._published_residue(
-                rope_project,
-                tuple(
-                    edit.model_copy(
-                        update={
-                            "file_path": candidate_root
-                            / edit.file_path.relative_to(root)
-                        }
-                    )
-                    for edit in edits
-                ),
-                tuple(
-                    deletion.model_copy(
-                        update={
-                            "path": candidate_root / deletion.path.relative_to(root)
-                        }
-                    )
-                    for deletion in deletions
-                ),
-            )
+            residue = cls._published_residue(rope_project, edits, deletions)
             if residue is not None:
                 return r[bool].fail(residue)
             return FlextInfraWorkspaceChecker(
-                repository_root=candidate_root,
+                repository_root=published_root,
             ).execute_payload(
                 m.Infra.RunCommand(
-                    repository_root=candidate_root,
-                    projects=cls._publication_projects(root, semantic_plans),
+                    repository_root=published_root,
+                    projects=cls._publication_projects(root, plans),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
             )
 
-        return FlextInfraSemanticPublication.publish_semantic_file_plans(
-            semantic_plans,
+        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            plans,
             repository_root=root,
             options=m.Infra.SemanticPublicationOptions(
                 validator=verify,
                 projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
             ),
-        ).map(cls._published_true)
-
-    @staticmethod
-    def _published_true(_paths: t.VariadicTuple[Path]) -> bool:
-        """Collapse one published-path tuple to the boolean success the caller owns.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        del _paths
-        return True
+        ).map(bool)
 
     @staticmethod
     def _publication_projects(
         root: Path,
-        plans: t.SequenceOf[m.Infra.SemanticFilePlan],
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> tuple[str, ...]:
         """Collect the governed projects affected by the publication batch.
 

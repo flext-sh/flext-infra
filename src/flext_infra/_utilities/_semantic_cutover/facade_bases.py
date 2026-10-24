@@ -730,11 +730,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     source_project=source_project,
                 )
 
-            planned = cls._semantic_edits(
-                cls._editable_sources(owner_sources),
-                rewrite,
-                source_project=source_project,
-            )
+            planned = cls._semantic_edits(cls._editable_sources(owner_sources), rewrite)
             if planned.failure:
                 return planned
             edits.extend(planned.value)

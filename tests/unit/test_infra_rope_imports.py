@@ -63,7 +63,7 @@ class TestsFlextInfraRopeImports:
         )
         with u.Infra.facade_source_project(
             root, planned_sources={source_path: planned}
-        ) as (project, receipts, _sources):
+        ) as (project, _sources):
             resource = u.Infra.require_file_resource(
                 project.get_resource(source_path.relative_to(root).as_posix()),
                 source_path,
@@ -90,10 +90,6 @@ class TestsFlextInfraRopeImports:
             module = u.Infra.build_string_module(project, selected, resource=resource)
             tm.ok(module.get_resource() is resource)
             tm.that(module.source_code, eq=planned)
-            original = next(
-                state for state in receipts()[0] if state.path == source_path
-            )
-            tm.that(original.content, eq=physical.encode("utf-8"))
         tm.that(source_path.read_text(encoding="utf-8"), eq=physical)
 
     @staticmethod

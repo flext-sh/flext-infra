@@ -1,0 +1,27 @@
+id: retire-publication-stack-receipt-keyword
+valid:
+  - |
+    plan = file_plan(root, "a.py", rendered, mode=0o644)
+  - |
+    def file_plan(root, relative_path, rendered, *, mode=0o644): ...
+  - |
+    states = source_states(project)
+  - |
+    entries = cls._release_requirement_entries(raw, dependency_group=dependency_group)
+  - |
+    def _release_requirement_entries(cls, raw, *, dependency_group: bool): ...
+  - |
+    pinned = cls._pin(container, key, versions, dependency_group=container is groups)
+invalid:
+  - |
+    plan = file_plan(root, "a.py", rendered, source_states=states)
+  - |
+    plan = file_plan(root, "a.py", rendered, source_states=states, mode=0o644)
+  - |
+    publish(plans, publication_receipts=receipts)
+  - |
+    def file_plan(root, rendered, *, source_states: tuple[int, ...] = ()): ...
+  - |
+    plan = m.Infra.CodegenFilePlan(project=root, path=path, dependency_group=group)
+  - |
+    plan = m.Infra.CodegenFilePlan(project=root, validation_context=context, path=path)

@@ -62,8 +62,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
 
         ``include_root`` governs only whether the workspace root itself is
         rendered as a docs OUTPUT scope; root guides/pyproject remain readable
-        SOURCES for member projects regardless (see ``docs_source_paths``,
-        which always discovers them from the physical repository root).
+        SOURCES for member projects regardless.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocScope]]``.

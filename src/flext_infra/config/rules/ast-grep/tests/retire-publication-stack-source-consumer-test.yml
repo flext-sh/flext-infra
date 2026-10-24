@@ -1,0 +1,17 @@
+id: retire-publication-stack-source-consumer
+valid:
+  - |
+    source_project = workspace.rope_project
+  - |
+    with cls._semantic_edits(project) as edits:
+        run(edits)
+invalid:
+  - |
+    with cls._semantic_source_project(workspace.rope_project) as source_project:
+        for rule in rules:
+            check(rule, source_project)
+  - |
+    with cls._semantic_source_project(
+        rope_workspace.rope_project
+    ) as source_project:
+        captured = load(source_project)

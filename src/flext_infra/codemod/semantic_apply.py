@@ -17,8 +17,9 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import FlextInfraCodegenFileLeases, FlextInfraStagedPackage
+from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_sources import FlextInfraRenameSources
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
@@ -63,15 +64,21 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         )
         if content.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(content)
-        authenticated = u.Cli.atomic_verify_binary_file_states(
-            m.Infra.CodemodBindingSnapshot(
-                states=(*planned.value.candidate.inputs, *planned.value.source_states)
-            ).states
-        )
-        if authenticated.failure:
-            return r[m.Infra.SemanticRenamePlan].from_failure(authenticated)
-        return u.Cli.atomic_write_text_file_guarded(
-            observed.value, content.value + "\n"
+        lock = u.Infra.mutation_lock_path(root)
+        if lock.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(lock)
+        return u.Cli.publish_file_changes(
+            (
+                m.Cli.FileChange(
+                    path=target,
+                    before=observed.value,
+                    desired_content=f"{content.value}\n".encode(c.DEFAULT_ENCODING),
+                    desired_mode=observed.value.mode
+                    if observed.value.content is not None
+                    else config.Infra.codegen.modes.file_default,
+                ),
+            ),
+            lock_path=lock.value,
         ).map(lambda _written: planned.value)
 
     @staticmethod
@@ -123,10 +130,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
     ) -> p.Result[m.Infra.SemanticRenamePlan]:
         """Produce exact native edits and closure from explicit domain selections.
 
-        A supplied source plan retains its original directory receipts only after
-        the source owner authenticates them. Fresh native consumption is merged
-        through the same owner, so new selectors still change the rebuilt plan.
-
         Returns:
             A reversible authenticated artifact, without changing live sources.
 
@@ -139,38 +142,15 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         if elected.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(elected)
         scopes = elected.value
-        if source_plan is not None:
-            if (
-                source_plan.candidate.workspaces or (source_plan.candidate.workspace,)
-            ) != scopes:
-                return r[m.Infra.SemanticRenamePlan].fail(
-                    "semantic rename source receipt belongs to another scope"
-                )
-            current = (
-                FlextInfraStagedPackage
-                .source_inputs_current(source_plan.candidate)
-                .flat_map(
-                    lambda _current: u.Cli.atomic_verify_binary_file_states(
-                        source_plan.source_states
-                    )
-                )
-                .flat_map(
-                    lambda _current: u.Cli.atomic_verify_directory_queries(
-                        source_plan.source_directories,
-                        source_plan.source_query_topology,
-                        publications=m.Cli.AtomicDirectoryQueryEffects(
-                            membership_policy=tuple(
-                                sorted(config.Infra.codegen.source_scan_ignored)
-                            )
-                        ),
-                    )
-                )
+        if (
+            source_plan is not None
+            and (source_plan.candidate.workspaces or (source_plan.candidate.workspace,))
+            != scopes
+        ):
+            return r[m.Infra.SemanticRenamePlan].fail(
+                "semantic rename source receipt belongs to another scope"
             )
-            if current.failure:
-                return r[m.Infra.SemanticRenamePlan].from_failure(current)
-        return cls._build_native_rename_plan(
-            workspace, selections, scopes, source_plan=source_plan
-        )
+        return cls._build_native_rename_plan(workspace, selections, scopes)
 
     @classmethod
     def build_source_plan(
@@ -211,7 +191,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 "module naming discovery requires the original source seed"
             )
         sources = u.Infra.candidate_python_sources(
-            source_plan.candidate, source_plan.source_states
+            source_plan.candidate, source_plan.candidate.inputs
         )
         with FlextInfraRopeWorkspace.open_workspace(
             root, rope_repository_root=root
@@ -458,17 +438,16 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         return outcome.ok(scopes)
 
     @classmethod
-    def _authenticated_sources(
+    def _source_closure(
         cls,
         scopes: t.VariadicTuple[Path],
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Capture every elected source before computing any native candidate.
 
         Returns:
-            The original source closure with its native discovery receipts.
+            The original source closure.
 
         """
-        result_type = r[m.Infra.StageSourcePlan]
         inventories = {
             project: dict(
                 cls.source_inventory(project, FlextInfraModGateEngine.recounted(()))
@@ -487,15 +466,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             for path in original
         )
-        changed = tuple(
-            str(state.path)
-            for state in inputs
-            if state.content != original[state.path].encode(c.DEFAULT_ENCODING)
-        )
-        if changed:
-            return result_type.fail(
-                "rename inventory changed during capture: " + ", ".join(changed)
-            )
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},
@@ -505,105 +475,24 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             ),
         )
 
-    @classmethod
-    def _snapshot_project(
-        cls,
+    @staticmethod
+    def _planning_election(
         live: p.Infra.RopeProject,
-        states: t.VariadicTuple[m.Cli.AtomicFileState],
-        sources: t.MappingKV[Path, str],
+        source_folders: t.VariadicTuple[str],
         python_folders: t.VariadicTuple[str],
-    ) -> p.Infra.RopeProject:
-        """Freeze one authenticated multiproject snapshot for native planning.
+    ) -> m.Infra.RopeProjectElection:
+        """Elect the multiproject source and interpreter folders of one plan.
 
         Returns:
-            The closed-over snapshot project satisfying its native contract.
-
-        Raises:
-            TypeError: If the snapshot project does not satisfy its contract.
+            The election the overlay project resolves imports through.
 
         """
-        owner = u.Infra.runtime_type(
-            "flext_infra._utilities._rope.project",
-            "FlextInfraRopeProject",
+        return m.Infra.RopeProjectElection(
+            source_folders=source_folders,
+            ignored_resources=tuple(sorted(config.Infra.codegen.source_scan_ignored)),
+            extension_modules=u.Infra.extension_module_names(live),
+            python_path_folders=python_folders,
         )
-        factory = getattr(owner, "from_atomic_reads", None)
-        if not callable(factory):
-            msg = "Rope project owner does not expose authenticated construction"
-            raise TypeError(msg)
-        extension_modules = u.Infra.runtime_callable("builtins", "getattr")(
-            live.get_pycore(), "extension_modules"
-        )
-        project = factory(
-            live,
-            states,
-            election=m.Infra.RopeProjectElection(
-                source_folders=tuple(
-                    folder.path for folder in live.get_source_folders()
-                ),
-                ignored_resources=tuple(
-                    sorted(config.Infra.codegen.source_scan_ignored)
-                ),
-                extension_modules=tuple(
-                    sorted(
-                        u.type_adapter(set[str]).validate_python(
-                            extension_modules,
-                            strict=True,
-                        )
-                    )
-                ),
-                python_path_folders=python_folders,
-            ),
-            sources=sources,
-        )
-        if not isinstance(project, p.Infra.RopeProject):
-            msg = "Rope snapshot does not satisfy its project contract"
-            raise TypeError(msg)
-        return project
-
-    @classmethod
-    def _snapshot_receipts(
-        cls,
-        snapshots: t.VariadicTuple[p.Infra.RopeProject],
-        captured: m.Infra.CodemodBindingSnapshot,
-    ) -> t.Triple[
-        t.VariadicTuple[m.Cli.AtomicDirectoryInventory],
-        t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
-        t.VariadicTuple[m.Cli.AtomicFileState],
-    ]:
-        """Collect every snapshot's consumed directory, topology, and state receipts.
-
-        Returns:
-            The merged directory receipts, query topology, and sorted file states.
-
-        """
-        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            tuple(
-                item
-                for project in snapshots
-                for item in project.consumed_source_directories()
-            ),
-            tuple(
-                item
-                for project in snapshots
-                for item in project.consumed_source_topology()
-            ),
-        )
-        states = tuple(
-            sorted(
-                m.Infra.CodemodBindingSnapshot(
-                    states=(
-                        *captured.states,
-                        *(
-                            state
-                            for project in snapshots
-                            for state in project.consumed_source_states()
-                        ),
-                    )
-                ).states,
-                key=lambda state: state.path,
-            )
-        )
-        return directories, topology, states
 
     @classmethod
     def _build_native_rename_plan(
@@ -611,8 +500,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         workspace: p.Infra.RopeWorkspaceDsl,
         selections: m.Infra.SemanticRenameSelections,
         scopes: t.VariadicTuple[Path],
-        *,
-        source_plan: m.Infra.SemanticSourcePlan | None = None,
     ) -> p.Result[m.Infra.SemanticRenamePlan]:
         """Capture all elected sources before computing any native candidate.
 
@@ -634,22 +521,17 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             for selection in selections.decisions
         )
-        return cls._build_native_source_plan(
-            scopes, decisions, source_plan=source_plan
-        ).map(
+        return cls._build_native_source_plan(scopes, decisions).map(
             lambda planned: m.Infra.SemanticRenamePlan(
                 decisions=decisions,
                 edits=cls._rename_edits(
                     u.Infra.candidate_python_sources(
-                        planned[0].candidate, planned[0].source_states
+                        planned[0].candidate, planned[0].candidate.inputs
                     ),
                     planned[0].candidate.updates,
                 ),
                 candidate=planned[0].candidate,
                 consumer_roots=planned[0].consumer_roots,
-                source_states=planned[0].source_states,
-                source_directories=planned[0].source_directories,
-                source_query_topology=planned[0].source_query_topology,
                 moves=planned[1],
             )
         )
@@ -659,8 +541,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         cls,
         scopes: t.VariadicTuple[Path],
         decisions: t.VariadicTuple[m.Infra.SemanticRenameDecision],
-        *,
-        source_plan: m.Infra.SemanticSourcePlan | None = None,
     ) -> p.Result[
         t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
     ]:
@@ -670,15 +550,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             The authenticated candidate and its actual native module moves.
 
         """
-        if source_plan is None:
-            prepared = FlextInfraCodegenFileLeases.prepare_source_controlplanes(scopes)
-            if prepared.failure:
-                return r[
-                    t.Pair[
-                        m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]
-                    ]
-                ].from_failure(prepared)
-        captured_sources = cls._authenticated_sources(scopes)
+        captured_sources = cls._source_closure(scopes)
         if captured_sources.failure:
             return r[
                 t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
@@ -719,11 +591,16 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             snapshots = tuple(
                 stack.enter_context(
                     closing(
-                        cls._snapshot_project(
+                        FlextInfraRopeProject.from_atomic_reads(
                             project,
-                            captured.states,
-                            original,
-                            python_folders,
+                            election=cls._planning_election(
+                                project,
+                                tuple(
+                                    folder.path
+                                    for folder in project.get_source_folders()
+                                ),
+                                python_folders,
+                            ),
                         )
                     )
                 )
@@ -732,34 +609,17 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             updates, moves = FlextInfraRenameSymbols.plan_native_candidates(
                 snapshots, original, decisions
             )
-            receipts = cls._snapshot_receipts(snapshots, captured)
-            for project in snapshots:
-                project.verify_source_states()
-        staged_inputs = cls._staged_inputs(moves, receipts[2])
+        staged_inputs = cls._staged_inputs(moves, captured.states)
         if staged_inputs.failure:
             return r[
                 t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
             ].from_failure(staged_inputs)
-        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            (
-                *(source_plan.source_directories if source_plan is not None else ()),
-                *baseline.source_directories,
-                *receipts[0],
-            ),
-            (
-                *(source_plan.source_query_topology if source_plan is not None else ()),
-                *baseline.source_query_topology,
-                *receipts[1],
-            ),
-        )
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             updates,
             options=m.Infra.StageSourceOptions(
                 inputs=staged_inputs.value,
                 workspaces=scopes if len(scopes) > 1 else (),
-                source_directories=directories,
-                source_query_topology=topology,
                 modes={
                     target: state.mode
                     for source, target in moves
@@ -772,9 +632,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 m.Infra.SemanticSourcePlan(
                     candidate=candidate,
                     consumer_roots=scopes[1:],
-                    source_states=receipts[2],
-                    source_directories=candidate.source_directories,
-                    source_query_topology=candidate.source_query_topology,
                 ),
                 moves,
             )
@@ -834,7 +691,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         seed: m.Infra.SemanticSourcePlan,
         sources: t.MappingKV[Path, str],
     ) -> Generator[p.Infra.RopeWorkspaceDsl]:
-        """Elect a bounded native graph over original inputs and planned bytes.
+        """Elect a bounded native graph over the live tree and planned bytes.
 
         Yields:
             The existing workspace DSL with target selection separate from read scope.
@@ -849,13 +706,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 for project in u.Infra.import_project_roots(scope)
             )
         )
-        originals = m.Infra.CodemodBindingSnapshot(
-            states=(
-                *candidate.inputs,
-                *seed.source_states,
-            )
-        )
-        epoch = u.Infra.codemod_source_epoch(originals)
         with ExitStack() as stack:
             native_projects = tuple(
                 stack.enter_context(
@@ -886,143 +736,73 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 ))
             )
             live = stack.enter_context(
-                u.Infra.open_project(
-                    candidate.workspace,
-                    project_roots=projects,
-                )
+                u.Infra.open_project(candidate.workspace, project_roots=projects)
             )
             project = stack.enter_context(
                 closing(
-                    cls._planning_project(
+                    FlextInfraRopeProject.from_atomic_reads(
                         live,
-                        (source_folders, python_folders),
-                        (originals.states, epoch.sources, sources),
-                        seed,
-                        root,
+                        election=cls._planning_election(
+                            live,
+                            tuple(
+                                Path(folder).relative_to(candidate.workspace).as_posix()
+                                for folder in source_folders
+                            ),
+                            python_folders,
+                        ),
+                        declared_files=cls._planned_files(root, candidate, sources),
                     )
                 )
             )
-            with project.source_consumption() as selected:
-                index = u.Infra.index_rope_workspace(project, root)
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
                 rope_repository_root=candidate.workspace,
                 source_project=project,
-                workspace_index=index,
-                index_receipt=selected.receipt(),
+                workspace_index=u.Infra.index_rope_workspace(project, root),
             ) as workspace:
-                completed = False
-                try:
-                    yield workspace
-                    completed = True
-                finally:
-                    if completed:
-                        project.verify_source_states()
+                yield workspace
 
-    @classmethod
-    def _planning_project(
-        cls,
-        live: p.Infra.RopeProject,
-        folders: t.Pair[t.VariadicTuple[str], t.VariadicTuple[str]],
-        texts: t.Triple[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            t.MappingKV[Path, str],
-            t.MappingKV[Path, str],
-        ],
-        seed: m.Infra.SemanticSourcePlan,
+    @staticmethod
+    def _planned_files(
         root: Path,
-    ) -> p.Infra.RopeProject:
-        """Elect one bounded native graph over original inputs and planned bytes.
+        candidate: m.Infra.StageSourcePlan,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        """Declare every planned source that differs from its live destination.
 
         Returns:
-            The planning project satisfying its native contract.
-
-        Raises:
-            TypeError: If the planning project does not satisfy its contract.
+            One plan per planned addition, rewrite, or retirement.
 
         """
-        candidate = seed.candidate
-        source_folders, python_folders = folders
-        original_states, epoch_sources, sources = texts
-        owner = u.Infra.runtime_type(
-            "flext_infra._utilities._rope.project",
-            "FlextInfraRopeProject",
-        )
-        factory = getattr(owner, "from_atomic_reads", None)
-        if not callable(factory):
-            msg = "Rope project owner does not expose authenticated construction"
-            raise TypeError(msg)
-        extension_modules = u.Infra.runtime_callable("builtins", "getattr")(
-            live.get_pycore(), "extension_modules"
-        )
-        project = factory(
-            live,
-            original_states,
-            election=m.Infra.RopeProjectElection(
-                source_folders=tuple(
-                    Path(folder).relative_to(candidate.workspace).as_posix()
-                    for folder in source_folders
-                ),
-                ignored_resources=tuple(
-                    sorted(config.Infra.codegen.source_scan_ignored)
-                ),
-                extension_modules=tuple(
-                    sorted(
-                        u.type_adapter(set[str]).validate_python(
-                            extension_modules,
-                            strict=True,
-                        )
-                    )
-                ),
-                python_path_folders=python_folders,
-            ),
-            sources={
-                **{
-                    path: source
-                    for path, source in epoch_sources.items()
-                    if path not in candidate.updates
-                    or candidate.updates[path] is not None
-                },
-                **sources,
-            },
-            declared_files=tuple(
+        planned: list[m.Infra.CodegenFilePlan] = []
+        for path, source in {**candidate.updates, **sources}.items():
+            before = u.Infra.codegen_target_snapshot(path).unwrap()
+            desired = None if source is None else source.encode(c.DEFAULT_ENCODING)
+            if before.content == desired:
+                continue
+            planned.append(
                 m.Infra.CodegenFilePlan(
                     project=u.Infra.project_root(path) or root,
                     path=path,
-                    before=next(
-                        state for state in candidate.inputs if state.path == path
-                    ),
-                    desired_content=None
-                    if source is None
-                    else source.encode(c.DEFAULT_ENCODING),
+                    before=before,
+                    desired_content=desired,
                     desired_mode=None
-                    if source is None
+                    if desired is None
                     else candidate.modes.get(
                         path,
-                        next(
-                            state.mode
-                            for state in candidate.inputs
-                            if state.path == path
-                        ),
+                        before.mode
+                        if before.content is not None
+                        else config.Infra.codegen.modes.file_default,
                     ),
-                    source_states=seed.source_states,
-                    source_directories=seed.source_directories,
-                    source_query_topology=seed.source_query_topology,
                 )
-                for path, source in candidate.updates.items()
-            ),
-        )
-        if not isinstance(project, p.Infra.RopeProject):
-            msg = "Rope planning project does not satisfy its project contract"
-            raise TypeError(msg)
-        return project
+            )
+        return tuple(planned)
 
     @classmethod
     def consume_rename_plan(
         cls,
         request: m.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
-        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[bool]:
         """Re-derive an artifact and validate its complete candidate before effects.
 
@@ -1038,7 +818,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 request,
                 workspace,
                 pair,
-                source_preview=source_preview,
             )
         )
         if verified.failure:
@@ -1063,27 +842,14 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         candidate: m.Infra.SemanticSourcePlan,
         *,
         publish: bool = True,
-        source_analysis: p.Infra.SemanticSourceAnalysis | None = None,
     ) -> p.Result[bool]:
-        """Publish one rule-composed native candidate under its original source epoch.
+        """Publish one rule-composed native candidate.
 
         Returns:
             The shared semantic publication's actual acceptance or failure.
 
         """
-        current = FlextInfraStagedPackage.source_inputs_current(candidate.candidate)
-        if current.failure:
-            return current
-        authenticated = u.Cli.atomic_verify_binary_file_states(candidate.source_states)
-        if authenticated.failure:
-            return authenticated
-        return cls._publish_authenticated_source(
-            root,
-            candidate,
-            None,
-            publish=publish,
-            source_analysis=source_analysis,
-        )
+        return cls._publish_authenticated_source(root, candidate, publish=publish)
 
     @classmethod
     def load_rename_artifact(
@@ -1117,8 +883,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         request: m.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
         pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
-        *,
-        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[bool]:
         """Re-derive, candidate-validate, and re-authenticate the artifact.
 
@@ -1132,18 +896,9 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         verified = cls.authenticate_rename_candidate(root, artifact, driver, workspace)
         if verified.failure:
             return verified
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
-        authenticated = u.Cli.atomic_verify_binary_file_states((
-            driver,
-            *artifact.source_states,
-        ))
-        if authenticated.failure:
-            return r[bool].from_failure(authenticated)
         return cls._publish_authenticated_source(
             root,
             artifact,
-            driver,
             publish=request.apply and not request.check and not request.dry_run_mode,
         )
 
@@ -1211,27 +966,16 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             return r[bool].fail(
                 "semantic rename driver aliases a governed source input"
             )
-        authenticated = u.Cli.atomic_verify_binary_file_states((
-            driver,
-            *artifact.source_states,
-        ))
-        if authenticated.failure:
-            return r[bool].from_failure(authenticated)
-        current = FlextInfraStagedPackage.source_inputs_current(artifact.candidate)
-        if current.failure:
-            return r[bool].from_failure(current)
         return r[bool].ok(value=True)
 
     @staticmethod
     def _publish_authenticated_source(
         root: Path,
         artifact: m.Infra.SemanticSourcePlan,
-        driver: m.Cli.AtomicFileState | None,
         *,
         publish: bool,
-        source_analysis: p.Infra.SemanticSourceAnalysis | None = None,
     ) -> p.Result[bool]:
-        """Publish the authenticated candidate through the guarded transaction.
+        """Publish the candidate's planned effects through the shared publisher.
 
         Returns:
             The publication outcome mapped to the candidate acceptance.
@@ -1239,51 +983,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         """
         originals = {state.path: state for state in artifact.candidate.inputs}
         updates = artifact.candidate.updates
-        dependencies = m.Infra.CodemodBindingSnapshot(
-            states=(
-                *artifact.candidate.inputs,
-                *artifact.source_states,
-                *((driver,) if driver is not None else ()),
-                *(
-                    tuple(
-                        m.Cli.AtomicFileState.model_validate(
-                            state, from_attributes=True
-                        )
-                        for state in source_analysis.inputs
-                    )
-                    if source_analysis is not None
-                    else ()
-                ),
-            )
-        ).states
-        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            (
-                *artifact.source_directories,
-                *(
-                    tuple(
-                        m.Cli.AtomicDirectoryInventory.model_validate(
-                            receipt, from_attributes=True
-                        )
-                        for receipt in source_analysis.source_directories
-                    )
-                    if source_analysis is not None
-                    else ()
-                ),
-            ),
-            (
-                *artifact.source_query_topology,
-                *(
-                    tuple(
-                        m.Cli.AtomicDirectoryChainPlan.model_validate(
-                            receipt, from_attributes=True
-                        )
-                        for receipt in source_analysis.source_query_topology
-                    )
-                    if source_analysis is not None
-                    else ()
-                ),
-            ),
-        )
         plans = tuple(
             m.Infra.CodegenFilePlan(
                 project=max(
@@ -1304,10 +1003,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     if source is None
                     else artifact.candidate.modes.get(path, originals[path].mode)
                 ),
-                source_states=dependencies,
-                source_directories=directories,
-                source_query_topology=topology,
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             )
             for path, source in updates.items()
         )
@@ -1321,7 +1016,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                         *(u.Infra.project_root(path) or root for path in updates),
                     })
                 ),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             ),
             publish=publish,
         ).map(lambda _: True)
@@ -1333,7 +1027,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         apply: bool,
-        source_preview: p.Infra.SourcePreview,
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose declaration and constant consumers before census acceptance.
@@ -1342,15 +1035,12 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             root: Repository root governing the census scope.
             rope_workspace: The native workspace DSL used for planning.
             apply: Whether the composed candidate is also published.
-            source_preview: Reserved preview channel owned by the publication.
             workspace_factory: Validator workspace factory for staged candidates.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
         inventory: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
             m.Infra.ModOccurrenceReport(files=frozenset(), entries=())
         )
@@ -1551,11 +1241,9 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         cls,
         root: Path,
         edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit],
-        *,
-        source_preview: p.Infra.SourcePreview,
     ) -> None:
         """Publish the exact callback included in the existing progress fingerprint."""
-        cls.publish_planned_edits(root, edits, source_preview=source_preview).unwrap()
+        cls.publish_planned_edits(root, edits).unwrap()
         cli.display_text(f"mod: Rope transaction paths changed_files={len(edits)}")
 
     @classmethod
@@ -1564,7 +1252,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         root: Path,
         edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
         *,
-        source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[bool]:
         """Compose a complete edit batch and publish through the semantic owner.
@@ -1572,15 +1259,12 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         Args:
             root: Repository root governing the publication.
             edits: The complete validated edit batch to compose.
-            source_preview: Reserved preview channel owned by the publication.
             validator: Optional staged-candidate validator.
 
         Returns:
             Whether the accepted batch contains source changes.
 
         """
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
         original: t.MutableMappingKV[Path, str] = {}
         for edit in edits:
             if edit.file_path not in original:
@@ -1588,14 +1272,12 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         working = dict(original)
         changed: set[Path] = set()
         retired: t.Infra.RopeMutablePaths = set()
-        inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] = {}
-        cls.apply_plan(working, edits, changed, retirements=retired, inputs=inputs)
+        cls.apply_plan(working, edits, changed, retirements=retired)
         return cls._publish(
             root,
             original,
             {path: None if path in retired else working[path] for path in changed},
             validator=validator,
-            evidence=(tuple(inputs.values()), None),
         ).map(lambda accepted: bool(changed) and accepted)
 
     @classmethod
@@ -1605,7 +1287,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        source_preview: p.Infra.SourcePreview,
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
     ) -> p.Result[bool]:
         """Apply every semantic cutover selected by the canonical mod circuit.
@@ -1617,13 +1298,16 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             The resulting ``p.Result[bool]``.
 
         """
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
         authority = Path(rope_workspace.rope_project.root.real_path)
         with (
-            u.Infra.facade_source_project(
+            u.Infra.open_project(
                 authority, project_roots=u.Infra.import_project_roots(root)
-            ) as (source_project, consumed, _sources),
+            ) as live,
+            closing(
+                FlextInfraRopeProject.from_atomic_reads(
+                    live, election=u.Infra.native_election(live)
+                )
+            ) as source_project,
             FlextInfraRopeWorkspace.open_workspace(
                 root, rope_repository_root=authority, source_project=source_project
             ) as captured,
@@ -1634,10 +1318,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             planned = cls.plan(root, preflight, captured, original)
             if planned.failure:
                 return r[bool].from_failure(planned)
-            states, directories, topology = consumed()
-        # Exit the original capture before effects; publication keeps the same
-        # receipts and rejects any drift between this verification and mutation.
-        # These are observations only; normalized file plans are assembled below.
         return cls._publish(
             root,
             original,
@@ -1651,39 +1331,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 workspace_factory=workspace_factory,
                 reports_root=root,
             ),
-            evidence=(
-                tuple(state for edit in planned.value for state in edit.source_states),
-                m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                    files=(),
-                    inputs=states,
-                    source_directories=directories,
-                    source_query_topology=topology,
-                ),
-            ),
         )
-
-    @staticmethod
-    def _semantic_source_preimages(
-        project: p.Infra.RopeProject,
-        paths: t.IterableOf[Path],
-    ) -> t.MappingKV[Path, p.Infra.SemanticSourceState]:
-        """Select original receipts only for sources present in the native graph.
-
-        Returns:
-            Original witnesses, including absence for declared virtual births.
-
-        Raises:
-            ValueError: If a proposed source is absent from the authenticated graph.
-
-        """
-        inputs: dict[Path, p.Infra.SemanticSourceState] = {}
-        for path in paths:
-            if not project.source_query(path, "isfile"):
-                msg = f"semantic source is absent from its authenticated graph: {path}"
-                raise ValueError(msg)
-            inputs[path] = project.source_state(path, required=False)
-        return inputs
 
     @classmethod
     def plan[FindingT: m.Infra.ModOccurrence](
@@ -1705,11 +1353,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         working = dict(original)
         changed: set[Path] = set()
         retired: t.Infra.RopeMutablePaths = set()
-        inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] = {}
-        if rope_workspace.rope_project.authenticated_sources:
-            inputs.update(
-                cls._semantic_source_preimages(rope_workspace.rope_project, original)
-            )
 
         # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
         # The original authority remains physical; every phase sees the latest
@@ -1753,9 +1396,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             if planned.failure:
                 return result_type.from_failure(planned)
-            cls.apply_plan(
-                working, planned.value, changed, retirements=retired, inputs=inputs
-            )
+            cls.apply_plan(working, planned.value, changed, retirements=retired)
             counts[phase] = len(planned.value)
             if planned.value:
                 residue = cls._check_residue(
@@ -1784,7 +1425,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     original_source=original[path],
                     updated_source=working[path],
                     retire_file=path in retired,
-                    source_states=tuple(inputs.values()),
                     changes=("composed semantic cutover",),
                 )
                 for path in sorted(changed)
@@ -2207,7 +1847,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         changed: set[Path],
         *,
         retirements: t.Infra.RopeMutablePaths | None = None,
-        inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] | None = None,
     ) -> None:
         """Compose validated edit plans in memory without partial effects.
 
@@ -2221,16 +1860,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     msg = f"semantic retirement has no effect carrier: {edit.file_path}"
                     raise ValueError(msg)
                 retirements.add(edit.file_path)
-            if inputs is not None:
-                for state in edit.source_states:
-                    previous = inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        msg = (
-                            "semantic plan changed its original source "
-                            f"receipt: {state.path}"
-                        )
-                        raise ValueError(msg)
-                    inputs[state.path] = state
             current = sources.get(edit.file_path)
             if current != edit.original_source:
                 msg = f"semantic plans disagree for {edit.file_path}"
@@ -2246,140 +1875,47 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         updated: t.MappingKV[Path, str | None],
         *,
         validator: Callable[[Path], p.Result[bool]] | None = None,
-        evidence: t.Pair[
-            t.SequenceOf[p.Infra.SemanticSourceState],
-            p.Infra.SemanticSourceAnalysis | None,
-        ] = ((), None),
     ) -> p.Result[bool]:
-        """Normalize and preflight every source before journaled publication.
+        """Bind every update to its destination once and publish the batch.
 
         Args:
             root: Repository root governing the publication.
             original: The original sources the plan was derived from.
             updated: The desired bytes per path, or ``None`` to retire a file.
-            validator: Optional staged-candidate validator.
-            evidence: Original source states with the optional native analysis.
+            validator: Optional acceptance gate over the published tree.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Whether the batch was published, or the first failure.
 
         """
         if not updated:
             return r[bool].ok(value=False)
-        validated = cls._publication_inputs(original, updated, evidence)
-        if validated.failure:
-            return r[bool].from_failure(validated)
-        inputs = validated.value
-        source_analysis = evidence[1]
-        states = {state.path: state for state in inputs}
-        prepared = u.Infra.normalize_sources(
-            root,
-            {path: source for path, source in updated.items() if source is not None},
-            inputs=inputs,
-        )
-        if prepared.failure:
-            return r[bool].from_failure(prepared)
-        return cls._publish_normalized(
-            root,
-            updated,
-            prepared.value,
-            (states, inputs, source_analysis),
-            validator=validator,
-        )
-
-    @staticmethod
-    def _publication_inputs(
-        original: t.MappingKV[Path, str],
-        updated: t.MappingKV[Path, str | None],
-        evidence: t.Pair[
-            t.SequenceOf[p.Infra.SemanticSourceState],
-            p.Infra.SemanticSourceAnalysis | None,
-        ],
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Authenticate source bytes and retirement topology before normalization.
-
-        Returns:
-            The validated original file receipts, or the first preflight failure.
-
-        """
-        outcome = r[t.VariadicTuple[m.Cli.AtomicFileState]]
-        source_states, source_analysis = evidence
-        retirement = any(source is None for source in updated.values())
-        if retirement and source_analysis is None:
-            return outcome.fail(
-                "semantic retirement requires its original native topology"
+        plans: list[m.Infra.CodegenFilePlan] = []
+        for path in sorted(updated, key=cls._path_key):
+            project_root = u.Infra.project_root(path)
+            if project_root is None:
+                return r[bool].fail(f"semantic target has no governed project: {path}")
+            before = u.Infra.codegen_target_snapshot(path)
+            if before.failure:
+                return r[bool].from_failure(before)
+            state = before.value
+            if path in original and (
+                state.content is None
+                or state.content.decode(c.DEFAULT_ENCODING) != original[path]
+            ):
+                return r[bool].fail(f"source changed after semantic preflight: {path}")
+            source = updated[path]
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=project_root.resolve(),
+                    path=path.resolve(),
+                    before=state,
+                    desired_content=None
+                    if source is None
+                    else source.encode(c.DEFAULT_ENCODING),
+                    desired_mode=None if source is None else state.mode,
+                )
             )
-        supplied = (
-            *source_states,
-            *(source_analysis.inputs if source_analysis is not None else ()),
-        )
-        inputs = m.Infra.CodemodBindingSnapshot(
-            states=tuple(
-                m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
-                for state in supplied
-            )
-        ).states
-        states = {state.path: state for state in inputs}
-        if any(
-            path not in states
-            or states[path].content != source.encode(c.DEFAULT_ENCODING)
-            for path, source in original.items()
-        ):
-            return outcome.fail("source changed after semantic preflight")
-        if retirement and (
-            source_analysis is None or not source_analysis.source_directories
-        ):
-            return outcome.fail("semantic retirement has no original inventory witness")
-        return outcome.ok(inputs)
-
-    @classmethod
-    def _publish_normalized(
-        cls,
-        root: Path,
-        updated: t.MappingKV[Path, str | None],
-        prepared: m.Infra.StageSourcePlan,
-        evidence: t.Triple[
-            t.MappingKV[Path, m.Cli.AtomicFileState],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            p.Infra.SemanticSourceAnalysis | None,
-        ],
-        *,
-        validator: Callable[[Path], p.Result[bool]] | None,
-    ) -> p.Result[bool]:
-        """Assemble normalized sources with their original publication evidence.
-
-        Returns:
-            The journaled publication result.
-
-        """
-        states, inputs, source_analysis = evidence
-        dependencies = m.Infra.CodemodBindingSnapshot(
-            states=(*inputs, *prepared.inputs)
-        ).states
-        directories = tuple(
-            m.Cli.AtomicDirectoryInventory.model_validate(receipt, from_attributes=True)
-            for receipt in (
-                source_analysis.source_directories
-                if source_analysis is not None
-                else ()
-            )
-        )
-        topology = tuple(
-            m.Cli.AtomicDirectoryChainPlan.model_validate(receipt, from_attributes=True)
-            for receipt in (
-                source_analysis.source_query_topology
-                if source_analysis is not None
-                else ()
-            )
-        )
-        assembled = cls._artifact_plans(
-            updated,
-            (prepared.updates, states),
-            (dependencies, directories, topology),
-        )
-        if assembled.failure:
-            return r[bool].from_failure(assembled)
-        plans = assembled.value
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=root,
@@ -2390,66 +1926,9 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                         *(plan.project for plan in plans),
                     })
                 ),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 validator=validator,
             ),
         ).map(lambda _: True)
-
-    @classmethod
-    def _artifact_plans(
-        cls,
-        updated: t.MappingKV[Path, str | None],
-        normalized: t.Pair[
-            t.MappingKV[Path, str | None],
-            t.MappingKV[Path, m.Cli.AtomicFileState],
-        ],
-        receipts: t.Triple[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            t.VariadicTuple[m.Cli.AtomicDirectoryInventory],
-            t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
-        ],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Assemble one normalized file plan per updated path, in publication order.
-
-        Args:
-            updated: The desired bytes per path, or ``None`` to retire a file.
-            normalized: The normalized updates and original per-path states.
-            receipts: The dependency states and directory receipts each plan carries.
-
-        Returns:
-            The ordered file plans, or the first governance failure.
-
-        """
-        plans: list[m.Infra.CodegenFilePlan] = []
-        updates, states = normalized
-        dependencies, directories, topology = receipts
-        for path in sorted(updated, key=cls._path_key):
-            state = states[path]
-            project_root = u.Infra.project_root(path)
-            if project_root is None:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
-                    f"semantic target has no governed project: {path}"
-                )
-            proposed = updates[path] if updated[path] is not None else None
-            if updated[path] is not None and proposed is None:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
-                    f"normalizer cannot invent a semantic retirement: {path}"
-                )
-            plans.append(
-                m.Infra.CodegenFilePlan(
-                    project=project_root.resolve(),
-                    path=path.resolve(),
-                    before=state,
-                    desired_content=proposed.encode(c.DEFAULT_ENCODING)
-                    if proposed is not None
-                    else None,
-                    desired_mode=state.mode if proposed is not None else None,
-                    source_states=dependencies,
-                    source_directories=directories,
-                    source_query_topology=topology,
-                ),
-            )
-        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     @staticmethod
     def _path_key(path: Path) -> t.Pair[bool, str]:

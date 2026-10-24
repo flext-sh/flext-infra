@@ -24,8 +24,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenFixer,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
 from flext_infra.release import FlextInfraReleaseOrchestrator
@@ -84,10 +82,7 @@ class FlextInfra(
                 repository_root=source_root,
                 state=m.Infra.CodegenConformState(repository_root=source_root),
             ),
-            transaction=FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=source_root),
-            ),
-        ).execute(source_root, workspace.value, request, inputs.value.sources)
+        ).execute(source_root, workspace.value, request)
 
     def rope_workspace(
         self,

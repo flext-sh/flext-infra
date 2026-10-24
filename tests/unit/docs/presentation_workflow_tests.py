@@ -152,35 +152,6 @@ class TestsFlextInfraPresentationWorkflow:
         tm.fail(result)
         tm.that(tuple(target.read_bytes() for target in targets), eq=before)
 
-    @pytest.mark.parametrize(
-        "changed_source", [c.PYPROJECT_FILENAME, "src/flext_a/__init__.py"]
-    )
-    def test_projection_source_race_prevents_metadata_and_document_publication(
-        self, tmp_path: Path, changed_source: str
-    ) -> None:
-        """A stale metadata plan cannot publish either participant of the batch."""
-        _workspace, project, generator = self._workspace(tmp_path)
-        self._declaration(project, "pt-BR")
-        bundle = tm.ok(next(generator.prepare_batches()))
-        tm.that(
-            all(
-                state.path.suffix in {".yaml", ".toml"}
-                for plan in bundle.metadata_files
-                for state in plan.source_states
-            ),
-            eq=True,
-        )
-        path = project / changed_source
-        metadata = project / c.PYPROJECT_FILENAME
-        concurrent = path.read_bytes() + b"\n# concurrent source edit\n"
-        path.write_bytes(concurrent)
-        metadata_before = metadata.read_bytes()
-        readme = (project / "README.md").read_bytes()
-        tm.fail(generator.publish_batch(bundle))
-        tm.that(path.read_bytes(), eq=concurrent)
-        tm.that(metadata.read_bytes(), eq=metadata_before)
-        tm.that((project / "README.md").read_bytes(), eq=readme)
-
     def test_render_failure_does_not_publish_prepared_metadata(
         self, tmp_path: Path
     ) -> None:

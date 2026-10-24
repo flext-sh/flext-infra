@@ -23,16 +23,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
     """Normalize rendered artifacts and bind them to exact destination states."""
 
     @staticmethod
-    def _directory_sort_key(path: Path) -> t.Pair[int, str]:
-        """Return the stable parent-first ordering key for a directory.
-
-        Returns:
-            The stable parent-first ordering key for a directory.
-
-        """
-        return len(path.parts), path.as_posix()
-
-    @staticmethod
     def docs_normalize_artifacts(
         artifacts: t.SequenceOf[t.Infra.DocsRenderedArtifactTuple],
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
@@ -70,34 +60,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         )
 
     @staticmethod
-    def docs_required_directories(
-        bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Return unique target directories ordered parent before child.
-
-        Returns:
-            Unique target directories ordered parent before child.
-
-        """
-        required: set[Path] = set()
-        for scoped in bundle.scopes:
-            for artifact in scoped.artifacts:
-                if artifact.desired_content is None:
-                    continue
-                parent = scoped.scope.path
-                for part in artifact.relative_path.parent.parts:
-                    parent /= part
-                    required.add(parent)
-        return r[t.VariadicTuple[Path]].ok(
-            tuple(
-                sorted(
-                    required,
-                    key=FlextInfraUtilitiesDocsGeneratePlanMixin._directory_sort_key,
-                ),
-            ),
-        )
-
-    @staticmethod
     def docs_file_plans(
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
@@ -107,8 +69,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        # Each plan carries its batch inputs to the guarded publication owner.
-        # Planning never revalidates the complete fleet or rerenders its sources.
         plans: list[m.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
             for artifact in scoped.artifacts:
@@ -117,17 +77,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                     scoped.scope.path / artifact.relative_path,
                     artifact.desired_content,
                     desired_mode=artifact.desired_mode,
-                    source_states=bundle.source_states,
                 )
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
-                plans.append(
-                    planned.value.model_copy(
-                        update={
-                            "dependency_group": scoped.scope.path.as_posix(),
-                        }
-                    )
-                )
+                plans.append(planned.value)
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
             *plans,
             *bundle.metadata_files,

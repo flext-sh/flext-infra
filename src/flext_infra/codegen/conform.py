@@ -9,12 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenFileLeases,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
-)
 from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
@@ -42,9 +36,6 @@ class FlextInfraCodegenConform:
         admitted = m.Infra.CodegenConformRequest.model_validate(
             request, from_attributes=True
         )
-        if admitted.mode is c.Infra.CodegenConformMode.CHECK:
-            with FlextInfraWorkspaceNativeReference.compilation_scope():
-                return cls._observe_publication(admitted)
         bound = FlextInfraCodegenConformExecute.from_request(
             admitted,
             execution_context=execution_context,
@@ -53,6 +44,9 @@ class FlextInfraCodegenConform:
         if bound.failure:
             return r[p.Infra.CodegenResult].from_failure(bound)
         executor = bound.value
+        if admitted.mode is c.Infra.CodegenConformMode.CHECK:
+            with FlextInfraWorkspaceNativeReference.compilation_scope():
+                return executor.check_managed(admitted)
         governed = cls._migrate_governed_declarations(executor, admitted)
         if governed.failure:
             return r[p.Infra.CodegenResult].from_failure(governed)
@@ -89,34 +83,7 @@ class FlextInfraCodegenConform:
         contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
         if not (contract.complete_governed or request.declaration_kind is not None):
             return r[bool].ok(value=True)
-        migrated = cls._migrate_repository_declarations(executor, request)
-        if migrated.failure and (
-            migrated.error_code != c.Infra.ToolOutcome.ERROR.value
-            or not executor.state.planning_issues
-        ):
-            return migrated
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _observe_publication(
-        request: p.Infra.CodegenConformRequest,
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Observe physical publication evidence without a general code audit.
-
-        Returns:
-            The verified publication result, or the verification failure.
-
-        """
-        with FlextInfraCodegenFileLeases.mutation_lease(request.root):
-            observed = FlextInfraMiseArtifactsVerification.publication_current(
-                request,
-            )
-            if observed.failure:
-                return r[p.Infra.CodegenResult].from_failure(observed)
-            payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
-                verified_publication=observed.value,
-            )
-            return r[p.Infra.CodegenResult].ok(payload)
+        return cls._migrate_repository_declarations(executor, request)
 
     @classmethod
     def _migrate_repository_declarations(
@@ -124,191 +91,37 @@ class FlextInfraCodegenConform:
         executor: FlextInfraCodegenConformExecute,
         request: p.Infra.CodegenConformRequest,
     ) -> p.Result[bool]:
-        """Publish explicit input migration before any runtime detector read.
+        """Publish declaration migrations before any runtime detector read.
 
         Returns:
-            A complete migration receipt, retaining per-file failures and gains.
+            Success after publishing every selected target's migration.
 
         """
-        targets = u.Infra.repository_operation_targets(
-            request.root,
-            request.scope,
-        )
+        targets = u.Infra.repository_operation_targets(request.root, request.scope)
         if targets.failure:
             return r[bool].from_failure(targets)
-        selected = tuple(
-            target
-            for target in targets.value
-            if target.managed is not False
-            and (
+        kind = request.declaration_kind
+        files: list[m.Infra.CodegenFilePlan] = []
+        for target in targets.value:
+            if target.managed is False or not (
                 u.Infra.workspace_manifest_path(target.root).is_file()
                 or (
                     request.declaration_kind is not None
                     and target.root.resolve() == request.root.resolve()
                 )
-            )
-        )
-        if not selected:
-            return r[bool].ok(value=True)
-        roots = FlextInfraCodegenTransaction.capability_roots(
-            "repository-declaration",
-            tuple(target.root for target in selected),
-        )
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
-        )
-
-        def publish(scope_root: Path) -> p.Result[bool]:
-            analysis = cls._collect_declaration_migration_plans(
-                executor, request, selected
-            )
-            if analysis.failure:
-                return r[bool].from_failure(analysis)
-            if (
-                not analysis.value.files
-                and not analysis.value.issues
-                and analysis.value.exception is None
             ):
-                return r[bool].ok(value=True)
-            published = transaction.publish_file_phase_locked(
-                scope_root,
-                roots,
-                analysis.value,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=tuple(
-                        sorted({
-                            file.path.parent
-                            for file in analysis.value.files
-                            if not file.path.parent.is_dir()
-                        }),
-                    ),
-                ),
-            )
-            if published.failure:
-                if published.error_code == c.Infra.ToolOutcome.ERROR.value:
-                    retained = cls._retain_completed_migration_issues(
-                        executor, published
-                    )
-                    if retained.failure:
-                        return retained
-                return r[bool].from_failure(published)
-            return r[bool].ok(value=True)
-
-        return transaction.run_files_locked(roots, publish)
-
-    @staticmethod
-    def _collect_declaration_migration_plans(
-        executor: FlextInfraCodegenConformExecute,
-        request: p.Infra.CodegenConformRequest,
-        selected: t.SequenceOf[m.Infra.WorkspaceOperationTarget],
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan every selected target's declaration migration into one analysis.
-
-        Returns:
-            The combined bootstrap-phase analysis, retaining per-file
-            failures and gains.
-
-        """
-        files: list[m.Infra.CodegenFilePlan] = []
-        inputs: list[m.Cli.AtomicFileState] = []
-        issues: list[m.Infra.Issue] = []
-        first_exception: BaseException | None = None
-        for target in selected:
-            captured = u.Infra.load_codegen_inputs(target.root)
-            if captured.failure:
-                planned: p.Result[m.Infra.CodegenPhaseAnalysis] = r[
-                    m.Infra.CodegenPhaseAnalysis
-                ].from_failure(captured)
-            elif request.declaration_kind is not None:
-                planned = executor.repository_kind_declaration_plans(
-                    target.root,
-                    captured.value,
-                    request.declaration_kind,
-                )
-            else:
-                planned = executor.repository_declaration_migration_plans(
-                    target.root,
-                    captured.value,
-                )
-            if planned.failure:
-                issues.append(
-                    m.Infra.Issue(
-                        file=str(u.Infra.workspace_manifest_path(target.root)),
-                        line=0,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=planned.error
-                        or "repository declaration migration failed",
-                    ),
-                )
-                if first_exception is None:
-                    first_exception = planned.exception
                 continue
-            files.extend(planned.value.files)
-            inputs.extend(planned.value.inputs)
-            issues.extend(planned.value.issues)
-            if first_exception is None:
-                first_exception = planned.value.exception
-        snapshots = u.Infra.unique_states(tuple(inputs))
-        if snapshots.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                files=tuple(files),
-                inputs=snapshots.value,
-                issues=tuple(issues),
-                exception=first_exception,
-            ),
-        )
-
-    @staticmethod
-    def _retain_completed_migration_issues(
-        executor: FlextInfraCodegenConformExecute,
-        published: p.Result[t.VariadicTuple[Path]],
-    ) -> p.Result[bool]:
-        """Carry a settled red publication into the existing final plan report.
-
-        Returns:
-            Typed residual issues retained with their original first cause.
-
-        """
-        metadata = published.error_data
-        if metadata is None:
-            return r[bool].fail(
-                "completed migration failure has no structured publication receipt",
-                exception=published.exception,
-            )
-
-        def parse() -> t.VariadicTuple[m.Infra.Issue]:
-            serialized = u.Cli.json_dumps(metadata["issues"]).unwrap()
-            wire = u.type_adapter(tuple[t.JsonMapping, ...]).validate_json(serialized)
-            return tuple(
-                m.Infra.Issue.model_validate_json(
-                    u.Cli.json_dumps(
-                        {
-                            key: value
-                            for key, value in issue.items()
-                            if key not in m.Infra.Issue.model_computed_fields
-                        },
-                    ).unwrap(),
+            planned = u.Infra.load_codegen_inputs(target.root).flat_map(
+                lambda inputs, root=target.root: (
+                    executor.repository_kind_declaration_plans(root, inputs, kind)
+                    if kind is not None
+                    else executor.repository_declaration_migration_plans(root, inputs)
                 )
-                for issue in wire
             )
-
-        parsed = r[t.VariadicTuple[m.Infra.Issue]].create_from_callable(parse)
-        if parsed.failure:
-            return r[bool].fail(
-                parsed.error or "invalid completed migration issue receipt",
-                exception=published.exception or parsed.exception,
-            )
-        if not parsed.value:
-            return r[bool].fail(
-                "completed migration failure has no residual issue",
-                exception=published.exception,
-            )
-        executor.retain_diagnostics(published.exception, issues=parsed.value)
-        return r[bool].ok(value=True)
+            if planned.failure:
+                return r[bool].from_failure(planned)
+            files.extend(planned.value)
+        return u.Infra.publish_codegen_plans(request.root, files).map(lambda _: True)
 
     @staticmethod
     def _seed_declared_beads_identity(
