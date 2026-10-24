@@ -43,10 +43,8 @@ class FlextInfraModelsCore:
         subject: str = m.Field(description="Public contract verified by this process")
         code: str = m.Field(description="Python program rendered from typed contracts")
 
-    class FreshImportEntryPoints(m.Value):
+    class FreshImportEntryPoints(m.ExternalContractModel):
         """The standardized executable metadata consumed by importlib."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         scripts: t.StrMapping | None = m.Field(
             default=None,
@@ -63,10 +61,8 @@ class FlextInfraModelsCore:
             description="Declared plugin entrypoint groups when present",
         )
 
-    class FreshImportMetadata(m.Value):
+    class FreshImportMetadata(m.ExternalContractModel):
         """Typed entrypoint view of the published pyproject document."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
 
         project: FlextInfraModelsCore.FreshImportEntryPoints = m.Field(
             description="Executable metadata from the published project table",
@@ -340,11 +336,12 @@ class FlextInfraModelsCore:
                 raise ValueError(msg)
             return self
 
-    class PytestReportEvent(m.Value):
-        """Common report-log envelope and the complete warning payload."""
+    class PytestReportEvent(m.ExternalContractModel):
+        """Common report-log envelope and the complete warning payload.
 
-        # Report-log event kinds carry different plugin-owned payload fields.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", strict=True)
+        Report-log event kinds carry different plugin-owned payload fields; the
+        external-contract preset reads this subset and ignores the rest.
+        """
 
         report_type: Annotated[
             str,

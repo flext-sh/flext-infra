@@ -413,13 +413,12 @@ class FlextInfraConfigModelsWorkspace:
                 visit(name)
             return groups
 
-    class DependencyManifestSpec(DependencyGroupDeclarations):
-        """Dependency facts one member's own ``pyproject.toml`` declares."""
+    class DependencyManifestSpec(DependencyGroupDeclarations, m.ExternalContractModel):
+        """Dependency facts one member's own ``pyproject.toml`` declares.
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="ignore",
-            frozen=True,
-        )
+        The external-contract preset reads this subset of the native document
+        and ignores its other tables.
+        """
 
         name: Annotated[
             t.NonEmptyStr,

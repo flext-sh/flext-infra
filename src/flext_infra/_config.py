@@ -16,7 +16,7 @@ from flext_infra import c
 from flext_infra._models._config import FlextInfraConfigModels
 
 
-class FlextInfraConfig(FlextCliConfig, extra="ignore"):
+class FlextInfraConfig(FlextCliConfig):
     """Declarative flext-infra config loaded and validated once."""
 
     # Direct config.Infra is the only codegen information surface; no accessor
