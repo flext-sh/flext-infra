@@ -86,8 +86,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         })
         if foreign:
             msg = (
-                f"{qualified} references other {path[0]} members: "
-                f"{', '.join(foreign)}"
+                f"{qualified} references other {path[0]} members: {', '.join(foreign)}"
             )
             raise ValueError(msg)
         lifted = cstm.replace(member, reference, cst.Name(inner))

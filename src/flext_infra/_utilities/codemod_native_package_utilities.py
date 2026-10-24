@@ -45,13 +45,15 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     def codemod_package_export_facts(
         project: Path,
     ) -> m.Infra.CodemodPackageExportsFacts:
-        """Package exports: the ``__all__`` each package initializer declares.
+        """Package facts: exports, directory and direct children of each package.
 
-        Read through the Griffe owner from every initializer source of the
-        project; a package without a literal ``__all__`` exports nothing.
+        Exports are the ``__all__`` each initializer declares, read through the
+        Griffe owner (a package without a literal ``__all__`` exports nothing);
+        the directory and the child modules and packages come from the same
+        source index.
 
         Returns:
-            The typed export facts the utilities and renderers consume.
+            The typed package facts the utilities and renderers consume.
 
         """
         root = project.absolute()
@@ -59,13 +61,21 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             index = FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
                 rope, root
             )
+            owned = tuple(
+                entry
+                for entry in index.modules_by_path.values()
+                if entry.module_name and entry.file_path.is_relative_to(root)
+            )
             packages = {
                 entry.module_name: entry.file_path
-                for entry in index.modules_by_path.values()
-                if entry.module_name
-                and entry.file_path.name == c.Infra.INIT_PY
-                and entry.file_path.is_relative_to(root)
+                for entry in owned
+                if entry.file_path.name == c.Infra.INIT_PY
             }
+            children: dict[str, set[str]] = {package: set() for package in packages}
+            for entry in owned:
+                parent, separator, leaf = entry.module_name.rpartition(".")
+                if separator and parent in children:
+                    children[parent].add(leaf)
             run = FlextInfraUtilitiesPythonModel.python_model_run(rope, packages)
             return m.Infra.CodemodPackageExportsFacts(
                 exports={
@@ -78,7 +88,15 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                         or ()
                     )
                     for package, path in sorted(packages.items())
-                }
+                },
+                directories={
+                    package: path.parent.relative_to(root).as_posix()
+                    for package, path in sorted(packages.items())
+                },
+                modules={
+                    package: tuple(sorted(names))
+                    for package, names in sorted(children.items())
+                },
             )
 
     @classmethod

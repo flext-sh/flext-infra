@@ -308,7 +308,7 @@ class FlextInfraModelsRefactorGrep:
         ]
 
     class CodemodPackageExportsFacts(FlextInfraModelsBase.FrozenArbitrary):
-        """The names each package initializer of one project publishes."""
+        """What each package of one project publishes, where it lives, what it holds."""
 
         exports: Annotated[
             t.MappingKV[str, t.StrTuple],
@@ -316,6 +316,24 @@ class FlextInfraModelsRefactorGrep:
                 description=(
                     "Dotted package to the exact names its initializer __all__ "
                     "declares, read statically"
+                ),
+            ),
+        ]
+        directories: Annotated[
+            t.StrMapping,
+            m.Field(
+                description=(
+                    "Dotted package to its directory, relative to the project "
+                    "root in POSIX form"
+                ),
+            ),
+        ]
+        modules: Annotated[
+            t.MappingKV[str, t.StrTuple],
+            m.Field(
+                description=(
+                    "Dotted package to the leaf names of its direct child modules "
+                    "and child packages, read from the source index"
                 ),
             ),
         ]
