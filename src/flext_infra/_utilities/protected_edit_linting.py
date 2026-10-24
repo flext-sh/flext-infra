@@ -51,15 +51,54 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Normalized source, or the original configured repair failure.
 
         """
+        del repository_root
         if before_source is not None:
             source = cls.remove_orphaned_text_imports(before_source, source)
-        prepared = cls.normalize_sources(repository_root, {path: source})
-        if prepared.failure:
-            return r[str].from_failure(prepared)
-        content = prepared.value.updates[path.resolve()]
-        if content is None:
-            return r[str].fail(f"prepared source was retired: {path}")
-        return r[str].ok(content)
+        return cls.normalize_python_text(path, source)
+
+    @classmethod
+    def normalize_python_text(cls, path: Path, source: str) -> p.Result[str]:
+        """Repair then format one Python candidate through Ruff on stdin.
+
+        ``path`` is the destination; it selects the owning project's Ruff
+        configuration. An unfixable violation fails with Ruff's diagnostics.
+
+        Returns:
+            The repaired and formatted source, or Ruff's native failure.
+
+        """
+        command_cwd = cls._command_cwd(path, path.parent)
+        environment = dict(cls._command_env())
+        environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
+            FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+        )
+        for arguments in (("check", "--fix", "--quiet"), ("format", "--quiet")):
+            executed = u.Cli.run_raw(
+                (
+                    *cls._workspace_tool_command(c.Infra.RUFF),
+                    *arguments,
+                    "--stdin-filename",
+                    str(path),
+                    "-",
+                ),
+                cwd=command_cwd,
+                options=m.Cli.ProcessOptions(
+                    env=environment,
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                    input_data=source,
+                ),
+                timeout=cls._gate_deadline(c.Infra.RUFF),
+            )
+            if executed.failure:
+                return r[str].from_failure(executed)
+            output = executed.value
+            if not u.Cli.process_succeeded(output.outcome):
+                return r[str].fail(
+                    f"ruff {arguments[0]} rejected {path}: "
+                    f"{(output.stderr or output.stdout).strip()}"
+                )
+            source = output.stdout
+        return r[str].ok(source)
 
     @classmethod
     def normalize_sources(

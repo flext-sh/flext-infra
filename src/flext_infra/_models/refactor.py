@@ -25,11 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenJournalModels,
-    FlextInfraModelsCodegenPipelineModels,
-    FlextInfraModelsCodegenTransactionModels,
-)
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransactionModels
 
 
 class FlextInfraModelsRefactor(
@@ -52,9 +48,6 @@ class FlextInfraModelsRefactor(
         ] = m.Field(description="Native relocation selections")
         py_files: t.SequenceOf[Path] = m.Field(description="Selected Python sources")
         sources: t.MappingKV[Path, str] = m.Field(description="Immutable input sources")
-        receipt: FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis = m.Field(
-            description="Authenticated source states and prior declarations"
-        )
 
     class NamespaceRelocationState(m.ArbitraryTypesModel):
         """Mutable candidate bytes retaining their native authentication receipts."""
@@ -254,13 +247,6 @@ class FlextInfraModelsRefactor(
         projects: t.SequenceOf[Path] = m.Field(
             default=(),
             description="Declared project topology owning text findings.",
-        )
-        publication_chain: (
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagedFile]
-            | None
-        ) = m.Field(
-            default=None,
-            description="Authenticated staged publication receipts.",
         )
 
     class ViolationsTotals(m.ContractModel):
