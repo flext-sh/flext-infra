@@ -1,9 +1,0 @@
-id: retire-typing-extensions-typeform-import
-snapshots:
-  from typing_extensions import TypeForm:
-    fixed: ''
-    labels:
-    - source: from typing_extensions import TypeForm
-      style: primary
-      start: 0
-      end: 38

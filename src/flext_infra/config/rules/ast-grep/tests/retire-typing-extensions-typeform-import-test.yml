@@ -1,9 +1,0 @@
-id: retire-typing-extensions-typeform-import
-# `valid` MUST NOT match: another provider or another name.
-valid:
-  - from typing import TypeForm
-  - from typing_extensions import override
-  - from flext_infra import t
-# `invalid` MUST match: the typings member imported from its library.
-invalid:
-  - from typing_extensions import TypeForm
