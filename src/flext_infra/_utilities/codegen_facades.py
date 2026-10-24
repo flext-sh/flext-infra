@@ -467,12 +467,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         module = (
             owners[0].relative_to(pkg_dir).with_suffix("").as_posix().replace("/", ".")
         )
+        family_package = (
+            owners[0].parent.relative_to(pkg_dir).as_posix().replace("/", ".")
+        )
         alias = f"_{facade.name}"
         rendered = (
             f"{ast.get_source_segment(source, tree.body[0])}\n\n"
             "# Generated type facade; declarations belong to "
             f"{package_name}.{module}.\n"
-            f"from {package_name}.{module} import {facade.name} as {alias}\n\n\n"
+            f"from {package_name}.{family_package} "
+            f"import {facade.name} as {alias}\n\n\n"
             f"class {facade.name}({alias}):\n"
             '    """Public type facade inheriting its '
             'complete canonical owner."""\n\n\n'
@@ -1993,16 +1997,33 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> tuple[list[m.Infra.SourceClassReference], set[str], bool]:
         """Filter declared owners, then append the namespace's own base owners.
 
+        An owner whose nested class the namespace already composes as a base
+        (``Owner.Namespace``) contributes through that nested class only, never
+        additionally as a whole owner.
+
         Returns:
             The final declarations, their qualified names, and whether the
             facade binds the namespace through assignment.
 
         """
+        direct = {cls._base_name(base) for base in namespace.bases}
+        nested = {
+            ast.unparse(base.value if isinstance(base, ast.Subscript) else base)
+            .split(".")[0]
+            for base in namespace.bases
+            if isinstance(
+                base.value if isinstance(base, ast.Subscript) else base,
+                ast.Attribute,
+            )
+        }
+        nested_owners = {
+            item.qualified_base for item in declarations if item.qualified_base in nested
+        }
         filtered = [
             item
             for item in declarations
-            if item.qualified_base not in independent
-            or item.qualified_base in {cls._base_name(base) for base in namespace.bases}
+            if (item.qualified_base not in independent or item.qualified_base in direct)
+            and item.qualified_base not in nested_owners
         ]
         declared_names = {item.qualified_base for item in filtered}
         bound_namespace = namespace is facade and any(
@@ -2030,7 +2051,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 qualified_base=ast.unparse(base),
             )
             for base in namespace.bases
-            if cls._base_name(base) not in declared_names
+            if cls._base_name(base) not in declared_names | nested_owners
         )
         return filtered, declared_names, bound_namespace
 
@@ -2139,9 +2160,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if not candidates:
             return frozenset()
         contents = dict(sources.values())
-        projection_is_autogen = contents[facade_path].startswith(
-            c.Infra.AUTOGEN_HEADER
-        )
+        projection_is_autogen = contents[facade_path].startswith(c.Infra.AUTOGEN_HEADER)
         barrel = contents.get(roots[1] / c.Infra.INIT_PY)
         scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
             project,

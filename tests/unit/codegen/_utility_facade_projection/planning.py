@@ -900,3 +900,111 @@ class UtilityFacadePlanning(UtilityFacadePublication):
 
         with pytest.raises(ValueError, match="unsupported utility facade base"):
             u.Infra.render_utility_facade(package)
+
+    def test_nested_namespace_owner_is_never_also_composed_whole(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An owner composed through its nested namespace class stays nested only.
+
+        Premise: ``Owner.Sample`` already carries the owner's contribution to
+        the ``Sample`` namespace; composing ``Owner`` whole beside it duplicates
+        the owner in the MRO. A projection that carries both is repaired.
+        """
+        _, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / family.directory / "nested_owner.py",
+            "class NestedOwner:\n"
+            "    class Sample:\n        value = 'nested'\n"
+            "__all__ = ['NestedOwner']\n",
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        self._write(
+            facade,
+            f"from flext_sample.{family.directory}.nested_owner import NestedOwner\n"
+            "class Facade:\n"
+            "    class Sample(NestedOwner, NestedOwner.Sample):\n        pass\n"
+            "c = Facade\n__all__ = ['Facade', 'c']\n",
+        )
+        rendered = self._render_and_execute_constants_consumer(
+            package,
+            facade,
+            expected_stdout="nested",
+        )
+        tm.that(rendered, has="class Sample(NestedOwner.Sample)")
+        tm.that(u.Infra.render_utility_facade(package, family="c"), eq=rendered)
+
+    def test_type_facade_imports_its_owner_through_the_family_package(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The projected type facade keeps its private owner alias.
+
+        Premise: the owner is imported through the family package's lazy
+        exports; a per-module import was rewritten to the package form and
+        lost its ``as`` alias, leaving a class that inherits its own name.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY)
+        owners = package / family.directory
+        self._write(
+            owners / "sample.py",
+            '"""Sample type owner."""\n\n'
+            "class FlextSampleTypes:\n"
+            "    class Sample:\n        type Name = str\n\n"
+            "t = FlextSampleTypes\n\n"
+            "__all__: list[str] = ['FlextSampleTypes', 't']\n",
+        )
+        self._write(
+            owners / c.Infra.INIT_PY,
+            "from flext_sample._typings.sample import FlextSampleTypes, t\n"
+            "__all__ = ['FlextSampleTypes', 't']\n",
+        )
+        facade = package / c.Infra.TYPINGS_PY
+        self._write(
+            facade,
+            '"""Sample public types."""\n\n'
+            "class FlextSampleTypes:\n    pass\n\n"
+            "t = FlextSampleTypes\n\n"
+            "__all__: list[str] = ['FlextSampleTypes', 't']\n",
+        )
+        with u.Infra.facade_source_project(root) as (project, sources):
+            rendered = u.Infra.render_type_facade(
+                package, facade, dict(sources), project=project
+            )
+        tm.that(
+            rendered,
+            has=(
+                f"from flext_sample.{family.directory} import "
+                "FlextSampleTypes as _FlextSampleTypes"
+            ),
+        )
+        tm.that(rendered, has="class FlextSampleTypes(_FlextSampleTypes)")
+        self._write(facade, rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample.typings import t\n"
+                    "from flext_sample._typings import FlextSampleTypes\n"
+                    "assert t.__mro__[1] is FlextSampleTypes\n"
+                    "print(t.Sample.Name.__value__.__name__)\n",
+                ),
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        tm.that(output.stdout.strip(), eq="str")
