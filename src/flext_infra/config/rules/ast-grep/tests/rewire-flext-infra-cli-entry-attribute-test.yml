@@ -1,6 +1,0 @@
-id: rewire-flext-infra-cli-entry-attribute
-valid:
-  - flext_infra.FlextInfraCli.infra_main(["check"])
-  - flext_cli.main([])
-invalid:
-  - flext_infra.main(sys.argv[2:])
