@@ -17,10 +17,14 @@ snapshots:
       style: primary
       start: 64
       end: 80
-    - source: (m.Value)
+    - source: m.Value
       style: secondary
-      start: 11
-      end: 20
+      start: 12
+      end: 19
+    - source: m.Value
+      style: secondary
+      start: 12
+      end: 19
     - source: |-
         class Probe(m.Value):
             assertion_message: Annotated[
@@ -73,10 +77,14 @@ snapshots:
       style: primary
       start: 63
       end: 71
-    - source: (FlextModelsBase.ArbitraryTypesModel)
+    - source: FlextModelsBase.ArbitraryTypesModel
       style: secondary
-      start: 12
-      end: 49
+      start: 13
+      end: 48
+    - source: FlextModelsBase.ArbitraryTypesModel
+      style: secondary
+      start: 13
+      end: 48
     - source: |-
         class Runner(FlextModelsBase.ArbitraryTypesModel):
             writer: p.Writer
@@ -114,10 +122,14 @@ snapshots:
       style: secondary
       start: 33
       end: 39
-    - source: (m.Value)
+    - source: m.Value
       style: secondary
-      start: 12
-      end: 21
+      start: 13
+      end: 20
+    - source: m.Value
+      style: secondary
+      start: 13
+      end: 20
     - source: |-
         class Runner(m.Value):
             sink: p.Sink[str] | None = None
@@ -151,10 +163,14 @@ snapshots:
       style: primary
       start: 49
       end: 57
-    - source: (m.Value)
+    - source: m.Value
       style: secondary
-      start: 12
-      end: 21
+      start: 13
+      end: 20
+    - source: m.Value
+      style: secondary
+      start: 13
+      end: 20
     - source: |-
         class Runner(m.Value):
             writers: t.SequenceOf[p.Writer] = m.Field(description="Writers.")
@@ -194,10 +210,14 @@ snapshots:
       style: primary
       start: 72
       end: 96
-    - source: (m.Value)
+    - source: m.Value
       style: secondary
-      start: 11
-      end: 20
+      start: 12
+      end: 19
+    - source: m.Value
+      style: secondary
+      start: 12
+      end: 19
     - source: |-
         class Scope(m.Value):
             settings: Annotated[

@@ -7,12 +7,17 @@
 # `arbitrary_types_allowed`, so it is wrapped in `t.Port[...]` where it stands,
 # inside unions, mapping values and sequences included.
 #
-# Scope: annotated assignments written directly in the body of a class that has
-# bases and is not a Protocol, TypedDict, NamedTuple or Enum. References already
+# Scope: annotated assignments written directly in the body of a class whose
+# bases name the model owner: an `m.*` preset or family, a `FlextModels*`
+# family, an `s[...]` service, or a base whose name ends in `Model` or
+# `Settings`. Classes on SDK bases (rope `Project`), plain namespaces,
+# protocols and enums are not models and stay untouched. References already
 # inside `t.Port[...]`, inside metadata calls (`m.Field(...)`), and inside
-# `Callable[...]` signatures or `type[...]` are left untouched: a callable's
-# parameter and return types and a class object are never instance-checked, so
-# wrapping them would be wrong. A second pass changes nothing.
+# `Callable[...]` signatures or `type[...]`, and type arguments of a generic
+# model (`Family.Rule[p.X]`, whose own field owns the port) are left
+# untouched: a callable's parameter and return types and a class object are
+# never instance-checked, so wrapping them would be wrong. A second pass
+# changes nothing.
 id: rewire-model-protocol-field-to-port
 language: python
 severity: error
@@ -54,17 +59,26 @@ rule:
             regex: "^t\\.Port$"
     - not:
         inside:
-          stopBy:
-            kind: type
+          stopBy: end
           kind: call
     - not:
         inside:
-          stopBy:
-            kind: type
-          kind: subscript
-          has:
-            field: value
-            regex: "(?:^|\\.)(?:Callable|type|Type)$"
+          stopBy: end
+          any:
+            - kind: subscript
+              has:
+                field: value
+                regex: "(?:^|\\.)(?:Callable|type|Type)$"
+            - kind: generic_type
+              has:
+                kind: identifier
+                regex: "^(?:Callable|type|Type)$"
+            - kind: subscript
+              has:
+                field: value
+                kind: attribute
+                not:
+                  regex: "^[tp]\\."
     - inside:
         stopBy: end
         kind: type
@@ -79,12 +93,8 @@ rule:
                 kind: class_definition
                 has:
                   field: superclasses
-                  kind: argument_list
-                not:
                   has:
-                    field: superclasses
-                    has:
-                      regex: "^(?:typing\\.)?(?:Protocol|TypedDict|NamedTuple)\\b|Enum$"
+                    regex: "^(?:m|FlextModels[A-Za-z0-9_]*)\\.|^s\\[|(?:Model|Settings)$"
 fix: t.Port[$PORT]
 message: >-
   Model field annotation references the protocol `$PORT` bare: wrap it in

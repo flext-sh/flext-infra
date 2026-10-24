@@ -39,6 +39,12 @@ valid:
   - |
     class Holder(m.Value):
         middleware: t.SequenceOf[type[p.Middleware]] = ()
+  - |
+    class NativeProject(Project):
+        fscommands: p.Infra.RopeProjectFiles
+  - |
+    class Matcher(m.Value):
+        attrs_match: Mapping[str, Family.MatchRule[p.AttributeProbe]] | None = None
 # `invalid` MUST match: bare protocols at any depth of a model field type.
 invalid:
   - |
