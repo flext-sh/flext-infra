@@ -10,7 +10,6 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
 
@@ -71,7 +70,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if not params.quiet:
             detector.log.info("deps_deptry_running", project=project_name)
         if params.apply:
-            with FlextInfraCodegenFileLeases.mutation_lease(project_path):
+            with u.Cli.file_changes_lock(
+                u.Infra.mutation_lock_path(project_path).unwrap()
+            ):
                 scan = u.Infra.capture_deptry_scan(
                     project_path,
                     venv_bin,

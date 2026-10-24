@@ -225,6 +225,8 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     TRANSACTION_STATE_DIRNAME: ClassVar[str] = ".state"
     "Root of regenerable codegen transaction state; never repository content."
+    MUTATION_LOCK_NAME: ClassVar[str] = "flext-infra.lock"
+    "Exclusive lock serializing every writer of one mutation scope."
     RELEASE_GITLEAKS_CONFIG_PATH: ClassVar[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
     PYPI_SIMPLE_INDEX_URL: ClassVar[str] = "https://pypi.org/simple"

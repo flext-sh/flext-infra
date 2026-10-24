@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, r, s, u
-from flext_infra.codegen import FlextInfraCodegenFileLeases
 
 if TYPE_CHECKING:
     from flext_infra import m, p, t
@@ -35,7 +34,7 @@ class FlextInfraCleanService(s[int]):
         u.Infra.exact_worktree_root(root).unwrap()
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
         codegen = inputs.spec
-        with FlextInfraCodegenFileLeases.mutation_lease(root):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
             directories, files = self._targets(root, codegen)
             for directory in directories:
                 self._require_owned(root, directory.root.path, codegen)

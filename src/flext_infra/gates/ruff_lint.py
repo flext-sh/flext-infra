@@ -511,7 +511,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         tooling: m.Infra.ToolConfigDocument,
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
-        with self._mutation_lease(project_dir):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
             import_graph: t.MappingKV[str, frozenset[str]] = (
                 u.Infra.project_import_graph(project_dir)[0]
                 if any(

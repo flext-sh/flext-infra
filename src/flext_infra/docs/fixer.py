@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, r, u
-from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.docs import FlextInfraDocGenerator, FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
         """
         root = repository_root.expanduser().absolute()
-        with FlextInfraCodegenFileLeases.mutation_lease(root):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
             prepared = FlextInfraDocGenerator(
                 repository_root=root,
                 selected_projects=projects,

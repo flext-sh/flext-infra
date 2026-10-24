@@ -420,7 +420,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             msg = "repair requires apply_fixes=True and check_only=False"
             raise ValueError(msg)
         started = time.monotonic()
-        with self._mutation_lease(project_dir):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
             ran, passed, issues = self._run_extracted(project_dir, fix=True)
         if not ran:
             return self._skip_result(project_dir, ctx, started)
