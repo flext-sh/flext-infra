@@ -160,6 +160,34 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             u.Cli.toml_remove_key_if_present(uv, "override-dependencies")
 
     @staticmethod
+    def _sync_uv_self_exclusions(
+        uv: t.Cli.TomlTable,
+        document: t.Cli.TomlDocument,
+        candidate_sources: t.StrMapping,
+    ) -> None:
+        """Exclude this project from each internal candidate's requirements.
+
+        An internal candidate reached by Git URL may require this project by its
+        own Git URL, which native uv cannot reconcile with the local project in
+        a standalone lock. One scoped exclusion per candidate removes only that
+        reciprocal requirement; it does nothing where the candidate does not
+        require this project.
+        """
+        project = u.Cli.toml_as_mapping(document)
+        table = None if project is None else project.get(c.Infra.PROJECT)
+        name = table.get("name") if isinstance(table, Mapping) else None
+        own = canonicalize_name(name) if isinstance(name, str) else None
+        exclusions: t.JsonValueList = [
+            {"package": {"name": candidate}, "dependencies": [own]}
+            for candidate in sorted(candidate_sources)
+            if own is not None and candidate != own
+        ]
+        if exclusions:
+            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclusions)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
+
+    @staticmethod
     def _sync_uv_constraints(
         uv: t.Cli.TomlTable, resolution: m.Infra.UvResolutionSpec
     ) -> None:
@@ -255,10 +283,10 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
                 tuple(member.path.as_posix() for member in members),
             )
         cls._sync_uv_candidates(uv, candidate_sources, local_requirements, resolution)
+        cls._sync_uv_self_exclusions(uv, document, candidate_sources)
         cls._sync_uv_constraints(uv, resolution)
         cls._sync_uv_environments(uv, resolution)
         u.Cli.toml_remove_key_if_present(uv, "required-version")
-        u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         return r[bool].ok(value=True)
 
 

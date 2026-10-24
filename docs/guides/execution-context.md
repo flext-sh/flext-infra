@@ -1148,7 +1148,15 @@ branch with `merge --no-ff`. `deps verify-own-lock`, run by the runtime-integrit
 check gate, applies native `uv lock --check` to the checkout's own committed lock,
 in place for a root or standalone checkout and through the same worktree for an
 attached member. Pins of internal Git requirements follow the line each member's
-`pyproject.toml` declares. Each owner supplies its declared paths and
+`pyproject.toml` declares: the manifest keeps the Git URL and the lock pins its exact
+SHA (tracker memory `operator-ruling-2026-10-24-lock-sha-pyproject-url-waves`). An
+internal dependency may require the locking member back by its own Git URL, which
+native uv cannot reconcile with the local project, so the pyproject generator emits
+one scoped `[tool.uv] exclude-dependencies` entry per internal distribution of the
+member's `override-dependencies`, removing only that distribution's requirement on the
+member. The entry does nothing where the distribution does not require the member, and
+the workspace root, which has no internal override candidates, carries none.
+Each owner supplies its declared paths and
 source identities. An editable supplier supplies sources, never its physical
 environment. Upgrade does not generate manifests or Makefiles, install tools,
 synchronize an environment or invoke another lifecycle operation.
