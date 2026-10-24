@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
 from tests import c, m, p, tm, u
 from tests.unit.codegen.test_make_bootstrap_publication import (
     TestsMakeBootstrapPublication as _BootstrapWorkspace,
@@ -64,7 +63,6 @@ class TestsLiveEditableProvenance:
 
     @staticmethod
     def _verify(root: Path) -> p.Cli.CommandOutput:
-        policy = config.Infra.codegen.make.uv_resolution
         outcome = tm.ok(
             u.Cli.run_raw(
                 (
@@ -78,7 +76,7 @@ class TestsLiveEditableProvenance:
                 ),
                 cwd=root,
                 options=m.Cli.ProcessOptions(
-                    env={policy.hosted_variable: ""},
+                    env={c.Infra.ENV_VAR_GITHUB_ACTIONS: ""},
                     remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
                 ),
             ),

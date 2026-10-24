@@ -888,6 +888,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         return modernizer.resolve_tooling_context(
             request,
             source_project=source_project,
+            derive_runtime=False,
         )
 
     def _existing_tooling_request(

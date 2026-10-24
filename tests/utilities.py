@@ -347,13 +347,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     project_root / name
                     for name in (c.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
                 )
-                paths.update(
-                    project_root / directory / c.PYPROJECT_FILENAME
-                    for directory in (
-                        config.Infra.codegen.make.uv_resolution.local_directory,
-                        config.Infra.codegen.make.uv_resolution.standalone_directory,
-                    )
-                )
                 if shape.package:
                     layout = u.Infra.layout(project_root)
                     if layout is None:
