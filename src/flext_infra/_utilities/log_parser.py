@@ -1,4 +1,4 @@
-"""Read the SARIF report ``check run`` wrote back into typed findings.
+"""Read the reports tools wrote back: SARIF findings and JUnit documents.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,18 +8,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from defusedxml import ElementTree as DefusedET
 from flext_cli import u
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
-
 
 class FlextInfraUtilitiesLogParser:
-    """Read the SARIF report ``check run`` wrote back into typed findings."""
+    """Read the reports tools wrote back into typed values."""
 
     @staticmethod
     def check_report_findings(
@@ -50,6 +49,19 @@ class FlextInfraUtilitiesLogParser:
             sarif_path.read_text(encoding=c.DEFAULT_ENCODING),
             from_json=True,
         ).map(lambda report: tuple(res for run in report.runs for res in run.results))
+
+    @staticmethod
+    def junit_report_root(junit: Path) -> p.Infra.XmlElementLike | None:
+        """Parse one JUnit report with the safe XML parser.
+
+        A malformed document raises the parser's own error unchanged; a parsed
+        document without a root keeps the parser's typed absence for the caller.
+
+        Returns:
+            The document root, or ``None`` when the document has none.
+
+        """
+        return DefusedET.parse(junit).getroot()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesLogParser"]

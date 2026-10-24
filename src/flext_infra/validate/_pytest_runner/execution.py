@@ -13,7 +13,6 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, r, t, u
@@ -213,20 +212,23 @@ class FlextInfraPytestRunnerExecution(
         # For a zero-test project (no test module under the config-owned
         # roots) rc=5 is the DECLARED inventory outcome in both phases.
         owns_no_tests = (
-            outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
             and self._owns_no_tests()
         )
         # A slow phase may own no slow item, and a declared file may sit
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
         scope_may_be_empty = self.slow_phase or self.target_file is not None
-        accepted: set[pytest.ExitCode] = {pytest.ExitCode.OK} | (
+        accepted: set[c.Infra.PytestExitCode] = {c.Infra.PytestExitCode.OK} | (
             set()
             if complete and not scope_may_be_empty
-            else {pytest.ExitCode.NO_TESTS_COLLECTED}
+            else {c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
         )
         if owns_no_tests:
-            accepted = {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            accepted = {
+                c.Infra.PytestExitCode.OK,
+                c.Infra.PytestExitCode.NO_TESTS_COLLECTED,
+            }
         if (
             outcome.raw_return_code not in accepted
             or outcome.timed_out
@@ -251,7 +253,7 @@ class FlextInfraPytestRunnerExecution(
             self._collection_diagnostics(report_log)
         if (
             owns_no_tests
-            and outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         ):
             # No manifest artifact is produced for an empty declared suite.
             return m.Infra.PytestSelectionPlan(
@@ -265,7 +267,10 @@ class FlextInfraPytestRunnerExecution(
             manifest_path.read_text(encoding="utf-8"),
         )
         node_ids = manifest.node_ids
-        if outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED and node_ids:
+        if (
+            outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
+            and node_ids
+        ):
             msg = "pytest reported no collection with a nonempty manifest"
             raise RuntimeError(msg)
         if complete and not node_ids and not owns_no_tests and not scope_may_be_empty:
@@ -473,7 +478,7 @@ class FlextInfraPytestRunnerExecution(
         """
         return (
             outcome.raw_return_code
-            in {pytest.ExitCode.TESTS_FAILED, pytest.ExitCode.INTERRUPTED}
+            in {c.Infra.PytestExitCode.TESTS_FAILED, c.Infra.PytestExitCode.INTERRUPTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
             and (report_dir / "junit.xml").is_file()
@@ -528,7 +533,10 @@ class FlextInfraPytestRunnerExecution(
                 cache_hit
                 and context.execution_mode == c.Infra.PytestExecutionMode.INCREMENTAL
                 and raw_return_code
-                in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+                in {
+                    c.Infra.PytestExitCode.OK,
+                    c.Infra.PytestExitCode.NO_TESTS_COLLECTED,
+                }
             )
         ):
             msg = "zero execution is accepted only for a verified incremental cache hit"
@@ -622,7 +630,7 @@ class FlextInfraPytestRunnerExecution(
         if (
             self.target_file is not None
             and rejected
-            and final_exit == pytest.ExitCode.NO_TESTS_COLLECTED
+            and final_exit == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         ):
             msg = f"empty file phase has rejected evidence: {report_dir}"
             raise RuntimeError(msg)
@@ -780,7 +788,7 @@ class FlextInfraPytestRunnerExecution(
                 f"{slow_marker!r}\n",
             )
             return r.ok(
-                int(pytest.ExitCode.NO_TESTS_COLLECTED)
+                int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
                 if self.target_file is not None
                 else 0,
             )
@@ -916,7 +924,7 @@ class FlextInfraPytestRunnerExecution(
             self.target_file is None
             and not complete
             and outcome.raw_return_code
-            in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            in {c.Infra.PytestExitCode.OK, c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
             and not selection
@@ -929,7 +937,7 @@ class FlextInfraPytestRunnerExecution(
         completed_zero_tests = (
             selection_plan.owns_no_tests
             and outcome.raw_return_code
-            in {pytest.ExitCode.OK, pytest.ExitCode.NO_TESTS_COLLECTED}
+            in {c.Infra.PytestExitCode.OK, c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out
             and outcome.forwarded_signal is None
         )
@@ -1025,7 +1033,7 @@ class FlextInfraPytestRunnerExecution(
         """
         if (
             self.target_file is not None
-            and outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         ):
             msg = f"file phase exited 5 without a completed empty scope: {report_dir}"
             raise RuntimeError(msg)

@@ -30,6 +30,17 @@ class FlextInfraConstantsSharedInfra:
         NODE = "flext_connectivity_prerequisite_node"
 
     @unique
+    class PytestExitCode(IntEnum):
+        """Pytest's documented process exit codes (external protocol)."""
+
+        OK = 0
+        TESTS_FAILED = 1
+        INTERRUPTED = 2
+        INTERNAL_ERROR = 3
+        USAGE_ERROR = 4
+        NO_TESTS_COLLECTED = 5
+
+    @unique
     class ScriptExitCode(IntEnum):
         """Canonical exit codes for infra-owned validation scripts."""
 

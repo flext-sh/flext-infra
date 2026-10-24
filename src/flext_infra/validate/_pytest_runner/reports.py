@@ -11,8 +11,6 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from defusedxml import ElementTree as DefusedET
-
 from flext_infra import c, m, r, u
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -190,7 +188,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         if junit.stat().st_size == 0:
             msg = self._failure_detail(f"empty JUnit: {junit}", log)
             raise ValueError(msg)
-        root = DefusedET.parse(junit).getroot()
+        root = u.Infra.junit_report_root(junit)
         if root is None:
             msg = self._failure_detail(f"JUnit has no document root: {junit}", log)
             raise ValueError(msg)

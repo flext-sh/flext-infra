@@ -14,9 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from defusedxml import ElementTree as DefusedET
-
-from flext_infra import c, m, p
+from flext_infra import c, m, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -151,11 +149,10 @@ class FlextInfraPytestDiagXmlMixin:
             ValueError: If JUnit XML has no root element.
 
         """
-        root_raw = DefusedET.parse(junit_path).getroot()
-        if root_raw is None:
+        root = u.Infra.junit_report_root(junit_path)
+        if root is None:
             msg = f"JUnit XML has no root element: {junit_path}"
             raise ValueError(msg)
-        root = FlextInfraPytestDiagXmlMixin._as_xml_element(root_raw)
         slow_rows: t.MutableSequenceOf[t.Pair[float, str]] = []
         for case_raw in root.iter("testcase"):
             case = FlextInfraPytestDiagXmlMixin._as_xml_element(case_raw)

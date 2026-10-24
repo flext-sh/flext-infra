@@ -12,9 +12,6 @@ from importlib.metadata import Distribution
 from json import dumps
 from pathlib import Path
 
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
-
 from flext_infra import c, m, p, r, t, u
 from flext_infra.workspace import (
     FlextInfraBindingService,
@@ -75,7 +72,7 @@ class FlextInfraRuntimeDependencyCollector:
         ).unwrap()
         declarations = u.Infra.document_requirement_lines(document).unwrap()
         authored: t.MappingKV[str, str] = {
-            canonicalize_name(Requirement(item).name): item
+            u.Infra.requirement_identity(item): item
             for item in declarations
             if u.Infra.active_requirement(item, environment=markers) is not None
         }
@@ -89,7 +86,7 @@ class FlextInfraRuntimeDependencyCollector:
         if providers.failure:
             return result.from_failure(providers)
         unused = {
-            canonicalize_name(item.module)
+            u.Infra.distribution_identity(item.module)
             for item in scan.report.root
             if item.error.code == c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE
         }
@@ -104,7 +101,11 @@ class FlextInfraRuntimeDependencyCollector:
                 for distribution in u.installed_distributions(
                     path=tuple(str(path) for path in observed.metadata_paths),
                 )
-                if (identity := canonicalize_name(distribution.metadata["Name"]))
+                if (
+                    identity := u.Infra.distribution_identity(
+                        distribution.metadata["Name"]
+                    )
+                )
                 in unused
             },
         )
@@ -206,7 +207,7 @@ class FlextInfraRuntimeDependencyCollector:
             context.runtime_root,
         ).unwrap()
         repositories: t.MappingKV[str, m.Infra.RepositoryRef] = {
-            canonicalize_name(repository.distribution): repository
+            u.Infra.distribution_identity(repository.distribution): repository
             for repository in (workspace.repository, *workspace.subprojects)
         }
 
@@ -224,7 +225,7 @@ class FlextInfraRuntimeDependencyCollector:
             name = distribution.metadata.get("Name")
             if name is None:
                 return selected.fail("installed dependency metadata lacks its Name")
-            identity = canonicalize_name(name)
+            identity = u.Infra.distribution_identity(name)
             if identity not in authored:
                 return selected.ok(())
             receipt = (
@@ -323,11 +324,11 @@ class FlextInfraRuntimeDependencyCollector:
             The one matching locked package, or the original ownership failure.
 
         """
-        identity = canonicalize_name(name)
+        identity = u.Infra.distribution_identity(name)
         matches = tuple(
             item
             for item in locked.package
-            if canonicalize_name(item.name) == identity
+            if u.Infra.distribution_identity(item.name) == identity
             and item.version == distribution.version
         )
         if len(matches) != 1:

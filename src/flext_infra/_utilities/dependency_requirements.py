@@ -146,5 +146,27 @@ class FlextInfraUtilitiesDependencyRequirements:
             selected_by_name[dependency_name] = item
         return tuple(selected_by_name[name] for name in sorted(selected_by_name))
 
+    @staticmethod
+    def distribution_identity(name: str) -> str:
+        """Normalize one distribution name by the packaging identity rule.
+
+        Returns:
+            The canonical distribution identity.
+
+        """
+        return canonicalize_name(name)
+
+    @staticmethod
+    def requirement_identity(requirement: str) -> str:
+        """Return the canonical identity of one valid requirement.
+
+        An invalid requirement raises the packaging parser's own error.
+
+        Returns:
+            The canonical distribution identity the requirement names.
+
+        """
+        return canonicalize_name(Requirement(requirement).name)
+
 
 __all__: list[str] = ["FlextInfraUtilitiesDependencyRequirements"]
