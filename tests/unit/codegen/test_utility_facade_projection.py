@@ -248,6 +248,63 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="service-value")
 
+    def test_deleted_owner_retires_its_facade_composition(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A deleted owner module leaves the facade it was composed into.
+
+        The owner package's regenerated initializer no longer exports the
+        deleted owner, so the existing facade base names a provider the family
+        no longer has: it is retired, and the facade imports and runs.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        facade = package / c.Infra.UTILITIES_PY
+        sources = {
+            package / "__init__.py": (
+                f"from {package.name}.utilities import Utilities, u\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+            package / directory / "__init__.py": (
+                f"from {package.name}.{directory}.kept import KeptOwner\n"
+                "__all__ = ['KeptOwner']\n"
+            ),
+            package / directory / "kept.py": (
+                "class KeptOwner:\n"
+                "    @staticmethod\n"
+                "    def kept_value():\n"
+                "        return 'kept-value'\n"
+                "__all__ = ['KeptOwner']\n"
+            ),
+            facade: (
+                f"from {package.name}.{directory} import DeletedOwner, KeptOwner\n"
+                "class Utilities(KeptOwner, DeletedOwner):\n"
+                "    pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        tm.that(rendered, lacks="DeletedOwner")
+        self._write(facade, rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    f"from {package.name} import u; print(u.kept_value())",
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="kept-value")
+
     @staticmethod
     def _behavior_package(
         package: Path,

@@ -546,6 +546,52 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(str(cause), has=str(root / member.path))
 
     @staticmethod
+    def test_facade_planning_failure_escapes_before_the_tooling_pass(
+        tmp_path: Path,
+    ) -> None:
+        """A failed facade plan is the first failure, never a later analysis error.
+
+        The facade names a module as a base, which its plan rejects, and an
+        owner whose module was deleted. Analyzing the stale facade instead of
+        the failed plan would raise an unrelated unresolved-base error.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        sources = {
+            package / c.Infra.INIT_PY: (
+                f"from {package.name}.utilities import Utilities, u\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+            package / directory / c.Infra.INIT_PY: (
+                f"from {package.name}.{directory}.kept import KeptOwner\n"
+                "__all__ = ['KeptOwner']\n"
+            ),
+            package / directory / "kept.py": (
+                "class KeptOwner:\n    pass\n__all__ = ['KeptOwner']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name} import {directory}\n"
+                f"from {package.name}.{directory} import DeletedOwner, KeptOwner\n"
+                f"class Utilities({directory}, KeptOwner, DeletedOwner):\n"
+                "    pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        service, request = TestsFlextInfraConformSupport.check_conform_service(
+            root,
+            u.Tests.standalone_workspace(root, root.name),
+        )
+
+        plan = tm.ok(service.plan(request))
+
+        cause = tm.not_none(plan.exception)
+        tm.that(str(cause), has="Module used as a class base")
+        tm.that(str(cause), lacks="Unresolved planned base")
+
+    @staticmethod
     def test_workspace_uv_plan_owns_root_environment_and_local_member_sources(
         tmp_path: Path,
     ) -> None:

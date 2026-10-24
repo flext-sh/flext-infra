@@ -924,6 +924,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     binding,
                 ):
                     continue
+                if FlextInfraUtilitiesCodegenFacades._departed_owned_binding(
+                    project,
+                    binding,
+                    roots[0],
+                ):
+                    retired.add(ast.unparse(base))
+                    continue
                 message = (
                     f"Facade base has no source owner: "
                     f"{facade_path}:{ast.unparse(base)}"
@@ -935,6 +942,35 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ):
                 retired.add(ast.unparse(base))
         return frozenset(retired)
+
+    @staticmethod
+    def _departed_owned_binding(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        package_dir: Path,
+    ) -> bool:
+        """Return whether a facade base names an owner its own package dropped.
+
+        The name is imported from one of the package's own modules, and that
+        module no longer defines it: the owner module was deleted and the
+        regenerated initializer stopped publishing it. The provider left the
+        family, so the base is retired. The import's module is resolved
+        through Rope, never classified by its spelling; an unresolved module
+        raises.
+
+        Returns:
+            Whether the binding is an undefined import from the package itself.
+
+        """
+        if (
+            not isinstance(binding, p.Infra.RopeImportedName)
+            or binding.get_definition_location()[0] is not None
+        ):
+            return False
+        return FlextInfraUtilitiesRopeRuntime.imported_module_path(
+            project,
+            binding,
+        ).is_relative_to(package_dir.resolve())
 
     @staticmethod
     def _upstream_binding(

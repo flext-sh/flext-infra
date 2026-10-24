@@ -509,6 +509,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve the modernizer tooling context for one existing repository.
 
+        The context analyzes the repository's planned sources. A source plan
+        this repository already recorded as failed leaves its stale on-disk
+        projection in their place, so that first failure stops the pass and
+        escapes unchanged instead of a later analysis error masking it.
+
         Returns:
             The resulting ``p.Result[m.Infra.ToolingRuntimeContext]``.
 
