@@ -235,6 +235,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
     from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
+    from flext_infra._utilities.enforcement_catalog import (
+        FlextInfraUtilitiesEnforcementCatalog,
+    )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.gitignore import FlextInfraUtilitiesGitignore
@@ -426,6 +429,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
+    "FlextInfraUtilitiesEnforcementCatalog",
     "FlextInfraUtilitiesFacadeMembers",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationEvidenceMixin",
@@ -654,6 +658,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsScopeSelectionMixin": "._docs_scope_selection",
         "FlextInfraUtilitiesDocsScopeStateMixin": "._docs_scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",
+        "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesGitAttestationEvidenceMixin": "._git.attestation_evidence",

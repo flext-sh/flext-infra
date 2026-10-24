@@ -13,6 +13,12 @@ valid:
                     class Local:
                         pass
                     return Local
+  - |
+    class FlextDemoConstants:
+        class Demo:
+            class Order:
+                class Status(StrEnum):
+                    OPEN = "open"
 invalid:
   - |
     class FlextDemoModels:

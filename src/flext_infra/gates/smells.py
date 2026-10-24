@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, config, m, r, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -316,21 +316,18 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @staticmethod
     def _enriched_message(code: str, sarif_text: str) -> str:
-        """Append the flext-core fix law text when the tag exists.
+        """Append the declared repair text of the qlty check when it exists.
 
         The SARIF text already states the concrete problem (name and count);
-        the core problem text is a census template whose placeholders qlty
-        does not supply, so only the fix is appended.
+        tooling ``smells.fix-text`` owns the repair guidance per qlty check.
 
         Returns:
             The resulting ``str``.
 
         """
-        tag = c.Infra.SMELLS_RULE_TAGS.get(code, "")
-        text = c.ENFORCEMENT_RULES_TEXT.get(tag) if tag else None
-        if text is None:
+        fix = config.Infra.tooling.smells.fix_text.get(code)
+        if fix is None:
             return sarif_text
-        _, fix = text
         return f"{sarif_text}. Fix: {fix}"
 
 

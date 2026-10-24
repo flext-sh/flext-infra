@@ -433,9 +433,7 @@ class FlextInfraConstantsRefactor:
         CODEMOD_ROPE_RULES_RELPATH / "accessor-migrations.yaml"
     )
     # Static enforcement catalog: one row per enforcement law and its owners.
-    ENFORCEMENT_CATALOG_RELPATH: ClassVar[Path] = (
-        CODEMOD_RULES_RELPATH / "catalog.yaml"
-    )
+    ENFORCEMENT_CATALOG_RELPATH: ClassVar[Path] = CODEMOD_RULES_RELPATH / "catalog.yaml"
     # Rope restructure argument that binds a capture to one qualified identity.
     ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     # Rope restructure argument that types a capture by one builtin class:

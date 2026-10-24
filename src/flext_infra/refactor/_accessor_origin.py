@@ -10,7 +10,10 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, u
+from flext_infra import config, m, p, u
+from flext_infra.refactor._accessor_warnings import (
+    FlextInfraAccessorMigrationWarningsMixin,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -47,8 +50,12 @@ class FlextInfraAccessorOriginResolver:
         self._lineages: dict[int, tuple[p.Infra.RopePyObject, ...]] = {}
         self._namespace_owners: tuple[p.Infra.RopePyObject, ...] | None = None
         self._target_module = module
-        self._policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        self._forbidden_prefixes = (
+            config.Infra.tooling.accessor_policy.forbidden_prefixes
+        )
+        self._renamed_accessors = frozenset(
+            rule.source_name
+            for rule in FlextInfraAccessorMigrationWarningsMixin.automated_rules()
         )
         projects = u.Infra.resolve_projects(self._root, ()).unwrap()
         if namespace is not None:
@@ -241,8 +248,8 @@ class FlextInfraAccessorOriginResolver:
         """
         if name.startswith("_"):
             return False
-        if name not in c.ENFORCEMENT_ACCESSOR_RENAMES and not name.startswith(
-            tuple(self._policy.forbidden_prefixes)
+        if name not in self._renamed_accessors and not name.startswith(
+            tuple(self._forbidden_prefixes)
         ):
             return False
         if not u.Infra.py_function(binding.get_object()):
@@ -333,7 +340,7 @@ class FlextInfraAccessorOriginResolver:
             prefix = next(
                 (
                     prefix
-                    for prefix in self._policy.forbidden_prefixes
+                    for prefix in self._forbidden_prefixes
                     if name.startswith(prefix)
                 ),
                 None,
@@ -355,8 +362,8 @@ class FlextInfraAccessorOriginResolver:
                     reason=(
                         "Owned introducing method "
                         f"{declaration.module_name}.{declaration.scope_path} "
-                        "violates no_accessor_methods; "
-                        f"{self._policy.forbidden_prefixes[prefix]}; "
+                        "violates ban-accessor-method-name; "
+                        f"{self._forbidden_prefixes[prefix]}; "
                         "an explicit domain rename decision is required."
                     ),
                 ),

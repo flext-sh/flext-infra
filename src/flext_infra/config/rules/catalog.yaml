@@ -1,0 +1,592 @@
+# Static enforcement catalog: one row per FLEXT enforcement law and the owners
+# that detect it. Each rule reference names exactly one owner:
+#   ast-grep  a rule id declared under config/rules/ast-grep/rules
+#   ruff      a Ruff rule name the tooling selection keeps enabled
+#   gate      a registered check gate (smells rows add the qlty check code)
+#   codegen   a codegen template entry whose managed projection owns the law
+# The enforcement-catalog gate loads this file through
+# u.Infra.enforcement_catalog() and fails on the first reference that names no
+# declared or enabled owner. Ids are stable; laws added after the migration from
+# the flext-core runtime catalog take ENFORCE-100 and above.
+version: 1
+rules:
+- id: ENFORCE-001
+  severity: HIGH
+  description: >-
+    Loose object at module level: every public symbol is nested inside its
+    facade family.
+  agents_md_anchor: 2-architecture-law
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-loose-module-object}
+- id: ENFORCE-002
+  severity: HIGH
+  description: A runtime alias is imported from its package root, never from a module.
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-noncanonical-alias-import}
+- id: ENFORCE-003
+  severity: HIGH
+  description: >-
+    A canonical alias is imported from the project that owns that slot, never
+    from a foreign package.
+  skills: [flext-import-rules, flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-foreign-namespace-source}
+- id: ENFORCE-004
+  severity: MEDIUM
+  description: A private module import never reaches outside its owning package boundary.
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-private-import}
+- id: ENFORCE-005
+  severity: MEDIUM
+  description: Protocol classes are declared only in the protocols family.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-manual-protocol-outside-protocols}
+- id: ENFORCE-006
+  severity: CRITICAL
+  description: No module-level runtime import closes a cycle of the import graph.
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-cyclic-import}
+- id: ENFORCE-007
+  severity: HIGH
+  description: >-
+    A runtime alias is bound once, by the module that declares it, to the facade
+    class that module defines.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-runtime-alias-rebind}
+- id: ENFORCE-008
+  severity: MEDIUM
+  description: Every Python module starts with `from __future__ import annotations`.
+  skills: [rules-examples]
+  rules:
+  - {engine: ast-grep, id: require-future-annotations}
+- id: ENFORCE-009
+  severity: MEDIUM
+  description: Typing aliases and typing factories are declared only in the typings family.
+  skills: [flext-type-system]
+  rules:
+  - {engine: ast-grep, id: ban-manual-typing-alias-outside-typings}
+- id: ENFORCE-010
+  severity: LOW
+  description: No backwards-compatibility alias survives a refactor.
+  skills: [flext-refactoring-workflow]
+  rules:
+  - {engine: ast-grep, id: ban-compat-alias}
+- id: ENFORCE-011
+  severity: HIGH
+  description: A class lives in the facade family its kind belongs to.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-class-wrong-facade-layer}
+- id: ENFORCE-012
+  severity: CRITICAL
+  description: A facade composes every domain class its family package declares.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: require-facade-mro-completeness}
+- id: ENFORCE-014
+  severity: CRITICAL
+  description: A package publishes every canonical facade family.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: require-canonical-facade-family}
+- id: ENFORCE-015
+  severity: HIGH
+  description: >-
+    Import discipline: no inline or dynamic import, no empty or misused
+    TYPE_CHECKING block, no import-error fallback, no sys.path mutation, and
+    consumers import only from a package root.
+  skills: [flext-import-rules, flext-consumption-law]
+  rules:
+  - {engine: ast-grep, id: ban-dynamic-import}
+  - {engine: ruff, id: import-outside-top-level}
+  - {engine: ruff, id: empty-type-checking-block}
+  - {engine: ast-grep, id: ban-reverse-runtime-import}
+  - {engine: ast-grep, id: ban-import-error-fallback}
+  - {engine: ast-grep, id: ban-sys-path-mutation}
+  - {engine: ast-grep, id: ban-consumer-submodule-import}
+- id: ENFORCE-016
+  severity: HIGH
+  description: >-
+    Type-system law: no Any, object, Optional or bare dict annotation, no legacy
+    typing form, no typing.Dict/List, and no `# type: ignore` bypass.
+  agents_md_anchor: 3-2-types-and-contracts
+  skills: [flext-strict-typing, flext-type-system]
+  rules:
+  - {engine: ast-grep, id: ban-type-ignore-comment}
+  - {engine: ast-grep, id: ban-broad-annotation}
+  - {engine: ruff, id: any-type}
+  - {engine: ruff, id: non-pep585-annotation}
+  - {engine: ruff, id: non-pep604-annotation-union}
+  - {engine: ruff, id: deprecated-import}
+  - {engine: ast-grep, id: typing-dict-to-mapping-kv}
+  - {engine: ast-grep, id: typing-dict-missing-t-import}
+  - {engine: ast-grep, id: typing-list-to-sequence-of}
+  - {engine: ast-grep, id: typing-list-missing-t-import}
+- id: ENFORCE-017
+  severity: HIGH
+  description: >-
+    Bypass law: no `# noqa`, no `pragma: no cover`, no bare except, and no
+    exception silencing or sentinel return on a failure branch.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-agent-strict-rules, lib-returns, flext-strict-typing]
+  rules:
+  - {engine: ast-grep, id: ban-noqa-comment}
+  - {engine: ast-grep, id: ban-pragma-no-cover}
+  - {engine: ast-grep, id: rewrite-bare-except-to-exception}
+  - {engine: ast-grep, id: ban-silent-except-swallow}
+  - {engine: ast-grep, id: ban-silent-suppress}
+  - {engine: ast-grep, id: ban-silent-failure-sentinel}
+- id: ENFORCE-018
+  severity: CRITICAL
+  description: A lower import layer never imports a higher layer at runtime.
+  skills: [flext-architecture-layers]
+  rules:
+  - {engine: ast-grep, id: ban-reverse-runtime-import}
+- id: ENFORCE-019
+  severity: MEDIUM
+  description: Tests use no monkeypatch, Mock, MagicMock or patch.
+  skills: [testing-patterns]
+  rules:
+  - {engine: ast-grep, id: ban-test-doubles}
+- id: ENFORCE-020
+  severity: HIGH
+  description: >-
+    pyproject.toml tool tables are the managed projection of the typed tooling
+    policy; no ignore_errors, unapproved Ruff ignore or relaxed strictness.
+  skills: [flext-development-workflow]
+  rules:
+  - {engine: codegen, id: pyproject.toml}
+- id: ENFORCE-021
+  severity: MEDIUM
+  description: >-
+    Python code blocks in Markdown pass the same Ruff law as source: syntax,
+    forbidden typings, future annotations and broad annotations.
+  skills: [testing-patterns]
+  rules:
+  - {engine: gate, id: markdown-code}
+- id: ENFORCE-022
+  severity: HIGH
+  description: >-
+    A class and each facade member live in the family that owns their kind
+    (the class-definition MRO law).
+  skills: [flext-mro-namespace-rules, pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-class-wrong-facade-layer}
+  - {engine: ast-grep, id: facade-member-wrong-layer}
+- id: ENFORCE-027
+  severity: MEDIUM
+  description: Source code never prints; output goes through the CLI display owner.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [using-flext-core]
+  rules:
+  - {engine: ruff, id: print}
+  - {engine: ast-grep, id: rewire-print-to-cli-display-text}
+- id: ENFORCE-028
+  severity: HIGH
+  description: No `breakpoint()` or pdb call is left in code.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [coding-standards]
+  rules:
+  - {engine: ast-grep, id: remove-breakpoint-debugger-statement}
+  - {engine: ast-grep, id: remove-pdb-set-trace-statement}
+- id: ENFORCE-029
+  severity: MEDIUM
+  description: Every text-mode open() declares its encoding.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [coding-standards]
+  rules:
+  - {engine: ast-grep, id: add-open-builtin-default-mode-encoding}
+  - {engine: ast-grep, id: add-open-builtin-text-mode-encoding}
+  - {engine: ast-grep, id: add-path-open-default-mode-encoding}
+  - {engine: ast-grep, id: add-path-open-text-mode-encoding}
+- id: ENFORCE-033
+  severity: HIGH
+  description: No hardcoded `__version__` string; versions come from package metadata.
+  agents_md_anchor: 3-4-tools-and-modules
+  skills: [rules-pkg]
+  rules:
+  - {engine: ast-grep, id: ban-hardcoded-dunder-version}
+- id: ENFORCE-039
+  severity: HIGH
+  description: No cast() call outside flext-core.
+  agents_md_anchor: 3-2-types-and-contracts
+  skills: [flext-strict-typing]
+  rules:
+  - {engine: ast-grep, id: ban-cast-outside-core}
+- id: ENFORCE-041
+  severity: HIGH
+  description: No model_rebuild() call; declaration order resolves every reference.
+  agents_md_anchor: 3-4-tools-and-modules
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-model-rebuild}
+- id: ENFORCE-042
+  severity: HIGH
+  description: >-
+    Settings classes extend the FlextSettings owner; pydantic-settings is never
+    imported outside flext-core.
+  agents_md_anchor: 2-6-settings-law
+  skills: [lib-pydantic-settings]
+  rules:
+  - {engine: ast-grep, id: ban-flext-core-settings-library-import}
+- id: ENFORCE-043
+  severity: MEDIUM
+  description: No pass-through wrapper delegating to another callable with identical arguments.
+  agents_md_anchor: 3-5-integrity
+  skills: [flext-refactoring-workflow]
+  rules:
+  - {engine: ast-grep, id: ban-pass-through-wrapper}
+- id: ENFORCE-044
+  severity: HIGH
+  description: No hasattr/getattr/setattr probing of private attributes.
+  agents_md_anchor: 3-6-test-standardization
+  skills: [flext-strict-typing, testing-patterns]
+  rules:
+  - {engine: ast-grep, id: ban-getattr-private-probe}
+- id: ENFORCE-045
+  severity: HIGH
+  description: >-
+    pydantic is imported only by flext-core; consumers use the m, t, u facades
+    (m.BaseModel, m.ConfigDict, u.Field, u.field_validator, ...).
+  agents_md_anchor: 2-7-library-abstraction-boundaries
+  skills: [flext-import-rules, pydantic-v2-patterns, pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-direct-pydantic-import}
+- id: ENFORCE-048
+  severity: MEDIUM
+  description: >-
+    An inner namespace class with an empty body that re-inherits its outer
+    namespace is redundant.
+  agents_md_anchor: 2-3-mro-inheritance-namespace-composition
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: remove-redundant-inner-namespace}
+- id: ENFORCE-050
+  severity: MEDIUM
+  description: >-
+    A facade module declares one class, binds its alias once and closes with
+    its `__all__`.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules, flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: declare-single-class-export}
+  - {engine: ast-grep, id: require-all-last}
+- id: ENFORCE-051
+  severity: HIGH
+  description: >-
+    A facade family module never imports its own package's facade letters at
+    runtime.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-constants-own-letter-import}
+  - {engine: ast-grep, id: ban-typings-own-letter-import}
+  - {engine: ast-grep, id: ban-protocols-own-letter-import}
+  - {engine: ast-grep, id: ban-models-own-letter-import}
+  - {engine: ast-grep, id: ban-utilities-own-letter-import}
+- id: ENFORCE-052
+  severity: HIGH
+  description: >-
+    An import that would run against the layer order is emitted under
+    TYPE_CHECKING; a reverse runtime use stays a finding.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-reverse-runtime-import}
+- id: ENFORCE-053
+  severity: HIGH
+  description: >-
+    A multi-parent utilities facade resolves its MRO for the type checker: a
+    self-referencing utilities module lists its explicit parent class.
+  agents_md_anchor: 2-3-mro-inheritance-namespace-composition
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: gate, id: pyrefly}
+- id: ENFORCE-055
+  severity: HIGH
+  description: >-
+    Tests, examples and scripts import their aliases from the wrapper root
+    package, never from a submodule.
+  agents_md_anchor: 0-quick-reference-must-read
+  skills: [flext-import-rules, flext-mro-namespace-rules, rules-scripts]
+  rules:
+  - {engine: ast-grep, id: ban-test-deep-module-import}
+- id: ENFORCE-064
+  severity: HIGH
+  description: >-
+    Consumers import a facade through its short alias, never its long class
+    name (`from flext_core import FlextConstants` becomes `c`).
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules, flext-agent-strict-rules]
+  rules:
+  - {engine: ast-grep, id: ban-long-facade-name-import}
+- id: ENFORCE-066
+  severity: MEDIUM
+  description: No module-level CapWords alias (rename shim or nested-class hoist).
+  agents_md_anchor: 2-4-no-backwards-compat-aliases
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-compat-alias}
+- id: ENFORCE-067
+  severity: HIGH
+  description: A module declares exactly one top-level class.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: require-module-class}
+- id: ENFORCE-068
+  severity: HIGH
+  description: >-
+    A class of a private facade tree is reached through its owning facade,
+    never by importing the private module from outside the family.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules, flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-own-family-internal-import}
+- id: ENFORCE-069
+  severity: HIGH
+  description: >-
+    Namespaces nest at most facade, domain and leaf; enumerations are leaves.
+  agents_md_anchor: 2-3-mro-inheritance-namespace-composition
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-deep-namespace-nesting}
+- id: ENFORCE-070
+  severity: HIGH
+  description: >-
+    An external library is imported only inside the facade family of the
+    project that owns its abstraction.
+  agents_md_anchor: 2-7-library-abstraction-boundaries
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-external-import-outside-facade-family}
+  - {engine: ast-grep, id: ban-flext-core-library-import}
+  - {engine: ast-grep, id: ban-flext-cli-library-import}
+  - {engine: ast-grep, id: ban-flext-infra-library-import}
+  - {engine: ast-grep, id: ban-flext-meltano-library-import}
+  - {engine: ast-grep, id: ban-flext-db-oracle-library-import}
+  - {engine: ast-grep, id: ban-flext-grpc-library-import}
+  - {engine: ast-grep, id: ban-flext-web-library-import}
+  - {engine: ast-grep, id: ban-flext-api-library-import}
+- id: ENFORCE-071
+  severity: MEDIUM
+  description: Function parameter count exceeds the qlty threshold.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:function-parameters"}
+- id: ENFORCE-072
+  severity: MEDIUM
+  description: A function has too many return statements.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:return-statements"}
+- id: ENFORCE-073
+  severity: MEDIUM
+  description: Function nesting depth exceeds the qlty threshold.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:nested-control-flow"}
+- id: ENFORCE-074
+  severity: MEDIUM
+  description: Boolean-logic complexity exceeds the qlty threshold.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:boolean-logic"}
+- id: ENFORCE-075
+  severity: MEDIUM
+  description: Function cyclomatic complexity exceeds the qlty threshold.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:function-complexity"}
+- id: ENFORCE-076
+  severity: MEDIUM
+  description: Module cyclomatic complexity exceeds the qlty threshold.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:file-complexity"}
+- id: ENFORCE-077
+  severity: LOW
+  description: Identical code blocks are detected.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:identical-code"}
+- id: ENFORCE-078
+  severity: LOW
+  description: Similar code blocks are detected.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-quality-gates]
+  rules:
+  - {engine: gate, id: smells, code: "qlty:similar-code"}
+- id: ENFORCE-079
+  severity: MEDIUM
+  description: >-
+    A constant is declared in the constants family and consumed through `c`;
+    a facade member lives in the family its kind belongs to.
+  agents_md_anchor: 2-2-facades-namespaces-naming-patterns
+  skills: [flext-mro-namespace-rules, flext-constants-discipline]
+  rules:
+  - {engine: ast-grep, id: facade-member-wrong-layer}
+- id: ENFORCE-080
+  severity: HIGH
+  description: >-
+    A canonical alias bound inside a function or class body comes from the
+    project that re-exports the slot locally.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules, flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-foreign-canonical-alias-import}
+- id: ENFORCE-090
+  severity: HIGH
+  description: No hand-written `.pyi` stub; source type hints are the SSOT.
+  agents_md_anchor: 3-4-tools-and-modules
+  skills: [flext-strict-typing]
+  rules:
+  - {engine: ast-grep, id: ban-stub-file}
+- id: ENFORCE-094
+  severity: HIGH
+  description: structlog is imported only by flext-core; use u.fetch_logger.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-direct-structlog-import}
+- id: ENFORCE-095
+  severity: HIGH
+  description: oracledb is imported only through the flext-db-oracle facades.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-direct-oracledb-import}
+- id: ENFORCE-096
+  severity: HIGH
+  description: ldap3 is imported only through the flext-ldap facades.
+  agents_md_anchor: 4-import-law
+  skills: [flext-import-rules]
+  rules:
+  - {engine: ast-grep, id: ban-direct-ldap3-import}
+- id: ENFORCE-097
+  severity: MEDIUM
+  description: >-
+    No magic number or string literal where a named constant or configuration
+    owner exists.
+  agents_md_anchor: 2-2-facades-namespaces-naming-patterns
+  skills: [flext-constants-discipline]
+  rules:
+  - {engine: ruff, id: magic-value-comparison}
+  - {engine: ast-grep, id: ban-hardcoded-config}
+  - {engine: ast-grep, id: ban-hardcoded-error-code-literal}
+- id: ENFORCE-098
+  severity: HIGH
+  description: >-
+    Test functions live in one Tests<Module> class, never at module level.
+  agents_md_anchor: 8-testing-r22
+  skills: [testing-patterns]
+  rules:
+  - {engine: ast-grep, id: ban-loose-test-function}
+- id: ENFORCE-100
+  severity: HIGH
+  description: A constants-family attribute is named in UPPER_SNAKE_CASE.
+  agents_md_anchor: 2-2-facades-namespaces-naming-patterns
+  skills: [flext-constants-discipline]
+  rules:
+  - {engine: ast-grep, id: require-uppercase-constant-name}
+- id: ENFORCE-101
+  severity: HIGH
+  description: A constants-family attribute never binds a mutable value.
+  agents_md_anchor: 2-2-facades-namespaces-naming-patterns
+  skills: [flext-constants-discipline]
+  rules:
+  - {engine: ast-grep, id: ban-mutable-constant-value}
+- id: ENFORCE-102
+  severity: HIGH
+  description: Every public utilities-family method is a staticmethod or classmethod.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: require-static-utility-method}
+- id: ENFORCE-103
+  severity: MEDIUM
+  description: Every model field declares a description.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: require-field-description}
+- id: ENFORCE-104
+  severity: MEDIUM
+  description: >-
+    A model field union with more than two non-None arms is a named t.* alias,
+    never written inline.
+  skills: [pydantic-v2-governance, flext-type-system]
+  rules:
+  - {engine: ast-grep, id: ban-inline-union-field-annotation}
+- id: ENFORCE-105
+  severity: HIGH
+  description: A model field annotation never names the mutable list or set type.
+  skills: [pydantic-v2-governance, flext-strict-typing]
+  rules:
+  - {engine: ast-grep, id: ban-bare-collection-field-annotation}
+  - {engine: ast-grep, id: ban-broad-annotation}
+- id: ENFORCE-106
+  severity: HIGH
+  description: A model field never defaults to a shared non-empty mutable literal.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-mutable-field-default}
+- id: ENFORCE-107
+  severity: MEDIUM
+  description: A `str | None` model field never defaults to the empty string.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-str-none-empty-default}
+- id: ENFORCE-108
+  severity: HIGH
+  description: A model on the raw pydantic base declares `extra="forbid"`.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: require-model-extra-forbid}
+- id: ENFORCE-109
+  severity: HIGH
+  description: >-
+    Only the dynamic-payload presets relax model extra; every other model
+    forbids undeclared keys.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: ban-relaxed-model-extra}
+- id: ENFORCE-110
+  severity: HIGH
+  description: A value object never switches frozen off.
+  skills: [pydantic-v2-governance]
+  rules:
+  - {engine: ast-grep, id: require-frozen-value-object}
+- id: ENFORCE-111
+  severity: HIGH
+  description: Every Protocol is decorated with @runtime_checkable.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: require-runtime-checkable-protocol}
+- id: ENFORCE-112
+  severity: MEDIUM
+  description: A protocol tree nests only Protocols, namespaces and ABCs.
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: require-protocol-inner-kind}
+- id: ENFORCE-113
+  severity: MEDIUM
+  description: >-
+    No public accessor method named get_, set_ or is_; use a domain verb or a
+    field.
+  agents_md_anchor: 3-1-supreme-law
+  skills: [flext-mro-namespace-rules]
+  rules:
+  - {engine: ast-grep, id: ban-accessor-method-name}

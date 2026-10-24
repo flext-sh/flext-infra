@@ -13,7 +13,14 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.validate import _pytest_runner as _pytest_runner
     from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
+    from flext_infra.validate._pytest_runner import (
+        FlextInfraPytestRunnerBase,
+        FlextInfraPytestRunnerCommand,
+        FlextInfraPytestRunnerExecution,
+        FlextInfraPytestRunnerReports,
+    )
     from flext_infra.validate._skill_rule_runner import FlextInfraSkillRuleRunnerMixin
     from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
     from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
@@ -26,7 +33,6 @@ if TYPE_CHECKING:
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
     from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
-    from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
@@ -43,7 +49,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPytestDiagXmlMixin",
     "FlextInfraPytestRunner",
-    "FlextInfraRuntimeCensusValidator",
+    "FlextInfraPytestRunnerBase",
+    "FlextInfraPytestRunnerCommand",
+    "FlextInfraPytestRunnerExecution",
+    "FlextInfraPytestRunnerReports",
     "FlextInfraSkillRuleRunnerMixin",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
@@ -52,6 +61,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateLazyMapFreshness",
     "FlextInfraValidateTestImportDag",
+    "_pytest_runner",
 )
 
 install_lazy_exports(
@@ -66,7 +76,10 @@ install_lazy_exports(
         "FlextInfraPytestDiagExtractor": ".pytest_diag",
         "FlextInfraPytestDiagXmlMixin": "._pytest_diag_xml",
         "FlextInfraPytestRunner": ".pytest_runner",
-        "FlextInfraRuntimeCensusValidator": ".runtime_census",
+        "FlextInfraPytestRunnerBase": "._pytest_runner.base",
+        "FlextInfraPytestRunnerCommand": "._pytest_runner.command",
+        "FlextInfraPytestRunnerExecution": "._pytest_runner.execution",
+        "FlextInfraPytestRunnerReports": "._pytest_runner.reports",
         "FlextInfraSkillRuleRunnerMixin": "._skill_rule_runner",
         "FlextInfraSkillValidator": ".skill_validator",
         "FlextInfraStubSupplyChain": ".stub_chain",
@@ -75,6 +88,7 @@ install_lazy_exports(
         "FlextInfraValidateFreshImport": ".fresh_import",
         "FlextInfraValidateLazyMapFreshness": ".lazy_map_freshness",
         "FlextInfraValidateTestImportDag": ".test_import_dag",
+        "_pytest_runner": "._pytest_runner",
     }),
     public_exports=__all__,
 )

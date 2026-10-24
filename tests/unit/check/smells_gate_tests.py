@@ -300,12 +300,12 @@ class TestsFlextInfraSmellsGate:
         tm.fail(any("{" in message for message in messages))
         tm.ok(all(" Fix: " in message for message in messages))
 
-    def test_qlty_scan_does_not_run_runtime_census(
+    def test_qlty_scan_runs_without_project_metadata(
         self,
         tmp_path: Path,
         smells_project: Path,
     ) -> None:
-        """Qlty owns this gate even when census project metadata is unavailable."""
+        """Qlty owns this gate even when the project manifest is unavailable."""
         self._configure(tmp_path)
         (smells_project / c.PYPROJECT_FILENAME).unlink()
 

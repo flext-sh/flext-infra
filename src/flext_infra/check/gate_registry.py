@@ -31,10 +31,10 @@ from flext_infra.gates import (
     FlextInfraPyrightGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
-    FlextInfraRuntimeCensusGate,
     FlextInfraSmellsGate,
 )
 from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
 from flext_infra.gates.project_module import FlextInfraProjectModuleGate
 from flext_infra.gates.runtime_integrity import FlextInfraRuntimeIntegrityGate
 
@@ -132,7 +132,7 @@ class FlextInfraGateRegistry:
             FlextInfraMarkdownFormatGate,
             FlextInfraMarkdownCodeGate,
             FlextInfraLocCapGate,
-            FlextInfraRuntimeCensusGate,
+            FlextInfraEnforcementCatalogGate,
             FlextInfraFreshImportGate,
             FlextInfraLayoutGate,
             FlextInfraIndexDeclarationsGate,

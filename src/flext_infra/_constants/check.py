@@ -30,11 +30,11 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
     MARKDOWN_CODE: ClassVar[str] = "markdown-code"
     SMELLS: ClassVar[str] = "smells"
-    RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
     DEPS: ClassVar[str] = "deps"
     RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
+    ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
 
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
@@ -80,9 +80,9 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
                 False,
             ),
             "loc-cap": ("scc", "https://github.com/boyter/scc", False, False),
-            "runtime-census": (
-                "Flext Runtime Enforcement Census",
-                "internal://flext-infra/runtime-census",
+            ENFORCEMENT_CATALOG: (
+                "Flext Static Enforcement Catalog",
+                "internal://flext-infra/enforcement-catalog",
                 False,
                 False,
             ),
@@ -228,6 +228,27 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         NOTE = "note"
 
     @unique
+    class EnforcementEngine(StrEnum):
+        """Owner engine named by a static enforcement catalog rule reference."""
+
+        AST_GREP = "ast-grep"
+        RUFF = "ruff"
+        GATE = "gate"
+        CODEGEN = "codegen"
+
+    @unique
+    class EnforcementSeverity(StrEnum):
+        """Severity declared by a static enforcement catalog row."""
+
+        CRITICAL = "CRITICAL"
+        HIGH = "HIGH"
+        MEDIUM = "MEDIUM"
+        LOW = "LOW"
+
+    ENFORCEMENT_RULE_ID_PATTERN: ClassVar[str] = r"^ENFORCE-\d{3}$"
+    RUFF_SELECT_ALL: ClassVar[str] = "ALL"
+
+    @unique
     class ToolOutcome(StrEnum):
         """How a completed tool run ended, read from its exit and its report.
 
@@ -335,20 +356,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     "Smells scan arguments; the gate appends explicit targets, scanned in full."
     SMELLS_RULE_PREFIX: ClassVar[str] = "qlty:"
-    SMELLS_RULE_TAGS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
-        "boolean-logic": "smell_boolean_logic",
-        "file-complexity": "smell_file_complexity",
-        "function-complexity": "smell_function_complexity",
-        "function-parameters": "smell_function_parameters",
-        "identical-code": "smell_identical_code",
-        "nested-control-flow": "smell_nested_control_flow",
-        "return-statements": "smell_return_statements",
-        "similar-code": "smell_similar_code",
-    })
-    (
-        "qlty ruleId suffix -> flext-core enforcement tag "
-        "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
-    )
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).

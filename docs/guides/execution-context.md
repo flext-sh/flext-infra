@@ -2336,9 +2336,14 @@ observation is never signed proof, and absent signing material does not gate unr
 offline producers.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
-verb runs only the qlty smell scan and fails when it finds defects. The
-`runtime-census` gate stays in `make check` and grades every runtime enforcement
-finding, including rules that qlty also classifies as smells. An empty or
+verb runs only the qlty smell scan and fails when it finds defects. Each smell
+finding carries the repair text declared under `smells.fix-text` in
+`config/tooling.yaml`, keyed by the qlty check. Static enforcement is declared in
+`config/rules/catalog.yaml`: every row names the ast-grep, Ruff, gate, or codegen
+owner that detects it, and the `enforcement-catalog` gate in `make check` loads
+the catalog and fails when a row names an owner the packaged rule catalog, the
+Ruff selection, the gate registry, or the codegen template entries do not
+provide. An empty or
 malformed qlty SARIF response is a failed scan, not a zero-finding receipt.
 Native primary source spans and all `relatedLocations` pass through the typed issue
 and SARIF report contracts without dropping comparison locations outside the primary

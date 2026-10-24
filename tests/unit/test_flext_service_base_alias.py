@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_cli import s
 
 from flext_infra import FlextInfraServiceBase
+from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, t, tm, u
 
 
@@ -19,13 +19,58 @@ class TestsFlextInfraServiceBaseAlias:
     """Tests for ``FlextInfraServiceBaseAlias``."""
 
     @staticmethod
-    def test_service_base_generic_alias_flext_is_permitted() -> None:
-        """Generic service-root bases must not trigger facade FLEXT enforcement."""
-        infra_report = u.check(FlextInfraServiceBase)
-        cli_report = u.check(s)
-
-        tm.ok(not infra_report.violations)
-        tm.ok(not cli_report.violations)
+    def test_service_base_generic_alias_flext_is_permitted(
+        mod_workspace: Path,
+    ) -> None:
+        """Generic service-root bases trigger no static facade rule finding."""
+        project = u.Tests.mk_project(
+            mod_workspace,
+            "service-consumer",
+            pyproject=(
+                '[project]\nname = "service-consumer"\nversion = "0.1.0"\n'
+                "dependencies = []\n"
+            ),
+            with_src=True,
+        )
+        u.Tests.initialize_git_repo(project)
+        service = project / "service.py"
+        permitted = (
+            "from flext_cli import s\n"
+            "from flext_infra import FlextInfraServiceBase\n"
+            "class FlextDemoService(FlextInfraServiceBase[str]):\n"
+            "    pass\n"
+            "class FlextDemoCliService(s[str]):\n"
+            "    pass\n"
+        )
+        service.write_text(permitted, encoding=c.DEFAULT_ENCODING)
+        u.Tests.declare_workspace_projects(mod_workspace, (project.name,))
+        rules = (
+            "facade-base-by-class-name",
+            "ban-class-wrong-facade-layer",
+            "ban-long-facade-name-import",
+        )
+        clean = tm.ok(
+            FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=rules)
+        )
+        tm.that(
+            tuple(entry for entry in clean.entries if entry.repository == project.name),
+            length=0,
+        )
+        service.write_text(
+            permitted + "from flext_infra import FlextInfraModels\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        flagged = tm.ok(
+            FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=rules)
+        )
+        tm.that(
+            tuple(
+                entry.rule_id
+                for entry in flagged.entries
+                if entry.repository == project.name
+            ),
+            eq=("ban-long-facade-name-import",),
+        )
 
     @staticmethod
     @pytest.mark.parametrize(

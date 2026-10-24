@@ -128,6 +128,9 @@ from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
+from flext_infra._utilities.enforcement_catalog import (
+    FlextInfraUtilitiesEnforcementCatalog,
+)
 from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.gitignore import FlextInfraUtilitiesGitignore
@@ -320,6 +323,7 @@ class FlextInfraUtilities(FlextCliUtilities):
         FlextInfraUtilitiesDocsScopeStateMixin,
         FlextInfraUtilitiesDocsScopePathsMixin,
         FlextInfraUtilitiesDocsValidate,
+        FlextInfraUtilitiesEnforcementCatalog,
         FlextInfraUtilitiesFacadeMembers,
         FlextInfraUtilitiesGit,
         FlextInfraUtilitiesIteration,

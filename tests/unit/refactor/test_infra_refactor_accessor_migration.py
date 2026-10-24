@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,8 +26,12 @@ if TYPE_CHECKING:
     from flext_infra import t
 from tests import p
 
-_SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
-_REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]
+_RENAMES = {
+    rule.source_name: rule.replacement_name
+    for rule in FlextInfraAccessorMigrationOrchestrator.automated_rules()
+}
+_SOURCE_NAME = next(iter(_RENAMES))
+_REPLACEMENT_NAME = _RENAMES[_SOURCE_NAME]
 
 
 def _legacy_module_source() -> str:
@@ -85,10 +88,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         """Earlier renames must not shift later rules' semantic coordinates."""
         workspace, origin_file, foreign_file = _materialize_fixture(tmp_path)
         declarations = "\n\n".join(
-            f"def {name}(flag: bool) -> bool:\n    return flag"
-            for name in c.ENFORCEMENT_ACCESSOR_RENAMES
+            f"def {name}(flag: bool) -> bool:\n    return flag" for name in _RENAMES
         )
-        calls = ", ".join(f"{name}(True)" for name in c.ENFORCEMENT_ACCESSOR_RENAMES)
+        calls = ", ".join(f"{name}(True)" for name in _RENAMES)
         source = f"{declarations}\n\nvalue = ({calls})\n"
         _ = origin_file.write_text(source, encoding="utf-8")
         _ = foreign_file.write_text(source, encoding="utf-8")
@@ -102,7 +104,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(result.failure, eq=False, msg=result.error)
         tm.that(
             result.value.automated_change_count,
-            eq=len(c.ENFORCEMENT_ACCESSOR_RENAMES) * 2,
+            eq=len(_RENAMES) * 2,
         )
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
         tm.that(foreign_file.read_text(encoding="utf-8"), eq=source)
@@ -111,7 +113,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             for file_report in result.value.files
             for change in file_report.automated_changes
         )
-        for name, (replacement, _reason) in c.ENFORCEMENT_ACCESSOR_RENAMES.items():
+        for name, replacement in _RENAMES.items():
             tm.that(actual.count((name, replacement)), eq=2)
 
     @staticmethod
@@ -246,14 +248,10 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Owned accesses migrate; real fields and literal payloads keep behavior."""
-        rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Yaml.safe_load(
-                (
-                    type(config).ssot_config_dir().parent
-                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                    / "accessor-migrations.yaml"
-                ).read_text(encoding=c.DEFAULT_ENCODING)
-            ),
+        rules = tuple(
+            rule
+            for rule in FlextInfraAccessorMigrationOrchestrator.migration_rules()
+            if rule.operation == "normalize-field"
         )
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         _ = u.Tests.src_package(
@@ -389,14 +387,10 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tmp_path: Path,
     ) -> None:
         """An unresolved receiver cannot silently become an accepted skip."""
-        rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Yaml.safe_load(
-                (
-                    type(config).ssot_config_dir().parent
-                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                    / "accessor-migrations.yaml"
-                ).read_text(encoding=c.DEFAULT_ENCODING)
-            ),
+        rules = tuple(
+            rule
+            for rule in FlextInfraAccessorMigrationOrchestrator.migration_rules()
+            if rule.operation == "normalize-field"
         )
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         consumer = package / "consumer.py"
@@ -415,14 +409,10 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tmp_path: Path,
     ) -> None:
         """An inherited removed accessor cannot disappear behind a field override."""
-        rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Yaml.safe_load(
-                (
-                    type(config).ssot_config_dir().parent
-                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                    / "accessor-migrations.yaml"
-                ).read_text(encoding=c.DEFAULT_ENCODING)
-            ),
+        rules = tuple(
+            rule
+            for rule in FlextInfraAccessorMigrationOrchestrator.migration_rules()
+            if rule.operation == "normalize-field"
         )
         for index, rule in enumerate(rules):
             workspace, project, package = u.Tests.namespace_workspace(
@@ -644,11 +634,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """The canonical prefix policy, not seventeen names, owns discovery."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
-        policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
-        )
+        policy = config.Infra.tooling.accessor_policy
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
-        tm.fail(name in c.ENFORCEMENT_ACCESSOR_RENAMES)
+        tm.fail(name in _RENAMES)
         source = (
             f"class Owned:\n    {decorator}def {name}(self) -> bool:\n"
             "        return True\n"
@@ -682,9 +670,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """Identical source bytes cannot authenticate a different Rope project."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
-        policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
-        )
+        policy = config.Infra.tooling.accessor_policy
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
         source = f"class Owned:\n    def {name}(self):\n        return True\n"
         origin_file.write_text(source, encoding="utf-8")
@@ -730,9 +716,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         """
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
-        policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
-        )
+        policy = config.Infra.tooling.accessor_policy
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
         source = (
             "def factory(flag: bool):\n"
@@ -777,9 +761,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """Generic SDK contracts stay foreign; local introductions remain visible."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
-        policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
-        )
+        policy = config.Infra.tooling.accessor_policy
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
         source = (
             "from sqlalchemy.types import UserDefinedType\n\n"
@@ -819,9 +801,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """A genuinely unresolved introducing contract never becomes empty coverage."""
         workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
-        policy = m.MethodShapeParams.model_validate(
-            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
-        )
+        policy = config.Infra.tooling.accessor_policy
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
         source = (
             "class KnownBase:\n    pass\n\n"
