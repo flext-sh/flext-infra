@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typing_extensions import TypeForm
-
 from flext_infra import c, config, m, p, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -223,8 +221,10 @@ class FlextInfraToolTablesPhase:
         """
         payload = u.Infra.native_tool_configuration(self._tool_config, "vulture")
         excluded = self.excluded_roots(path)
-        paths = u.Infra.native_tool_setting(
-            self._tool_config, "vulture", "paths", TypeForm(t.StrSequence)
+        paths = u.Infra.native_tool_strings(
+            self._tool_config,
+            "vulture",
+            "paths",
         )
         payload["paths"] = [root for root in paths if root not in excluded]
         return self._native_phase("vulture", payload)

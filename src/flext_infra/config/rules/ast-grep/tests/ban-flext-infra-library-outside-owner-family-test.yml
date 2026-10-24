@@ -1,0 +1,16 @@
+id: ban-flext-infra-library-outside-owner-family
+valid:
+  - from flext_infra import t, u
+  - import packagingtools
+  - text = "from packaging.version import Version"
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from packaging.version import Version
+invalid:
+  - from packaging.version import InvalidVersion, Version
+  - from packaging.requirements import Requirement
+  - import packaging.utils
+  - import libcst
+  - from griffe import Module
+  - from rope.base.project import Project

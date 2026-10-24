@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typing_extensions import TypeForm
-
 from flext_infra import c, config, m, t, u
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraExtraPathsManager
@@ -129,8 +127,10 @@ class FlextInfraEnsureRuffConfigPhase:
 
         existing_root = tuple(
             directory
-            for directory in u.Infra.native_tool_setting(
-                self._tool_config, "ruff", "src", TypeForm(t.StrSequence)
+            for directory in u.Infra.native_tool_strings(
+                self._tool_config,
+                "ruff",
+                "src",
             )
             if _present(directory)
         )
@@ -138,11 +138,10 @@ class FlextInfraEnsureRuffConfigPhase:
         existing_namespace_packages = {
             directory
             for directory in (
-                *u.Infra.native_tool_setting(
+                *u.Infra.native_tool_strings(
                     self._tool_config,
                     "ruff",
                     "namespace-packages",
-                    TypeForm(t.StrSequence),
                 ),
                 *facts.repository_namespace_packages,
             )
@@ -174,11 +173,10 @@ class FlextInfraEnsureRuffConfigPhase:
             sorted({
                 *delegated_rules,
                 *ruff_cfg.lint.ruling_disabled_rules,
-                *u.Infra.native_tool_setting(
+                *u.Infra.native_tool_strings(
                     self._tool_config,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(t.StrSequence),
                 ),
             })
         )

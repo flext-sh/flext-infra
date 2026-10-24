@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.layout import FlextInfraCodegenLayout
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-    from flext_infra.codegen.lazy_init_render import FlextInfraCodegenLazyInitRender
     from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from flext_infra.codegen.mise_toolchain_proof import (
         FlextInfraCodegenMiseToolchainProof,
@@ -58,7 +57,6 @@ if TYPE_CHECKING:
         FlextInfraCodegenMiseToolchainRepair,
     )
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-    from flext_infra.codegen.python_model import FlextInfraCodegenPythonModel
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.staged_package import FlextInfraStagedPackage
     from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
@@ -90,13 +88,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLayoutGitignoreMixin",
     "FlextInfraCodegenLayoutPlanMixin",
     "FlextInfraCodegenLazyInit",
-    "FlextInfraCodegenLazyInitRender",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseToolchainProof",
     "FlextInfraCodegenMiseToolchainRepair",
     "FlextInfraCodegenPreconditions",
     "FlextInfraCodegenPyTyped",
-    "FlextInfraCodegenPythonModel",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
@@ -133,13 +129,11 @@ install_lazy_exports(
         "FlextInfraCodegenLayoutGitignoreMixin": "._layout_gitignore",
         "FlextInfraCodegenLayoutPlanMixin": "._layout_plan",
         "FlextInfraCodegenLazyInit": ".lazy_init",
-        "FlextInfraCodegenLazyInitRender": ".lazy_init_render",
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
         "FlextInfraCodegenMiseToolchainRepair": ".mise_toolchain_repair",
         "FlextInfraCodegenPreconditions": ".codegen_preconditions",
         "FlextInfraCodegenPyTyped": ".py_typed",
-        "FlextInfraCodegenPythonModel": ".python_model",
         "FlextInfraCodegenQualityGate": ".constants_quality_gate",
         "FlextInfraCodegenScaffolder": ".scaffolder",
         "FlextInfraCodegenVersionFile": ".version_file",

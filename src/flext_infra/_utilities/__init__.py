@@ -245,6 +245,13 @@ if TYPE_CHECKING:
     from flext_infra._utilities.iteration_workspace import (
         FlextInfraUtilitiesIterationWorkspace,
     )
+    from flext_infra._utilities.lazy_init_letters import (
+        FlextInfraUtilitiesLazyInitLetters,
+    )
+    from flext_infra._utilities.lazy_init_plan import FlextInfraUtilitiesLazyInitPlan
+    from flext_infra._utilities.lazy_init_render import (
+        FlextInfraUtilitiesLazyInitRender,
+    )
     from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.managed_conflicts import (
@@ -301,6 +308,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectConform,
     )
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
+    from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
     from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
@@ -453,6 +461,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
     "FlextInfraUtilitiesIterationWorkspace",
+    "FlextInfraUtilitiesLazyInitLetters",
+    "FlextInfraUtilitiesLazyInitPlan",
+    "FlextInfraUtilitiesLazyInitRender",
     "FlextInfraUtilitiesLintRecipes",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
@@ -488,6 +499,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPyprojectTomlPhases",
     "FlextInfraUtilitiesPyprojectUvSources",
     "FlextInfraUtilitiesPyrefly",
+    "FlextInfraUtilitiesPythonModel",
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
@@ -675,6 +687,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesIterationDirectory": ".iteration_directory",
         "FlextInfraUtilitiesIterationMatching": ".iteration_matching",
         "FlextInfraUtilitiesIterationWorkspace": ".iteration_workspace",
+        "FlextInfraUtilitiesLazyInitLetters": ".lazy_init_letters",
+        "FlextInfraUtilitiesLazyInitPlan": ".lazy_init_plan",
+        "FlextInfraUtilitiesLazyInitRender": ".lazy_init_render",
         "FlextInfraUtilitiesLintRecipes": ".lint_recipes",
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
@@ -712,6 +727,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyprojectTomlPhases": "._pyproject.toml_phases",
         "FlextInfraUtilitiesPyprojectUvSources": "._pyproject.uv_sources",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
+        "FlextInfraUtilitiesPythonModel": ".python_model",
         "FlextInfraUtilitiesQualifiedNames": ".qualified_names",
         "FlextInfraUtilitiesRefactor": ".refactor",
         "FlextInfraUtilitiesRefactorCensus": ".census",

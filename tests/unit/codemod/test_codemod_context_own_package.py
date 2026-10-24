@@ -56,8 +56,10 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 tmp_path,
                 c.ContextScope.APPLICATION,
                 with_src=True,
-                pyproject="[project]\nname = c.ContextScope.APPLICATION\nversion = "
-                '"1.0.0"\n',
+                pyproject=(
+                    f'[project]\nname = "{c.ContextScope.APPLICATION}"\n'
+                    'version = "1.0.0"\n'
+                ),
             )
             declaration = u.Tests.project_spec(c.ContextScope.APPLICATION).model_copy(
                 update={"repository_namespace_packages": (namespace,)}

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from typing_extensions import TypeForm
-
 from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
@@ -87,11 +85,10 @@ class FlextInfraEnsurePyreflyConfigPhase:
             c.Infra.PROJECT_INCLUDES: list[t.JsonValue](sorted(expected_includes)),
             c.Infra.PROJECT_EXCLUDES: list[t.JsonValue](
                 u.Infra.pyrefly_project_excludes(
-                    u.Infra.native_tool_setting(
+                    u.Infra.native_tool_strings(
                         self._tool_config,
                         c.Infra.PYREFLY,
                         c.Infra.PROJECT_EXCLUDES,
-                        TypeForm(t.StrSequence),
                     )
                 )
             ),

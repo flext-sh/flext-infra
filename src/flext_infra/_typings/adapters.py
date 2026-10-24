@@ -7,10 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+from functools import partial
+from operator import attrgetter
 from pathlib import Path
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from flext_cli import m, t, u
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 
 class FlextInfraTypesAdapters:
@@ -55,6 +59,21 @@ class FlextInfraTypesAdapters:
 
     BOOL_ADAPTER: ClassVar[m.TypeAdapter[bool]] = u.type_adapter(bool)
     "Validates one boolean at boundaries whose upstream stubs expose Any."
+
+    DISTRIBUTION_NAME_ADAPTER: ClassVar[m.TypeAdapter[str]] = u.type_adapter(
+        Annotated[str, m.AfterValidator(partial(canonicalize_name, validate=True))],
+    )
+    "Validates one PEP 503 distribution name into its canonical identity."
+
+    REQUIREMENT_NAME_ADAPTER: ClassVar[m.TypeAdapter[str]] = u.type_adapter(
+        Annotated[
+            str,
+            m.AfterValidator(Requirement),
+            m.AfterValidator(attrgetter("name")),
+            m.AfterValidator(canonicalize_name),
+        ],
+    )
+    "Validates one PEP 508 requirement into its canonical distribution identity."
 
 
 __all__: list[str] = ["FlextInfraTypesAdapters"]

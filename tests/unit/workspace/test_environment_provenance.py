@@ -9,9 +9,8 @@ from __future__ import annotations
 import os
 from json import dumps
 from pathlib import Path
-from sys import executable, prefix
+from sys import executable
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -20,12 +19,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import c, m, tm, u
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-from tests import p, t
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
@@ -144,16 +138,41 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
 
     @staticmethod
-    @pytest.fixture
-    def site_packages() -> Iterator[Path]:
-        """Isolate metadata beneath the owned prefix without installing packages.
+    def _owned_environment(root: Path) -> Path:
+        """Return the physical environment the checkout at ``root`` owns.
 
-        Yields:
-            The metadata directory within the active environment's prefix.
+        A fixture checkout is its own runtime root, so the same owner that
+        validation consults places installed metadata inside that environment.
+
+        Returns:
+            The checkout-owned environment directory.
 
         """
-        with TemporaryDirectory(dir=prefix) as temporary:
-            yield Path(temporary) / "site-packages"
+        return u.Infra.runtime_environment_dir(root, runtime_root=root)
+
+    @staticmethod
+    @pytest.fixture
+    def site_packages(tmp_path: Path) -> Path:
+        """Isolate metadata inside the locked workspace's owned environment.
+
+        Returns:
+            The metadata directory within the workspace environment.
+
+        """
+        owned = TestsFlextInfraWorkspaceEnvironmentProvenance._owned_environment(
+            TestsFlextInfraWorkspaceEnvironmentProvenance._locked_root(tmp_path),
+        )
+        return owned / "site-packages"
+
+    @staticmethod
+    def _locked_root(tmp_path: Path) -> Path:
+        """Return where ``_locked_workspace`` declares its workspace.
+
+        Returns:
+            The workspace root below ``tmp_path``.
+
+        """
+        return tmp_path / "workspace"
 
     @staticmethod
     def _lock_path(root: Path) -> Path:
@@ -201,7 +220,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         direct_root: Path,
         source_root: Path,
     ) -> None:
-        site_packages.mkdir()
+        site_packages.mkdir(parents=True)
         normalized = distribution.replace("-", "_")
         dist_info = site_packages / f"{normalized}-1.0.dist-info"
         dist_info.mkdir()
@@ -389,7 +408,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     ) -> None:
         """Fail loud when a declared editable distribution is not installed."""
         workspace = self._locked_workspace(tmp_path)
-        site_packages.mkdir()
+        site_packages.mkdir(parents=True)
 
         error = self._provenance_failure(workspace, site_packages)
         tm.that(error, has="distribution")
@@ -402,7 +421,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             The governed workspace root.
 
         """
-        workspace = self._workspace(tmp_path / "workspace")
+        workspace = self._workspace(self._locked_root(tmp_path))
         member = workspace / "sample-member"
         u.Tests.commit_git_changes(member, "declare member ledger route")
         u.Tests.WorktreeFixture.attach_submodule(
@@ -453,13 +472,15 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
         """
         member = workspace / "sample-member"
-        with TemporaryDirectory(dir=prefix) as temporary:
+        owned = self._owned_environment(workspace)
+        owned.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(dir=owned) as temporary:
             site_packages = Path(temporary) / "site-packages"
             self._installed_editable(
                 site_packages,
                 "sample-member",
                 direct_root=member if direct_root is None else direct_root,
-                source_root=Path(prefix) if source_root is None else source_root,
+                source_root=owned if source_root is None else source_root,
             )
             build_origin = (
                 m.Infra.DirectUrlReceipt(
@@ -628,13 +649,15 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             encoding="utf-8",
         )
         u.Tests.commit_git_changes(root, "declare standalone root lock")
-        with TemporaryDirectory(dir=prefix) as temporary:
+        owned = self._owned_environment(root)
+        owned.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(dir=owned) as temporary:
             site_packages = Path(temporary) / "site-packages"
             self._installed_editable(
                 site_packages,
                 "sample-root",
                 direct_root=root,
-                source_root=Path(prefix),
+                source_root=owned,
             )
             (
                 site_packages / "sample_root-1.0.dist-info" / "direct_url.json"
@@ -800,13 +823,15 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             f'source = {{ git = "{url}#{identity.head_oid}" }}\n',
             encoding="utf-8",
         )
-        with TemporaryDirectory(dir=prefix) as temporary:
+        owned = self._owned_environment(workspace)
+        owned.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(dir=owned) as temporary:
             site_packages = Path(temporary) / "site-packages"
             self._installed_editable(
                 site_packages,
                 "sample-member",
                 direct_root=workspace / "sample-member",
-                source_root=Path(prefix),
+                source_root=owned,
             )
             receipt = m.Infra.DirectUrlReceipt(
                 url=(

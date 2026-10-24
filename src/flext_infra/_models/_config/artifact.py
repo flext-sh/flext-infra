@@ -13,7 +13,6 @@ from typing import Annotated, ClassVar, Literal, Self
 
 import flext_core
 from flext_cli import m
-from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
 from flext_infra import c, t
@@ -354,7 +353,9 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
             """
             for project, roles in value.items():
-                if project != canonicalize_name(project, validate=True):
+                if project != t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
+                    project
+                ):
                     msg = f"runtime module project identity is not canonical: {project}"
                     raise ValueError(msg)
                 stems = tuple(roles.values())

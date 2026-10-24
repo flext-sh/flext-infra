@@ -9,13 +9,8 @@ from __future__ import annotations
 import stat
 import tarfile
 import zipfile
-from email.message import Message
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
-
-from packaging.requirements import InvalidRequirement, Requirement
-from packaging.utils import canonicalize_name
-from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.release import FlextInfraReleaseBoundaryMixin
@@ -220,10 +215,14 @@ class FlextInfraReleaseArtifactMixin(FlextInfraReleaseBoundaryMixin):
             message = Parser().parsestr(metadata_text)
         except UnicodeDecodeError as exc:
             return result_type.fail_op(f"read core metadata of {path}", exc)
-        identity = cls._identity_verdict(message, expectation)
+        identity = u.Infra.release_identity_verdict(
+            (message.get("Name"), message.get("Version") or ""), expectation
+        )
         if identity.failure:
             return result_type.from_failure(identity)
-        pins = cls._requirement_pins_verdict(message, expectation)
+        pins = u.Infra.release_requirement_pins_verdict(
+            message.get_all("Requires-Dist", []), expectation.versions
+        )
         if pins.failure:
             return result_type.from_failure(pins)
         return cls._artifact_digest(path, kind)
@@ -257,68 +256,6 @@ class FlextInfraReleaseArtifactMixin(FlextInfraReleaseBoundaryMixin):
             error = f"{kind} must contain one core metadata file: {path}"
         text = "" if error else metadata[0].decode("utf-8")
         return (error, text)
-
-    @classmethod
-    def _identity_verdict(
-        cls,
-        message: Message,
-        expectation: m.Infra.ArtifactExpectation,
-    ) -> p.Result[bool]:
-        """Prove the artifact's core metadata identity against the expectation.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        project, version = expectation.project, expectation.version
-        name = message.get("Name")
-        if name is None or canonicalize_name(name) != canonicalize_name(project):
-            return r[bool].fail(
-                f"artifact Name mismatch: expected {project}, found {name}",
-            )
-        try:
-            expected, actual = Version(version), Version(message.get("Version") or "")
-        except InvalidVersion as exc:
-            return r[bool].fail_op("validate artifact Version", exc)
-        if actual != expected:
-            return r[bool].fail(
-                f"artifact Version mismatch: expected {expected}, found {actual}",
-            )
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _requirement_pins_verdict(
-        cls,
-        message: Message,
-        expectation: m.Infra.ArtifactExpectation,
-    ) -> p.Result[bool]:
-        """Prove every internal requirement carries its declared fleet pin.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        for text in message.get_all("Requires-Dist", []):
-            try:
-                requirement = Requirement(text)
-            except InvalidRequirement as exc:
-                return r[bool].fail_op("parse artifact requirement", exc)
-            dependency = canonicalize_name(requirement.name)
-            # A direct reference is source-declared; only fleet pins derive.
-            if requirement.url is not None or not dependency.startswith(
-                c.Infra.PKG_PREFIX_HYPHEN,
-            ):
-                continue
-            pin = (
-                cls._release_specifier(expectation.versions[dependency])
-                if dependency in expectation.versions
-                else r[str].fail(f"internal dependency version unknown: {dependency}")
-            )
-            if pin.failure or str(requirement.specifier) != pin.value:
-                return r[bool].fail(
-                    f"artifact contains unpinned FLEXT dependency: {text}",
-                )
-        return r[bool].ok(value=True)
 
     @staticmethod
     def _artifact_digest(

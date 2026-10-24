@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import m
-from packaging.requirements import Requirement
 
 from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
@@ -115,7 +114,7 @@ class FlextInfraConfigModelsScaffold:
 
             """
             for requirement in requirements:
-                Requirement(requirement)
+                t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
             return requirements
 
     class ScaffoldPingExampleSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -205,7 +204,7 @@ class FlextInfraConfigModelsScaffold:
 
             """
             for requirement in requirements:
-                Requirement(requirement)
+                t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
             return requirements
 
     class ScaffoldSpec(FlextInfraConfigModelsContract.ConfigContract):

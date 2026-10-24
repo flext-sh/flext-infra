@@ -161,5 +161,19 @@ class FlextInfraUtilitiesNativeTooling:
             dict(document.settings[table])[key], strict=True
         )
 
+    @staticmethod
+    def native_tool_strings(
+        document: m.Infra.ToolConfigDocument, table: str, key: str
+    ) -> t.StrSequence:
+        """Validate one native string-array option.
+
+        Returns:
+            The configured strings, preserving lookup and validation failures.
+
+        """
+        return FlextInfraUtilitiesNativeTooling.native_tool_setting(
+            document, table, key, TypeForm(t.StrSequence)
+        )
+
 
 __all__ = ["FlextInfraUtilitiesNativeTooling"]

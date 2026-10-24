@@ -23,7 +23,9 @@ class FlextInfraModelsCodegenLazyInitModels:
 
         source_project: Annotated[
             t.Port[p.Infra.RopeProject],
-            m.Field(exclude=True, description="Source view every module is read through"),
+            m.Field(
+                exclude=True, description="Source view every module is read through"
+            ),
         ]
         module_files: Annotated[
             t.MappingKV[str, Path],

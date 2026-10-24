@@ -60,7 +60,7 @@ class FlextInfraUtilitiesPythonModel:
             *packages, leaf = name.split(".")
             folder = path.parent if path.name != c.Infra.INIT_PY else path.parent.parent
             folders = [folder, *folder.parents][: len(packages)][::-1]
-            parent: griffe.Module | None = None
+            parent: t.Infra.PythonModule | None = None
             for package, package_dir in zip(packages, folders, strict=True):
                 parent = griffe.Module(
                     package, filepath=package_dir / c.Infra.INIT_PY, parent=parent
@@ -127,35 +127,25 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def python_model_exports(module: t.Infra.PythonModule) -> t.StrSequence | None:
-        """Return the explicit ``__all__`` strings, ``None`` when undeclared.
+        """Return the explicit ``__all__`` strings Griffe computed, ``None`` if absent.
 
-        Without a module declaration, a single root class may own ``__all__``.
+        A single root class owning ``__all__`` declares the module's exports
+        when the module itself declares none (Griffe ``Object.exports``).
 
         Returns:
-            The declared names, empty when the declaration is not literal.
+            The declared names, empty when an entry is not a string literal.
 
         """
-        declared = module.exports
-        if declared is not None:
-            names = tuple(name for name in declared if isinstance(name, str))
-            return tuple(dict.fromkeys(names)) if len(names) == len(declared) else ()
-        roots = [
-            member
-            for member in module.members.values()
-            if isinstance(member, griffe.Class)
-        ]
-        owner = roots[0].members.get("__all__") if len(roots) == 1 else None
-        if not isinstance(owner, griffe.Attribute):
-            return None
-        value = owner.value
-        if not isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet):
-            return ()
-        literals = tuple(
-            ast.literal_eval(element) if isinstance(element, str) else None
-            for element in value.elements
+        classes = [owner for owner in module.classes.values() if not owner.is_alias]
+        declared = (
+            module.exports
+            if module.exports is not None or len(classes) != 1
+            else classes[0].exports
         )
-        strings = tuple(name for name in literals if isinstance(name, str))
-        return tuple(dict.fromkeys(strings)) if len(strings) == len(literals) else ()
+        if declared is None:
+            return None
+        names = tuple(name for name in declared if isinstance(name, str))
+        return tuple(dict.fromkeys(names)) if len(names) == len(declared) else ()
 
     @staticmethod
     def python_model_implicit_exports(module: t.Infra.PythonModule) -> t.StrSequence:
@@ -168,7 +158,7 @@ class FlextInfraUtilitiesPythonModel:
         return tuple(
             name
             for name, member in module.members.items()
-            if isinstance(member, griffe.Class | griffe.Attribute)
+            if not member.is_alias and (member.is_class or member.is_attribute)
         )
 
     @staticmethod
@@ -200,7 +190,11 @@ class FlextInfraUtilitiesPythonModel:
 
         """
         member = module.members.get(name)
-        return member.target_path if isinstance(member, griffe.Alias) else ""
+        return (
+            module.imports.get(name, "")
+            if member is not None and member.is_alias
+            else ""
+        )
 
     @staticmethod
     def python_model_defines(module: t.Infra.PythonModule, name: str) -> bool:
@@ -211,7 +205,7 @@ class FlextInfraUtilitiesPythonModel:
 
         """
         member = module.members.get(name)
-        return member is not None and not isinstance(member, griffe.Alias)
+        return member is not None and not member.is_alias
 
     @staticmethod
     def python_model_class_bases(
@@ -224,9 +218,9 @@ class FlextInfraUtilitiesPythonModel:
 
         """
         return {
-            name: tuple(str(base) for base in member.bases)
-            for name, member in module.members.items()
-            if isinstance(member, griffe.Class)
+            name: tuple(str(base) for base in owner.bases)
+            for name, owner in module.classes.items()
+            if not owner.is_alias
         }
 
     @staticmethod
@@ -237,13 +231,16 @@ class FlextInfraUtilitiesPythonModel:
             The root name, or ``""`` for any other binding.
 
         """
-        member = module.members.get(name)
-        if not isinstance(member, griffe.Attribute):
-            return ""
-        value = member.value
-        if isinstance(value, griffe.ExprAttribute):
-            value = value.values[0]
-        return value.name if isinstance(value, griffe.ExprName) else ""
+        attribute = module.attributes.get(name)
+        value = (
+            str(attribute.value)
+            if attribute is not None
+            and not attribute.is_alias
+            and attribute.value is not None
+            else ""
+        )
+        parts = value.split(".")
+        return parts[0] if all(part.isidentifier() for part in parts) else ""
 
     @staticmethod
     def python_model_class_alias(module: t.Infra.PythonModule, name: str) -> str:
@@ -253,13 +250,16 @@ class FlextInfraUtilitiesPythonModel:
             The class name, or ``""`` when ``name`` is not a bare class binding.
 
         """
-        member = module.members.get(name)
-        if not isinstance(member, griffe.Attribute) or not isinstance(
-            member.value, griffe.ExprName
-        ):
-            return ""
-        target = member.value.name
-        return target if isinstance(module.members.get(target), griffe.Class) else ""
+        attribute = module.attributes.get(name)
+        target = (
+            str(attribute.value)
+            if attribute is not None
+            and not attribute.is_alias
+            and attribute.value is not None
+            else ""
+        )
+        owner = module.classes.get(target)
+        return target if owner is not None and not owner.is_alias else ""
 
     @classmethod
     def python_model_static_class_alias(
@@ -315,7 +315,9 @@ class FlextInfraUtilitiesPythonModel:
             The facade letters the module declares.
 
         """
-        owners = frozenset(module.imports) | frozenset(cls.python_model_class_bases(module))
+        owners = frozenset(module.imports) | frozenset(
+            cls.python_model_class_bases(module)
+        )
         return frozenset(
             name
             for name in cls.python_model_exports(module) or ()
@@ -364,7 +366,9 @@ class FlextInfraUtilitiesPythonModel:
             seen.add(dotted)
             module_name, _, name = dotted.rpartition(".")
             module = cls.python_model_module(run, module_name) if module_name else None
-            target = "" if module is None else cls.python_model_import_target(module, name)
+            target = (
+                "" if module is None else cls.python_model_import_target(module, name)
+            )
             if not target:
                 return dotted
             dotted = target

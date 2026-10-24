@@ -86,7 +86,13 @@ class FlextInfraConstantsRope:
     PYDANTIC_SETTINGS_IDENTITY: ClassVar[str] = "pydantic_settings.BaseSettings"
     "Qualified identity that excludes a settings model from payload relocation."
 
-    TYPING_GUARD_IDENTITY: ClassVar[str] = "typing.TYPE_CHECKING"
+    TYPING_GUARD_MODULE: ClassVar[str] = "typing"
+    "Module that owns the static-analysis import guard."
+
+    TYPING_GUARD_NAME: ClassVar[str] = "TYPE_CHECKING"
+    "Name of the static-analysis import guard."
+
+    TYPING_GUARD_IDENTITY: ClassVar[str] = f"{TYPING_GUARD_MODULE}.{TYPING_GUARD_NAME}"
     "Qualified identity of the only guard that keeps a guarded import importable."
 
     DECLARATION_RELOCATION_IDENTITIES: ClassVar[t.VariadicTuple[str]] = (

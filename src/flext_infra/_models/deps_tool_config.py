@@ -637,6 +637,7 @@ class FlextInfraModelsDepsToolConfig(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="model-declaration-modules",
+                strict=False,
                 description=(
                     "Modules of the model library whose callables declare "
                     "models (field specifiers, validators, serializers)."
@@ -647,6 +648,7 @@ class FlextInfraModelsDepsToolConfig(
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="type-constructor-modules",
+                strict=False,
                 description=(
                     "Modules of the model library whose callables build "
                     "constrained types (``constr``, ``conint``) used in "

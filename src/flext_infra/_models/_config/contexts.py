@@ -11,8 +11,6 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from flext_cli import m
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
@@ -332,9 +330,9 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
 
             """
             depended = {
-                canonicalize_name(Requirement(requirement).name)
+                t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
                 for requirement in self.project_dependencies
-            } | {canonicalize_name(self.upstream)}
+            } | {t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(self.upstream)}
             for base in self.scaffold.project.config_bases:
                 if base.distribution in depended:
                     return base

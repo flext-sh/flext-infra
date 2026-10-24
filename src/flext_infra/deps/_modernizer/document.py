@@ -10,7 +10,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Annotated
 
 from flext_core import FlextRuntime
-from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 from flext_infra._models.deps import (
@@ -49,8 +48,10 @@ class FlextInfraPyprojectModernizerDocument(
             The resulting ``t.StrSequence``.
 
         """
-        return u.Infra.native_tool_setting(
-            config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+        return u.Infra.native_tool_strings(
+            config.Infra.tooling,
+            "tomlsort",
+            "sort_first",
         )
 
     audit: Annotated[

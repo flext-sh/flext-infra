@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from packaging.version import InvalidVersion, Version
-
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, t, u
 
 
@@ -101,25 +99,6 @@ class FlextInfraReleaseBoundaryMixin(FlextInfraProjectSelectionServiceBase[bool]
             or relative[0] in c.Infra.RELEASE_SDIST_ROOT_FILES
             or relative[0].startswith("readme")
         )
-
-    @staticmethod
-    def _release_specifier(version: str) -> p.Result[str]:
-        """Return the compatible-release range a sibling's declared version earns.
-
-        The same minor line before 1.0, the same major line after: exactly
-        what semantic versioning promises is compatible.
-
-        Returns:
-            The compatible-release range a sibling's declared version earns.
-
-        """
-        try:
-            parsed = Version(version)
-        except InvalidVersion as exc:
-            return r[str].fail_op("parse internal dependency version", exc)
-        if parsed.major == 0:
-            return r[str].ok(f"~={version}")
-        return r[str].ok(f">={version},<{parsed.major + 1}")
 
     @staticmethod
     def _record(

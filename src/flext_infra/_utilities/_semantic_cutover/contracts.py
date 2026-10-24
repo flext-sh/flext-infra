@@ -12,7 +12,7 @@ from collections.abc import Iterator, Mapping
 from pathlib import Path
 
 from flext_cli import cli, u
-from rope.base.pyobjects import PyObject
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -1023,12 +1023,14 @@ class FlextInfraUtilitiesSemanticContracts(
                 "typing.Literal",
             )
         )
-        unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
-            "rope.base.pyobjects", "get_unknown"
-        )()
-        if not isinstance(unknown, PyObject):
-            message = "native unknown sentinel has no Rope object identity"
-            raise TypeError(message)
+        unknown = u.type_adapter(
+            TypeForm(t.Port[t.Infra.RopeNativeObject])
+        ).validate_python(
+            FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+                c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"
+            )(),
+            strict=True,
+        )
         return names, intrinsic_types, unknown
 
     @staticmethod
@@ -1262,7 +1264,12 @@ class FlextInfraUtilitiesSemanticContracts(
         value: p.AttributeProbe,
         unknown: t.Infra.RopeNativeObject,
     ) -> bool:
-        if not isinstance(value, PyObject):
+        if not isinstance(
+            value,
+            FlextInfraUtilitiesRopeRuntimeTypes.runtime_type(
+                c.Infra.ROPE_PYOBJECTS_MODULE, "PyObject"
+            ),
+        ):
             message = "native binding has no Rope object identity"
             raise TypeError(message)
         return (value == unknown) is True

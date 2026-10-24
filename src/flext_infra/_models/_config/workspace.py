@@ -10,10 +10,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, t
-from packaging.utils import canonicalize_name
+from flext_cli import m
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
@@ -136,7 +135,8 @@ class FlextInfraConfigModelsWorkspace:
 
             """
             distributions = tuple(
-                canonicalize_name(item.distribution, validate=True) for item in values
+                t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(item.distribution)
+                for item in values
             )
             if len(set(distributions)) != len(distributions):
                 msg = "candidate dependency distributions must be unique"
@@ -376,21 +376,28 @@ class FlextInfraConfigModelsWorkspace:
                     if the local group inclusions form a cycle.
 
             """
-            names = {canonicalize_name(name, validate=True): name for name in groups}
+            names = {
+                t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(name): name
+                for name in groups
+            }
             if len(names) != len(groups):
                 msg = "dependency group names have colliding normalized identities"
                 raise ValueError(msg)
             graph: dict[str, tuple[str, ...]] = {}
             for name, entries in groups.items():
                 references = tuple(
-                    canonicalize_name(entry.include_group, validate=True)
+                    t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
+                        entry.include_group
+                    )
                     for entry in entries
                     if not isinstance(entry, str)
                 )
                 if any(reference not in names for reference in references):
                     msg = f"dependency group includes an undeclared group: {name}"
                     raise ValueError(msg)
-                graph[canonicalize_name(name)] = references
+                graph[t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(name)] = (
+                    references
+                )
             active: list[str] = []
             visited: set[str] = set()
 

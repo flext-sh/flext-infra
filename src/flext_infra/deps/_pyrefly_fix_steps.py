@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
-from typing_extensions import TypeForm
-
 from flext_infra import c, config, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 
@@ -164,11 +162,10 @@ class FlextInfraConfigFixerSteps:
                 )
             current_excludes = [str(value) for value in validated.value]
         expected_excludes = u.Infra.pyrefly_project_excludes(
-            u.Infra.native_tool_setting(
+            u.Infra.native_tool_strings(
                 config.Infra.tooling,
                 c.Infra.PYREFLY,
                 c.Infra.PROJECT_EXCLUDES,
-                TypeForm(t.StrSequence),
             ),
         )
         if current_excludes != expected_excludes:

@@ -8,11 +8,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import TYPE_CHECKING, override
-
-import libcst as cst
-from libcst.helpers import get_full_name_for_node
-from libcst.metadata import MetadataWrapper, QualifiedNameProvider, ScopeProvider
+from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.refactor import (
@@ -175,7 +171,9 @@ class FlextInfraImportNormalization(
             root_exports,
             import_graph,
         )
-        current = cls._unalias_imports(state_scope=namespace_dir.name, source=source)
+        current = u.Infra.unalias_own_package_imports(
+            package=namespace_dir.name, source=source
+        )
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             tree = ast.parse(current, filename=str(file_path))
             state = m.Infra.ImportLawPass(
@@ -210,93 +208,6 @@ class FlextInfraImportNormalization(
                 break
             current = updated
         return current if current != source else None
-
-    @staticmethod
-    def _unalias_imports(*, state_scope: str, source: str) -> str:
-        """Remove own-package aliases, refusing capture of shadowed bindings.
-
-        Returns:
-            Source with references bound to the imported identity renamed.
-
-        """
-        tree = ast.parse(source)
-        selected = {
-            (alias.asname, f"{node.module}.{alias.name}"): alias.name
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
-            and node.module is not None
-            and node.module.split(".")[0] == state_scope
-            for alias in node.names
-            if alias.asname is not None
-            and alias.asname != alias.name
-            and alias.asname not in c.Infra.ALIAS_NAMES
-        }
-        if not selected:
-            return source
-
-        class _Unalias(cst.CSTTransformer):
-            METADATA_DEPENDENCIES = (QualifiedNameProvider, ScopeProvider)
-
-            @override
-            def leave_Name(
-                self,
-                original_node: cst.Name,
-                updated_node: cst.Name,
-            ) -> cst.Name:
-                names = tuple(
-                    self.get_metadata(QualifiedNameProvider, original_node, ())
-                )
-                targets = {
-                    selected[key]
-                    for name in names
-                    if (key := (original_node.value, name.name)) in selected
-                }
-                if not targets:
-                    return updated_node
-                if len(targets) != 1 or len(names) != 1:
-                    msg = f"ambiguous imported alias: {original_node.value}"
-                    raise ValueError(msg)
-                target = next(iter(targets))
-                if target == original_node.value:
-                    return updated_node
-                scope = self.get_metadata(ScopeProvider, original_node, None)
-                if scope is None:
-                    msg = f"import alias reference has no scope: {original_node.value}"
-                    raise ValueError(msg)
-                if scope[target]:
-                    msg = f"import alias destination is occupied: {target}"
-                    raise ValueError(msg)
-                return updated_node.with_changes(value=target)
-
-            @override
-            def leave_ImportFrom(
-                self,
-                original_node: cst.ImportFrom,
-                updated_node: cst.ImportFrom,
-            ) -> cst.ImportFrom:
-                module = (
-                    get_full_name_for_node(original_node.module)
-                    if original_node.module is not None
-                    else None
-                )
-                if isinstance(updated_node.names, cst.ImportStar):
-                    return updated_node
-                return updated_node.with_changes(
-                    names=tuple(
-                        alias.with_changes(asname=None)
-                        if alias.asname is not None
-                        and isinstance(alias.asname.name, cst.Name)
-                        and (
-                            alias.asname.name.value,
-                            f"{module}.{get_full_name_for_node(alias.name)}",
-                        )
-                        in selected
-                        else alias
-                        for alias in updated_node.names
-                    )
-                )
-
-        return MetadataWrapper(cst.parse_module(source)).visit(_Unalias()).code
 
     @classmethod
     def _one_pass(

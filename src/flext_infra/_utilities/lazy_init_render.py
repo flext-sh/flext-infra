@@ -1,4 +1,4 @@
-"""Render one planned ``__init__.py`` in its Ruff fixed-point form.
+"""Lazy-init initializer rendering in its Ruff fixed-point form (``u.Infra``).
 
 The layout is a pure function of the plan, the static Python model and the
 owning project's declarations; Ruff isort/format owns every ordering and
@@ -14,12 +14,22 @@ from collections import defaultdict
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, c, config, m, t, u
-from flext_infra.codegen import FlextInfraCodegenPythonModel
-from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_cli import u
+
+from flext_infra import FlextInfraConfig, c, config, m, t
+from flext_infra._utilities._docs_scope_state import (
+    FlextInfraUtilitiesDocsScopeStateMixin,
+)
+from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
+from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
+from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
 
 
-class FlextInfraCodegenLazyInitRender:
+class FlextInfraUtilitiesLazyInitRender:
     """Render planned initializers through the canonical template."""
 
     @staticmethod
@@ -30,18 +40,35 @@ class FlextInfraCodegenLazyInitRender:
             The configured line length.
 
         """
-        return u.Infra.native_tool_setting(
+        return FlextInfraUtilitiesNativeTooling.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
 
+    @staticmethod
+    def lazy_init_project_root(run: m.Infra.PythonModelRun, pkg_dir: Path) -> Path:
+        """Return the nearest enclosing directory declaring a ``pyproject.toml``.
+
+        Returns:
+            The owning project root of ``pkg_dir``.
+
+        """
+        return next(
+            folder
+            for folder in (pkg_dir, *pkg_dir.parents)
+            if run.source_project.source_query(folder / c.PYPROJECT_FILENAME, "isfile")
+        )
+
     @classmethod
-    def render(
+    def lazy_init_render(
         cls,
         plan: m.Infra.LazyInitPlan,
         *,
-        model: FlextInfraCodegenPythonModel,
+        model: m.Infra.PythonModelRun,
+        first_party: frozenset[str],
     ) -> str:
         """Render one written initializer.
+
+        ``first_party`` names the owning project's first-party namespaces.
 
         Returns:
             The initializer source, compiled before it is returned.
@@ -64,19 +91,8 @@ class FlextInfraCodegenLazyInitRender:
             for name, (module, attr) in public.items()
             if attr or module not in children or name == module.rsplit(".", 1)[-1]
         }
-        project_root = next(
-            folder
-            for folder in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
-            if model.source_project.source_query(
-                folder / c.PYPROJECT_FILENAME, "isfile"
-            )
-        )
-        first_party = frozenset({
-            current,
-            *FlextInfraToolTablesPhase.first_party_namespaces(
-                path=project_root, source_project=model.source_project
-            ),
-        })
+        project_root = cls.lazy_init_project_root(model, plan.context.pkg_dir)
+        first_party |= {current}
         rendered = u.Cli.template_render(
             FlextInfraConfig.ssot_config_dir().parent
             / "templates"
@@ -106,7 +122,7 @@ class FlextInfraCodegenLazyInitRender:
     def _docstring(
         plan: m.Infra.LazyInitPlan,
         project_root: Path,
-        model: FlextInfraCodegenPythonModel,
+        model: m.Infra.PythonModelRun,
     ) -> str:
         """Return the package docstring in the owning project's language.
 
@@ -115,13 +131,14 @@ class FlextInfraCodegenLazyInitRender:
 
         """
         view = model.source_project
-        declaration = u.Infra.load_repository_declaration_inputs(
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declaration = artifacts.load_repository_declaration_inputs(
             project_root, source_project=view
         ).unwrap()
         language = (
             declaration.spec.project.documentation_language
             if declaration.spec.project is not None
-            else u.Infra.docs_documentation_language({
+            else FlextInfraUtilitiesDocsScopeStateMixin.docs_documentation_language({
                 "documentation_language": m.Infra.ProjectSpec.model_fields[
                     "documentation_language"
                 ].get_default(),
@@ -131,7 +148,9 @@ class FlextInfraCodegenLazyInitRender:
         summary = c.Infra.DocumentationText.PACKAGE_DOCSTRING.localized(
             language
         ).format(package_name=" ".join(word.capitalize() for word in label.split()))
-        notice = u.Infra.copyright_notice(plan.context.pkg_dir, source_project=view)
+        notice = FlextInfraUtilitiesLintRecipes.copyright_notice(
+            plan.context.pkg_dir, source_project=view
+        )
         return f'"""{summary}\n\n{notice}\n"""'
 
     @staticmethod
@@ -165,7 +184,9 @@ class FlextInfraCodegenLazyInitRender:
 
         """
         export, imported = item
-        return u.Infra.isort_member_key(imported or export), export != imported
+        return FlextInfraUtilitiesCodegenNamespace.isort_member_key(
+            imported or export
+        ), export != imported
 
     @classmethod
     def _import(cls, indent: str, module: str, parts: t.StrSequence) -> t.StrSequence:
@@ -307,7 +328,7 @@ class FlextInfraCodegenLazyInitRender:
         public: t.LazyAliasMap,
         plan: m.Infra.LazyInitPlan,
         first_party: frozenset[str],
-        model: FlextInfraCodegenPythonModel,
+        model: m.Infra.PythonModelRun,
     ) -> t.StrSequence:
         """Render the static import contract of the public exports.
 
@@ -353,7 +374,7 @@ class FlextInfraCodegenLazyInitRender:
         module: str,
         items: t.SequenceOf[t.StrPair],
         module_objects: frozenset[str],
-        model: FlextInfraCodegenPythonModel,
+        model: m.Infra.PythonModelRun,
         aliases: list[str],
     ) -> t.StrSequence:
         """Render one importing module's static imports.
@@ -363,7 +384,8 @@ class FlextInfraCodegenLazyInitRender:
             are appended to ``aliases``.
 
         """
-        source = model.module(module)
+        python = FlextInfraUtilitiesPythonModel
+        source = python.python_model_module(model, module)
         lines: list[str] = []
         parts: list[str] = []
         for name, attr in sorted(items, key=cls._item_key):
@@ -371,7 +393,9 @@ class FlextInfraCodegenLazyInitRender:
                 lines.extend(cls._module_alias("    ", module, name))
                 continue
             original = (
-                model.static_class_alias(source, attr) if source is not None else ""
+                python.python_model_static_class_alias(model, source, attr)
+                if source is not None
+                else ""
             )
             imported = original if (original, original) in items else attr
             if imported[:1].isupper() and name[:1].islower():
@@ -392,7 +416,7 @@ class FlextInfraCodegenLazyInitRender:
         items: t.SequenceOf[t.StrPair],
         plan: m.Infra.LazyInitPlan,
         occupied: set[str],
-        model: FlextInfraCodegenPythonModel,
+        model: m.Infra.PythonModelRun,
     ) -> t.StrSequence:
         """Bind a child module's declarations through one ``_owner_N`` alias.
 
@@ -406,24 +430,28 @@ class FlextInfraCodegenLazyInitRender:
             ValueError: If a binding is not declared by the module or cannot fit.
 
         """
-        source = model.module(module)
+        python = FlextInfraUtilitiesPythonModel
+        source = python.python_model_module(model, module)
         blocked = set(occupied)
         if model.source_project.source_query(plan.context.init_path, "isfile"):
-            init = model.module_at(plan.context.init_path, plan.context.current_pkg)
+            init = python.python_model_module_at(
+                model, plan.context.init_path, plan.context.current_pkg
+            )
             blocked.update(
                 name
-                for name in init.members
-                if model.import_target(init, name) != module
+                for name in python.python_model_members(init)
+                if python.python_model_import_target(init, name) != module
             )
+        prefix = c.Infra.LAZY_INIT_OWNER_ALIAS_PREFIX
         index = 0
-        while f"_owner_{index}" in blocked:
+        while f"{prefix}{index}" in blocked:
             index += 1
-        alias = f"_owner_{index}"
+        alias = f"{prefix}{index}"
         occupied.add(alias)
         # Ruff separates the owner import from its bindings by one blank line.
         lines = [*cls._module_alias("    ", module, alias), ""]
         for name, attr in sorted(items, key=cls._item_key):
-            if source is None or not model.defines(source, attr):
+            if source is None or not python.python_model_defines(source, attr):
                 msg = (
                     "Owned child static export is not declared by its module: "
                     f"{module}.{attr}"
@@ -542,4 +570,4 @@ class FlextInfraCodegenLazyInitRender:
         return module
 
 
-__all__: list[str] = ["FlextInfraCodegenLazyInitRender"]
+__all__: list[str] = ["FlextInfraUtilitiesLazyInitRender"]
