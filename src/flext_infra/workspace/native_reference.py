@@ -4027,7 +4027,7 @@ class FlextInfraWorkspaceNativeReference:
     def _capture_weak_reference(
         cls,
         context: m.Infra.NativeObservationContext,
-        value: ReferenceType[t.Infra.NativeOperand],
+        value: Callable[[], t.Infra.NativeOperand | None],
     ) -> p.Result[bool]:
         """Observe an exact interpreter weak reference without keeping it alive.
 

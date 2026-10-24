@@ -42,7 +42,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         with FlextInfraCodegenFileLeases.mutation_lease(root):
             prepared = FlextInfraDocGenerator(
                 repository_root=root,
-                projects=projects,
+                selected_projects=projects,
                 output_dir=output_dir,
             ).prepare_bundle()
             if prepared.failure:

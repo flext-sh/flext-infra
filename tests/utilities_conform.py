@@ -106,7 +106,8 @@ class TestsFlextInfraUtilitiesConform:
         request = TestsFlextInfraUtilitiesConform.conform_request(root, what=what)
         return (
             codegen
-            .FlextInfraCodegenConform(
+            .FlextInfraCodegenConformExecute(
+                repository_root=root if executor_root is None else executor_root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root if executor_root is None else executor_root,
                     request=request,

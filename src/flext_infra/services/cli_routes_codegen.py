@@ -27,10 +27,14 @@ def execute_codegen_generate(
             storage / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         ).with_suffix(".pstats")
         output.parent.mkdir(parents=True, exist_ok=True)
+
+        def failed(result: p.Result[p.Infra.CodegenResult]) -> bool:
+            return result.failure
+
         generated = FlextInfraPytestClock.profile_operation(
             lambda: flext_infra.infra.codegen_generate(request),
             output,
-            is_failure=lambda result: result.failure,
+            is_failure=failed,
         )
     else:
         generated = flext_infra.infra.codegen_generate(request)

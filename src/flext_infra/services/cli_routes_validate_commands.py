@@ -27,6 +27,20 @@ class FlextInfraValidationCommandRoutes:
     """Own the complete validate command tuple."""
 
     @staticmethod
+    def _validate_producer_command(
+        request: m.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Authenticate the real semantic publisher against its cold source.
+
+        Returns:
+            Success after authentication, or the first native failure.
+
+        """
+        return FlextInfraValidateProducer.execute_request(request).map(
+            lambda _analysis: True
+        )
+
+    @staticmethod
     def _validate_namespace_command(
         request: m.Infra.NamespaceValidateCommand,
     ) -> p.Result[m.Infra.ValidationReport]:
@@ -52,9 +66,7 @@ class FlextInfraValidationCommandRoutes:
                 "Authenticate the real semantic publisher against its cold source"
             ),
             model_cls=m.Infra.WorkspaceRequest,
-            handler=lambda request: FlextInfraValidateProducer.execute_request(
-                request,
-            ).map(lambda _analysis: True),
+            handler=_validate_producer_command,
             success_message="Native producer authentication complete",
         ),
         *tuple(

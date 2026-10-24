@@ -223,9 +223,8 @@ class FlextInfraWorkspaceEnvironmentMixin:
         )
         if result.failure:
             return r[t.Cli.ResultValue].from_failure(result)
-        return r[t.Cli.ResultValue].ok(
-            tuple(str(path) for path in result.value),
-        )
+        synchronized: t.Cli.ResultValue = tuple(str(path) for path in result.value)
+        return r[t.Cli.ResultValue].ok(synchronized)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceEnvironmentMixin"]
