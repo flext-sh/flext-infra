@@ -388,7 +388,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         FlextInfraValidateFreshImport._require_schema_fields(package, seen)
 
     @staticmethod
-    def _require_schema_fields(package: str, classes: t.Iterable[type]) -> None:
+    def _require_schema_fields(package: str, classes: t.IterableOf[type]) -> None:
         """Fail on the first field that only builds by ``arbitrary_types_allowed``.
 
         Every model of the probed package that sets or inherits the flag has
