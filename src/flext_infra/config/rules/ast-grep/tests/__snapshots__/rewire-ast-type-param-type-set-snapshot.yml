@@ -1,0 +1,16 @@
+id: rewire-ast-type-param-type-set
+snapshots:
+  ok = isinstance(node, (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec)):
+    fixed: ok = isinstance(node, c.Infra.AST_TYPE_PARAM_TYPES)
+    labels:
+    - source: isinstance(node, (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec))
+      style: primary
+      start: 5
+      end: 69
+  ok = isinstance(node, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple):
+    fixed: ok = isinstance(node, c.Infra.AST_TYPE_PARAM_TYPES)
+    labels:
+    - source: isinstance(node, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+      style: primary
+      start: 5
+      end: 69

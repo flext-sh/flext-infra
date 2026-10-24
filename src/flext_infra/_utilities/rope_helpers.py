@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeMethodOrderMixin
 
 
@@ -25,10 +25,7 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
         """
         decorators: t.SequenceOf[ast.expr] = (
             statement.decorator_list
-            if isinstance(
-                statement,
-                ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
-            )
+            if isinstance(statement, c.Infra.AST_DEFINITION_TYPES)
             else ()
         )
         start = min((statement.lineno, *(node.lineno for node in decorators)))

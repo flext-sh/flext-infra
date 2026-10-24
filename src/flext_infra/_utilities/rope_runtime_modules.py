@@ -457,7 +457,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         candidates = [
             node
             for node in ast.walk(tree)
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and node.value is not None
             and cls.source_offset(source, node.value) == rhs_offset
         ]
@@ -471,7 +471,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             )
             raise ValueError(msg)
         declaration = candidates[0]
-        if not isinstance(declaration.value, ast.Name | ast.Attribute):
+        if not isinstance(declaration.value, c.Infra.AST_NAME_REFERENCE_TYPES):
             return None
         offset = cls.source_offset(source, declaration)
         scope = cls.scope_at(holder, offset)
@@ -550,7 +550,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                     (
                         node
                         for node in ast.walk(tree)
-                        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                        if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
                         and node.lineno == enclosing.get_start()
                     ),
                     None,

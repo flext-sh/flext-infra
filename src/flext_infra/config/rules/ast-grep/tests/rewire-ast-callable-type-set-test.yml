@@ -1,0 +1,11 @@
+id: rewire-ast-callable-type-set
+# `valid` MUST NOT match: the constants owner is already read, the set differs,
+# or the construct is not an isinstance check.
+valid:
+  - ok = isinstance(node, c.Infra.AST_CALLABLE_TYPES)
+  - ok = isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+  - kinds = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+# `invalid` MUST match: the exact node set spelled inline.
+invalid:
+  - ok = isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
+  - ok = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))

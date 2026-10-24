@@ -1,0 +1,16 @@
+id: rewire-ast-sequence-display-type-set
+snapshots:
+  ok = isinstance(node, (ast.Tuple, ast.List)):
+    fixed: ok = isinstance(node, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
+    labels:
+    - source: isinstance(node, (ast.Tuple, ast.List))
+      style: primary
+      start: 5
+      end: 44
+  ok = isinstance(node, ast.List | ast.Tuple):
+    fixed: ok = isinstance(node, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
+    labels:
+    - source: isinstance(node, ast.List | ast.Tuple)
+      style: primary
+      start: 5
+      end: 43

@@ -524,10 +524,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         if colon == 0 or line[colon - 1] != ":":
             decorators = (
                 first.decorator_list
-                if isinstance(
-                    first,
-                    ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-                )
+                if isinstance(first, c.Infra.AST_DEFINITION_TYPES)
                 else ()
             )
             first_line = min((first.lineno, *(item.lineno for item in decorators)))
@@ -620,7 +617,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                 methods.setdefault(node.name, set()).update(
                     item.name
                     for item in node.body
-                    if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef)
+                    if isinstance(item, c.Infra.AST_FUNCTION_TYPES)
                 )
         ancestors: MutableMapping[str, set[str]] = {}
         for name in bases:
@@ -784,7 +781,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                 continue
             for method in owner.body:
                 if (
-                    isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
+                    isinstance(method, c.Infra.AST_FUNCTION_TYPES)
                     and method.lineno == issue.line
                     and f"`{method.name}`" in issue.message
                     and (*method.args.posonlyargs, *method.args.args)

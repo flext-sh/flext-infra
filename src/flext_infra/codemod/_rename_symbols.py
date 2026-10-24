@@ -679,9 +679,7 @@ class FlextInfraRenameSymbols:
             (
                 node
                 for node in ast.walk(tree)
-                if isinstance(
-                    node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-                )
+                if isinstance(node, c.Infra.AST_DEFINITION_TYPES)
                 and node.lineno == line
                 and node.name == name
             ),

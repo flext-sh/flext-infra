@@ -256,7 +256,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 continue
             if isinstance(node, ast.ClassDef) and node.name == name:
                 target, declared = None, True
-            elif isinstance(node, ast.Assign | ast.AnnAssign) and cls._assigns_name(
+            elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES) and cls._assigns_name(
                 node,
                 name,
             ):

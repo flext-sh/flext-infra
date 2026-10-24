@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesSemanticCutoverBindings:
@@ -34,7 +34,7 @@ class FlextInfraUtilitiesSemanticCutoverBindings:
                     | ast.NamedExpr(value=value)
                     | ast.TypeAlias(value=value)
                 ):
-                    return value, isinstance(value, ast.Name | ast.Attribute)
+                    return value, isinstance(value, c.Infra.AST_NAME_REFERENCE_TYPES)
                 case (
                     ast.AugAssign(value=value)
                     | ast.ExceptHandler(type=value)

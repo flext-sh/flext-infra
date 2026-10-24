@@ -88,18 +88,15 @@ class FlextInfraReadonlyNamespace:
         return [
             node
             for node in ast.walk(tree)
-            if (
-                isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
-                and node.name == name
-            )
+            if (isinstance(node, c.Infra.AST_DEFINITION_TYPES) and node.name == name)
             or (
                 isinstance(node, ast.Name)
-                and isinstance(node.ctx, (ast.Store, ast.Del))
+                and isinstance(node.ctx, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
                 and node.id == name
             )
             or (
                 isinstance(node, ast.Attribute)
-                and isinstance(node.ctx, (ast.Store, ast.Del))
+                and isinstance(node.ctx, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
                 and node.attr == name
             )
             or (isinstance(node, ast.arg) and node.arg == name)
@@ -136,10 +133,7 @@ class FlextInfraReadonlyNamespace:
         candidates = [
             node
             for node in tree.body
-            if (
-                isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
-                and node.name == head
-            )
+            if (isinstance(node, c.Infra.AST_DEFINITION_TYPES) and node.name == head)
             or (
                 isinstance(node, ast.AnnAssign)
                 and isinstance(node.target, ast.Name)
@@ -378,8 +372,7 @@ class FlextInfraReadonlyNamespace:
             or concrete.keywords
             or not self._pydantic_model(producer_tree, concrete)
             or any(
-                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                for node in concrete.body
+                isinstance(node, c.Infra.AST_FUNCTION_TYPES) for node in concrete.body
             )
         ):
             msg = "Readonly producer field must identify a concrete source class"
@@ -499,7 +492,7 @@ class FlextInfraReadonlyNamespace:
             for node in ast.walk(source_tree):
                 attribute_write = (
                     isinstance(node, ast.Attribute)
-                    and isinstance(node.ctx, (ast.Store, ast.Del))
+                    and isinstance(node.ctx, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
                     and node.attr == name
                 )
                 dynamic_write = (
@@ -517,7 +510,7 @@ class FlextInfraReadonlyNamespace:
                     }
                 )
                 subscript_write = isinstance(node, ast.Subscript) and isinstance(
-                    node.ctx, (ast.Store, ast.Del)
+                    node.ctx, c.Infra.AST_UNBINDING_CONTEXT_TYPES
                 )
                 if attribute_write or dynamic_write or subscript_write:
                     msg = "Readonly namespace has a dynamic or attribute rebinding"

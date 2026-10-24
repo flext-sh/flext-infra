@@ -203,7 +203,7 @@ class TestsFlextInfraFamilyTypeReferences:
         return {
             target.id: node.value.value
             for node in ast.walk(ast.parse(source))
-            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and isinstance(node.value, ast.Constant)
             and isinstance(node.value.value, str)
             for target in (

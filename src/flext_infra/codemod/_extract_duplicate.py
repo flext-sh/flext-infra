@@ -461,10 +461,7 @@ class FlextInfraExtractDuplicatePhase:
         """
         current = parents.get(owner)
         while current is not None:
-            if isinstance(
-                current,
-                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
-            ):
+            if isinstance(current, c.Infra.AST_DEFINITION_TYPES):
                 return False
             current = parents.get(current)
         return True
@@ -484,7 +481,7 @@ class FlextInfraExtractDuplicatePhase:
         chain: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
         current = parents.get(node)
         while current is not None:
-            if isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(current, c.Infra.AST_FUNCTION_TYPES):
                 chain.append(current)
             current = parents.get(current)
         return tuple(chain)
@@ -845,13 +842,10 @@ class FlextInfraExtractDuplicatePhase:
     ) -> None:
         """Accumulate top-level bindings without descending into definitions."""
         for statement in statements:
-            if isinstance(
-                statement,
-                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
-            ):
+            if isinstance(statement, c.Infra.AST_DEFINITION_TYPES):
                 bound.add(statement.name)
                 continue
-            if isinstance(statement, (ast.Import, ast.ImportFrom)):
+            if isinstance(statement, c.Infra.AST_IMPORT_TYPES):
                 bound.update(
                     (alias.asname or alias.name).split(".")[0]
                     for alias in statement.names
@@ -895,7 +889,7 @@ class FlextInfraExtractDuplicatePhase:
             statement, (ast.AnnAssign, ast.AugAssign, ast.For, ast.AsyncFor)
         ):
             targets = [statement.target]
-        elif isinstance(statement, (ast.With, ast.AsyncWith)):
+        elif isinstance(statement, c.Infra.AST_WITH_TYPES):
             targets = [
                 item.optional_vars
                 for item in statement.items

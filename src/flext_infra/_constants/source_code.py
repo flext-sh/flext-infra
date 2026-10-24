@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
@@ -233,6 +234,63 @@ class FlextInfraConstantsSourceCode:
     # --- Reporting paths (was: class Reporting) ---
     REPORTS_DIR_NAME: ClassVar[str] = ".reports"
     "Standard directory name for report output."
+
+    # --- Python syntax node type sets (ENFORCE-079 *_TYPES convention) ---
+    AST_FUNCTION_TYPES: ClassVar[
+        tuple[type[ast.FunctionDef], type[ast.AsyncFunctionDef]]
+    ] = (ast.FunctionDef, ast.AsyncFunctionDef)
+    "Python function definition nodes, synchronous and asynchronous."
+    AST_CALLABLE_TYPES: ClassVar[
+        tuple[type[ast.FunctionDef], type[ast.AsyncFunctionDef], type[ast.Lambda]]
+    ] = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+    "Python nodes that open a function scope: definitions and lambdas."
+    AST_DEFINITION_TYPES: ClassVar[
+        tuple[type[ast.ClassDef], type[ast.FunctionDef], type[ast.AsyncFunctionDef]]
+    ] = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    "Python class and function definition nodes."
+    AST_ASSIGNMENT_TYPES: ClassVar[tuple[type[ast.Assign], type[ast.AnnAssign]]] = (
+        ast.Assign,
+        ast.AnnAssign,
+    )
+    "Python plain and annotated assignment statements."
+    AST_IMPORT_TYPES: ClassVar[tuple[type[ast.Import], type[ast.ImportFrom]]] = (
+        ast.Import,
+        ast.ImportFrom,
+    )
+    "Python import statements, absolute and from-import."
+    AST_IMPORT_OR_CLASS_TYPES: ClassVar[
+        tuple[type[ast.Import], type[ast.ImportFrom], type[ast.ClassDef]]
+    ] = (ast.Import, ast.ImportFrom, ast.ClassDef)
+    "Python import statements and class definitions."
+    AST_NAME_REFERENCE_TYPES: ClassVar[tuple[type[ast.Name], type[ast.Attribute]]] = (
+        ast.Name,
+        ast.Attribute,
+    )
+    "Python bare and dotted name references."
+    AST_SEQUENCE_DISPLAY_TYPES: ClassVar[tuple[type[ast.List], type[ast.Tuple]]] = (
+        ast.List,
+        ast.Tuple,
+    )
+    "Python list and tuple displays."
+    AST_TYPE_PARAM_TYPES: ClassVar[
+        tuple[type[ast.TypeVar], type[ast.TypeVarTuple], type[ast.ParamSpec]]
+    ] = (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec)
+    "Python PEP 695 type parameter nodes."
+    AST_UNBINDING_CONTEXT_TYPES: ClassVar[tuple[type[ast.Store], type[ast.Del]]] = (
+        ast.Store,
+        ast.Del,
+    )
+    "Python expression contexts that bind or delete a name."
+    AST_WITH_TYPES: ClassVar[tuple[type[ast.With], type[ast.AsyncWith]]] = (
+        ast.With,
+        ast.AsyncWith,
+    )
+    "Python context-manager statements, synchronous and asynchronous."
+    AST_TRY_TYPES: ClassVar[tuple[type[ast.Try], type[ast.TryStar]]] = (
+        ast.Try,
+        ast.TryStar,
+    )
+    "Python try statements, plain and exception-group."
 
 
 __all__: list[str] = ["FlextInfraConstantsSourceCode"]

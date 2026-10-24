@@ -10,7 +10,7 @@ import ast
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_infra import m, p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesRopeCore,
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 if node.end_lineno is not None
                 and node.lineno <= line <= node.end_lineno
                 for parameter in node.type_params
-                if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+                if isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES)
             )
 
             def scoped_replacement(

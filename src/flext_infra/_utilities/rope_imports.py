@@ -151,7 +151,7 @@ class FlextInfraUtilitiesRopeImports:
         imports: list[t.Infra.PythonImportNode] = []
         while pending:
             node = pending.pop()
-            if isinstance(node, ast.Import | ast.ImportFrom):
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 imports.append(node)
                 continue
             # Imports occur only in statements. Keep every statement container,
@@ -1077,7 +1077,7 @@ class FlextInfraUtilitiesRopeImports:
         scopes = [
             node
             for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES)
         ]
         for statement in ast.walk(tree):
             if not isinstance(statement, ast.ImportFrom):
@@ -1183,7 +1183,7 @@ class FlextInfraUtilitiesRopeImports:
             raise TypeError(msg)
         exports: t.StrSequence | None = None
         for declaration in imported_tree.body:
-            if not isinstance(declaration, ast.Assign | ast.AnnAssign):
+            if not isinstance(declaration, c.Infra.AST_ASSIGNMENT_TYPES):
                 continue
             if "__all__" in (
                 FlextInfraUtilitiesRopeAnalysis.assignment_target_names(declaration)

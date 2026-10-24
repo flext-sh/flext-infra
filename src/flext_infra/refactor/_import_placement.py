@@ -82,7 +82,7 @@ class FlextInfraImportNormalizationPlacementMixin(
             )
             and bool(node.body)
             and all(
-                isinstance(statement, ast.Import | ast.ImportFrom)
+                isinstance(statement, c.Infra.AST_IMPORT_TYPES)
                 for statement in node.body
             )
         )
@@ -112,7 +112,7 @@ class FlextInfraImportNormalizationPlacementMixin(
         statements = [
             node
             for node in state.tree.body
-            if isinstance(node, ast.Import | ast.ImportFrom)
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES)
         ]
         if len(statements) < cls._MIN_REORDERABLE_IMPORTS:
             return ()
@@ -123,7 +123,7 @@ class FlextInfraImportNormalizationPlacementMixin(
             for node in state.tree.body
             if node.lineno <= end and cls._end_line(node) >= start
         )
-        if any(not isinstance(node, ast.Import | ast.ImportFrom) for node in region):
+        if any(not isinstance(node, c.Infra.AST_IMPORT_TYPES) for node in region):
             return ()
         ordered = sorted(statements, key=lambda node: cls._import_sort_key(state, node))
         if [id(node) for node in ordered] == [id(node) for node in statements]:
@@ -348,7 +348,7 @@ class FlextInfraImportNormalizationPlacementMixin(
         removed: set[int] = set()
         promoted: list[str] = []
         for node in guard.body:
-            if not isinstance(node, ast.Import | ast.ImportFrom):
+            if not isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 continue
             selected = cls._runtime_selected_aliases(state, node)
             if not selected:
@@ -644,7 +644,7 @@ class FlextInfraImportNormalizationPlacementMixin(
                 and isinstance(node.value, ast.Constant)
                 and isinstance(node.value.value, str)
             )
-            if docstring or isinstance(node, ast.Import | ast.ImportFrom):
+            if docstring or isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 end = cls._end_line(node)
                 continue
             if isinstance(node, ast.If) and cls._is_type_checking_test(node.test):

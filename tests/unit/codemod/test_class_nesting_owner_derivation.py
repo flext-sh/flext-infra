@@ -196,7 +196,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         exports = next(
             node
             for node in root_owner.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in (
@@ -424,7 +424,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         tree = ast.parse(nested)
         tm.that(
             all(
-                isinstance(node, ast.Import | ast.ImportFrom | ast.ClassDef)
+                isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES)
                 for node in tree.body
             ),
             eq=True,

@@ -371,7 +371,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         end = sum(map(len, lines[: owner.end_lineno]))
         edits = [m.Infra.SourceRewrite(start=begin, end=end, text="")]
         for item in tree.body:
-            if isinstance(item, ast.Assign | ast.AnnAssign):
+            if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES):
                 assign_targets = (
                     item.targets if isinstance(item, ast.Assign) else [item.target]
                 )
@@ -379,7 +379,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     isinstance(target, ast.Name) and target.id == "__all__"
                     for target in assign_targets
                 ):
-                    if not isinstance(item.value, ast.List | ast.Tuple) or any(
+                    if not isinstance(
+                        item.value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES
+                    ) or any(
                         not isinstance(element, ast.Constant) or element.value != name
                         for element in item.value.elts
                     ):
@@ -459,7 +461,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         imports = tuple(
             item
             for item in ast.walk(tree)
-            if isinstance(item, ast.Import | ast.ImportFrom)
+            if isinstance(item, c.Infra.AST_IMPORT_TYPES)
         )
         spellings = {name}
         for item in imports:

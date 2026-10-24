@@ -93,7 +93,7 @@ class FlextInfraUtilitiesRopeSource:
             ):
                 position = statement.end_lineno or position
                 continue
-            if past_existing and isinstance(statement, ast.Import | ast.ImportFrom):
+            if past_existing and isinstance(statement, c.Infra.AST_IMPORT_TYPES):
                 position = statement.end_lineno or position
                 continue
             if position == 0 and statement.lineno:
@@ -213,8 +213,7 @@ class FlextInfraUtilitiesRopeSource:
         ).rstrip()
         body = ast.parse(kept, filename=filename).body
         closes_definition = bool(body) and isinstance(
-            body[-1],
-            ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            body[-1], c.Infra.AST_DEFINITION_TYPES
         )
         separator = "\n\n\n" if closes_definition else "\n\n"
         updated = f"{kept}{separator}{moved}" if kept else moved

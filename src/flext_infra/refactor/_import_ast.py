@@ -10,7 +10,7 @@ import ast
 import operator
 from collections.abc import MutableMapping
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesImportLaw
 
 
@@ -43,7 +43,7 @@ class FlextInfraImportNormalizationAstMixin(FlextInfraUtilitiesImportLaw):
             (
                 node
                 for node in ast.walk(tree)
-                if isinstance(node, ast.Import | ast.ImportFrom)
+                if isinstance(node, c.Infra.AST_IMPORT_TYPES)
             ),
             key=operator.attrgetter("lineno"),
         )
@@ -174,7 +174,7 @@ class FlextInfraImportNormalizationAstMixin(FlextInfraUtilitiesImportLaw):
         ids: set[int] = set()
         for node in ast.walk(tree):
             annotations: list[ast.expr] = []
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 arguments = node.args
                 annotations.extend(
                     argument.annotation

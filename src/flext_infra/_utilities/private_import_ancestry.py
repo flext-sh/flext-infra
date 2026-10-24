@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from importlib.util import resolve_name
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesPrivateImportAncestry:
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesPrivateImportAncestry:
                     self._bind_import(names, node)
                 elif isinstance(node, ast.ClassDef):
                     self._collect_class(node, scope=scope, names=names)
-                elif isinstance(node, ast.Assign | ast.AnnAssign):
+                elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                     self._bind_assignment(node, scope=scope, names=names)
 
         def _reference(self, node: ast.expr, names: t.MutableStrMapping) -> str:
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesPrivateImportAncestry:
                 if isinstance(target, ast.Name):
                     names[target.id] = (
                         self._reference(value, names)
-                        if isinstance(value, ast.Name | ast.Attribute)
+                        if isinstance(value, c.Infra.AST_NAME_REFERENCE_TYPES)
                         else f"{scope}.{target.id}"
                     )
 

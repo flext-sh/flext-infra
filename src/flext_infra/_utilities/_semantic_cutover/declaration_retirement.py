@@ -234,9 +234,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             module.get_ast()
         )
         target = definition.get_ast()
-        if not isinstance(
-            target, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-        ):
+        if not isinstance(target, c.Infra.AST_DEFINITION_TYPES):
             msg = "retirement requires a native source definition"
             raise TypeError(msg)
         container: p.Infra.RopePyName | None = None
@@ -368,8 +366,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 and isinstance(item.value.value, str)
             )
             or (
-                isinstance(item, ast.Assign | ast.AnnAssign)
-                and isinstance(item.value, ast.List | ast.Tuple)
+                isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES)
+                and isinstance(item.value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
                 and not item.value.elts
                 and len(
                     targets := item.targets
@@ -416,9 +414,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             raise TypeError(msg)
         container, target = cls._retiring_declaration_span(module, definition, path)
         if (
-            not isinstance(
-                target, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-            )
+            not isinstance(target, c.Infra.AST_DEFINITION_TYPES)
             or target.end_lineno is None
         ):
             msg = "retiring declaration has no complete native span"
@@ -497,7 +493,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             ValueError: If a callable default expression is unproven.
 
         """
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        if not isinstance(node, c.Infra.AST_FUNCTION_TYPES):
             message = "native signature proof requires a function definition"
             raise TypeError(message)
         args = node.args
@@ -695,7 +691,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 node.lineno
             ):
                 continue
-            if isinstance(node, ast.Name | ast.Attribute):
+            if isinstance(node, c.Infra.AST_NAME_REFERENCE_TYPES):
                 cls._prove_retirement_reference(
                     node, parents, resolves, probes, (binding, container, path)
                 )
@@ -762,7 +758,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 )
             )
             for part in ast.walk(expression)
-            if isinstance(part, ast.Name | ast.Attribute)
+            if isinstance(part, c.Infra.AST_NAME_REFERENCE_TYPES)
             for actual in (resolves(part),)
         )
 

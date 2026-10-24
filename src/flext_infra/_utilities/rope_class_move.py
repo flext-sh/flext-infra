@@ -1090,7 +1090,7 @@ class FlextInfraUtilitiesRopeClassMove:
             raise ValueError(msg)
         exports: list[str] = []
         for node in tree.body:
-            if isinstance(node, ast.ClassDef | ast.Import | ast.ImportFrom):
+            if isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES):
                 continue
             if (
                 isinstance(node, ast.Expr)

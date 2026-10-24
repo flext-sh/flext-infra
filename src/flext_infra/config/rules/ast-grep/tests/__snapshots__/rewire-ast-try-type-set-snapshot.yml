@@ -1,0 +1,16 @@
+id: rewire-ast-try-type-set
+snapshots:
+  ok = isinstance(node, (ast.Try, ast.TryStar)):
+    fixed: ok = isinstance(node, c.Infra.AST_TRY_TYPES)
+    labels:
+    - source: isinstance(node, (ast.Try, ast.TryStar))
+      style: primary
+      start: 5
+      end: 45
+  ok = isinstance(node, ast.Try | ast.TryStar):
+    fixed: ok = isinstance(node, c.Infra.AST_TRY_TYPES)
+    labels:
+    - source: isinstance(node, ast.Try | ast.TryStar)
+      style: primary
+      start: 5
+      end: 44

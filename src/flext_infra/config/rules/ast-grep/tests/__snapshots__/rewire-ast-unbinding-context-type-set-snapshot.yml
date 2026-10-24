@@ -1,0 +1,16 @@
+id: rewire-ast-unbinding-context-type-set
+snapshots:
+  ok = isinstance(node, (ast.Del, ast.Store)):
+    fixed: ok = isinstance(node, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
+    labels:
+    - source: isinstance(node, (ast.Del, ast.Store))
+      style: primary
+      start: 5
+      end: 43
+  ok = isinstance(node, ast.Store | ast.Del):
+    fixed: ok = isinstance(node, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
+    labels:
+    - source: isinstance(node, ast.Store | ast.Del)
+      style: primary
+      start: 5
+      end: 42

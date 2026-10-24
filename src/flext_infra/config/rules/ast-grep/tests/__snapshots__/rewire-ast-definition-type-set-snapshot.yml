@@ -1,0 +1,16 @@
+id: rewire-ast-definition-type-set
+snapshots:
+  ok = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+    fixed: ok = isinstance(node, c.Infra.AST_DEFINITION_TYPES)
+    labels:
+    - source: isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+      style: primary
+      start: 5
+      end: 76
+  ok = isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+    fixed: ok = isinstance(node, c.Infra.AST_DEFINITION_TYPES)
+    labels:
+    - source: isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+      style: primary
+      start: 5
+      end: 76

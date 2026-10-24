@@ -1,0 +1,11 @@
+id: rewire-ast-import-or-class-type-set
+# `valid` MUST NOT match: the constants owner is already read, the set differs,
+# or the construct is not an isinstance check.
+valid:
+  - ok = isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES)
+  - ok = isinstance(node, ast.Import | ast.ImportFrom)
+  - kinds = (ast.Import, ast.ImportFrom, ast.ClassDef)
+# `invalid` MUST match: the exact node set spelled inline.
+invalid:
+  - ok = isinstance(node, ast.ClassDef | ast.Import | ast.ImportFrom)
+  - ok = isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef))

@@ -153,12 +153,12 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         for declaration in declarations:
             name = declaration.name
             if not any(
-                isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                isinstance(member, c.Infra.AST_FUNCTION_TYPES)
                 for member in ast.walk(declaration)
             ) or any(
                 member.name.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
                 for member in ast.walk(declaration)
-                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                if isinstance(member, c.Infra.AST_FUNCTION_TYPES)
             ):
                 continue
             find_offset = (

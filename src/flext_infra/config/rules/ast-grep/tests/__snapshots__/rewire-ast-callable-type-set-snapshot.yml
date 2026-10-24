@@ -1,0 +1,16 @@
+id: rewire-ast-callable-type-set
+snapshots:
+  ok = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+    fixed: ok = isinstance(node, c.Infra.AST_CALLABLE_TYPES)
+    labels:
+    - source: isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+      style: primary
+      start: 5
+      end: 74
+  ok = isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+    fixed: ok = isinstance(node, c.Infra.AST_CALLABLE_TYPES)
+    labels:
+    - source: isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
+      style: primary
+      start: 5
+      end: 74

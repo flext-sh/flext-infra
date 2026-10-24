@@ -1129,7 +1129,7 @@ class FlextInfraUtilitiesCodemodProject(
             else node.level == 0
             and (node.module or "").partition(".")[0] in sys.stdlib_module_names
             for node in imports
-            if isinstance(node, ast.Import | ast.ImportFrom)
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES)
         )
 
     @classmethod

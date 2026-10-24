@@ -16,7 +16,7 @@ import tokenize
 from bisect import bisect_left, bisect_right
 from pathlib import Path
 
-from flext_infra import m, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraDuplicationEvidence:
@@ -437,7 +437,7 @@ class FlextInfraDuplicationEvidence:
         imports = tuple(
             (node.lineno, node.end_lineno or node.lineno)
             for node in ast.walk(tree)
-            if isinstance(node, (ast.Import, ast.ImportFrom))
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES)
             and (not isinstance(node, ast.ImportFrom) or node.module != "__future__")
         )
         retained = tuple(
@@ -515,7 +515,7 @@ class FlextInfraDuplicationEvidence:
         keep: list[tuple[tuple[int, int], tuple[int, int]]] = []
         removed: set[str] = set()
         for node in ast.walk(tree):
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 excluded.append(cls._coordinates(node, lines))
                 removed.add("import_syntax")
             if (
@@ -527,7 +527,7 @@ class FlextInfraDuplicationEvidence:
             ):
                 excluded.append(cls._coordinates(node.body[0], lines))
                 removed.add("docstring")
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 excluded.append((
                     cls._coordinates(node, lines)[0],
                     cls._coordinates(node.body[0], lines)[0],

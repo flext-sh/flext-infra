@@ -302,7 +302,7 @@ class FlextInfraImportNormalization(
                     and target == scope.namespace
                     and cls._enclosing_scope(node, state.parents) is None
                     and any(
-                        isinstance(statement, ast.Assign | ast.AnnAssign)
+                        isinstance(statement, c.Infra.AST_ASSIGNMENT_TYPES)
                         and (alias.asname or alias.name)
                         in cls._module_bindings(
                             ast.Module(body=[statement], type_ignores=[]),
@@ -334,11 +334,13 @@ class FlextInfraImportNormalization(
                 if isinstance(node, ast.AnnAssign)
                 else None
             )
-            value = node.value if isinstance(node, ast.Assign | ast.AnnAssign) else None
+            value = (
+                node.value if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES) else None
+            )
             if (
                 isinstance(target, ast.Name)
                 and target.id == "__all__"
-                and isinstance(value, ast.List | ast.Tuple)
+                and isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
             ):
                 return frozenset(
                     element.value

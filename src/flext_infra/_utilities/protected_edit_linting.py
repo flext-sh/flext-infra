@@ -282,7 +282,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         lost = {name for name in lost if not any(name in value for value in strings)}
         context = CodemodContext()
         for imported in ast.walk(after):
-            if not isinstance(imported, ast.Import | ast.ImportFrom):
+            if not isinstance(imported, c.Infra.AST_IMPORT_TYPES):
                 continue
             for alias in imported.names:
                 if (alias.asname or alias.name.split(".")[0]) not in lost:

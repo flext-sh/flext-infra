@@ -1,0 +1,11 @@
+id: rewire-ast-sequence-display-type-set
+# `valid` MUST NOT match: the constants owner is already read, the set differs,
+# or the construct is not an isinstance check.
+valid:
+  - ok = isinstance(node, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
+  - ok = isinstance(node, ast.List | ast.Tuple | ast.Set)
+  - kinds = (ast.Tuple, ast.List)
+# `invalid` MUST match: the exact node set spelled inline.
+invalid:
+  - ok = isinstance(node, ast.List | ast.Tuple)
+  - ok = isinstance(node, (ast.Tuple, ast.List))

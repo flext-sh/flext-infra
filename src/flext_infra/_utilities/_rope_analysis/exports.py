@@ -317,19 +317,17 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         def _dispatch(self, statement: ast.stmt) -> None:
             """Route one statement to its inventory handler."""
-            if isinstance(
-                statement, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-            ):
+            if isinstance(statement, c.Infra.AST_DEFINITION_TYPES):
                 self._define(statement)
-            elif isinstance(statement, (ast.Import, ast.ImportFrom)):
+            elif isinstance(statement, c.Infra.AST_IMPORT_TYPES):
                 return
             elif isinstance(statement, ast.If):
                 self._if(statement)
             elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
                 self._collect_branches(statement)
-            elif isinstance(statement, (ast.With, ast.AsyncWith)):
+            elif isinstance(statement, c.Infra.AST_WITH_TYPES):
                 self.collect_statements(statement.body)
-            elif isinstance(statement, (ast.Try, ast.TryStar)):
+            elif isinstance(statement, c.Infra.AST_TRY_TYPES):
                 self._try(statement)
             elif isinstance(statement, ast.Match):
                 self._match(statement)
@@ -433,7 +431,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             """
             if isinstance(target, ast.Name):
                 return (target.id,)
-            if isinstance(target, (ast.List, ast.Tuple)):
+            if isinstance(target, c.Infra.AST_SEQUENCE_DISPLAY_TYPES):
                 return tuple(
                     name
                     for element in target.elts

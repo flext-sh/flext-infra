@@ -15,7 +15,7 @@ import ast
 import builtins
 from collections.abc import MutableMapping
 
-from flext_infra import m, t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesRopeSourceBindingCollector:
@@ -66,17 +66,17 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             cls._import_from(spec, node, bindings)
         elif isinstance(node, ast.Import):
             cls._import(node, bindings)
-        elif isinstance(node, ast.Assign | ast.AnnAssign):
+        elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
             cls._assign(spec, node, bindings)
         elif isinstance(node, ast.AugAssign):
             cls._aug_assign(spec, node, bindings)
         elif isinstance(node, ast.Delete):
             cls._delete(node, bindings)
-        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
             bindings[node.name] = None
         elif isinstance(node, ast.If):
             cls._if(spec, node, bindings, scope)
-        elif isinstance(node, ast.Try | ast.TryStar):
+        elif isinstance(node, c.Infra.AST_TRY_TYPES):
             cls._try(spec, node, bindings, scope)
 
     @classmethod
@@ -195,7 +195,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if (
             (spec.allow_conditional or isinstance(node.value, ast.Call))
             and targets
-            and all(isinstance(target, ast.Tuple | ast.List) for target in targets)
+            and all(
+                isinstance(target, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
+                for target in targets
+            )
             and all(
                 isinstance(
                     part, ast.Name | ast.Tuple | ast.List | ast.Starred | ast.Store
@@ -712,7 +715,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 return literal_guard
             case _:
                 pass
-        if not isinstance(test, ast.Name | ast.Attribute):
+        if not isinstance(test, c.Infra.AST_NAME_REFERENCE_TYPES):
             return None
         head = test.value if isinstance(test, ast.Attribute) else test
         if not isinstance(head, ast.Name):

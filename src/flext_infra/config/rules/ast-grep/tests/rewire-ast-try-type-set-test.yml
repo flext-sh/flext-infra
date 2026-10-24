@@ -1,0 +1,11 @@
+id: rewire-ast-try-type-set
+# `valid` MUST NOT match: the constants owner is already read, the set differs,
+# or the construct is not an isinstance check.
+valid:
+  - ok = isinstance(node, c.Infra.AST_TRY_TYPES)
+  - ok = isinstance(node, ast.Try | ast.If)
+  - kinds = (ast.Try, ast.TryStar)
+# `invalid` MUST match: the exact node set spelled inline.
+invalid:
+  - ok = isinstance(node, ast.Try | ast.TryStar)
+  - ok = isinstance(node, (ast.Try, ast.TryStar))

@@ -136,7 +136,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             frozenset({alias}) if alias is not None else c.FAMILY_CANONICAL_ALIASES
         )
         for node in header:
-            if not isinstance(node, ast.ImportFrom | ast.Import):
+            if not isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 return False
             if any((name.asname or name.name) in expected for name in node.names):
                 return True
@@ -264,7 +264,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         return any(
             (name.asname or name.name) == alias
             for node in ast.walk(ast.parse(source))
-            if isinstance(node, ast.ImportFrom | ast.Import)
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES)
             for name in node.names
         )
 
@@ -326,7 +326,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             annotations: t.MutableSequenceOf[ast.expr | None] = []
             if isinstance(node, ast.AnnAssign | ast.arg):
                 annotations.append(node.annotation)
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 annotations.append(node.returns)
             for annotation in annotations:
                 if annotation is None or annotation.end_lineno is None:

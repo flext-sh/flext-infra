@@ -471,7 +471,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                 str,
             ):
                 return None
-            if not isinstance(aliases, ast.Tuple | ast.List):
+            if not isinstance(aliases, c.Infra.AST_SEQUENCE_DISPLAY_TYPES):
                 return None
             for alias in aliases.elts:
                 if not isinstance(alias, ast.Constant) or not isinstance(

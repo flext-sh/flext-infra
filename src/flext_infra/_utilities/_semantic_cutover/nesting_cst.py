@@ -626,7 +626,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             and isinstance(node.value, ast.Call)
             and isinstance(node.value.func, ast.Attribute)
             and node.value.func.attr == "publish"
-            and isinstance(node.value.func.value, ast.Name | ast.Attribute)
+            and isinstance(node.value.func.value, c.Infra.AST_NAME_REFERENCE_TYPES)
             for node in owner.body
         ):
             return source
@@ -674,7 +674,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     )
                 ):
                     bindings[node.name] = node.name
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 if original_bindings is not None and node.name not in original_bindings:
                     continue
                 if cls._pytest_function_publication(
@@ -682,7 +682,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 ):
                     bindings[node.name] = f"{node.name}.__func__"
                     registrations = True
-            elif isinstance(node, ast.Assign | ast.AnnAssign):
+            elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                 for name in cls._pytest_metadata_names(node, original_bindings):
                     bindings[name] = name
                     metadata.append(name)
@@ -759,7 +759,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     ) -> str:
         project, resource = native
         if any(
-            isinstance(node, ast.Assign | ast.AnnAssign)
+            isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in (

@@ -66,10 +66,7 @@ class FlextInfraUtilitiesLintRecipesPart:
 
         """
         for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
-                and node.lineno == line
-            ):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES) and node.lineno == line:
                 return node
         msg = f"{path}: no class or function is defined at line {line}"
         raise ValueError(msg)
@@ -92,7 +89,7 @@ class FlextInfraUtilitiesLintRecipesPart:
         enclosing = [
             node
             for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
             and node.lineno <= line <= (node.end_lineno or node.lineno)
         ]
         if not enclosing:
@@ -117,7 +114,7 @@ class FlextInfraUtilitiesLintRecipesPart:
 
         """
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 docstring = cls._docstring_expr(node)
                 if docstring is not None and docstring.lineno == line:
                     return node

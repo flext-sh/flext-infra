@@ -1,0 +1,11 @@
+id: rewire-ast-function-type-set
+# `valid` MUST NOT match: the constants owner is already read, the set differs,
+# or the construct is not an isinstance check.
+valid:
+  - ok = isinstance(node, c.Infra.AST_FUNCTION_TYPES)
+  - ok = isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
+  - kinds = (ast.AsyncFunctionDef, ast.FunctionDef)
+# `invalid` MUST match: the exact node set spelled inline.
+invalid:
+  - ok = isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+  - ok = isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))

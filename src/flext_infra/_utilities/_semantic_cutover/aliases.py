@@ -149,7 +149,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         rebinds = tuple(
             node
             for node in tree.body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == "s"
                 for target in (
@@ -261,7 +261,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         pending: list[ast.AST] = list(tree.body)
         while pending:
             node = pending.pop()
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            if isinstance(node, c.Infra.AST_CALLABLE_TYPES):
                 pending.extend(node.args.defaults)
                 pending.extend(
                     default for default in node.args.kw_defaults if default is not None
@@ -550,7 +550,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         """
         names: set[str] = set()
         for node in tree.body:
-            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 names.add(node.name)
             elif isinstance(node, ast.ImportFrom):
                 names.update(item.asname or item.name for item in node.names)

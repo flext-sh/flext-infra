@@ -33,7 +33,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         return tuple(
             node
             for node in ast.parse(source).body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
             and any(
                 isinstance(target, ast.Name) and target.id == alias
                 for target in (
@@ -79,7 +79,7 @@ class FlextInfraUtilitiesRopeModulePatch:
             t.MutableSequenceOf[ast.Assign | ast.AnnAssign],
         ] = {}
         for node in tree.body:
-            if not isinstance(node, ast.Assign | ast.AnnAssign):
+            if not isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                 continue
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             for bound in {
@@ -177,7 +177,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         declaration = declarations[0]
         if (
             isinstance(declaration, ast.AugAssign)
-            or not isinstance(declaration.value, ast.List | ast.Tuple)
+            or not isinstance(declaration.value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
             or not all(
                 isinstance(item, ast.Constant) and isinstance(item.value, str)
                 for item in declaration.value.elts

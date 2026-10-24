@@ -1,0 +1,16 @@
+id: rewire-ast-import-or-class-type-set
+snapshots:
+  ok = isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef)):
+    fixed: ok = isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES)
+    labels:
+    - source: isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef))
+      style: primary
+      start: 5
+      end: 65
+  ok = isinstance(node, ast.ClassDef | ast.Import | ast.ImportFrom):
+    fixed: ok = isinstance(node, c.Infra.AST_IMPORT_OR_CLASS_TYPES)
+    labels:
+    - source: isinstance(node, ast.ClassDef | ast.Import | ast.ImportFrom)
+      style: primary
+      start: 5
+      end: 65

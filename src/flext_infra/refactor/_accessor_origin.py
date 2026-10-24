@@ -10,7 +10,7 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import config, m, p, u
+from flext_infra import c, config, m, p, u
 from flext_infra.refactor._accessor_warnings import (
     FlextInfraAccessorMigrationWarningsMixin,
 )
@@ -592,7 +592,7 @@ class FlextInfraAccessorOriginResolver:
                 raise ValueError(msg)
             scope = module.get_scope().get_inner_scope_for_line(line)
             declaration = scope.pyobject.get_ast()
-            if isinstance(declaration, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(declaration, c.Infra.AST_FUNCTION_TYPES):
                 for argument in (
                     *declaration.args.posonlyargs,
                     *declaration.args.args,

@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import builtins
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesSemanticCutoverClassScope:
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
         return frozenset(
             parameter.name
             for parameter in node.type_params
-            if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+            if isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES)
         )
 
     @classmethod
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
             ``(children, bound)`` pairs whose loads minus ``bound`` escape.
 
         """
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+        if isinstance(node, c.Infra.AST_CALLABLE_TYPES):
             decorators = () if isinstance(node, ast.Lambda) else node.decorator_list
             defaults = (item for item in node.args.kw_defaults if item is not None)
             return (((*node.args.defaults, *defaults, *decorators), frozenset()),)
@@ -118,12 +118,12 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
         names: set[str] = set()
 
         def visit(node: ast.AST) -> None:
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                 names.add(node.name)
                 return
             if isinstance(node, ast.Lambda):
                 return
-            if isinstance(node, ast.Import | ast.ImportFrom):
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 names.update(
                     (alias.asname or alias.name).split(".", maxsplit=1)[0]
                     for alias in node.names
@@ -153,7 +153,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
             if isinstance(node, ast.ClassDef):
                 found.append(node)
                 return
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            if isinstance(node, c.Infra.AST_CALLABLE_TYPES):
                 return
             for child in ast.iter_child_nodes(node):
                 visit(child)

@@ -1,0 +1,16 @@
+id: rewire-ast-assignment-type-set
+snapshots:
+  ok = isinstance(node, (ast.AnnAssign, ast.Assign)):
+    fixed: ok = isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
+    labels:
+    - source: isinstance(node, (ast.AnnAssign, ast.Assign))
+      style: primary
+      start: 5
+      end: 50
+  ok = isinstance(node, ast.Assign | ast.AnnAssign):
+    fixed: ok = isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
+    labels:
+    - source: isinstance(node, ast.Assign | ast.AnnAssign)
+      style: primary
+      start: 5
+      end: 49

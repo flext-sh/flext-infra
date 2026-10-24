@@ -286,12 +286,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
             for node in statements:
                 if isinstance(node, ast.ImportFrom):
                     self._bind_import(node)
-                elif isinstance(
-                    node,
-                    ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-                ):
+                elif isinstance(node, c.Infra.AST_DEFINITION_TYPES):
                     self._bind_definition(node)
-                elif isinstance(node, ast.Assign | ast.AnnAssign):
+                elif isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
                     self._bind_assignment(node)
                 elif isinstance(node, ast.If):
                     self._collect_branches(node)
@@ -752,7 +749,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     f"{identity}.{child.name}",
                 )
                 continue
-            if isinstance(child, ast.Assign | ast.AnnAssign):
+            if isinstance(child, c.Infra.AST_ASSIGNMENT_TYPES):
                 cls._collect_reexport_references(
                     references, resolvers, child, public_path, identity
                 )
@@ -889,7 +886,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         for node in cls._lexical_binding_nodes(tree, rewritten_bindings):
             if isinstance(node, ast.Global) and alias in node.names:
                 break
-            if isinstance(node, ast.ImportFrom | ast.Import):
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 if id(node) in allowed_imports:
                     continue
                 if any(
@@ -948,7 +945,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     rewritten_bindings,
                     deferred_annotations=deferred_annotations,
                 )
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            elif isinstance(node, c.Infra.AST_CALLABLE_TYPES):
                 child_scope = False
             pending.extend((child, child_scope) for child in ast.iter_child_nodes(node))
             if not class_scope or isinstance(node, ast.Global | ast.type_param):
@@ -998,10 +995,10 @@ class FlextInfraUtilitiesPrivateImportFacades:
             yield from node.bases
             yield from (keyword.value for keyword in node.keywords)
             yield from node.type_params
-        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+        elif isinstance(node, c.Infra.AST_CALLABLE_TYPES):
             yield from node.args.defaults
             yield from (item for item in node.args.kw_defaults if item is not None)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 yield from node.decorator_list
                 # PEP 695/696 bounds and defaults keep their annotation scope.
                 yield from node.type_params

@@ -310,7 +310,7 @@ class FlextInfraUtilitiesImportLaw:
         while name not in seen:
             seen.add(name)
             binding = bindings.get(name)
-            if not isinstance(binding, ast.Assign | ast.AnnAssign) or not isinstance(
+            if not isinstance(binding, c.Infra.AST_ASSIGNMENT_TYPES) or not isinstance(
                 binding.value, ast.Name
             ):
                 return name, binding
@@ -384,9 +384,7 @@ class FlextInfraUtilitiesImportLaw:
             return cls._declaration_identity(
                 scope, module, binding.value.id, seen | {identity}, sources=sources
             )
-        if not isinstance(
-            binding, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-        ):
+        if not isinstance(binding, c.Infra.AST_DEFINITION_TYPES):
             msg = f"Missing declared public import: {identity}"
             raise TypeError(msg)
         return identity
@@ -428,8 +426,7 @@ class FlextInfraUtilitiesImportLaw:
             for owner in tree.body
             if isinstance(owner, ast.ClassDef)
             for method in owner.body
-            if isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
-            and method.lineno == line
+            if isinstance(method, c.Infra.AST_FUNCTION_TYPES) and method.lineno == line
         ]
         if len(declarations) != 1:
             msg = f"model utility has no unique static owner: {qualified}"

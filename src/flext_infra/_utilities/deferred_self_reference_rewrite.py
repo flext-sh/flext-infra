@@ -10,7 +10,7 @@ import ast
 from collections.abc import MutableMapping
 from operator import itemgetter
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
@@ -243,12 +243,9 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         if isinstance(statement, ast.AnnAssign):
             expressions.append(statement.annotation)
             return
-        if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
+        if isinstance(statement, c.Infra.AST_FUNCTION_TYPES):
             expressions.extend(cls._evaluated_function_annotations(statement))
-        if isinstance(
-            statement,
-            ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
-        ):
+        if isinstance(statement, c.Infra.AST_DEFINITION_TYPES):
             children: t.SequenceOf[ast.stmt] = statement.body
         elif isinstance(statement, ast.TypeAlias):
             expressions.append(statement.value)

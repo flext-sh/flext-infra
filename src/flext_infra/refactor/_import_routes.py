@@ -268,7 +268,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                     body=[
                         statement
                         for statement in state.tree.body
-                        if not isinstance(statement, ast.Import | ast.ImportFrom)
+                        if not isinstance(statement, c.Infra.AST_IMPORT_TYPES)
                     ],
                     type_ignores=[],
                 ),
@@ -435,10 +435,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                 and isinstance(statement.value, ast.Constant)
                 and isinstance(statement.value.value, str)
             )
-            if not is_docstring and not isinstance(
-                statement,
-                ast.Import | ast.ImportFrom,
-            ):
+            if not is_docstring and not isinstance(statement, c.Infra.AST_IMPORT_TYPES):
                 break
             anchor = statement.end_lineno or statement.lineno
         return anchor
@@ -488,10 +485,7 @@ class FlextInfraImportNormalizationRoutesMixin(
             or any(
                 isinstance(reference, ast.Name) and reference.id == bound
                 for declaration in state.tree.body
-                if isinstance(
-                    declaration,
-                    ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-                )
+                if isinstance(declaration, c.Infra.AST_DEFINITION_TYPES)
                 for parameter in declaration.type_params
                 if isinstance(parameter, ast.TypeVar) and parameter.bound is not None
                 for reference in ast.walk(parameter.bound)
