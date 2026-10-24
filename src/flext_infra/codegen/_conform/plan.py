@@ -1424,11 +1424,62 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             if retired.failure:
                 return result_type.from_failure(retired)
-            governed_paths = {item.path for item in governed.value}
+            utilities = self._ast_grep_utility_plans(target.root, config_spec)
+            if utilities.failure:
+                return result_type.from_failure(utilities)
+            written, stale = utilities.value
+            governed_files.extend(written)
+            retired_files.extend(stale)
+            governed_paths = {item.path for item in (*governed.value, *written)}
             retired_files.extend(
                 item for item in retired.value if item.path not in governed_paths
             )
         return result_type.ok((governed_files, retired_files))
+
+    def _ast_grep_utility_plans(
+        self,
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[
+        t.Pair[
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Infra.CodegenFilePlan],
+        ]
+    ]:
+        """Plan the generated native ast-grep utilities and their retirements.
+
+        Returns:
+            The written utility file plans and the stale generated removals.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Infra.CodegenFilePlan],
+            ]
+        ]
+        project = root.absolute()
+        sources = u.Infra.codemod_native_utility_sources(project, codegen.ast_grep)
+        written: list[m.Infra.CodegenFilePlan] = []
+        for path, rendered in sources.items():
+            planned = self.file_plan(
+                project,
+                path.relative_to(project).as_posix(),
+                rendered,
+                mode=codegen.modes.file_default,
+            )
+            if planned.failure:
+                return result_type.from_failure(planned)
+            written.append(planned.value)
+        stale: list[m.Infra.CodegenFilePlan] = []
+        for path in u.Infra.codemod_native_utility_stale(
+            project, codegen.ast_grep, sources
+        ):
+            removed = self._absent_file_plan(project, path)
+            if removed.failure:
+                return result_type.from_failure(removed)
+            stale.append(removed.value)
+        return result_type.ok((tuple(written), tuple(stale)))
 
     @staticmethod
     def _select_repositories(

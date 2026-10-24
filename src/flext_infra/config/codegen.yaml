@@ -101,6 +101,18 @@ Infra:
     loc_cap:
       max_lines: 1000
 
+    # Project SSOT facts generated as native ast-grep utility rules: each
+    # producer is a u.Infra function mapping a project root to
+    # {utility id: native rule}. make gen writes one file per utility id
+    # under utilities_dir and retires generated files no producer emits;
+    # rules reference them natively (constraints: VAR: {matches: <id>}).
+    ast_grep:
+      utilities_dir: config/rules/ast-grep/utils
+      producers:
+        - codemod_own_package_utilities
+        - codemod_stdlib_module_utilities
+        - codemod_runtime_package_utilities
+
     # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
     # sites read these rows through config.Infra.codegen.modes; octal mode
     # literals outside the constants and model bounds are defects (the

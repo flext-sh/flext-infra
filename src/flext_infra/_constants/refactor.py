@@ -339,11 +339,6 @@ class FlextInfraConstantsRefactor:
         EXPOSED = "exposed"
         MISSING = "missing"
 
-    CODEMOD_RUNTIME_CLOSURE_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
-        frozenset({
-            CodemodContextPredicate.RUNTIME_PACKAGE,
-            CodemodContextPredicate.FACADE_PACKAGE,
-            CodemodContextPredicate.COMPOSE_MODULE,
     FACADE_MEMBER_RELOCATE_RULE: ClassVar[str] = "relocate-facade-member-to-{letter}"
     "Generated native rule moving a foreign reference to the owner ``letter``."
     FACADE_MEMBER_RETIRE_RULE: ClassVar[str] = (
@@ -357,6 +352,11 @@ class FlextInfraConstantsRefactor:
     FACADE_MEMBER_UTILITY_ID: ClassVar[str] = "{rule}--{variable}"
     "Generated ast-grep utility constraining one metavariable of one rule."
 
+    CODEMOD_RUNTIME_CLOSURE_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
+        frozenset({
+            CodemodContextPredicate.RUNTIME_PACKAGE,
+            CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.COMPOSE_MODULE,
         })
     )
     "Predicates evaluated against the project's runtime dependency closure."
@@ -438,6 +438,11 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_ALIASES: ClassVar[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: ClassVar[str] = "allow_target_suffixes"
     CODEMOD_RULE_SUFFIX: ClassVar[str] = ".yml"
+    # Native ast-grep language of every generated utility rule.
+    CODEMOD_PYTHON_LANGUAGE: ClassVar[str] = "Python"
+    # Rust-regex pattern that matches no text: a generated utility whose
+    # source of truth is empty still exists, so a referencing rule loads.
+    CODEMOD_NEVER_MATCH_REGEX: ClassVar[str] = r"\b\B"
     CODEMOD_CONFIG_FILENAME: ClassVar[str] = "sgconfig.yml"
     # Static rules are data under the one rule root, config/rules: the
     # ast-grep corpus (sgconfig, rules, utils, tests with snapshots) and the

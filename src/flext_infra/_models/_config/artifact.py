@@ -273,6 +273,28 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(ge=1, description="Per-module code-LOC ceiling"),
         ]
 
+    class CodegenAstGrepSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Native ast-grep utility rules generated from project SSOT facts."""
+
+        utilities_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Repository-relative directory of the generated native "
+                    "ast-grep utility rules a rule references through matches"
+                ),
+            ),
+        ]
+        producers: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "u.Infra producer names; each maps a project root to its "
+                    "native utility rules keyed by utility id"
+                ),
+            ),
+        ]
+
     class RetiredProjectionSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One retired projection and the generated evidence that owns it."""
 
@@ -427,6 +449,10 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
+        ]
+        ast_grep: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenAstGrepSpec,
+            m.Field(description="Generated native ast-grep utility rules"),
         ]
         modes: Annotated[
             FlextInfraConfigModelsArtifact.CodegenModesSpec,

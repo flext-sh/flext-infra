@@ -20,15 +20,13 @@ import sys
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing, contextmanager
 from contextvars import ContextVar
-from functools import cache, lru_cache
-from importlib.metadata import packages_distributions
+from functools import lru_cache
 from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import u
-from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -36,7 +34,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodBindingChain,
-    FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesIterationDirectory,
@@ -65,6 +62,9 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 from flext_infra._utilities._rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
+from flext_infra._utilities.codemod_native_utilities import (
+    FlextInfraUtilitiesCodemodNativeUtilities,
+)
 from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
 from flext_infra._utilities.rope_runtime_matching import (
     FlextInfraUtilitiesRopeRuntimeMatching,
@@ -73,6 +73,7 @@ from flext_infra._utilities.rope_runtime_matching import (
 
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesCodemodNativeUtilities,
     FlextInfraUtilitiesImportLaw,
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
@@ -437,7 +438,7 @@ class FlextInfraUtilitiesCodemodProject(
             import_modules=modules,
             import_cycles=cls.project_import_cycles(graph),
             runtime_modules=(
-                cls._runtime_modules(resolved)
+                cls.codemod_runtime_modules(resolved)
                 if predicates & c.Infra.CODEMOD_RUNTIME_CLOSURE_PREDICATES
                 else frozenset()
             ),
@@ -2381,70 +2382,6 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         return value.split(maxsplit=1)[0].split(".", maxsplit=1)[0]
-
-    @classmethod
-    def _runtime_modules(cls, root: Path) -> frozenset[str]:
-        """Top-level import names provided by the project's runtime closure.
-
-        Returns:
-            The resulting ``frozenset[str]``.
-
-        """
-        project = FlextInfraUtilitiesCodemodRules.codemod_project_requirements(
-            root,
-        ).unwrap()
-        if not project[1]:
-            return frozenset()
-        cls.codemod_progress(
-            f"runtime distributions start requirements={len(project[1])} root={root}",
-        )
-        distributions = FlextInfraUtilitiesCodemodRules.codemod_distributions()
-        cls.codemod_progress(
-            f"runtime distributions finish distributions={len(distributions)}",
-        )
-        cls.codemod_progress("runtime dependency closure start")
-        closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
-            project[1],
-            distributions,
-        )
-        cls.codemod_progress(
-            f"runtime dependency closure finish distributions={len(closure)}",
-        )
-        cls.codemod_progress("runtime import package metadata start")
-        packages = cls._installed_import_packages()
-        cls.codemod_progress(
-            f"runtime import package metadata finish packages={len(packages)}",
-        )
-        selected: set[str] = set()
-        due = 0.0
-        for index, (module, providers) in enumerate(packages.items(), start=1):
-            due = cls.codemod_progress(
-                f"runtime imports package={index}/{len(packages)} "
-                f"module={module} selected={len(selected)}",
-                due,
-            )
-            if providers & closure:
-                selected.add(module)
-        cls.codemod_progress(f"runtime imports finish modules={len(selected)}")
-        return frozenset(selected)
-
-    @staticmethod
-    @cache
-    def _installed_import_packages() -> t.MappingKV[str, frozenset[str]]:
-        """Map each installed import package to its canonical distributions.
-
-        Installed metadata is a fact of the interpreter environment, fixed for
-        the life of the process, so it is read once; a project's runtime
-        closure over it is still computed per admission pass.
-
-        Returns:
-            The resulting ``t.MappingKV[str, frozenset[str]]``.
-
-        """
-        return MappingProxyType({
-            module: frozenset(canonicalize_name(name) for name in providers)
-            for module, providers in packages_distributions().items()
-        })
 
     @staticmethod
     def _family_member(root: Path, file_path: Path, imported: str) -> bool:
