@@ -48,7 +48,7 @@ class FlextInfraExtraPathsManager(
         ),
     ] = ()
 
-    _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
+    _workspace_project_names: t.Infra.StrSet = m.PrivateAttr(default_factory=set)
 
     @override
     def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:

@@ -2,12 +2,12 @@ id: rewire-cli-json-mapping-adapter
 snapshots:
   ? |
     from flext_cli import t, u
-    value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
+    value = u.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
   : fixed: |
       from flext_cli import t, u
       value = u.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
     labels:
-    - source: t.Cli.JSON_MAPPING_ADAPTER
+    - source: u.Cli.JSON_MAPPING_ADAPTER
       style: primary
       start: 35
       end: 61
@@ -17,7 +17,7 @@ snapshots:
       end: 26
     - source: |
         from flext_cli import t, u
-        value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
+        value = u.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
       style: secondary
       start: 0
       end: 87

@@ -40,8 +40,8 @@ class FlextInfraCodegenLazyInit(
     Processes bottom-up so child packages are generated before parents.
     """
 
-    _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
-    _source_project: p.Infra.RopeProject | None = u.PrivateAttr(default=None)
+    _modified_files: t.Infra.StrSet = m.PrivateAttr(default_factory=set)
+    _source_project: p.Infra.RopeProject | None = m.PrivateAttr(default=None)
     project_scope_roots: Annotated[
         t.VariadicTuple[Path] | None,
         m.Field(

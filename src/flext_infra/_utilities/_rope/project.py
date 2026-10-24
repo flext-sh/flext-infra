@@ -667,9 +667,13 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         """Accumulate original receipts for one native consumer, not a set delta."""
 
         def __init__(self) -> None:
-            self._states: list[tuple[m.Cli.AtomicFileState, ...]] = []
-            self._directories: list[tuple[m.Cli.AtomicDirectoryInventory, ...]] = []
-            self._topology: list[tuple[m.Cli.AtomicDirectoryChainPlan, ...]] = []
+            self._states: t.MutableMappingKV[int, m.Cli.AtomicFileState] = {}
+            self._directories: t.MutableMappingKV[
+                int, m.Cli.AtomicDirectoryInventory
+            ] = {}
+            self._topology: t.MutableMappingKV[
+                int, m.Cli.AtomicDirectoryChainPlan
+            ] = {}
             self._receipt: m.Infra.CodegenPhaseAnalysis | None = None
 
         def record(
@@ -680,10 +684,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         ) -> None:
             """Merge exact observations while retaining their original identities.
 
-            Each event appends its observations; the cross-event union merges
-            once at seal so one consumer's cost stays linear in its events.
-            Appends are amortized O(1): a consumer issues tens of thousands of
-            events, and rebuilding a tuple per event copies its whole prefix.
+            Pinned observations can be replayed thousands of times. Retain each
+            original object once in this scope; a distinct observation still
+            enters the cross-event consistency check even at the same path.
+            References stay alive until sealing, so object identities cannot
+            be reused while they participate in the receipt.
 
             Raises:
                 ValueError: If the receipt is already sealed.
@@ -692,9 +697,9 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             if self._receipt is not None:
                 msg = "Rope source consumption is already sealed"
                 raise ValueError(msg)
-            self._states.append(states)
-            self._directories.append(directories)
-            self._topology.append(topology)
+            self._states.update((id(state), state) for state in states)
+            self._directories.update((id(item), item) for item in directories)
+            self._topology.update((id(item), item) for item in topology)
 
         def seal(self) -> m.Infra.CodegenPhaseAnalysis:
             """Freeze the receipt only after the consumer has left its scope.
@@ -704,14 +709,14 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-                tuple(chain.from_iterable(self._directories)),
-                tuple(chain.from_iterable(self._topology)),
+                tuple(self._directories.values()),
+                tuple(self._topology.values()),
             )
             self._receipt = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=(),
                 inputs=m.Infra.CodemodBindingSnapshot(
-                    states=tuple(chain.from_iterable(self._states)),
+                    states=tuple(self._states.values()),
                 ).states,
                 source_directories=directories,
                 source_query_topology=topology,
@@ -1513,10 +1518,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
             require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
+            directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+                self.receipt_directories(), self.receipt_topology()
+            )
             require_value(
-                u.Cli.atomic_verify_directory_queries(
-                    self.directories(), self.topology()
-                )
+                u.Cli.atomic_verify_directory_queries(directories, topology)
             )
             for path in sorted({*self._consumed, *self._consumed_effects}):
                 self._verify_declarations(path)

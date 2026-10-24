@@ -298,23 +298,32 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         module: p.Infra.RopePyModule,
     ) -> t.VariadicTuple[tuple[int, int, str, p.Infra.RopeScope]]:
         """Return only string constants occupying native annotation type positions."""
-        protected = cls.type_payload_ranges(source, module)
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
-        selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
+        candidates: list[tuple[int, int, p.Infra.RopeScope]] = []
         for begin, end, line in cls.annotation_regions(source, module):
+            regions = tuple(
+                (start, stop)
+                for start, stop, _metadata in literals
+                if begin <= start < stop <= end and source[start] != "#"
+            )
+            if not regions:
+                continue
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
                 module,
                 begin,
                 declaration_line=line,
             )
-            for start, stop, _metadata in literals:
-                if not begin <= start < stop <= end or source[start] == "#":
-                    continue
-                if any(first <= start and stop <= last for first, last in protected):
-                    continue
-                literal = cls.string_constant(source[start:stop])
-                if literal is not None:
-                    selected.append((start, stop, literal, scope))
+            candidates.extend((start, stop, scope) for start, stop in regions)
+        if not candidates:
+            return ()
+        protected = cls.type_payload_ranges(source, module)
+        selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
+        for start, stop, scope in candidates:
+            if any(first <= start and stop <= last for first, last in protected):
+                continue
+            literal = cls.string_constant(source[start:stop])
+            if literal is not None:
+                selected.append((start, stop, literal, scope))
         return tuple({(item[0], item[1]): item for item in selected}.values())
 
     @staticmethod

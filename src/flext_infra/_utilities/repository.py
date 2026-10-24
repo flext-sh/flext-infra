@@ -967,16 +967,20 @@ class FlextInfraUtilitiesRepository:
             recursive resolution, or the first declaration failure.
 
         """
-        primary_root = identity.primary_root
-        if not primary_root.is_relative_to(superproject_root):
+        member_root = (
+            identity.repo_root
+            if identity.is_attached_submodule
+            else identity.primary_root
+        )
+        if not member_root.is_relative_to(superproject_root):
             error = ValueError(
-                f"submodule identity escapes its superproject: {primary_root}",
+                f"submodule identity escapes its superproject: {member_root}",
             )
             return r[str].fail(str(error), exception=error)
         contract = FlextInfraUtilitiesGit.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(
                 repo_root=superproject_root,
-                member_path=primary_root.relative_to(superproject_root).as_posix(),
+                member_path=member_root.relative_to(superproject_root).as_posix(),
             ),
         )
         if contract.failure:

@@ -1,17 +1,11 @@
-"""Typed consumed surface of the unchanged native Rope restructuring class.
-
-The native change computer is private. Its returned capability is get_changed,
-not ownership of its implementation class. No source-editing behavior lives here.
-"""
-
-from typing import Unpack
+# Copyright (c) 2026 FLEXT Team. All rights reserved.
+# SPDX-License-Identifier: MIT
+# The native change computer is private; get_changed is its consumed capability.
 
 from flext_infra import p, t
 
 class Restructure:
-    """Native SDK class re-exported unchanged by the accompanying runtime module."""
-
-    def __init__(self, *args: Unpack[t.Infra.RopeRestructureInitArguments]) -> None: ...
+    def __init__(self, *args: *t.Infra.RopeRestructureInitArguments) -> None: ...
     def get_changes(
         self, *, resources: list[p.Infra.RopeResource]
     ) -> p.Infra.RopeChangeSet: ...
@@ -27,4 +21,4 @@ class Restructure:
         imports: t.StrSequence,
     ) -> str: ...
 
-__all__: list[str]
+__all__: list[str] = ["Restructure"]

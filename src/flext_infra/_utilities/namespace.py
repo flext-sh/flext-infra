@@ -774,6 +774,18 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         resolved_rel_path = rel_path or Path(file_path.name)
         package_parts = tuple(part for part in package_name.split(".") if part)
+        project_root = (
+            project_layout.project_root
+            if project_layout is not None
+            else FlextInfraUtilitiesDiscovery.project_root(
+                file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
+            )
+        )
+        if project_layout is None and project_root is not None:
+            project_layout = cls.layout(project_root, rope_project=rope_project)
 
         family_alias, expected_family, expected_alias, family_tokens = (
             cls._resolve_family(
@@ -790,16 +802,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             rope_project=rope_project,
         )
         declared_exports = cls._declared_exports(file_path, rope_project=rope_project)
-        project_root = (
-            project_layout.project_root
-            if project_layout is not None
-            else FlextInfraUtilitiesDiscovery.project_root(
-                file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
-            )
-        )
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=cls._policy_enforces_contract(
                 flags,

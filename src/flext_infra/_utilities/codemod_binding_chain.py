@@ -163,6 +163,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
             Returns:
                 Whether the destination resolves to the original generic binding.
 
+            Raises:
+                TypeError: If the destination namespace is not a source module.
+
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             original, specialized = expressions
@@ -170,11 +173,22 @@ class FlextInfraUtilitiesCodemodBindingChain:
             target_frame = frame
             target_start = start
             if namespace is not None:
-                target_module = runtime.module(project, namespace)
+                target_module = project.get_module(namespace)
+                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(target_module):
+                    message = (
+                        f"generic specialization requires a source module: {namespace}"
+                    )
+                    raise TypeError(message)
                 target_source = cls._chain_module_text(target_module, sources)
                 if target_source is None:
                     return False
-                target_frame = (project, target_module, target_module.get_scope())
+                target_scope = target_module.get_scope()
+                if not isinstance(target_scope, p.Infra.RopeScope):
+                    message = (
+                        f"generic specialization has no lexical scope: {namespace}"
+                    )
+                    raise TypeError(message)
+                target_frame = (project, target_module, target_scope)
                 target_start = len(target_source[1])
             if not (
                 cls.stable_binding_chain(frame, original, start, sources)
@@ -203,11 +217,19 @@ class FlextInfraUtilitiesCodemodBindingChain:
             Returns:
                 Whether one source alias specializes the original generic.
 
+            Raises:
+                TypeError: If the declared alias has no native source module.
+
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             destination_module, line = destination_binding.get_definition_location()
             if destination_module is None or line is None:
                 return False
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
+                destination_module
+            ):
+                message = "generic specialization alias requires a source module"
+                raise TypeError(message)
             source = cls._chain_module_text(destination_module, sources)
             if source is None:
                 return False

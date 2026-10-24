@@ -211,8 +211,9 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             raise ValueError(message)
         return cls._declared_alias_mapping_source(mapping, module)
 
-    @staticmethod
+    @classmethod
     def _declared_alias_mapping_source(
+        cls,
         expression: str,
         module: p.Infra.RopeParsedModule,
     ) -> str:
@@ -239,9 +240,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 return literal
             if isinstance(node, ast.Call):
                 if (
-                    not FlextInfraUtilitiesRopeSourceBasesAliases._immutable_alias_wrapper(
-                        node.func, scope
-                    )
+                    not cls._immutable_alias_wrapper(node.func, scope)
                     or len(node.args) != 1
                     or node.keywords
                 ):

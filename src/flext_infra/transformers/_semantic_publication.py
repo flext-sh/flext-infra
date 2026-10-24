@@ -557,6 +557,7 @@ class FlextInfraSemanticPublication:
             analysis.phase,
             analysis.files,
             publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                directories=(),
                 staged_validator=lambda current, staged: (
                     FlextInfraCodegenStaging.validate_python_plans(
                         current,

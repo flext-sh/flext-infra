@@ -260,7 +260,7 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         (package / filename).write_text(content, encoding=c.DEFAULT_ENCODING)
     u.Tests.copy_tracked_mise_seeds(root)
     local_path = root / c.CONFIG_DIR_NAME / "codegen.local.yaml"
-    supplier_declaration = {
+    supplier_declaration: t.JsonDict = {
         "Infra": {
             "codegen": {
                 "make": {
@@ -941,6 +941,146 @@ def test_unresolved_reference_fails_typed(member_root: t.DirectoryPath) -> None:
         member_root,
         "result = service.execute()\n"
         'assert result.failure and "Ghost" in result.error\n',
+        consumer="",
+    )
+
+
+@pytest.mark.parametrize(
+    ("namespace", "empty_model"), [("Tools", False), ("Ports", True)]
+)
+def test_plain_namespace_prefix_preserves_native_operational_members(
+    member_root: t.DirectoryPath, namespace: str, *, empty_model: bool
+) -> None:
+    """Namespace proof needs native types, not an admitted Pydantic descendant."""
+    package = member_root / "src" / MEMBER
+    domain = package / "_models/domain.py"
+    domain.write_text(
+        domain
+        .read_text(encoding=c.DEFAULT_ENCODING)
+        .replace(
+            "class DemoMemberModels(m):",
+            "class ModelNamespaceParts:\n"
+            + (
+                "    pass\n\n\n"
+                if empty_model
+                else "    class Token:\n        pass\n\n\n"
+            )
+            + "class DemoMemberModels(m):",
+        )
+        .replace(
+            "\nm = DemoMemberModels",
+            f"\n    class {namespace}(ModelNamespaceParts):\n"
+            "        pass\n\nm = DemoMemberModels",
+        ),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "_protocols/manual_ports.py").write_text(
+        MANUAL_PORTS + "\n\nfrom typing import runtime_checkable\n"
+        "class NamespaceMarker(Protocol):\n    pass\n"
+        "class ProtocolNamespaceParts:\n"
+        "    @runtime_checkable\n"
+        "    class Token(Protocol):\n"
+        "        def bind(self) -> bool: ...\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "protocols.py").write_text(
+        PROTOCOLS.replace(
+            "import ManualPort",
+            "import ManualPort, NamespaceMarker, ProtocolNamespaceParts",
+        ).replace(
+            "\np = DemoMemberProtocols",
+            f"\n    class {namespace}"
+            + (
+                "(NamespaceMarker):\n"
+                "        Token: type[ProtocolNamespaceParts.Token] = "
+                "ProtocolNamespaceParts.Token\n"
+                if empty_model
+                else "(ProtocolNamespaceParts, NamespaceMarker):\n        pass\n"
+            )
+            + "\np = DemoMemberProtocols",
+        ),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "consumer.py").write_text(
+        CONSUMER + f"\nPUBLIC_NAMESPACE = p.{namespace}\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        consumer="from demo_member import consumer, m, p\n"
+        "from demo_member._protocols.manual_ports import ProtocolNamespaceParts\n"
+        f"assert consumer.PUBLIC_NAMESPACE is p.{namespace}\n"
+        f"assert p.{namespace}.Token is ProtocolNamespaceParts.Token\n"
+        f"assert not hasattr(m.{namespace}, 'model_fields')\n"
+        + (
+            ""
+            if empty_model
+            else f"assert not hasattr(m.{namespace}.Token, 'model_fields')\n"
+        )
+        + "class LivePort:\n    def bind(self) -> bool: return True\n"
+        f"assert isinstance(LivePort(), p.{namespace}.Token)\n"
+        "assert callable(p.DemoMember.ManualPort.bind)\n"
+        "assert isinstance(m.DemoMember.Order(sku='namespace-consumer'), "
+        "p.DemoMember.Order)\n",
+    )
+
+
+@pytest.mark.parametrize(
+    "shape", ["empty", "fields", "nested-fields", "class-valued-field"]
+)
+def test_payload_with_plain_counterpart_still_fails_before_publication(
+    member_root: t.DirectoryPath, shape: str
+) -> None:
+    """Empty markers and nested types cannot hide a non-model payload counterpart."""
+    package = member_root / "src" / MEMBER
+    nested = shape in {"nested-fields", "class-valued-field"}
+    domain = package / "_models/domain.py"
+    domain.write_text(
+        domain.read_text(encoding=c.DEFAULT_ENCODING).replace(
+            "Order = Order",
+            "Order = Order\n        class Invalid:\n"
+            + (
+                "            class Record:\n                pass\n"
+                if nested
+                else "            pass\n"
+            ),
+        ),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "_protocols/manual_ports.py").write_text(
+        MANUAL_PORTS
+        + "\n\nclass Invalid(Protocol):\n"
+        + ("    class Record(Protocol):\n        pass\n" if nested else "")
+        + (
+            "    pass\n"
+            if shape == "empty"
+            else "    value: str = Record\n"
+            if shape == "class-valued-field"
+            else "    value: str\n"
+        ),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "protocols.py").write_text(
+        PROTOCOLS.replace("import ManualPort", "import ManualPort, Invalid").replace(
+            "ManualPort = ManualPort",
+            "ManualPort = ManualPort\n        Invalid = Invalid",
+        ),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "consumer.py").write_text(
+        CONSUMER + "\n\ndef reject(value: p.DemoMember.Invalid) -> None: ...\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        f"package = root / 'src' / {MEMBER!r}\n"
+        "before = {path: path.read_bytes() for path in package.rglob('*.py')}\n"
+        "result = service.execute()\n"
+        "assert result.failure\n"
+        "assert 'referenced protocol p.DemoMember.Invalid is not a model declaration' "
+        "in result.error\n"
+        "assert {path: path.read_bytes() for path in package.rglob('*.py')} "
+        "== before\n",
         consumer="",
     )
 

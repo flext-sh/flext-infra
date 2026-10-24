@@ -58,11 +58,11 @@ class TestsFlextInfraCiDeclaredSecretsContract:
 
         """
         document = u.Cli.yaml_load_mapping(workflow_path)
-        triggers = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
-        workflow_call = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        workflow_call = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
             triggers["workflow_call"],
         )
-        return t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow_call["secrets"])
+        return u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow_call["secrets"])
 
     @classmethod
     def _referenced_secret_names(cls, workflow_path: Path) -> set[str]:
@@ -73,10 +73,10 @@ class TestsFlextInfraCiDeclaredSecretsContract:
 
         """
         document = u.Cli.yaml_load_mapping(workflow_path)
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
         referenced: set[str] = set()
         for raw_job in jobs.values():
-            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
+            job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
             raw_steps = job["steps"]
             if not isinstance(raw_steps, list):
                 continue
@@ -107,5 +107,5 @@ class TestsFlextInfraCiDeclaredSecretsContract:
 
         tm.that(referenced - set(declared), empty=True)
         for contract in declared.values():
-            specification = t.Cli.JSON_MAPPING_ADAPTER.validate_python(contract)
+            specification = u.Cli.JSON_MAPPING_ADAPTER.validate_python(contract)
             tm.that(specification["required"], eq=False)

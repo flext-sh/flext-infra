@@ -52,21 +52,22 @@ class TestsFlextInfraFamilyTypeReferences:
             f"from {package.name}.{directory}.payload import {owner} as Part\n"
             f"from {package.name}.entities import Container, Other\n\n"
             "class Public(Part):\n    pass\n\n"
-            'class Specialized(Container["Part.Domain.Item"]):\n    pass\n\n'
-            'class Generic[T: "Part.Domain.Item" = "Part.Domain.Item"]:\n'
+            'class _Specialized(Container["Part.Domain.Item"]):\n    pass\n\n'
+            'class _Generic[T: "Part.Domain.Item" = "Part.Domain.Item"]:\n'
             "    pass\n\n"
-            "LABEL = 'é'; item: \"Public.Domain.Item\"\n"
-            'items: list["Part.Domain.Item"]\n'
-            'meta: Meta["Part.Domain.Item", "Part.Domain.Item"]\n'
-            'choice: Choice["Part.Domain.Item"]\n'
-            'unrelated: "Other.Domain.Item"\n'
-            'type Items = list["Part.Domain.Item"]\n'
-            'TEXT = "Part.Domain.Item"\n\n'
-            'def convert(value: "Part.Domain.Item" = "Part.Domain.Item")'
+            "_LABEL = 'é'; _item: \"Public.Domain.Item\"\n"
+            '_items: list["Part.Domain.Item"]\n'
+            '_meta: Meta["Part.Domain.Item", "Part.Domain.Item"]\n'
+            '_choice: Choice["Part.Domain.Item"]\n'
+            '_unrelated: "Other.Domain.Item"\n'
+            'type _Items = list["Part.Domain.Item"]\n'
+            '_TEXT = "Part.Domain.Item"\n\n'
+            'def _convert(value: "Part.Domain.Item" = "Part.Domain.Item")'
             ' -> "Part.Domain.Item":\n'
             "    Part = Other\n"
             '    local: "Part.Domain.Item"\n'
-            "    return Part.Domain.Item()\n"
+            "    return Part.Domain.Item()\n\n"
+            "__all__ = ['Public']\n"
         )
         consumer.write_text(references, encoding="utf-8")
         sources = {path: source, consumer: references}
@@ -82,21 +83,21 @@ class TestsFlextInfraFamilyTypeReferences:
             proposed.update({edit.file_path: edit.updated_source for edit in planned})
             tm.that(proposed[path], has=f"Container['{owner}.DomainItem']")
             for preserved in (
-                'choice: Choice["Part.Domain.Item"]',
-                'unrelated: "Other.Domain.Item"',
-                'TEXT = "Part.Domain.Item"',
+                '_choice: Choice["Part.Domain.Item"]',
+                '_unrelated: "Other.Domain.Item"',
+                '_TEXT = "Part.Domain.Item"',
                 '    local: "Part.Domain.Item"',
             ):
                 tm.that(proposed[consumer], has=preserved)
             for rewritten in (
                 "Container['Part.DomainItem']",
-                "class Generic[T: 'Part.DomainItem' = 'Part.DomainItem']:",
-                "LABEL = 'é'; item: 'Public.DomainItem'",
-                "items: list['Part.DomainItem']",
-                "meta: Meta['Part.DomainItem', \"Part.Domain.Item\"]",
-                "type Items = list['Part.DomainItem']",
+                "class _Generic[T: 'Part.DomainItem' = 'Part.DomainItem']:",
+                "_LABEL = 'é'; _item: 'Public.DomainItem'",
+                "_items: list['Part.DomainItem']",
+                "_meta: Meta['Part.DomainItem', \"Part.Domain.Item\"]",
+                "type _Items = list['Part.DomainItem']",
                 (
-                    "def convert(value: 'Part.DomainItem' = \"Part.Domain.Item\")"
+                    "def _convert(value: 'Part.DomainItem' = \"Part.Domain.Item\")"
                     " -> 'Part.DomainItem':"
                 ),
             ):

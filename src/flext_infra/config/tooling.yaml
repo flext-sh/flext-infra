@@ -144,12 +144,13 @@ Infra:
         - "**/.archive/**"
         # Generated source trees (codegen artifacts with generated_source)
         # are appended by the projection from that one key, never listed.
-        # Provider-owned AI Hub hook projections live under the tool-home
-        # dot directories (.agents/.claude/.codex/.cursor/.gemini ...); the
-        # operators rule (fleet learned constraint) keeps ~/.* code outside
-        # the lint scope, and these hooks are distributed tool-home state,
-        # not member source.
-        - "**/.agents/aihub-hooks/**"
+        # Agent tooling from ~/.agents, ~/hooks and ~/agents, including its
+        # repository-root copies and projections, is external tool-home
+        # state. Keep it outside both lint and formatting discovery.
+        - "**/.agents/**"
+        - "hooks/**"
+        - "agents/**"
+        # Hook projections under other provider tool homes share that boundary.
         - "**/.claude/aihub-hooks/**"
         - "**/.codex/aihub-hooks/**"
         - "**/.cursor/aihub-hooks/**"

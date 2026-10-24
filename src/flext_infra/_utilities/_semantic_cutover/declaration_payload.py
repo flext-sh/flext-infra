@@ -63,9 +63,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         value: p.Infra.RopePyObject,
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
-    ) -> (
-        t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]] | None
-    ):
+    ) -> t.Quad[str, int, int, int] | None:
         """Locate the class header base list through Rope's native reader.
 
         Args:
@@ -74,31 +72,25 @@ class FlextInfraUtilitiesDeclarationPayload:
             module: The source module declaring the class.
 
         Returns:
-            The header statement with its native worder and base-list span,
-            or ``None`` when the header has no parenthesized base list.
+            Header text, source offset and base-list span, or ``None`` when
+            the header has no parenthesized base list.
 
         """
-        headers = tuple(
-            statement
-            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
-                module.source_code,
-            )
-            if statement.line == scope.get_start()
-            and statement.category == c.Infra.StatementCategory.CLASS_DEF
+        first_line, last_line = module.logical_lines.logical_line_in(scope.get_start())
+        header = "\n".join(
+            module.lines.get_line(line) for line in range(first_line, last_line + 1)
         )
-        if len(headers) != 1:
-            return None
-        header = headers[0]
-        words = cls._worder(header.text)
-        _keyword_begin, keyword_end = words.get_word_range(header.indent)
-        name = header.text.index(value.get_name(), keyword_end)
+        words = cls._worder(header)
+        indent = len(header) - len(header.lstrip())
+        _keyword_begin, keyword_end = words.get_word_range(indent)
+        name = header.index(value.get_name(), keyword_end)
         _begin, end = words.get_word_range(name)
-        if header.text[end:].lstrip().startswith("["):
+        if header[end:].lstrip().startswith("["):
             _begin, end = words.code_finder.get_word_parens_range(name, "[", "]")
-        if not header.text[end:].lstrip().startswith("("):
+        if not header[end:].lstrip().startswith("("):
             return None
         first, last = words.get_word_parens_range(end - 1)
-        return header, (words, first, last)
+        return header, module.lines.get_line_start(first_line), first, last
 
     @classmethod
     def direct_bases(
@@ -125,14 +117,12 @@ class FlextInfraUtilitiesDeclarationPayload:
         resolved = cls._header_argument_span(value, scope, module)
         if resolved is None:
             return bases
-        header, (_words, first, last) = resolved
-        arguments = cls._specialized_arguments(header.text, first, last)
+        header, offset, first, last = resolved
+        arguments = cls._specialized_arguments(header, first, last)
         if not arguments:
             return bases
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        parent = runtime.scope_at(
-            module, header.start_offset, declaration_line=scope.get_start()
-        )
+        parent = runtime.scope_at(module, offset, declaration_line=scope.get_start())
         subscriptions = tuple(
             item
             for provider, name in (

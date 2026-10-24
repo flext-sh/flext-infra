@@ -57,6 +57,11 @@ class FlextInfraCodegenProtocolModelAnnotations:
 
         """
         module = value.get_module()
+        if not isinstance(value, p.Infra.RopeSourceDefinition):
+            if module is not None and u.Infra.abstract_class(value):
+                return f"{module.get_name()}.{value.get_name()}"
+            msg = f"declaration has no native class identity: {value.get_name()}"
+            raise ValueError(msg)
         scope = value.get_scope()
         if module is None or scope is None:
             msg = f"declaration has no native source identity: {value.get_name()}"
@@ -461,7 +466,18 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 raise ValueError(msg)
             selected = child
         if not u.Infra.same_name(selected, binding):
-            msg = "protocol barrel changes the authenticated declaration identity"
+            selected_value = selected.get_object()
+            selected_module = selected_value.get_module()
+            selected_module_name = (
+                selected_module.get_name() if selected_module is not None else None
+            )
+            msg = (
+                "protocol barrel changes the authenticated declaration identity: "
+                f"reference={self.protocol_package}.{'.'.join(parts)}; "
+                f"expected_source={resource.real_path}; "
+                f"selected_kind={type(selected_value).__name__}; "
+                f"selected_module={selected_module_name}"
+            )
             raise ValueError(msg)
         statement = f"import {self.protocol_package}"
         self.imports[statement] = statement

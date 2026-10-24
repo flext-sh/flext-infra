@@ -102,8 +102,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(production.path.read_bytes(), eq=production.desired_content)
 
     @staticmethod
+    @pytest.mark.parametrize("repetitions", [1, 64])
     def test_cached_native_absence_queries_keep_original_scoped_witness(
         tmp_path: Path,
+        repetitions: int,
     ) -> None:
         """A warmed negative predicate must retain its original proof in each scope."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -116,10 +118,12 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             with binding[0].source_capture():
                 tm.that(binding[0].source_query(absent, "isfile"), eq=False)
             with binding[0].source_consumption() as first:
-                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+                for _ in range(repetitions):
+                    tm.that(binding[0].source_query(absent, "isfile"), eq=False)
             with binding[0].source_consumption() as second:
                 tm.that(binding[0].source_query(unrelated, "isfile"), eq=False)
-                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+                for _ in range(repetitions):
+                    tm.that(binding[0].source_query(absent, "isfile"), eq=False)
             tm.that(
                 {
                     query
@@ -374,8 +378,12 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 m.Infra.CodegenPhasePublicationPolicy(directories=()),
             )
 
-        outcome = owner.run_files_locked(roots, publish)
-        tm.that(outcome.failure, eq=True)
+        if change == "absent":
+            with pytest.raises(ValueError, match=escape(str(absent))):
+                owner.run_files_locked(roots, publish)
+        else:
+            outcome = owner.run_files_locked(roots, publish)
+            tm.that(outcome.failure, eq=True)
         tm.that(target.read_bytes(), eq=before)
 
     @staticmethod
@@ -483,8 +491,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                initial_workspace=workspace,
-                request=request,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    initial_workspace=workspace,
+                    request=request,
+                ),
             ).plan(request),
         )
 

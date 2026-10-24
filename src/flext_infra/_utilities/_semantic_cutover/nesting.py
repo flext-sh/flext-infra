@@ -939,7 +939,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
     @staticmethod
     def _test_class_binding(
-        module: p.Infra.RopePyModule,
+        module: p.Infra.RopeParsedModule,
         path: Path,
         declaration: ast.ClassDef,
         replacement: str,

@@ -1031,10 +1031,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         family: Literal["protocol", "model"],
     ) -> str:
-        """Remove inherited contract shadows only after proving exact identities.
+        """Keep declared owners authoritative over their generated class bindings.
 
         Returns:
-            The source without redundant inherited contract assignments.
+            Source without derived class bindings or proven redundant assignments.
 
         Raises:
             ValueError: If an authored contract assignment is unresolved or ambiguous.
@@ -1054,6 +1054,21 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         for member, alias in aliases:
             name, expression, annotation = alias
             value = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, expression)
+            target = value.get_object() if value is not None else None
+            inherited_class = (
+                target is not None
+                and FlextInfraUtilitiesRopeRuntime.abstract_class(target)
+                and any(
+                    target is attribute.get_object()
+                    for owner in cls._protocol_ancestor_objects(base_objects)
+                    for attribute in owner.get_attributes().values()
+                )
+            )
+            if source.startswith(c.Infra.AUTOGEN_HEADERS) and inherited_class:
+                # A projection cannot turn an inherited declaration into a new
+                # alias or replace a different canonical member with its value.
+                shadows.append(member)
+                continue
             annotated = (
                 FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, annotation)
                 if annotation is not None
@@ -1075,11 +1090,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 raise ValueError(message)
             if target is inherited.get(name):
                 shadows.append(member)
-            elif any(
-                target is attribute.get_object()
-                for owner in cls._protocol_ancestor_objects(base_objects)
-                for attribute in owner.get_attributes().values()
-            ):
+            elif inherited_class:
                 message = (
                     f"ambiguous {family} class attribute {name}: "
                     "value does not identify the inherited contract"
@@ -1093,9 +1104,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         Returns:
             Source with the selected assignments and unused imports removed.
-
-        Raises:
-            TypeError: If the concrete rewrite does not preserve the source module.
 
         """
         wrapper = MetadataWrapper(parse_module(source))
@@ -1125,17 +1133,22 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             """Remove proven assignments in one identity-preserving traversal."""
 
             @override
-            def on_leave(
-                self, original_node: CSTNode, updated_node: CSTNode
-            ) -> CSTNode | RemovalSentinel:
+            def leave_Assign(
+                self, original_node: Assign, updated_node: Assign
+            ) -> Assign | RemovalSentinel:
+                if original_node in removals:
+                    return RemovalSentinel.REMOVE
+                return updated_node
+
+            @override
+            def leave_AnnAssign(
+                self, original_node: AnnAssign, updated_node: AnnAssign
+            ) -> AnnAssign | RemovalSentinel:
                 if original_node in removals:
                     return RemovalSentinel.REMOVE
                 return updated_node
 
         updated = wrapper.module.visit(RemoveShadows())
-        if not isinstance(updated, Module):
-            message = "Facade class shadow removal did not preserve the module"
-            raise TypeError(message)
         return RemoveImportsVisitor(context).transform_module(updated).code
 
     @staticmethod

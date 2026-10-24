@@ -14,6 +14,7 @@ import pytest
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, r, t, tm, u
 
 if TYPE_CHECKING:
@@ -52,7 +53,7 @@ class TestsFlextInfraSemanticPhaseContract:
             tmp_path, case
         )
         legacy = package / "services" / "logging_integration.py"
-        report = m.Infra.ModOccurrenceReport(
+        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
             files=frozenset({package / "logging_consumer.py"}), entries=()
         )
         original = {
@@ -325,12 +326,17 @@ class TestsFlextInfraSemanticPhaseContract:
 
     @staticmethod
     def _plan_logging_source_drift(
-        root: Path, report: m.Infra.ModOccurrenceReport, legacy: Path, original: bytes
+        root: Path,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        legacy: Path,
+        original: bytes,
     ) -> None:
         """Replace a planned source inode without changing its bytes."""
         with (
             u.Infra.facade_source_project(root) as (project, _consumed, _sources),
-            infra.rope_workspace(root, source_project=project) as workspace,
+            FlextInfraRopeWorkspace.open_workspace(
+                root, source_project=project
+            ) as workspace,
         ):
             inventory = FlextInfraCodemodSemanticApply.source_inventory(
                 root, report, source_project=project
@@ -344,7 +350,9 @@ class TestsFlextInfraSemanticPhaseContract:
 
     @staticmethod
     def _publish_logging_transfer(
-        root: Path, package: Path, report: m.Infra.ModOccurrenceReport
+        root: Path,
+        package: Path,
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
     ) -> None:
         """Publish the cutover and prove idempotence and consumer behavior."""
         legacy = package / "services" / "logging_integration.py"

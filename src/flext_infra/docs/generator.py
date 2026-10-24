@@ -171,7 +171,6 @@ class FlextInfraDocGenerator(
             return report_type.from_failure(written)
         return self._generation_reports(
             bundle,
-            plans.value,
             frozenset(written.value),
         )
 
