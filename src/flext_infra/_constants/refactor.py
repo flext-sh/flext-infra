@@ -443,6 +443,8 @@ class FlextInfraConstantsRefactor:
     # Rust-regex pattern that matches no text: a generated utility whose
     # source of truth is empty still exists, so a referencing rule loads.
     CODEMOD_NEVER_MATCH_REGEX: ClassVar[str] = r"\b\B"
+    # Separator of a generated rule id: '<shape>--<qualifier>'.
+    CODEMOD_GENERATED_ID_SEPARATOR: ClassVar[str] = "--"
     CODEMOD_CONFIG_FILENAME: ClassVar[str] = "sgconfig.yml"
     # Static rules are data under the one rule root, config/rules: the
     # ast-grep corpus (sgconfig, rules, utils, tests with snapshots) and the

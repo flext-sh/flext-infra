@@ -273,6 +273,26 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(ge=1, description="Per-module code-LOC ceiling"),
         ]
 
+    class CodegenAstGrepRendererSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One u.Infra renderer of generated native rule documents."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "u.Infra renderer mapping a project root to native rule "
+                    "documents keyed by '<shape>' or '<shape>--<qualifier>'"
+                ),
+            ),
+        ]
+        shapes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Rule shapes the renderer is registered to emit",
+            ),
+        ]
+
     class CodegenAstGrepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Native ast-grep utility rules generated from project SSOT facts."""
 
@@ -291,6 +311,24 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 description=(
                     "u.Infra producer names; each maps a project root to its "
                     "native utility rules keyed by utility id"
+                ),
+            ),
+        ]
+        rules_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Repository-relative directory of the generated native "
+                    "ast-grep rule documents the renderers emit"
+                ),
+            ),
+        ]
+        renderers: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenAstGrepRendererSpec],
+            m.Field(
+                description=(
+                    "Renderers emitting generated native rule documents, run "
+                    "after the utility producers"
                 ),
             ),
         ]

@@ -186,51 +186,107 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         })
 
     @classmethod
-    def codemod_native_utility_sources(
+    def codemod_native_generated_sources(
         cls, project: Path, spec: m.Infra.CodegenAstGrepSpec
     ) -> t.MappingKV[Path, str]:
-        """Render every generated utility rule file of one project.
+        """Render every generated utility, then every rule document, of a project.
+
+        Renderers run after the producers because rendered rules reference the
+        generated utilities through ``matches``.
 
         Returns:
             Absolute destination to its generated YAML text, header first.
 
         """
-        directory = project.absolute() / spec.utilities_dir
+        root = project.absolute()
+        utilities = cls.codemod_native_utilities(root, spec.producers)
+        rules = cls.codemod_native_rules(root, spec)
+        documents = {
+            **{
+                root / spec.utilities_dir / f"{key}{c.Infra.CODEMOD_RULE_SUFFIX}": doc
+                for key, doc in utilities.items()
+            },
+            **{
+                root / spec.rules_dir / f"{key}{c.Infra.CODEMOD_RULE_SUFFIX}": doc
+                for key, doc in rules.items()
+            },
+        }
         return MappingProxyType({
-            directory / f"{utility_id}{c.Infra.CODEMOD_RULE_SUFFIX}": (
+            path: (
                 f"{c.Infra.AUTOGEN_HEADER}\n"
                 f"{u.Cli.yaml_dump_str(document, sort_keys=True)}"
             )
-            for utility_id, document in cls.codemod_native_utilities(
-                project, spec.producers
-            ).items()
+            for path, document in sorted(documents.items())
         })
 
     @staticmethod
-    def codemod_native_utility_stale(
+    def codemod_native_generated_stale(
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
         produced: t.IterableOf[Path],
     ) -> t.VariadicTuple[Path]:
-        """Return generated utility files no producer emits any more.
+        """Return generated utility and rule files no owner emits any more.
 
         Only files opening with a declared generator header are retired; an
-        authored file in the directory is never touched.
+        authored file in either directory is never touched.
 
         Returns:
             The stale generated files, in path order.
 
         """
-        directory = project.absolute() / spec.utilities_dir
-        if not directory.is_dir():
-            return ()
         wanted = frozenset(produced)
+        directories = (
+            project.absolute() / relative
+            for relative in (spec.utilities_dir, spec.rules_dir)
+        )
         return tuple(
             path
+            for directory in directories
+            if directory.is_dir()
             for path in sorted(directory.glob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
             if path not in wanted
             and FlextInfraUtilitiesCodegenFilePlan.generated_source(path)
         )
+
+    @classmethod
+    def codemod_native_rules(
+        cls, project: Path, spec: m.Infra.CodegenAstGrepSpec
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Run every registered renderer and merge its rule documents by id.
+
+        Returns:
+            Every generated native rule document keyed by its rule id.
+
+        Raises:
+            TypeError: If a registered renderer is not declared.
+            ValueError: If a rule id repeats, names an unregistered shape, or
+                disagrees with its document id.
+
+        """
+        documents: dict[str, t.JsonMapping] = {}
+        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        for entry in spec.renderers:
+            renderer = getattr(cls, entry.name, None)
+            if not callable(renderer):
+                msg = f"ast-grep rule renderer is not declared: {entry.name}"
+                raise TypeError(msg)
+            rendered = adapter.validate_python(renderer(project), strict=True)
+            for rule_id, document in rendered.items():
+                shape = rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
+                if shape not in entry.shapes:
+                    msg = (
+                        f"ast-grep renderer {entry.name} emitted an unregistered "
+                        f"shape: {rule_id}"
+                    )
+                    raise ValueError(msg)
+                if rule_id in documents:
+                    msg = f"ast-grep rule id rendered twice: {rule_id}"
+                    raise ValueError(msg)
+                if document.get("id") != rule_id:
+                    msg = f"ast-grep rule document id disagrees with {rule_id}"
+                    raise ValueError(msg)
+                documents[rule_id] = document
+        return MappingProxyType(dict(sorted(documents.items())))
 
     @classmethod
     def codemod_native_utilities(

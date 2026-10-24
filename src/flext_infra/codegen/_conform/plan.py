@@ -1459,7 +1459,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ]
         ]
         project = root.absolute()
-        sources = u.Infra.codemod_native_utility_sources(project, codegen.ast_grep)
+        sources = u.Infra.codemod_native_generated_sources(project, codegen.ast_grep)
         written: list[m.Infra.CodegenFilePlan] = []
         for path, rendered in sources.items():
             planned = self.file_plan(
@@ -1472,7 +1472,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 return result_type.from_failure(planned)
             written.append(planned.value)
         stale: list[m.Infra.CodegenFilePlan] = []
-        for path in u.Infra.codemod_native_utility_stale(
+        for path in u.Infra.codemod_native_generated_stale(
             project, codegen.ast_grep, sources
         ):
             removed = self._absent_file_plan(project, path)
