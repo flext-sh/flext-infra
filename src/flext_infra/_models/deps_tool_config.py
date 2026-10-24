@@ -674,6 +674,36 @@ class FlextInfraModelsDepsToolConfig(
                 raise ValueError(msg)
             return self
 
+    class SmellsConfig(m.ArbitraryTypesModel):
+        """Repair guidance attached to qlty smell findings."""
+
+        fix_text: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="fix-text",
+                min_length=1,
+                description=(
+                    "Repair text appended to each qlty finding, keyed by the "
+                    "qlty check name (the SARIF ruleId suffix)."
+                ),
+            ),
+        ]
+
+    class AccessorPolicyConfig(m.ArbitraryTypesModel):
+        """Accessor naming policy enforced by the accessor migration."""
+
+        forbidden_prefixes: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="forbidden-prefixes",
+                min_length=1,
+                description=(
+                    "Public method-name prefixes that declare an accessor, "
+                    "mapped to the domain-verb guidance that replaces them."
+                ),
+            ),
+        ]
+
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
@@ -730,6 +760,13 @@ class FlextInfraModelsDepsToolConfig(
         facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
+        )
+        smells: FlextInfraModelsDepsToolConfig.SmellsConfig = m.Field(
+            description="Repair guidance for qlty smell findings.",
+        )
+        accessor_policy: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig = m.Field(
+            alias="accessor-policy",
+            description="Accessor naming policy of the accessor migration.",
         )
 
         mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(

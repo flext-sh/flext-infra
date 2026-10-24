@@ -73,11 +73,23 @@ class TestsFlextInfraFacadeMemberRelocation:
             "AfterValidator": "m",
             "computed_field": "m",
         }
-        expected = body
-        for name, owner in owners.items():
-            expected = expected.replace(f"u.{name}", f"{owner}.{name}")
+        # The publisher formats what it writes and prunes imports the move left
+        # unused, so the contract is the relocated references, not the bytes.
         for path in (canonical, derived):
-            tm.that(path.read_text(encoding="utf-8"), has=expected)
+            tm.that(
+                path.read_text(encoding="utf-8"),
+                has=(
+                    *(
+                        f"{owner}.{name}("
+                        for name, owner in owners.items()
+                        if name != "computed_field"
+                    ),
+                    "m.computed_field\n",
+                    "default=sentinel",
+                    "default=None",
+                ),
+                lacks=tuple(f"u.{name}" for name in owners),
+            )
             native_consumer(
                 "from runpy import run_path\n"
                 f"observed = run_path({str(path)!r})\n"
@@ -148,14 +160,19 @@ class TestsFlextInfraFacadeMemberRelocation:
         # Module-level calls in the two parameter-shadow cases remain eligible.
         tm.that(report.actionable, eq=2)
         tm.ok(FlextInfraModReplacements.publish(mod_workspace, report))
+        shadowed = len(cases) - 2
         for index, path in enumerate(paths):
-            expected = before[index]
-            if index >= len(cases) - 2:
-                expected = (
-                    expected.removesuffix("value = u.PrivateAttr()\n")
-                    + "value = m.PrivateAttr()\n"
+            published = path.read_text(encoding="utf-8")
+            if index < shadowed:
+                tm.that(published, eq=before[index])
+            else:
+                # Published files are formatted; only the module-level call moves
+                # while the parameter-shadowed call keeps its receiver.
+                tm.that(
+                    published,
+                    has=("value = m.PrivateAttr()", "return u.PrivateAttr()"),
+                    lacks="value = u.PrivateAttr()",
                 )
-            tm.that(path.read_text(encoding="utf-8"), eq=expected)
 
     @staticmethod
     def test_only_complete_annotated_metadata_calls_relocate(
@@ -189,14 +206,23 @@ class TestsFlextInfraFacadeMemberRelocation:
         )
         tm.that(report.actionable, eq=2)
         tm.ok(FlextInfraModReplacements.publish(mod_workspace, report))
+        # The published file is formatted; complete metadata calls move and every
+        # protected type argument, literal and bare marker keeps its receiver.
         tm.that(
             path.read_text(encoding="utf-8"),
-            eq=source.replace(
-                "eligible = Annotated[str, u.BeforeValidator(validate)]",
+            has=(
                 "eligible = Annotated[str, m.BeforeValidator(validate)]",
-            ).replace(
-                "other = Annotated[str, u.PrivateAttr()]",
                 "other = Annotated[str, m.PrivateAttr()]",
+                "u.BeforeValidator(validate)",
+                "literal = Literal[u.BeforeValidator(validate)]",
+                "first = Annotated[u.BeforeValidator(validate), ",
+                "bare = Annotated[str, u.BeforeValidator]",
+                "wrapped = Annotated[str, [u.BeforeValidator(validate)]]",
+                "nested = Literal[Annotated[str, u.BeforeValidator(validate)]]",
+            ),
+            lacks=(
+                "eligible = Annotated[str, u.BeforeValidator",
+                "other = Annotated[str, u.PrivateAttr",
             ),
         )
 

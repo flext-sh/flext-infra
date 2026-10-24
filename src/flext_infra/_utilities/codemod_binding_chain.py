@@ -398,6 +398,41 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_relocation(
                     project, (actual[0], actual[1]), canonical, reference[1]
                 )
+                or cls._member_exposed_relocation(project, scope, condition, reference)
+            )
+
+        @classmethod
+        def _member_exposed_relocation(
+            cls,
+            project: p.Infra.RopeProject,
+            scope: p.Infra.RopeScope,
+            condition: m.Infra.CodemodContextCondition,
+            reference: t.Pair[str, str],
+        ) -> bool:
+            """Prove a relocation by identity while the receiver still binds it.
+
+            Consumers move before the duplicate retires, so the receiver may
+            still expose the member. Identity then replaces absence: the core
+            receiver binds the owner's very object, and the occurrence reaches
+            that core declaration with no override in between.
+
+            Returns:
+                Whether the occurrence names the owner's object through the core
+                receiver's own declaration.
+
+            """
+            core, receiver = condition.arg[0], condition.arg[1]
+            return FlextInfraUtilitiesFacadeMembers.foreign_facade_member(
+                core,
+                (receiver, reference[1]),
+                c.Infra.FacadeMemberPlacement.EXPOSED,
+            ) and cls._binding_symbols_match(
+                FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
+                    project, f"{core}.{receiver}.{reference[1]}"
+                ),
+                FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    scope, f"{reference[0]}.{reference[1]}"
+                ),
             )
 
         @classmethod
