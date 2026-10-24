@@ -667,8 +667,37 @@ Infra:
       - services
       - api
       - cli
+      # r/e are the base tier of u (operator decision 2026-10-24): they rank
+      # with u, so u and every later layer import them at runtime; the
+      # import-cycle law keeps r/e on the u primitives that never reach back.
+      layer-aliases:
+        r: u
+        e: u
       reverse-import-mode: type_checking
       forward-import-form: absolute
+    # One owner per facade member (operator order 2026-10-24): the kind of the
+    # runtime object a member binds selects its owner letter; any other facade
+    # binding the same object is a duplicate retired by make mod, and consumers
+    # are relocated to the owner. No member is listed here.
+    facade-members:
+      owners:
+        exception: c
+        enum: c
+        constant: c
+        type: t
+        protocol: p
+        model: m
+        model-declaration: m
+        function: u
+      # Callables of these model-library modules declare models (field
+      # specifiers, validators, serializers) instead of running at runtime.
+      model-declaration-modules:
+      - pydantic.fields
+      - pydantic.functional_validators
+      - pydantic.functional_serializers
+      # Callables of these modules build constrained annotation types.
+      type-constructor-modules:
+      - pydantic.types
     mod:
       phases:
         # Component toggles for make mod (rule: toggles are data, not flags).

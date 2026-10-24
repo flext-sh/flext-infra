@@ -1,0 +1,50 @@
+id: ban-import-module-cycle-escape
+snapshots:
+  module = import_module("flext_core.dispatcher"):
+    labels:
+    - source: import_module("flext_core.dispatcher")
+      style: primary
+      start: 9
+      end: 47
+    - source: import_module
+      style: secondary
+      start: 9
+      end: 22
+    - source: flext_core.dispatcher
+      style: secondary
+      start: 24
+      end: 45
+    - source: '"flext_core.dispatcher"'
+      style: secondary
+      start: 23
+      end: 46
+    - source: '"flext_core.dispatcher"'
+      style: secondary
+      start: 23
+      end: 46
+  module = importlib.import_module("flext_core._utilities.beartype_conf"):
+    labels:
+    - source: importlib.import_module("flext_core._utilities.beartype_conf")
+      style: primary
+      start: 9
+      end: 71
+    - source: import_module
+      style: secondary
+      start: 19
+      end: 32
+    - source: importlib.import_module
+      style: secondary
+      start: 9
+      end: 32
+    - source: flext_core._utilities.beartype_conf
+      style: secondary
+      start: 34
+      end: 69
+    - source: '"flext_core._utilities.beartype_conf"'
+      style: secondary
+      start: 33
+      end: 70
+    - source: '"flext_core._utilities.beartype_conf"'
+      style: secondary
+      start: 33
+      end: 70

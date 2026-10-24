@@ -11,7 +11,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,
@@ -561,6 +561,19 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+        layer_aliases: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="layer-aliases",
+                description=(
+                    "Runtime aliases of the core package that rank inside a "
+                    "declared layer instead of forming their own: the alias "
+                    "and the module the core package binds it to share that "
+                    "layer's rank. Same-rank imports are runtime-legal; the "
+                    "import-cycle law keeps them acyclic."
+                ),
+            ),
+        ]
         reverse_import_mode: Annotated[
             Literal["type_checking"],
             m.Field(
@@ -585,6 +598,79 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+
+        @m.model_validator(mode="after")
+        def _validate_layer_aliases(self) -> Self:
+            """Bind every alias to a declared layer and keep it out of the order.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If an alias is itself a layer or names an
+                    undeclared layer.
+
+            """
+            for alias, layer in self.layer_aliases.items():
+                if alias in self.import_layer_order:
+                    msg = f"layer alias is already a declared layer: {alias}"
+                    raise ValueError(msg)
+                if layer not in self.import_layer_order:
+                    msg = f"layer alias {alias} names an undeclared layer: {layer}"
+                    raise ValueError(msg)
+            return self
+
+    class FacadeMembersConfig(m.ArbitraryTypesModel):
+        """Single owner of every facade member, derived from its runtime object."""
+
+        owners: Annotated[
+            t.MappingKV[c.Infra.FacadeMemberKind, t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Facade letter that owns each member kind. A member bound "
+                    "by another facade letter is a duplicate retired there and "
+                    "consumed through its owner."
+                ),
+            ),
+        ]
+        model_declaration_modules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="model-declaration-modules",
+                description=(
+                    "Modules of the model library whose callables declare "
+                    "models (field specifiers, validators, serializers)."
+                ),
+            ),
+        ]
+        type_constructor_modules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="type-constructor-modules",
+                description=(
+                    "Modules of the model library whose callables build "
+                    "constrained types (``constr``, ``conint``) used in "
+                    "annotations."
+                ),
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_owner_kinds(self) -> Self:
+            """Require one owner for every member kind.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If a member kind has no declared owner.
+
+            """
+            missing = set(c.Infra.FacadeMemberKind) - set(self.owners)
+            if missing:
+                msg = f"facade member kinds without owner: {sorted(missing)}"
+                raise ValueError(msg)
+            return self
 
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
@@ -638,6 +724,10 @@ class FlextInfraModelsDepsToolConfig(
         lazy_init: FlextInfraModelsDepsToolConfig.LazyInitConfig = m.Field(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
+        )
+        facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
+            alias="facade-members",
+            description="Declarative single-owner policy for facade members.",
         )
 
         mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(

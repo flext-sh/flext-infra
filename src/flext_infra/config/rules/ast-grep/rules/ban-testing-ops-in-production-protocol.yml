@@ -1,0 +1,28 @@
+# A production protocol states what a consumer may rely on. Process-global
+# reset hooks and ambient singleton accessors are not consumer capabilities:
+# they turn every port into a service locator and let tests reach shared
+# state. Composition roots construct and inject; tests build fresh instances
+# through the public constructors and the shared fixtures.
+id: ban-testing-ops-in-production-protocol
+language: python
+severity: error
+files:
+  - "**/protocols.py"
+  - "**/_protocols/**/*.py"
+rule:
+  kind: function_definition
+  has:
+    field: name
+    regex: "^(?:reset_for_testing|shared|reset_instance|clear_instance)$"
+  inside:
+    kind: class_definition
+    stopBy: end
+message: >-
+  Production protocol declares a testing or ambient-singleton operation.
+note: >-
+  Where: this protocol member. Why: ADR-019 keeps ports truthful; a port that
+  exposes reset/shared lets consumers locate or reset global state instead of
+  receiving injected collaborators. How: remove the member from the protocol;
+  composition roots (`api.py`) construct and inject the instance, and tests
+  create fresh instances through public constructors and `flext-tests`
+  fixtures.

@@ -1,0 +1,30 @@
+id: ban-behavior-in-declaration-layer
+valid:
+  - |
+    class Settings(m.BaseModel):
+        name: str
+  - |
+    class Settings(m.BaseModel):
+        @m.field_validator("name")
+        @classmethod
+        def _strip(cls, value: str) -> str:
+            return value.strip()
+  - |
+    class Settings(m.BaseModel):
+        @m.computed_field
+        @property
+        def label(self) -> str:
+            return self.name
+  - |
+    def module_level() -> None:
+        return None
+invalid:
+  - |
+    class Errors(m.BaseModel):
+        def record_exception(self, error: Exception) -> None:
+            self.items.append(str(error))
+  - |
+    class Builder(m.BaseModel):
+        @classmethod
+        def build(cls) -> Builder:
+            return cls()

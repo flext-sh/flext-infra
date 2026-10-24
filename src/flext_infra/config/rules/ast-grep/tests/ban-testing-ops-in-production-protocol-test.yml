@@ -1,0 +1,14 @@
+id: ban-testing-ops-in-production-protocol
+valid:
+  - |
+    class Container(Protocol):
+        def resolve(self, name: str) -> r[int]: ...
+  - |
+    def shared() -> None: ...
+invalid:
+  - |
+    class ContainerType(Protocol):
+        def reset_for_testing(cls) -> None: ...
+  - |
+    class ContainerType(Protocol):
+        def shared(cls) -> Container: ...

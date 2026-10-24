@@ -96,6 +96,35 @@ class FlextInfraModelsRefactorGrep:
                 msg = f"{self.predicate} requires one module and native producer"
                 raise ValueError(msg)
             if (
+                self.predicate is c.Infra.CodemodContextPredicate.FOREIGN_FACADE_MEMBER
+                and (
+                    len(self.arg) != 1
+                    or self.arg[0] not in set(c.Infra.FacadeMemberPlacement)
+                    or bool(self.as_)
+                    or self.of is not None
+                )
+            ):
+                msg = (
+                    "foreign-facade-member requires exactly one placement arg: "
+                    f"{sorted(c.Infra.FacadeMemberPlacement)}"
+                )
+                raise ValueError(msg)
+            if (
+                self.predicate is c.Infra.CodemodContextPredicate.FACADE_MEMBER_OWNER
+                and any((
+                    self.of is None,
+                    len(self.arg) != 1,
+                    not all(value.isidentifier() for value in self.arg),
+                    bool(self.as_),
+                    not self.holds,
+                ))
+            ):
+                msg = (
+                    "facade-member-owner requires of (the member capture) and "
+                    "exactly one owner letter arg"
+                )
+                raise ValueError(msg)
+            if (
                 self.predicate is c.Infra.CodemodContextPredicate.MEMBER_RELOCATION
                 and any((
                     self.of is None,

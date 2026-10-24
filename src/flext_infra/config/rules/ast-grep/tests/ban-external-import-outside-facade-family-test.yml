@@ -1,0 +1,10 @@
+id: ban-external-import-outside-facade-family
+valid:
+  - from .sibling import value
+  - |
+    if TYPE_CHECKING:
+        import griffe
+invalid:
+  - import griffe
+  - from griffe import Module
+  - import rope.base.project

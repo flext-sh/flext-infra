@@ -1,0 +1,7 @@
+id: relocate-facade-member-to-p
+valid:
+  - value = settings.Field
+  - value = Field
+invalid:
+  - value = u.Field
+  - error = u.ValidationError

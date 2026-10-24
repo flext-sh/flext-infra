@@ -66,6 +66,7 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 from flext_infra._utilities._rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
+from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
 from flext_infra._utilities.rope_runtime_matching import (
     FlextInfraUtilitiesRopeRuntimeMatching,
 )
@@ -474,6 +475,7 @@ class FlextInfraUtilitiesCodemodProject(
         predicates = {
             c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
             c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
+            c.Infra.CodemodContextPredicate.FACADE_MEMBER_OWNER,
             c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
             c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
             c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
@@ -525,6 +527,13 @@ class FlextInfraUtilitiesCodemodProject(
                         is c.Infra.CodemodContextPredicate.MEMBER_RELOCATION
                     )
                     for module in (condition.arg[0], condition.arg[3])
+                ),
+                *(
+                    c.Infra.PKG_CORE_UNDERSCORE
+                    for rule in selected
+                    for condition in rule.context
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.FACADE_MEMBER_OWNER
                 ),
             ))
         )
@@ -611,6 +620,7 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                 c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
+                c.Infra.CodemodContextPredicate.FACADE_MEMBER_OWNER,
                 c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
@@ -1431,6 +1441,11 @@ class FlextInfraUtilitiesCodemodProject(
                 f"project={project is not None} sources={sources is not None}"
             )
             raise ValueError(msg)
+        if condition.predicate is c.Infra.CodemodContextPredicate.FACADE_MEMBER_OWNER:
+            derived = cls._facade_member_relocation(condition, admission.captures)
+            if derived is None:
+                return False
+            condition = derived
         return cls._occurrence_binding_holds(
             (admission.root, source, project),
             condition,
@@ -1998,11 +2013,28 @@ class FlextInfraUtilitiesCodemodProject(
                 )
             case c.Infra.CodemodContextPredicate.PACKAGE_LAYERS:
                 return cls._package_has_layers(file_path.parent, condition.arg)
+            case c.Infra.CodemodContextPredicate.FOREIGN_FACADE_MEMBER:
+                letter = FlextInfraUtilitiesCodegenNamespace.facade_family_of_source(
+                    file_path
+                )
+                owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                    root, file_path
+                )
+                return (
+                    letter is not None
+                    and owner is not None
+                    and FlextInfraUtilitiesFacadeMembers.foreign_facade_member(
+                        FlextInfraUtilitiesPyproject.project_package_name(owner),
+                        (letter, captured[0]),
+                        c.Infra.FacadeMemberPlacement(condition.arg[0]),
+                    )
+                )
             case (
                 c.Infra.CodemodContextPredicate.PACKAGE_ROOT_INIT
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE
                 | c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE
                 | c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                | c.Infra.CodemodContextPredicate.FAMILY_FILE
                 | c.Infra.CodemodContextPredicate.IMPORT_CYCLE
                 | c.Infra.CodemodContextPredicate.COMPOSES_FAMILY
                 | c.Infra.CodemodContextPredicate.FAMILY_MEMBER
@@ -2259,7 +2291,10 @@ class FlextInfraUtilitiesCodemodProject(
                     if predicate is c.Infra.CodemodContextPredicate.FAMILY_BASE
                     else cls._family_base_file(root, file_path)
                 )
-            case c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE:
+            case (
+                c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                | c.Infra.CodemodContextPredicate.FAMILY_FILE
+            ):
                 owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                     root, file_path
                 )
@@ -2269,9 +2304,13 @@ class FlextInfraUtilitiesCodemodProject(
                 located = FlextInfraUtilitiesImportLaw.import_namespace(
                     owner, file_path
                 )
+                role = (
+                    "layer0"
+                    if predicate is c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                    else "family"
+                )
                 return located is not None and (
-                    FlextInfraUtilitiesImportLaw.import_module_role(located[1])
-                    == "layer0"
+                    FlextInfraUtilitiesImportLaw.import_module_role(located[1]) == role
                 )
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
@@ -2714,8 +2753,11 @@ class FlextInfraUtilitiesCodemodProject(
                 raise ValueError(message)
             if imported == layout.package_name:
                 return False
+        aliases = config.Infra.tooling.lazy_init.layer_aliases
         if imported in order:
             target_layers: frozenset[str] = frozenset({imported})
+        elif imported in aliases:
+            target_layers = frozenset({aliases[imported]})
         elif imported.isidentifier() and condition.as_:
             target_layers = frozenset(condition.as_)
         else:

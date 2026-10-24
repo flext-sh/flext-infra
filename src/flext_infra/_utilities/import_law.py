@@ -7,10 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from functools import cache
 from pathlib import Path
 from time import monotonic
+from types import MappingProxyType
 from typing import Literal
 
+import flext_core
 from flext_cli import settings, u
 
 from flext_infra import c, config, m, p, t
@@ -790,6 +793,31 @@ class FlextInfraUtilitiesImportLaw:
         return namespace_dir, ".".join(parts)
 
     @staticmethod
+    @cache
+    def _layer_alias_modules() -> t.MappingKV[str, str]:
+        """Derive the module stem of every declared layer alias.
+
+        The core package binds each ``layer-aliases`` entry to a class; that
+        class's module stem (and its private ``_<module>/`` package) ranks at
+        the alias's declared layer. No module is listed here.
+
+        Returns:
+            The module stem of each alias mapped to the layer it ranks at.
+
+        Raises:
+            TypeError: If the core package binds an alias to no class.
+
+        """
+        modules: dict[str, str] = {}
+        for alias, layer in config.Infra.tooling.lazy_init.layer_aliases.items():
+            facade = getattr(flext_core, alias, None)
+            if not isinstance(facade, type):
+                msg = f"core package binds no class to layer alias: {alias}"
+                raise TypeError(msg)
+            modules[facade.__module__.rpartition(".")[2]] = layer
+        return MappingProxyType(modules)
+
+    @staticmethod
     def module_import_layer(module: str) -> int:
         """Return the layer rank of one dotted module of a namespace.
 
@@ -797,7 +825,8 @@ class FlextInfraUtilitiesImportLaw:
         downwards, that names a layer either directly (``settings``,
         ``config``, ``base``, ``services``, ``api``, ``cli``) or through the
         facade family it stands for (``_models`` and ``models.py`` stand for
-        ``m``); a module naming no layer sits in the ``other`` slot.
+        ``m``) or a declared layer alias binds it to (``_result`` ranks with
+        ``u``); a module naming no layer sits in the ``other`` slot.
 
         Returns:
             The index of the module's layer in the declared order.
@@ -805,10 +834,13 @@ class FlextInfraUtilitiesImportLaw:
         """
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         families = {
-            family.module: letter
-            for letter, family in (
-                FlextInfraUtilitiesCodegenNamespace.facade_families().items()
-            )
+            **FlextInfraUtilitiesImportLaw._layer_alias_modules(),
+            **{
+                family.module: letter
+                for letter, family in (
+                    FlextInfraUtilitiesCodegenNamespace.facade_families().items()
+                )
+            },
         }
         for part in module.split(".")[1:]:
             stem = part.lstrip("_")

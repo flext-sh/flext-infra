@@ -1,0 +1,38 @@
+id: ban-testing-ops-in-production-protocol
+snapshots:
+  ? |
+    class ContainerType(Protocol):
+        def reset_for_testing(cls) -> None: ...
+  : labels:
+    - source: 'def reset_for_testing(cls) -> None: ...'
+      style: primary
+      start: 35
+      end: 74
+    - source: |-
+        class ContainerType(Protocol):
+            def reset_for_testing(cls) -> None: ...
+      style: secondary
+      start: 0
+      end: 74
+    - source: reset_for_testing
+      style: secondary
+      start: 39
+      end: 56
+  ? |
+    class ContainerType(Protocol):
+        def shared(cls) -> Container: ...
+  : labels:
+    - source: 'def shared(cls) -> Container: ...'
+      style: primary
+      start: 35
+      end: 68
+    - source: |-
+        class ContainerType(Protocol):
+            def shared(cls) -> Container: ...
+      style: secondary
+      start: 0
+      end: 68
+    - source: shared
+      style: secondary
+      start: 39
+      end: 45
