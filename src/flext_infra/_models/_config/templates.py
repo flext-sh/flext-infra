@@ -403,18 +403,10 @@ class FlextInfraConfigModelsTemplates:
         ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec]:
             """Expose the existing typed consumer view without a second wire field."""
             return tuple(
-                FlextInfraConfigModelsTemplates.TemplateEntrySpec(
-                    destination=destination,
-                    source=declaration.source,
-                    source_kind=declaration.source_kind,
-                    source_package=declaration.source_package,
-                    source_closure=declaration.source_closure,
-                    requires_artifacts=declaration.requires_artifacts,
-                    profiles=declaration.profiles,
-                    ownership=declaration.ownership,
-                    requires_release_protocol=declaration.requires_release_protocol,
-                    requires_beads=declaration.requires_beads,
-                )
+                FlextInfraConfigModelsTemplates.TemplateEntrySpec.model_validate({
+                    **dict(declaration),
+                    "destination": destination,
+                })
                 for destination, declaration in self.catalog.items()
             )
 
