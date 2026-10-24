@@ -57,9 +57,11 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             for line in process.stdout.splitlines()
             if line.startswith("install-runtime-recipe=")
         )
-        sync = '$(UV) sync --locked --project "$(RUNTIME_ROOT)"'
+        sync = '$(UV) sync --frozen --project "$(RUNTIME_ROOT)"'
         tm.that(recipe, has=sync)
         tm.that(recipe, has="--no-python-downloads $(SETUP_SYNC_ARGS)")
+        tm.that(recipe, lacks="$(UV) lock")
+        tm.that(recipe, lacks="--locked")
         resolver = '$(MISE) -C "$(RUNTIME_ROOT)" which python'
         tm.ok(recipe.index(resolver) < recipe.index(sync))
         for verb in ("fmt", "fix"):

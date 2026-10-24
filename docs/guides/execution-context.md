@@ -99,7 +99,7 @@ tests and gates confirm behavior rather than define it.
 not a custom Python bootstrap or its translation into AWK, shell, Taplo or another
 lock/installer parser. Acquire Mise through its official installation mechanism;
 Mise interprets its own configuration and lock and provisions Python and uv.
-Native uv project/workspace discovery then runs `uv sync --locked` into the
+Native uv project/workspace discovery then runs `uv sync --frozen` into the
 runtime owner's physical `.venv`. No authored Python script, inline admission,
 copied bootstrap resource or installed FLEXT operation runs before provisioning
 succeeds. Python executed by uv's native build backend is package installation,
@@ -118,8 +118,11 @@ not the original configured request and its lock binding. In particular, a tool
 declared `latest` and already installed from its lock must remain discoverable
 before upgrade advances that lock. Make, its shared runtime reader, setup and
 direnv consume the same configured native selection without a host-PATH fallback,
-custom lock parser, unlocked install or second resolver. Setup only installs the
-frozen declarations; upgrade alone resolves and writes their native locks.
+custom lock parser or second resolver. Setup always bootstraps and never fails on
+lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committed
+`uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
+every `mise.lock` entry and records only missing ones. Check reports drift through
+`uv lock --check`; upgrade alone advances versions and writes the native locks.
 The upgrade Make owner uses native `mise lock --bump` for its declared platforms;
 plain `mise lock` refreshes the existing resolution and is not an upgrade of
 moving requests. Neither command installs tools; setup consumes the resulting lock.
