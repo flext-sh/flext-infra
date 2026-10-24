@@ -113,6 +113,8 @@ Infra:
         - codemod_stdlib_module_utilities
         - codemod_runtime_package_utilities
         - codemod_generated_module_utilities
+        - codemod_package_export_utilities
+        - codemod_facade_family_package_utilities
       # Generated native rule documents: each renderer receives the typed
       # model of its producer and returns {rule id: native rule document}.
       rules_dir: config/rules/ast-grep/rules/generated

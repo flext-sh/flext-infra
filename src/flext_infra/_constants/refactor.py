@@ -448,6 +448,10 @@ class FlextInfraConstantsRefactor:
     CODEMOD_NEVER_MATCH_REGEX: ClassVar[str] = r"\b\B"
     # Separator of a generated rule id: '<shape>--<qualifier>'.
     CODEMOD_GENERATED_ID_SEPARATOR: ClassVar[str] = "--"
+    # Generated utility id prefix of a package's exports: 'exports--<package>'.
+    CODEMOD_PACKAGE_EXPORTS_UTILITY: ClassVar[str] = "exports"
+    # Generated utility id of the project's facade-family private packages.
+    CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = "facade-family-package"
     CODEMOD_CONFIG_FILENAME: ClassVar[str] = "sgconfig.yml"
     # Static rules are data under the one rule root, config/rules: the
     # ast-grep corpus (sgconfig, rules, utils, tests with snapshots) and the
