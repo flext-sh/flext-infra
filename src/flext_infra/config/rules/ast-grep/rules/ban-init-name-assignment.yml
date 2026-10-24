@@ -1,0 +1,35 @@
+# FLEXT generator law points 1-3 (operator ruling 2026-10-24): an
+# `__init__.py` propagates and never declares. A short alias exists only where
+# its owning module declares it (`c = FlextInfraConstants` in constants.py,
+# listed in that module's `__all__`); the initializer imports it from that
+# module or inherits it from the parent namespace. Only the dunders the
+# generator emits (`__all__`, the lazy-export `__getattr__`/`__dir__`,
+# generated `__version__` metadata) are bound in an initializer.
+#
+# Detection only: the declaration belongs in the owning module and the
+# initializer is regenerated, so no fix is offered here.
+id: ban-init-name-assignment
+language: python
+severity: error
+files:
+  - "**/__init__.py"
+rule:
+  kind: assignment
+  has:
+    field: left
+    kind: identifier
+    not:
+      regex: "^__[A-Za-z0-9_]+__$"
+  not:
+    inside:
+      stopBy: end
+      any:
+        - kind: function_definition
+        - kind: class_definition
+message: >-
+  An `__init__.py` never assigns a name: declare the alias in its owning module
+  (listed in that module's `__all__`) and regenerate the initializer.
+note: >-
+  Where: this assignment. Why: generator law points 1-3 -- an initializer
+  propagates and never declares. How: declare `<alias> = <Class>` in the owning
+  module, export it in that module's `__all__`, and run `make gen`.

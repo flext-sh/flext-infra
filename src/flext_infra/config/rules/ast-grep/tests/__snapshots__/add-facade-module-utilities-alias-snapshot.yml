@@ -1,0 +1,24 @@
+id: add-facade-module-utilities-alias
+snapshots:
+  ? |
+    class FlextDemoUtilities:
+        pass
+    __all__: list[str] = ["FlextDemoUtilities"]
+  : fixed: |
+      class FlextDemoUtilities:
+          pass
+      u = FlextDemoUtilities
+
+      __all__: list[str] = ["FlextDemoUtilities", "u"]
+    labels:
+    - source: '__all__: list[str] = ["FlextDemoUtilities"]'
+      style: primary
+      start: 35
+      end: 78
+    - source: |
+        class FlextDemoUtilities:
+            pass
+        __all__: list[str] = ["FlextDemoUtilities"]
+      style: secondary
+      start: 0
+      end: 79

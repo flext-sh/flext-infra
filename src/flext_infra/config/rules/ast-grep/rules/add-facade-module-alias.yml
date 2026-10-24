@@ -1,0 +1,183 @@
+# FLEXT generator law points 1-3 (operator ruling 2026-10-24): a facade
+# module declares its own short alias (`c = FlextXConstants`) and lists it in
+# its `__all__`; package initializers only import it, never assign it. A
+# facade module whose `__all__` publishes only its family facade class is
+# completed with the alias declaration and export.
+#
+# One document per declared facade family: the file name selects the family,
+# the family suffix constrains the published class, and a module that already
+# binds the family letter at module level is unreachable.
+id: add-facade-module-constants-alias
+language: python
+severity: error
+files:
+  - "**/constants.py"
+rule:
+  pattern: "__all__: list[str] = [$ITEM]"
+  inside:
+    kind: module
+    stopBy: end
+    not:
+      has:
+        kind: expression_statement
+        has:
+          kind: assignment
+          has:
+            field: left
+            regex: "^c$"
+constraints:
+  ITEM:
+    regex: "^[\"'][A-Z][A-Za-z0-9]*Constants[\"']$"
+transform:
+  CLS:
+    substring:
+      source: $ITEM
+      startChar: 1
+      endChar: -1
+fix: |-
+  c = $CLS
+
+  __all__: list[str] = [$ITEM, "c"]
+message: >-
+  A facade module declares its `c` alias and exports it in `__all__`;
+  package initializers import it, never assign it.
+---
+id: add-facade-module-typings-alias
+language: python
+severity: error
+files:
+  - "**/typings.py"
+rule:
+  pattern: "__all__: list[str] = [$ITEM]"
+  inside:
+    kind: module
+    stopBy: end
+    not:
+      has:
+        kind: expression_statement
+        has:
+          kind: assignment
+          has:
+            field: left
+            regex: "^t$"
+constraints:
+  ITEM:
+    regex: "^[\"'][A-Z][A-Za-z0-9]*Types[\"']$"
+transform:
+  CLS:
+    substring:
+      source: $ITEM
+      startChar: 1
+      endChar: -1
+fix: |-
+  t = $CLS
+
+  __all__: list[str] = [$ITEM, "t"]
+message: >-
+  A facade module declares its `t` alias and exports it in `__all__`;
+  package initializers import it, never assign it.
+---
+id: add-facade-module-protocols-alias
+language: python
+severity: error
+files:
+  - "**/protocols.py"
+rule:
+  pattern: "__all__: list[str] = [$ITEM]"
+  inside:
+    kind: module
+    stopBy: end
+    not:
+      has:
+        kind: expression_statement
+        has:
+          kind: assignment
+          has:
+            field: left
+            regex: "^p$"
+constraints:
+  ITEM:
+    regex: "^[\"'][A-Z][A-Za-z0-9]*Protocols[\"']$"
+transform:
+  CLS:
+    substring:
+      source: $ITEM
+      startChar: 1
+      endChar: -1
+fix: |-
+  p = $CLS
+
+  __all__: list[str] = [$ITEM, "p"]
+message: >-
+  A facade module declares its `p` alias and exports it in `__all__`;
+  package initializers import it, never assign it.
+---
+id: add-facade-module-models-alias
+language: python
+severity: error
+files:
+  - "**/models.py"
+rule:
+  pattern: "__all__: list[str] = [$ITEM]"
+  inside:
+    kind: module
+    stopBy: end
+    not:
+      has:
+        kind: expression_statement
+        has:
+          kind: assignment
+          has:
+            field: left
+            regex: "^m$"
+constraints:
+  ITEM:
+    regex: "^[\"'][A-Z][A-Za-z0-9]*Models[\"']$"
+transform:
+  CLS:
+    substring:
+      source: $ITEM
+      startChar: 1
+      endChar: -1
+fix: |-
+  m = $CLS
+
+  __all__: list[str] = [$ITEM, "m"]
+message: >-
+  A facade module declares its `m` alias and exports it in `__all__`;
+  package initializers import it, never assign it.
+---
+id: add-facade-module-utilities-alias
+language: python
+severity: error
+files:
+  - "**/utilities.py"
+rule:
+  pattern: "__all__: list[str] = [$ITEM]"
+  inside:
+    kind: module
+    stopBy: end
+    not:
+      has:
+        kind: expression_statement
+        has:
+          kind: assignment
+          has:
+            field: left
+            regex: "^u$"
+constraints:
+  ITEM:
+    regex: "^[\"'][A-Z][A-Za-z0-9]*Utilities[\"']$"
+transform:
+  CLS:
+    substring:
+      source: $ITEM
+      startChar: 1
+      endChar: -1
+fix: |-
+  u = $CLS
+
+  __all__: list[str] = [$ITEM, "u"]
+message: >-
+  A facade module declares its `u` alias and exports it in `__all__`;
+  package initializers import it, never assign it.

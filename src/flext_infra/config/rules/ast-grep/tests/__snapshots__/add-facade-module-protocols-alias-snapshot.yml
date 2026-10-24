@@ -1,0 +1,24 @@
+id: add-facade-module-protocols-alias
+snapshots:
+  ? |
+    class FlextDemoProtocols:
+        pass
+    __all__: list[str] = ["FlextDemoProtocols"]
+  : fixed: |
+      class FlextDemoProtocols:
+          pass
+      p = FlextDemoProtocols
+
+      __all__: list[str] = ["FlextDemoProtocols", "p"]
+    labels:
+    - source: '__all__: list[str] = ["FlextDemoProtocols"]'
+      style: primary
+      start: 35
+      end: 78
+    - source: |
+        class FlextDemoProtocols:
+            pass
+        __all__: list[str] = ["FlextDemoProtocols"]
+      style: secondary
+      start: 0
+      end: 79

@@ -1,0 +1,14 @@
+id: add-facade-module-utilities-alias
+valid:
+  - |
+    class FlextDemoUtilities:
+        pass
+    u = FlextDemoUtilities
+    __all__: list[str] = ["FlextDemoUtilities", "u"]
+  - |
+    __all__: list[str] = ["load"]
+invalid:
+  - |
+    class FlextDemoUtilities:
+        pass
+    __all__: list[str] = ["FlextDemoUtilities"]

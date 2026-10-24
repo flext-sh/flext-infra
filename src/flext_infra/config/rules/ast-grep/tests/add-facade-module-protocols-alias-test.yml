@@ -1,0 +1,14 @@
+id: add-facade-module-protocols-alias
+valid:
+  - |
+    class FlextDemoProtocols:
+        pass
+    p = FlextDemoProtocols
+    __all__: list[str] = ["FlextDemoProtocols", "p"]
+  - |
+    __all__: list[str] = ["load"]
+invalid:
+  - |
+    class FlextDemoProtocols:
+        pass
+    __all__: list[str] = ["FlextDemoProtocols"]
