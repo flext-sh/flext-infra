@@ -1066,7 +1066,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             A name the planned module does not bind continues into the captured
             submodule of that name, as ``from package import submodule`` does;
             an explicit package binding (class or value) keeps precedence over
-            the file name.
+            the file name. Captured package prefixes do not imply a complete
+            child inventory: an uncaptured child retains the injected project's
+            exact native module election, without importing its runtime package.
 
             Returns:
                 The resolved target and its remaining attribute path.
@@ -1094,7 +1096,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     )
                 bound = module in self._modules and name in self._modules[module]
                 submodule = f"{module}.{name}"
-                if bound or submodule not in self._namespaces:
+                if bound:
+                    break
+                if submodule not in self._namespaces:
+                    if self._project.find_module(submodule) is not None:
+                        return self._external_reference(
+                            submodule, tuple(remaining), visiting, depth + 1
+                        ), []
                     break
                 module = submodule
             if module not in self._modules:

@@ -543,6 +543,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 toml.ListOp(
                     key="extraPaths",
                     values=paths_manager.pyright_extra_paths(),
+                    sort=False,
                 ),
             )
         operations.append(toml.RemoveOp(key="stubPath"))

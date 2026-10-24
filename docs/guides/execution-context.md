@@ -1415,6 +1415,15 @@ an empty topology cannot replace a declared one. Wheel and source-distribution
 templates use the same bounded `only-include` selection as modernization, with
 the declared wheel source mappings and explicit file inclusions.
 
+Analyzer search paths retain the precedence order derived by
+`FlextInfraExtraPathsManager`. The Pyright declaration phase and its later
+synchronization consume that same order; the declaration's list operation must
+not alphabetize it and create a competing change in the same pass. Generic TOML
+list operations keep their declared sorting behavior. Modernization acceptance
+requires a byte-identical second render and an audit that reports every remaining
+drift, including formatting-only drift; phase notes alone do not prove that
+contract.
+
 ## SonarCloud exclusions
 
 The committed-lock contract also removes the former SonarCloud exclusion for a missing
@@ -2318,16 +2327,17 @@ All profiler output paths use one stdlib-only atomic publisher: native marshal
 data is staged on the destination filesystem, flushed and replaced atomically.
 An interrupted write preserves the previous readable profile. Corruption still
 fails the report reader explicitly; neither profiling nor reporting skips it.
-The existing CLI route selector constructs only the requested group's route
-tuple. Codegen, check and dependency routes retain their current owner; release
-and workspace retain theirs, while refactor resolves directly through its own
-owner. These owners resolve service classes through the existing public barrels
-when constructing that group. The command models, handler bindings, messages and
-ordering remain unchanged. In particular, workspace propagation retains the
-facade that injects its conform collaborators. Shared facades, every command in
-the selected group and their real transitive dependencies remain available;
-this boundary does not promise lazy resolution per subcommand. It does not
-combine native processes or replace their interpreter and outcome receipts.
+The existing CLI route selector constructs a separate tuple for each of the
+codegen, check, dependency, release and workspace groups. These groups retain their
+current owners, which resolve service classes through the existing public barrels
+when constructing that group. Refactor resolves directly through its own owner;
+docs, maintenance and validate still share their existing eager table. The
+command models, handler bindings, messages and ordering remain unchanged. In
+particular, workspace propagation retains the facade that injects its conform
+collaborators. Shared facades, every command in the selected group and their real
+transitive dependencies remain available; this boundary does not promise lazy
+resolution per subcommand or measured startup gains. It does not combine native
+processes or replace their interpreter and outcome receipts.
 
 The infrastructure CLI profiler starts before importing its public CLI facade.
 Each completed invocation retains a uniquely named raw profile beside the latest
