@@ -710,10 +710,8 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
         )
-        tm.that(composed, is_=m.Infra.SemanticRenamePlan)
-        tm.that(composed.decisions, eq=artifact.decisions)
-        tm.that(composed.edits, eq=artifact.edits)
-        tm.that(composed.moves, eq=artifact.moves)
+        tm.that(composed, is_=m.Infra.SemanticSourcePlan)
+        tm.that(composed.consumer_roots, eq=artifact.consumer_roots)
         tm.that(composed.candidate.modes[target], eq=originals[origin].mode)
         if drift == "source":
             origin.write_bytes(tm.not_none(originals[origin].content) + b"\n")
