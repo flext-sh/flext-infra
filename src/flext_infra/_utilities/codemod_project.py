@@ -2149,7 +2149,10 @@ class FlextInfraUtilitiesCodemodProject(
             case c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE:
                 return module in facts.runtime_modules
             case c.Infra.CodemodContextPredicate.FACADE_PACKAGE:
-                return (module == own or module in facts.runtime_modules) and bool(
+                # A package publishing generated facade aliases is a FLEXT
+                # facade package wherever it is installed: a development
+                # dependency (flext_tests) is never an external library.
+                return (module == own or find_spec(module) is not None) and bool(
                     cls._codemod_runtime_aliases(root, module, own),
                 )
             case c.Infra.CodemodContextPredicate.RUNTIME_ALIAS:
