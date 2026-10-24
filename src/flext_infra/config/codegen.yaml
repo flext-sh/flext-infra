@@ -127,6 +127,10 @@ Infra:
         - name: codemod_module_member_rules
           facts: codemod_package_export_facts
           shapes: [module-member]
+        # One rule per tuple-of-classes constant of the constants facade:
+        # an inline isinstance set equal to it is rewired to the constant.
+        - name: codemod_type_set_rules
+          shapes: [type-set]
 
     # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
     # sites read these rows through config.Infra.codegen.modes; octal mode

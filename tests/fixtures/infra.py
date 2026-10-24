@@ -224,6 +224,17 @@ def suite_runtime_root() -> Path:
     return tm.ok(u.Infra.runtime_owner_root(_PROJECT_ROOT))
 
 
+@pytest.fixture(scope="session")
+def infra_project_root() -> Path:
+    """Return the flext-infra checkout whose real facades the suite exercises.
+
+    Returns:
+        The project root holding flext-infra's ``pyproject.toml``.
+
+    """
+    return _PROJECT_ROOT
+
+
 @pytest.fixture
 def profiling_enabled() -> Iterator[None]:
     """Opt child processes into profiling through the typed settings owner.
