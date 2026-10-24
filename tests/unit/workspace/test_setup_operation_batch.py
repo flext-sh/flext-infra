@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import main
+from flext_infra import infra, main
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentMixin
 from tests import c, m, tm, u
 
@@ -212,6 +212,7 @@ class TestsFlextInfraSetupOperationBatch:
                     repository_root=root,
                     allow_direnv=False,
                 ),
+                synchronize=infra.sync_environment_files,
                 scope=c.Infra.CodegenConformScope.ALL,
             ),
         )
@@ -238,6 +239,7 @@ class TestsFlextInfraSetupOperationBatch:
                 repository_root=root,
                 allow_direnv=False,
             ),
+            synchronize=infra.sync_environment_files,
             scope=c.Infra.CodegenConformScope.ALL,
         )
 

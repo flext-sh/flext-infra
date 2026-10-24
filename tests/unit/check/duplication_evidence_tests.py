@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import gates
+from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
 from tests import m, tm
 
 
@@ -84,7 +84,7 @@ class TestsFlextInfraDuplicationEvidence:
         root: Path,
         report: m.Infra.JscpdReport,
     ) -> m.Infra.DuplicationAssessment:
-        return gates.FlextInfraDuplicationEvidence().assess(
+        return FlextInfraDuplicationEvidence().assess(
             report,
             root,
             m.Infra.ProjectDuplicationOverrides(),
@@ -190,21 +190,21 @@ class TestsFlextInfraDuplicationEvidence:
         """Console output is retained separately, not mistaken for another report."""
         report = self._report(tmp_path, "value = calculate()\n")
         raw = report.model_dump_json()
-        parsed = gates.FlextInfraDuplicationEvidence.parse(
+        parsed = FlextInfraDuplicationEvidence.parse(
             raw + "\nERROR: jscpd threshold exceeded\n"
         )
         tm.that(parsed, eq=report)
         with pytest.raises(ValueError, match="second JSON"):
-            gates.FlextInfraDuplicationEvidence.parse(raw + "\n{}")
+            FlextInfraDuplicationEvidence.parse(raw + "\n{}")
 
     def test_invalid_report_is_not_an_empty_success(self, tmp_path: Path) -> None:
         """Missing statistics or mismatched inventory cannot authorize green."""
         with pytest.raises(ValueError, match="statistics"):
-            gates.FlextInfraDuplicationEvidence.parse('{"duplicates": []}')
+            FlextInfraDuplicationEvidence.parse('{"duplicates": []}')
         report = self._report(tmp_path, "value = calculate()\n")
         malformed = report.model_dump_json().replace('"clones":1', '"clones":2')
         with pytest.raises(ValueError, match="clone total"):
-            gates.FlextInfraDuplicationEvidence.parse(malformed)
+            FlextInfraDuplicationEvidence.parse(malformed)
 
     @pytest.mark.parametrize("format_name", ["yaml", "json", "markdown"])
     def test_invalid_data_or_unmapped_format_fails_closed(
@@ -251,7 +251,7 @@ class TestsFlextInfraDuplicationEvidence:
         """Unrecognized tool output requires an explicit parser contract change."""
         report = self._report(tmp_path, "value = calculate()\n")
         with pytest.raises(ValueError, match="unrecognized console"):
-            gates.FlextInfraDuplicationEvidence.parse(
+            FlextInfraDuplicationEvidence.parse(
                 report.model_dump_json() + "\nunknown output"
             )
 

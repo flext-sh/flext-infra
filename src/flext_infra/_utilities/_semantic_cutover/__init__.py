@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.constant_consumers import (
         FlextInfraUtilitiesSemanticConstantConsumers,
     )
+    from flext_infra._utilities._semantic_cutover.constant_sources import (
+        FlextInfraUtilitiesSemanticConstantSources,
+    )
     from flext_infra._utilities._semantic_cutover.contracts import (
         FlextInfraUtilitiesSemanticContracts,
     )
@@ -42,6 +45,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._semantic_cutover.declaration_retirement import (
         FlextInfraUtilitiesSemanticDeclarationRetirement,
+    )
+    from flext_infra._utilities._semantic_cutover.delegations import (
+        FlextInfraUtilitiesSemanticDelegations,
     )
     from flext_infra._utilities._semantic_cutover.dynamic_environment import (
         FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
@@ -117,6 +123,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesSemanticConstantConsumers",
+    "FlextInfraUtilitiesSemanticConstantSources",
     "FlextInfraUtilitiesSemanticContracts",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
     "FlextInfraUtilitiesSemanticCutoverAliases",
@@ -141,6 +148,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverSelfFacade",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
     "FlextInfraUtilitiesSemanticDeclarationRetirement",
+    "FlextInfraUtilitiesSemanticDelegations",
     "FlextInfraUtilitiesSemanticFamilyFlatten",
     "FlextInfraUtilitiesSemanticFamilyReferences",
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
@@ -156,6 +164,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraUtilitiesDeclarationPayload": ".declaration_payload",
         "FlextInfraUtilitiesSemanticConstantConsumers": ".constant_consumers",
+        "FlextInfraUtilitiesSemanticConstantSources": ".constant_sources",
         "FlextInfraUtilitiesSemanticContracts": ".contracts",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": ".alias_cst",
         "FlextInfraUtilitiesSemanticCutoverAliases": ".aliases",
@@ -184,6 +193,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverSelfFacade": ".self_facade",
         "FlextInfraUtilitiesSemanticDeclarationRelocation": ".declaration_relocation",
         "FlextInfraUtilitiesSemanticDeclarationRetirement": ".declaration_retirement",
+        "FlextInfraUtilitiesSemanticDelegations": ".delegations",
         "FlextInfraUtilitiesSemanticFamilyFlatten": ".family_flatten",
         "FlextInfraUtilitiesSemanticFamilyReferences": ".family_references",
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",

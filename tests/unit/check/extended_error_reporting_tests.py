@@ -60,8 +60,7 @@ class TestsFlextInfraGateErrorReporting:
             project.total_findings,
             eq=sum(len(item.issues) for item in project.gates.values()),
         )
-        receipt = project.gates[gates[0]].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(project.gates[gates[0]].raw_receipt)
         report_path = receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         report = report_path.read_text(
             encoding="utf-8",
@@ -142,9 +141,9 @@ class TestsFlextInfraGateErrorReporting:
         tm.that(len(execution.result.errors), eq=1)
         tm.that(execution.result.errors[0], has="invalid-line-length")
         tm.that(execution.raw_output, has="invalid-line-length")
-        tm.that(execution.raw_receipt, none=False)
+        raw_receipt = tm.not_none(execution.raw_receipt)
         tm.that(
-            execution.raw_receipt.read_bytes().decode("utf-8"),
+            raw_receipt.read_bytes().decode("utf-8"),
             eq=execution.raw_output,
         )
         captured = capsys.readouterr()
@@ -185,16 +184,16 @@ class TestsFlextInfraGateErrorReporting:
         execution = projects[0].gates[c.Infra.SECURITY]
         tm.fail(execution.result.passed)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(execution.raw_receipt, none=False)
+        raw_receipt = tm.not_none(execution.raw_receipt)
         (invocation_directory,) = tuple(reports_dir.iterdir())
         tm.that(
-            execution.raw_receipt,
+            raw_receipt,
             eq=invocation_directory
             / tmp_path.name
             / project_dir.relative_to(tmp_path)
             / (f"{c.Infra.SECURITY}{config.Infra.tooling.raw_check_receipt_suffix}"),
         )
-        receipt = execution.raw_receipt.read_bytes().decode("utf-8")
+        receipt = raw_receipt.read_bytes().decode("utf-8")
         tm.that(receipt, eq=execution.raw_output, has=source_marker)
         tm.that(any(issue.code == "B307" for issue in execution.issues), eq=True)
         tm.that(
@@ -211,7 +210,7 @@ class TestsFlextInfraGateErrorReporting:
         )
         tm.that(
             report,
-            has=execution.raw_receipt.resolve().as_uri(),
+            has=raw_receipt.resolve().as_uri(),
             lacks=source_marker,
         )
         captured = capsys.readouterr()
@@ -254,8 +253,7 @@ class TestsFlextInfraGateErrorReporting:
                 reports_dir=reports_dir,
             ),
         )
-        receipt = projects[0].gates[c.Infra.SECURITY].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(projects[0].gates[c.Infra.SECURITY].raw_receipt)
         tm.ok(receipt.is_file())
         tm.that(receipt, ne=blocked_receipt)
         tm.ok(blocked_receipt.is_dir())
@@ -346,8 +344,7 @@ class TestsFlextInfraGateErrorReporting:
         tm.fail(result.value[0].passed)
         captured = capsys.readouterr()
         tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
-        receipt = result.value[0].gates[c.Infra.MARKDOWN].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(result.value[0].gates[c.Infra.MARKDOWN].raw_receipt)
         report = m.Infra.SarifReport.model_validate_json(
             (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
                 encoding="utf-8",

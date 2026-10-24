@@ -339,24 +339,6 @@ class FlextInfra(
         )
 
     @staticmethod
-    def _project_git_identity(
-        resolved: Path,
-    ) -> p.Result[m.Infra.GitIdentityReport | None]:
-        """Return the repository Git identity, or ``None`` outside a repository.
-
-        Args:
-            resolved: Resolved project working directory.
-
-        Returns:
-            The Git identity report, or ``None`` when no Git identity exists.
-
-        """
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
-        if identity.failure:
-            return r[m.Infra.GitIdentityReport | None].ok(value=None)
-        return r[m.Infra.GitIdentityReport | None].ok(value=identity.value)
-
-    @staticmethod
     def _project_captured_runtime(
         resolved: Path,
         root: Path,
@@ -434,8 +416,8 @@ class FlextInfra(
             return r[m.Infra.WorkspaceProjectContext].fail(
                 f"project context cwd is not a directory: {resolved}",
             )
-        identity = FlextInfra._project_git_identity(resolved)
-        if identity.value is None:
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
+        if identity.failure:
             return r[m.Infra.WorkspaceProjectContext].ok(
                 m.Infra.WorkspaceProjectContext(cwd=resolved),
             )

@@ -302,7 +302,9 @@ class FlextInfraModelsCheck:
             mode="before",
         )
         @classmethod
-        def _coerce_declared_sequences(cls, value: object) -> object:
+        def _coerce_declared_sequences(
+            cls, value: t.JsonValue
+        ) -> t.JsonValue | t.VariadicTuple[t.JsonValue]:
             """Coerce scanner JSON arrays into the strict tuple form.
 
             Args:

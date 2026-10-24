@@ -206,7 +206,7 @@ class TestsFlextInfraCodegenVscode:
     ) -> None:
         """Remove obsolete owned entries without replacing language preferences."""
         retired = config.Infra.codegen.vscode.stripped_map_keys
-        settings = {
+        settings: t.JsonDict = {
             language: {
                 **dict.fromkeys(keys, True),
                 "editor.rulers": [88],
@@ -278,7 +278,7 @@ class TestsFlextInfraCodegenVscode:
     ) -> None:
         """An explicitly merged map supports JSON values beyond scalar options."""
         key = "[fixture]"
-        local: t.JsonMapping = {"operator.local": [{"name": "retained"}]}
+        local: t.JsonDict = {"operator.local": [{"name": "retained"}]}
         declared: t.JsonMapping = {
             "operator.unset": None,
             "operator.weight": 0.25,

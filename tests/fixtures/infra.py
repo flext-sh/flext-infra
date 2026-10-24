@@ -501,7 +501,7 @@ _FLEET_PROVISION = partial(
 )
 
 
-@pytest.fixture(scope=c.ContextScope.SESSION)
+@pytest.fixture(scope="session")
 def fleet_session_runtime(
     tmp_path_factory: pytest.TempPathFactory,
     run_namespace: m.Tests.TestNamespace,
@@ -828,7 +828,7 @@ def _ensure_provisioned(
                 _provision_infra_checkout(run_root, key)
 
 
-@pytest.fixture(scope=c.ContextScope.SESSION)
+@pytest.fixture(scope="session")
 def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMapping:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
@@ -860,7 +860,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
     return u.Tests.hermetic_git_environment(mirrors)
 
 
-@pytest.fixture(scope=c.ContextScope.SESSION, params=tuple(c.Infra.MakeProfile))
+@pytest.fixture(scope="session", params=tuple(c.Infra.MakeProfile))
 def generated_make_template(
     request: pytest.FixtureRequest,
     tmp_path_factory: pytest.TempPathFactory,
@@ -880,7 +880,7 @@ def generated_make_template(
     return profile, root
 
 
-@pytest.fixture(scope=c.ContextScope.SESSION)
+@pytest.fixture(scope="session")
 def resolved_make_templates(
     session_runtime: p.Tests.SessionRuntime,
     hermetic_git_environment: t.StrMapping,
@@ -1190,7 +1190,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
     return project_root
 
 
-@pytest.fixture(scope=c.ContextScope.SESSION)
+@pytest.fixture(scope="session")
 def mod_workspace_artifact(
     session_runtime: p.Tests.SessionRuntime,
 ) -> t.Pair[Path, Path]:

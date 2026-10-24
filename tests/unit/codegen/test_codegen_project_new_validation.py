@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from flext_infra import FlextInfraConfig, config
 from flext_infra.codegen import FlextInfraCodegenMakeBootstrap
 from tests import c, m, tm, u
-from tests.unit.codegen import TestsFlextInfraConformSupport
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenProjectNewValidation:

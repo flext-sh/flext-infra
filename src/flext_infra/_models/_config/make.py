@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -24,16 +23,15 @@ from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeCle
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
 
 
-@lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
 def _effective_custom_handler_policies(
     base: FlextInfraConfigModelsMake.CustomHandlerPolicy,
-    overrides: tuple[tuple[str, FlextInfraConfigModelsMake.CustomHandlerPolicy], ...],
+    overrides: tuple[
+        tuple[str, FlextInfraConfigModelsMake.CustomHandlerPolicyOverride], ...
+    ],
 ) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
-    Pure function of frozen models, memoized per distinct ``(base,
-    overrides)`` pair: the returned mapping is shared read-only instead of
-    re-copying a fresh map on every access and every serialization.
+    Pure function of frozen models: the returned mapping is read-only.
 
     Args:
         base: The strictest base policy every profile falls back to.
@@ -1147,9 +1145,6 @@ class FlextInfraConfigModelsMake(
             """
             base = self.custom_handler_policy
             overrides = self.custom_handler_profile_overrides
-            # The derivation is a pure function of frozen models, so it is
-            # memoized once per distinct (base, overrides) pair instead of
-            # re-copying a fresh map on every access and every serialization.
             return _effective_custom_handler_policies(
                 base,
                 tuple(sorted(overrides.items())),

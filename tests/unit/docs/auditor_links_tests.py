@@ -280,7 +280,10 @@ class TestsFlextInfraAuditorLinks:
                 f"[y]({foreign})\n",
                 encoding="utf-8",
             )
-            item = u.Infra.docs_process_markdown_file(target, apply=True)
+            updated, item = u.Infra.docs_process_markdown_file(
+                target, content=target.read_text(encoding="utf-8")
+            )
+            target.write_text(updated, encoding="utf-8")
             tm.that(item.links, gte=1)
             tm.that(
                 target.read_text(),

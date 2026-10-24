@@ -545,7 +545,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 else m.Infra.DirectUrlDirectoryInfo(editable=defect == "editable")
             ),
             vcs_info=(
-                m.Infra.DirectUrlVcsInfo(vcs="git", commit_id=identity.head_oid)
+                m.Infra.DirectUrlVcsInfo(
+                    vcs="git", commit_id=tm.not_none(identity.head_oid)
+                )
                 if defect == "vcs"
                 else None
             ),
@@ -728,7 +730,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 u.Infra.git_update_index_gitlink(
                     m.Infra.GitUpdateIndexGitlinkRequest(
                         repo_root=workspace,
-                        oid=root_identity.head_oid,
+                        oid=tm.not_none(root_identity.head_oid),
                         relative_path="sample-member",
                     ),
                 ),
@@ -820,9 +822,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 vcs_info=m.Infra.DirectUrlVcsInfo(
                     vcs="hg" if defect == "vcs" else "git",
                     commit_id=(
-                        c.ParserBooleanToken.ZERO * len(identity.head_oid)
+                        c.ParserBooleanToken.ZERO * len(tm.not_none(identity.head_oid))
                         if defect == "revision"
-                        else identity.head_oid
+                        else tm.not_none(identity.head_oid)
                     ),
                 ),
             )

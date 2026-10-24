@@ -536,7 +536,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
             entry = remaining.get(path)
             if entry is None or path in expected:
                 continue
-            parents: Iterable[m.Cli.AtomicPhysicalTreeEntry] = chain(
+            parents: Iterable[
+                m.Cli.AtomicPhysicalTreeEntry | m.Cli.AtomicDirectoryState
+            ] = chain(
                 (root,),
                 expected.values(),
                 (

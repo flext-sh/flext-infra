@@ -225,18 +225,16 @@ assert changed.read_text(encoding='utf-8') == replacement
         tm.that(inspection.type, eq=str)
         preset = m.ContractModel.model_validate({})
         tm.that(preset.model_dump(), eq={})
-        tm.that(
-            isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint),
-            truth=True,
-        )
+        if not (isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint)):
+            pytest.fail("entrypoint is not a class, function or method")
         expected_source = Path(getfile(entrypoint)).resolve()
         admission = tm.ok(
             FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(), entrypoint=entrypoint
             )
         )
-        tm.that(admission.generator_reference, none=False)
-        sources = admission.generator_reference.sources
+        reference = tm.not_none(admission.generator_reference)
+        sources = reference.sources
         tm.that(sources, empty=False)
         tm.that(
             any(Path(source).resolve() == expected_source for _, source, _ in sources),

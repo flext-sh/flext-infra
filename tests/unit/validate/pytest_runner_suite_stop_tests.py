@@ -120,6 +120,45 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.fail((outcome_path.parent / "summary.txt").exists())
         tm.fail((outcome_path.parent / "run-accounting.json").exists())
 
+    def _testmon_batch_size(self) -> int:
+        """Read the installed testmon batch size from its source declaration.
+
+        Returns:
+            The positive literal batch size declared by the installed distribution.
+
+        Raises:
+            TypeError: If the declaration is not a literal positive integer.
+
+        """
+        distribution = u.Infra.codemod_distributions()["pytest-testmon"]
+        installed_files = tm.not_none(distribution.files)
+        (batch_owner,) = (
+            entry
+            for entry in installed_files
+            if entry.as_posix() == "testmon/testmon_core.py"
+        )
+        batch_source = Path(str(distribution.locate_file(batch_owner)))
+        tree = ast.parse(self._read(batch_source), filename=str(batch_source))
+        (declaration,) = (
+            statement
+            for statement in tree.body
+            if isinstance(statement, ast.Assign)
+            and any(
+                isinstance(name, ast.Name) and name.id == "TEST_BATCH_SIZE"
+                for name in statement.targets
+            )
+        )
+        literal = declaration.value
+        if not isinstance(literal, ast.Constant):
+            msg = "TEST_BATCH_SIZE must be a literal constant"
+            raise TypeError(msg)
+        batch_size = literal.value
+        if not isinstance(batch_size, int) or isinstance(batch_size, bool):
+            msg = "TEST_BATCH_SIZE must be an integer"
+            raise TypeError(msg)
+        tm.that(batch_size > 0, truth=True)
+        return batch_size
+
     @pytest.mark.slow
     @pytest.mark.parametrize("distributed", [True, False], ids=["xdist", "serial"])
     def test_suite_stop_instant_persists_the_executed_prefix(
@@ -141,35 +180,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             if distributed
             else 1
         )
-        distribution = u.Infra.codemod_distributions()["pytest-testmon"]
-        installed_files = distribution.files
-        tm.that(installed_files, none=False)
-        (batch_owner,) = (
-            entry
-            for entry in installed_files
-            if entry.as_posix() == "testmon/testmon_core.py"
-        )
-        batch_source = Path(str(distribution.locate_file(batch_owner)))
-        tree = u.Infra.parse_rope_module(
-            self._read(batch_source),
-            filename=str(batch_source),
-        )
-        tm.that(isinstance(tree, ast.Module), truth=True)
-        (declaration,) = (
-            statement
-            for statement in tree.body
-            if isinstance(statement, ast.Assign)
-            and any(
-                isinstance(name, ast.Name) and name.id == "TEST_BATCH_SIZE"
-                for name in statement.targets
-            )
-        )
-        literal = declaration.value
-        tm.that(isinstance(literal, ast.Constant), truth=True)
-        batch_size = literal.value
-        tm.that(isinstance(batch_size, int), truth=True)
-        tm.that(isinstance(batch_size, bool), truth=False)
-        tm.that(batch_size > 0, truth=True)
+        batch_size = self._testmon_batch_size()
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
             "from runner_sample import answer\n\n"

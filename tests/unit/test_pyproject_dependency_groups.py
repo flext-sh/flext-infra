@@ -455,7 +455,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
             f'examples = [{{include-group = "{name}"}}]',
             project_fields=(
                 "[project.optional-dependencies]\n"
-                f"{name} = {tm.ok(u.Cli.json_dumps(optional))}\n"
+                f"{name} = {tm.ok(u.Cli.json_dumps([*optional]))}\n"
                 'feature = ["independent-extra>=1.0,<2.0"]'
             ),
         )

@@ -6,29 +6,40 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import c, tm
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraWorkspaceCheckerResolveGates:
     """Test FlextInfraWorkspaceChecker.resolve_gates."""
 
     @staticmethod
-    def test_resolve_gates_type_is_rejected() -> None:
+    def test_resolve_gates_type_is_rejected(tmp_path: Path) -> None:
         """Test resolve gates type is rejected."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["type"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "type"
+        ])
         tm.fail(result, has="unknown gate")
 
     @staticmethod
-    def test_resolve_gates_rejects_empty_strings() -> None:
+    def test_resolve_gates_rejects_empty_strings(tmp_path: Path) -> None:
         """Test resolve gates rejects empty strings."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "", "format"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "lint",
+            "",
+            "format",
+        ])
         tm.fail(result, has="invalid gate name")
 
     @staticmethod
-    def test_resolve_gates_rejects_duplicate_entries() -> None:
+    def test_resolve_gates_rejects_duplicate_entries(tmp_path: Path) -> None:
         """Test resolve gates rejects duplicate entries."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             "lint",
             "lint",
             "format",
@@ -37,15 +48,19 @@ class TestsFlextInfraWorkspaceCheckerResolveGates:
         tm.fail(result, has="duplicate gate")
 
     @staticmethod
-    def test_resolve_gates_invalid_gate_fails() -> None:
+    def test_resolve_gates_invalid_gate_fails(tmp_path: Path) -> None:
         """Test resolve gates invalid gate fails."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["invalid"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "invalid"
+        ])
         tm.fail(result, has="unknown gate")
 
     @staticmethod
-    def test_resolve_gates_accepts_every_declared_gate() -> None:
+    def test_resolve_gates_accepts_every_declared_gate(tmp_path: Path) -> None:
         """Test resolve gates accepts every declared gate."""
         gates = sorted(c.Infra.ALLOWED_GATES)
-        result = FlextInfraWorkspaceChecker.resolve_gates(gates)
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates(
+            gates
+        )
         tm.ok(result)
         tm.that(sorted(result.value), eq=gates)

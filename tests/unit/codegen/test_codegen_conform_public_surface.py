@@ -22,7 +22,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
-from tests.unit.codegen import TestsFlextInfraConformSupport
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
 

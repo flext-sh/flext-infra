@@ -299,9 +299,7 @@ class TestsFlextInfraRefactorMainCli:
             The resulting ``list[t.JsonMapping]``.
 
         """
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = tm.ok(u.Cli.json_read(impact_map_path))
         files = u.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         return [u.Tests.toml_mapping(item) for item in files]
 
@@ -797,8 +795,8 @@ class TestsFlextInfraRefactorMainCli:
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
-        tm.ok(service_entry["modified"])
-        tm.ok(service_entry["success"])
+        tm.that(service_entry["modified"], eq=True)
+        tm.that(service_entry["success"], eq=True)
         tm.that(
             list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_cleanup (unused)"],
@@ -842,8 +840,8 @@ class TestsFlextInfraRefactorMainCli:
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
         service_entry = next(item for item in entries if item["path"] == service_path)
 
-        tm.ok(service_entry["modified"])
-        tm.ok(service_entry["success"])
+        tm.that(service_entry["modified"], eq=True)
+        tm.that(service_entry["success"], eq=True)
         tm.that(
             list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_tests (unused)"],

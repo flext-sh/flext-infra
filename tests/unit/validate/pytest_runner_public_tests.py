@@ -124,8 +124,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(tracked.read_text(encoding=c.DEFAULT_ENCODING), eq="during\n")
         tm.that(evidence.gate, eq=c.Infra.VERB_TEST)
         tm.that(evidence.intent.requested_gates, eq=())
-        tm.that(evidence.intent.test_selection, none=False)
-        tm.that(evidence.intent.test_selection.target, eq=runner.target)
+        selection = tm.not_none(evidence.intent.test_selection)
+        tm.that(selection.target, eq=runner.target)
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             (receipts[0].parent / "suite-outcome.json").read_bytes(),
         )

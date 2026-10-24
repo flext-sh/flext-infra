@@ -19,7 +19,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, config, m, r, s, t, u
+from flext_infra import FlextInfraServiceBase, c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,7 +27,9 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraRuntimeCensusValidator(s[bool], m.Infra.ModuleSelectionMixin):
+class FlextInfraRuntimeCensusValidator(
+    FlextInfraServiceBase[bool], m.Infra.ModuleSelectionMixin
+):
     """Post-import runtime enforcement census across workspace projects."""
 
     project_filter: Annotated[

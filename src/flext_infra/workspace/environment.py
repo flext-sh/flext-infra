@@ -223,7 +223,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         )
         if result.failure:
             return r[t.Cli.ResultValue].from_failure(result)
-        synchronized: t.Cli.ResultValue = tuple(str(path) for path in result.value)
+        synchronized: t.Cli.ResultValue = [str(path) for path in result.value]
         return r[t.Cli.ResultValue].ok(synchronized)
 
 

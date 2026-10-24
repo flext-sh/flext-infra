@@ -52,9 +52,17 @@ class TestsFlextInfraAuditorCodeblocks:
         snippet.write_text(f"```python\n{first}\n{third}```\n", encoding="utf-8")
         tm.ok(bool(u.Infra.docs_python_codeblock_issues(scope)))
 
-        tm.ok(bool(u.Infra.docs_fix_python_codeblocks(scope, apply=True)))
+        original = snippet.read_text(encoding="utf-8")
+        repaired = u.Infra.docs_fix_python_codeblocks(
+            scope, path=snippet, content=original
+        )
+        tm.that(repaired, ne=original)
+        snippet.write_text(repaired, encoding="utf-8")
         tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
-        tm.that(u.Infra.docs_fix_python_codeblocks(scope, apply=True), eq=[])
+        tm.that(
+            u.Infra.docs_fix_python_codeblocks(scope, path=snippet, content=repaired),
+            eq=repaired,
+        )
 
     @staticmethod
     def test_docs_python_codeblock_issues_ignore_snippet_only_rules(
@@ -112,7 +120,8 @@ class TestsFlextInfraAuditorCodeblocks:
         """Test docs python codeblock issues report invalid python."""
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
-        (docs_dir / "broken.md").write_text(
+        broken = docs_dir / "broken.md"
+        broken.write_text(
             "```python\n**Happy coding!** 🚀\n```\n",
             encoding="utf-8",
         )
@@ -129,7 +138,9 @@ class TestsFlextInfraAuditorCodeblocks:
         tm.that(issues[0].file, eq="docs/broken.md")
 
         with pytest.raises(RuntimeError, match="Ruff could not fix"):
-            u.Infra.docs_fix_python_codeblocks(scope, apply=True)
+            u.Infra.docs_fix_python_codeblocks(
+                scope, path=broken, content=broken.read_text(encoding="utf-8")
+            )
 
     @staticmethod
     def test_scanner_excerpt_requires_non_executable_text_fence(

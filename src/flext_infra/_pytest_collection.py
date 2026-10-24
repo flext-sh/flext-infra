@@ -335,6 +335,18 @@ class FlextInfraPytestCollection:
         return Path(target)
 
     @staticmethod
+    def _worker_identity(node: WorkerController) -> str:
+        """Read the native worker gateway identity as a validated string.
+
+        Returns:
+            The identity the distributed controller assigned to this worker.
+
+        """
+        return u.type_adapter(str).validate_python(
+            vars(node.gateway).get("id"), strict=True
+        )
+
+    @staticmethod
     @pytest.hookimpl(optionalhook=True)
     def pytest_configure_node(node: WorkerController) -> None:
         """Admit each actual native worker into this invocation's inventory.
@@ -346,7 +358,7 @@ class FlextInfraPytestCollection:
         if FlextInfraPytestCollection._suite_manifest_target(node.config) is None:
             return
         workers = node.config.stash[FlextInfraPytestCollection._workers]
-        identity = node.gateway.id
+        identity = FlextInfraPytestCollection._worker_identity(node)
         if identity in workers:
             msg = f"duplicate pytest worker admission: {identity}"
             raise ValueError(msg)
@@ -367,7 +379,7 @@ class FlextInfraPytestCollection:
         """
         if FlextInfraPytestCollection._suite_manifest_target(node.config) is None:
             return
-        identity = node.gateway.id
+        identity = FlextInfraPytestCollection._worker_identity(node)
         workers = node.config.stash[FlextInfraPytestCollection._workers]
         observed = node.config.stash[FlextInfraPytestCollection._worker_ids]
         node_ids = tuple(ids)
@@ -397,7 +409,7 @@ class FlextInfraPytestCollection:
         target = FlextInfraPytestCollection._suite_manifest_target(node.config)
         if target is None or error is not None:
             return
-        identity = node.gateway.id
+        identity = FlextInfraPytestCollection._worker_identity(node)
         workers = node.config.stash[FlextInfraPytestCollection._workers]
         observed = node.config.stash[FlextInfraPytestCollection._worker_ids]
         manifests = node.config.stash[FlextInfraPytestCollection._worker_manifests]

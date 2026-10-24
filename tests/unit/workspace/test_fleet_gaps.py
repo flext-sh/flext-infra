@@ -276,7 +276,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         (project,) = results
         execution = project.gates[gates[0]]
         native = execution.raw_receipt
-        tm.that(native, none=False)
+        native = tm.not_none(native)
         return native.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME, project
 
     def test_explicit_invocation_counts_only_its_own_executed_gates(
@@ -358,7 +358,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
                     (root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists(), eq=False
                 )
             native = project.gates[c.Infra.LINT].raw_receipt
-            tm.that(native, none=False)
+            native = tm.not_none(native)
             native.unlink()
             tm.that(self._fleet_gaps(root, selected), ne=0)
             tm.fail((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists())
@@ -393,7 +393,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         tm.that(lint.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(lint.issues, empty=False)
         native = lint.raw_receipt
-        tm.that(native, none=False)
+        native = tm.not_none(native)
         selected = native.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
         with self._gh_on_path(tmp_path, "exit 0\n"):
             tm.that(self._fleet_gaps(root, selected), eq=0)
@@ -415,7 +415,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         )
         report = m.Infra.SarifReport.model_validate_json(selected.read_bytes())
         summary = report.properties
-        tm.that(summary, none=False)
+        summary = tm.not_none(summary)
         execution = project.gates[c.Infra.LINT].model_copy(
             update={"outcome": c.Infra.ToolOutcome.ERROR}
         )

@@ -92,7 +92,7 @@ print(after.model_dump_json())
     @staticmethod
     def _alias_paths(
         aliases: t.SequenceOf[m.Infra.NativeBindingEvidence],
-        roots: t.AbstractSet[str],
+        roots: t.StrSequence,
     ) -> t.Pair[
         t.MappingKV[str, t.VariadicTuple[m.Infra.NativeBindingEvidence]],
         t.MappingKV[str, t.SequenceOf[m.Infra.NativeBindingEvidence]],
@@ -130,7 +130,9 @@ print(after.model_dump_json())
         """Bound the supplier edges and paths reached from the selected roots."""
         indexed = {item.binding: item for item in observation.bindings}
         aliases = tuple(item for item in observation.bindings if item.kind == "alias")
-        roots = {f"{item.target}::{'.'.join(item.attributes)}" for item in selections}
+        roots = tuple(
+            f"{item.target}::{'.'.join(item.attributes)}" for item in selections
+        )
         paths, _ = TestsFlextInfraNativeCallableAdmission._alias_paths(aliases, roots)
         reached = tuple(
             edge

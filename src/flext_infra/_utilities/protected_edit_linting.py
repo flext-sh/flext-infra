@@ -52,7 +52,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         if before_source is not None:
-            source = cls.remove_orphaned_imports(before_source, source)
+            source = cls.remove_orphaned_text_imports(before_source, source)
         prepared = cls.normalize_sources(repository_root, {path: source})
         if prepared.failure:
             return r[str].from_failure(prepared)
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def remove_orphaned_imports(original: str, proposed: str) -> str:
+    def remove_orphaned_text_imports(original: str, proposed: str) -> str:
         """Remove only imports whose last executable use the transformation removed.
 
         Returns:

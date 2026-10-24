@@ -18,7 +18,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMakeBootstrap,
 )
 from tests import c, tm, u
-from tests.unit.codegen import TestsFlextInfraConformSupport
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
 

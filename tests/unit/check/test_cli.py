@@ -60,9 +60,9 @@ class TestsFlextInfraWorkspaceCheckCli:
         return module_path
 
     @staticmethod
-    def test_resolve_gates_rejects_duplicate_explicit_gate() -> None:
+    def test_resolve_gates_rejects_duplicate_explicit_gate(tmp_path: Path) -> None:
         """Test resolve gates rejects duplicate explicit gate."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             c.Infra.LINT,
             c.Infra.PYREFLY,
             c.Infra.LINT,

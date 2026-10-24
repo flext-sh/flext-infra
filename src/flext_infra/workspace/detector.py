@@ -822,16 +822,14 @@ class FlextInfraWorkspaceDetector(
     def _bootstrap_source(
         resolved_root: Path,
         declaration: m.Infra.RepositoryDeltaSpec,
-    ) -> p.Result[m.Infra.CodegenBootstrapSource | None]:
+    ) -> p.Result[m.Infra.CodegenBootstrapSource]:
         """Elect the declared dependency source of a repository without a manifest.
 
         Returns:
-            The declared bootstrap source, or None when the manifest exists.
+            The declared bootstrap source.
 
         """
-        result_type = r[m.Infra.CodegenBootstrapSource | None]
-        if (resolved_root / c.PYPROJECT_FILENAME).exists():
-            return result_type.ok(None)
+        result_type = r[m.Infra.CodegenBootstrapSource]
         project = declaration.project
         if project is None or project.flext_source is None:
             return result_type.fail(
@@ -889,10 +887,12 @@ class FlextInfraWorkspaceDetector(
         if external_consumers.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
         (workspace_beads, resolved_refs, name) = workspace.value
-        bootstrap = cls._bootstrap_source(resolved_root, declaration)
-        if bootstrap.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(bootstrap)
-        bootstrap_source = bootstrap.value
+        bootstrap_source: m.Infra.CodegenBootstrapSource | None = None
+        if not (resolved_root / c.PYPROJECT_FILENAME).exists():
+            bootstrap = cls._bootstrap_source(resolved_root, declaration)
+            if bootstrap.failure:
+                return r[m.Infra.WorkspaceSpec].from_failure(bootstrap)
+            bootstrap_source = bootstrap.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=name,
