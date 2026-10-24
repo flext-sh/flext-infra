@@ -2470,14 +2470,13 @@ class FlextInfraUtilitiesCodemodProject(
             state = next(
                 (state for state in shared[1].states if state.path == file_path), None
             )
-            if state is not None and state.content is None:
+            if state is None:
+                source = shared[0].source_text(file_path)
+            elif state.content is None:
                 msg = f"module exports source is absent from the pass: {file_path}"
                 raise ValueError(msg)
-            source = (
-                shared[0].source_text(file_path)
-                if state is None
-                else state.content.decode(c.DEFAULT_ENCODING)
-            )
+            else:
+                source = state.content.decode(c.DEFAULT_ENCODING)
         return frozenset(
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(source),
         )

@@ -1063,6 +1063,7 @@ class FlextInfraUtilitiesImportLaw:
 
         Raises:
             ValueError: If a lazy route cycles or does not name one binding.
+            TypeError: If a provider package lacks its native folder contract.
 
         """
         provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
@@ -1074,7 +1075,12 @@ class FlextInfraUtilitiesImportLaw:
             if resource is None:
                 break
             if resource.is_folder():
-                resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
+                # The folder's own owner addresses its initializer: an installed
+                # provider lives outside the project root.
+                if not isinstance(resource, p.Infra.RopeRoot):
+                    msg = f"lazy route package has no folder contract: {resource.path}"
+                    raise TypeError(msg)
+                resource = resource.get_child(c.Infra.INIT_PY)
             identity = provider.get_name(), alias_name
             if identity in visited:
                 msg = f"cyclic lazy export {identity}"

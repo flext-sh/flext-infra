@@ -1740,8 +1740,13 @@ class FlextInfraUtilitiesSemanticContracts(
         native_scope = runtime.scope_at(
             module, runtime.source_offset(module.source_code, member)
         )
+        # The bound member hangs off the factory's native call result, so Rope
+        # infers it statically from the call; no identifier chain can name it.
+        bound = runtime.runtime_callable("rope.base.evaluate", "eval_node")(
+            native_scope, member
+        )
         if (
-            runtime.resolve_symbol(native_scope, member) is None
+            not isinstance(bound, p.Infra.RopePyName)
             or any(keyword.arg is None for keyword in invocation.keywords)
             or any(isinstance(argument, ast.Starred) for argument in invocation.args)
         ):

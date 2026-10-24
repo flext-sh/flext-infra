@@ -98,8 +98,12 @@ class TestsFlextInfraWorkspaceMemberPropagation:
         *,
         settled: t.StrSequence,
         hermetic: t.StrMapping,
+        external: t.SequenceOf[t.Pair[str, Path]] = (),
     ) -> Generator[t.Pair[Path, Path]]:
         """Yield a clone of the workspace whose ``settled`` members are propagated.
+
+        ``external`` carries the declared identity and bare origin of each
+        repository published outside the workspace, routed like the members.
 
         Yields:
             Each ``t.Pair[Path, Path]``.
@@ -109,16 +113,34 @@ class TestsFlextInfraWorkspaceMemberPropagation:
         with u.Tests.env_vars_context(env_vars=hermetic):
             root = tmp_path / "workspace"
             shutil.copytree(self._template(tmp_path, settled), root, symlinks=True)
-            for name in self.MEMBERS:
-                self._publish_to_local_origin(root / name, tmp_path / "remotes" / name)
+            origins = dict((
+                *external,
+                *(
+                    self._publish_to_local_origin(
+                        root / name,
+                        tmp_path / "remotes" / name,
+                    )
+                    for name in self.MEMBERS
+                ),
+            ))
             gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
             shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+            with u.Tests.env_vars_context(
+                env_vars={
+                    **u.Tests.route_declared_origins(hermetic, origins),
+                    "PATH": shim_path,
+                },
+            ):
                 yield root, gh_log
 
     @staticmethod
-    def _publish_to_local_origin(member: Path, remote_root: Path) -> None:
-        """Push to a local bare origin while fetching from the declared identity."""
+    def _publish_to_local_origin(member: Path, remote_root: Path) -> t.Pair[str, Path]:
+        """Push to a local bare origin while fetching from the declared identity.
+
+        Returns:
+            The declared identity and the bare origin that serves it.
+
+        """
         bare = u.Tests.configure_local_origin(member, remote_root)
         declared = u.Tests.WorktreeFixture.governed_repository_url(member.name)
         u.Tests.git_run(member, "remote", "set-url", c.Infra.GIT_ORIGIN, declared)
@@ -131,6 +153,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             c.Infra.GIT_ORIGIN,
             str(bare),
         )
+        return declared, bare
 
     @staticmethod
     def _propagate(root: Path) -> int:
@@ -301,14 +324,17 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             "\tprintf '%s\\n' \"$@\" >> ran.txt\n",
             encoding="utf-8",
         )
-        u.Tests.git_run(consumer_root, "init", "--initial-branch", "main")
-        u.Tests.git_run(consumer_root, "add", "Makefile")
-        u.Tests.commit_git_changes(consumer_root, "consumer base")
-        self._publish_to_local_origin(consumer_root, tmp_path / "remotes" / "consumer")
+        # The fixture Git owner seeds the origin a published consumer carries.
+        u.Tests.initialize_git_repo(consumer_root)
+        consumer = self._publish_to_local_origin(
+            consumer_root,
+            tmp_path / "remotes" / "consumer",
+        )
         with self._workspace(
             tmp_path,
             settled=(self.SETTLED,),
             hermetic=hermetic_git_environment,
+            external=(consumer,),
         ) as (root, gh_log):
             manifest = root / "config" / "workspace.yaml"
             manifest.write_text(

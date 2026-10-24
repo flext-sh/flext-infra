@@ -25,6 +25,7 @@ from types import (
 )
 from typing import Annotated, Literal
 
+import griffe
 from flext_cli import m, p, t
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
@@ -37,6 +38,8 @@ class FlextInfraTypesBase:
 
     type DocumentationLanguage = t.DocumentationLanguage
     "Supported project-local documentation presentation languages."
+    type PythonModule = griffe.Module
+    "One statically parsed Python module of the shared static model."
 
     type Path = pathlib.Path
     "Unconstrained native filesystem path, independent of existence and kind."

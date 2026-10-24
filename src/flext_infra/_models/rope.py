@@ -537,6 +537,49 @@ class FlextInfraModelsRope:
             ),
         ]
 
+    class LazyInitRun(m.ArbitraryTypesModel):
+        """One repository's lazy-init planning run over its source inventory."""
+
+        root: Annotated[Path, m.Field(description="Repository root being planned")]
+        scoped: Annotated[
+            bool,
+            m.Field(description="Whether conformance selected the repository roots"),
+        ]
+        index: Annotated[
+            FlextInfraModelsRope.RopeWorkspaceIndex,
+            m.Field(description="The repository's shared source inventory"),
+        ]
+        model: Annotated[
+            FlextInfraModelsCodegenLazyInitModels.PythonModelRun,
+            m.Field(description="The run's parse-once static Python model"),
+        ]
+        plans: Annotated[
+            t.Port[dict[Path, FlextInfraModelsCodegenLazyInitModels.LazyInitPlan]],
+            m.Field(exclude=True, description="Decided plans, children first"),
+        ]
+        contexts: Annotated[
+            t.Port[
+                dict[Path, FlextInfraModelsCodegenLazyInitModels.LazyInitPackageContext]
+            ],
+            m.Field(exclude=True, description="Package contexts by directory"),
+        ]
+        parents: Annotated[
+            t.Port[dict[Path, t.StrSequence]],
+            m.Field(exclude=True, description="Facade parents by package directory"),
+        ]
+        declared: Annotated[
+            t.Port[dict[str, frozenset[str]]],
+            m.Field(exclude=True, description="Declared facade letters by package"),
+        ]
+        packages: Annotated[
+            t.Port[dict[Path, str]],
+            m.Field(exclude=True, description="Declared public package by project"),
+        ]
+        collisions: Annotated[
+            t.Port[list[str]],
+            m.Field(exclude=True, description="Ambiguous export ownership findings"),
+        ]
+
     class RopeProjectLayout(m.ContractModel):
         """Canonical project layout derived once for Rope-backed codegen flows."""
 

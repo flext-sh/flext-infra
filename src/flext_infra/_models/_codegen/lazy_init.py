@@ -11,12 +11,36 @@ from typing import Annotated, Literal
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCodegenLazyInitModels:
     """Lazy-init planning and quality-gate models."""
+
+    class PythonModelRun(m.ArbitraryTypesModel):
+        """One run of the shared static Python model: source view and parse caches."""
+
+        source_project: Annotated[
+            t.Port[p.Infra.RopeProject],
+            m.Field(exclude=True, description="Source view every module is read through"),
+        ]
+        module_files: Annotated[
+            t.MappingKV[str, Path],
+            m.Field(description="Indexed module names elected before installed ones"),
+        ]
+        modules: Annotated[
+            t.Port[dict[Path, t.Infra.PythonModule]],
+            m.Field(exclude=True, description="The one parse of each read source"),
+        ]
+        sources: Annotated[
+            t.Port[dict[str, str]],
+            m.Field(exclude=True, description="Source text by dotted module name"),
+        ]
+        ancestors: Annotated[
+            t.Port[dict[str, frozenset[str]]],
+            m.Field(exclude=True, description="Resolved class ancestry by path"),
+        ]
 
     class LazyInitPackageContext(m.ContractModel):
         """Declarative package context for one lazy-init directory."""
