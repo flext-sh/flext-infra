@@ -321,7 +321,9 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             eq="rendered",
         )
         tm.that(
-            u.Tests.toml_table_at(project_override, "tool", tool_table)["value"],
+            u.Tests.toml_table_at(project_override, "tool", *tool_table.split("."))[
+                "value"
+            ],
             eq="rendered",
         )
         tool_override = tm.ok(
@@ -332,7 +334,9 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             eq="live",
         )
         tm.that(
-            u.Tests.toml_table_at(tool_override, "tool", tool_table)["value"],
+            u.Tests.toml_table_at(tool_override, "tool", *tool_table.split("."))[
+                "value"
+            ],
             eq="live",
         )
 
@@ -606,7 +610,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         tm.that(second, eq=first)
 
     def test_generated_floor_source_does_not_source_custom_dependencies(self) -> None:
-        """Provider facts apply only to generated floors, not arbitrary bare deps."""
+        """Provider facts apply only to generated floors; bare deps stay untouched."""
         provider = u.Tests.provider()
         unattached = config.Infra.codegen.infra_repository.distribution
         result = u.Infra.pyproject_conform(
@@ -628,7 +632,11 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             ),
             uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
         )
-        tm.fail(result, has="internal dependency declares no direct git source")
+        rendered = tm.ok(result)
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            eq=(unattached,),
+        )
 
     def test_generated_floor_preserves_existing_inline_source(self) -> None:
         """A bare floor cannot replace the live dependency's declared Git source."""
