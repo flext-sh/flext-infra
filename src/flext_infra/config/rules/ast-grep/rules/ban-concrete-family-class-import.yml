@@ -1,0 +1,46 @@
+# A canonical facade module (one that declares a facade letter) reaches other
+# FLEXT packages only through their letters (`from flext_core import c, m`) or
+# through the peer facade class of its own family that it extends
+# (`from flext_cli import FlextCliModels` inside a models facade). Importing any
+# other concrete FLEXT class (`FlextResult`, `FlextCliConstants` in a models
+# module, ...) bypasses the facade alphabet (ENFORCE-046, enforced by
+# flext-core only at runtime until now).
+#
+# Nothing is listed: `facade-module` selects the module, `runtime-package`
+# keeps the import a FLEXT runtime package, and `family-peer` derives the
+# admitted peer from the module's own family.
+id: ban-concrete-family-class-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-046]
+  context:
+    MODULE:
+      - is: facade-module
+      - is: facade-package
+    NAME:
+      not: family-peer
+rule:
+  matches: root-imported-name
+  pattern: $NAME
+  inside:
+    stopBy: end
+    kind: import_from_statement
+    has:
+      field: module_name
+      pattern: $MODULE
+constraints:
+  NAME:
+    regex: "^(?:Tests)?Flext[A-Z][A-Za-z0-9]*$"
+message: >-
+  Facade module imports the concrete class `$NAME` from `$MODULE`: read it
+  through that package's facade letter.
+note: >-
+  Where: this import. Why: a facade module composes the facade alphabet; a
+  concrete class import bypasses it. How: import the letter
+  (`from $MODULE import <letter>`) and read the member through it, or import
+  the same-family peer facade class it extends.

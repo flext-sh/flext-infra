@@ -236,11 +236,12 @@ class FlextInfraGateRegistry:
 
         """
         gate_cls = self._gates.get(gate_id)
-        return (
-            gate_cls(repository_root, runner=self._runners.get(gate_id))
-            if gate_cls
-            else None
-        )
+        if gate_cls is None:
+            return None
+        runner = self._runners.get(gate_id)
+        if runner is None:
+            return gate_cls(repository_root)
+        return gate_cls(repository_root, runner=runner)
 
     @classmethod
     def default(cls) -> FlextInfraGateRegistry:

@@ -1,0 +1,9 @@
+id: facade-alias-first-base
+valid:
+  - |
+    class FlextMeltanoModels(m):
+        pass
+invalid:
+  - |
+    class FlextMeltanoModels(FlextCliModels, m):
+        pass

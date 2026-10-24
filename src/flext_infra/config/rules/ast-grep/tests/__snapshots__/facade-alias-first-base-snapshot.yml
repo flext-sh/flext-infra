@@ -1,0 +1,24 @@
+id: facade-alias-first-base
+snapshots:
+  ? |
+    class FlextMeltanoModels(FlextCliModels, m):
+        pass
+  : labels:
+    - source: |-
+        class FlextMeltanoModels(FlextCliModels, m):
+            pass
+      style: primary
+      start: 0
+      end: 53
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 6
+      end: 24
+    - source: m
+      style: secondary
+      start: 41
+      end: 42
+    - source: m
+      style: secondary
+      start: 41
+      end: 42

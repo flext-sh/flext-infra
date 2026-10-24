@@ -1,0 +1,84 @@
+# A facade class composes its family through MRO. Its first base is the family
+# letter it extends or a Pattern-B peer facade class of the same family
+# (`class FlextMeltanoModels(FlextCliModels)`), never an arbitrary concrete
+# FLEXT class (ENFORCE-047); with several bases, a family letter is never
+# listed after another base, because the C3 linearization must reach the family
+# first (ENFORCE-049). flext-core enforced both only at runtime through
+# beartype; the engine now decides them statically.
+#
+# Nothing is listed: `module-export` + `facade-module` select the exported
+# facade class of a module that declares a facade letter, `family-peer` derives
+# the admitted peer suffix from the facade-family declarations of the module's
+# own family, and `file-family` derives the family letters.
+id: facade-first-base-alias-or-peer
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-047]
+  context:
+    NAME:
+      - is: module-export
+      - is: facade-module
+    BASE:
+      not: family-peer
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclasses
+        has:
+          kind: identifier
+          nthChild: 1
+          pattern: $BASE
+constraints:
+  BASE:
+    regex: "^(?:Tests)?Flext[A-Z]"
+message: >-
+  Facade class `$NAME` extends the concrete class `$BASE`: a facade's first base
+  is its family letter or a peer facade class of the same family.
+note: >-
+  Where: this class. Why: a facade composes its family by MRO; an arbitrary
+  concrete base imports behavior outside the family chain. How: extend the
+  family letter, or the parent package's facade class of this family.
+---
+id: facade-alias-first-base
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-049]
+  context:
+    NAME:
+      - is: module-export
+      - is: facade-module
+    LETTER:
+      is: file-family
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclasses
+        has:
+          kind: identifier
+          pattern: $LETTER
+          not:
+            nthChild: 1
+message: >-
+  Facade class `$NAME` lists its family letter `$LETTER` after another base:
+  the family letter must be the first base.
+note: >-
+  Where: this class. Why: C3 linearization reaches the bases in order, so the
+  family must come first. How: move `$LETTER` to the first base position.

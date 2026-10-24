@@ -925,15 +925,19 @@ class FlextInfraGate:
         return "\n".join(output for output in (result.stdout, result.stderr) if output)
 
     @staticmethod
-    def _runner_deadline(timeout: int) -> p.Cli.ProcessDeadline | None:
-        """Allow a bounded child supervisor to own its termination window.
+    def _runner_limits(
+        timeout: int,
+    ) -> t.Pair[int | None, p.Cli.ProcessDeadline | None]:
+        """Return the runner's timeout and deadline for one tool invocation.
+
+        A gate whose child owns its termination window overrides this to hand
+        the runner an explicit deadline instead of a plain timeout.
 
         Returns:
-            An explicit deadline, or the runner's unchanged timeout policy.
+            The runner timeout and the optional explicit deadline.
 
         """
-        del timeout
-        return None
+        return timeout, None
 
     def _run(
         self,
@@ -952,11 +956,11 @@ class FlextInfraGate:
             RuntimeError: If ``result.failure``.
 
         """
-        deadline = self._runner_deadline(timeout)
+        run_timeout, deadline = self._runner_limits(timeout)
         result = self._runner.run_raw(
             cmd,
             cwd=cwd,
-            timeout=timeout if deadline is None else None,
+            timeout=run_timeout,
             options=m.Cli.ProcessOptions(
                 env=env,
                 remove_env_keys=remove_env_keys,

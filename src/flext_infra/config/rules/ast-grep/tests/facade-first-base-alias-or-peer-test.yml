@@ -1,0 +1,17 @@
+id: facade-first-base-alias-or-peer
+# Native tests prove the syntax shape; the engine's metadata.context
+# (module-export, facade-module, family-peer) narrows findings per project.
+valid:
+  - |
+    class FlextMeltanoModels(m):
+        pass
+  - |
+    class Payload(m.ArbitraryTypesModel):
+        pass
+invalid:
+  - |
+    class FlextMeltanoModels(FlextResult):
+        pass
+  - |
+    class FlextMeltanoModels(FlextCliModels):
+        pass

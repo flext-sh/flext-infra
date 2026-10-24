@@ -33,7 +33,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         self,
         repository_root: Path,
         *,
-        runner: p.Cli.CommandRunner | None = None,
+        runner: p.Cli.CommandRunner = u.Cli,
     ) -> None:
         """Keep one effective resource policy for each admitted analysis."""
         super().__init__(repository_root, runner=runner)
@@ -241,14 +241,17 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @staticmethod
     @override
-    def _runner_deadline(timeout: int) -> p.Cli.ProcessDeadline:
+    def _runner_limits(
+        timeout: int,
+    ) -> t.Pair[int | None, p.Cli.ProcessDeadline | None]:
         """Leave the child's analysis and forced-kill windows uninterrupted.
 
         Returns:
-            A deadline whose soft boundary follows the inner forced-kill window.
+            No plain timeout, and a deadline whose soft boundary follows the
+            inner forced-kill window.
 
         """
-        return u.Infra.mypy_runner_deadline(timeout)
+        return None, u.Infra.mypy_runner_deadline(timeout)
 
     @override
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
