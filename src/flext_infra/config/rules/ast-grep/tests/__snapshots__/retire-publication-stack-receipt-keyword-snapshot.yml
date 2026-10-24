@@ -1,0 +1,120 @@
+id: retire-publication-stack-receipt-keyword
+snapshots:
+  ? |
+    def file_plan(root, rendered, *, source_states: tuple[int, ...] = ()): ...
+  : fixed: |
+      def file_plan(root, rendered, *, ): ...
+    labels:
+    - source: 'source_states: tuple[int, ...] = ()'
+      style: primary
+      start: 33
+      end: 68
+    - source: '(root, rendered, *, source_states: tuple[int, ...] = ())'
+      style: secondary
+      start: 13
+      end: 69
+    - source: source_states
+      style: secondary
+      start: 33
+      end: 46
+  ? |
+    plan = file_plan(root, "a.py", rendered, source_states=states)
+  : fixed: |
+      plan = file_plan(root, "a.py", rendered, )
+    labels:
+    - source: source_states=states
+      style: primary
+      start: 41
+      end: 61
+    - source: (root, "a.py", rendered, source_states=states)
+      style: secondary
+      start: 16
+      end: 62
+    - source: source_states
+      style: secondary
+      start: 41
+      end: 54
+  ? |
+    plan = file_plan(root, "a.py", rendered, source_states=states, mode=0o644)
+  : fixed: |
+      plan = file_plan(root, "a.py", rendered, , mode=0o644)
+    labels:
+    - source: source_states=states
+      style: primary
+      start: 41
+      end: 61
+    - source: (root, "a.py", rendered, source_states=states, mode=0o644)
+      style: secondary
+      start: 16
+      end: 74
+    - source: source_states
+      style: secondary
+      start: 41
+      end: 54
+  ? |
+    plan = m.Infra.CodegenFilePlan(project=root, path=path, dependency_group=group)
+  : fixed: |
+      plan = m.Infra.CodegenFilePlan(project=root, path=path, )
+    labels:
+    - source: dependency_group=group
+      style: primary
+      start: 56
+      end: 78
+    - source: dependency_group
+      style: secondary
+      start: 56
+      end: 72
+    - source: m.Infra.CodegenFilePlan
+      style: secondary
+      start: 7
+      end: 30
+    - source: m.Infra.CodegenFilePlan(project=root, path=path, dependency_group=group)
+      style: secondary
+      start: 7
+      end: 79
+    - source: (project=root, path=path, dependency_group=group)
+      style: secondary
+      start: 30
+      end: 79
+  ? |
+    plan = m.Infra.CodegenFilePlan(project=root, validation_context=context, path=path)
+  : fixed: |
+      plan = m.Infra.CodegenFilePlan(project=root, , path=path)
+    labels:
+    - source: validation_context=context
+      style: primary
+      start: 45
+      end: 71
+    - source: validation_context
+      style: secondary
+      start: 45
+      end: 63
+    - source: m.Infra.CodegenFilePlan
+      style: secondary
+      start: 7
+      end: 30
+    - source: m.Infra.CodegenFilePlan(project=root, validation_context=context, path=path)
+      style: secondary
+      start: 7
+      end: 83
+    - source: (project=root, validation_context=context, path=path)
+      style: secondary
+      start: 30
+      end: 83
+  ? |
+    publish(plans, publication_receipts=receipts)
+  : fixed: |
+      publish(plans, )
+    labels:
+    - source: publication_receipts=receipts
+      style: primary
+      start: 15
+      end: 44
+    - source: (plans, publication_receipts=receipts)
+      style: secondary
+      start: 7
+      end: 45
+    - source: publication_receipts
+      style: secondary
+      start: 15
+      end: 35
