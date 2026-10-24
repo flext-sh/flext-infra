@@ -2075,6 +2075,12 @@ Infra:
             - tool.uv.constraint-dependencies
             - tool.uv.override-dependencies
             - tool.uv.workspace.members
+            # Build targets and uv cache keys derive entirely from the packaging
+            # declarations (ensure_packaging + template): a retired entry such as
+            # a force-included package copy must leave on the next gen instead of
+            # surviving as live CUSTOM state.
+            - tool.uv.cache-keys
+            - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
             - tool.mypy

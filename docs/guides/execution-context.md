@@ -694,8 +694,11 @@ at `<dist>.dist-info/extra_metadata/pyproject.toml` in standard and editable whe
 alike. The sdist retains every original source. Configuration values remain owned
 by the YAML sources, not by the manifest.
 
-Modernization preserves authored Hatch `include`, `exclude`, `only-include`,
-source mappings and forced resources while adding declared distribution inputs.
+Generation owns `tool.hatch.build` and `tool.uv.cache-keys` as managed pyproject
+tables: they derive entirely from the packaging declarations, so a retired entry
+leaves on the next `make gen`. The standalone modernizer preserves authored Hatch
+`include`, `exclude`, `only-include`, source mappings and forced resources while
+adding declared distribution inputs.
 Migration validates these inputs before publishing its declaration. A legacy
 manifest explicitly selected as distribution data retains its original bytes;
 retaining that resource does not make it a runtime configuration source again.
