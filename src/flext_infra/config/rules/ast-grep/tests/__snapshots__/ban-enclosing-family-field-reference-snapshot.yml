@@ -1,6 +1,125 @@
 id: ban-enclosing-family-field-reference
 snapshots:
   ? |
+    class FlextInfraModelsDepsToml:
+        class DepsToml:
+            class PhaseConfig(m.ContractModel):
+                operations: Annotated[
+                    t.SequenceOf[
+                        Annotated[
+                            FlextInfraModelsDepsToml.DepsToml.SetOp
+                            | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                            m.Field(discriminator="kind"),
+                        ]
+                    ],
+                    m.Field(description="Declarative TOML operations"),
+                ] = ()
+  : labels:
+    - source: FlextInfraModelsDepsToml.DepsToml.SetOp
+      style: primary
+      start: 216
+      end: 255
+    - source: FlextInfraModelsDepsToml
+      style: secondary
+      start: 216
+      end: 240
+    - source: FlextInfraModelsDepsToml.DepsToml
+      style: secondary
+      start: 216
+      end: 249
+    - source: FlextInfraModelsDepsToml
+      style: secondary
+      start: 6
+      end: 30
+    - source: |-
+        class FlextInfraModelsDepsToml:
+            class DepsToml:
+                class PhaseConfig(m.ContractModel):
+                    operations: Annotated[
+                        t.SequenceOf[
+                            Annotated[
+                                FlextInfraModelsDepsToml.DepsToml.SetOp
+                                | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                                m.Field(discriminator="kind"),
+                            ]
+                        ],
+                        m.Field(description="Declarative TOML operations"),
+                    ] = ()
+      style: secondary
+      start: 0
+      end: 506
+    - source: |-
+        class PhaseConfig(m.ContractModel):
+                    operations: Annotated[
+                        t.SequenceOf[
+                            Annotated[
+                                FlextInfraModelsDepsToml.DepsToml.SetOp
+                                | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                                m.Field(discriminator="kind"),
+                            ]
+                        ],
+                        m.Field(description="Declarative TOML operations"),
+                    ] = ()
+      style: secondary
+      start: 60
+      end: 506
+    - source: |-
+        operations: Annotated[
+                        t.SequenceOf[
+                            Annotated[
+                                FlextInfraModelsDepsToml.DepsToml.SetOp
+                                | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                                m.Field(discriminator="kind"),
+                            ]
+                        ],
+                        m.Field(description="Declarative TOML operations"),
+                    ] = ()
+      style: secondary
+      start: 108
+      end: 506
+    - source: |-
+        operations: Annotated[
+                        t.SequenceOf[
+                            Annotated[
+                                FlextInfraModelsDepsToml.DepsToml.SetOp
+                                | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                                m.Field(discriminator="kind"),
+                            ]
+                        ],
+                        m.Field(description="Declarative TOML operations"),
+                    ] = ()
+      style: secondary
+      start: 108
+      end: 506
+    - source: |-
+        operations: Annotated[
+                        t.SequenceOf[
+                            Annotated[
+                                FlextInfraModelsDepsToml.DepsToml.SetOp
+                                | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                                m.Field(discriminator="kind"),
+                            ]
+                        ],
+                        m.Field(description="Declarative TOML operations"),
+                    ] = ()
+      style: secondary
+      start: 108
+      end: 506
+    - source: |-
+        Annotated[
+                        t.SequenceOf[
+                            Annotated[
+                                FlextInfraModelsDepsToml.DepsToml.SetOp
+                                | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                                m.Field(discriminator="kind"),
+                            ]
+                        ],
+                        m.Field(description="Declarative TOML operations"),
+                    ]
+      style: secondary
+      start: 120
+      end: 501
+  ? |
     class FlextModelsEnforcementBase:
         class Report(Base):
             violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
@@ -11,6 +130,10 @@ snapshots:
       end: 127
     - source: FlextModelsEnforcementBase
       style: secondary
+      start: 91
+      end: 117
+    - source: FlextModelsEnforcementBase
+      style: secondary
       start: 6
       end: 32
     - source: |-
@@ -19,12 +142,6 @@ snapshots:
                 violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
       style: secondary
       start: 0
-      end: 133
-    - source: |-
-        class Report(Base):
-                violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
-      style: secondary
-      start: 38
       end: 133
     - source: |-
         class Report(Base):
@@ -48,10 +165,6 @@ snapshots:
       style: secondary
       start: 78
       end: 128
-    - source: FlextModelsEnforcementBase
-      style: secondary
-      start: 91
-      end: 117
   ? |
     class FlextModelsHandler:
         class HandlerRuntimeState(Base):
@@ -61,6 +174,10 @@ snapshots:
       style: primary
       start: 90
       end: 125
+    - source: FlextModelsHandler
+      style: secondary
+      start: 90
+      end: 108
     - source: FlextModelsHandler
       style: secondary
       start: 6
@@ -78,12 +195,6 @@ snapshots:
       style: secondary
       start: 30
       end: 125
-    - source: |-
-        class HandlerRuntimeState(Base):
-                execution_context: FlextModelsHandler.ExecutionContext
-      style: secondary
-      start: 30
-      end: 125
     - source: 'execution_context: FlextModelsHandler.ExecutionContext'
       style: secondary
       start: 71
@@ -100,10 +211,6 @@ snapshots:
       style: secondary
       start: 90
       end: 125
-    - source: FlextModelsHandler
-      style: secondary
-      start: 90
-      end: 108
   ? |
     class FlextModelsHandler:
         class HandlerRuntimeState(Base):
@@ -118,6 +225,10 @@ snapshots:
       end: 152
     - source: FlextModelsHandler
       style: secondary
+      start: 117
+      end: 135
+    - source: FlextModelsHandler
+      style: secondary
       start: 6
       end: 24
     - source: |-
@@ -129,15 +240,6 @@ snapshots:
                 ]
       style: secondary
       start: 0
-      end: 205
-    - source: |-
-        class HandlerRuntimeState(Base):
-                stack: Annotated[
-                    MutableSequence[FlextModelsHandler.ExecutionContext],
-                    Field(description="Stack."),
-                ]
-      style: secondary
-      start: 30
       end: 205
     - source: |-
         class HandlerRuntimeState(Base):
@@ -180,7 +282,3 @@ snapshots:
       style: secondary
       start: 78
       end: 205
-    - source: FlextModelsHandler
-      style: secondary
-      start: 117
-      end: 135

@@ -1,37 +1,61 @@
-# A field annotation of a nested model must never name a sibling through its
-# own enclosing family class (operator order 2026-10-24: no incomplete
-# protocols, settings, config, models or services). The enclosing class is not
+# A field annotation of a nested model must never name a sibling through any
+# of its enclosing family classes (operator order 2026-10-24: no incomplete
+# protocols, settings, config, models or services). No enclosing class is
 # bound while its body executes, so the model library cannot resolve the
 # annotation at class creation and the model stays incomplete at import
 # (`__pydantic_complete__` False) until a lazy rebuild. The bare sibling name
 # is not a fix: static checkers reject it, because a nested class body does not
 # see the enclosing class scope.
+#
+# The reference is matched by the root of its dotted path, at any depth of the
+# annotation (unions, generics, `Annotated` metadata such as a discriminated
+# union inside `m.Field(...)`), against every enclosing class, not only the
+# direct one: `Outer.Inner.Sibling` inside `Outer.Inner.Model` is the same
+# defect (measured: flext_infra deps_toml PhaseConfig).
 id: ban-enclosing-family-field-reference
 language: python
 severity: error
+metadata:
+  enforcement: ENFORCE-041
 rule:
-  kind: attribute
-  has:
-    field: object
-    pattern: $OUTER
-  inside:
-    kind: type
-    stopBy: end
-    inside:
-      kind: assignment
-      inside:
-        kind: expression_statement
+  all:
+    - kind: attribute
+    - not:
         inside:
-          kind: block
+          kind: attribute
+    - has:
+        field: object
+        any:
+          - kind: identifier
+            pattern: $OUTER
+          - kind: attribute
+            has:
+              field: object
+              any:
+                - kind: identifier
+                  pattern: $OUTER
+                - kind: attribute
+                  has:
+                    field: object
+                    kind: identifier
+                    pattern: $OUTER
+    - inside:
+        kind: type
+        stopBy: end
+        inside:
+          kind: assignment
           inside:
-            kind: class_definition
+            kind: expression_statement
             inside:
               kind: block
               inside:
                 kind: class_definition
-                has:
-                  field: name
-                  pattern: $OUTER
+                inside:
+                  kind: class_definition
+                  stopBy: end
+                  has:
+                    field: name
+                    pattern: $OUTER
 message: >-
   Field annotation names a sibling through its own enclosing family `$OUTER`,
   so the model is incomplete at import.

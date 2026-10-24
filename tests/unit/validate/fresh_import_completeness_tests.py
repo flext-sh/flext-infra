@@ -33,9 +33,18 @@ class TestsFlextInfraFreshImportCompleteness:
             ).build_report(packages=("flext_completeness_fixture",)),
         )
         tm.fail(report.passed)
-        tm.that(report.violations[0], has="1 incomplete pydantic class(es)")
-        tm.that(report.violations[0], has="FixtureModels.Entry")
-        tm.that(report.violations[0], lacks="FixtureModels.Child")
+        violation = report.violations[0]
+        tm.that(violation, has="3 incomplete pydantic class(es)")
+        tm.that(violation, has="FixtureModels.Entry [unresolved child: ")
+        tm.that(violation, has="FixtureLedger [unresolved amount: ")
+        tm.that(
+            violation,
+            has=(
+                "FixtureHolder [depends ledger: "
+                "flext_completeness_fixture.FixtureLedger]"
+            ),
+        )
+        tm.that(violation, lacks="FixtureModels.Child [")
 
     @staticmethod
     def test_complete_family_model_passes(

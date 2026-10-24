@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, ForwardRef, get_args, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 
@@ -336,41 +336,88 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         unresolved (a ``TYPE_CHECKING``-only type, a later sibling) and needs
         the banned ``model_rebuild`` or fails at first use. Only classes the
         probed package defines are reported; inherited ones belong to their
-        own package's probe.
+        own package's probe. Each finding names its cause: a field whose
+        annotation stayed an unresolved forward reference is a root cause,
+        and a field naming another incomplete class is its dependent, so the
+        report separates the classes to fix from the ones that follow.
 
         Raises:
             TypeError: Naming every incomplete class of the probed package.
 
         """
         package = module.__name__.partition(".")[0]
-        pending: list[type] = [
+        pending: t.MutableSequenceOf[type] = [
             value
             for name in getattr(module, c.Infra.DUNDER_ALL, ())
             if isinstance(value := getattr(module, name), type)
         ]
         seen: set[type] = set()
-        incomplete: set[str] = set()
+        incomplete: t.MutableSequenceOf[type] = []
         while pending:
             klass = pending.pop()
             if klass in seen or not klass.__module__.startswith(c.Infra.PKG_ROOT):
                 continue
             seen.add(klass)
-            if klass.__module__.partition(".")[0] == package and (
-                vars(klass).get("__pydantic_complete__") is False
-            ):
-                incomplete.add(f"{klass.__module__}.{klass.__qualname__}")
+            if vars(klass).get("__pydantic_complete__") is False:
+                incomplete.append(klass)
             pending.extend(
                 member
                 for base in klass.__mro__
                 for member in vars(base).values()
                 if isinstance(member, type)
             )
-        if incomplete:
+        owned = sorted(
+            (
+                klass
+                for klass in incomplete
+                if klass.__module__.partition(".")[0] == package
+            ),
+            key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
+        )
+        if owned:
+            causes = FlextInfraValidateFreshImport._incomplete_causes
+            findings = "; ".join(
+                f"{klass.__module__}.{klass.__qualname__} "
+                f"[{causes(klass, incomplete)}]"
+                for klass in owned
+            )
             msg = (
-                f"{package}: {len(incomplete)} incomplete pydantic class(es) "
-                f"after import: {', '.join(sorted(incomplete))}"
+                f"{package}: {len(owned)} incomplete pydantic class(es) "
+                f"after import: {findings}"
             )
             raise TypeError(msg)
+
+    @staticmethod
+    def _incomplete_causes(
+        klass: type,
+        incomplete: t.SequenceOf[type],
+    ) -> str:
+        """Name why one class is incomplete, field by field.
+
+        Returns:
+            ``unresolved <field>: <reference>`` for each forward reference
+            pydantic could not resolve and ``depends <field>: <class>`` for
+            each field naming another incomplete class.
+
+        """
+        causes: t.MutableSequenceOf[str] = []
+        fields: t.MappingKV[str, t.FieldInfo] = vars(klass).get(
+            "__pydantic_fields__", {}
+        )
+        for name, info in fields.items():
+            if info.annotation is None:
+                continue
+            pending: t.MutableSequenceOf[t.TypeFormSpecifier] = [info.annotation]
+            while pending:
+                hint = pending.pop()
+                if isinstance(hint, ForwardRef):
+                    causes.append(f"unresolved {name}: {hint.__forward_arg__}")
+                elif isinstance(hint, type) and hint in incomplete:
+                    causes.append(
+                        f"depends {name}: {hint.__module__}.{hint.__qualname__}"
+                    )
+                pending.extend(get_args(hint))
+        return ", ".join(causes) or "no field names the cause"
 
     def execute_probe(
         self,

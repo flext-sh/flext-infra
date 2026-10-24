@@ -13,7 +13,25 @@ valid:
     class FlextModelsOther:
         class Report(Base):
             violations: tuple[FlextModelsHandler.Violation, ...] = ()
+  - |
+    class Infra:
+        class Report(Base):
+            facade: m.Infra.Report | None = None
 invalid:
+  - |
+    class FlextInfraModelsDepsToml:
+        class DepsToml:
+            class PhaseConfig(m.ContractModel):
+                operations: Annotated[
+                    t.SequenceOf[
+                        Annotated[
+                            FlextInfraModelsDepsToml.DepsToml.SetOp
+                            | FlextInfraModelsDepsToml.DepsToml.ListOp,
+                            m.Field(discriminator="kind"),
+                        ]
+                    ],
+                    m.Field(description="Declarative TOML operations"),
+                ] = ()
   - |
     class FlextModelsHandler:
         class HandlerRuntimeState(Base):
