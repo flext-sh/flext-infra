@@ -1792,6 +1792,9 @@ suffix; native termination checkpoints and atomic publication remain shared with
 command profiling. Disabled profiling performs the original direct call and creates
 no profile. Capture measures the generation operation, not CLI startup, and never
 certifies successful generation or replaces its first failure.
+A failed operation's return value also survives a secondary profile diagnostic
+write failure on closed or unavailable stderr. Profile finalization still fails an
+otherwise successful operation; missing evidence never becomes capture acceptance.
 
 The existing opt-in public CLI form is
 `FLEXT_INFRA_PROFILE=true flext-infra codegen generate ...`. Raw profiles,

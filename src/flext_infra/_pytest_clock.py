@@ -242,7 +242,12 @@ class FlextInfraPytestClock:
                             + "".join(traceback.format_exception(failure, chain=False))
                         )
                     elif failed:
-                        traceback.print_exception(failure)
+                        try:
+                            traceback.print_exception(failure)
+                        except (OSError, ValueError) as diagnostic_failure:
+                            failure.add_note(
+                                f"profile failure diagnostic failed: {diagnostic_failure}"
+                            )
                     else:
                         primary = failure
             if primary is not None and primary is not sys.exception():
