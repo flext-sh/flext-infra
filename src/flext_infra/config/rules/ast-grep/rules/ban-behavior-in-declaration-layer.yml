@@ -1,0 +1,48 @@
+# Declaration layers (constants, typings, models) carry data shape only
+# (ADR-015 R3, ADR-018 point 11). Behavior written into a declaration class
+# couples every consumer of the data to an implementation, and pulls runtime
+# dependencies into the lowest layers, which is how reverse imports start.
+# Pydantic's own declaration hooks (field/model validators and serializers,
+# computed fields) are part of the declaration and stay.
+id: ban-behavior-in-declaration-layer
+language: python
+severity: error
+files:
+  - "**/_constants/**/*.py"
+  - "**/_typings/**/*.py"
+  - "**/_models/**/*.py"
+  - "**/constants.py"
+  - "**/typings.py"
+  - "**/models.py"
+utils:
+  declaration-hook:
+    kind: decorator
+    regex: "(?:field_validator|model_validator|field_serializer|model_serializer|computed_field)"
+  class-member:
+    kind: block
+    inside:
+      kind: class_definition
+rule:
+  kind: function_definition
+  pattern: def $NAME($$$)
+  any:
+    - inside:
+        matches: class-member
+    - inside:
+        kind: decorated_definition
+        not:
+          has:
+            kind: decorator
+            matches: declaration-hook
+        inside:
+          matches: class-member
+message: >-
+  Behavior `$NAME` declared inside a declaration-layer class.
+note: >-
+  Where: this method. Why: constants, typings and models are pure declarations
+  (ADR-015 R3, ADR-018 point 11); behavior here couples consumers to an
+  implementation and drags runtime dependencies into the lowest layers. How:
+  move the method to the family's `u` utilities owner (it receives the model
+  as its first parameter) or to the service that owns the operation, and keep
+  only pydantic declaration hooks (validators, serializers, computed fields)
+  on the class.

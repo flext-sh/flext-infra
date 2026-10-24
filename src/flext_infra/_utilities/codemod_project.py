@@ -2738,8 +2738,11 @@ class FlextInfraUtilitiesCodemodProject(
                 raise ValueError(message)
             if imported == layout.package_name:
                 return False
+        aliases = config.Infra.tooling.lazy_init.layer_aliases
         if imported in order:
             target_layers: frozenset[str] = frozenset({imported})
+        elif imported in aliases:
+            target_layers = frozenset({aliases[imported]})
         elif imported.isidentifier() and condition.as_:
             target_layers = frozenset(condition.as_)
         else:

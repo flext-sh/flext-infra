@@ -561,6 +561,19 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+        layer_aliases: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="layer-aliases",
+                description=(
+                    "Runtime aliases of the core package that rank inside a "
+                    "declared layer instead of forming their own: the alias "
+                    "and the module the core package binds it to share that "
+                    "layer's rank. Same-rank imports are runtime-legal; the "
+                    "import-cycle law keeps them acyclic."
+                ),
+            ),
+        ]
         reverse_import_mode: Annotated[
             Literal["type_checking"],
             m.Field(
@@ -585,6 +598,27 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+
+        @m.model_validator(mode="after")
+        def _validate_layer_aliases(self) -> Self:
+            """Bind every alias to a declared layer and keep it out of the order.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If an alias is itself a layer or names an
+                    undeclared layer.
+
+            """
+            for alias, layer in self.layer_aliases.items():
+                if alias in self.import_layer_order:
+                    msg = f"layer alias is already a declared layer: {alias}"
+                    raise ValueError(msg)
+                if layer not in self.import_layer_order:
+                    msg = f"layer alias {alias} names an undeclared layer: {layer}"
+                    raise ValueError(msg)
+            return self
 
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""

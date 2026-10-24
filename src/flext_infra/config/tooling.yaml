@@ -667,6 +667,12 @@ Infra:
       - services
       - api
       - cli
+      # r/e are the base tier of u (operator decision 2026-10-24): they rank
+      # with u, so u and every later layer import them at runtime; the
+      # import-cycle law keeps r/e on the u primitives that never reach back.
+      layer-aliases:
+        r: u
+        e: u
       reverse-import-mode: type_checking
       forward-import-form: absolute
     mod:
