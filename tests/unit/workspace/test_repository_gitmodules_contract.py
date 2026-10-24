@@ -224,12 +224,6 @@ class TestsFlextInfraRepositoryGitmodulesContract:
             "\tflext-managed = false\n",
             encoding="utf-8",
         )
-        # A root declaring submodules is a workspace; its manifest must agree.
-        _ = u.Tests.write_workspace_manifest(
-            root,
-            "fixture-workspace",
-            role=c.Infra.MakeProfile.WORKSPACE,
-        )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
@@ -269,11 +263,16 @@ class TestsFlextInfraRepositoryGitmodulesContract:
             "\tbranch = develop\n",
             encoding="utf-8",
         )
-        # A root declaring submodules is a workspace; its manifest must agree.
-        _ = u.Tests.write_workspace_manifest(
+        # The repository's own declaration names its integration line; the
+        # workspace policy line is unpublished, so only the declaration counts.
+        u.Tests.WorktreeFixture.override_repository_declaration(
             root,
-            "fixture-workspace",
-            role=c.Infra.MakeProfile.WORKSPACE,
+            {
+                "integration": {
+                    "provider": u.Tests.provider().name,
+                    "branch": "develop",
+                },
+            },
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
