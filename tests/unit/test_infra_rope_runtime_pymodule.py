@@ -79,6 +79,7 @@ class TestsFlextInfraRopeRuntimePymodule:
     @pytest.mark.parametrize("admitted", [False, True])
     def test_native_restructuring_preserves_admission_and_import_bindings(
         tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
         *,
         reuse_binding: bool,
         admitted: bool,
@@ -93,12 +94,12 @@ class TestsFlextInfraRopeRuntimePymodule:
             encoding=c.DEFAULT_ENCODING,
         )
         consumer = tmp_path / "consumer.py"
-        consumer.write_text(
+        source = (
             "from provider import Old as Alias, Foreign\n"
             + ("from provider import Existing as New\n" if reuse_binding else "")
-            + "print(Alias.value, Foreign.value)\n",
-            encoding=c.DEFAULT_ENCODING,
+            + "print(Alias.value, Foreign.value)\n"
         )
+        consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
         expected_module = "consumer" if admitted else "unselected"
 
         def accept(
@@ -112,20 +113,36 @@ class TestsFlextInfraRopeRuntimePymodule:
             )
 
         with closing(u.Infra.init_rope_project(tmp_path)) as project:
-            project.do(
-                u.Infra.restructure_changes(
-                    project,
-                    m.Infra.RopeRestructureRequest(
-                        pattern="${owner}.value",
-                        goal="New.value",
-                        arguments={
-                            "owner": ("name=provider.Old", "name=provider.Alternative")
-                        },
-                        resources=(project.get_resource(consumer.name),),
-                        imports={"New": "from provider import New"},
-                        match_filter=accept,
-                    ),
-                )
+            resource = project.get_resource(consumer.name)
+            module = project.get_pymodule(resource)
+            request = m.Infra.RopeRestructureRequest(
+                pattern="${owner}.value",
+                goal="New.value",
+                arguments={
+                    "owner": ("name=provider.Old", "name=provider.Alternative")
+                },
+                resources=(resource,),
+                imports={"New": "from provider import New"},
+                match_filter=accept,
+            )
+            changes = u.Infra.restructure_changes(project, request)
+            tm.that(
+                capsys.readouterr().out,
+                has=f"matched=1 admitted={int(admitted)}",
+            )
+            tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            tm.that(module.source_code, eq=source)
+            tm.ok(project.get_pymodule(resource) is module)
+            tm.that(len(changes.changes), eq=int(admitted))
+            for change in changes.changes:
+                if not isinstance(change, p.Infra.RopeChangeContents):
+                    pytest.fail("Native restructuring must plan content changes")
+                tm.ok(change.resource is resource)
+            project.do(changes)
+            tm.that(u.Infra.restructure_changes(project, request).changes, empty=True)
+            tm.that(
+                capsys.readouterr().out,
+                has=f"matched={int(not admitted)} admitted=0",
             )
         expected_value = ("existing" if reuse_binding else "new") if admitted else "old"
         output = tm.ok(u.Cli.run((sys.executable, str(consumer))))

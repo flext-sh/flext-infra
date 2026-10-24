@@ -23,12 +23,12 @@ class TestsFlextInfraUtilityFacadeProjection:
     """Exercise declared owner projection only through ``u.Infra``."""
 
     @pytest.mark.parametrize("header", ["plain", "protocol", "commented"])
-    def test_long_protocol_owner_bases_are_canonical_before_publication(
+    def test_long_protocol_publications_preserve_runtime_identity(
         self,
         tmp_path: Path,
         header: str,
     ) -> None:
-        """Long owner composition preserves comments, identities and a fixed point."""
+        """Long concrete imports preserve explicit protocol identities and a fixed point."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         self._write(package / "__init__.py", "")
         self._write(package / "_protocols" / "__init__.py", "")
@@ -83,12 +83,6 @@ class TestsFlextInfraUtilityFacadeProjection:
             + "\np = SampleProtocols\n__all__ = ['SampleProtocols', 'p']\n",
         )
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
-        tm.that(max(map(len, rendered.splitlines())), lte=width)
-        for name in names:
-            tm.that(rendered, has=f"        {name},\n")
-        if header == "commented":
-            tm.that(rendered, has="# Preserve opening")
-            tm.that(rendered, has="# Preserve existing owner")
         self._write(facade, rendered)
         tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
         output = tm.ok(
@@ -103,9 +97,6 @@ class TestsFlextInfraUtilityFacadeProjection:
                         "owners = tuple(import_module("
                         f"{(package.name + '._protocols.owner_')!r} + str(index))"
                         ".__dict__[name] for index, name in enumerate(names))\n"
-                        "assert tuple(base for base in p.Sample.__mro__ "
-                        "if base in owners)"
-                        " == owners\n"
                         "for index, owner in enumerate(owners):\n"
                         "    name = 'Contract' + str(index)\n"
                         "    assert getattr(p.Sample, name) is getattr(owner, name)\n"
@@ -306,6 +297,24 @@ class TestsFlextInfraUtilityFacadeProjection:
                 eq=True,
                 msg=result.stdout + result.stderr,
             )
+
+    @staticmethod
+    def _render_publication(
+        package: Path,
+        family: Literal["c", "t", "p", "m", "u"],
+    ) -> str:
+        """Render a publication through the public boundary owning its family.
+
+        Returns:
+            The rendered candidate without writing its facade.
+
+        """
+        if family != "t":
+            return tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        declaration = u.Infra.facade_families()[family]
+        facade = package / f"{declaration.module}{c.Infra.EXT_PYTHON}"
+        with u.Infra.facade_source_project(package.parent.parent) as (project, _, sources):
+            return u.Infra.render_type_facade(package, facade, sources, project=project)
 
     @staticmethod
     def _write(path: Path, source: str) -> None:
@@ -1762,6 +1771,86 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
+    @pytest.mark.parametrize("family", ["m", "u"])
+    def test_authored_base_publishes_private_class_without_fragment_inheritance(
+        self,
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        family: Literal["m", "u"],
+    ) -> None:
+        """The authored base alone owns publication while a private child retires as a base."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        definition = u.Infra.facade_families()[family]
+        owners = package / definition.directory
+        implementation = owners / "implementation.py"
+        base = owners / "base.py"
+        upstream = package.parent / "upstream.py"
+        facade = package / f"{definition.module}{c.Infra.EXT_PYTHON}"
+        self._write(
+            package / c.Infra.INIT_PY,
+            f"from .{definition.module} import {family}\n",
+        )
+        self._write(owners / c.Infra.INIT_PY, "__all__ = ()\n")
+        self._write(
+            implementation,
+            "from pydantic import BaseModel\n"
+            "class Implementation:\n"
+            "    @staticmethod\n"
+            "    def identity():\n        return Implementation\n"
+            "    class Payload(BaseModel):\n        value: str\n"
+            "__all__ = ()\n",
+        )
+        self._write(
+            base,
+            f"from {package.name}.{definition.directory}.implementation import Implementation\n"
+            "class NamespaceBase:\n"
+            "    Filesystem = Implementation\n"
+            "__all__ = ['NamespaceBase']\n",
+        )
+        self._write(
+            upstream,
+            "class Upstream:\n"
+            "    marker = 'upstream'\n"
+            "    @classmethod\n"
+            "    def dispatch(cls):\n        return cls.marker\n",
+        )
+        self._write(
+            facade,
+            c.Infra.AUTOGEN_HEADER + '\n"""Public facade over its authored base."""\n'
+            "from upstream import Upstream\n"
+            f"from {package.name}.{definition.directory}.base import NamespaceBase\n"
+            f"from {package.name}.{definition.directory}.implementation import Implementation\n"
+            "class Facade:\n"
+            "    class Sample(NamespaceBase, Implementation, Upstream):\n"
+            "        pass\n"
+            f"{family} = Facade\n__all__ = ['Facade', '{family}']\n",
+        )
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in (implementation, base, upstream, facade)
+        )
+        rendered = self._render_publication(package, family)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+        self._write(facade, rendered)
+        tm.that(self._render_publication(package, family), eq=rendered)
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"import {package.name} as package\n"
+            f"from {package.name} import {family} as public\n"
+            "from upstream import Upstream\n"
+            "namespace = public.Sample\n"
+            "published = namespace.Filesystem\n"
+            "assert published.identity() is published\n"
+            "payload = published.Payload.model_validate({'value': 'runtime'})\n"
+            "assert payload.model_dump() == {'value': 'runtime'}\n"
+            "assert namespace.dispatch() == 'upstream'\n"
+            "assert not hasattr(namespace, 'identity')\n"
+            "assert not hasattr(namespace, 'Payload')\n"
+            "assert not hasattr(package, 'Implementation')\n"
+            "assert not hasattr(Upstream, 'Filesystem')\n",
+            cwd=root,
+        )
+
     def test_inherited_aggregator_keeps_one_behavior_owner(
         self, tmp_path: Path
     ) -> None:
@@ -1881,22 +1970,108 @@ class TestsFlextInfraUtilityFacadeProjection:
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    def test_rejects_owners_without_a_public_facade(self, tmp_path: Path) -> None:
-        """Utility owners without a facade have no public surface at all."""
-        package = tmp_path / "src" / "flext_sample"
+    def test_unmaterialized_family_projects_executable_owner_composition(
+        self,
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
+        """Plan virtual family owners before executing their generated public facade."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        owners = package / family.directory
+        facade = package / f"{family.module}.py"
+        original = (
+            "class Utilities:\n    pass\nu = Utilities\n__all__ = ['Utilities', 'u']\n"
+        )
+        self._write(facade, original)
         self._write(
-            package / "_utilities" / "owner.py",
-            "class Owner:\n    pass\n__all__ = ['Owner']\n",
+            package / c.Infra.INIT_PY,
+            f"from .{family.module} import Utilities, u\n"
+            "__all__ = ['Utilities', 'u']\n",
+        )
+        planned = {
+            owners / c.Infra.INIT_PY: "",
+            owners / "base.py": (
+                "class BaseOwner:\n"
+                "    marker = 'base'\n"
+                "    class Contract:\n        pass\n"
+                "    @classmethod\n    def read(cls) -> str:\n"
+                "        return cls.marker\n"
+                "__all__ = ['BaseOwner']\n"
+            ),
+            owners / "child.py": (
+                "from .base import BaseOwner\n"
+                "class ChildOwner(BaseOwner):\n    marker = 'child'\n"
+                "__all__ = ['ChildOwner']\n"
+            ),
+        }
+        with u.Infra.facade_source_project(root, planned_sources=planned) as (
+            project,
+            _,
+            sources,
+        ):
+            rendered = tm.not_none(
+                u.Infra.render_utility_facade(package, project=project, sources=sources)
+            )
+        tm.fail(owners.exists())
+        tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+        with u.Infra.facade_source_project(
+            root, planned_sources={**planned, facade: rendered}
+        ) as (project, _, sources):
+            tm.that(
+                u.Infra.render_utility_facade(
+                    package, project=project, sources=sources
+                ),
+                eq=rendered,
+            )
+        tm.fail(owners.exists())
+        for path, source in planned.items():
+            self._write(path, source)
+        self._write(facade, rendered)
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import Utilities, u\n"
+            f"from {package.name}.{family.directory}.base import BaseOwner\n"
+            f"from {package.name}.{family.directory}.child import ChildOwner\n"
+            "assert u is Utilities\n"
+            "assert u.__mro__[1:3] == (ChildOwner, BaseOwner)\n"
+            "assert u.Contract is ChildOwner.Contract is BaseOwner.Contract\n"
+            "assert u.read() == 'child'\n"
+            "class Receiver(u):\n    marker = 'receiver'\n"
+            "assert Receiver.read() == 'receiver'\n",
+            cwd=root,
         )
 
-        with pytest.raises(ValueError, match="have no public facade"):
-            u.Infra.render_utility_facade(package)
+    @pytest.mark.parametrize("virtual", [False, True])
+    def test_rejects_owners_without_a_public_facade(
+        self, tmp_path: Path, *, virtual: bool
+    ) -> None:
+        """Utility owners without a facade have no public surface at all."""
+        package = tmp_path / "src" / "flext_sample"
+        package.mkdir(parents=True)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        owner = package / family.directory / "owner.py"
+        source = "class Owner:\n    pass\n__all__ = ['Owner']\n"
+        if not virtual:
+            self._write(owner, source)
+
+        with u.Infra.facade_source_project(
+            tmp_path, planned_sources={owner: source} if virtual else {}
+        ) as (project, _, sources):
+            with pytest.raises(ValueError, match="have no public facade"):
+                u.Infra.render_utility_facade(package, project=project, sources=sources)
 
     @staticmethod
-    def test_empty_owner_directory_needs_no_facade(tmp_path: Path) -> None:
-        """A preflight-created empty directory is not a private implementation."""
+    @pytest.mark.parametrize("present", [False, True])
+    def test_empty_owner_directory_needs_no_facade(
+        tmp_path: Path, *, present: bool
+    ) -> None:
+        """An absent or preflight-created empty family needs no public surface."""
         package = tmp_path / "src" / "flext_sample"
-        (package / "_utilities").mkdir(parents=True)
+        package.mkdir(parents=True)
+        if present:
+            family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+            (package / family.directory).mkdir()
         tm.that(u.Infra.render_utility_facade(package), eq=None)
 
     @pytest.mark.parametrize(
@@ -2204,8 +2379,6 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         owner_import = (
             f"from flext_sample._protocols import PayloadOwner as {owner_name}\n"
-            if shadow
-            else ""
         )
         body = (
             (
@@ -2218,8 +2391,6 @@ class TestsFlextInfraUtilityFacadeProjection:
                     f"{owner_name}.Payload\n"
                 )
             )
-            if shadow
-            else "        pass\n"
         )
         self._write(
             facade,
@@ -2259,8 +2430,8 @@ class TestsFlextInfraUtilityFacadeProjection:
                         "assert p.Sample.Unrelated is OtherOwner.Payload\n"
                         "assert get_type_hints(p.Sample)['Unrelated'] == "
                         "type[OtherOwner.Payload]\n"
-                        "assert PayloadOwner in p.Sample.__mro__\n"
-                        "assert 'Payload' not in get_type_hints(p.Sample)\n"
+                        "assert get_type_hints(p.Sample)['Payload'] == "
+                        "type[PayloadOwner.Payload]\n"
                         "assert isinstance(Value(), p.Sample.Payload)\n"
                         "assert not isinstance(Missing(), p.Sample.Payload)\n"
                         "print('protocol-proven')\n"
@@ -2288,7 +2459,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         managed: bool,
         collision: bool,
     ) -> None:
-        """Managed projections consume source contracts, never obsolete aliases."""
+        """Explicit publications are valid unless they replace another identity."""
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-sample", package_name="flext_sample"
         )
@@ -2320,35 +2491,43 @@ class TestsFlextInfraUtilityFacadeProjection:
         service = u.Tests.create_lazy_init_service(root)
         service.target_module = f"{package.name}._protocols"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        if managed:
-            rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
-            self._write(facade, rendered)
-            tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
-            tree = ast.parse(rendered)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        if collision:
+            with pytest.raises(ValueError, match="ambiguous protocol class attribute"):
+                u.Infra.render_utility_facade(package, family="p")
             tm.that(
-                any(
-                    isinstance(node, ast.AnnAssign)
-                    and isinstance(node.target, ast.Name)
-                    and node.target.id == published
-                    for node in ast.walk(tree)
-                ),
-                eq=False,
+                tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
+                eq=before,
             )
             return
-        with pytest.raises(ValueError, match="ambiguous protocol class attribute"):
-            u.Infra.render_utility_facade(package, family="p")
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    "from flext_sample import p\n"
+                    f"assert p.Sample.{published} is p.Sample.{actual}\n",
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
     @pytest.mark.parametrize("family", ["p", "m"])
     @pytest.mark.parametrize("annotation", ["none", "matching", "unresolved"])
     def test_generated_contract_aliases_use_canonical_inherited_declarations(
         self,
-        native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         family: Literal["p", "m"],
         *,
         annotation: Literal["none", "matching", "unresolved"],
     ) -> None:
-        """Derived aliases cannot replace real contracts or create legacy names."""
+        """Generated markers do not authorize conflicting or unresolved bindings."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         declaration = u.Infra.facade_families()[family]
         directory = declaration.directory
@@ -2412,32 +2591,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         service = u.Tests.create_lazy_init_service(root)
         service.target_module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
-        self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
-        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        native_consumer(
-            f"sys.path.insert(0, {str(package.parent)!r})\n"
-            f"from {package.name} import {family} as public\n"
-            f"from {package.name}.{directory} import PayloadOwner\n"
-            f"from {package.name}.foreign import ForeignOwner\n"
-            "assert public.Sample.RegistryBound is PayloadOwner.RegistryBound\n"
-            "assert public.Sample.ServerReference is PayloadOwner.ServerReference\n"
-            "assert public.Sample.AclTarget is PayloadOwner.AclTarget\n"
-            "assert public.Sample.Extra is ForeignOwner.Extra\n"
-            "assert public.Sample.marker == 'retained'\n"
-            "assert not hasattr(public.Sample, 'AclAllow')\n"
-            + (
-                "class Bound:\n    registry = 'bound'\n"
-                "class Reference:\n    server_type = 'reference'\n"
-                "bound = Bound()\nreference = Reference()\n"
-                "assert isinstance(bound, public.Sample.RegistryBound)\n"
-                "assert not isinstance(reference, public.Sample.RegistryBound)\n"
-                if protocol
-                else "bound = public.Sample.RegistryBound(registry='bound')\n"
-            )
-            + "assert bound.registry == 'bound'\n",
-            cwd=root,
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        with pytest.raises(ValueError, match="class attribute"):
+            u.Infra.render_utility_facade(package, family=family)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
+            eq=before,
         )
 
     @staticmethod
@@ -2537,7 +2696,7 @@ class TestsFlextInfraUtilityFacadeProjection:
     @pytest.mark.parametrize("family", ["p", "m"])
     @pytest.mark.parametrize("compact", [False, True])
     @pytest.mark.parametrize("generated", [False, True])
-    def test_class_alias_removal_obeys_effective_diamond_owner(
+    def test_class_publication_obeys_effective_diamond_owner(
         self,
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
@@ -2546,7 +2705,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         compact: bool,
         generated: bool,
     ) -> None:
-        """C3 beats the left base's inherited alias and keeps adjacent statements."""
+        """Explicit bindings retain the effective C3 identity and adjacent statements."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         module = c.Infra.PROTOCOLS_PY if family == "p" else c.Infra.MODELS_PY
         directory = u.Infra.facade_family_declared_by(module).directory
@@ -2585,7 +2744,169 @@ class TestsFlextInfraUtilityFacadeProjection:
             "assert LeftPart.Payload is RootPart.Payload\n"
             "assert public.Payload is RightPart.Payload\n"
             "assert public.Payload is not RootPart.Payload\n"
-            "assert 'Payload' not in vars(public)\n"
+            "assert vars(public)['Payload'] is public.Payload\n"
             + ("assert public.marker == 'retained'\n" if compact else ""),
             cwd=root,
+        )
+
+    @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize("managed", [False, True])
+    @pytest.mark.parametrize("binding", ["direct", "classvar", "classvar_sibling"])
+    def test_explicit_class_publications_preserve_identity_and_runtime(
+        self,
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        family: Literal["c", "t", "p", "m", "u"],
+        *,
+        nested: bool,
+        managed: bool,
+        binding: Literal["direct", "classvar", "classvar_sibling"],
+    ) -> None:
+        """Authored publication names never imply inheritance or copied leaves."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        declaration = u.Infra.facade_families()[family]
+        facade = package / f"{declaration.module}{c.Infra.EXT_PYTHON}"
+        self._write(
+            package / c.Infra.INIT_PY,
+            f"from .{declaration.module} import {family}\n",
+        )
+        self._write(
+            package.parent / "upstream.py",
+            "class Upstream:\n"
+            "    @classmethod\n"
+            "    def dispatch(cls):\n        return cls.marker\n",
+        )
+        self._write(
+            package / declaration.directory / "owner.py",
+            "from typing import Protocol, runtime_checkable\n"
+            "class Implementation:\n"
+            "    type Label = str\n"
+            "    @staticmethod\n"
+            "    def identity():\n        return Implementation\n"
+            "    @runtime_checkable\n"
+            "    class Payload(Protocol):\n        value: str\n"
+            "    class HiddenLeaf:\n        pass\n"
+            "__all__ = ['Implementation']\n",
+        )
+        self._write(
+            package / declaration.directory / "unpublished.py",
+            "class Unpublished:\n    class Accidental:\n        pass\n"
+            "__all__ = ['Unpublished']\n",
+        )
+        indentation = "        " if nested else "    "
+        annotation = "" if binding == "direct" else ": ClassVar[type[Chosen]]"
+        original = (
+            (c.Infra.AUTOGEN_HEADERS[0] + "\n" if managed else "")
+            + '"""Explicit public class facade."""\n'
+            + "from typing import ClassVar\n"
+            + "from upstream import Upstream\n"
+            + f"from {package.name}.{declaration.directory}.owner "
+            "import Implementation as Chosen\n"
+            "class Facade(Upstream):\n"
+            "    marker = 'authored-dispatch'\n"
+            + ("    class Domain:\n" if nested else "")
+            + indentation
+            + f"Published{annotation} = Chosen\n"
+            + (
+                indentation + "SameIdentity = Chosen\n"
+                if binding != "classvar"
+                else ""
+            )
+            + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n"
+        )
+        self._write(facade, original)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        rendered = self._render_publication(package, family)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
+            eq=before,
+        )
+        self._write(facade, rendered)
+        tm.that(self._render_publication(package, family), eq=rendered)
+        public = "public.Domain" if nested else "public"
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import {family} as public\n"
+            f"namespace = {public}\n"
+            + (
+                "assert namespace.Published is namespace.SameIdentity\n"
+                if binding != "classvar"
+                else ""
+            )
+            + "assert namespace.Published.identity() is namespace.Published\n"
+            "assert namespace.Published.Label.__value__ is str\n"
+            "assert public.dispatch() == 'authored-dispatch'\n"
+            "assert not hasattr(namespace, 'HiddenLeaf')\n"
+            "assert not hasattr(namespace, 'Accidental')\n"
+            "assert not hasattr(namespace, 'identity')\n"
+            "class Value:\n    value = 'payload'\n"
+            "class Missing:\n    pass\n"
+            "assert isinstance(Value(), namespace.Published.Payload)\n"
+            "assert not isinstance(Missing(), namespace.Published.Payload)\n",
+            cwd=root,
+        )
+
+    @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
+    @pytest.mark.parametrize("collision", ["inherited", "annotation", "duplicate"])
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize("sibling", [False, True])
+    def test_explicit_publication_failure_never_publishes(
+        self,
+        tmp_path: Path,
+        family: Literal["c", "t", "p", "m", "u"],
+        collision: Literal["inherited", "annotation", "duplicate"],
+        *,
+        nested: bool,
+        sibling: bool,
+    ) -> None:
+        """Distinct identities cannot compete for an explicit public class name."""
+        _, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        declaration = u.Infra.facade_families()[family]
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / declaration.directory / "owner.py",
+            "class First:\n    pass\n"
+            "class Second:\n    pass\n"
+            "class Upstream:\n    Published = First\n"
+            "__all__ = ['First', 'Second', 'Upstream']\n",
+        )
+        facade = package / f"{declaration.module}{c.Infra.EXT_PYTHON}"
+        indentation = "        " if nested else "    "
+        self._write(
+            facade,
+            '"""Explicit public class facade."""\n'
+            "from typing import ClassVar\n"
+            f"from {package.name}.{declaration.directory}.owner "
+            "import First, Second, Upstream\n"
+            + (
+                "class Facade(Upstream):\n"
+                if collision == "inherited" and not nested
+                else "class Facade:\n"
+            )
+            + (
+                "    class Domain(Upstream):\n"
+                if collision == "inherited" and nested
+                else "    class Domain:\n" if nested else ""
+            )
+            + (indentation + "Sibling = First\n" if sibling else "")
+            + (
+                indentation + "Published = First\n"
+                if collision == "duplicate"
+                else ""
+            )
+            + indentation
+            + (
+                "Published: ClassVar[type[First]] = Second\n"
+                if collision == "annotation"
+                else "Published: ClassVar[type[Second]] = Second\n"
+            )
+            + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n",
+        )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        with pytest.raises(ValueError, match="ambiguous .* class attribute Published"):
+            self._render_publication(package, family)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
+            eq=before,
         )

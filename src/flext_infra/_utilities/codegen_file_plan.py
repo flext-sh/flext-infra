@@ -33,6 +33,22 @@ class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
     @staticmethod
+    def codegen_file_publication_admission(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[bool]:
+        """Reapply the model's publication law to unchecked copies before effects.
+
+        Returns:
+            The first invalid plan or the complete admission.
+
+        """
+        for plan in plans:
+            validated = u.validate_value(m.Infra.CodegenFilePlan, plan)
+            if validated.failure:
+                return r[bool].from_failure(validated)
+        return r[bool].ok(value=True)
+
+    @staticmethod
     def unique_states(
         states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:

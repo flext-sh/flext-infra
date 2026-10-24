@@ -14,8 +14,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import m, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStatePublicationMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStatePublicationMixin,
+    FlextInfraUtilitiesGitWorktreeIO,
+)
 
 
 class FlextInfraUtilitiesGitStateFilesMixin(

@@ -10,8 +10,10 @@ import tempfile
 from pathlib import Path
 
 from flext_infra import m, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateSnapshotMixin
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStateSnapshotMixin,
+    FlextInfraUtilitiesGitWorktreeIO,
+)
 
 
 class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotMixin):

@@ -17,11 +17,11 @@ from git import (
 )
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticLaneMixin,
 )
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticLaneMixin
 
 
 class FlextInfraUtilitiesGitSemanticIdentityMixin(

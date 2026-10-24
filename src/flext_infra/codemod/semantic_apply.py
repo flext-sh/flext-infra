@@ -30,6 +30,114 @@ class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
+    def plan_rename_artifact(
+        cls,
+        root: Path,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        selections: m.Infra.SemanticRenameSelections,
+        output: Path,
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+    ) -> p.Result[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
+        """Plan native intent and authenticate its output without materializing it.
+
+        Returns:
+            The candidate and original output state, or the first planning failure.
+
+        """
+        root = root.resolve()
+        target = (root / output).resolve()
+        outcome = r[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]
+        if not target.is_relative_to(root):
+            return outcome.fail("rename plan output escapes workspace")
+        directories = u.Cli.atomic_plan_directory_chain((root / output).parent)
+        if directories.failure:
+            return outcome.from_failure(directories)
+        observed = u.Cli.atomic_read_binary_file_state(root / output)
+        if observed.failure:
+            return outcome.from_failure(observed)
+        before = observed.value
+        planned = cls.build_rename_plan(root, workspace, selections)
+        if planned.failure:
+            return outcome.from_failure(planned)
+        artifact = planned.value
+        states = m.Infra.CodemodBindingSnapshot(
+            states=(*artifact.candidate.inputs, *artifact.source_states, *inputs)
+        ).states
+        if any(
+            state.path == target
+            or (
+                before.inode is not None
+                and (state.device, state.inode) == (before.device, before.inode)
+            )
+            for state in states
+        ):
+            return outcome.fail("rename plan output aliases a governed candidate input")
+        if before.content is not None:
+            previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
+            if (previous.candidate.workspaces or (previous.candidate.workspace,))[
+                0
+            ] != u.Infra.import_project_roots(root)[0].resolve():
+                return outcome.fail("rename plan output belongs to another workspace")
+        content = artifact.model_dump_json(indent=2, round_trip=True)
+        if m.Infra.SemanticRenamePlan.model_validate_json(content) != artifact:
+            return outcome.fail("rename artifact did not round-trip exactly")
+        u.Cli.atomic_verify_binary_file_states((*states, before)).unwrap()
+        return outcome.ok((artifact, before))
+
+    @classmethod
+    def publish_rename_plan(
+        cls,
+        root: Path,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        selections: m.Infra.SemanticRenameSelections,
+        output: Path,
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+    ) -> p.Result[m.Infra.SemanticRenamePlan]:
+        """Materialize and publish the same authenticated native artifact plan.
+
+        Returns:
+            The published artifact, or the first planning/publication failure.
+
+        """
+        outcome = r[m.Infra.SemanticRenamePlan]
+        planned = cls.plan_rename_artifact(
+            root, workspace, selections, output, inputs=inputs
+        )
+        if planned.failure:
+            return outcome.from_failure(planned)
+        artifact, before = planned.value
+        root = root.resolve()
+        target = (root / output).resolve()
+        states = m.Infra.CodemodBindingSnapshot(
+            states=(*artifact.candidate.inputs, *artifact.source_states, *inputs)
+        ).states
+        content = artifact.model_dump_json(indent=2, round_trip=True)
+        with FlextInfraCodegenFileLeases.mutation_lease(root):
+            directories = u.Cli.atomic_plan_directory_chain((root / output).parent)
+            if directories.failure:
+                return outcome.from_failure(directories)
+            u.Cli.atomic_verify_binary_file_states((*states, before)).unwrap()
+            u.Cli.atomic_create_directory_chain_guarded(
+                directories.value,
+                permission_mode=config.Infra.codegen.modes.directory_private,
+            ).unwrap()
+            destination = u.Cli.atomic_read_binary_file_state(root / output).unwrap()
+            if before.parent_inode is None:
+                if destination.content is not None:
+                    msg = f"rename plan output appeared during materialization: {target}"
+                    raise ValueError(msg)
+            elif destination != before:
+                msg = f"rename plan output changed during materialization: {target}"
+                raise ValueError(msg)
+            u.Cli.atomic_verify_binary_file_states(states).unwrap()
+            written = u.Cli.atomic_write_text_file_guarded(destination, content + "\n")
+            if written.failure:
+                return outcome.from_failure(written)
+        return outcome.ok(artifact)
+
+    @classmethod
     def build_rename_plan(
         cls,
         root: Path,
@@ -1135,9 +1243,9 @@ class FlextInfraCodemodSemanticApply:
         cls,
         root: Path,
         workspace: p.Infra.RopeWorkspaceDsl,
-        pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState | None],
     ) -> p.Result[bool]:
-        """Authenticate and compare the complete persisted native artifact.
+        """Authenticate and compare the serialized or in-memory native artifact.
 
         Returns:
             The original authentication failure or exact persisted plan acceptance.
@@ -1173,7 +1281,7 @@ class FlextInfraCodemodSemanticApply:
     def authenticate_rename_candidate(
         root: Path,
         artifact: m.Infra.SemanticRenamePlan,
-        driver: m.Cli.AtomicFileState,
+        driver: m.Cli.AtomicFileState | None,
     ) -> p.Result[bool]:
         """Reject a foreign workspace, an aliased driver, or drifted identities.
 
@@ -1187,12 +1295,14 @@ class FlextInfraCodemodSemanticApply:
             return r[bool].fail(
                 "semantic rename candidate belongs to another workspace"
             )
-        if any(state.path == driver.path for state in artifact.candidate.inputs):
+        if driver is not None and any(
+            state.path == driver.path for state in artifact.candidate.inputs
+        ):
             return r[bool].fail(
                 "semantic rename driver aliases a governed source input"
             )
         authenticated = u.Cli.atomic_verify_binary_file_states((
-            driver,
+            *((driver,) if driver is not None else ()),
             *artifact.source_states,
         ))
         if authenticated.failure:

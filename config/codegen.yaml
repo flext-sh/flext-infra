@@ -1,6 +1,9 @@
 Infra:
   codegen:
     repository:
+      candidate_bootstrap_targets:
+        - path: .
+          what: makefile
       project:
         package_name: flext_infra
         class_stem: FlextInfra

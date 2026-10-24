@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from typing import cast
@@ -14,10 +15,7 @@ from typing import cast
 import pytest
 from packaging.requirements import Requirement
 
-from flext_infra import config
-from flext_infra.codegen._conform.pyproject_policy import (
-    FlextInfraCodegenConformPyprojectPolicy,
-)
+from flext_infra import codegen, config
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -31,7 +29,10 @@ class TestsFlextInfraUvNativeResolution:
     @staticmethod
     @pytest.mark.parametrize("with_extra", [False, True])
     def test_supplier_selection_resolves_transitive_runtime_closure(
-        tmp_path: Path, *, with_extra: bool
+        tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
+        *,
+        with_extra: bool,
     ) -> None:
         """Select real supplier metadata transitively, excluding supplier dev groups."""
         root = tmp_path / "consumer"
@@ -42,6 +43,9 @@ class TestsFlextInfraUvNativeResolution:
             workspace="closure-suppliers",
             database="closure_suppliers",
             issue_prefix="closure",
+        )
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root, repository.distribution, beads=beads
         )
         u.Tests.WorktreeFixture.initialize_governed_project(
             supplier_root, "closure-suppliers", beads=beads
@@ -76,57 +80,64 @@ class TestsFlextInfraUvNativeResolution:
         u.Tests.write_native_resolution_project(
             root, repository.distribution, dependencies=("closure-a>=1",)
         )
-        u.Tests.initialize_git_repo(root, origin_url=repository.url)
         originals = {
             path: path.read_bytes()
             for path in (
                 root / c.PYPROJECT_FILENAME,
+                supplier_root / c.PYPROJECT_FILENAME,
                 *(supplier_root / name / c.PYPROJECT_FILENAME for name in names),
             )
         }
-        owner = m.Infra.UvResolutionProject(
-            repository=repository,
-            directory=root,
-            document=u.Tests.toml_doc(
-                originals[root / c.PYPROJECT_FILENAME].decode(c.DEFAULT_ENCODING)
+        editable_supplier(supplier_root)
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        request = u.Tests.conform_request(root)
+        conform = codegen.FlextInfraCodegenConform(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                initial_workspace=workspace,
+                request=request,
             ),
         )
-        requirements = tm.ok(u.Infra.document_requirement_lines(owner.document))
-        sources: list[m.Cli.AtomicFileState] = []
-        selected = tm.ok(
-            FlextInfraCodegenConformPyprojectPolicy._collected_supplier_projects(
-                supplier_root, sources, requirements=requirements
-            )
+        plans = tm.ok(conform.native_resolution_plans(root, workspace, inputs, ()))
+        policy = inputs.spec.make.uv_resolution
+        directory = root / policy.editable_directory
+        editable_plan = next(
+            plan for plan in plans if plan.path == directory / c.PYPROJECT_FILENAME
         )
         expected = names[:3] if with_extra else names[:2]
-        tm.that(tuple(item.repository.distribution for item in selected), eq=expected)
-        captured = {item.path for item in sources}
+        captured = {item.path for item in editable_plan.source_states}
         for name in expected:
             tm.that(captured, has=supplier_root / name / c.PYPROJECT_FILENAME)
         tm.that(captured, lacks=supplier_root / names[3] / c.PYPROJECT_FILENAME)
-        policy = config.Infra.codegen.make.uv_resolution
-        workspace = u.Tests.workspace_spec(repository)
-        default = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=workspace,
-                members=(),
-                directory=root / policy.local_directory,
-                policy=policy,
-            )
+        if not with_extra:
+            tm.that(captured, lacks=supplier_root / names[2] / c.PYPROJECT_FILENAME)
+        default_plan = next(
+            plan
+            for plan in plans
+            if plan.path == root / policy.local_directory / c.PYPROJECT_FILENAME
         )
-        default_text = u.Cli.toml_dumps(default)
-        directory = root / policy.editable_directory
-        editable = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=workspace,
-                members=selected,
-                directory=directory,
-                policy=policy,
-            )
+        default_text = default_plan.desired_content.decode(c.DEFAULT_ENCODING)
+        default_plan.path.parent.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(default_plan.path, default_text))
+        tm.that(
+            set(u.Tests.toml_table_at(default_text, "tool", "uv", "sources")),
+            eq={repository.distribution},
+        )
+        editable = u.Tests.toml_doc(
+            editable_plan.desired_content.decode(c.DEFAULT_ENCODING)
         )
         uv = u.Tests.toml_table_at(u.Cli.toml_dumps(editable), "tool", "uv")
+        selected_sources = u.Tests.toml_mapping(uv["sources"])
+        tm.that(set(selected_sources), eq={repository.distribution, *expected})
+        for name in expected:
+            tm.that(
+                u.Tests.toml_mapping(selected_sources[name])["path"],
+                eq=(supplier_root / name)
+                .relative_to(directory, walk_up=True)
+                .as_posix(),
+            )
         tm.that(
             u.Tests.toml_strings(uv["constraint-dependencies"]),
             has=u.Infra.dependency_constraint(transitive, replace_source=True),
@@ -151,7 +162,9 @@ class TestsFlextInfraUvNativeResolution:
             tm.that(tuple(item.name for item in locked.package), lacks=names[2])
         for path, content in originals.items():
             tm.that(path.read_bytes(), eq=content)
-        tm.that(u.Cli.toml_dumps(default), eq=default_text)
+        tm.that(
+            default_plan.path.read_text(encoding=c.DEFAULT_ENCODING), eq=default_text
+        )
         tm.that(
             (root / policy.local_directory / c.Infra.UV_LOCK_FILENAME).exists(),
             eq=False,

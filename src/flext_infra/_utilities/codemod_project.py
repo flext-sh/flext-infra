@@ -523,6 +523,40 @@ class FlextInfraUtilitiesCodemodProject(
         return frozenset(rule.id for rule in selected), modules
 
     @classmethod
+    def codemod_path_findings(
+        cls,
+        root: Path,
+        paths: t.SequenceOf[Path],
+        rules: t.SequenceOf[m.Infra.CodemodRule],
+    ) -> tuple[t.JsonMapping, ...]:
+        """Admit owned-path policy from the shared inventory, without parsing bytes.
+
+        Returns:
+            Detection-only records for the same rule and authenticated report route.
+
+        """
+        return tuple(
+            {
+                "file": path.relative_to(root.resolve()).as_posix(),
+                "ruleId": rule.id,
+                "severity": "error",
+                "message": rule.message,
+                "origin": "owned-path",
+                "text": "",
+                "lines": "",
+                "range": {
+                    "start": {"line": 0, "column": 0},
+                    "end": {"line": 0, "column": 0},
+                    "byteOffset": {"start": 0, "end": 0},
+                },
+            }
+            for path in paths
+            for rule in rules
+            if rule.owned_path_suffix is not None
+            and path.suffix == rule.owned_path_suffix
+        )
+
+    @classmethod
     def codemod_context_admits(
         cls,
         admission: m.Infra.CodemodAdmission,
@@ -551,6 +585,8 @@ class FlextInfraUtilitiesCodemodProject(
         facts = admission.facts
         cls._require_context_facts(admission)
         source = cls.codemod_source_path(root, admission.file_path)
+        if rule.owned_path_suffix is not None:
+            return source.suffix == rule.owned_path_suffix
         for condition in rule.context:
             # Alternative syntax branches bind only their own metavariables.
             # This also applies before native declaration/binding evaluation.

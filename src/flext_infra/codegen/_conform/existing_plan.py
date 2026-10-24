@@ -15,17 +15,11 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenProtocolModels,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
-from flext_infra.workspace import (
-    FlextInfraRopeWorkspace,
-    FlextInfraWorkspaceEnvironmentContracts,
-)
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 
 
 class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
@@ -291,7 +285,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 target, workspace, codegen, contract, identity, managed_artifacts.value
             )
         tooling_started = time.monotonic()
-        sources = self._existing_managed_sources(target, codegen, contract, identity[0])
+        sources = self._existing_managed_sources(target, codegen, contract)
         if sources.failure:
             return result_type.from_failure(sources)
         custom, initializers = sources.value[1], sources.value[2]
@@ -394,7 +388,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
         contract: m.Infra.CodegenConformSurfaceContract,
-        project: p.Infra.ProjectSpec,
     ) -> p.Result[
         tuple[
             t.VariadicTuple[m.Infra.CodegenFilePlan],
@@ -444,17 +437,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     initial[1],
                 )
             )
-        started = time.monotonic()
-        if contract.custom:
-            lazy_result = lazy_result.flat_map(
-                lambda initial: self._existing_protocol_sources(root, project, initial)
-            )
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
-        u.Cli.info(
-            f"  stage=protocols repository={root.name} "
-            f"elapsed={time.monotonic() - started:.2f}s"
-        )
         cohort = tuple(
             {
                 plan.path: plan
@@ -573,343 +557,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             if merged.failure:
                 return result_type.from_failure(merged)
         return result_type.ok((files, merged.value))
-
-    def _render_existing_protocol_plans(
-        self,
-        root: Path,
-        project: p.Infra.ProjectSpec,
-        initial: t.Pair[
-            t.SequenceOf[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ],
-    ) -> p.Result[
-        t.Pair[
-            t.SequenceOf[m.Infra.CodegenFilePlan],
-            t.MappingKV[str, str],
-        ]
-    ]:
-        """Project model contracts and exports inside the original source epoch.
-
-        Returns:
-            Authenticated protocol and initializer plans, without publishing files.
-
-        """
-        result_type = r[
-            t.Pair[
-                t.SequenceOf[m.Infra.CodegenFilePlan],
-                t.MappingKV[str, str],
-            ]
-        ]
-        with self._source_view(
-            root,
-            source_states=initial[1],
-            declared_files=tuple(initial[0]),
-        ) as binding:
-            started = time.monotonic()
-            with FlextInfraRopeWorkspace.open_workspace(
-                root,
-                rope_repository_root=Path(binding[0].root.real_path),
-                source_project=binding[0],
-            ) as workspace:
-                rendered = FlextInfraCodegenProtocolModels.render_modules(
-                    project, workspace
-                )
-            u.Cli.info(
-                f"  stage=protocol-models repository={root.name} "
-                f"elapsed={time.monotonic() - started:.2f}s"
-            )
-            if rendered.failure:
-                return result_type.from_failure(rendered)
-            states, directories, topology = binding[1]()
-            protocols: list[m.Infra.CodegenFilePlan] = []
-            for path, content in rendered.value[0].items():
-                planned = self.file_plan(
-                    root, path.as_posix(), content, source_states=states
-                )
-                if planned.failure:
-                    return result_type.from_failure(planned)
-                protocols.append(
-                    planned.value.model_copy(
-                        update={
-                            "source_directories": directories,
-                            "source_query_topology": topology,
-                        }
-                    )
-                )
-            for path, content in binding[2].items():
-                if (
-                    path not in {root / path for path in rendered.value[0]}
-                    and path.parent.name == u.Infra.facade_families()["p"].directory
-                    and path.name.startswith("generated_models")
-                    and content.startswith(c.Infra.AUTOGEN_HEADERS)
-                ):
-                    retired = self._absent_file_plan(root, path)
-                    if retired.failure:
-                        return result_type.from_failure(retired)
-                    protocols.append(
-                        retired.value.model_copy(
-                            update={
-                                "source_states": (
-                                    *retired.value.source_states,
-                                    *states,
-                                ),
-                                "source_directories": directories,
-                                "source_query_topology": topology,
-                            }
-                        )
-                    )
-        return result_type.ok((tuple(protocols), rendered.value[1]))
-
-    @staticmethod
-    def _skip_redundant_exports_pass(
-        operation: str, operation_index: int, *, produced_new_files: bool
-    ) -> bool:
-        """Whether a repeated exports pass has no new plans to process.
-
-        Returns:
-            True when the exports pass is redundant.
-
-        """
-        return operation == "exports" and operation_index > 0 and not produced_new_files
-
-    def _existing_protocol_sources(
-        self,
-        root: Path,
-        project: p.Infra.ProjectSpec,
-        initial: t.Pair[
-            t.SequenceOf[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ],
-    ) -> p.Result[
-        t.Pair[
-            t.SequenceOf[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ]
-    ]:
-        """Compose protocol owners and exports before and after model transfer.
-
-        Returns:
-            The complete changed plan set and its original input witnesses.
-
-        """
-        result_type = r[
-            t.Pair[
-                t.SequenceOf[m.Infra.CodegenFilePlan],
-                t.VariadicTuple[m.Cli.AtomicFileState],
-            ]
-        ]
-        started = time.monotonic()
-        rendered = self._render_existing_protocol_plans(root, project, initial)
-        if rendered.failure:
-            return result_type.from_failure(rendered)
-        protocols, identities = rendered.value
-        u.Cli.info(
-            f"  stage=protocol-render repository={root.name} "
-            f"protocols={len(protocols)} elapsed={time.monotonic() - started:.2f}s"
-        )
-        if not protocols:
-            return result_type.ok(initial)
-        changed = {plan.path: plan for plan in protocols}
-        staged = {plan.path: plan for plan in (*initial[0], *protocols)}
-        merged = u.Infra.unique_states((
-            *initial[1],
-            *(state for plan in protocols for state in plan.source_states),
-        ))
-        if merged.failure:
-            return result_type.from_failure(merged)
-        inputs = merged.value
-        pending: t.SequenceOf[m.Infra.CodegenFilePlan] = protocols
-        rederived = False
-        for transfer in (True, False):
-            derived = self._rederived_protocol_passes(
-                root, staged, changed, pending, inputs
-            )
-            if derived.failure:
-                return result_type.from_failure(derived)
-            rederived = rederived or derived.value[0]
-            inputs = derived.value[1]
-            if not transfer:
-                continue
-            transferred = self._protocol_transfer_plans(
-                root, project, identities, (tuple(staged.values()), inputs)
-            )
-            if transferred.failure:
-                return result_type.from_failure(transferred)
-            for plan in transferred.value[0]:
-                staged[plan.path] = changed[plan.path] = plan
-            inputs = transferred.value[1]
-            pending = transferred.value[0]
-        if not rederived:
-            changed = {**{plan.path: plan for plan in initial[0]}, **changed}
-        return result_type.ok((tuple(changed.values()), inputs))
-
-    def _rederived_protocol_passes(
-        self,
-        root: Path,
-        staged: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-        changed: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
-        pending: t.SequenceOf[m.Infra.CodegenFilePlan],
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[t.Pair[bool, t.VariadicTuple[m.Cli.AtomicFileState]]]:
-        """Re-derive exports and facades when the pending plans change sources.
-
-        Unchanged sources keep the original cohort's decisions. The staged and
-        changed plan maps are updated in place. Neither pass publishes or
-        replaces the input epoch.
-
-        Returns:
-            Whether a re-derivation ran, and the merged original input witnesses.
-
-        """
-        result_type = r[t.Pair[bool, t.VariadicTuple[m.Cli.AtomicFileState]]]
-        if not any(u.Infra.codegen_file_requires_effect(plan) for plan in pending):
-            return result_type.ok((False, inputs))
-        produced = False
-        for index, operation in enumerate(("exports", "facade", "exports")):
-            if self._skip_redundant_exports_pass(
-                operation, index, produced_new_files=produced
-            ):
-                continue
-            with self._source_view(
-                root,
-                source_states=inputs,
-                declared_files=tuple(staged.values()),
-            ) as binding:
-                files = self._protocol_projection_pass(root, operation, binding)
-                if files.failure:
-                    return result_type.from_failure(files)
-                changed.update((plan.path, plan) for plan in files.value)
-                staged.update((plan.path, plan) for plan in files.value)
-                captured = u.Infra.unique_states((
-                    *inputs,
-                    *binding[1]()[0],
-                    *(
-                        state
-                        for plan in changed.values()
-                        for state in plan.source_states
-                    ),
-                ))
-                if captured.failure:
-                    return result_type.from_failure(captured)
-                inputs = captured.value
-                produced = any(
-                    u.Infra.codegen_file_requires_effect(plan) for plan in files.value
-                )
-        return result_type.ok((True, inputs))
-
-    def _protocol_transfer_plans(
-        self,
-        root: Path,
-        project: p.Infra.ProjectSpec,
-        identities: t.MappingKV[str, str],
-        initial: t.Pair[
-            t.SequenceOf[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ],
-    ) -> p.Result[
-        t.Pair[
-            t.SequenceOf[m.Infra.CodegenFilePlan],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ]
-    ]:
-        """Plan authenticated ownership transfers without publishing sources.
-
-        Returns:
-            Transferred plans and the merged original source witnesses.
-
-        """
-        result_type = r[
-            t.Pair[
-                t.SequenceOf[m.Infra.CodegenFilePlan],
-                t.VariadicTuple[m.Cli.AtomicFileState],
-            ]
-        ]
-        with self._source_view(
-            root,
-            source_states=initial[1],
-            declared_files=tuple(initial[0]),
-        ) as binding:
-            with FlextInfraRopeWorkspace.open_workspace(
-                root,
-                rope_repository_root=Path(binding[0].root.real_path),
-                source_project=binding[0],
-            ) as workspace:
-                tuple(workspace.modules())
-                captured = u.Infra.codemod_source_epoch(
-                    m.Infra.CodemodBindingSnapshot(states=binding[1]()[0])
-                )
-                transfers = FlextInfraCodegenProtocolModels.plan_transfers(
-                    project, workspace, dict(binding[2]), captured, identities
-                )
-            if transfers.failure:
-                return result_type.from_failure(transfers)
-            states, directories, topology = binding[1]()
-            plans: list[m.Infra.CodegenFilePlan] = []
-            for edit in transfers.value:
-                planned = (
-                    self._absent_file_plan(root, edit.file_path)
-                    if edit.retire_file
-                    else self.file_plan(
-                        root,
-                        edit.file_path.relative_to(root).as_posix(),
-                        edit.updated_source,
-                        source_states=states,
-                    )
-                )
-                if planned.failure:
-                    return result_type.from_failure(planned)
-                plans.append(
-                    planned.value.model_copy(
-                        update={
-                            "source_states": states,
-                            "source_directories": directories,
-                            "source_query_topology": topology,
-                        }
-                    )
-                )
-            return u.Infra.unique_states((
-                *initial[1],
-                *states,
-            )).map(lambda inputs: (tuple(plans), inputs))
-
-    def _protocol_projection_pass(
-        self,
-        root: Path,
-        operation: str,
-        binding: t.Triple[
-            p.Infra.RopeProject,
-            Callable[
-                [],
-                t.Triple[
-                    tuple[m.Cli.AtomicFileState, ...],
-                    tuple[m.Cli.AtomicDirectoryInventory, ...],
-                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
-                ],
-            ],
-            t.MappingKV[Path, str],
-        ],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Run one export or facade pass inside its original source binding.
-
-        Returns:
-            The owner's plans, or the first planning/layout failure.
-
-        """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        if operation == "exports":
-            refreshed = FlextInfraCodegenLazyInit(
-                repository_root=root, project_scope_roots=(root,)
-            ).plan_files(source_project=binding[0])
-            if refreshed.failure:
-                return result_type.from_failure(refreshed)
-            self._retain_diagnostics(
-                refreshed.value.exception, issues=refreshed.value.issues
-            )
-            return result_type.ok(refreshed.value.files)
-        layout = u.Infra.layout(root, rope_project=binding[0])
-        if layout is None:
-            return result_type.fail("protocol projection has no native package layout")
-        return self._utility_facade_plan(root, layout.package_dir, "p", binding)
 
     def _existing_lazy_sources(
         self,

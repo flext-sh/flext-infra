@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, main
+import pytest
+
+from flext_infra import main
 from flext_infra.workspace import FlextInfraWorkspaceLifecycle
 from tests import c, m, p, tm, u
 
@@ -26,13 +28,36 @@ class TestsFlextInfraWorkspaceLifecycle:
         """
         return m.Infra.WorkspaceRequest(repository_root=root)
 
+    @pytest.mark.parametrize("reordered", [False, True])
     def test_plan_uses_root_cwd_and_declared_steps_without_duplicate_fanout(
         self,
         tmp_path: Path,
+        *,
+        reordered: bool,
     ) -> None:
         """Root-owned stages execute once; member consumers use their Makefile."""
         root = tmp_path / "workspace"
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        if reordered:
+            steps = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.lifecycle_steps
+            tm.ok(
+                u.Cli.yaml_dump(
+                    root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "make": {
+                                    "lifecycle_steps": [
+                                        step.model_dump(mode="json")
+                                        for step in reversed(steps)
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ),
+            )
+        make = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make
 
         report = tm.ok(
             FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
@@ -41,7 +66,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(report.scope, eq=(root, member))
         expected = tuple(
             (repository, step.verb)
-            for step in config.Infra.codegen.make.lifecycle_steps
+            for step in make.lifecycle_steps
             for repository in (
                 report.scope if step.scope == "each" else (report.workspace_root,)
             )
@@ -49,6 +74,10 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(
             tuple((row.repository_root, row.command[-1]) for row in report.receipts),
             eq=expected,
+        )
+        tm.that(
+            len({row.output_file for row in report.receipts}),
+            eq=len(report.receipts),
         )
         for receipt in report.receipts:
             tm.that(receipt.cwd, eq=root)
@@ -68,6 +97,7 @@ class TestsFlextInfraWorkspaceLifecycle:
     ) -> None:
         """A standalone project retains every declared acceptance command."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
+        make = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make
 
         report = tm.ok(
             FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
@@ -76,7 +106,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(report.scope, eq=(root,))
         tm.that(
             tuple(row.command[-1] for row in report.receipts),
-            eq=tuple(step.verb for step in config.Infra.codegen.make.lifecycle_steps),
+            eq=tuple(step.verb for step in make.lifecycle_steps),
         )
 
     def test_native_make_failure_retains_first_outcome_and_unreached_commands(
@@ -84,7 +114,9 @@ class TestsFlextInfraWorkspaceLifecycle:
         tmp_path: Path,
     ) -> None:
         """A real unprovisioned fixture has no Makefile; native Make rejects it."""
-        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "unprovisioned")
+        root = tmp_path / "unprovisioned"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        make = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make
         tm.fail((root / c.Infra.MAKEFILE_FILENAME).exists())
         with u.Tests.env_vars_context(env_vars={"MAKEFLAGS": "-n -j8"}):
             result = FlextInfraWorkspaceLifecycle.execute_request(self._request(root))
@@ -93,6 +125,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         report = m.Infra.LifecycleReport.model_validate_json(
             (root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).read_bytes(),
         )
+        tm.that(report.scope, eq=(root, member))
         first, *unreached = report.receipts
         tm.ok(first.outcome is not None)
         if first.outcome is not None:
@@ -103,10 +136,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         tm.that(first.before_files, eq=first.after_files)
         tm.that(
             tuple(item.path for item in first.before_files),
-            eq=tuple(
-                root / relative
-                for relative in config.Infra.codegen.make.lifecycle_observed_files
-            ),
+            eq=tuple(root / relative for relative in make.lifecycle_observed_files),
         )
         tm.that(
             all(
@@ -130,13 +160,14 @@ class TestsFlextInfraWorkspaceLifecycle:
     ) -> None:
         """An inapplicable context row keeps a reason and no process receipt."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
-        ci = config.Infra.codegen.make.ci
+        make = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make
+        ci = make.ci
         with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
             report = tm.ok(
                 FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),
             )
         for step, receipt in zip(
-            config.Infra.codegen.make.lifecycle_steps,
+            make.lifecycle_steps,
             report.receipts,
             strict=True,
         ):
@@ -177,7 +208,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         """CI scope narrows member work independently of editable declarations."""
         root = tmp_path / "workspace"
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
-        ci = config.Infra.codegen.make.ci
+        ci = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.ci
         with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
             report = tm.ok(
                 FlextInfraWorkspaceLifecycle.plan_request(self._request(root)),

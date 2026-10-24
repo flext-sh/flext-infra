@@ -67,6 +67,15 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         default=None,
         description="Optional native candidate composed before publication",
     )
+    native_plan: m.Infra.SemanticRenamePlan | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Invocation-owned in-memory rename candidate for readonly planning",
+    )
+    driver_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        default=(),
+        description="Read-only declared drivers authenticated with semantic publication",
+    )
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
@@ -76,6 +85,16 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
+        if self.native_plan is not None:
+            if self.rename_plan is not None:
+                msg = "native plan and serialized rename plan are competing inputs"
+                raise ValueError(msg)
+            if not self.effective_dry_run:
+                msg = "in-memory rename candidates require readonly execution"
+                raise ValueError(msg)
+            if not self.driver_states:
+                msg = "in-memory rename candidates require authenticated driver inputs"
+                raise ValueError(msg)
         if any(
             not root.is_absolute() or not root.is_dir() for root in self.consumer_roots
         ):
@@ -105,7 +124,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             self.repository_root,
             fix=False,
         ).unwrap()
-        if self.rename_plan is not None:
+        if self.rename_plan is not None or self.native_plan is not None:
             preview = self._advance_phases(
                 self.repository_root,
                 self.rope,
@@ -488,6 +507,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         """
         outcome = r[t.Pair[m.Infra.SemanticSourcePlan, m.Cli.AtomicFileState | None]]
+        u.Cli.atomic_verify_binary_file_states(self.driver_states).unwrap()
+        if self.native_plan is not None:
+            return self._authenticate_phase_seed(
+                root, rope_workspace, (self.native_plan, None)
+            )
         if self.rename_plan is not None:
             loaded = FlextInfraCodemodSemanticApply.load_rename_artifact(
                 root,
@@ -511,7 +535,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         self,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        loaded: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        loaded: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState | None],
     ) -> p.Result[t.Pair[m.Infra.SemanticSourcePlan, m.Cli.AtomicFileState | None]]:
         """Require the artifact to match its current native plan and consumer roots.
 
@@ -526,7 +550,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         )
         if authenticated.failure:
             return outcome.from_failure(authenticated)
-        if self.consumer_roots and set(self.consumer_roots) != set(seed.consumer_roots):
+        if (
+            self.consumer_roots or self.native_plan is not None
+        ) and set(self.consumer_roots) != set(seed.consumer_roots):
             return outcome.fail(
                 "run consumer roots differ from the authenticated native artifact"
             )
@@ -651,6 +677,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     *seed.candidate.inputs,
                     *seed.source_states,
                     *graph.rope_project.consumed_source_states(),
+                    *self.driver_states,
                     *((driver,) if driver is not None else ()),
                 )
             ).states

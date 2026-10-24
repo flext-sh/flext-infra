@@ -64,6 +64,51 @@ External consumers are explicit typed run inputs, not reverse-dependency guesses
 or an implicit host-wide inventory. Standalone invocations retain their own scope
 plus those declared consumers.
 
+Selector-free `make mod` also consumes project-declared decisions through the
+existing `infra.yaml` configuration owner:
+
+```yaml
+Infra:
+  refactor_csv_campaigns:
+    semantic_decisions: config/rename-decisions.json
+    semantic_plan: .reports/rename-decisions.artifact
+```
+
+`semantic_decisions` is a workspace-relative JSON file validated as
+`SemanticRenameSelections`: each decision declares `qualified_name`,
+`replacement_name`, and `reason`; `consumer_roots` declares typed absolute external
+checkout roots. These are explicit project migration inputs, not naming rules,
+prefix heuristics, or a fleet-wide mapping catalog. `semantic_plan` remains the
+existing authenticated artifact destination and is required with decisions.
+Omitting both fields preserves ordinary `mod`. Declaring only `semantic_plan`
+retains explicit-artifact consumption. A request-level rename artifact cannot
+compete with declared decisions, and request consumer roots must agree with the
+manifest. Missing, malformed, empty, or escaping declared inputs fail; they never
+select ordinary `mod` as a fallback.
+
+The native semantic owner separates pure `plan_rename_artifact` from explicit
+`publish_rename_plan`; both use the same native `build_rename_plan`. The CLI
+`rename-plan` action explicitly publishes an artifact. Declared `mod` publishes
+only when applying, never for check, no-apply or dry-run. Readonly execution sends
+the typed candidate directly to the existing batch, which rederives and verifies
+the same source epoch, scope and decisions without an artifact file. It creates
+neither the declared semantic artifact nor its missing parent chain; ordinary
+diagnostic output keeps its existing contract. Competing serialized and in-memory
+plans are rejected, and in-memory batch input cannot select publication.
+
+Explicit publication materializes missing output parents through the SDK's
+guarded directory-chain primitives under the canonical mutation lease, then
+recaptures the destination's physical parent identity before guarded file writing.
+The manifest and output snapshots join the batch's existing input authentication
+before candidate acceptance or source publication.
+A campaign is a one-time cutover: after successful public
+consumer proof, retire its two configuration fields and JSON driver in the same
+change. Repeated ordinary `make mod` then proves the fixed point through its
+normal planning and gates. Keeping an applied campaign declared fails on its
+stale introducing identity; absence of an old name is never treated as success.
+The declared JSON is not rewritten or removed automatically, and no additional
+completion ledger or full-repository stability prerequisite is introduced.
+
 Native Rope `MultiProjectRefactoring.get_all_changes` computes every elected
 project's changes before publication. Module selections use the native nullable
 offset and produce authenticated create/retire file effects. Planning does not
@@ -88,7 +133,46 @@ mode, as does publication. A plan
 captured before a producer upgrade is not a portable release migration history;
 a changed epoch must be reconciled causally, never by guessing an old name.
 
-Package-directory renames are refused by this file-effect boundary. Native
+For exact file relocation, the public immutable SDK call is
+`u.Infra.plan_module_move(project, source_file, destination_file=target_file,
+sources=sources, source_states=states)`. Supply the complete authenticated Python
+inventory from the elected project and its original atomic states. Exactly one
+destination form is required. The existing positional directory form remains
+class-only; the exact-file form uses native resource changes for complete mixed
+modules, preserving functions, constants, aliases, class bodies and inheritance.
+Quoted type positions are selected by original native module identity and the
+existing quoted-type owner, with native import binding election. Ordinary
+string payloads are not filename replacements.
+
+No directory, module or Rope metadata is created while planning. Native rename
+intermediates are lookup-only and never published; an occupied intermediate is
+an explicit rejection, not overwritten or assigned an arbitrary alternate name.
+The returned `CodegenFilePlan` effects join the existing semantic publication
+candidate together with lazy-facade projections. A new package initializer is
+only a virtual lookup resource here, not an authored competing export owner.
+The existing public `flext-infra refactor move-module` operation exposes this
+path with `--repository-root`, `--source-file` and `--destination-file`. Exactly
+one of `--destination-file` and the existing `--destination-directory` is required.
+The directory mode retains its existing mutable contract. Exact-file mode reads
+the native project's complete Python inventory through atomic file states, rejects
+foreign owners/effects, and delegates to the public semantic publisher with the
+declared root as its projection scope and the semantic dependency group. That
+declared root must also match the native Rope repository root, never an
+implicitly elected ancestor of a narrower caller scope. The
+publisher plans lazy/facade outputs against the proposed graph, then prepares,
+validates and publishes the complete group. No raw Rope effects or handwritten
+initializers are applied in this mode. Its typed receipt is the existing
+`p.Result[tuple[Path, ...]]` published-path result; the CLI preserves its successful
+boolean result and plain absolute destination-path output after acceptance.
+Neither overload automatically discovers a fleet layout migration or adds a new
+Make selector; `make mod` consumers still elect their semantic destinations.
+
+Class relocation derives module names without a leading underscore, including
+when the original module or class is private. Family destinations retain their
+declared private facade directory; privacy belongs to that directory, not the
+Python module filename.
+
+The exact-file relocation overload does not move package directories. Native
 string payloads and framework registration are not implicitly renamed; they
 remain subject to the existing consumer validation and declaration owners.
 
@@ -232,10 +316,14 @@ execution and malformed-report failures stay separate from diagnostic occurrence
 neither a repeated failure nor an unchanged finding count proves validation success.
 
 Facade projection composes constants, utilities and models from the exports and
-base order declared in their configured private family. Protocol projection keeps
-its consumer-based ownership resolution. The utility path delegates directly to
-the declaration planner. Static and runtime consumer checks retain their own
-import-failure verdicts.
+base order declared in their configured private family. Protocol facade projection
+composes authored consumer-owned `p` contracts through the same native declaration
+and MRO owners; it never copies model fields or public signatures into a second
+typing surface. A dependency port declares only capabilities its consumers use.
+Existing-project conformance and new-project scaffolding generate ordinary facades
+and lazy exports, not model-shaped protocol mirrors. The utility path delegates
+directly to the declaration planner. Static and runtime consumer checks retain
+their own import-failure verdicts.
 Generated protocol and model namespace assignments are derived output, not new
 contract declarations. When an assignment resolves to an exact inherited class,
 projection removes that binding and inherits the canonical private owners in C3

@@ -27,6 +27,34 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     """Behavior contract for test_infra_refactor_namespace_moves."""
 
     @staticmethod
+    @pytest.mark.parametrize("source_stem", ["parser", "_parser"])
+    @pytest.mark.parametrize("class_name", ["DocumentReader", "_DocumentReader"])
+    def test_class_relocation_keeps_modules_public_and_facade_directories_private(
+        tmp_path: Path, source_stem: str, class_name: str
+    ) -> None:
+        """Relocation destinations follow module and facade ownership conventions."""
+        package = tmp_path / "example"
+        source = package / f"{source_stem}.py"
+        tm.that(
+            u.Infra.class_target_file(
+                package_dir=package,
+                source_file=source,
+                class_name=class_name,
+                family="",
+            ),
+            eq=package / "parser_document_reader.py",
+        )
+        for letter, family in u.Infra.facade_families().items():
+            target = u.Infra.class_target_file(
+                package_dir=package,
+                source_file=source,
+                class_name=class_name,
+                family=letter,
+            )
+            tm.that(target, eq=package / family.directory / "document_reader.py")
+            tm.that(target.parent.name.startswith("_"), eq=True)
+
+    @staticmethod
     def _module_move_workspace(tmp_path: Path) -> t.Quad[Path, Path, Path, Path]:
         """Declare a real published owner and a consumer of its behavior.
 
@@ -93,6 +121,325 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             },
             states,
         )
+
+    @classmethod
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize("via_cli", [False, True])
+    def test_exact_module_destination_preserves_mixed_contents_and_identity(
+        cls, tmp_path: Path, *, nested: bool, via_cli: bool
+    ) -> None:
+        """Publish complete modules and resolve real executable and quoted users."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        implementation = package / "_pieces"
+        implementation.mkdir()
+        (implementation / c.Infra.INIT_PY).write_text(
+            '"""Implementation owners."""\n', encoding=c.DEFAULT_ENCODING
+        )
+        source = implementation / "_core.py"
+        source.write_text(
+            "from __future__ import annotations\n"
+            "from pydantic import BaseModel\n"
+            "FACTOR = 3\n"
+            "type Label = str\n"
+            "class Parent:\n    pass\n"
+            "class DeclaredOwner(Parent):\n    pass\n"
+            "class Payload(BaseModel):\n    value: str\n"
+            "def normalize(value: Label) -> Label:\n"
+            "    return value.strip().upper() * FACTOR\n"
+            "__all__ = ('DeclaredOwner', 'Parent', 'Payload', 'normalize', 'FACTOR', 'Label')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "unrelated.py").write_text(
+            "class DeclaredOwner:\n    pass\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        other = package / "_other"
+        other.mkdir()
+        (other / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        (other / "_core.py").write_text(
+            "class DeclaredOwner:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        consumer = package / "consumer.py"
+        consumer.write_text(
+            "from __future__ import annotations\n"
+            f"from {package.name}._pieces import _core\n"
+            f"from {package.name}._pieces import _core as module_alias\n"
+            f"from {package.name}._pieces._core import DeclaredOwner, normalize\n"
+            f"from {package.name} import unrelated\n"
+            f"from {package.name}._other import _core as unrelated_module\n"
+            "PAYLOAD = '_core.DeclaredOwner'\n"
+            "__all__ = ('_core', 'DeclaredOwner', 'normalize')\n"
+            "def direct(value: '_core.DeclaredOwner') -> '_core.DeclaredOwner':\n"
+            "    return value\n"
+            "def aliased(value: 'module_alias.DeclaredOwner') -> 'module_alias.DeclaredOwner':\n"
+            "    return value\n"
+            "def other(value: 'unrelated.DeclaredOwner') -> 'unrelated.DeclaredOwner':\n"
+            "    return value\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = (
+            package / "_schema" / "elements.py"
+            if nested
+            else implementation / "core.py"
+        )
+        schema_program = (
+            "import json\n"
+            "print(json.dumps(owned.Payload.model_json_schema(), sort_keys=True))\n"
+            "print(owned.Payload(value='payload').model_dump_json())\n"
+        )
+        original_schema = u.Tests.run_lazy_init_probe(
+            f"import {package.name}._pieces._core as owned\n" + schema_program,
+            python_paths=(str(package.parent),),
+        )
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            plans = u.Infra.plan_module_move(
+                workspace.rope_project,
+                source,
+                destination_file=target,
+                sources=sources,
+                source_states=states,
+            )
+        tm.fail(target.exists())
+        if nested:
+            tm.fail(target.parent.exists())
+        for state in states:
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(state.path, required=True)),
+                eq=state,
+            )
+        if via_cli:
+            tm.that(
+                FlextInfraCli().main([
+                    "refactor", "move-module", "--repository-root", str(root),
+                    "--source-file", str(source.relative_to(root)),
+                    "--destination-file", str(target.relative_to(root)),
+                ]),
+                eq=0,
+            )
+        else:
+            tm.ok(
+                FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+                    plans,
+                    repository_root=root,
+                    options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
+                )
+            )
+        tm.fail(source.exists())
+        destination = (
+            f"{package.name}._schema.elements"
+            if nested
+            else f"{package.name}._pieces.core"
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"import {destination} as owned\n" + schema_program,
+                python_paths=(str(package.parent),),
+            ),
+            eq=original_schema,
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "from typing import get_type_hints\n"
+                f"from {package.name} import consumer\n"
+                f"import {destination} as relocated\n"
+                "print(consumer.DeclaredOwner is relocated.DeclaredOwner)\n"
+                "print(consumer.normalize(' x '))\n"
+                "print(relocated.FACTOR)\n"
+                "print(relocated.Label.__value__ is str)\n"
+                "print(relocated.DeclaredOwner.__bases__ == (relocated.Parent,))\n"
+                "print(get_type_hints(consumer.direct)['value'] is relocated.DeclaredOwner)\n"
+                "print(get_type_hints(consumer.aliased)['value'] is relocated.DeclaredOwner)\n"
+                "print(get_type_hints(consumer.other)['value'] is consumer.unrelated.DeclaredOwner)\n"
+                "print(consumer.unrelated_module.DeclaredOwner is relocated.DeclaredOwner)\n"
+                "print(getattr(consumer, consumer.__all__[0]) is relocated)\n"
+                "print(consumer.PAYLOAD)\n",
+                python_paths=(str(package.parent),),
+            ),
+            eq=[
+                "True",
+                "XXX",
+                "3",
+                "True",
+                "True",
+                "True",
+                "True",
+                "True",
+                "False",
+                "True",
+                "_core.DeclaredOwner",
+            ],
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("both", [False, True])
+    def test_move_module_command_requires_one_explicit_destination(
+        tmp_path: Path, *, both: bool
+    ) -> None:
+        """The public request rejects ambiguous and missing execution facts."""
+        source, target = tmp_path / "source.py", tmp_path / "target.py"
+        with pytest.raises(ValueError, match="exactly one"):
+            m.Infra.ModuleMoveCommand(
+                repository_root=tmp_path,
+                source_file=source,
+                destination_directory=tmp_path if both else None,
+                destination_file=target if both else None,
+            )
+        for request in (
+            m.Infra.ModuleMoveCommand(
+                repository_root=tmp_path,
+                source_file=source,
+                destination_directory=tmp_path,
+            ),
+            m.Infra.ModuleMoveCommand(
+                repository_root=tmp_path,
+                source_file=source,
+                destination_file=target,
+            ),
+        ):
+            tm.that(
+                m.Infra.ModuleMoveCommand.model_validate_json(
+                    request.model_dump_json(round_trip=True)
+                ),
+                eq=request,
+            )
+        tm.fail(source.exists())
+        tm.fail(target.exists())
+
+    @classmethod
+    @pytest.mark.parametrize("occupied_package", [False, True])
+    def test_exact_module_destination_rejects_occupied_native_owner(
+        cls, tmp_path: Path, *, occupied_package: bool
+    ) -> None:
+        """File and package collisions leave all captured owners untouched."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        target = package / "elements.py"
+        if occupied_package:
+            occupied = target.with_suffix("")
+            occupied.mkdir()
+            occupied /= c.Infra.INIT_PY
+        else:
+            occupied = target
+        occupied.write_text("VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING)
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            with pytest.raises(FileExistsError):
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    sources=sources,
+                    source_states=states,
+                )
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
+
+    @classmethod
+    @pytest.mark.parametrize(
+        "destination", ["invalid-name.py", "class.py", "owner.txt", "__init__.py"]
+    )
+    def test_exact_module_destination_rejects_invalid_file_identity(
+        cls, tmp_path: Path, destination: str
+    ) -> None:
+        """Reject invalid Python owners without creating a destination package."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        target = package / "_schema" / destination
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            with pytest.raises(ValueError, match="requires"):
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    sources=sources,
+                    source_states=states,
+                )
+        tm.fail(target.parent.exists())
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
+
+    @classmethod
+    def test_exact_module_destination_requires_complete_source_graph(
+        cls, tmp_path: Path
+    ) -> None:
+        """A partial consumer graph cannot authorize a resource relocation."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        target = package / "_schema" / "elements.py"
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            with pytest.raises(ValueError, match="complete source inventory"):
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    sources={source: sources[source]},
+                    source_states=states,
+                )
+        tm.fail(target.parent.exists())
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
+
+    @classmethod
+    def test_exact_module_destination_rejects_new_package_before_publication(
+        cls, tmp_path: Path
+    ) -> None:
+        """A later package owner cannot displace the planned module identity."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        target = package / "elements.py"
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            plans = u.Infra.plan_module_move(
+                workspace.rope_project,
+                source,
+                destination_file=target,
+                sources=sources,
+                source_states=states,
+            )
+        occupied = target.with_suffix("")
+        occupied.mkdir()
+        initializer = occupied / c.Infra.INIT_PY
+        content = "VALUE = 'newer package owner'\n"
+        initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
+        tm.fail(
+            FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
+            )
+        )
+        tm.ok(source.exists())
+        tm.fail(target.exists())
+        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
+
+    @classmethod
+    def test_exact_module_destination_rejects_consumer_name_capture(
+        cls, tmp_path: Path
+    ) -> None:
+        """Native relocation never captures an independently owned local name."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        consumer = package / "captured.py"
+        consumer.write_text(
+            f"from {package.name}._pieces import owned\n"
+            "elements = 'independently owned'\n"
+            "Published = owned.DeclaredOwner\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = source.with_name("elements.py")
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            with pytest.raises(ValueError, match="capture a consumer binding"):
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    sources=sources,
+                    source_states=states,
+                )
+        tm.fail(target.exists())
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
     def test_snapshot_exposes_only_declared_virtual_nested_resources(

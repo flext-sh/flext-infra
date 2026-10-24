@@ -3,3 +3,6 @@ valid: []
 invalid:
   - |
     def load(path: str) -> bytes: ...
+  - |
+    # AUTO-GENERATED FILE
+    class Boundary: ...

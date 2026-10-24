@@ -713,6 +713,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
 
         """
+        admitted_plans = u.Infra.codegen_file_publication_admission(plans)
+        if admitted_plans.failure:
+            return r[m.Infra.CodegenTransactionSession].from_failure(admitted_plans)
         owned = self._publication_journal_current(session)
         if owned.failure:
             return r[m.Infra.CodegenTransactionSession].from_failure(owned)

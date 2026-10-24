@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
@@ -126,9 +126,34 @@ class FlextInfraModelsRefactor(
         repository_root: Annotated[Path, m.Field(description="Owning repository root")]
         source_file: Annotated[Path, m.Field(description="Existing Python module")]
         destination_directory: Annotated[
-            Path,
+            Path | None,
             m.Field(description="Existing destination package directory"),
-        ]
+        ] = None
+        destination_file: Annotated[
+            Path | None,
+            m.Field(
+                description="Exact Python file destination for joint semantic publication"
+            ),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def exclusive_destination(self) -> Self:
+            """Require one explicit destination without inferring an execution mode.
+
+            Returns:
+                The validated module relocation facts.
+
+            Raises:
+                ValueError: If neither or both destination forms are supplied.
+
+            """
+            if (self.destination_directory is None) == (self.destination_file is None):
+                msg = (
+                    "module move requires exactly one destination_directory "
+                    "or destination_file"
+                )
+                raise ValueError(msg)
+            return self
 
     class RopeRenameOptions(m.ArbitraryTypesModel):
         """Declared search scope and hierarchy policy for one semantic rename."""

@@ -13,6 +13,7 @@ from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraCodemodSemanticApply,
     FlextInfraDuplicateApplyPhase,
     FlextInfraImportNormalizationPhase,
     FlextInfraNamespaceRelocationPhase,
@@ -41,6 +42,33 @@ class FlextInfraModHandlers:
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         campaigns_config = selected.value
+        rename_plan = request.rename_plan or campaigns_config.semantic_plan
+        selections: m.Infra.SemanticRenameSelections | None = None
+        decisions_states: t.VariadicTuple[m.Cli.AtomicFileState] = ()
+        if campaigns_config.semantic_decisions is not None:
+            if request.rename_plan is not None:
+                msg = "explicit rename_plan conflicts with declared semantic_decisions"
+                raise ValueError(msg)
+            decisions_path = root / campaigns_config.semantic_decisions
+            if not decisions_path.resolve().is_relative_to(root.resolve()):
+                msg = "semantic decisions escape workspace"
+                raise ValueError(msg)
+            decisions_state = u.Cli.atomic_read_binary_file_state(
+                decisions_path, required=True
+            ).unwrap()
+            if decisions_state.content is None:
+                msg = f"semantic decisions disappeared: {decisions_path}"
+                raise ValueError(msg)
+            selections = m.Infra.SemanticRenameSelections.model_validate_json(
+                decisions_state.content
+            )
+            if not selections.decisions:
+                msg = "semantic rename requires an explicit naming decision"
+                raise ValueError(msg)
+            if rename_plan is None:
+                msg = "semantic_decisions requires semantic_plan"
+                raise ValueError(msg)
+            decisions_states = (decisions_state,)
         config_dir = root / c.CONFIG_DIR_NAME
         config_root = config_dir.resolve()
         repository_root = root.resolve()
@@ -75,13 +103,60 @@ class FlextInfraModHandlers:
         )
         structural_root = u.Infra.import_project_roots(root)[0].resolve()
         source_preview = self.source_preview(structural_root)
+        consumer_roots = request.consumer_roots
         with self.rope_workspace(root, structural_root) as rope:
+            declared_driver: m.Cli.AtomicFileState | None = None
+            native_plan: m.Infra.SemanticRenamePlan | None = None
+            if selections is not None and rename_plan is not None:
+                if consumer_roots and set(consumer_roots) != set(
+                    selections.consumer_roots
+                ):
+                    msg = "run consumer roots differ from declared decisions"
+                    raise ValueError(msg)
+                consumer_roots = selections.consumer_roots
+                if request.apply and not request.check and not request.dry_run_mode:
+                    published = FlextInfraCodemodSemanticApply.publish_rename_plan(
+                        root, rope, selections, rename_plan, inputs=decisions_states
+                    )
+                    if published.failure:
+                        return r[t.Cli.ResultValue].from_failure(published)
+                    declared_driver = u.Cli.atomic_read_binary_file_state(
+                        root / rename_plan, required=True
+                    ).unwrap()
+                    if (
+                        declared_driver.content is None
+                        or m.Infra.SemanticRenamePlan.model_validate_json(
+                            declared_driver.content
+                        ) != published.value
+                    ):
+                        msg = "declared rename artifact changed before consumption"
+                        raise ValueError(msg)
+                else:
+                    planned = FlextInfraCodemodSemanticApply.plan_rename_artifact(
+                        root, rope, selections, rename_plan, inputs=decisions_states
+                    )
+                    if planned.failure:
+                        return r[t.Cli.ResultValue].from_failure(planned)
+                    native_plan, declared_driver = planned.value
+                    if (
+                        FlextInfraCodemodSemanticApply.rename_selections(
+                            native_plan
+                        ).decisions != selections.decisions
+                    ):
+                        msg = "native rename plan differs from declared decisions"
+                        raise ValueError(msg)
+                    rename_plan = None
             return FlextInfraCodemodBatchApply(
                 workspace_factory=self.rope_workspace,
                 source_preview=source_preview,
                 repository_root=root,
-                consumer_roots=request.consumer_roots,
-                rename_plan=request.rename_plan or campaigns_config.semantic_plan,
+                consumer_roots=consumer_roots,
+                rename_plan=rename_plan,
+                native_plan=native_plan,
+                driver_states=(
+                    *decisions_states,
+                    *((declared_driver,) if declared_driver is not None else ()),
+                ),
                 apply_changes=request.apply,
                 check_only=request.check,
                 dry_run=request.dry_run_mode,

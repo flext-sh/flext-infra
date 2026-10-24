@@ -69,7 +69,10 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                     return result_type.from_failure(declared)
                 requirements.extend(declared.value)
             collected = self._collected_supplier_projects(
-                supplier_root, sources, requirements=requirements
+                supplier_root,
+                sources,
+                requirements=requirements,
+                bound_projects=projects.value,
             )
             if collected.failure:
                 return result_type.from_failure(collected)
@@ -118,6 +121,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         sources: list[m.Cli.AtomicFileState],
         *,
         requirements: t.StrSequence,
+        bound_projects: t.SequenceOf[m.Infra.UvResolutionProject],
     ) -> p.Result[list[m.Infra.UvResolutionProject]]:
         """Authenticate active external suppliers and their generation inputs.
 
@@ -140,7 +144,13 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             if repository.package
             and (distribution := u.Infra.dep_name(repository.distribution)) is not None
         }
-        targets = tuple(sorted(available & declared))
+        selected = {
+            distribution
+            for project in bound_projects
+            if (distribution := u.Infra.dep_name(project.repository.distribution))
+            is not None
+        }
+        targets = tuple(sorted((available & declared) - selected))
         if not targets:
             return result_type.fail(
                 f"editable supplier selects no declared dependency: {supplier_root}"
@@ -154,7 +164,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             return result_type.from_failure(captured)
         sources.extend(captured.value)
         projects: list[m.Infra.UvResolutionProject] = []
-        selected: set[str] = set()
         while targets:
             collected = cls._collected_resolution_projects(
                 supplier_root,

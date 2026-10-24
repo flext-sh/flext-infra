@@ -12,40 +12,12 @@ from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    import ast
-
     from flext_infra import c, m, p, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
-
-    @runtime_checkable
-    class CodegenProtocolModelRenderer(Protocol):
-        """Source-bound annotation resolver consumed by model selection."""
-
-        @property
-        def workspace(self) -> p.Infra.RopeWorkspaceDsl: ...
-
-        @property
-        def declarations(self) -> t.MappingKV[str, p.Infra.RopePyName]: ...
-
-        @property
-        def dependencies(self) -> set[str]: ...
-
-        @property
-        def imports(self) -> t.MutableMappingKV[str, str]: ...
-
-        def alias_definition(
-            self, binding: p.Infra.RopePyName
-        ) -> t.Pair[ast.TypeAlias, p.Infra.RopeScope] | None: ...
-
-        def source(self, annotation: str, scope: p.Infra.RopeScope) -> str: ...
-
-        def render_protocol(
-            self, name: str, model: p.Infra.RopePyName, scope: p.Infra.RopeScope
-        ) -> str: ...
 
     @runtime_checkable
     class CommandPayloadContext(Protocol):
@@ -243,16 +215,6 @@ class FlextInfraProtocolsBase(Protocol):
         def codegen_conform_collaborators(
             self,
         ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
-
-    @runtime_checkable
-    class CodegenHandlerContext(CodegenExecutionContext, Protocol):
-        """API handler context that also exposes native conform execution."""
-
-        def codegen_conform(
-            self,
-            request: FlextInfraProtocolsBase.CodegenConformRequest,
-            initial_workspace: p.Infra.WorkspaceSpec | None = None,
-        ) -> p.Result[FlextInfraProtocolsBase.CodegenResult]: ...
 
     @runtime_checkable
     class FunctionDescriptor(Protocol):

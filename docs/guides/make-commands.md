@@ -167,18 +167,62 @@ or ambiguous module fails before effects. The shared import-normalization phase 
 removes own-package import aliases, preserves shadowed homonyms and rejects canonical
 name capture; `make mod` consumes that same owner.
 
-The public `flext-infra refactor move-module` command moves an existing module
-through the same Rope engine and rewrites its import references. Its required
-`--repository-root`, `--source-file`, and `--destination-directory` arguments
-declare the actual owners; relative paths resolve inside that repository.
-Both source and destination must belong to the repository, the destination must
-exist, and a competing destination module fails before any write. The command
-does not copy a loader, add an alias, restore a snapshot, or change package exports.
-After a structural move, regenerate and exercise the real package consumer.
+The public `flext-infra refactor move-module` command has two explicit,
+mutually exclusive destination facts. Both require `--repository-root` and
+`--source-file`; relative file paths resolve inside the declared repository.
+`--destination-directory` preserves the existing mutable Rope operation: the
+destination package must exist and the basename is retained. A competing module
+fails before any write. This mode does not regenerate package exports.
+
+`--destination-file` elects the immutable exact-file planner and authenticated
+semantic publisher. It accepts ordinary `.py` modules with class or mixed
+contents and can create the destination's semantic package through canonical
+projection planning. From the SDK's owning workspace environment:
+
+```bash
+flext-infra refactor move-module --repository-root /path/to/member --source-file src/package/_utilities/_json/_core.py --destination-file src/package/_utilities/_json/core.py
+```
+
+The typed `ModuleMoveCommand` rejects both destination facts together, or neither;
+it never guesses a mode from a suffix. Source, destination and every returned
+semantic file effect must remain within the declared repository. The existing
+native repository root must equal the declared root; a nested path cannot
+silently widen the write scope to an ancestor project. The existing
+publisher composes lazy/facade projections from the proposed source graph,
+normalizes the complete candidate, and performs staged acceptance before journal
+publication. It never publishes partially coherent raw Rope effects or handwritten
+initializers. Success retains the existing plain output, the absolute destination
+path, and CLI exit `0`; the route returns its existing successful boolean result
+only after the publisher's typed published-path receipt succeeds. Planning or
+admission failure preserves its original evidence and does not emit a successful
+destination path. Exercise the real consumer before SDK tests and static gates.
+No loader, compatibility alias or snapshot restoration is added.
 In particular, a lazy installer cannot depend on a generated parent package that
 imports that same installer before its declaration is available. Move the actual
 implementation ownership out of that cycle rather than suppressing declared
 exports or introducing a special initializer.
+
+The immutable SDK counterpart is
+`u.Infra.plan_module_move(project, source, destination_file=target,
+sources=sources, source_states=states)`. It accepts an exact `.py` file target,
+including a new basename or an absent semantic package directory, and returns
+the existing `CodegenFilePlan` contract. Native Rope resource Rename and Move
+preserve whole modules, not only classes. The positional SDK directory form
+retains its original class-only contract; the CLI directory mode retains its
+existing native mutable contract.
+Planning requires the complete authenticated project Python inventory. Occupied
+files, package identities, intermediate rename owners, invalid identifiers and
+initializer-as-module moves are rejected without filesystem mutation. This is
+not an opaque-folder relocation API.
+
+The exact-file CLI supplies these plans to the existing semantic publisher with
+the declared repository as its projection root and the semantic dependency group.
+Other `make mod` phase consumers compose the same plans before publication. New
+package initializers are lookup-only during relocation planning; the lazy-init
+owner supplies their published content. The capability does not itself discover
+or execute a fleet layout migration, and no new Make selector or CLI verb is
+introduced. Prove the composed public runtime first, then run SDK regressions in
+the SDK's owning environment and its native static gates.
 
 ## Fleet automation verbs
 

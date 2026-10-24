@@ -7,17 +7,139 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from packaging.requirements import Requirement
 
-from flext_infra import config
+from flext_infra import codegen, config
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraUvNativeResolutionWorkspace:
     """Resolve portable workspace roots and generated member views natively."""
+
+    @staticmethod
+    @pytest.mark.parametrize("explicit_self", [False, True])
+    def test_editable_resolution_keeps_bound_root_through_supplier_backedge(
+        tmp_path: Path,
+        editable_supplier: Callable[[Path | None], None],
+        *,
+        explicit_self: bool,
+    ) -> None:
+        """Keep the target root elected for both initial self and expanded backedges."""
+        root = tmp_path / "worktree"
+        supplier_root = tmp_path / "suppliers"
+        root_name = "flext-infra"
+        names = ("flext-core", "flext-cli", "flext-tests")
+        beads = u.Tests.BeadsIdentity(
+            workspace="resolution-backedge",
+            database="resolution_backedge",
+            issue_prefix="resolution",
+        )
+        for directory in (root, supplier_root):
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                directory, root_name, beads=beads
+            )
+        for name in names:
+            member = supplier_root / name
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                member, name, beads=beads
+            )
+            u.Tests.WorktreeFixture.attach_submodule(
+                supplier_root, member, distribution=name, relative_path=name
+            )
+        for name, dependency in zip(names, (*names[1:], "Flext_Infra"), strict=True):
+            u.Tests.write_native_resolution_project(
+                supplier_root / name,
+                name,
+                dependencies=(f"{dependency}>=1",),
+            )
+        u.Tests.write_native_resolution_project(supplier_root, root_name)
+        u.Tests.write_native_resolution_project(
+            root,
+            root_name,
+            dependencies=(names[0], *(("Flext_Infra>=1",) if explicit_self else ())),
+        )
+        originals = {
+            path: path.read_bytes()
+            for path in (
+                root / c.PYPROJECT_FILENAME,
+                supplier_root / c.PYPROJECT_FILENAME,
+                *(supplier_root / name / c.PYPROJECT_FILENAME for name in names),
+            )
+        }
+        editable_supplier(supplier_root)
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        request = u.Tests.conform_request(root)
+        conform = codegen.FlextInfraCodegenConform(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                initial_workspace=workspace,
+                request=request,
+            ),
+        )
+        plans = tm.ok(conform.native_resolution_plans(root, workspace, inputs, ()))
+        directory = root / inputs.spec.make.uv_resolution.editable_directory
+        editable = next(
+            plan for plan in plans if plan.path == directory / c.PYPROJECT_FILENAME
+        )
+        sources = u.Tests.toml_table_at(
+            editable.desired_content.decode(c.DEFAULT_ENCODING),
+            "tool",
+            "uv",
+            "sources",
+        )
+        tm.that(set(sources), eq={root_name, *names})
+        for name, selected in (
+            (root_name, root),
+            *((name, supplier_root / name) for name in names),
+        ):
+            source = u.Tests.toml_mapping(sources[name])
+            tm.that(
+                source["path"],
+                eq=selected.relative_to(directory, walk_up=True).as_posix(),
+            )
+            tm.that(
+                source["editable"],
+                eq=workspace.repository.editable if name == root_name else True,
+            )
+        for path, content in originals.items():
+            tm.that(path.read_bytes(), eq=content)
+
+    @staticmethod
+    def test_native_resolution_rejects_unrelated_normalized_member_collision(
+        tmp_path: Path,
+    ) -> None:
+        """Distinct bound members cannot share one normalized distribution name."""
+        projects: list[m.Infra.UvResolutionProject] = []
+        for directory, name in (
+            (tmp_path / "root", "resolution-owner"),
+            (tmp_path / "first", "unrelated-member"),
+            (tmp_path / "second", "unrelated_member"),
+        ):
+            u.Tests.write_native_resolution_project(directory, name)
+            projects.append(
+                m.Infra.UvResolutionProject(
+                    repository=u.Tests.repository_ref(name),
+                    directory=directory,
+                    document=u.Tests.toml_doc(
+                        (directory / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+                    ),
+                )
+            )
+        result = u.Infra.pyproject_native_resolution_view(
+            projects[0],
+            workspace=u.Tests.workspace_spec(projects[0].repository),
+            members=tuple(projects[1:]),
+            directory=tmp_path / "resolution",
+            policy=config.Infra.codegen.make.uv_resolution,
+        )
+        tm.fail(result, has="colliding normalized distribution names")
 
     @staticmethod
     def _conformed_portable_root(
