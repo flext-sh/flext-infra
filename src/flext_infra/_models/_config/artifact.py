@@ -303,32 +303,14 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         ] = None
 
     class CodegenAstGrepSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Native ast-grep utility rules generated from project SSOT facts."""
+        """Native ast-grep utilities and rules rendered in memory from SSOT facts."""
 
-        utilities_dir: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Repository-relative directory of the generated native "
-                    "ast-grep utility rules a rule references through matches"
-                ),
-            ),
-        ]
         producers: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "u.Infra producer names; each maps a project root to its "
                     "native utility rules keyed by utility id"
-                ),
-            ),
-        ]
-        rules_dir: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Repository-relative directory of the generated native "
-                    "ast-grep rule documents the renderers emit"
                 ),
             ),
         ]

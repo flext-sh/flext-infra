@@ -33,6 +33,11 @@ Infra:
     retired_projections:
     - .github/scripts/install-git-hooks.sh
     - .github/scripts/flext-law-loop.sh
+    # The unread per-id projection of generated ast-grep utilities and rules
+    # (make mod renders them in memory): a retired directory removes every
+    # generated-marker file under it, never an authored one.
+    - config/rules/ast-grep/utils
+    - config/rules/ast-grep/rules/generated
     # Superseded resolver manifests are marked generated. Their uv-produced locks
     # identify the synthetic virtual root; never retire a different native source.
     - .flext/uv/local/pyproject.toml
@@ -101,13 +106,12 @@ Infra:
     loc_cap:
       max_lines: 1000
 
-    # Project SSOT facts generated as native ast-grep utility rules: each
-    # producer is a u.Infra function mapping a project root to
-    # {utility id: native rule}. make gen writes one file per utility id
-    # under utilities_dir and retires generated files no producer emits;
-    # rules reference them natively (constraints: VAR: {matches: <id>}).
+    # Project SSOT facts rendered as native ast-grep utilities: each producer
+    # is a u.Infra function mapping a project root to {utility id: native
+    # rule}; rules reference them natively (constraints: VAR: {matches: <id>}).
+    # make mod renders utilities and rules in memory and stages them for its
+    # native cascade; nothing is projected into repositories.
     ast_grep:
-      utilities_dir: config/rules/ast-grep/utils
       producers:
         - codemod_own_package_utilities
         - codemod_stdlib_module_utilities
@@ -116,9 +120,7 @@ Infra:
         - codemod_package_export_utilities
         - codemod_facade_family_package_utilities
       # Generated native rule documents: each renderer receives the typed
-      # model of its producer and returns {rule id: native rule document}.
-      rules_dir: config/rules/ast-grep/rules/generated
-      # make mod renders the same documents in memory for its native cascade
+      # model of its producer and returns {rule id: native rule document}
       # (the header stage owns import-header, the catalog stage the rest).
       renderers:
         - name: codemod_import_header_rules

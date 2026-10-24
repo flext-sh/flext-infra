@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: exports--tests.unit.codegen
-language: Python
-rule:
-  regex: ^(?:TestsFlextInfraCodegenCiMatrix|TestsFlextInfraCodegenCiMatrixAnalysis|TestsFlextInfraCodegenCiMatrixArtifacts|TestsFlextInfraCodegenCiMatrixSupport|TestsFlextInfraCodegenLayoutSupport)$

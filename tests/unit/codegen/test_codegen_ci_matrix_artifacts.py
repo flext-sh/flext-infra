@@ -36,21 +36,20 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
             tm.that(triggers, lacks=forbidden)
 
     @staticmethod
-    def test_fresh_render_projects_native_utilities_of_its_planned_manifest(
+    def test_fresh_render_projects_no_generated_ast_grep_rules(
         rendered_project: Path,
     ) -> None:
-        """A fresh render derives the ast-grep utilities from its own candidate.
+        """Generated ast-grep utilities and rules live only in memory.
 
-        The manifest did not exist before the render, so the utilities come
-        from the planned declaration; rendering again from the published tree
-        reproduces the same bytes (fixed point).
+        ``make mod`` renders them for its cascade, so a fresh render publishes
+        none of them, while the same project still renders them in memory.
         """
         root = rendered_project.absolute()
-        spec = config.Infra.codegen.ast_grep
-        expected = u.Infra.codemod_native_generated_sources(root, spec)
-        tm.that(len(expected), gt=0)
-        for path, text in expected.items():
-            tm.that(path.read_text(c.DEFAULT_ENCODING), eq=text)
+        rendered = u.Infra.codemod_native_generated(root, config.Infra.codegen.ast_grep)
+        tm.that(len(rendered.utilities), gt=0)
+        for retired in config.Infra.codegen.retired_projections:
+            if isinstance(retired, str) and retired.startswith("config/rules/ast-grep"):
+                tm.that((root / retired).exists(), eq=False)
 
     @staticmethod
     def test_dependabot_applies_the_fleet_cooldown_everywhere(

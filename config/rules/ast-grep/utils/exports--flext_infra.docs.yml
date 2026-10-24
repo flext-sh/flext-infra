@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: exports--flext_infra.docs
-language: Python
-rule:
-  regex: ^(?:FlextInfraDocAuditor|FlextInfraDocAuditorChecksMixin|FlextInfraDocAuditorMixin|FlextInfraDocAuditorReportMixin|FlextInfraDocBuilder|FlextInfraDocCollector|FlextInfraDocFixer|FlextInfraDocFormatter|FlextInfraDocGenerator|FlextInfraDocGeneratorBundleMixin|FlextInfraDocServer|FlextInfraDocServiceBase|FlextInfraDocValidator)$

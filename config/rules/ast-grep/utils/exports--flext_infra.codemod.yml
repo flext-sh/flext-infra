@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: exports--flext_infra.codemod
-language: Python
-rule:
-  regex: ^(?:FlextInfraAccessorRenamePhase|FlextInfraApplyRenames|FlextInfraCodemodAstScan|FlextInfraCodemodBatchApply|FlextInfraCodemodDuplicateApply|FlextInfraCodemodSemanticApply|FlextInfraCodemodSnapshotReconciler|FlextInfraCodemodSnapshotRefresh|FlextInfraDuplicateApplyPhase|FlextInfraExtractDuplicatePhase|FlextInfraImportNormalizationPhase|FlextInfraModGateEngine|FlextInfraModReplacements|FlextInfraModTextGateEngine|FlextInfraNamespaceRelocationPhase|FlextInfraRenameSources|FlextInfraRenameSymbols)$

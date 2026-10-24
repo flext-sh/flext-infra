@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: runtime-package
-language: Python
-rule:
-  regex: ^(?:6ec57f84c680d3a3778b__mypyc|PIL|_pytest|_yaml|_yaml_ft|annotated_doc|annotated_types|ast_serialize|attr|attrs|beartype|click|dateutil|defusedxml|docx|dotenv|et_xmlfile|filelock|ghp_import|git|gitdb|griffe|grimp|importlinter|iniconfig|jinja2|jsonschema|jsonschema_specifications|libcst|librt|lxml|markdown|markdown_it|markupsafe|mdurl|mergedeep|mkdocs|mkdocs_get_deps|mypy|mypy_extensions|mypyc|networkx|openpyxl|packaging|pathspec|platformdirs|pluggy|pptx|py|pydantic|pydantic_core|pydantic_settings|pygments|pymdownx|pytest|pytest_markdown_docs|pytoolconfig|referencing|rich|rope|rpds|ruamel|shellingham|six|smmap|structlog|tomlkit|typer|typing_extensions|typing_inspection|tzdata|watchdog|xlsxwriter|yaml|yaml_env_tag|yaml_ft)(?:[.\s]|$)

@@ -576,8 +576,20 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
-        for destination in destinations:
-            path = root / Path(destination)
+        # A retired directory retires each file under it; the generated
+        # marker (or declared evidence) below still guards every removal.
+        candidates = (
+            (destination, path)
+            for destination in destinations
+            for path in (
+                sorted(
+                    item for item in (root / destination).rglob("*") if item.is_file()
+                )
+                if (root / destination).is_dir()
+                else ((root / destination),)
+            )
+        )
+        for destination, path in candidates:
             if not path.is_file():
                 continue
             current = u.Cli.files_read_text(path)

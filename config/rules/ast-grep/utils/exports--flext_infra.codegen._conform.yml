@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: exports--flext_infra.codegen._conform
-language: Python
-rule:
-  regex: ^(?:FlextInfraCodegenConformArtifactRender|FlextInfraCodegenConformBootstrap|FlextInfraCodegenConformContextRender|FlextInfraCodegenConformEditor|FlextInfraCodegenConformExecute|FlextInfraCodegenConformExistingPlan|FlextInfraCodegenConformFilePlans|FlextInfraCodegenConformPlan|FlextInfraCodegenConformPyprojectPolicy|FlextInfraCodegenConformScaffoldPlan)$

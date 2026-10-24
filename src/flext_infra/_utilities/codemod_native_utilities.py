@@ -15,9 +15,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-import shutil
 import sys
-import tempfile
 from functools import cache
 from importlib.metadata import packages_distributions
 from pathlib import Path
@@ -27,13 +25,9 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, p, settings, t
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
-from flext_infra._utilities.iteration_directory import (
-    FlextInfraUtilitiesIterationDirectory,
-)
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
@@ -225,8 +219,9 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     ) -> m.Infra.CodemodNativeGenerated:
         """Render every generated utility, then every rule document, in memory.
 
-        ``make gen`` projects these documents; ``make mod`` stages them for
-        its native cascade without reading a projection from disk.
+        Renderers run after the producers because rendered rules reference the
+        generated utilities through ``matches``. Only ``make mod`` consumes
+        them: its native cascade stages them; nothing is projected to disk.
 
         Returns:
             The project's generated utility and rule documents keyed by id.
@@ -236,119 +231,6 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         return m.Infra.CodemodNativeGenerated(
             utilities=cls.codemod_native_utilities(root, spec.producers),
             rules=cls.codemod_native_rules(root, spec),
-        )
-
-    @classmethod
-    def codemod_native_generated_sources(
-        cls, project: Path, spec: m.Infra.CodegenAstGrepSpec
-    ) -> t.MappingKV[Path, str]:
-        """Render every generated utility, then every rule document, of a project.
-
-        Renderers run after the producers because rendered rules reference the
-        generated utilities through ``matches``.
-
-        Returns:
-            Absolute destination to its generated YAML text, header first.
-
-        """
-        root = project.absolute()
-        generated = cls.codemod_native_generated(root, spec)
-        documents = {
-            **{
-                root / spec.utilities_dir / f"{key}{c.Infra.CODEMOD_RULE_SUFFIX}": doc
-                for key, doc in generated.utilities.items()
-            },
-            **{
-                root / spec.rules_dir / f"{key}{c.Infra.CODEMOD_RULE_SUFFIX}": doc
-                for key, doc in generated.rules.items()
-            },
-        }
-        return MappingProxyType({
-            path: (
-                f"{c.Infra.AUTOGEN_HEADER}\n"
-                f"{u.Cli.yaml_dump_str(document, sort_keys=True)}"
-            )
-            for path, document in sorted(documents.items())
-        })
-
-    @classmethod
-    def codemod_native_candidate_sources(
-        cls,
-        project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
-        planned: t.MappingKV[Path, bytes],
-    ) -> t.MappingKV[Path, str]:
-        """Render the generated sources from the candidate the generation plans.
-
-        The utilities are a projection of the project's declarations. When the
-        plan declares a manifest the disk does not hold yet (a fresh render)
-        or holds differently, the producers read a candidate view: the
-        project's Python sources and configuration with every planned file
-        written over them. Otherwise they read the project itself.
-
-        Returns:
-            Absolute live destination to its generated YAML text.
-
-        """
-        root = project.absolute()
-        manifest = root / c.PYPROJECT_FILENAME
-        declared = planned.get(manifest)
-        if declared is None or (
-            manifest.is_file() and manifest.read_bytes() == declared
-        ):
-            return cls.codemod_native_generated_sources(root, spec)
-        configuration = root / c.CONFIG_DIR_NAME
-        disk = (
-            *FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(root),
-            *(path for path in sorted(configuration.rglob("*")) if path.is_file()),
-        )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="ast-grep-candidate-", dir=settings.work_dir
-        ) as directory:
-            view = Path(directory) / root.name
-            for path in disk:
-                target = view / path.relative_to(root)
-                u.Cli.ensure_dir(target.parent).unwrap()
-                shutil.copyfile(path, target)
-            for path, content in planned.items():
-                if not path.is_relative_to(root):
-                    continue
-                target = view / path.relative_to(root)
-                u.Cli.ensure_dir(target.parent).unwrap()
-                target.write_bytes(content)
-            rendered = cls.codemod_native_generated_sources(view, spec)
-            return MappingProxyType({
-                root / path.relative_to(view): text for path, text in rendered.items()
-            })
-
-    @staticmethod
-    def codemod_native_generated_stale(
-        project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
-        produced: t.IterableOf[Path],
-    ) -> t.VariadicTuple[Path]:
-        """Return generated utility and rule files no owner emits any more.
-
-        Only files opening with a declared generator header are retired; an
-        authored file in either directory is never touched.
-
-        Returns:
-            The stale generated files, in path order.
-
-        """
-        wanted = frozenset(produced)
-        directories = (
-            project.absolute() / relative
-            for relative in (spec.utilities_dir, spec.rules_dir)
-        )
-        return tuple(
-            path
-            for directory in directories
-            if directory.is_dir()
-            for path in sorted(directory.glob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
-            if path not in wanted
-            and FlextInfraUtilitiesCodegenFilePlan.generated_source(path)
         )
 
     @classmethod

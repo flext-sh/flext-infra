@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: exports--tests.refactor
-language: Python
-rule:
-  regex: ^(?:TestsFlextInfraRefactorRopeStubs)$

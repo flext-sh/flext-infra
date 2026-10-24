@@ -1,5 +1,0 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-id: exports--flext_infra._utilities._rope_analysis
-language: Python
-rule:
-  regex: ^(?:FlextInfraUtilitiesRopeAnalysisAstHelpers|FlextInfraUtilitiesRopeAnalysisBase|FlextInfraUtilitiesRopeAnalysisExports|FlextInfraUtilitiesRopeAnalysisImportState|FlextInfraUtilitiesRopeAnalysisSourceScan)$
