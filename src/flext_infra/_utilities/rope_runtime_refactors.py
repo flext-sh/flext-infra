@@ -338,19 +338,23 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     def _match_region(match: object) -> t.Pair[int, int] | None:
         """Return the matched character range, or None when Rope cannot region it.
 
-        Rope's ``SimilarFinder.get_matches`` yields matches whose AST nodes may
-        lack the ``region`` attribute (subscripts, bare names, attribute chains
-        in PEP 695 and lazy-facade patterns). The matcher contract treats an
-        unregionable match as no match rather than a crash.
+        The fleet rope's ``Match.get_region`` raises ``AttributeError`` when the
+        matched AST node carries no region (subscripts, bare names, attribute
+        chains in PEP 695 and lazy-facade patterns). The matcher contract treats
+        an unregionable match as no match rather than a crash — the exception is
+        the upstream signal, translated once at this boundary.
 
         Returns:
             The resulting ``t.Pair[int, int] | None``.
 
         """
-        getter = getattr(match, "get_region", None)
-        if getter is None:
+        region_getter = getattr(match, "get_region", None)
+        if region_getter is None:
             return None
-        start, end = getter()
+        try:
+            start, end = region_getter()
+        except AttributeError:
+            return None
         return (start, end)
 
     @classmethod
