@@ -14,6 +14,21 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
+    from flext_infra.workspace._native_reference_bindings import (
+        FlextInfraWorkspaceNativeReferenceBindingsMixin,
+    )
+    from flext_infra.workspace._native_reference_functions import (
+        FlextInfraWorkspaceNativeReferenceFunctionsMixin,
+    )
+    from flext_infra.workspace._native_reference_primitives import (
+        FlextInfraWorkspaceNativeReferencePrimitivesMixin,
+    )
+    from flext_infra.workspace._native_reference_symbols import (
+        FlextInfraWorkspaceNativeReferenceSymbolsMixin,
+    )
+    from flext_infra.workspace._native_reference_values import (
+        FlextInfraWorkspaceNativeReferenceValuesMixin,
+    )
     from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
     from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
@@ -29,6 +44,9 @@ if TYPE_CHECKING:
     from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
     from flext_infra.workspace.lock_completeness import (
         FlextInfraWorkspaceLockCompleteness,
+    )
+    from flext_infra.workspace.native_reference import (
+        FlextInfraWorkspaceNativeReference,
     )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
@@ -51,6 +69,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceGovernanceMixin",
     "FlextInfraWorkspaceLifecycle",
     "FlextInfraWorkspaceLockCompleteness",
+    "FlextInfraWorkspaceNativeReference",
+    "FlextInfraWorkspaceNativeReferenceBindingsMixin",
+    "FlextInfraWorkspaceNativeReferenceFunctionsMixin",
+    "FlextInfraWorkspaceNativeReferencePrimitivesMixin",
+    "FlextInfraWorkspaceNativeReferenceSymbolsMixin",
+    "FlextInfraWorkspaceNativeReferenceValuesMixin",
     "FlextInfraWorkspacePropagation",
 )
 
@@ -71,6 +95,18 @@ install_lazy_exports(
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
         "FlextInfraWorkspaceLifecycle": ".lifecycle",
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
+        "FlextInfraWorkspaceNativeReference": ".native_reference",
+        "FlextInfraWorkspaceNativeReferenceBindingsMixin": (
+            "._native_reference_bindings"
+        ),
+        "FlextInfraWorkspaceNativeReferenceFunctionsMixin": (
+            "._native_reference_functions"
+        ),
+        "FlextInfraWorkspaceNativeReferencePrimitivesMixin": (
+            "._native_reference_primitives"
+        ),
+        "FlextInfraWorkspaceNativeReferenceSymbolsMixin": "._native_reference_symbols",
+        "FlextInfraWorkspaceNativeReferenceValuesMixin": "._native_reference_values",
         "FlextInfraWorkspacePropagation": ".propagation",
     }),
     public_exports=__all__,
