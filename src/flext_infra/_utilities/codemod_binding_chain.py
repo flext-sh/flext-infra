@@ -1,13 +1,10 @@
 """Binding-chain proofs the codemod project analysis reads.
 
-ast-grep matches one file's syntax. Some laws are verdicts over the whole
-project: whether a module takes part in an import cycle, whether a facade's
-namespace composes every class its family package declares. The engine owns
-building those project facts once per admission pass, from the tree as it is
-then (a pass after a rewrite reads the rewritten project); rule
-documents name the verdict they need through ``metadata.context`` predicates.
-No rule lives here: the rule data decides where a fact is asked and what it
-means.
+A rewrite that replaces one spelling with another is safe only when both
+resolve to the same binding at the occurrence. These proofs answer that from
+native Rope identities — stable binding chains, the single reaching binding,
+member relocation by absence or by identical object — for the binding
+predicates rule documents declare in ``metadata.context``.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -183,12 +180,21 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 )
             ) and (
                 resolved_symbol
-                or cls._predicate_binding_verdict(
-                    (project, module, scope),
-                    condition,
-                    capture.text,
-                    start,
-                    sources,
+                or condition.predicate
+                is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
+                or (
+                    cls._emitted_symbol_holds(
+                        (project, module, scope), condition, start, sources
+                    )
+                    if condition.predicate
+                    is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL
+                    else cls._resolved_expression_holds(
+                        (project, module, scope),
+                        condition,
+                        capture.text,
+                        start,
+                        sources,
+                    )
                 )
             )
 
@@ -651,50 +657,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 target_scope, ast.unparse(alias.value.value)
             )
             return cls._binding_symbols_match(original_binding, generic)
-
-        @classmethod
-        def _predicate_binding_verdict(
-            cls,
-            frame: t.Triple[
-                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
-            ],
-            condition: m.Infra.CodemodContextCondition,
-            capture_text: str,
-            start: int,
-            sources: t.MappingKV[Path, str],
-        ) -> bool:
-            """Grade one admitted occurrence through its configured predicate.
-
-            Args:
-                frame: Rope project, module and lexical scope of the occurrence.
-                condition: The codemod context condition to evaluate.
-                capture_text: Exact captured expression text.
-                start: Occurrence start offset inside its source.
-                sources: Mapping of source file paths to their content.
-
-            Returns:
-                Whether the occurrence satisfies its binding predicate.
-
-            """
-            if (
-                condition.predicate
-                is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
-            ):
-                return True
-            if condition.predicate is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL:
-                return cls._emitted_symbol_holds(
-                    frame,
-                    condition,
-                    start,
-                    sources,
-                )
-            return cls._resolved_expression_holds(
-                frame,
-                condition,
-                capture_text,
-                start,
-                sources,
-            )
 
         @classmethod
         def _emitted_symbol_holds(
