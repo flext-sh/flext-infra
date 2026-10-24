@@ -543,7 +543,7 @@ class FlextInfraConstantsRefactor:
     )
     "Matches TypeVar/ParamSpec/TypeVarTuple/NewType assignments."
     ENFORCEMENT_CANONICAL_ALIASES: ClassVar[frozenset[str]] = (
-        c.ENFORCEMENT_CANONICAL_ALIASES
+        c.FAMILY_CANONICAL_ALIASES
     )
     "Canonical short aliases exposed by FLEXT facades (SSOT: flext-core)."
     # Consume core enforcement data through its exact canonical alias.
