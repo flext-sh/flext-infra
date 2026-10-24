@@ -246,6 +246,13 @@ class FlextInfraCodegenRoutes:
                 success_message="native UV lock upgraded and verified",
             ),
             m.Cli.ResultCommandRoute(
+                name="verify-own-lock",
+                help_text=("Check the checkout's own committed UV lock with native uv"),
+                model_cls=m.Infra.WorkspaceRequest,
+                handler=deps.FlextInfraLockIntegrityVerifier.verify_own_lock,
+                success_message="own UV lock matches its manifest",
+            ),
+            m.Cli.ResultCommandRoute(
                 name="detect",
                 help_text="Detect runtime vs dev dependencies",
                 model_cls=m.Infra.DetectCommand,

@@ -648,6 +648,27 @@ class FlextInfraConfigModelsMake(
                         raise ValueError(msg)
                 return self
 
+        class MemberLockSpec(FlextInfraConfigModelsContract.ConfigContract):
+            """Short-lived member worktrees owning standalone lock resolution.
+
+            The worktree of an attached member is materialized below the
+            ``pytest_scratch`` runtime-state root, at the member's absolute
+            checkout path followed by ``namespace``: outside the superproject,
+            so native uv elects the member itself rather than the workspace.
+            """
+
+            namespace: Annotated[
+                t.NonEmptyStr,
+                m.Field(
+                    pattern=r"^[A-Za-z0-9_-]+$",
+                    description="Worktree namespace below the member checkout path",
+                ),
+            ]
+            commit_subject: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Subject of the path-limited lock commit"),
+            ]
+
         class CodemodRulesCacheSpec(
             FlextInfraExternalCacheDirectorySpec.Directory,
             FlextInfraConfigModelsContract.ConfigContract,
@@ -755,6 +776,10 @@ class FlextInfraConfigModelsMake(
         pytest_scratch: Annotated[
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
+        ]
+        member_lock: Annotated[
+            MemberLockSpec,
+            m.Field(description="Attached-member standalone lock worktrees"),
         ]
         gate_acceptance_policy: Annotated[
             FlextInfraConstantsConfig.GateAcceptancePolicy,

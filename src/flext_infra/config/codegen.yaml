@@ -569,6 +569,17 @@ Infra:
         home_relative_directory: .local/state
         state_directory_name: .flext-runtime
         namespace: scratch
+      # Each workspace member tracks its own uv.lock, consumed frozen by its
+      # standalone CI (tracker memory
+      # operator-ruling-2026-10-24-ci-frozen-homologated-locks). Native uv
+      # elects the superproject for an attached member, so `make upg` relocks
+      # every member in dependency waves inside a short-lived worktree of that
+      # member at <pytest_scratch root><absolute member checkout>/<namespace>,
+      # outside the superproject, then commits, pushes and retires it. The
+      # check gate verifies the committed member lock the same way.
+      member_lock:
+        namespace: locks
+        commit_subject: "[WIP] chore(lock): relock uv.lock on the declared upstream line tips"
       # Actions-cache policy for the shared testmon database: two-phase
       # generations, a per-repository byte budget with an ascending quota
       # ladder, and the refs allowed to publish (never pull requests).

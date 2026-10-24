@@ -68,7 +68,7 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Execute the four original owners through this check invocation.
+        """Execute the original owners through this check invocation.
 
         Returns:
             The combined execution of the original owners.
@@ -99,6 +99,16 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
                     "verify-locks",
                     "--repository-root",
                     str(project_dir if ctx.runtime_root is None else runtime_root),
+                ),
+            ),
+            (
+                "own-lock",
+                (
+                    *infra,
+                    "deps",
+                    "verify-own-lock",
+                    "--repository-root",
+                    str(project_dir),
                 ),
             ),
             (

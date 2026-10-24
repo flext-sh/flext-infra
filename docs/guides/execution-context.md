@@ -1131,7 +1131,24 @@ generation, `make upg` and the locked-install checks.
 
 One `make upg` resolves the declared native project/workspace and tool manifests.
 Attached members delegate resolution to their elected workspace; standalone
-repositories own their own locks. Each owner supplies its declared paths and
+repositories own their own locks. Every member also tracks its own `uv.lock`,
+which its standalone CI installs frozen and never relocks (tracker memory
+`operator-ruling-2026-10-24-ci-frozen-homologated-locks`). Because native uv
+elects the superproject for an attached member, `deps upgrade-lock` at a
+workspace root, after relocking the root, relocks each governed member in
+runtime-dependency waves inside a short-lived native worktree of that member's
+own repository at its freshly fetched branch tip. The worktree lives at the
+declared `make.pytest_scratch` runtime-state root followed by the absolute
+member checkout and `make.member_lock.namespace`, outside the superproject and
+never under `/tmp`. A changed lock is committed path-limited with
+`make.member_lock.commit_subject`, pushed fast-forward, proven reachable from
+the freshly fetched remote ref, and the worktree is retired. The primary checkout
+fast-forwards when its `HEAD` was the old tip and otherwise integrates the remote
+branch with `merge --no-ff`. `deps verify-own-lock`, run by the runtime-integrity
+check gate, applies native `uv lock --check` to the checkout's own committed lock,
+in place for a root or standalone checkout and through the same worktree for an
+attached member. Pins of internal Git requirements follow the line each member's
+`pyproject.toml` declares. Each owner supplies its declared paths and
 source identities. An editable supplier supplies sources, never its physical
 environment. Upgrade does not generate manifests or Makefiles, install tools,
 synchronize an environment or invoke another lifecycle operation.
