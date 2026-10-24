@@ -107,7 +107,8 @@ class FlextInfraSemanticPublication:
                 )
             ):
                 return result_type.fail(
-                    f"generated findings require canonical generator repair: {plan.path}"
+                    "generated findings require canonical generator repair: "
+                    f"{plan.path}"
                 )
             files.append(
                 m.Infra.CodegenFilePlan(
