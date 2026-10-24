@@ -162,12 +162,21 @@ Infra:
       dependency_cooldown_days: 10
       uv_link_mode: copy
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
-      # Global compatibility exceptions become [tool.uv] constraint-dependencies
-      # in every project, including projects using the dependency transitively.
-      # Keep reasons here; an empty list removes constraints from all projections.
-      # Dependency compatibility is resolved from the declared project graph;
-      # upstream packages own any bounds their public contracts require.
-      uv_constraint_dependencies: []
+      # Security floors become [tool.uv] constraint-dependencies in every
+      # project, including projects that use the package only transitively.
+      # Operator decision 2026-10-24 (bead flext-y9dqj, "cooldown via
+      # constraint floors"): exclude-newer stays banned; each floor below is
+      # the first release fixing an open Dependabot advisory, reviewed by hand.
+      # Raise a floor only for a reviewed advisory and remove it once every
+      # direct dependent requires the fixed release; an empty list removes
+      # the key from all projections.
+      uv_constraint_dependencies:
+      - pillow>=13.0.0
+      - certifi>=2026.10.19
+      - setuptools>=84.1.0
+      - virtualenv>=21.14.13
+      - filelock>=4.2.1
+      - uv>=0.13.4
       # Explicit resolver-wide SDK source election. Repository/local declarations
       # of the same normalized name and marker take precedence at rendering.
       # The integrated fork preserves region coverage and resolves opaque source

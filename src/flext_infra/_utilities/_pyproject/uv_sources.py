@@ -164,11 +164,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         uv: t.Cli.TomlTable, resolution: m.Infra.UvResolutionSpec
     ) -> None:
         """Publish declared constraints and native linking, without cooldown copies."""
-        constraints = tuple(
-            requirement
-            for requirement in resolution.constraint_dependencies
-            if FlextInfraUtilitiesDependencies.dep_name(requirement) != "uv"
-        )
+        constraints = tuple(resolution.constraint_dependencies)
         if constraints:
             u.Cli.toml_sync_string_list(uv, "constraint-dependencies", constraints)
         else:

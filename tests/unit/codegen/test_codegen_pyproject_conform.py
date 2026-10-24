@@ -178,11 +178,8 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             ),
         )
         uv_config = u.Tests.toml_table_at(first, "tool", "uv")
-        expected = [
-            requirement
-            for requirement in config.Infra.codegen.toolchain.uv_constraint_dependencies
-            if u.Infra.dep_name(requirement) != "uv"
-        ]
+        expected = list(config.Infra.codegen.toolchain.uv_constraint_dependencies)
+        tm.that(expected, empty=False)
         tm.that(uv_config.get("constraint-dependencies", []), eq=expected)
         tm.that(u.Tests.toml_strings_at(first, "project", "dependencies"), eq=())
         second = tm.ok(

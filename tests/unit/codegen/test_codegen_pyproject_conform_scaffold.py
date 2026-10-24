@@ -57,9 +57,9 @@ class TestsFlextInfraCodegenPyprojectConformScaffold(
         )
 
     def test_conformance_deletes_empty_uv_constraint_key(self) -> None:
-        """A constraint set holding only the uv pin removes the key entirely."""
+        """An empty declared constraint set removes the retained key entirely."""
         toolchain = config.Infra.codegen.toolchain.model_copy(
-            update={"uv_link_mode": "copy", "uv_constraint_dependencies": ("uv>=0",)},
+            update={"uv_link_mode": "copy", "uv_constraint_dependencies": ()},
         )
         source = """[project]
 name = "external-consumer"

@@ -324,7 +324,7 @@ class FlextInfraModelsCodegenRender:
         link_mode: Annotated[str, m.Field(description="uv installation link mode")]
         constraint_dependencies: Annotated[
             t.VariadicTuple[str],
-            m.Field(description="Declared constraints; the uv pin is never kept"),
+            m.Field(description="Declared constraints, projected as declared"),
         ]
         override_dependencies: Annotated[
             t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
