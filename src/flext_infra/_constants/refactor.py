@@ -418,6 +418,14 @@ class FlextInfraConstantsRefactor:
     CODEMOD_ROPE_CONTRACTS_RELPATH: ClassVar[Path] = (
         CODEMOD_ROPE_RULES_RELPATH / "contracts.yaml"
     )
+    # Accessor renames and field normalizations the accessor migration proves.
+    CODEMOD_ROPE_ACCESSOR_MIGRATIONS_RELPATH: ClassVar[Path] = (
+        CODEMOD_ROPE_RULES_RELPATH / "accessor-migrations.yaml"
+    )
+    # Static enforcement catalog: one row per enforcement law and its owners.
+    ENFORCEMENT_CATALOG_RELPATH: ClassVar[Path] = (
+        CODEMOD_RULES_RELPATH / "catalog.yaml"
+    )
     # Rope restructure argument that binds a capture to one qualified identity.
     ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     # Rope restructure argument that types a capture by one builtin class:
@@ -542,14 +550,6 @@ class FlextInfraConstantsRefactor:
         re.MULTILINE,
     )
     "Matches TypeVar/ParamSpec/TypeVarTuple/NewType assignments."
-    ENFORCEMENT_CANONICAL_ALIASES: ClassVar[frozenset[str]] = (
-        c.FAMILY_CANONICAL_ALIASES
-    )
-    "Canonical short aliases exposed by FLEXT facades (SSOT: flext-core)."
-    # Consume core enforcement data through its exact canonical alias.
-    ENFORCEMENT_LIBRARY_OWNERS: ClassVar[t.StrMapping] = c.ENFORCEMENT_LIBRARY_OWNERS
-    "External library → project that owns its abstraction facade (SSOT: flext-core)."
-    "Matches 'from __future__ import annotations' import statement."
     MIN_METHODS_FOR_REORDER: ClassVar[int] = 2
     "Minimum method count before class method reordering is attempted."
 
