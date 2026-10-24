@@ -1267,7 +1267,10 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 ):
                     self._consume_effect(retired)
             return sorted(
-                name for name in set(names) if directory / name not in self._retired
+                name
+                for name in set(names)
+                if directory / name not in self._retired
+                and not self._is_generated_artifact(directory / name)
             )
 
         def _directory_chain(self, directory: Path) -> m.Cli.AtomicDirectoryChainPlan:
@@ -1402,6 +1405,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             parent = candidate.parent
+            if parent != self._root and not self.query(str(parent), "isdir"):
+                self._query_witnesses[candidate, predicate] = self._query_witnesses[
+                    parent, "isdir"
+                ]
+                return False
             inventory = self._inventory(parent)
             if inventory is None:
                 self._record_parent_witness(candidate, predicate)

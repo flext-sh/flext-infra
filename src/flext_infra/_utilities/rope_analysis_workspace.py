@@ -462,6 +462,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         package_dir_by_name: MutableMapping[str, Path] = {}
         project_package_by_root: MutableMapping[str, str] = {}
         package_dirs: set[Path] = set()
+        excluded_parts = cls._excluded_parts()
         # Hermetic index: iterate the discovery output in sorted path order so
         # every derived structure (index, lazy maps, generated facades) is
         # byte-identical across environments regardless of fs enumeration.
@@ -479,7 +480,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 continue
             if not resolved_file_path.is_relative_to(resolved_root):
                 continue
-            if cls._excluded_parts().intersection(
+            if excluded_parts.intersection(
                 resolved_file_path.relative_to(resolved_root).parts[:-1],
             ):
                 # The scan-ignore SSOT owns source visibility everywhere: a
@@ -493,12 +494,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 c.Infra.INIT_PY,
                 c.Infra.INIT_PYI,
             }
-            project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                resolved_root,
-                resolved_file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+            siblings = modules_by_dir.get(package_dir)
+            project_root = (
+                siblings[0].project_root
+                if siblings
+                else FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                    resolved_root,
+                    resolved_file_path,
+                    source_project=rope_project
+                    if rope_project.authenticated_sources
+                    else None,
+                )
             )
             module_name = (
                 cls.module_name_for_file(resolved_file_path, project_root=project_root)

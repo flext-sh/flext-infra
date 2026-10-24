@@ -157,8 +157,7 @@ class TestsFlextInfraRopeSnapshot:
         with pytest.raises(ValueError, match="atomic source changed") as rejected:
             consume_changed_source()
         tm.that(str(rejected.value), has=str(source))
-        tm.that(str(rejected.value), has="content_changed=True")
-        tm.that(str(rejected.value), has="same_model_type=True")
+        tm.that(source.read_bytes(), eq=proposed)
 
     @staticmethod
     @pytest.mark.parametrize("declared", [False, True])

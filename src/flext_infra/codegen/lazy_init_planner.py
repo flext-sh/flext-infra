@@ -176,6 +176,7 @@ class FlextInfraCodegenLazyInitPlanner(
         with (
             project.source_consumption() as consumption,
             project.source_consumer() as consumer,
+            consumer.frozen_layout(),
             FlextInfraRopeWorkspace.open_workspace(
                 self.rope_workspace.repository_root,
                 rope_repository_root=self.rope_workspace.rope_repository_root,

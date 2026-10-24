@@ -1,16 +1,17 @@
 # AGENTS.md — flext-infra
 
-> **Parent workspace law** lives in [`../AGENTS.md`](../AGENTS.md) — read it first.
-> Composition: global skills + parent/root `AGENTS.md` + this scope delta. Do not
-> re-embed universal law.
->
-> **Standalone / independent mode:** when `../AGENTS.md` does not resolve, pin the
-> parent raw `AGENTS.md` URL to the same branch/release as this package (never
-> `main`): <https://raw.githubusercontent.com/flext-sh/flext/0.12.0-dev/AGENTS.md>
+Read the branch-matched [FLEXT root](../AGENTS.md) and its local flext-law through
+that root's authority entry point. In standalone mode resolve the same branch or
+release; a coincidental parent instruction file does not establish FLEXT authority.
+This file adds only this package's domain delta. Command routing, architecture
+and universal execution stay with their parent owners.
+
+Embedded AI Hub or Beads generated blocks are retired delivery material, not
+active local rules. Their withdrawal remains the publisher's responsibility.
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-BEGIN -->
 
-**Package:** `flext_infra` · ~82k src LOC · deps: `flext-cli`, `flext-core`
+**Package:** `flext_infra` · deps: `flext-cli`, `flext-core`
 
 ## Overview
 
@@ -18,52 +19,6 @@ Build/tooling package for codegen, workspace conformance, dependency modernizati
 declarative enforcement. Drives canonical Make verbs; generates package facets and
 `[MANAGED]` pyproject sections. Not a runtime dependency — reach via CLI or pytest
 plugin (only `flext-tests` may depend on it).
-
-## Structure
-
-```text
-src/flext_infra/
-├── api.py cli.py __main__.py base.py git.py worktree.py promoted.py
-├── codegen/ codemod/ refactor/ transformers/ templates/
-├── deps/ gates/ check/ validate/ docs/ maintenance/
-├── release/ workspace/ services/ _promoted/
-├── constants.py typings.py protocols.py models.py utilities.py
-└── _constants/ _typings/ _protocols/ _models/ _utilities/
-```
-
-## Code Map
-
-| Symbol                          | Kind  | Location                       | Role                                                       |
-| ------------------------------- | ----- | ------------------------------ | ---------------------------------------------------------- |
-| `FlextInfra`                    | class | `api.py`                       | Rope workspace / health facade                             |
-| `FlextInfraCli`                 | class | `cli.py`                       | CLI entry                                                  |
-| `FlextInfraCodegenPipeline`     | class | `codegen/pipeline.py`          | codegen pipeline                                           |
-| `FlextInfraCodegenLazyInitPlanner` | class | `codegen/lazy_init_planner.py` | lazy-init export planning (service composite)              |
-| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
-| `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | body-less conform facade over `codegen/_conform/execute.py` |
-| `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
-| `FlextInfraPromoted`            | class | `promoted.py`                  | promoted command framework facade                          |
-
-## Promoted command framework
-
-Repository-owned `scripts/<verb>/<WHAT>.{py,sh}` commands declare a `/// flext-command`
-header and are reached only through `make <verb> WHAT=<action>` when the repository
-declares `script_dispatch`.
-
-- `FlextInfraPromoted` (`promoted.py`) composes registry state, discovery and dispatch
-  from `_promoted/{registry,discovery,dispatch}.py`. `main(argv)` is the dispatcher
-  entry; `dispatch(registry, verb, what)` receives WHAT already resolved once at the CLI
-  boundary.
-- Stateless primitives are `u.Infra.promoted_*` (`_utilities/_promoted/`):
-  `promoted_main`, `promoted_run`, `promoted_workspace_spec(root)`,
-  `promoted_discovered_workspace_spec`, `promoted_find_owner_root` (the start directory
-  itself is a valid owner), `promoted_render_help(registry, selector)` with `verb` or
-  `verb/what`, and `promoted_validate_command_contract`. Dynamic command parameters are
-  read through `u.Infra.env_value`.
-- Vocabulary is `c.Infra.Promoted*` (`_constants/promoted*.py`); the registry contract
-  is `p.Infra.PromotedRegistry`.
-- An empty, `help` or undeclared `all` WHAT renders the verb help; a verb that declares
-  an `all` command still runs it.
 
 ## Conventions (specific to this package)
 
@@ -78,7 +33,6 @@ declares `script_dispatch`.
   before claiming AST is banned.
 - Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py`
   docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
-- Codemod governance (ast-grep + make mod): ADR-014.
 - Family-wrapper flattening preserves the domain prefix in every promoted name.
   Rope identity owns rewrites in executable references and quoted type positions,
   including generic bases and deferred annotations. Ordinary strings, `Literal`
@@ -91,54 +45,6 @@ For namespace/runtime stabilization, read `docs/guides/execution-context.md` and
 active canonical Bead before restarting discovery. Preserve the declared scope,
 branch/PR, measured runtime, first failed gate and next action. Historical receipts
 do not validate a changed revision; execution context never becomes another tracker.
-
-## Commands
-
-Correct runtime behavior is the authority. Exercise the real setup, generation and
-consumer paths first, then make tests verify that contract. Never alter the environment
-to preserve an obsolete fixture or treat a passing test as proof of integrated runtime
-behavior.
-
-Generation journals file effects and reports failures at each affected target.
-Independently valid effects remain published when another target fails; a changed
-unrelated file cannot invalidate the whole invocation. Preserve the first original
-exception and its traceback. Never roll back published files or restore old source;
-repair the causal owner forward and resume through the canonical command.
-Journal contention waits only for native EACCES/EAGAIN/EWOULDBLOCK and retains the lock file's
-identity. Other lease errors escape unchanged. Every Mise warning and failed declared
-entrypoint blocks publication; no message classifier converts either to success.
-
-Configuration declares `latest`; only `make upg` resolves newer releases and writes
-the committed `uv.lock` and `mise.lock`. `make setup` installs from those locks (the CI
-path), never writes them, and preserves the first failed install: a drifted Mise lock
-stops setup without disabling the declared lock policy or retrying. Repair the lock
-through `make upg`. Generation and runtime verbs use those installed identities without
-installing or upgrading tools, and ignore host Mise tool declarations. Fix the
-configuration/templates when the lifecycle is wrong; do not install, resolve or
-synchronize dependencies manually. `APPLY` stays removed. Preserve each dependency's
-declared source, constraints, extras and markers: a name/version requirement uses its
-package registry, and an explicit Git requirement keeps its declared URL and ref.
-Only upgrade advances resolved lock provenance. Git and `pyproject.toml` own
-repository identity, `.gitmodules` owns composition, and each repository owns its
-configuration differences. Local editable bindings are development environment
-facts, not distributed dependency metadata. Publish the validated change through a
-merge-commit PR into the declared integration branch and verify the remote merge SHA
-before claiming delivery.
-
-Every checkout owns its physical `.venv` directory. Setup and runtime verbs reject
-symlinked environments before bootstrap, environment activation, or hooks; they never
-borrow another checkout's environment or editable sources. Caller environment and
-command-line variables cannot redirect the derived workspace or interpreter paths.
-Attached members use only their containing workspace's environment. Managed base
-interpreter symlinks inside the environment remain valid; the environment itself must
-belong to this workspace.
-
-```bash
-make setup
-make check
-make test
-make build
-```
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
 

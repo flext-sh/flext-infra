@@ -22,8 +22,30 @@ class TestsFlextInfraSourceEpochRevalidation:
     """Observe real filesystem edits through the public authenticated planner."""
 
     @staticmethod
+    def test_native_source_membership_excludes_runtime_cache_children(
+        tmp_path: Path,
+    ) -> None:
+        """Native child enumeration must not elect volatile interpreter byproducts."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        cache = package / "__pycache__"
+        cache.mkdir()
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            resource = project.get_folder(package.relative_to(root).as_posix())
+            children = {child.name for child in resource.get_children()}
+            tm.that(cache.name in children, eq=False)
+            cache.rmdir()
+            project.verify_source_states()
+            tm.that(
+                {child.name for child in resource.get_children()},
+                eq=children,
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("nested_consumer", [False, True])
     def test_published_native_ancestry_survives_warm_export_name_cache(
         tmp_path: Path,
+        *,
+        nested_consumer: bool,
     ) -> None:
         """Two-hop supplier bases stay proven without consuming unrelated modules."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -39,7 +61,9 @@ class TestsFlextInfraSourceEpochRevalidation:
             encoding=c.DEFAULT_ENCODING,
         )
         base = provider_package / "base.py"
-        base.write_text("class BaseConstants: pass\n", encoding=c.DEFAULT_ENCODING)
+        base.write_text(
+            "class BaseConstants(list): pass\n", encoding=c.DEFAULT_ENCODING
+        )
         provider = provider_package / "provider.py"
         provider.write_text(
             "from .base import BaseConstants\n"
@@ -56,6 +80,18 @@ class TestsFlextInfraSourceEpochRevalidation:
             '__all__ = ["FlextTestProjectConstants", "c"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        consumers = [package]
+        if nested_consumer:
+            child = package / "child"
+            child.mkdir()
+            (child / c.Infra.CONSTANTS_PY).write_text(
+                "from upstream_provider import c as upstream_c\n"
+                "class ChildConstants(upstream_c): pass\n"
+                "c = ChildConstants\n"
+                '__all__ = ["ChildConstants", "c"]\n',
+                encoding=c.DEFAULT_ENCODING,
+            )
+            consumers.append(child)
         with u.Infra.facade_source_project(
             tmp_path, project_roots=(root, provider_root)
         ) as (project, _, _):
@@ -66,15 +102,16 @@ class TestsFlextInfraSourceEpochRevalidation:
                     )
                 )
                 tm.that(analysis.exception, eq=None)
-                planned = next(
-                    file
-                    for file in analysis.files
-                    if file.path == package / c.Infra.INIT_PY
-                )
-                consumed = {state.path for state in planned.source_states}
-                tm.that(provider in consumed, eq=True)
-                tm.that(base in consumed, eq=True)
-                tm.that(unrelated in consumed, eq=False)
+                for consumer in consumers:
+                    planned = next(
+                        file
+                        for file in analysis.files
+                        if file.path == consumer / c.Infra.INIT_PY
+                    )
+                    consumed = {state.path for state in planned.source_states}
+                    tm.that(provider in consumed, eq=True)
+                    tm.that(base in consumed, eq=True)
+                    tm.that(unrelated in consumed, eq=False)
 
     @staticmethod
     def test_source_adoption_does_not_adopt_permission_failures(
