@@ -324,7 +324,9 @@ override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
-override export MISE_LOCKED := 1
+# No global locked mode: setup installs whatever mise.lock pins and never stops
+# on a stale or incomplete lock (operator-ruling-2026-10-09-setup-resilient);
+# only the runtime reader's discovery calls run locked, scoped to those calls.
 override export MISE_AUTO_INSTALL := 0
 # Project provisioning must never install or resolve tools from host config.
 # The physical runtime owns both its environment and frozen tool identities.
