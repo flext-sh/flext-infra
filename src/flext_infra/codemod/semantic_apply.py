@@ -350,10 +350,10 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 # (``_container`` + ``FlextContainerTestingOps`` -> testing_ops).
                 family = path.parent.name.lstrip("_").replace("_", "").lower()
                 prefix = ""
-                for index, word in enumerate(words[:-1]):
-                    prefix += word.lower()
+                for position, part in enumerate(words[:-1]):
+                    prefix += part.lower()
                     if prefix.endswith(family):
-                        responsibility = "_".join(words[index + 1 :]).lower()
+                        responsibility = "_".join(words[position + 1 :]).lower()
                         break
         if not responsibility:
             msg = (

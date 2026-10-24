@@ -80,9 +80,9 @@ class FlextInfraGate:
         self,
         repository_root: Path,
         *,
-        runner: p.Cli.CommandRunner | None = None,
+        runner: p.Cli.CommandRunner = u.Cli,
     ) -> None:
-        """Bind repository root and optional command runner override."""
+        """Bind repository root and the command runner (``u.Cli`` by default)."""
         self._repository_root = repository_root
         self._runner = runner
 
@@ -952,9 +952,8 @@ class FlextInfraGate:
             RuntimeError: If ``result.failure``.
 
         """
-        runner = self._runner or u.Cli
         deadline = self._runner_deadline(timeout)
-        result = runner.run_raw(
+        result = self._runner.run_raw(
             cmd,
             cwd=cwd,
             timeout=timeout if deadline is None else None,
