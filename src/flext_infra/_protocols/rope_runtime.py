@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
+    @runtime_checkable
     class RopeProjectFiles(Protocol):
         """Filesystem observations consumed by native project construction."""
 
@@ -37,6 +38,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def read(self, path: str) -> bytes: ...
 
+    @runtime_checkable
     class RopeResourceOwner(Protocol):
         """External resource election used by the native project initializer."""
 
@@ -44,6 +46,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, name: str, /
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
 
+    @runtime_checkable
     class RopeResourceObserver(Protocol):
         """Native observer registration without claiming a semantic payload read."""
 
@@ -51,6 +54,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
         ) -> None: ...
 
+    @runtime_checkable
     class RopeProjectInitializer(Protocol):
         """Native initialization with its documented nullable state folder."""
 
@@ -159,6 +163,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
+    @runtime_checkable
     class RopeScopedObject(RopeNamedObject, Protocol):
         """Source-defined object retained by a native lexical scope."""
 
@@ -178,9 +183,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeSourceObject(RopeScopedObject, RopeSourceDefinition, Protocol):
         """The source and scope capabilities of native Python definitions."""
 
+    @runtime_checkable
     class RopeSourceClass(RopeSourceObject, RopeClassObject, Protocol):
         """A source-defined class retaining its native superclass graph."""
 
+    @runtime_checkable
     class RopeSourceFunction(RopeSourceObject, Protocol):
         """A source-defined function retaining its native callable role."""
 

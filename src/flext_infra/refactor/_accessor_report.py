@@ -151,7 +151,13 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             for plan in plans
             if plan.desired_content is not None
         }
-        staged = FlextInfraStagedPackage.plan_sources(params.repository_root, updates)
+        staged = FlextInfraStagedPackage.plan_sources(
+            params.repository_root,
+            updates,
+            options=m.Infra.StageSourceOptions(
+                inputs=tuple(plan.before for plan in plans)
+            ),
+        )
         if staged.failure:
             return result_type.from_failure(staged)
         gates = tuple(params.gates) or tuple(u.Infra.snapshot_lint_gates())
@@ -266,6 +272,7 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             options=m.Infra.CodegenSourcePreviewOptions(
                 workspaces=plan.workspaces,
                 modes=plan.modes,
+                inputs=plan.inputs,
             ),
         )
         if previewed.failure:

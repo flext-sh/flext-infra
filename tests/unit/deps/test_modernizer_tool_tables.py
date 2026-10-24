@@ -342,7 +342,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tooling = config.Infra.tooling
         payload, changes = self._applied(
             tmp_path,
-            "[tool.codespell]\nskip =  c.GIT_DIR_NAME\n"
+            f'[tool.codespell]\nskip = "{c.GIT_DIR_NAME}"\n'
             "[tool.pydantic-mypy]\nwarn_untyped_fields = true\n",
         )
         codespell = self._table(payload, "codespell")

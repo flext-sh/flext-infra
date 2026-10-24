@@ -12,7 +12,7 @@ import re
 import tokenize
 from pathlib import Path
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 
 
@@ -60,12 +60,18 @@ class FlextInfraRenameSources:
         """Fold phase file plans into the staged candidate view.
 
         Returns:
-            The candidate carrying every phase effect.
+            The candidate carrying every phase effect over the union of the
+            original observations, or the first effect planned on other bytes.
 
         """
+        known = {state.path: state for state in candidate.candidate.inputs}
         updates = dict(candidate.candidate.updates)
         modes = dict(candidate.candidate.modes)
         for effect in plans:
+            if effect.before != known.setdefault(effect.path, effect.before):
+                return r[m.Infra.SemanticSourcePlan].fail(
+                    f"phase replaced original physical evidence: {effect.path}"
+                )
             if effect.desired_content is None:
                 updates[effect.path] = None
                 modes.pop(effect.path, None)
@@ -79,6 +85,7 @@ class FlextInfraRenameSources:
             options=m.Infra.StageSourceOptions(
                 workspaces=candidate.candidate.workspaces,
                 modes=modes,
+                inputs=tuple(known.values()),
             ),
         ).map(
             lambda stage: m.Infra.SemanticSourcePlan(
@@ -213,7 +220,7 @@ class FlextInfraRenameSources:
             ),
         }
         for root in roots:
-            paths = u.Infra.git_tracked_scope_paths(root)
+            paths = u.Infra.git_source_scope_paths(root)
             candidates = root.rglob("*") if paths is None else paths
             for path in sorted(candidates):
                 relative = path.relative_to(root)

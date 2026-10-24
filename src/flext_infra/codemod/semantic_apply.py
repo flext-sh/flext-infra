@@ -17,7 +17,6 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_sources import FlextInfraRenameSources
@@ -141,14 +140,19 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         if elected.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(elected)
         scopes = elected.value
-        if (
-            source_plan is not None
-            and (source_plan.candidate.workspaces or (source_plan.candidate.workspace,))
-            != scopes
-        ):
-            return r[m.Infra.SemanticRenamePlan].fail(
-                "semantic rename source receipt belongs to another scope"
+        if source_plan is not None:
+            if (
+                source_plan.candidate.workspaces or (source_plan.candidate.workspace,)
+            ) != scopes:
+                return r[m.Infra.SemanticRenamePlan].fail(
+                    "semantic rename source receipt belongs to another scope"
+                )
+            # A persisted plan is rebuilt only over the bytes it observed.
+            current = u.Cli.atomic_verify_binary_file_states(
+                source_plan.candidate.inputs
             )
+            if current.failure:
+                return r[m.Infra.SemanticRenamePlan].from_failure(current)
         return cls._build_native_rename_plan(workspace, selections, scopes)
 
     @classmethod
@@ -463,6 +467,15 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             {},
             options=m.Infra.StageSourceOptions(
                 workspaces=scopes if len(scopes) > 1 else (),
+                inputs=tuple(
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in dict.fromkeys(
+                        project.resolve() / target
+                        for scope in scopes
+                        for project in u.Infra.import_project_roots(scope)
+                        for target in u.Infra.ast_grep_scan_targets(project.resolve())
+                    )
+                ),
             ),
         )
 
@@ -582,7 +595,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             snapshots = tuple(
                 stack.enter_context(
                     closing(
-                        FlextInfraRopeProject.from_atomic_reads(
+                        u.Infra.planned_project(
                             project,
                             election=cls._planning_election(
                                 project,
@@ -616,6 +629,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     for state in staged_inputs.value
                     if state.path == source and state.mode is not None
                 },
+                inputs=staged_inputs.value,
             ),
         ).map(
             lambda candidate: (
@@ -730,7 +744,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             project = stack.enter_context(
                 closing(
-                    FlextInfraRopeProject.from_atomic_reads(
+                    u.Infra.planned_project(
                         live,
                         election=cls._planning_election(
                             live,
@@ -1264,9 +1278,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 authority, project_roots=u.Infra.import_project_roots(root)
             ) as live,
             closing(
-                FlextInfraRopeProject.from_atomic_reads(
-                    live, election=u.Infra.native_election(live)
-                )
+                u.Infra.planned_project(live, election=u.Infra.native_election(live))
             ) as source_project,
             FlextInfraRopeWorkspace.open_workspace(
                 root, rope_repository_root=authority, source_project=source_project

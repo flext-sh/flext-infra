@@ -219,7 +219,11 @@ class TestsFlextInfraCodegenLazyInit:
         def test_declared_sources_do_not_include_foreign_runtime_trees(
             tmp_path: Path,
         ) -> None:
-            """Only governed source roots supply packages and snapshot inputs."""
+            """Hidden runtime trees never supply packages; root tiers are detected.
+
+            Every identifier folder of the project root is a namespace tier
+            (generator law, point 4), so only hidden trees stay outside it.
+            """
             repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
             u.Tests.write_lazy_init_namespace_module(
                 package / "models.py",
@@ -258,10 +262,22 @@ class TestsFlextInfraCodegenLazyInit:
 
             result = FlextInfraCodegenLazyInit(repository_root=repository).plan_files()
 
-            tm.ok(result)
-            planned = {plan.path for plan in result.value}
+            planned = {plan.path for plan in tm.ok(result)}
+            hidden = {
+                path
+                for path in foreign_paths
+                if any(part.startswith(".") for part in path.relative_to(outside).parts)
+            }
             tm.ok(owned_inits <= planned)
-            tm.ok(planned.isdisjoint(foreign_paths))
+            tm.ok(planned.isdisjoint(hidden))
+            tm.that(
+                planned & foreign_paths,
+                eq={
+                    path
+                    for path in foreign_paths - hidden
+                    if path.name == c.Infra.INIT_PY
+                },
+            )
 
     class TestsEdgeCases:
         """Edge cases for directory scanning."""

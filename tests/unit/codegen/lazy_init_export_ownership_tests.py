@@ -18,28 +18,11 @@ class TestsFlextInfraLazyInitOwnership:
     """Validate public owner boundaries, collisions and native identity."""
 
     @staticmethod
-    def _workspace(tmp_path: Path) -> t.Pair[Path, Path]:
-        workspace: t.Pair[Path, Path] = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        return workspace
-
-    @staticmethod
-    def _generated_init(package_root: Path) -> str:
-        return package_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.DEFAULT_ENCODING,
-        )
-
-    @staticmethod
     def test_root_rejects_symbols_from_deep_descendant_packages(
         tmp_path: Path,
     ) -> None:
         """Keep deeply nested declarations behind their package facade."""
-        repository_root, package_root = TestsFlextInfraLazyInitOwnership._workspace(
-            tmp_path
-        )
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         deep_dir = package_root / "services" / "http"
         deep_dir.mkdir(parents=True)
         (package_root / "services" / c.Infra.INIT_PY).write_text(
@@ -59,7 +42,7 @@ class TestsFlextInfraLazyInitOwnership:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        exports_content = TestsFlextInfraLazyInitOwnership._generated_init(package_root)
+        exports_content = u.Tests.generated_init(package_root)
 
         tm.that(exports_content, lacks="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
@@ -86,7 +69,7 @@ class TestsFlextInfraLazyInitOwnership:
         )
         tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
         tm.that(
-            TestsFlextInfraLazyInitOwnership._generated_init(package_root),
+            u.Tests.generated_init(package_root),
             eq=exports_content,
         )
 
@@ -96,9 +79,7 @@ class TestsFlextInfraLazyInitOwnership:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """A public name belongs to its package, not a workspace-wide census."""
-        repository_root, package_root = TestsFlextInfraLazyInitOwnership._workspace(
-            tmp_path
-        )
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         other_package = package_root.with_name("independent_package")
         other_package.mkdir()
         other_package.joinpath(c.Infra.INIT_PY).write_text(
@@ -123,9 +104,7 @@ class TestsFlextInfraLazyInitOwnership:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Independent implementation declarations need no global renaming."""
-        repository_root, package_root = TestsFlextInfraLazyInitOwnership._workspace(
-            tmp_path
-        )
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         for module in ("first", "second"):
             package_root.joinpath(f"{module}.py").write_text(
                 "class ModuleLocalDeclaration:\n    pass\n\n__all__: list[str] = []\n",
@@ -151,10 +130,8 @@ class TestsFlextInfraLazyInitOwnership:
         the disagreement invisible exactly where it matters, so planning
         refuses and names the collision instead of generating a facade.
         """
-        repository_root, package_root = TestsFlextInfraLazyInitOwnership._workspace(
-            tmp_path
-        )
-        before = TestsFlextInfraLazyInitOwnership._generated_init(package_root)
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
+        before = u.Tests.generated_init(package_root)
         for index, name in enumerate(export_names):
             owner_dir = package_root if index == 0 else package_root / name.lower()
             if owner_dir != package_root:
@@ -170,7 +147,7 @@ class TestsFlextInfraLazyInitOwnership:
         initializers = tuple(package_root.rglob(c.Infra.INIT_PY))
         original_bytes = tuple(path.read_bytes() for path in initializers)
 
-        planned = u.Tests.plan_lazy_init(repository_root)
+        planned = u.Tests.create_lazy_init_service(repository_root).plan_files()
 
         tm.fail(planned, has="ambiguous")
         tm.that(str(planned.error), has=f"{len(export_names)} collision(s)")
@@ -180,7 +157,7 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(tuple(path.read_bytes() for path in initializers), eq=original_bytes)
         # The refusal is PRE-EFFECT: the facade on disk is untouched and never
         # gained the contested name.
-        after = TestsFlextInfraLazyInitOwnership._generated_init(package_root)
+        after = u.Tests.generated_init(package_root)
         tm.that(after, eq=before)
         tm.that(after, lacks="Shared")
 
@@ -195,10 +172,8 @@ class TestsFlextInfraLazyInitOwnership:
         which one owns it, so planning refuses loudly and names the collision
         instead of silently electing a winner behind the disagreement.
         """
-        repository_root, package_root = TestsFlextInfraLazyInitOwnership._workspace(
-            tmp_path
-        )
-        before = TestsFlextInfraLazyInitOwnership._generated_init(package_root)
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
+        before = u.Tests.generated_init(package_root)
         for module_name, class_name in (
             ("constants", "AlphaConstants"),
             ("culture", "CultureConstants"),
@@ -211,11 +186,11 @@ class TestsFlextInfraLazyInitOwnership:
                 encoding=c.DEFAULT_ENCODING,
             )
 
-        planned = u.Tests.plan_lazy_init(repository_root)
+        planned = u.Tests.create_lazy_init_service(repository_root).plan_files()
 
         tm.fail(planned, has="ambiguous")
         # The refusal is PRE-EFFECT: no facade gains either contested owner.
-        after = TestsFlextInfraLazyInitOwnership._generated_init(package_root)
+        after = u.Tests.generated_init(package_root)
         tm.that(after, eq=before)
         tm.that(after, lacks="AlphaConstants")
         tm.that(after, lacks="CultureConstants")
@@ -230,23 +205,29 @@ class TestsFlextInfraLazyInitOwnership:
         tmp_path: Path, modules: t.StrPair
     ) -> None:
         """Old filenames never make distinct declarations reexports."""
-        repository, package = TestsFlextInfraLazyInitOwnership._workspace(tmp_path)
-        before = TestsFlextInfraLazyInitOwnership._generated_init(package)
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        before = u.Tests.generated_init(package)
         for module in modules:
             (package / f"{module}.py").write_text(
                 "class Shared:\n    pass\n\n__all__ = ['Shared']\n",
                 encoding=c.DEFAULT_ENCODING,
             )
 
-        tm.fail(u.Tests.plan_lazy_init(repository), has="ambiguous")
-        tm.that(TestsFlextInfraLazyInitOwnership._generated_init(package), eq=before)
+        tm.fail(
+            u.Tests.create_lazy_init_service(repository).plan_files(), has="ambiguous"
+        )
+        tm.that(u.Tests.generated_init(package), eq=before)
 
     @staticmethod
-    def test_semantic_facade_preserves_native_exports_without_private_child_leakage(
+    def test_nested_facade_publishes_private_children_root_withholds_them(
         tmp_path: Path,
     ) -> None:
-        """Preserve native classes, functions and aliases without ancestor leaks."""
-        repository, package = TestsFlextInfraLazyInitOwnership._workspace(tmp_path)
+        """A nested package publishes its ``_x`` children; the facade root does not.
+
+        Operator ruling 2026-10-24: export what ``__all__`` holds. Only the
+        public facade root withholds private children and their exports.
+        """
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
         domain = package / "_runtime"
         records = domain / "_records"
         records.mkdir(parents=True)
@@ -274,13 +255,16 @@ class TestsFlextInfraLazyInitOwnership:
 
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(
-            (domain / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING),
-            lacks="RecordOwner",
+            u.Tests.generated_init(domain),
+            has=['"RecordOwner": "._records.owner"', '"_records": "._records"'],
         )
+        tm.that(u.Tests.generated_init(package), lacks=["RecordOwner", "_runtime"])
         tm.that(
             u.Tests.run_lazy_init_probe(
                 f"import {package.name} as public\n"
-                "from flext_tests import tm\n"
+                f"from {package.name}._runtime import RecordOwner\n"
+                f"from {package.name}._runtime._records.owner "
+                "import RecordOwner as implementation\n"
                 "print(public.RuntimeFacade.Record.marker)\n"
                 "print(public.encode('payload'))\n"
                 "print(public.encode.__module__ == "
@@ -289,23 +273,11 @@ class TestsFlextInfraLazyInitOwnership:
                 f"'{package.name}._runtime.facade')\n"
                 "print(public.Payload.__value__ == tuple[str, int])\n"
                 "print('RecordOwner' not in public.__all__)\n"
-                "try:\n"
-                f"    from {package.name}._runtime import RecordOwner\n"
-                "except ImportError:\n    print('implementation not published')\n"
-                "else:\n"
-                "    tm.reject('implicit implementation export')\n",
+                "print(RecordOwner is implementation)\n",
                 python_paths=(str(package.parent),),
                 cwd=repository,
             ),
-            eq=[
-                "native",
-                "payload",
-                "True",
-                "True",
-                "True",
-                "True",
-                "implementation not published",
-            ],
+            eq=["native", "payload", "True", "True", "True", "True", "True"],
         )
         initializers = tuple(package.rglob(c.Infra.INIT_PY))
         before = tuple(path.read_bytes() for path in initializers)
@@ -356,7 +328,7 @@ class TestsFlextInfraLazyInitOwnership:
         tmp_path: Path, modules: t.StrPair
     ) -> None:
         """Ancestry elects the facade independently of legacy numbering."""
-        repository, package = TestsFlextInfraLazyInitOwnership._workspace(tmp_path)
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
         original, facade = modules
         (package / f"{original}.py").write_text(
             "class Shared:\n"

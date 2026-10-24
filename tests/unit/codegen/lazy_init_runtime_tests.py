@@ -710,7 +710,7 @@ class TestsFlextInfraLazyInitRuntime:
             u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
         planned = {
             plan.path.resolve(): plan.desired_content.decode(c.DEFAULT_ENCODING)
-            for plan in tm.ok(u.Tests.plan_lazy_init(repository))
+            for plan in tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
             if plan.path.suffix == c.Infra.EXT_PYTHON
             and plan.desired_content is not None
         }

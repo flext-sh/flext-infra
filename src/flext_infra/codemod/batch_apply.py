@@ -260,6 +260,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 options=m.Infra.StageSourceOptions(
                     workspaces=seed.workspaces,
                     modes=seed.modes,
+                    inputs=tuple(inputs.values()),
                 ),
             ).unwrap()
         return seed
@@ -313,6 +314,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             options=m.Infra.StageSourceOptions(
                 workspaces=seed.workspaces,
                 modes=seed.modes,
+                inputs=tuple(inputs.values()),
             ),
         ).unwrap()
         for source in candidate.inputs:
@@ -333,6 +335,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             options=m.Infra.CodegenSourcePreviewOptions(
                 workspaces=candidate.workspaces,
                 modes=candidate.modes,
+                inputs=candidate.inputs,
             ),
         ).unwrap()
 
@@ -586,6 +589,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             options=m.Infra.StageSourceOptions(
                 workspaces=seed.candidate.workspaces,
                 modes=seed.candidate.modes,
+                inputs=seed.candidate.inputs,
             ),
         ).map(
             lambda staged: m.Infra.SemanticSourcePlan(

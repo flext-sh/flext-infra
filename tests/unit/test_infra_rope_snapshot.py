@@ -128,7 +128,7 @@ class TestsFlextInfraRopeSnapshot:
         (package / "provider_alias").symlink_to(provider, target_is_directory=True)
 
         with (
-            pytest.raises(OSError, match="physical alias"),
+            pytest.raises(ValueError, match="is not in the subpath"),
             u.Infra.facade_source_project(root) as (project, _sources),
         ):
             tuple(project.get_python_files())
@@ -399,7 +399,7 @@ tm.that(source.exists(), eq=False)
         package_init = package_root / "__init__.py"
         sources = {
             package_init.resolve(): package_init.read_text(encoding="utf-8"),
-            outsider.resolve(): "value = 1\n",
+            outsider.resolve(): "value = 2\n",
         }
         with (
             infra.rope_workspace(repository_root) as rope,

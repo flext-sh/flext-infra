@@ -1055,8 +1055,8 @@ class FlextInfraUtilitiesCodemodProject(
         Raises:
             TypeError: When the producer module has no supported Python AST.
             ValueError: When the condition argument shape is wrong, the
-                producer is not a native source callable, lies outside the
-                captured epoch, or declares an invalid entrypoint identity.
+                producer is not a native source callable, has no source
+                resource, or declares an invalid entrypoint identity.
 
         """
         if len(condition.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT:
@@ -1067,9 +1067,8 @@ class FlextInfraUtilitiesCodemodProject(
         if producer is None:
             return False
         module, scope = producer
-        resource = module.get_resource()
-        if resource is None or Path(resource.real_path) not in sources:
-            msg = "execution metadata producer is outside the captured epoch"
+        if module.get_resource() is None:
+            msg = "execution metadata producer has no source resource"
             raise ValueError(msg)
         tree = module.get_ast()
         if not isinstance(tree, ast.AST):
@@ -1081,9 +1080,7 @@ class FlextInfraUtilitiesCodemodProject(
                 scope.get_body_start() <= node.lineno <= scope.get_end()
             ):
                 continue
-            target_path = cls._execution_entrypoint(
-                project, module, scope, node, sources
-            )
+            target_path = cls._execution_entrypoint(project, module, scope, node)
             if target_path == source:
                 found = True
         if not found:
@@ -1146,7 +1143,6 @@ class FlextInfraUtilitiesCodemodProject(
         module: p.Infra.RopePyModule,
         scope: p.Infra.RopeScope,
         node: ast.Call,
-        sources: t.MappingKV[Path, str],
     ) -> Path | None:
         """Resolve one native execution metadata constructor's entrypoint.
 
@@ -1198,11 +1194,7 @@ class FlextInfraUtilitiesCodemodProject(
         _ = m.Cli.PythonScriptExecution.model_validate(
             {"module": target.get_name(), "role": role.value},
         )
-        target_path = Path(target_resource.real_path)
-        if target_path not in sources:
-            msg = f"execution entrypoint is outside the captured epoch: {target_path}"
-            raise ValueError(msg)
-        return target_path
+        return Path(target_resource.real_path)
 
     @classmethod
     def implementation_owner_modules(
@@ -1269,7 +1261,7 @@ class FlextInfraUtilitiesCodemodProject(
             The source path and related native declarations, when source-defined.
 
         Raises:
-            ValueError: If its source is absent from the captured epoch.
+            ValueError: If the declaration has no source resource.
             TypeError: If the module has no supported AST.
 
         """
@@ -1286,9 +1278,6 @@ class FlextInfraUtilitiesCodemodProject(
             msg = "native implementation declaration has no source resource"
             raise ValueError(msg)
         path = Path(resource.real_path)
-        if path not in sources:
-            msg = f"native implementation source is outside the captured epoch: {path}"
-            raise ValueError(msg)
         if types.py_class(target):
             pending.extend(
                 base for base in target.get_superclasses() if types.py_class(base)
@@ -1309,7 +1298,11 @@ class FlextInfraUtilitiesCodemodProject(
             raise TypeError(msg)
         pending.extend(
             FlextInfraUtilitiesCodemodProject._implementation_calls(
-                module, scope, tree, sources[path], namespace
+                module,
+                scope,
+                tree,
+                sources[path] if path in sources else resource.read(),
+                namespace,
             )
         )
         return path, pending
@@ -1536,6 +1529,15 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         sources = epoch.sources
+        # A staged candidate view is scanned under its own root while the
+        # epoch keys its sources by logical workspace paths; the view already
+        # materializes those bytes, so only sources inside the root overlay it.
+        physical_root = root.resolve()
+        overlaid = {
+            path: source
+            for path, source in sources.items()
+            if path.resolve().is_relative_to(physical_root)
+        }
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
@@ -1547,7 +1549,7 @@ class FlextInfraUtilitiesCodemodProject(
                 )
             ) as layout_project,
             closing(
-                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(live, sources)
+                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(live, overlaid)
             ) as project,
             project.frozen_layout(),
         ):
@@ -1653,9 +1655,7 @@ class FlextInfraUtilitiesCodemodProject(
             if shared is not None and shared[0] is project and shared[1] is snapshot
             else ({}, {})
         )
-        paths = cls._snapshot_project_imports(
-            project, selection, states, memo, closed=True
-        )
+        paths = cls._snapshot_project_imports(project, selection, states, memo)
         repository = selection.root.resolve()
         return tuple(
             state
@@ -1670,8 +1670,6 @@ class FlextInfraUtilitiesCodemodProject(
         selection: m.Infra.CodemodBindingProject,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         memo: t.Infra.CodemodImportWalkMemo,
-        *,
-        closed: bool = False,
     ) -> set[Path]:
         """Walk the same transitive import election for capture and rule ownership.
 
@@ -1697,7 +1695,7 @@ class FlextInfraUtilitiesCodemodProject(
             key = resource.real_path
             if key not in nodes:
                 nodes[key] = cls._snapshot_module_imports(
-                    project, states, resource, lookup, closed=closed
+                    project, states, resource, lookup
                 )
             node = nodes[key]
             if node is None or node[0] in visited:
@@ -1716,8 +1714,6 @@ class FlextInfraUtilitiesCodemodProject(
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         resource: t.Infra.RopeResource,
         lookup: t.Infra.RopeImportLookup,
-        *,
-        closed: bool = False,
     ) -> t.Infra.CodemodImportWalkNode:
         """Authenticate one module and resolve its declared import targets.
 
@@ -1727,7 +1723,6 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             TypeError: If binding package has no source resource contract.
-            ValueError: If a closed binding dependency is outside its captured epoch.
 
         """
         path = Path(resource.real_path).resolve()
@@ -1758,9 +1753,6 @@ class FlextInfraUtilitiesCodemodProject(
             return None
         state = states.get(path)
         if state is None:
-            if closed:
-                msg = f"rule binding dependency is outside its captured epoch: {path}"
-                raise ValueError(msg)
             state = project.source_state(path, required=False)
             states[path] = state
         source = project.source_text(path)
@@ -2490,13 +2482,16 @@ class FlextInfraUtilitiesCodemodProject(
 
     @classmethod
     def _module_exports(cls, file_path: Path) -> frozenset[str]:
-        """Read exports from the active admission epoch, or a standalone source.
+        """Read exports from the admission pass's view, or a standalone source.
+
+        The pass's captured bytes win; any other module is read through the
+        pass's overlaid Rope view of the planned and live tree.
 
         Returns:
             The resulting ``frozenset[str]``.
 
         Raises:
-            ValueError: If the active admission epoch does not contain the source.
+            ValueError: If the pass captured the module as absent.
 
         """
         shared = cls._closed_walk_cache.get()
@@ -2506,10 +2501,14 @@ class FlextInfraUtilitiesCodemodProject(
             state = next(
                 (state for state in shared[1].states if state.path == file_path), None
             )
-            if state is None or state.content is None:
-                msg = f"module exports lack an authenticated source: {file_path}"
+            if state is not None and state.content is None:
+                msg = f"module exports source is absent from the pass: {file_path}"
                 raise ValueError(msg)
-            source = state.content.decode(c.DEFAULT_ENCODING)
+            source = (
+                shared[0].source_text(file_path)
+                if state is None
+                else state.content.decode(c.DEFAULT_ENCODING)
+            )
         return frozenset(
             FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(source),
         )

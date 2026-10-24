@@ -410,4 +410,4 @@ class TestsFlextInfraLazyInitAliasInheritance:
                 " resolves nowhere in the active environment"
             ),
         ):
-            u.Tests.plan_lazy_init(repository_root)
+            u.Tests.create_lazy_init_service(repository_root).plan_files()

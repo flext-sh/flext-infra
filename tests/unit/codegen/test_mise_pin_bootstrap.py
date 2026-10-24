@@ -562,7 +562,7 @@ class TestsFlextInfraMisePinBootstrap:
         """Read each locked Git commit back from the locally provisioned mirror."""
         project = Path(__file__).resolve().parents[3]
         sources = u.Tests.locked_git_sources(project)
-        mirrored = u.Tests.build_git_mirrors(project, tmp_path)
+        mirrored = u.Tests.build_git_mirrors(project, tmp_path, sources)
         tm.that(len(mirrored), eq=len(sources))
         for url, revision, commit in sources:
             parsed = urlsplit(url)

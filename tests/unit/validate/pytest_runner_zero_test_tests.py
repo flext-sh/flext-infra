@@ -383,7 +383,12 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """One bounded full execution preserves the native empty-suite status."""
+        """One bounded full execution preserves the native empty-suite status.
+
+        FULL derives its inventory from the suite's single collection and must
+        execute a nonempty inventory, so an empty project keeps pytest's
+        native status without a selection plan or promoted accounting.
+        """
         project = self._zero_test_project(tmp_path)
         runner = self._runner(project, tmp_path)
 
@@ -409,15 +414,11 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._read(report_dir / "suite-outcome.json"),
         )
         tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            self._read(report_dir / "run-accounting.json"),
-        )
-        tm.ok(accounting.owns_no_tests)
-        tm.that(accounting.executed_count, eq=0)
-        tm.that(
-            self._read(report_dir / "summary.txt"),
-            has=["outcome=failed\n", f"exit={outcome}\n"],
-        )
+        for promoted in ("selection-plan.json", "run-accounting.json"):
+            tm.fail((report_dir / promoted).exists())
+        summary = self._read(report_dir / "summary.txt").splitlines()
+        tm.that(summary, has=["phase=suite", f"exit={outcome}"])
+        tm.that(summary, lacks="outcome=passed")
 
     @pytest.mark.slow
     def test_slow_only_declared_file_executes_its_slow_items(
@@ -486,13 +487,17 @@ class TestsFlextInfraPytestRunnerZeroTest:
             eq=runner.started_at_monotonic
             + config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
+        # FULL has no separate inventory phase: its one suite collection owns
+        # the startup failure, the raw log and the native outcome.
+        for phase in ("inventory", "selection"):
+            tm.fail((report_dir / f"{phase}-outcome.json").exists())
         outcome = m.Cli.ProcessOutcome.model_validate_json(
-            (report_dir / "inventory-outcome.json").read_bytes(),
+            (report_dir / "suite-outcome.json").read_bytes(),
         )
         tm.that(outcome.raw_return_code, eq=status)
         tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, none=True)
-        raw_log = report_dir / "testmon-inventory.log"
+        raw_log = report_dir / "pytest.log"
         tm.that(
             raw_log.read_text(encoding=c.DEFAULT_ENCODING),
             has=["ImportError", "missing_startup_dependency"],
@@ -503,9 +508,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(
             summary.splitlines(),
             has=[
-                "outcome=collection_failed",
-                "phase=inventory",
-                "suite=not_executed",
+                "phase=suite",
                 "inventory_complete=false",
                 "diagnostics=not_produced",
                 f"exit={status}",
@@ -513,15 +516,13 @@ class TestsFlextInfraPytestRunnerZeroTest:
             ],
         )
         tm.that(summary, lacks="collection_errors=0")
-        report_log = report_dir / "testmon-inventory.events.jsonl"
+        report_log = report_dir / "events.jsonl"
         warning_log = report_log.with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
         for missing_report in (report_log, warning_log):
             tm.fail(missing_report.exists())
             tm.that(summary.splitlines(), has=f"missing_report={missing_report}")
         tm.fail(proof.exists())
         for absent_artifact in (
-            "suite-outcome.json",
-            "events.jsonl",
             "junit.xml",
             "run-accounting.json",
             "selection-plan.json",

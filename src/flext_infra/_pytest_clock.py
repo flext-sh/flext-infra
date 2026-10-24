@@ -149,10 +149,14 @@ class FlextInfraPytestClock:
                 with capture:
                     if frame is not None:
                         traceback.print_stack(frame)
+                    # The default SIGTERM action ends the process after this
+                    # capture, so it is the final artifact and closes active
+                    # frames; a previous action that may continue keeps them
+                    # active as a completed-entry checkpoint.
                     FlextInfraPytestClock.publish_profile(
                         self.profile,
                         self.output,
-                        partial=True,
+                        partial=self.previous != signal.SIG_DFL,
                         immutable_output=self.immutable_output,
                         previous_output=self.previous_output,
                     )
@@ -397,8 +401,10 @@ class FlextInfraPytestClock:
         try:
             if not partial:
                 FlextInfraPytestClock._retire_profile(profile)
-            profile.snapshot_stats()
+            # Staging precedes the native snapshot: a signal whose native
+            # action aborts publication during staging leaves no snapshot taken.
             with FlextInfraPytestClock._staging(output) as (stream, staging, identity):
+                profile.snapshot_stats()
                 marshal.dump(profile.stats, stream)
                 stream.flush()
                 os.fsync(stream.fileno())

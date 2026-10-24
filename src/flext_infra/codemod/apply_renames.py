@@ -13,7 +13,6 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -182,7 +181,7 @@ class FlextInfraApplyRenames:
                     root, project_roots=roots, consumer_root=consumer
                 ) as live,
                 closing(
-                    FlextInfraRopeProject.from_atomic_reads(
+                    u.Infra.planned_project(
                         live, election=u.Infra.native_election(live)
                     )
                 ) as project,
@@ -285,29 +284,47 @@ class FlextInfraApplyRenames:
         cls,
         params: m.Infra.ApplyRenamesInput,
         roots: t.SequenceOf[Path],
-        pairs: t.SequenceOf[t.Pair[str, str]],
+        state: t.Pair[
+            t.Pair[Path, m.Cli.AtomicFileState], t.SequenceOf[t.Pair[str, str]]
+        ],
         planned: t.Pair[t.SequenceOf[m.Infra.SemanticFilePlan], int],
     ) -> p.Result[t.Pair[t.SequenceOf[Path], int]]:
-        """Publish the campaign and re-plan until the post-scan is clean.
+        """Accept the previewed campaign by a clean re-scan, then publish it.
 
         Returns:
             The changed paths and the residual pending-edit count.
 
         """
+        (csv_path, driver), pairs = state
         plans, pending = planned
+        publication_root = Path(commonpath(roots))
 
-        def verify(_published_root: Path) -> p.Result[bool]:
+        def verify(candidate_root: Path) -> p.Result[bool]:
             nonlocal pending
-            _fresh, pending = cls._plan(params, roots, pairs)
+            current = u.Cli.atomic_read_binary_file_state(csv_path, required=True)
+            if current.failure:
+                return r[bool].from_failure(current)
+            if current.value != driver:
+                return r[bool].fail(
+                    f"rename campaign driver changed during publish: {csv_path}",
+                )
+            _fresh, pending = cls._plan(
+                params,
+                tuple(
+                    candidate_root / path.relative_to(publication_root)
+                    for path in roots
+                ),
+                pairs,
+            )
             if pending:
                 return r[bool].fail(
-                    f"CSV campaign post-publication scan found {pending} pending edits",
+                    f"CSV campaign candidate scan found {pending} pending edits",
                 )
             return r[bool].ok(value=True)
 
         publication = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
-            repository_root=Path(commonpath(roots)),
+            repository_root=publication_root,
             options=m.Infra.SemanticPublicationOptions(
                 validator=verify,
                 projection_roots=tuple(
@@ -348,7 +365,9 @@ class FlextInfraApplyRenames:
         plans, pending = cls._plan(params, roots, pairs)
         changed: t.SequenceOf[Path] = ()
         if params.apply:
-            publication = cls._publish(params, roots, pairs, (plans, pending))
+            publication = cls._publish(
+                params, roots, ((csv_path, driver), pairs), (plans, pending)
+            )
             if publication.failure:
                 return r[m.Infra.ApplyRenamesReport].from_failure(publication)
             changed, pending = publication.value

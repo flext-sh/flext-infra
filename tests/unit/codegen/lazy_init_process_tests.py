@@ -44,7 +44,6 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(content, contains='"m": ".models"')
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, contains="__all__: tuple[str, ...]")
-        tm.that(content, lacks="__unit__")
         compile(content, "__init__.py", "exec")
 
     @staticmethod
@@ -62,9 +61,8 @@ class TestsFlextInfraLazyInitProcessing:
 
         result = service.plan_files()
 
-        tm.ok(result.success)
         tm.that(init_path.read_bytes(), eq=original)
-        tm.ok(str(init_path) in service.modified_files)
+        tm.that(u.Tests.lazy_init_effects(result), has=str(init_path))
 
     @staticmethod
     def test_regeneration_follows_renamed_module_without_renaming_class(
@@ -87,9 +85,8 @@ class TestsFlextInfraLazyInitProcessing:
         source = old_source.rename(helpers / "formatting.py")
 
         planned = service.plan_files()
-        tm.ok(planned)
         initializer = helpers / c.Infra.INIT_PY
-        tm.ok(str(initializer) in service.modified_files)
+        tm.that(u.Tests.lazy_init_effects(planned), has=str(initializer))
         tm.ok(u.Tests.materialize_codegen_plans(planned))
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=declaration)
         tm.that(
@@ -108,7 +105,7 @@ class TestsFlextInfraLazyInitProcessing:
         generated = initializer.read_bytes()
         tm.ok(u.Tests.materialize_lazy_init(service))
         tm.that(initializer.read_bytes(), eq=generated)
-        tm.that(service.modified_files, empty=True)
+        tm.that(u.Tests.lazy_init_effects(service.plan_files()), empty=True)
 
     @staticmethod
     def test_every_nested_level_is_lazy_formatted_and_idempotent(
@@ -158,7 +155,6 @@ class TestsFlextInfraLazyInitProcessing:
             ],
             cwd=repository_root,
         ).unwrap()
-        check_service = u.Tests.create_lazy_init_service(repository_root)
         check_result = u.Tests.run_lazy_init(repository_root, check_only=True)
         after = tuple(path.read_bytes() for path in generated_paths)
 
@@ -182,7 +178,6 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(contents[0], contains="FlextTestsWorker")
         tm.that(contents[1], contains="FlextTestsWorker")
         tm.that(check_result, eq=0)
-        tm.that(check_service.modified_files, empty=True)
         tm.that(after, eq=before)
 
     @staticmethod
@@ -223,23 +218,3 @@ class TestsFlextInfraLazyInitProcessing:
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         tm.that(init_path.read_bytes(), eq=authored)
-
-    @staticmethod
-    def test_apply_removes_obsolete_generated_sidecars(tmp_path: Path) -> None:
-        """Remove retired generated manifests while writing the initializer."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-        )
-        unit_path = package_root / "__unit__.py"
-        unit_path.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-
-        result = u.Tests.run_lazy_init(repository_root)
-
-        tm.that(result, eq=0)
-        tm.fail(unit_path.exists())

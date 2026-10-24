@@ -568,7 +568,13 @@ class FlextInfraUtilitiesCodegenNamespace:
             public_root = layout is not None and file_path.parent == layout.package_dir
             # A stub is never a facade source: Rope loads only Python sources,
             # and stub law is judged by its own rule.
-            facade_source = file_path.suffix == c.Infra.EXT_PYTHON
+            # A source outside the analyzed Rope project (an installed
+            # provider) keeps its declared exports as its only ownership fact.
+            facade_source = file_path.suffix == c.Infra.EXT_PYTHON and (
+                file_path.resolve().is_relative_to(
+                    Path(rope_project.root.real_path).resolve()
+                )
+            )
             if facade_source and (direct_tier or public_root):
                 resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
                     rope_project,

@@ -1689,7 +1689,11 @@ class FlextInfraUtilitiesSemanticContracts(
             raise TypeError(message)
         if any(
             FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-                project, module, argument, f"type=builtins.{native}", name=""
+                project,
+                module,
+                argument,
+                f"{c.Infra.ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX}{native}",
+                name="",
             )
             for native in ("str", "bool", "int", "float")
         ):
@@ -1766,7 +1770,11 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(message)
         for argument in invocation.args:
             if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-                project, module, argument, "type=builtins.str", name=""
+                project,
+                module,
+                argument,
+                f"{c.Infra.ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX}str",
+                name="",
             ):
                 message = (
                     "unproven native bound key: "
@@ -1842,7 +1850,11 @@ class FlextInfraUtilitiesSemanticContracts(
             )
             raise ValueError(message)
         if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-            project, module, invocation.args[0], "type=builtins.str", name=""
+            project,
+            module,
+            invocation.args[0],
+            f"{c.Infra.ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX}str",
+            name="",
         ):
             message = (
                 "logging migration requires a proven string message: "
