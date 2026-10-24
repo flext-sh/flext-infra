@@ -33,7 +33,6 @@ from libcst import (
     parse_module,
 )
 from libcst.codemod import CodemodContext
-from libcst.codemod.commands.rename import RenameCommand
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
@@ -467,15 +466,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         module = (
             owners[0].relative_to(pkg_dir).with_suffix("").as_posix().replace("/", ".")
         )
-        family_package = (
-            owners[0].parent.relative_to(pkg_dir).as_posix().replace("/", ".")
-        )
         alias = f"_{facade.name}"
         rendered = (
             f"{ast.get_source_segment(source, tree.body[0])}\n\n"
             "# Generated type facade; declarations belong to "
             f"{package_name}.{module}.\n"
-            f"from {package_name}.{family_package} "
+            f"from {package_name}.{module.rpartition('.')[0]} "
             f"import {facade.name} as {alias}\n\n\n"
             f"class {facade.name}({alias}):\n"
             '    """Public type facade inheriting its '
@@ -906,14 +902,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             for alias in node.names:
                 if owners.get(alias.name) != module:
                     continue
-                source = (
-                    RenameCommand(
-                        CodemodContext(full_package_name=package_name),
-                        old_name=f"{module}.{alias.name}",
-                        new_name=f"{family_package}.{alias.name}",
-                    )
-                    .transform_module(parse_module(source))
-                    .code
+                source = cls._relocated_import_source(
+                    source, package_name, (module, alias.name), family_package
                 )
         source = cls._wrap_facade_imports(cls._merged_facade_imports(source))
         if source.startswith(c.Infra.AUTOGEN_HEADER):
@@ -2008,8 +1998,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         """
         direct = {cls._base_name(base) for base in namespace.bases}
         nested = {
-            ast.unparse(base.value if isinstance(base, ast.Subscript) else base)
-            .split(".")[0]
+            ast.unparse(base.value if isinstance(base, ast.Subscript) else base).split(
+                "."
+            )[0]
             for base in namespace.bases
             if isinstance(
                 base.value if isinstance(base, ast.Subscript) else base,
@@ -2017,7 +2008,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
         }
         nested_owners = {
-            item.qualified_base for item in declarations if item.qualified_base in nested
+            item.qualified_base
+            for item in declarations
+            if item.qualified_base in nested
         }
         filtered = [
             item
@@ -2397,17 +2390,64 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 target = owners.get(alias.name)
                 if target is None or target == module:
                     continue
-                context = CodemodContext(full_package_name=package_name)
-                source = (
-                    RenameCommand(
-                        context,
-                        old_name=f"{module}.{alias.name}",
-                        new_name=f"{target}.{alias.name}",
-                    )
-                    .transform_module(parse_module(source))
-                    .code
+                source = FlextInfraUtilitiesCodegenFacades._relocated_import_source(
+                    source, package_name, (module, alias.name), target
                 )
         return source
+
+    @staticmethod
+    def _relocated_import_source(
+        source: str,
+        package_name: str,
+        imported: t.Pair[str, str],
+        target: str,
+    ) -> str:
+        """Move one imported name to a new origin module, keeping its binding.
+
+        The ``as`` alias, statement indentation and the remaining names of the
+        original statement are preserved, so the rebound import binds exactly
+        the names the module used before.
+
+        Returns:
+            Source whose import of ``imported`` now originates from ``target``.
+
+        Raises:
+            ValueError: If the source does not import ``imported``.
+
+        """
+        module, name = imported
+        lines = source.splitlines(keepends=True)
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.ImportFrom) or node.module is None:
+                continue
+            origin = (
+                resolve_name(f"{'.' * node.level}{node.module}", package_name)
+                if node.level
+                else node.module
+            )
+            moved = [alias for alias in node.names if alias.name == name]
+            if origin != module or not moved:
+                continue
+            kept = [alias for alias in node.names if alias.name != name]
+            statements = [
+                *(
+                    [ast.ImportFrom(module=node.module, names=kept, level=node.level)]
+                    if kept
+                    else []
+                ),
+                ast.ImportFrom(module=target, names=moved, level=0),
+            ]
+            indent = " " * node.col_offset
+            replacement = "".join(
+                f"{indent}{ast.unparse(statement)}\n" for statement in statements
+            )
+            return "".join([
+                *lines[: node.lineno - 1],
+                replacement,
+                *lines[node.end_lineno or node.lineno :],
+            ])
+        msg = f"source does not import {name} from {module}"
+        raise ValueError(msg)
 
     @classmethod
     def _declared_sources(

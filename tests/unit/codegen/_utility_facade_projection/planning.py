@@ -991,15 +991,24 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         tm.that(rendered, has="class FlextSampleTypes(_FlextSampleTypes)")
         self._write(facade, rendered)
+        with u.Infra.facade_source_project(root) as (project, sources):
+            tm.that(
+                u.Infra.render_type_facade(
+                    package, facade, dict(sources), project=project
+                ),
+                eq=rendered,
+            )
         output = tm.ok(
             u.Cli.run_raw(
                 (
                     sys.executable,
                     "-c",
-                    "from flext_sample.typings import t\n"
-                    "from flext_sample._typings import FlextSampleTypes\n"
-                    "assert t.__mro__[1] is FlextSampleTypes\n"
-                    "print(t.Sample.Name.__value__.__name__)\n",
+                    (
+                        "from flext_sample.typings import t\n"
+                        "from flext_sample._typings import FlextSampleTypes\n"
+                        "assert t.__mro__[1] is FlextSampleTypes\n"
+                        "print(t.Sample.Name.__value__.__name__)\n"
+                    ),
                 ),
                 options=m.Cli.ProcessOptions(
                     env={"PYTHONPATH": str(package.parent)},
