@@ -15,7 +15,6 @@ from flext_infra import FlextInfraConfig
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
-    FlextInfraMisePublication,
     FlextInfraStagedPackage,
 )
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate

@@ -1,0 +1,9 @@
+id: retire-publication-stack-publish-file-plan
+language: Python
+severity: error
+rule:
+  pattern: FlextInfraMisePublication.publish_file_plan($PLAN, phase=$PHASE)
+fix: u.Cli.publish_file_changes(($PLAN,), lock_path=u.Infra.mutation_lock_path($PLAN.project).unwrap())
+message: >-
+  One file change publishes through the shared publisher under its project's
+  mutation lock; journal phases are retired. An empty result means unchanged.

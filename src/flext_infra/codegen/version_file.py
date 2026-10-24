@@ -22,7 +22,6 @@ from flext_core.__version__ import FlextVersion
 from flext_infra import c, config, m, r, u
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
-    FlextInfraMisePublication,
 )
 
 if TYPE_CHECKING:
@@ -133,9 +132,8 @@ class FlextInfraCodegenVersionFile(FlextInfraCodegenExecutionBase[bool]):
             owner="codegen",
             policy="full",
         )
-        published = FlextInfraMisePublication.publish_file_plan(
-            planned,
-            phase=c.Infra.CodegenStagedFilePhase.VERSION_FILE,
+        published = u.Cli.publish_file_changes(
+            (planned,), lock_path=u.Infra.mutation_lock_path(planned.project).unwrap()
         )
         if published.failure:
             return r[str].from_failure(published)

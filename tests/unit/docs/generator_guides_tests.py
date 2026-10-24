@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen import FlextInfraMisePublication
+
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import m, r, tm, u
 
@@ -212,7 +212,11 @@ class TestsFlextInfraDocsGeneratorGuides:
             for plan in planned
             if plan.path == workspace / "flext-a/docs/guides/operator.md"
         )
-        tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
+        tm.fail(
+            u.Cli.publish_file_changes(
+                (target,), lock_path=u.Infra.mutation_lock_path(target.project).unwrap()
+            )
+        )
         tm.fail((workspace / "flext-a/docs/guides/operator.md").exists())
 
     @staticmethod
@@ -239,7 +243,11 @@ class TestsFlextInfraDocsGeneratorGuides:
             for plan in planned
             if plan.path == workspace / "flext-a/docs/guides/operator.md"
         )
-        tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
+        tm.fail(
+            u.Cli.publish_file_changes(
+                (target,), lock_path=u.Infra.mutation_lock_path(target.project).unwrap()
+            )
+        )
 
     @staticmethod
     def test_stale_guide_ownership_change_rejects_prepared_delete(
@@ -261,7 +269,11 @@ class TestsFlextInfraDocsGeneratorGuides:
 
         planned = tm.ok(generator.plan_files(bundle))
         target = next(plan for plan in planned if plan.path == destination)
-        tm.fail(FlextInfraMisePublication.publish_file_plan(target, phase="docs"))
+        tm.fail(
+            u.Cli.publish_file_changes(
+                (target,), lock_path=u.Infra.mutation_lock_path(target.project).unwrap()
+            )
+        )
         tm.that(destination.read_text(encoding="utf-8"), eq="# Now custom\n")
 
     @staticmethod

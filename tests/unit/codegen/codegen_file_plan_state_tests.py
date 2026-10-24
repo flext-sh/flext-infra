@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import m, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles, FlextInfraMisePublication
+
 from tests import c, tm
 
 
@@ -163,8 +163,9 @@ class TestsFlextInfraCodegenFilePlanState:
             inputs=(before,),
         ).model_copy(update={"files": (unchecked,)})
         for result in (
-            FlextInfraMisePublication.publish_file_plan(
-                unchecked, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+            u.Cli.publish_file_changes(
+                (unchecked,),
+                lock_path=u.Infra.mutation_lock_path(unchecked.project).unwrap(),
             ),
             FlextInfraMisePublication.admit_batch(analysis),
         ):
@@ -190,8 +191,8 @@ class TestsFlextInfraCodegenFilePlanState:
         )
         if route == "plan":
             tm.ok(
-                FlextInfraMisePublication.publish_file_plan(
-                    plan, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+                u.Cli.publish_file_changes(
+                    (plan,), lock_path=u.Infra.mutation_lock_path(plan.project).unwrap()
                 )
             )
         else:
@@ -268,8 +269,8 @@ class TestsFlextInfraCodegenFilePlanState:
             desired_mode=0o644,
         )
         tm.ok(
-            FlextInfraMisePublication.publish_file_plan(
-                plan, phase=c.Infra.CodegenStagedFilePhase.SEMANTIC
+            u.Cli.publish_file_changes(
+                (plan,), lock_path=u.Infra.mutation_lock_path(plan.project).unwrap()
             )
         )
         tm.that(target.read_bytes(), eq=content)

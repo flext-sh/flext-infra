@@ -15,7 +15,6 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLayoutPlanMixin,
-    FlextInfraMisePublication,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -92,9 +91,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             owner="codegen",
             policy="full" if managed.value is not None else "merge",
         )
-        written = FlextInfraMisePublication.publish_file_plan(
-            planned,
-            phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
+        written = u.Cli.publish_file_changes(
+            (planned,), lock_path=u.Infra.mutation_lock_path(planned.project).unwrap()
         )
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)

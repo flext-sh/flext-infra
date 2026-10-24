@@ -14,9 +14,7 @@ import pytest
 from jinja2 import Template
 
 from flext_infra import config, infra, settings
-from flext_infra.codegen import (
-    FlextInfraMiseArtifactsFiles,
-)
+
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, tm, u
@@ -65,7 +63,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
             ),
         )
         before = tuple(
-            tm.ok(FlextInfraMiseArtifactsFiles.read_state(path, required=True))
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in paths
         )
         observation = cProfile.Profile()
@@ -86,7 +84,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
             eq=False,
         )
         after = tuple(
-            tm.ok(FlextInfraMiseArtifactsFiles.read_state(path, required=True))
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in paths
         )
         tm.that(after, eq=before)
@@ -431,7 +429,7 @@ print(
         report = root / FlextInfraMiseArtifactsVerification.publication_receipt(
             c.Infra.CodegenConformSurface.LAZY_INIT,
         )
-        before = tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(report, required=True))
         checked = tm.ok(
             infra.codegen_conform(
                 request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
@@ -440,7 +438,7 @@ print(
         tm.ok(checked.verified_publication is not None)
         tm.that(checked.written_files, eq=())
         tm.that(
-            tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True)),
+            tm.ok(u.Cli.atomic_read_binary_file_state(report, required=True)),
             eq=before,
         )
 

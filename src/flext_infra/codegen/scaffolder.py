@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, override
 from flext_infra import c, config, m, r, u
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
-    FlextInfraMisePublication,
 )
 
 if TYPE_CHECKING:
@@ -244,9 +243,9 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
                 desired_mode=config.Infra.codegen.modes.file_default,
                 owner="codegen",
             )
-            written = FlextInfraMisePublication.publish_file_plan(
-                planned,
-                phase=c.Infra.CodegenStagedFilePhase.SCAFFOLD,
+            written = u.Cli.publish_file_changes(
+                (planned,),
+                lock_path=u.Infra.mutation_lock_path(planned.project).unwrap(),
             )
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"

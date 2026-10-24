@@ -200,7 +200,7 @@ class FlextInfraCodegenPreconditions:
         if rooted.failure:
             return result_type.from_failure(rooted)
         roots, owners = rooted.value
-        runtime = FlextInfraMiseArtifactsFiles.read_state(
+        runtime = u.Cli.atomic_read_binary_file_state(
             Path(sys.executable).resolve(), required=True
         )
         if runtime.failure:
@@ -328,7 +328,7 @@ class FlextInfraCodegenPreconditions:
                 or not path.parent.name.endswith(".dist-info")
             ):
                 continue
-            observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
             if observed.failure:
                 return r[bool].from_failure(observed)
             editable = FlextInfraMiseArtifactsFiles.editable_project_source(
@@ -397,7 +397,7 @@ class FlextInfraCodegenPreconditions:
                     continue
             if source in states or source.is_dir():
                 continue
-            captured = FlextInfraMiseArtifactsFiles.read_state(source, required=True)
+            captured = u.Cli.atomic_read_binary_file_state(source, required=True)
             if captured.failure:
                 return result_type.from_failure(captured)
             states[source] = captured.value
@@ -608,7 +608,7 @@ class FlextInfraCodegenPreconditions:
             if parent.is_relative_to(root)
         }
         for path in sorted(initializers - states.keys()):
-            initializer = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
+            initializer = u.Cli.atomic_read_binary_file_state(path, required=False)
             if initializer.failure:
                 return result_type.from_failure(initializer)
             states[path] = initializer.value
@@ -1434,7 +1434,7 @@ class FlextInfraCodegenPreconditions:
                 or not path.parent.name.endswith(".dist-info")
             ):
                 continue
-            observed = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
             if observed.failure:
                 return result_type.from_failure(observed)
             state = observed.value
@@ -1697,7 +1697,7 @@ class FlextInfraCodegenPreconditions:
 
         """
         for expected in outputs:
-            state = FlextInfraMiseArtifactsFiles.read_state(
+            state = u.Cli.atomic_read_binary_file_state(
                 expected.path, required=expected.sha256 is not None
             )
             if state.failure:

@@ -21,7 +21,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenMakeBootstrap,
     FlextInfraCodegenMiseToolchainProof,
-    FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.workspace import FlextInfraWorkspaceDetector

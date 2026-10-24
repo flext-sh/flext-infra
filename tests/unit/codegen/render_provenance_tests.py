@@ -20,7 +20,6 @@ from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenPreconditions,
-    FlextInfraMiseArtifactsFiles,
 )
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, t, tm, u

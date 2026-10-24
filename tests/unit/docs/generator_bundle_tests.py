@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, m
-from flext_infra.codegen import FlextInfraMisePublication
+
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import c, p, tm, u
 
@@ -281,7 +281,9 @@ tm.that(published.error or "", has=str(package))
         )
         target.write_bytes(b"concurrent\n")
 
-        published = FlextInfraMisePublication.publish_file_plan(plan, phase="docs")
+        published = u.Cli.publish_file_changes(
+            (plan,), lock_path=u.Infra.mutation_lock_path(plan.project).unwrap()
+        )
 
         tm.fail(published)
         tm.that(target.read_bytes(), eq=b"concurrent\n")

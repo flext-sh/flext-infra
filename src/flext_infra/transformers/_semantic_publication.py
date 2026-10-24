@@ -12,7 +12,6 @@ from pathlib import Path
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraMisePublication,
     FlextInfraStagedPackage,
 )
 from flext_infra.validate import FlextInfraValidateFreshImport

@@ -20,7 +20,6 @@ from typing import Annotated, ClassVar, override
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, settings, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
-    FlextInfraMiseArtifactsFiles,
     FlextInfraStagedPackage,
 )
 from flext_infra.validate.native_bootstrap import FlextInfraValidateNativeBootstrap
