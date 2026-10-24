@@ -33,15 +33,12 @@ class FlextInfraUtilitiesRopeRuntimeBase:
             projects have no receipt authority and must run the query again.
 
         """
-        if not project.authenticated_sources:
-            yield False
-        else:
-            cached = key in cache
-            if cached:
-                project.replay_source_consumption(receipts[receipt_key])
-            yield cached
-            if not cached:
-                receipts[receipt_key] = consumption.receipt()
+        cached = key in cache
+        if cached:
+            project.replay_source_consumption(receipts[receipt_key])
+        yield cached
+        if not cached:
+            receipts[receipt_key] = consumption.receipt()
 
     @classmethod
     def require_class_object(

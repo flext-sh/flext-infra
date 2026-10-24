@@ -201,19 +201,18 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         """
         resolved_root = project_root.resolve()
         cache_key = str(resolved_root)
-        if self.rope_project.authenticated_sources:
-            with u.Infra.cached_source_query(
-                self.rope_project,
-                self._project_layout_cache,
-                cache_key,
-                self._query_receipts,
-                f"layout:{cache_key}",
-            ) as cached:
-                if not cached:
-                    self._project_layout_cache[cache_key] = u.Infra.layout(
-                        resolved_root, rope_project=self.rope_project
-                    )
-                return self._project_layout_cache[cache_key]
+        with u.Infra.cached_source_query(
+            self.rope_project,
+            self._project_layout_cache,
+            cache_key,
+            self._query_receipts,
+            f"layout:{cache_key}",
+        ) as cached:
+            if not cached:
+                self._project_layout_cache[cache_key] = u.Infra.layout(
+                    resolved_root, rope_project=self.rope_project
+                )
+            return self._project_layout_cache[cache_key]
         if not self._owns_rope_project:
             return u.Infra.layout(resolved_root, rope_project=self.rope_project)
         if cache_key in self._project_layout_cache:

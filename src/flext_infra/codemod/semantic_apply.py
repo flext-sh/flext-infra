@@ -1687,10 +1687,9 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         changed: set[Path] = set()
         retired: t.Infra.RopeMutablePaths = set()
         inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] = {}
-        if rope_workspace.rope_project.authenticated_sources:
-            inputs.update(
-                cls._semantic_source_preimages(rope_workspace.rope_project, original)
-            )
+        inputs.update(
+            cls._semantic_source_preimages(rope_workspace.rope_project, original)
+        )
 
         # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
         # The original authority remains physical; every phase sees the latest

@@ -148,7 +148,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             loaded = cls._repository_declaration_inputs(
                 repository_root, source_project=source_project
             )
-        if loaded.success and source_project.authenticated_sources:
+        if loaded.success:
             cache[key] = loaded.value
         return loaded
 

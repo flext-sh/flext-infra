@@ -1,0 +1,68 @@
+id: retire-publication-stack-authenticated-branch
+language: Python
+severity: error
+rule:
+  any:
+    - pattern: |
+        if $PROJECT.authenticated_sources:
+            $$$READ
+        else:
+            $$$FALLBACK
+    - pattern: |
+        if $PROJECT.authenticated_sources:
+            $$$READ
+fix: $$$READ
+message: >-
+  Every Rope project reads through its overlaid view; the unauthenticated
+  fallback branch is retired with the source-authentication stack.
+---
+id: retire-publication-stack-unauthenticated-branch
+language: Python
+severity: error
+rule:
+  pattern: |
+    if not $PROJECT.authenticated_sources:
+        $$$FALLBACK
+    else:
+        $$$READ
+fix: $$$READ
+message: >-
+  Every Rope project reads through its overlaid view; keep only the
+  project-read branch.
+---
+id: retire-publication-stack-authenticated-ternary
+language: Python
+severity: error
+rule:
+  pattern: $READ if $PROJECT.authenticated_sources else $FALLBACK
+fix: $READ
+message: Every Rope project reads through its overlaid view; keep the project read.
+---
+id: retire-publication-stack-authenticated-guard
+language: Python
+severity: error
+rule:
+  any:
+    - pattern: |
+        if $PROJECT is not None and not $PROJECT.authenticated_sources:
+            $PROJECT = None
+fix: ""
+message: >-
+  A project never needs discarding for lacking authentication; every Rope
+  project reads through its overlaid view.
+---
+id: retire-publication-stack-authenticated-conjunct
+language: Python
+severity: error
+rule:
+  pattern: $CONDITION and $PROJECT.authenticated_sources
+fix: $CONDITION
+message: The authentication conjunct is always satisfied now; keep the condition.
+---
+id: retire-publication-stack-unauthenticated-disjunct
+language: Python
+severity: error
+rule:
+  pattern: not $PROJECT.authenticated_sources or $CONDITION
+fix: $CONDITION
+message: The unauthenticated disjunct can no longer hold; keep the condition.

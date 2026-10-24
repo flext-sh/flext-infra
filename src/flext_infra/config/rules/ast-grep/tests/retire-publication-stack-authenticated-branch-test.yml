@@ -1,0 +1,64 @@
+id: retire-publication-stack-authenticated-branch
+valid:
+  - |
+    if project.ready:
+        read()
+invalid:
+  - |
+    if project.authenticated_sources:
+        read()
+    else:
+        fallback()
+  - |
+    if rope.rope_project.authenticated_sources:
+        inputs.update(read())
+---
+id: retire-publication-stack-unauthenticated-branch
+valid:
+  - |
+    if not project.ready:
+        wait()
+invalid:
+  - |
+    if not project.authenticated_sources:
+        snapshot = fallback()
+    else:
+        snapshot = read()
+---
+id: retire-publication-stack-authenticated-ternary
+valid:
+  - |
+    owner = project if project.ready else None
+invalid:
+  - |
+    owner = rope_project if rope_project.authenticated_sources else None
+---
+id: retire-publication-stack-authenticated-guard
+valid:
+  - |
+    if project is not None and not project.ready:
+        project = None
+invalid:
+  - |
+    if rope_project is not None and not rope_project.authenticated_sources:
+        rope_project = None
+---
+id: retire-publication-stack-authenticated-conjunct
+valid:
+  - |
+    if loaded.success and project.ready:
+        cache[key] = loaded.value
+invalid:
+  - |
+    if loaded.success and source_project.authenticated_sources:
+        cache[key] = loaded.value
+---
+id: retire-publication-stack-unauthenticated-disjunct
+valid:
+  - |
+    if not project.ready or outside:
+        fail()
+invalid:
+  - |
+    if not source_project.authenticated_sources or not root.is_relative_to(base):
+        fail()

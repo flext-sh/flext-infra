@@ -34,14 +34,8 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
             The existing authenticated source owner for this semantic phase.
 
         """
-        if project.authenticated_sources:
-            with project.source_consumer() as source_project:
-                yield source_project
-        else:
-            with FlextInfraUtilitiesCodegenFacades.facade_source_project(
-                Path(project.root.real_path)
-            ) as (source_project, _, _):
-                yield source_project
+        with project.source_consumer() as source_project:
+            yield source_project
 
     @staticmethod
     def _editable_sources(

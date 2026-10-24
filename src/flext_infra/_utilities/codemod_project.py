@@ -1505,14 +1505,9 @@ class FlextInfraUtilitiesCodemodProject(
             source_paths=tuple(source_paths),
             modules=modules,
         )
-        if not project.authenticated_sources:
-            snapshot = cls.codemod_binding_snapshot(
-                selection.root, projects=(selection,)
-            )
-        else:
-            states = {state.path: state for state in project.consumed_source_states()}
-            cls._snapshot_project_imports(project, selection, states, ({}, {}))
-            snapshot = m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
+        states = {state.path: state for state in project.consumed_source_states()}
+        cls._snapshot_project_imports(project, selection, states, ({}, {}))
+        snapshot = m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
         return cls.codemod_source_epoch(snapshot)
 
     @classmethod

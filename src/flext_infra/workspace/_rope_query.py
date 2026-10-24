@@ -74,21 +74,15 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
             u.Cli.info(
                 f"rope: indexing python workspace at {self._rope_repository_root}",
             )
-            if self.rope_project.authenticated_sources:
-                with (
-                    self.rope_project.source_consumption() as consumption,
-                    self.rope_project.source_selection(),
-                ):
-                    workspace_index = u.Infra.index_rope_workspace(
-                        self.rope_project,
-                        self.repository_root,
-                    )
-                self._index_receipt = consumption.receipt()
-            else:
+            with (
+                self.rope_project.source_consumption() as consumption,
+                self.rope_project.source_selection(),
+            ):
                 workspace_index = u.Infra.index_rope_workspace(
                     self.rope_project,
-                    self._rope_repository_root,
+                    self.repository_root,
                 )
+            self._index_receipt = consumption.receipt()
             self._workspace_index = workspace_index
             u.Cli.info(
                 "rope: indexed "

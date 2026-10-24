@@ -38,8 +38,6 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         resolved_path = file_path.resolve()
         if not resolved_path.is_relative_to(root) or not (
             rope_project.source_query(resolved_path, "exists")
-            if rope_project.authenticated_sources
-            else resolved_path.exists()
         ):
             return None
         resource = rope_project.get_resource(str(resolved_path.relative_to(root)))

@@ -353,9 +353,7 @@ class FlextInfraCodegenLazyInit(
             ) as binding:
                 yield binding[0]
             return
-        if not source_project.authenticated_sources or not root.is_relative_to(
-            Path(source_project.root.real_path)
-        ):
+        if not root.is_relative_to(Path(source_project.root.real_path)):
             msg = "lazy-init consumer is outside its authenticated original authority"
             raise ValueError(msg)
         yield source_project

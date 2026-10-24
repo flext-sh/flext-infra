@@ -252,7 +252,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         rope_root = Path(rope_project.root.real_path).resolve()
-        source_project = rope_project if rope_project.authenticated_sources else None
+        source_project = rope_project
         declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
             resolved_root, source_project=source_project
         )
@@ -305,9 +305,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             resolved_file_path = file_path.resolve()
             if cls._is_generated_init_stub(
                 resolved_file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             ):
                 continue
             if not resolved_file_path.is_relative_to(resolved_root):
@@ -329,9 +327,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 Path(rope_project.root.real_path),
                 resolved_file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             )
             module_name = (
                 cls.module_name_for_file(resolved_file_path, project_root=project_root)

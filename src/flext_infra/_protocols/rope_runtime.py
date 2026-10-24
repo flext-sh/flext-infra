@@ -435,10 +435,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
     @runtime_checkable
     class RopeSourceAccess(Protocol):
-        """Authenticated source observations and per-consumer receipt scopes."""
-
-        @property
-        def authenticated_sources(self) -> bool: ...
+        """Source reads through the project's overlaid filesystem view."""
 
         def source_state(
             self, path: Path, *, required: bool = True
@@ -448,12 +445,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
         ) -> bool: ...
 
-        def source_children(
-            self,
-            path: Path,
-            *,
-            follow_aliases: bool = True,
-        ) -> tuple[Path, ...]: ...
+        def source_children(self, path: Path) -> tuple[Path, ...]: ...
 
         def source_text(self, path: Path) -> str: ...
 
