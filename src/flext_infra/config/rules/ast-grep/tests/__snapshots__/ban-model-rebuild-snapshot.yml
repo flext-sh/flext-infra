@@ -1,0 +1,20 @@
+id: ban-model-rebuild
+snapshots:
+  FlextModels.Order.model_rebuild(_types_namespace=globals()):
+    labels:
+    - source: FlextModels.Order.model_rebuild(_types_namespace=globals())
+      style: primary
+      start: 0
+      end: 59
+  Model.model_rebuild():
+    labels:
+    - source: Model.model_rebuild()
+      style: primary
+      start: 0
+      end: 21
+  cls.model_rebuild(force=True):
+    labels:
+    - source: cls.model_rebuild(force=True)
+      style: primary
+      start: 0
+      end: 29
