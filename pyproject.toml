@@ -782,6 +782,24 @@ override-dependencies = [
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
 ]
 
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-cli"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-core"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-tests"
+
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true
