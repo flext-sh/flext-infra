@@ -2230,6 +2230,15 @@ Infra:
           source: base/tests/test_api.py.j2
           profiles: [ workspace, standalone ]
           ownership: null
+        # Every repository's pytest bootstrap is one projection of this template:
+        # the shared flext-tests install_local_packages owner is bound the same way
+        # fleet-wide, so hand copies and inline reimplementations cannot drift.
+        conftest.py:
+          source: base/conftest.py.j2
+          profiles: [ workspace, standalone ]
+          ownership:
+            owner: codegen
+            policy: full
         .envrc.local:
           profiles: [ workspace, standalone ]
           ownership:
