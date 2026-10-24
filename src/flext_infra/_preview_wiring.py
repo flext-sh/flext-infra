@@ -1,4 +1,4 @@
-"""Authenticated source-preview boundary for the public API facade.
+"""Staged source-preview boundary for the public API facade.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-
+from flext_infra import codegen
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationOrchestrator,
     FlextInfraRefactorCensus,
@@ -33,9 +33,8 @@ class FlextInfraPreviewWiring:
             The resulting ``p.Infra.SourcePreview``.
 
         """
-        return FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=repository_root),
-        )
+        del repository_root
+        return codegen.FlextInfraStagedPackage()
 
     def census(
         self: p.Infra.ModExecutionContext,
@@ -84,7 +83,7 @@ class FlextInfraPreviewWiring:
             The resulting ``p.Result[bool]``.
 
         """
-        return FlextInfraCodegenQualityGate(
+        return codegen.FlextInfraCodegenQualityGate(
             workspace_factory=self.rope_workspace,
             repository_root=request.repository_root,
             source_preview=self.source_preview(request.repository_root),

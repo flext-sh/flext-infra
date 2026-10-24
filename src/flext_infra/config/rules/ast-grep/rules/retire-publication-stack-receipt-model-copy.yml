@@ -1,6 +1,8 @@
 id: retire-publication-stack-receipt-model-copy
 language: Python
 severity: error
+files:
+  - "**/flext_infra/**/*.py"
 rule:
   pattern: $PLAN.model_copy(update=$UPDATE)
 constraints:
@@ -16,7 +18,7 @@ constraints:
         not:
           has:
             field: key
-            regex: ^"(source_states|source_directories|source_query_topology|prepared_sources|dependency_group|validation_context)"$
+            regex: ^"(source_states|source_directories|source_query_topology|prepared_sources)"$
 fix: $PLAN
 message: >-
   A copy that only re-attaches retired receipt evidence is the original plan;

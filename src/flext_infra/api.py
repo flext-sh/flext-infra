@@ -110,9 +110,6 @@ class FlextInfra(
                 repository_root=source_root,
                 state=m.Infra.CodegenConformState(repository_root=source_root),
             ),
-            transaction=FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=source_root),
-            ),
         ).execute(source_root, workspace.value, request, inputs.value.sources)
 
     def rope_workspace(

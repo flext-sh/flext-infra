@@ -42,8 +42,6 @@ if TYPE_CHECKING:
         FlextInfraCodegenConformContextRender,
         FlextInfraCodegenConformEditor,
         FlextInfraCodegenConformExecute,
-        FlextInfraCodegenConformExecuteDirected,
-        FlextInfraCodegenConformExecuteScaffold,
         FlextInfraCodegenConformExistingPlan,
         FlextInfraCodegenConformFilePlans,
         FlextInfraCodegenConformPlan,
@@ -98,7 +96,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen._lazy_init_projection_manifest import (
         FlextInfraCodegenLazyInitProjectionManifest,
     )
-
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
     from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
@@ -110,7 +107,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
     from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
-
     from flext_infra.codegen.mise_toolchain_proof import (
         FlextInfraCodegenMiseToolchainProof,
     )
@@ -132,8 +128,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformContextRender",
     "FlextInfraCodegenConformEditor",
     "FlextInfraCodegenConformExecute",
-    "FlextInfraCodegenConformExecuteDirected",
-    "FlextInfraCodegenConformExecuteScaffold",
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformPlan",
@@ -196,8 +190,6 @@ install_lazy_exports(
         "FlextInfraCodegenConformContextRender": "._conform.context_render",
         "FlextInfraCodegenConformEditor": "._conform.editor",
         "FlextInfraCodegenConformExecute": "._conform.execute",
-        "FlextInfraCodegenConformExecuteDirected": "._conform.execute_directed",
-        "FlextInfraCodegenConformExecuteScaffold": "._conform.execute_scaffold",
         "FlextInfraCodegenConformExistingPlan": "._conform.existing_plan",
         "FlextInfraCodegenConformFilePlans": "._conform.file_plans",
         "FlextInfraCodegenConformPlan": "._conform.plan",

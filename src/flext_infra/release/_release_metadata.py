@@ -29,6 +29,8 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         versions: t.StrMapping,
+        *,
+        dependency_group: bool = False,
     ) -> p.Result[bool]:
         """Pin every internal requirement of one TOML array; others pass verbatim.
 
@@ -44,6 +46,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
             return r[bool].ok(value=False)
         entries = cls._release_requirement_entries(
             raw,
+            dependency_group=dependency_group,
         )
         if entries.failure:
             return r[bool].from_failure(entries)
@@ -66,6 +69,8 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
     def _release_requirement_entries(
         cls,
         raw: t.JsonValue,
+        *,
+        dependency_group: bool,
     ) -> p.Result[t.SequenceOf[str | m.Infra.DependencyGroupInclude]]:
         """Parse one TOML requirement array into its declared entries.
 
@@ -218,6 +223,7 @@ class FlextInfraReleaseMetadataMixin(FlextInfraReleaseSourceMixin):
                 container,
                 key,
                 versions,
+                dependency_group=container is groups,
             )
             if pinned.failure:
                 return r[bool].from_failure(pinned)

@@ -1,6 +1,8 @@
 id: retire-publication-stack-receipt-model-copy
 valid:
   - |
+    grouped = item.model_copy(update={"dependency_group": group})
+  - |
     plan.model_copy(update={"desired_content": content})
   - |
     plan.model_copy(update={"source_states": states, "desired_content": content})
@@ -17,5 +19,3 @@ invalid:
             "source_query_topology": topology,
         }
     )
-  - |
-    grouped = item.model_copy(update={"dependency_group": group})
