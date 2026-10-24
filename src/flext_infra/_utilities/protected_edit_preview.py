@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
@@ -224,11 +223,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             workspace,
             normalized_updates,
             validate,
-            options=m.Infra.CodegenSourcePreviewOptions(
-                runtime_root=FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
-                    workspace,
-                ).parent,
-            ),
         ).unwrap()
 
     @staticmethod
@@ -279,11 +273,6 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
             workspace,
             {path: updated_source},
             validate,
-            options=m.Infra.CodegenSourcePreviewOptions(
-                runtime_root=FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
-                    workspace,
-                ).parent,
-            ),
         ).unwrap()
         return before, after
 

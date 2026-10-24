@@ -23,6 +23,18 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
+    def _published_name(attribute: p.Infra.RopePyName) -> str:
+        """Resolve the declared name of the native object behind one attribute.
+
+        Returns:
+            The name reported by the native named object.
+
+        """
+        return u.Infra.require_named_object(
+            attribute.get_object(), "published attribute"
+        ).get_name()
+
+    @staticmethod
     @pytest.mark.parametrize("warm_ast", [False, True])
     def test_semantic_regions_include_try_else_with_finally(
         tmp_path: Path,
@@ -114,7 +126,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
         with closing(u.Infra.init_rope_project(tmp_path)) as project:
             resource = project.get_resource(consumer.name)
-            module = project.get_pymodule(resource)
+            module = u.Infra.resolve_pymodule(project, resource)
             request = m.Infra.RopeRestructureRequest(
                 pattern="${owner}.value",
                 goal="New.value",
@@ -129,6 +141,8 @@ class TestsFlextInfraRopeRuntimePymodule:
                 has=f"matched=1 admitted={int(admitted)}",
             )
             tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            if not isinstance(module, p.Infra.RopePyModule):
+                pytest.fail("Native source module must expose its source text")
             tm.that(module.source_code, eq=source)
             tm.ok(project.get_pymodule(resource) is module)
             tm.that(len(changes.changes), eq=int(admitted))
@@ -212,13 +226,11 @@ class TestsFlextInfraRopeRuntimePymodule:
                 eq=project.get_resource(owner.relative_to(tmp_path).as_posix()),
             )
             tm.that(
-                u.Infra
-                .require_semantic_module(
-                    project.get_relative_module("owner", folder, 1)
-                )
-                .get_attribute("PublishedContract")
-                .get_object()
-                .get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    u.Infra.require_semantic_module(
+                        project.get_relative_module("owner", folder, 1)
+                    ).get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
             tm.that(project.find_relative_module("missing", folder, 1), none=True)
@@ -272,20 +284,20 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(u.Infra.snapshot_project(original, {})) as captured,
         ):
             tm.that(
-                u.Infra
-                .require_semantic_module(original.get_module("provider"))
-                .get_attribute("PublishedContract")
-                .get_object()
-                .get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    u.Infra.require_semantic_module(
+                        original.get_module("provider")
+                    ).get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
             initializer.unlink()
             tm.that(
-                u.Infra
-                .require_semantic_module(captured.get_module("provider"))
-                .get_attribute("PublishedContract")
-                .get_object()
-                .get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    u.Infra.require_semantic_module(
+                        captured.get_module("provider")
+                    ).get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
 
@@ -343,7 +355,9 @@ class TestsFlextInfraRopeRuntimePymodule:
                 tm.reject(msg)
             module = u.Infra.resolve_pymodule(project, resource)
             tm.that(
-                module.get_attribute("PublishedContract").get_object().get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    module.get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
             tm.not_none(u.Infra.resolve_module_imports(project, resource))
@@ -378,7 +392,12 @@ class TestsFlextInfraRopeRuntimePymodule:
                 tm.reject(message)
             module = u.Infra.resolve_pymodule(workspace.rope_project, resource)
             expected = "PackageContract" if regular_package else "ModuleContract"
-            tm.that(module.get_attribute(expected).get_object().get_name(), eq=expected)
+            tm.that(
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    module.get_attribute(expected)
+                ),
+                eq=expected,
+            )
 
     @staticmethod
     def test_pymodule_contract_accepts_packages(tmp_path: Path) -> None:

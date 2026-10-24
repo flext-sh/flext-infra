@@ -158,9 +158,6 @@ class FlextInfraUtilitiesCodegenFilePlan:
             raise ValueError(msg)
         parts: list[str] = []
         for plan in plans:
-            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
-                parts.append(f"{plan.path}: absent parent chain gains content")
-                continue
             raw_before = plan.before.content
             old_lines = tuple(
                 repr(line) for line in (raw_before or b"").splitlines(keepends=True)

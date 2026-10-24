@@ -245,7 +245,7 @@ class FlextInfraNamespaceRelocationCascade:
                 )
         return r[m.Infra.NamespaceRelocationState].ok(
             m.Infra.NamespaceRelocationState(
-                working=dict(request.sources), originals={}, befores={}, modes={}
+                working=dict(request.sources), originals={}, modes={}
             )
         )
 

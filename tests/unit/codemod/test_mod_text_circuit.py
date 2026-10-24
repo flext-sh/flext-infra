@@ -167,9 +167,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         result = FlextInfraModTextGateEngine.scan(root, fix=True)
         tm.fail(result)
-        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(root))
-        tm.ok(any(plan.path == target for plan in analysis.files))
-        tm.that(analysis.issues, empty=False)
+        tm.fail(FlextInfraModTextGateEngine.plan(root))
         tm.that(target.read_text(encoding="utf-8"), eq='value = "before"\n')
         tm.that(catalogue.read_bytes(), eq=original)
 
@@ -206,9 +204,9 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(isinstance(exception, SyntaxError), truth=True)
         tm.that(cast("SyntaxError", exception).filename, eq=str(invalid))
         tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
-        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
-        tm.ok(any(plan.path == valid for plan in analysis.files))
-        tm.ok(isinstance(analysis.exception, SyntaxError))
+        planned = FlextInfraModTextGateEngine.plan(mod_workspace)
+        tm.fail(planned)
+        tm.ok(isinstance(planned.exception, SyntaxError))
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
         metadata = tm.not_none(result.error_data)
         tm.that(

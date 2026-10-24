@@ -258,7 +258,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     },
                 },
                 options=m.Infra.StageSourceOptions(
-                    inputs=tuple(inputs.values()),
                     workspaces=seed.workspaces,
                     modes=seed.modes,
                 ),
@@ -312,7 +311,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 },
             },
             options=m.Infra.StageSourceOptions(
-                inputs=tuple(inputs.values()),
                 workspaces=seed.workspaces,
                 modes=seed.modes,
             ),
@@ -333,10 +331,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             candidate.updates,
             scan,
             options=m.Infra.CodegenSourcePreviewOptions(
-                inputs=candidate.inputs,
                 workspaces=candidate.workspaces,
                 modes=candidate.modes,
-                runtime_check=False,
             ),
         ).unwrap()
 
@@ -512,8 +508,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The prepared seed, or the first planning failure.
 
         """
-        seed = seed.model_copy(
-            update={"candidate": self._plan_ast_phase(root, current, seed.candidate)}
+        seed = m.Infra.SemanticSourcePlan(
+            candidate=self._plan_ast_phase(root, current, seed.candidate),
+            consumer_roots=seed.consumer_roots,
         )
         text_preparation = self._plan_text_phase(
             root,
@@ -568,13 +565,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             if constants.failure:
                 return outcome.from_failure(constants)
             FlextInfraCodemodSemanticApply.apply_plan(working, constants.value, changed)
-            transaction_paths = u.Infra.plan_transaction_path_cutover(
-                rope_workspace=graph,
-                sources=working,
-            )
-            FlextInfraCodemodSemanticApply.apply_plan(
-                working, transaction_paths, changed
-            )
             semantic = FlextInfraCodemodSemanticApply.plan(
                 root,
                 FlextInfraModGateEngine.authored(semantic_preflight),
@@ -594,11 +584,14 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             seed.candidate.workspace,
             updates,
             options=m.Infra.StageSourceOptions(
-                inputs=seed.candidate.inputs,
                 workspaces=seed.candidate.workspaces,
                 modes=seed.candidate.modes,
             ),
-        ).map(lambda staged: seed.model_copy(update={"candidate": staged}))
+        ).map(
+            lambda staged: m.Infra.SemanticSourcePlan(
+                candidate=staged, consumer_roots=seed.consumer_roots
+            )
+        )
 
     def _finish_phases(
         self,

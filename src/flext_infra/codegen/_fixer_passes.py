@@ -91,7 +91,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerResultsMixin):
             .unwrap()
         )
         pending = tuple(
-            plan for plan in plans.files if u.Infra.codegen_file_requires_effect(plan)
+            plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
         )
         if pending:
             ctx.skip(

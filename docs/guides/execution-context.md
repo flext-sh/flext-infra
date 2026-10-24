@@ -1552,12 +1552,12 @@ The operation receipt separately records its requested surface, elected reposito
 roots, and the actual completed transaction batches, including unchanged outputs.
 The internal initialization adapter qualifies its elected surface: an existing
 project's Makefile bootstrap or an admitted new tree's complete generation. Its
-read-only verification requires that same recorded coverage. Complete generation qualifies its
-managed and documentation batches after each has settled. A complete `all` scope
-can verify the `self` subset only when that repository root is in its recorded
-coverage. Checks authenticate source, generator, output and physical identities
-without planning, rendering, repairing or replacing the receipt. Missing coverage
-and changed identities remain failures.
+read-only verification requires that same recorded coverage. Complete generation
+qualifies its managed and documentation batches after each has settled. A
+complete `all` scope can verify the `self` subset only when that repository
+root is in its recorded coverage. Checks authenticate source, generator, output
+and physical identities without planning, rendering, repairing or replacing the
+receipt. Missing coverage and changed identities remain failures.
 
 Workspace Make bootstrap composes the root and eligible members' actual receipts
 after each has published once. A member failure prevents completed aggregate

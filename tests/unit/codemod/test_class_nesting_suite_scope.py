@@ -587,7 +587,6 @@ class TestsFlextInfraClassNestingSuiteScope:
                 root,
                 report,
                 rope,
-                source_preview=flext_infra.infra.source_preview(root),
                 workspace_factory=flext_infra.infra.rope_workspace,
             )
         tm.fail(applied, has=f"{owner_name}: LIMIT")

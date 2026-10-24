@@ -209,49 +209,6 @@ class FlextInfraConfigModelsTemplates:
                 ),
             )
 
-    class ArtifactResourceValidationContext(
-        FlextInfraConfigModelsContract.ConfigContract,
-    ):
-        """Original source role of an exact, non-importable resource projection."""
-
-        kind: Annotated[
-            Literal["resource"],
-            m.Field(description="Validate exact resource bytes in their original role"),
-        ] = "resource"
-        source: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Original package source captured by the renderer"),
-        ]
-        source_package: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Explicit package owner of the original closure"),
-        ]
-        source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(min_length=1, description="Every original declared closure state"),
-        ]
-
-        @m.model_validator(mode="after")
-        def validate_source_closure(self) -> Self:
-            """Retain the primary original inside one complete nonempty closure.
-
-            Returns:
-                Self: the validated closure declaration.
-
-            Raises:
-                ValueError: when captured closure bytes are missing or duplicated.
-
-            """
-            if (
-                self.source not in self.source_states
-                or any(state.content is None for state in self.source_states)
-                or len({state.path for state in self.source_states})
-                != len(self.source_states)
-            ):
-                msg = "resource validation requires unique captured closure bytes"
-                raise ValueError(msg)
-            return self
-
     class TemplateDeclarationSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Path-independent template body stored under one destination key."""
 

@@ -53,21 +53,19 @@ class FlextInfraRenameSources:
         )
 
     @staticmethod
-    def compose_candidate[PlanT: m.Infra.SemanticSourcePlan](
-        candidate: PlanT,
+    def compose_candidate(
+        candidate: m.Infra.SemanticSourcePlan,
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[PlanT]:
+    ) -> p.Result[m.Infra.SemanticSourcePlan]:
         """Fold phase file plans into the staged candidate view.
 
         Returns:
             The candidate carrying every phase effect.
 
         """
-        inputs = {state.path: state for state in candidate.candidate.inputs}
         updates = dict(candidate.candidate.updates)
         modes = dict(candidate.candidate.modes)
         for effect in plans:
-            inputs.setdefault(effect.path, effect.before)
             if effect.desired_content is None:
                 updates[effect.path] = None
                 modes.pop(effect.path, None)
@@ -79,11 +77,14 @@ class FlextInfraRenameSources:
             candidate.candidate.workspace,
             updates,
             options=m.Infra.StageSourceOptions(
-                inputs=tuple(inputs.values()),
                 workspaces=candidate.candidate.workspaces,
                 modes=modes,
             ),
-        ).map(lambda stage: candidate.model_copy(update={"candidate": stage}))
+        ).map(
+            lambda stage: m.Infra.SemanticSourcePlan(
+                candidate=stage, consumer_roots=candidate.consumer_roots
+            )
+        )
 
     @staticmethod
     def symbol_paths(

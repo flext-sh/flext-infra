@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config, main
 from flext_infra.services import FlextInfraCliRouteService
@@ -85,20 +86,6 @@ class TestsFlextInfraCodegenMain:
                 project_root / c.Infra.MISE_TOML_FILENAME,
                 root / c.Infra.MISE_TOML_FILENAME,
             ),
-        )
-
-    @staticmethod
-    def _mise_transaction_state(root: Path) -> t.Pair[Path, Path]:
-        """Return the workspace journal and the Mise transaction state root.
-
-        Returns:
-            The workspace journal and the Mise transaction state root.
-
-        """
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)).unwrap()
-        return (
-            identity.git_dir / c.Infra.JOURNAL_NAME,
-            root / c.Infra.MISE_ARTIFACTS_STATE_DIRECTORY,
         )
 
     @staticmethod
@@ -284,37 +271,29 @@ class TestsFlextInfraCodegenMain:
         def test_managed_conflict_check_leaves_live_bytes_unchanged(
             infra_git_repo: Path,
         ) -> None:
-            """Report a managed conflict without touching live bytes or journals."""
+            """Report a managed conflict without touching live bytes."""
             pyproject = (
                 TestsFlextInfraCodegenMain.TestsMainEntryPoint.seed_managed_conflict(
                     infra_git_repo,
                 )
             )
             before = pyproject.read_bytes()
-            journal, transaction = TestsFlextInfraCodegenMain._mise_transaction_state(
-                infra_git_repo,
-            )
             command = TestsFlextInfraCodegenMain._public_conform_command(infra_git_repo)
             checked = u.Cli.run_raw([*command, "check"], cwd=infra_git_repo)
             tm.ok(checked)
             tm.that(checked.value.outcome.raw_return_code, eq=1)
             tm.that(pyproject.read_bytes(), eq=before)
-            tm.fail(journal.exists())
-            tm.fail(transaction.exists())
 
         @staticmethod
         def test_managed_conflict_is_published_atomically_to_a_fixed_point(
             infra_git_repo: Path,
         ) -> None:
-            """Publish the conformed bytes through the transaction, then hold still."""
+            """Publish the conformed bytes once, then hold still."""
             root = infra_git_repo
             pyproject = (
                 TestsFlextInfraCodegenMain.TestsMainEntryPoint.seed_managed_conflict(
                     root,
                 )
-            )
-            journal, transaction = TestsFlextInfraCodegenMain._mise_transaction_state(
-                root,
             )
             command = TestsFlextInfraCodegenMain._public_conform_command(root)
             applied = u.Cli.run_raw([*command, "apply"], cwd=root)
@@ -339,12 +318,10 @@ class TestsFlextInfraCodegenMain:
                         config.Infra.tooling,
                         "pytest.ini_options",
                         "addopts",
-                        t.StrSequence,
+                        TypeForm(t.StrSequence),
                     )
                 ),
             )
-            tm.fail(journal.exists())
-            tm.fail(transaction.exists())
 
             published = pyproject.read_bytes()
             fixed_point = u.Cli.run_raw([*command, "apply"], cwd=root)
@@ -355,8 +332,6 @@ class TestsFlextInfraCodegenMain:
                 msg=fixed_point.value.stderr or fixed_point.value.stdout,
             )
             tm.that(pyproject.read_bytes(), eq=published)
-            tm.fail(journal.exists())
-            tm.fail(transaction.exists())
 
         @staticmethod
         def test_unknown_command_surfaces_root_cause_via_subprocess() -> None:

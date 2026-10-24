@@ -13,10 +13,10 @@ from flext_cli import m, t
 
 
 class FlextInfraModelsMiseToolchainRepair:
-    """Pure execution declarations over the upstream atomic file contracts."""
+    """Pure execution declarations of one locked native installation repair."""
 
     class MiseToolchainRepairPlan(m.FrozenModel):
-        """One explicitly selected locked installation and its input authority."""
+        """One explicitly selected locked installation and its executables."""
 
         repository_root: Annotated[
             Path,
@@ -33,13 +33,6 @@ class FlextInfraModelsMiseToolchainRepair:
         uv_executable: Annotated[
             Path,
             m.Field(description="Qualified UV executable for the complete proof."),
-        ]
-        source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(
-                exclude=True,
-                description="Exact declaration, configuration and lock observations.",
-            ),
         ]
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codemod, config, infra, transformers
+from flext_infra import codemod, config, transformers
 from tests import c, m, t, tm, u
 
 
@@ -313,11 +313,11 @@ class TestsFlextInfraSemanticPublicationPlans:
             )
             for index, plan in enumerate(plans)
         )
-        preview = infra.source_preview(mod_workspace)
-        with pytest.raises(RuntimeError, match="failed"):
-            codemod.FlextInfraCodemodSemanticApply.apply_transaction_paths(
-                mod_workspace, edits, source_preview=preview
+        tm.fail(
+            codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
+                mod_workspace, edits
             )
+        )
         for plan in plans:
             tm.that(plan.path.read_bytes(), eq=plan.before.content)
 
@@ -342,10 +342,11 @@ class TestsFlextInfraSemanticPublicationPlans:
             updated_source='value="after"\n',
             changes=("semantic normalization",),
         )
-        codemod.FlextInfraCodemodSemanticApply.apply_transaction_paths(
-            mod_workspace,
-            (edit,),
-            source_preview=infra.source_preview(mod_workspace),
+        tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
+                mod_workspace,
+                (edit,),
+            )
         )
         published = first.path.read_text()
         tm.that(published, has="after")
@@ -353,9 +354,10 @@ class TestsFlextInfraSemanticPublicationPlans:
         repeated = edit.model_copy(
             update={"original_source": published, "updated_source": published},
         )
-        codemod.FlextInfraCodemodSemanticApply.apply_transaction_paths(
-            mod_workspace,
-            (repeated,),
-            source_preview=infra.source_preview(mod_workspace),
+        tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
+                mod_workspace,
+                (repeated,),
+            )
         )
         tm.that(first.path.read_text(), eq=published)

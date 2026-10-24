@@ -544,9 +544,7 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(u.Cli.atomic_verify_binary_file_states(published))
         tm.that(driver.path.read_bytes(), eq=driver.content)
 
-    def test_mod_rejects_changed_persisted_rename_payload(
-        self, tmp_path: Path
-    ) -> None:
+    def test_mod_rejects_changed_persisted_rename_payload(self, tmp_path: Path) -> None:
         """A persisted rename payload whose edits drifted from its plan is rejected."""
         u.Tests.run_native_callable(self._scenario_payload_drift, tmp_path)
 
@@ -901,7 +899,7 @@ class TestsFlextInfraSemanticPublication:
             tm.that(
                 tm.ok(
                     codemod.FlextInfraCodemodSemanticApply.consume_rename_plan(
-                        request, workspace, infra.source_preview(root)
+                        request, workspace
                     )
                 ),
                 eq=True,
@@ -917,7 +915,7 @@ class TestsFlextInfraSemanticPublication:
                 )
             tm.fail(
                 codemod.FlextInfraCodemodSemanticApply.consume_rename_plan(
-                    request, workspace, infra.source_preview(root)
+                    request, workspace
                 )
             )
         for path, content in published.items():
@@ -1000,7 +998,6 @@ class TestsFlextInfraSemanticPublication:
                         repository_root=producer, rename_plan=driver, apply=True
                     ),
                     workspace,
-                    infra.source_preview(producer),
                 )
             )
         tm.that(declaration.read_bytes(), eq=before)

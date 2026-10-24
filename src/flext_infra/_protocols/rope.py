@@ -142,9 +142,7 @@ class FlextInfraProtocolsRope(Protocol):
         def ownership_transfer(self) -> t.Pair[str, str] | None: ...
 
         @property
-        def source_states(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
+        def owner_root(self) -> Path | None: ...
 
     @runtime_checkable
     class CodemodSourceEpoch(Protocol):
@@ -206,11 +204,6 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def retire_file(self) -> bool: ...
-
-        @property
-        def source_states(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
 
     # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): source discovery is a
     # Rope boundary and consumes the exact field-only runtime request model.

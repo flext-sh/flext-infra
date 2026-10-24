@@ -162,7 +162,7 @@ class TestsFlextInfraProjectGitignorePatterns:
                 template,
             ),
         )
-        tm.that(planned.rendered == first, truth=True)
+        tm.that(planned == first, truth=True)
         tm.that(external in first, truth=True)
         tm.that("old policy" not in first, truth=True)
         (root / ".gitignore").write_bytes(first.encode())

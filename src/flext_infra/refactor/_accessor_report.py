@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, settings, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
@@ -151,13 +151,7 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             for plan in plans
             if plan.desired_content is not None
         }
-        staged = FlextInfraStagedPackage.plan_sources(
-            params.repository_root,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                inputs=tuple(plan.before for plan in plans)
-            ),
-        )
+        staged = FlextInfraStagedPackage.plan_sources(params.repository_root, updates)
         if staged.failure:
             return result_type.from_failure(staged)
         gates = tuple(params.gates) or tuple(u.Infra.snapshot_lint_gates())
@@ -270,11 +264,6 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             plan.updates,
             validate,
             options=m.Infra.CodegenSourcePreviewOptions(
-                inputs=plan.inputs,
-                runtime_root=u.Infra.runtime_environment_dir(
-                    scopes[0],
-                    runtime_root=type(settings).fetch_global().Infra.runtime_root,
-                ).parent,
                 workspaces=plan.workspaces,
                 modes=plan.modes,
             ),

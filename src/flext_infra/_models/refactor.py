@@ -50,18 +50,13 @@ class FlextInfraModelsRefactor(
         sources: t.MappingKV[Path, str] = m.Field(description="Immutable input sources")
 
     class NamespaceRelocationState(m.ArbitraryTypesModel):
-        """Mutable candidate bytes retaining their native authentication receipts."""
+        """Mutable candidate bytes with the original states they replace."""
 
         working: t.MutableMappingKV[Path, str] = m.Field(
             description="Candidate sources changed only by native planning effects"
         )
         originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = m.Field(
             description="Complete original dependency closure"
-        )
-        befores: t.MutableMappingKV[
-            Path, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
-        ] = m.Field(
-            description="Original file or absent-parent receipt for each output"
         )
         modes: t.MutableMappingKV[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"

@@ -58,10 +58,8 @@ class TestsFlextInfraCodegenDocumentationLanguage:
         root.mkdir(parents=True, exist_ok=True)
         pyproject = root / c.PYPROJECT_FILENAME
         pyproject.write_text(rendered, encoding=c.DEFAULT_ENCODING)
-        state = tm.ok(u.Cli.atomic_read_binary_file_state(pyproject))
         scope = u.Infra.docs_scope_from_sources(
             m.Infra.DocScope(name="project", path=root, report_dir=root / "reports"),
-            (state,),
         )
         tm.that(scope.documentation_language, eq="pt-BR")
 

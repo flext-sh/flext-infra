@@ -323,9 +323,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase(
-                source_preview=infra.source_preview(workspace),
-            )
+            phase = FlextInfraAccessorRenamePhase()
             states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in u.Infra.iter_python_files(
@@ -407,9 +405,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase(
-                source_preview=infra.source_preview(workspace),
-            )
+            phase = FlextInfraAccessorRenamePhase()
             with pytest.raises(ValueError, match="accessor receiver"):
                 phase.apply(project, preflight, rope)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
@@ -454,9 +450,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             u.Cli.run((sys.executable, "-c", program, str(package.parent))).unwrap()
             with u.Tests.authenticated_rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-                phase = FlextInfraAccessorRenamePhase(
-                    source_preview=infra.source_preview(workspace),
-                )
+                phase = FlextInfraAccessorRenamePhase()
                 with pytest.raises(ValueError, match="accessor backing field"):
                     phase.apply(project, preflight, rope)
             tm.that(consumer.read_text(encoding="utf-8"), eq=source)
@@ -574,7 +568,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             source_preview=infra.source_preview(workspace),
             repository_root=workspace,
             apply_changes=False,
-            target_module="flext_core.legacy",
+            module="flext_core.legacy",
         ).execute()
 
         tm.fail(filtered.failure)
@@ -881,7 +875,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         result = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
             repository_root=workspace,
-            target_namespace="u",
+            namespace="u",
             apply_changes=True,
         ).execute()
 
@@ -905,6 +899,6 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             _ = FlextInfraAccessorMigrationOrchestrator(
                 source_preview=infra.source_preview(workspace),
                 repository_root=workspace,
-                target_namespace="missing_facade",
+                namespace="missing_facade",
                 apply_changes=False,
             ).execute()

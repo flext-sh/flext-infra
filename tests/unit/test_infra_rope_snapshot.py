@@ -219,9 +219,7 @@ class TestsFlextInfraRopeSnapshot:
             for _ in range(2):
                 analysis = tm.ok(service.plan_files(source_project=project))
                 initializer = next(
-                    plan
-                    for plan in analysis
-                    if plan.path == package / "__init__.py"
+                    plan for plan in analysis if plan.path == package / "__init__.py"
                 )
                 rendered = tm.not_none(initializer.desired_content).decode("utf-8")
                 tm.that(rendered, has=planned_name)

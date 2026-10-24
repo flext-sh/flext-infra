@@ -463,7 +463,6 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 root,
                 preflight,
                 rope,
-                source_preview=infra.source_preview(root),
                 workspace_factory=infra.rope_workspace,
             )
         tm.that(len(findings), eq=1)

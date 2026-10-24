@@ -28,21 +28,9 @@ class FlextInfraModelsTransformers:
             default=None,
             description="Consumer acceptance gate over the previewed view root",
         )
-        source_guard: Callable[[], p.Result[bool]] | None = m.Field(
-            default=None,
-            description="Pre-publication guard over the governed source inputs",
-        )
-        dependency_group: str | None = m.Field(
-            default=None,
-            description="Dependency group owning composed projection exposure",
-        )
         projection_roots: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Generated projection roots composed into the publication",
-        )
-        input_roots: t.VariadicTuple[Path] = m.Field(
-            default=(),
-            description="Additional read-only driver roots namespaced as pseudo-roots",
         )
 
     class AliasMigrationContext(m.ContractModel):
@@ -88,12 +76,6 @@ class FlextInfraModelsTransformers:
             t.VariadicTuple[str],
             m.Field(description="Recorded migration operations"),
         ] = m.Field(default_factory=tuple)
-        source_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                description="Read-only semantic dependency inputs",
-            ),
-        ] = m.Field(default_factory=tuple)
 
     class SemanticMigrationEdit(m.ContractModel):
         """One validated in-memory semantic source rewrite."""
@@ -116,11 +98,6 @@ class FlextInfraModelsTransformers:
         retire_file: bool = m.Field(
             default=False,
             description="Explicit source retirement, not empty-file output",
-        )
-        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
-            default=(),
-            exclude=True,
-            description="Original native inputs consumed by this source plan",
         )
         changes: Annotated[
             t.VariadicTuple[str],

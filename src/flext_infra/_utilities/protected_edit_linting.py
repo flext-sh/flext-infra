@@ -14,7 +14,6 @@ import sys
 import traceback
 from collections import Counter
 from collections.abc import Iterable, MutableMapping
-from functools import partial
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -201,58 +200,18 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         repository_root: Path,
         updates: t.MappingKV[Path, str | None],
-        *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        workspaces: t.VariadicTuple[Path] = (),
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-    ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Prepare composed sources before sealing their publication identity.
+    ) -> p.Result[t.MappingKV[Path, str | None]]:
+        """Prepare composed sources through the destination's native repair gates.
 
         Returns:
-            Prepared updates retaining the exact original context they consumed.
+            Prepared updates keyed by live destination, or the first failure.
 
         """
-        planned = codegen.FlextInfraStagedPackage.plan_sources(
-            repository_root,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                inputs=inputs,
-                workspaces=workspaces,
-                declared_files=declared_files,
-            ),
-        )
-        if planned.failure:
-            return r[m.Infra.StageSourcePlan].from_failure(planned)
-        return cls.normalize_source_plan(planned.value)
-
-    @classmethod
-    def normalize_source_plan(
-        cls,
-        plan: m.Infra.StageSourcePlan,
-    ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Normalize an authenticated proposal without reopening its source election.
-
-        Returns:
-            Sealed repaired bytes retaining the original physical evidence.
-
-        """
-        return codegen.FlextInfraStagedPackage.prepare_sources(
-            plan,
-            partial(
-                cls._repair_staged_sources,
-                resource_sources=tuple(
-                    {
-                        source.path: source
-                        for file in plan.declared_files
-                        if (context := file.validation_context) is not None
-                        and file.path.suffix in {".py", ".pyi"}
-                        for source in context.source_states
-                    }.values()
-                ),
-            ),
+        return codegen.FlextInfraStagedPackage.plan_sources(
+            repository_root, updates
         ).flat_map(
-            lambda prepared: codegen.FlextInfraStagedPackage.seal_sources(
-                plan, prepared
+            lambda plan: codegen.FlextInfraStagedPackage.prepare_sources(
+                plan, cls._repair_staged_sources
             )
         )
 
@@ -261,8 +220,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         root: Path,
         candidates: t.MappingKV[Path, Path],
-        *,
-        resource_sources: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[bool]:
         """Delegate every repair phase to the native gates, never copy recipes.
 
@@ -270,26 +227,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Acceptance only when lint and format both confirm the prepared bytes.
 
         """
-        for source in resource_sources:
-            if source.content is None:
-                return r[bool].fail(f"resource source has no bytes: {source.path}")
-            compile(source.content, str(source.path), "exec", dont_inherit=True)
-            project = cls._command_cwd(source.path, source.path.parent)
-            context = m.Infra.GateContext(
-                repository_root=project,
-                reports_dir=root,
-                selected_files=(source.path,),
-            )
-            for gate in (
-                gates.FlextInfraRuffLintGate(project),
-                gates.FlextInfraRuffFormatGate(project),
-            ):
-                checked = gate.check_files((source.path,), project, context)
-                if not checked.result.passed:
-                    return r[bool].fail(
-                        checked.raw_output
-                        or f"resource original source quality failed: {source.path}",
-                    )
         grouped: MutableMapping[Path, list[Path]] = {}
         for path in candidates.values():
             project = cls._command_cwd(path, root)
@@ -393,11 +330,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             for state in states
             if state.content is not None
         }
-        prepared = cls.normalize_sources(
-            repository_root, sources, inputs=states
-        ).unwrap()
-        originals = {state.path: state for state in prepared.inputs}
-        for path, content in prepared.updates.items():
+        prepared = cls.normalize_sources(repository_root, sources).unwrap()
+        originals = {state.path: state for state in states}
+        for path, content in prepared.items():
             if content is None:
                 msg = f"touched source preparation retired a file: {path}"
                 raise RuntimeError(msg)

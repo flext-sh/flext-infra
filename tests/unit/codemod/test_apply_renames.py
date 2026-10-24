@@ -313,7 +313,6 @@ class TestsFlextInfraApplyRenames:
                                 apply=apply,
                             ),
                             workspace,
-                            infra.source_preview(root),
                         )
                     )
                     if not apply:
