@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from contextlib import closing
+from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraStagedPackage
 
 
 class FlextInfraSemanticPublication:
@@ -27,6 +28,9 @@ class FlextInfraSemanticPublication:
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose declared projections, then publish or report pending effects.
 
+        A declared validator accepts the previewed candidate tree before any
+        live destination changes.
+
         Returns:
             Published paths, the paths a publication would change when
             ``publish`` is false, or the first planning/publication failure.
@@ -40,15 +44,71 @@ class FlextInfraSemanticPublication:
             return r[tuple[Path, ...]].from_failure(composed)
         if not publish:
             return cls._pending_paths(composed.value)
-        published = u.Infra.publish_codegen_plans(repository_root, composed.value)
-        if published.failure or selected.validator is None:
-            return published
-        accepted = selected.validator(repository_root)
-        if accepted.failure:
-            return r[tuple[Path, ...]].from_failure(accepted)
-        if not accepted.value:
-            return r[tuple[Path, ...]].fail("semantic acceptance rejected")
-        return published
+        if selected.validator is not None:
+            accepted = cls._accepted_candidate(
+                composed.value, repository_root, selected
+            )
+            if accepted.failure:
+                return r[tuple[Path, ...]].from_failure(accepted)
+        return u.Infra.publish_codegen_plans(repository_root, composed.value)
+
+    @staticmethod
+    def _accepted_candidate(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        repository_root: Path,
+        options: m.Infra.SemanticPublicationOptions,
+    ) -> p.Result[bool]:
+        """Preview the normalized candidate and run the consumer validator on it.
+
+        Returns:
+            Acceptance of the previewed candidate, or the first preview or
+            validator failure.
+
+        """
+        validator = options.validator
+        if validator is None:
+            return r[bool].ok(value=True)
+        changes = u.Infra.normalized_codegen_changes(plans)
+        if changes.failure:
+            return r[bool].from_failure(changes)
+        workspaces = tuple(
+            dict.fromkeys(
+                u.Infra.import_project_roots(root)[0].resolve()
+                for root in options.projection_roots
+            )
+        )
+        scope = (
+            r[Path].ok(Path(commonpath(workspaces)))
+            if len(workspaces) > 1
+            else FlextInfraStagedPackage.workspace_root(
+                workspaces[0] if workspaces else repository_root.resolve()
+            )
+        )
+        if scope.failure:
+            return r[bool].from_failure(scope)
+        relative = repository_root.resolve().relative_to(scope.value)
+        previewed = FlextInfraStagedPackage().preview_sources(
+            repository_root,
+            {
+                change.path: None
+                if change.desired_content is None
+                else change.desired_content.decode(c.DEFAULT_ENCODING)
+                for change in changes.value
+            },
+            lambda view_root, _paths: validator(view_root / relative),
+            options=m.Infra.CodegenSourcePreviewOptions(
+                workspaces=workspaces if len(workspaces) > 1 else (),
+                modes={
+                    change.path: change.desired_mode
+                    for change in changes.value
+                    if change.desired_mode is not None
+                },
+            ),
+        )
+        accepted = previewed.flat_map(lambda verdict: verdict)
+        if accepted.success and not accepted.value:
+            return r[bool].fail("semantic candidate acceptance rejected")
+        return accepted
 
     @classmethod
     def publish_semantic_file_plans(
@@ -191,6 +251,10 @@ class FlextInfraSemanticPublication:
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Join the lazy-init projections the planned sources require.
 
+        Each declared workspace projects its own roots: a cross-root campaign
+        composes one projection per import workspace, never one Rope view
+        spanning foreign checkouts.
+
         Returns:
             The semantic plans plus their projections, or the first conflict.
 
@@ -198,33 +262,51 @@ class FlextInfraSemanticPublication:
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if not projection_roots:
             return result_type.ok(tuple(plans))
-        roots = tuple(
-            dict.fromkeys((*projection_roots, *(plan.project for plan in plans)))
-        )
-        with (
-            u.Infra.open_project(repository_root, project_roots=roots) as live,
-            closing(
-                u.Infra.planned_project(
-                    live,
-                    election=u.Infra.native_election(live),
-                    declared_files=tuple(plans),
-                )
-            ) as source_project,
-        ):
-            generated = FlextInfraCodegenLazyInit(
-                repository_root=repository_root,
-                project_scope_roots=projection_roots,
-            ).plan_files(source_project=source_project)
-        if generated.failure:
-            return result_type.from_failure(generated)
+        repository = repository_root.resolve()
+        workspaces: dict[Path, list[Path]] = {}
+        for root in dict.fromkeys(projection_roots):
+            resolved = root.resolve()
+            workspace = (
+                repository
+                if resolved.is_relative_to(repository)
+                else u.Infra.import_project_roots(resolved)[0].resolve()
+            )
+            workspaces.setdefault(workspace, []).append(resolved)
         combined = {plan.path: plan for plan in plans}
-        for item in generated.value:
-            previous = combined.get(item.path)
-            if previous is not None and previous.before != item.before:
-                return result_type.fail(
-                    f"semantic projection changed its original destination: {item.path}"
-                )
-            combined[item.path] = item
+        for workspace, scope_roots in workspaces.items():
+            scoped = tuple(
+                plan for plan in plans if plan.path.resolve().is_relative_to(workspace)
+            )
+            roots = tuple(
+                dict.fromkeys((
+                    *scope_roots,
+                    *(plan.project.resolve() for plan in scoped),
+                ))
+            )
+            with (
+                u.Infra.open_project(workspace, project_roots=roots) as live,
+                closing(
+                    u.Infra.planned_project(
+                        live,
+                        election=u.Infra.native_election(live),
+                        declared_files=scoped,
+                    )
+                ) as source_project,
+            ):
+                generated = FlextInfraCodegenLazyInit(
+                    repository_root=workspace,
+                    project_scope_roots=tuple(scope_roots),
+                ).plan_files(source_project=source_project)
+            if generated.failure:
+                return result_type.from_failure(generated)
+            for item in generated.value:
+                previous = combined.get(item.path)
+                if previous is not None and previous.before != item.before:
+                    return result_type.fail(
+                        "semantic projection changed its original destination: "
+                        f"{item.path}"
+                    )
+                combined[item.path] = item
         return result_type.ok(tuple(combined.values()))
 
 

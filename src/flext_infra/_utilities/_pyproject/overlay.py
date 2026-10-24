@@ -249,33 +249,60 @@ class FlextInfraUtilitiesPyprojectOverlay:
         merged[c.Infra.DEPENDENCY_GROUPS] = groups
         return r[bool].ok(value=True)
 
-    @staticmethod
+    @classmethod
+    def _overlay_tool_subtree(
+        cls,
+        rendered: t.JsonMapping,
+        live: t.JsonMapping,
+        prefix: t.VariadicTuple[str],
+        managed: t.SequenceOf[t.VariadicTuple[str]],
+    ) -> t.JsonDict:
+        """Merge CUSTOM siblings of one tool subtree over its rendered form.
+
+        An ancestor of an owned table exists only when the render declares it
+        or a CUSTOM descendant survives; an empty ancestor would pin a table
+        position the generator does not own and break the fixed point.
+
+        Returns:
+            The merged subtree.
+
+        """
+        merged: t.JsonDict = dict(rendered)
+        for key, value in live.items():
+            path = (*prefix, key)
+            if any(path[: len(owned)] == owned for owned in managed):
+                continue
+            if not any(owned[: len(path)] == path for owned in managed):
+                merged[key] = value
+                continue
+            rendered_child = u.Cli.toml_mapping_child(rendered, key)
+            child = cls._overlay_tool_subtree(
+                rendered_child or {},
+                u.Cli.toml_mapping_child(live, key) or {},
+                path,
+                managed,
+            )
+            if child or rendered_child is not None:
+                merged[key] = child
+        return merged
+
+    @classmethod
     def _overlay_tool_tables(
+        cls,
         merged: t.MutableJsonMapping,
         live_payload: t.JsonMapping,
         tool_tables: t.StrSequence,
     ) -> None:
         """Preserve CUSTOM siblings without merging into an owned table subtree."""
-        tool: t.JsonDict = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
-        live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
-        managed = tuple(tuple(table.split(".")) for table in tool_tables)
-        pending: list[tuple[t.JsonDict, t.JsonMapping, tuple[str, ...]]] = [
-            (tool, live_tool, ()),
-        ]
-        while pending:
-            target, source, prefix = pending.pop()
-            for key, value in source.items():
-                path = (*prefix, key)
-                if any(path[: len(owned)] == owned for owned in managed):
-                    continue
-                if any(owned[: len(path)] == path for owned in managed):
-                    child = dict(u.Cli.toml_mapping_child(target, key) or {})
-                    target[key] = child
-                    if isinstance(value, dict):
-                        pending.append((child, value, path))
-                else:
-                    target[key] = value
-        merged[c.Infra.TOOL] = tool
+        rendered_tool = u.Cli.toml_mapping_child(merged, c.Infra.TOOL)
+        tool = cls._overlay_tool_subtree(
+            rendered_tool or {},
+            u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {},
+            (),
+            tuple(tuple(table.split(".")) for table in tool_tables),
+        )
+        if tool or rendered_tool is not None:
+            merged[c.Infra.TOOL] = tool
 
     @classmethod
     def overlay_preserved(

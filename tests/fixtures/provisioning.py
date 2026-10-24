@@ -586,9 +586,8 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
         The resulting ``t.StrMapping``.
 
     """
-    sources = "\n".join(
-        "@".join(source) for source in u.Tests.locked_git_sources(_PROJECT_ROOT)
-    )
+    locked = u.Tests.locked_git_sources(_PROJECT_ROOT)
+    sources = "\n".join("@".join(source) for source in locked)
     parent = _run_scoped(
         session_runtime.directory,
         "git-mirrors",
@@ -599,7 +598,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
     mirrors = parent / "mirrors"
     with u.Cli.file_changes_lock(receipt.with_name(f"{receipt.name}.lock")):
         if not receipt.is_file():
-            mirrored = u.Tests.build_git_mirrors(_PROJECT_ROOT, mirrors)
+            mirrored = u.Tests.build_git_mirrors(_PROJECT_ROOT, mirrors, locked)
             tm.ok(u.Cli.atomic_write_text_file(receipt, "\n".join(mirrored) + "\n"))
     return u.Tests.hermetic_git_environment(mirrors)
 

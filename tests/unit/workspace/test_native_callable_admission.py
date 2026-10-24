@@ -58,7 +58,7 @@ try:
     ):
         producer, = (
             item for item in observation.bindings
-            if item.kind != 'alias' and item.supplier == module.__name__
+            if item.kind == 'function' and item.supplier == module.__name__
             and item.qualname == 'execute'
         )
         edge, = (

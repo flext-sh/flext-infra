@@ -1,0 +1,74 @@
+id: retire-publication-stack-snapshot-captured
+snapshots:
+  ? |
+    project = runtime.snapshot_project(
+        rope_project,
+        sources,
+        captured=context[1],
+        declared_files=plans,
+    )
+  : fixed: |
+      project = runtime.snapshot_project(
+          rope_project,
+          sources,
+          ,
+          declared_files=plans,
+      )
+    labels:
+    - source: captured=context[1]
+      style: primary
+      start: 71
+      end: 90
+    - source: captured
+      style: secondary
+      start: 71
+      end: 79
+    - source: runtime.snapshot_project
+      style: secondary
+      start: 10
+      end: 34
+    - source: |-
+        runtime.snapshot_project(
+            rope_project,
+            sources,
+            captured=context[1],
+            declared_files=plans,
+        )
+      style: secondary
+      start: 10
+      end: 119
+    - source: |-
+        (
+            rope_project,
+            sources,
+            captured=context[1],
+            declared_files=plans,
+        )
+      style: secondary
+      start: 34
+      end: 119
+  ? |
+    project = u.Infra.snapshot_project(rope_project, sources, captured=epoch)
+  : fixed: |
+      project = u.Infra.snapshot_project(rope_project, sources, )
+    labels:
+    - source: captured=epoch
+      style: primary
+      start: 58
+      end: 72
+    - source: captured
+      style: secondary
+      start: 58
+      end: 66
+    - source: u.Infra.snapshot_project
+      style: secondary
+      start: 10
+      end: 34
+    - source: u.Infra.snapshot_project(rope_project, sources, captured=epoch)
+      style: secondary
+      start: 10
+      end: 73
+    - source: (rope_project, sources, captured=epoch)
+      style: secondary
+      start: 34
+      end: 73

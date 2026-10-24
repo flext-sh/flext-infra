@@ -18,35 +18,6 @@ from flext_infra._models import FlextInfraModelsMixins
 class FlextInfraModelsCodegenLazyInitModels:
     """Lazy-init planning and quality-gate models."""
 
-    class ProjectionManifestEntry(m.ContractModel):
-        """Exact path, content digest, and byte count of one projected file."""
-
-        model_config = m.ConfigDict(str_strip_whitespace=False)
-
-        path: Annotated[str, m.Field(description="Exact project-relative output path.")]
-        sha256: Annotated[
-            str, m.Field(description="Digest of the desired output bytes.")
-        ]
-        bytes: Annotated[
-            int, m.Field(description="Length of the desired output bytes.")
-        ]
-
-    class ProjectionManifest(m.ContractModel):
-        """Generator-owned wire contract for the projection lock."""
-
-        model_config = m.ConfigDict(str_strip_whitespace=False)
-
-        api_version: Annotated[
-            str,
-            m.Field(alias="apiVersion", description="Projection lock wire version."),
-        ]
-        entries: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsCodegenLazyInitModels.ProjectionManifestEntry
-            ],
-            m.Field(description="Projected files in deterministic path order."),
-        ]
-
     class LazyInitPackageContext(m.ContractModel):
         """Declarative package context for one lazy-init directory."""
 

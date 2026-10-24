@@ -1,0 +1,11 @@
+id: retire-publication-stack-authenticated-ternary
+snapshots:
+  ? |
+    owner = rope_project if rope_project.authenticated_sources else None
+  : fixed: |
+      owner = rope_project
+    labels:
+    - source: rope_project if rope_project.authenticated_sources else None
+      style: primary
+      start: 8
+      end: 68

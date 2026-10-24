@@ -140,14 +140,19 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         if elected.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(elected)
         scopes = elected.value
-        if (
-            source_plan is not None
-            and (source_plan.candidate.workspaces or (source_plan.candidate.workspace,))
-            != scopes
-        ):
-            return r[m.Infra.SemanticRenamePlan].fail(
-                "semantic rename source receipt belongs to another scope"
+        if source_plan is not None:
+            if (
+                source_plan.candidate.workspaces or (source_plan.candidate.workspace,)
+            ) != scopes:
+                return r[m.Infra.SemanticRenamePlan].fail(
+                    "semantic rename source receipt belongs to another scope"
+                )
+            # A persisted plan is rebuilt only over the bytes it observed.
+            current = u.Cli.atomic_verify_binary_file_states(
+                source_plan.candidate.inputs
             )
+            if current.failure:
+                return r[m.Infra.SemanticRenamePlan].from_failure(current)
         return cls._build_native_rename_plan(workspace, selections, scopes)
 
     @classmethod
@@ -451,6 +456,15 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             {},
             options=m.Infra.StageSourceOptions(
                 workspaces=scopes if len(scopes) > 1 else (),
+                inputs=tuple(
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in dict.fromkeys(
+                        project.resolve() / target
+                        for scope in scopes
+                        for project in u.Infra.import_project_roots(scope)
+                        for target in u.Infra.ast_grep_scan_targets(project.resolve())
+                    )
+                ),
             ),
         )
 
@@ -604,6 +618,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     for state in staged_inputs.value
                     if state.path == source and state.mode is not None
                 },
+                inputs=staged_inputs.value,
             ),
         ).map(
             lambda candidate: (

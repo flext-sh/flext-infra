@@ -29,6 +29,10 @@ class FlextInfraModelsCodegenTransactionModels:
             default=None,
             description="Declared file modes for the staged source updates",
         )
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+            default=(),
+            description="Original source observations materialized in the view",
+        )
 
     class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Composition scopes, file modes and declared effects of a source candidate."""
@@ -41,6 +45,10 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
             default=(), description="Authenticated candidate file declarations"
+        )
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+            default=(),
+            description="Original source observations whose layouts join the closure",
         )
 
     class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):

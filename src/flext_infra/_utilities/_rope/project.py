@@ -34,6 +34,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         """
 
         def __init__(self, overlay: Mapping[Path, bytes | None]) -> None:
+            self._physical: dict[str, Path] = {}
             self._files = {
                 Path(realpath(path)): content
                 for path, content in overlay.items()
@@ -48,15 +49,27 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 parent for path in self._files for parent in path.parents
             )
 
-        @staticmethod
-        def realpath(path: str) -> str:
+        def realpath(self, path: str) -> str:
             """Return the physical absolute identity of a path.
 
             Returns:
                 The resolved path.
 
             """
-            return realpath(path)
+            return str(self._resolved(path))
+
+        def _resolved(self, path: str) -> Path:
+            """Resolve one path once for the lifetime of this read-only view.
+
+            Returns:
+                The physical path identity.
+
+            """
+            physical = self._physical.get(path)
+            if physical is None:
+                physical = Path(realpath(path))
+                self._physical[path] = physical
+            return physical
 
         def exists(self, path: str) -> bool:
             """Report planned, planned-parent and visible live paths.
@@ -74,7 +87,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 Whether the path is a file in the overlaid view.
 
             """
-            resolved = Path(realpath(path))
+            resolved = self._resolved(path)
             if resolved in self._files:
                 return True
             return resolved not in self._hidden and resolved.is_file()
@@ -86,7 +99,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 Whether the path is a directory in the overlaid view.
 
             """
-            resolved = Path(realpath(path))
+            resolved = self._resolved(path)
             return resolved in self._directories or resolved.is_dir()
 
         def listdir(self, path: str) -> list[str]:
@@ -96,7 +109,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 The sorted child names.
 
             """
-            resolved = Path(realpath(path))
+            resolved = self._resolved(path)
             names = {
                 child.name
                 for child in (resolved.iterdir() if resolved.is_dir() else ())
@@ -119,7 +132,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 FileNotFoundError: The path is hidden by a planned deletion.
 
             """
-            resolved = Path(realpath(path))
+            resolved = self._resolved(path)
             if resolved in self._files:
                 return self._files[resolved]
             if resolved in self._hidden:

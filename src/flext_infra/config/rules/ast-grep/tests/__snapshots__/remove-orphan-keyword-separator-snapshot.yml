@@ -1,0 +1,41 @@
+id: remove-orphan-keyword-separator
+snapshots:
+  ? |
+    def f(
+        self,
+        root,
+        *,
+    ) -> None: ...
+  : fixed: |
+      def f(
+          self,
+          root,
+          ,
+      ) -> None: ...
+    labels:
+    - source: '*'
+      style: primary
+      start: 31
+      end: 32
+    - source: |-
+        (
+            self,
+            root,
+            *,
+        )
+      style: secondary
+      start: 5
+      end: 35
+  ? |
+    def f(a, *,): ...
+  : fixed: |
+      def f(a, ,): ...
+    labels:
+    - source: '*'
+      style: primary
+      start: 9
+      end: 10
+    - source: (a, *,)
+      style: secondary
+      start: 5
+      end: 12

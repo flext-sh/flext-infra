@@ -661,7 +661,7 @@ class TestsFlextInfraSemanticPublication:
         source = tmp_path / "source.py"
         source.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
         original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-        with pytest.raises(ValueError, match="desired bytes and mode"):
+        with pytest.raises(ValueError, match="bytes and mode must agree"):
             m.Infra.CodegenFilePlan(
                 project=tmp_path,
                 path=source,
@@ -906,10 +906,15 @@ class TestsFlextInfraSemanticPublication:
                 path: path.read_bytes() if path.exists() else None
                 for path in artifact.candidate.updates
             }
+            # The shared publisher normalizes every Python effect it writes.
             for path, desired in artifact.candidate.updates.items():
                 tm.that(
                     published[path],
-                    eq=None if desired is None else desired.encode(c.DEFAULT_ENCODING),
+                    eq=None
+                    if desired is None
+                    else tm.ok(u.Infra.normalize_python_text(path, desired)).encode(
+                        c.DEFAULT_ENCODING
+                    ),
                 )
             tm.fail(
                 codemod.FlextInfraCodemodSemanticApply.consume_rename_plan(
