@@ -406,15 +406,6 @@ class FlextInfraModelsDeps(
                 ),
             ),
         ] = ()
-        project_declaration_resource: Annotated[
-            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
-            m.Field(
-                description=(
-                    "Declared producer metadata source and wheel extra-metadata "
-                    "destination"
-                ),
-            ),
-        ] = None
         hatch_build_hook_path: Annotated[
             Path | None,
             m.Field(description="Declared project-relative Hatch build hook module"),

@@ -654,8 +654,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             Path, m.Field(description="Actual root selected by the public Make verb")
         ]
         gates: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved native checker gate inventory")
-        ]
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Explicit native checker gate inventory; omitted resolves "
+                    "the runtime check partition from the typed Make spec"
+                ),
+            ),
+        ] = None
         report_output: Annotated[
             Path | None,
             m.Field(description="Invocation-owned typed checker summary destination"),

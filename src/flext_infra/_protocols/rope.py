@@ -100,6 +100,9 @@ class FlextInfraProtocolsRope(Protocol):
         """Read-only policy consumed by the native contract planner."""
 
         @property
+        def operation(self) -> str: ...
+
+        @property
         def call_target(self) -> str | None: ...
 
         @property

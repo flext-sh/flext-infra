@@ -5,8 +5,10 @@
 # Plan of record (Pydantic at the maximum level, 2026-10-24): a field whose type
 # is a runtime dependency is declared ``t.Port[p.Protocol]``; the flext-core
 # preset owner (``_models/_base``) is the only place the flag still exists, and
-# it is being retired there. Detection only: the replacement type is chosen per
-# field.
+# it is being retired there. After `rewire-model-protocol-field-to-port` wraps
+# every bare protocol field in `t.Port[...]`, the flag is removed with its
+# separating comma (ast-grep `expandEnd`); every touched model must still
+# build, which the fresh-import completeness check proves after the fix.
 id: ban-arbitrary-types-allowed
 language: python
 severity: error
@@ -35,6 +37,10 @@ rule:
         - has:
             field: value
             kind: "true"
+fix:
+  template: ""
+  expandEnd:
+    regex: ","
 message: >-
   `arbitrary_types_allowed` lets a model accept unvalidated objects: declare the
   field as `t.Port[p.<Protocol>]` (or a validated `t.*` type) and extend a preset

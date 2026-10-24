@@ -1,6 +1,6 @@
 # A model rejects undeclared keys: `extra="allow"` or `extra="ignore"` lets
 # unvalidated data cross the boundary. Relaxed extra is the declared contract
-# only of the dynamic-payload presets (DynamicModel, FlexibleModel,
+# only of the relaxed presets (ExternalContractModel, DynamicModel, FlexibleModel,
 # FlexibleInternalModel, FrozenDynamicModel) and their subclasses; every other
 # model inherits a forbidding preset.
 id: ban-relaxed-model-extra
@@ -43,10 +43,10 @@ rule:
           any:
             - has:
                 field: name
-                regex: "^(?:DynamicModel|FlexibleModel|FlexibleInternalModel|FrozenDynamicModel)$"
+                regex: "^(?:DynamicModel|ExternalContractModel|FlexibleModel|FlexibleInternalModel|FrozenDynamicModel)$"
             - has:
                 field: superclasses
-                regex: "\\b(?:DynamicModel|FlexibleModel|FlexibleInternalModel|FrozenDynamicModel)\\b"
+                regex: "\\b(?:DynamicModel|ExternalContractModel|FlexibleModel|FlexibleInternalModel|FrozenDynamicModel)\\b"
 message: >-
   Relaxed model extra `$EXTRA` admits unvalidated keys: inherit a forbidding
   `m.*` preset, or a dynamic-payload preset when relaxed extra is the contract.

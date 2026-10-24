@@ -206,9 +206,15 @@ class FlextInfraConstantsSharedInfra:
     # module loaded from outside this checkout must fail with the origin
     # error naming the foreign path, never with a phantom-attribute error
     # raised while resolving a stale export name.
+    # After the exports resolve, every pydantic class reachable from them must
+    # be complete at import: a deferred annotation would need the banned
+    # ``model_rebuild`` or fail at first use.
     FRESH_IMPORT_EXPORT_RESOLVE_CODE: ClassVar[str] = (
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
+        "from flext_infra.validate.fresh_import import "
+        "FlextInfraValidateFreshImport as fresh_import_owner\n"
+        "fresh_import_owner.require_complete_models(module)\n"
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.

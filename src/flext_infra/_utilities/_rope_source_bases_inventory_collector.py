@@ -16,6 +16,7 @@ import builtins
 from collections.abc import MutableMapping
 
 from flext_infra import c, m, t
+from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeSourceBindingCollector:
@@ -102,7 +103,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             return
         visible = {**spec.lexical, **bindings}
-        bases = tuple(cls._reference(base, visible, spec) for base in node.bases)
+        bases = tuple(cls._base_reference(base, visible, spec) for base in node.bases)
         if node.type_params:
             bases = (
                 *bases,
@@ -761,6 +762,60 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if isinstance(value, ast.Attribute):
             value = value.value
         return value.id if isinstance(value, ast.Name) else ""
+
+    @classmethod
+    def _base_reference(
+        cls,
+        expression: ast.expr,
+        bindings: t.MappingKV[str, m.Infra.SourceClassReference | None],
+        spec: m.Infra.SourceBindingCollectorSpec,
+    ) -> m.Infra.SourceClassReference:
+        """Resolve one class base, including a ``type(<class>)`` metaclass base.
+
+        ``class Meta(type(Protocol))`` derives from the metaclass of an
+        external class. The metaclass is a fact of that external runtime, so
+        it is read from the external module itself; a governed class's
+        metaclass cannot be proven lexically and stays fail-loud.
+
+        Returns:
+            The base reference, the metaclass identity for a metaclass base.
+
+        Raises:
+            TypeError: If a metaclass base names a governed class.
+
+        """
+        if not (
+            isinstance(expression, ast.Call)
+            and isinstance(expression.func, ast.Name)
+            and expression.func.id == "type"
+            and "type" not in bindings
+            and len(expression.args) == 1
+            and not expression.keywords
+        ):
+            return cls._reference(expression, bindings, spec)
+        owner = cls._reference(expression.args[0], bindings, spec)
+        # A governed target (module or local class identity) starts with the
+        # governed package; its metaclass is never read from runtime.
+        governed = bool(spec.package) and (
+            owner.target == spec.package
+            or owner.target.startswith((f"{spec.package}.", f"{spec.module}:"))
+        )
+        if governed or len(owner.attributes) != 1:
+            message = (
+                f"Unsupported metaclass base in {spec.module}: "
+                f"{ast.unparse(expression)}"
+            )
+            raise TypeError(message)
+        metaclass = type(
+            FlextInfraUtilitiesRopeRuntimeBase.runtime_type(
+                owner.target, owner.attributes[0]
+            )
+        )
+        return m.Infra.SourceClassReference(
+            target=metaclass.__module__,
+            attributes=tuple(metaclass.__qualname__.split(".")),
+            qualified_base=f"{metaclass.__module__}.{metaclass.__qualname__}",
+        )
 
     @staticmethod
     def _reference(

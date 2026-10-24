@@ -264,21 +264,13 @@ class FlextInfraPyprojectModernizerDocument(
         repository = inputs.value.spec.repository
         project = repository.project
         build_changes = self._normalize_build_payload(state.payload)
-        packaging = m.Infra.ProjectPackagingDeclaration.model_validate(state.payload)
-        topology = m.Infra.PyprojectDeclaredTopology.model_validate({
-            **(
-                project.model_dump(
-                    include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
-                )
-                if project is not None
-                else {}
-            ),
-            "project_declaration_resource": (
-                FlextInfraEnsurePackagingPhase.declaration_resource(
-                    package=u.Infra.project_package_participation(packaging),
-                )
-            ),
-        })
+        topology = m.Infra.PyprojectDeclaredTopology.model_validate(
+            project.model_dump(
+                include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+            )
+            if project is not None
+            else {},
+        )
         return self._render_document_state(
             state,
             (

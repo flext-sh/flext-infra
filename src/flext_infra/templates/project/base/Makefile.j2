@@ -7,36 +7,24 @@
    invocation, the CI gate filter, the empty-gates guard, and the fmt/fix
    bodies are each rendered from ONE definition so no verb or profile can
    drift from another. #}
-{%- macro gates_csv(names) -%}{{ names|join(",") }}{%- endmacro -%}
-{%- macro gates_banner(names) -%}{{ names|join(" ") }}{%- endmacro -%}
 {%- macro custom_reference_count(reference) -%}
 $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
 {%- endmacro -%}
-{%- macro check_run(gates, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{{ gates }}"{{ extra }}{%- endmacro -%}
+{#- No projection enumerates a gate id: the checker resolves the requested
+    gate set from the registered gates and the typed Make spec at runtime
+    (the CI token selects the check partition), so adding or deleting a gate
+    never desynchronizes a generated Makefile. -#}
+{%- macro check_run(gate_set, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set {{ gate_set }}{{ extra }}{%- endmacro -%}
 {%- macro local_check_body() -%}
 {{ "\t" }}@set -eu; \
-		gates="{{ gates_csv(make.check_gates_default) }}"; \
-		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-			gates="{{ gates_csv(make.check_gates_ci) }}"; \
-			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates: {{ gates_banner(make.check_gates_ci) }}\n'; \
-		elif [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.local_value }}" ]; then \
-			gates="{{ gates_csv(make.check_gates_local) }}"; \
-			printf 'INFO: {{ make.ci.variable }}={{ make.ci.local_value }} runs check gates: {{ gates_banner(make.check_gates_local) }}\n'; \
-		else \
-			printf 'INFO: default context runs check gates: {{ gates_banner(make.check_gates_default) }}\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
-			exit 2; \
-		fi; \
-		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
+		$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} capture-gate --repository-root "$(PROJECT_ROOT)"; \
 		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 {%- endmacro -%}
 {%- macro fmt_body() -%}
-{{ "\t" }}@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
+{{ "\t" }}@{{ check_run("fmt", " --apply") }}
 {%- endmacro -%}
 {%- macro fix_body() -%}
-{{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
+{{ "\t" }}@{{ check_run("fix", " --apply") }}
 {{ "\t" }}@$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" --projects . --apply
 {%- endmacro -%}
 {#- A local workspace run carries a mutating verb to every governed member

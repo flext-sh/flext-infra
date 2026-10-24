@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCli, codegen, config, infra, m, workspace
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, codegen, config, infra, workspace
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 

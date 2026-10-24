@@ -324,6 +324,54 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
         )
 
+    @staticmethod
+    def require_complete_models(module: t.RegistryModule) -> None:
+        """Fail when a pydantic class reachable from the exports is incomplete.
+
+        The walk starts at the module's declared exports (the facades and the
+        settings, config and service classes it publishes) and follows the
+        classes nested in each FLEXT class through its MRO, so the scope is
+        derived from the public surface, never from a list. A class whose
+        ``__pydantic_complete__`` is false after import left an annotation
+        unresolved (a ``TYPE_CHECKING``-only type, a later sibling) and needs
+        the banned ``model_rebuild`` or fails at first use. Only classes the
+        probed package defines are reported; inherited ones belong to their
+        own package's probe.
+
+        Raises:
+            TypeError: Naming every incomplete class of the probed package.
+
+        """
+        package = module.__name__.partition(".")[0]
+        pending: list[type] = [
+            value
+            for name in getattr(module, c.Infra.DUNDER_ALL, ())
+            if isinstance(value := getattr(module, name), type)
+        ]
+        seen: set[type] = set()
+        incomplete: set[str] = set()
+        while pending:
+            klass = pending.pop()
+            if klass in seen or not klass.__module__.startswith(c.Infra.PKG_ROOT):
+                continue
+            seen.add(klass)
+            if klass.__module__.partition(".")[0] == package and (
+                vars(klass).get("__pydantic_complete__") is False
+            ):
+                incomplete.add(f"{klass.__module__}.{klass.__qualname__}")
+            pending.extend(
+                member
+                for base in klass.__mro__
+                for member in vars(base).values()
+                if isinstance(member, type)
+            )
+        if incomplete:
+            msg = (
+                f"{package}: {len(incomplete)} incomplete pydantic class(es) "
+                f"after import: {', '.join(sorted(incomplete))}"
+            )
+            raise TypeError(msg)
+
     def execute_probe(
         self,
         probe: m.Infra.FreshImportProbe,

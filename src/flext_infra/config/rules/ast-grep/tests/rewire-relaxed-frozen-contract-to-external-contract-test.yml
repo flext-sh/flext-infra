@@ -1,0 +1,13 @@
+id: rewire-relaxed-frozen-contract-to-external-contract
+valid:
+  - |
+    class Finding(m.ContractModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+        code: str
+invalid:
+  - |
+    class Issue(m.ContractModel):
+        """One issue in a search response."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
+        key: str

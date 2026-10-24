@@ -1,4 +1,4 @@
-"""Modernization preserves the distribution roots declared by the project.
+"""Modernization replaces generator-owned packaging tables from the declaration.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -18,13 +18,17 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraModernizerPackagedManifest:
-    """Exercise declared data through the public modernizer."""
+    """Exercise declared data through the public modernizer and generator."""
 
     @staticmethod
-    def test_modernization_preserves_declared_data(
+    def test_modernization_replaces_authored_build_targets(
         infra_git_repo: Path,
     ) -> None:
-        """A local dependency update retains the package's configuration data."""
+        """Modernize and gen agree: declared data survives, authored targets go.
+
+        The pyproject ownership SSOT declares ``tool.hatch.build`` generator-owned,
+        so authored target entries are replaced by the declared topology.
+        """
         distribution = "flext-packaging-fixture"
         _ = u.Tests.standalone_workspace(infra_git_repo, distribution)
         data_dir = c.CONFIG_DIR_NAME
@@ -96,13 +100,14 @@ class TestsFlextInfraModernizerPackagedManifest:
                 "targets",
                 target,
             )
-            tm.that(u.Tests.toml_list(selected["only-include"]), has=data_dir)
-            tm.that(u.Tests.toml_list(selected["only-include"]), has="assets")
-            tm.that(selected["include"], eq=authored["include"])
-            tm.that(selected["exclude"], eq=authored["exclude"])
+            only_include = u.Tests.toml_list(selected["only-include"])
+            tm.that(only_include, has=data_dir)
+            tm.that(only_include, lacks="assets")
+            tm.fail("include" in selected)
+            tm.fail("exclude" in selected)
             tm.that(
-                u.Tests.toml_mapping(selected["force-include"])["notice.txt"],
-                eq="notice.txt",
+                u.Tests.toml_mapping(selected.get("force-include", {})),
+                lacks="notice.txt",
             )
         wheel_sources = u.Tests.toml_table_at(
             source,
@@ -148,10 +153,10 @@ class TestsFlextInfraModernizerPackagedManifest:
                 "targets",
                 target,
             )
-            tm.that(selected["include"], eq=authored["include"])
-            tm.that(u.Tests.toml_list(selected["exclude"]), has="**/*.secret")
-            tm.that(u.Tests.toml_list(selected["only-include"]), has="assets")
+            tm.fail("include" in selected)
+            tm.fail("exclude" in selected)
+            tm.that(u.Tests.toml_list(selected["only-include"]), lacks="assets")
             tm.that(
-                u.Tests.toml_mapping(selected["force-include"])["notice.txt"],
-                eq="notice.txt",
+                u.Tests.toml_mapping(selected.get("force-include", {})),
+                lacks="notice.txt",
             )

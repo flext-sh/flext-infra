@@ -14,12 +14,10 @@ import pytest
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import t
 
 
 class TestsFlextInfraWorkspaceCheckCli:

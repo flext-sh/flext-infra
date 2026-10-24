@@ -566,6 +566,8 @@ rules:
   skills: [pydantic-v2-governance]
   rules:
   - {engine: ast-grep, id: ban-relaxed-model-extra}
+  - {engine: ast-grep, id: rewire-relaxed-contract-to-external-contract}
+  - {engine: ast-grep, id: rewire-relaxed-frozen-contract-to-external-contract}
 - id: ENFORCE-110
   severity: HIGH
   description: A value object never switches frozen off.

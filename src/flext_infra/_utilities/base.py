@@ -58,6 +58,33 @@ class FlextInfraUtilitiesBase:
         return default.strip() if value is None else value.strip()
 
     @staticmethod
+    def selected_check_gates(
+        make: m.Infra.MakeSpec,
+        gate_set: c.Infra.CheckGateSet,
+    ) -> t.VariadicTuple[str]:
+        """Resolve one gate inventory from the typed Make spec at runtime.
+
+        The CI token selects the check partition: its declared CI value runs
+        the CI partition, every other value the complete default set.
+
+        Returns:
+            The registered gate ids of the requested inventory.
+
+        """
+        match gate_set:
+            case c.Infra.CheckGateSet.FIX:
+                return make.check_gates_fixable
+            case c.Infra.CheckGateSet.FMT:
+                return make.fmt_gates
+            case c.Infra.CheckGateSet.CHECK:
+                token = FlextInfraUtilitiesBase.env_value(make.ci.variable)
+                return (
+                    make.check_gates_ci
+                    if token == make.ci.value
+                    else make.check_gates_default
+                )
+
+    @staticmethod
     def resolve_repository_root_or_cwd(
         repository_root: t.Infra.Path | None = None,
     ) -> t.Infra.Path:

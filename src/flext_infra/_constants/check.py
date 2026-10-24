@@ -228,6 +228,19 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         NOTE = "note"
 
     @unique
+    class CheckGateSet(StrEnum):
+        """Gate inventory a Make verb asks the checker to resolve at runtime.
+
+        ``check`` resolves the CI or local partition from the declared CI
+        token, ``fix`` the repair-capable gates and ``fmt`` the formatter
+        gates, so no generated projection enumerates a gate id.
+        """
+
+        CHECK = "check"
+        FIX = "fix"
+        FMT = "fmt"
+
+    @unique
     class EnforcementEngine(StrEnum):
         """Owner engine named by a static enforcement catalog rule reference."""
 

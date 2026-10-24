@@ -197,6 +197,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         """
         root = request.repository_root.resolve()
+        gates = request.gates or ",".join(
+            u.Infra.selected_check_gates(
+                inputs.spec.make, c.Infra.CheckGateSet.CHECK
+            )
+        )
+        if not gates:
+            return r[m.Infra.GateCaptureReport].fail(
+                "no active check gates remain in the selected context",
+            )
         directory = inputs.spec.make.gate_receipts_directory
         if directory.is_absolute() or ".." in directory.parts:
             return r[m.Infra.GateCaptureReport].fail(

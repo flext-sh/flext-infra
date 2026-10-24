@@ -171,12 +171,11 @@ path = {{ hatch_build_hook_path | tojson }}
 # [MANAGED] tool.uv
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
-{% if hatch_build_hook_path %}
+{% if uv_cache_key_files %}
 cache-keys = [
-  { file = "pyproject.toml" },
-  { file = "setup.py" },
-  { file = "setup.cfg" },
-  { file = {{ hatch_build_hook_path | tojson }} },
+{% for key_file in uv_cache_key_files %}
+  { file = {{ key_file | tojson }} },
+{% endfor %}
 ]
 {% endif %}
 

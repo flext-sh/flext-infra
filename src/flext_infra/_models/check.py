@@ -71,6 +71,16 @@ class FlextInfraModelsCheck:
             bool,
             m.Field(description="Stop check gates after the first failure"),
         ] = c.Infra.CHECK_FAIL_FAST_DEFAULT
+        gate_set: Annotated[
+            c.Infra.CheckGateSet,
+            m.Field(
+                alias="gate-set",
+                description=(
+                    "Gate inventory resolved at runtime when --gates is empty: "
+                    "check (CI or local partition), fix, or fmt"
+                ),
+            ),
+        ] = c.Infra.CheckGateSet.CHECK
         reports_dir: Annotated[
             str,
             m.Field(

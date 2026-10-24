@@ -134,6 +134,16 @@ class FlextInfraConstantsWorkspace:
     "PEP 427 suffix of an installed distribution's metadata directory."
     WHEEL_EXTRA_METADATA_DIR: ClassVar[str] = "extra_metadata"
     "Hatch wheel ``extra-metadata`` directory inside ``<dist>.dist-info``."
+    UV_PROJECT_CACHE_KEY_FILES: ClassVar[tuple[str, ...]] = (
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+    )
+    "uv's ordinary project cache-key files, retained when keys are declared."
+    HATCH_BUILD_TABLE: ClassVar[str] = "hatch.build"
+    "Tool-relative pyproject table holding the Hatch build hooks and targets."
+    UV_CACHE_KEYS_TABLE: ClassVar[str] = "uv.cache-keys"
+    "Tool-relative pyproject table holding uv's editable-build cache keys."
     BINDING_PACKAGE_SCRIPT: ClassVar[
         str
     ] = """import importlib.util, json, sys, sysconfig

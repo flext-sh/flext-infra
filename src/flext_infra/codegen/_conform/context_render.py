@@ -649,6 +649,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # Carry only the validated
                 # project declaration; conform owns no inferred Hatch hook.
                 hatch_build_hook_path=project.hatch_build_hook_path,
+                uv_cache_key_files=FlextInfraEnsurePackagingPhase.uv_cache_key_files(
+                    project.hatch_build_hook_path,
+                ),
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,

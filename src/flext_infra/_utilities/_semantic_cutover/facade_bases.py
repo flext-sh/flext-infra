@@ -234,9 +234,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if current in cache:
                 return cache[current]
             owner_module, owner_name = current
-            declaration = cls._declared_class_node(
-                modules[owner_module][0], owner_name
-            )
+            declaration = cls._declared_class_node(modules[owner_module][0], owner_name)
             if declaration is None:
                 msg = f"facade inheritance identity has no declaration: {current}"
                 raise ValueError(msg)
@@ -632,9 +630,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         for owner_module, class_name in lineage:
-            declaration = cls._declared_class_node(
-                modules[owner_module][0], class_name
-            )
+            declaration = cls._declared_class_node(modules[owner_module][0], class_name)
             if declaration is None:
                 msg = (
                     "facade inheritance identity has no declaration: "
@@ -1320,9 +1316,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """
         if effective is None:
             return None
-        declaration = cls._declared_class_node(
-            modules[effective[0]][0], effective[1]
-        )
+        declaration = cls._declared_class_node(modules[effective[0]][0], effective[1])
         if declaration is None:
             msg = (
                 "facade inheritance identity has no declaration: "

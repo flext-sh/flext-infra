@@ -273,6 +273,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             Path | None,
             m.Field(description="Project-relative Hatch custom build hook module"),
         ] = None
+        uv_cache_key_files: Annotated[
+            t.StrSequence,
+            m.Field(description="Derived uv editable-build cache-key files"),
+        ] = ()
         docs_audit: Annotated[
             FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
             m.Field(

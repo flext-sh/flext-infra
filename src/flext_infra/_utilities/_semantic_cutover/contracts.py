@@ -378,8 +378,7 @@ class FlextInfraUtilitiesSemanticContracts(
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
-        operation = m.Infra.RopeContractRule.model_validate(rule, from_attributes=True)
-        if operation.operation == "materialize-delegations":
+        if rule.operation == "materialize-delegations":
             return FlextInfraUtilitiesSemanticDelegations.materialize_delegations(
                 project, sources, tuple(context[1]), rule.id
             )
@@ -494,13 +493,9 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         working.update((path, retirement_sources[path]) for path in working)
-        if any(
-            m.Infra.RopeContractRule.model_validate(
-                rule, from_attributes=True
-            ).operation
-            == "materialize-delegations"
-            for rule in rules
-        ) and any(working[path] != source for path, source in items):
+        if any(rule.operation == "materialize-delegations" for rule in rules) and any(
+            working[path] != source for path, source in items
+        ):
             FlextInfraUtilitiesSemanticDeclarationRelocation.preflight_semantic_import_graph(
                 workspace, sources, retirement_sources
             )

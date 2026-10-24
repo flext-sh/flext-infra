@@ -40,6 +40,22 @@ class FlextInfraEnsurePackagingPhase:
         return (c.PYPROJECT_FILENAME, c.PYPROJECT_FILENAME) if package else None
 
     @staticmethod
+    def uv_cache_key_files(hatch_build_hook_path: Path | None) -> t.StrSequence:
+        """Derive the uv editable-build cache keys from the declared build hook.
+
+        Editable installs read package sources and config live, so only a
+        declared Hatch hook changes the built artifact beyond uv's ordinary
+        project inputs.
+
+        Returns:
+            The ordered cache-key files, empty without a declared hook.
+
+        """
+        if hatch_build_hook_path is None:
+            return ()
+        return (*c.Infra.UV_PROJECT_CACHE_KEY_FILES, hatch_build_hook_path.as_posix())
+
+    @staticmethod
     def _validate_data_tree(
         root: Path,
         source: Path,
@@ -201,6 +217,7 @@ class FlextInfraEnsurePackagingPhase:
         data: m.Infra.PackagedDataSelection,
         data_excludes: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
+        project_declaration_resource: t.Pair[str, str] | None,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
 
@@ -217,7 +234,6 @@ class FlextInfraEnsurePackagingPhase:
         root_modules = topology.root_modules
         root_packages = topology.root_packages
         repository_namespace_packages = topology.repository_namespace_packages
-        project_declaration_resource = topology.project_declaration_resource
         package_path = f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
         package_paths = (
             package_path,
@@ -255,19 +271,40 @@ class FlextInfraEnsurePackagingPhase:
             if topology.hatch_build_hook_path is not None
             else ()
         )
+        hook_path = topology.hatch_build_hook_path
         return toml.PhaseConfig(
             name="packaging",
-            table_path=("hatch", "build", "targets"),
+            table_path=("hatch",),
+            # The SSOT declares tool.hatch.build generator-owned: the declared
+            # topology replaces the whole table, never merges into live state.
+            operations=(toml.RemoveOp(key="build"),),
             nested_tables=(
+                (
+                    toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("build", "hooks", "custom"),
+                        operations=(
+                            toml.SetOp(key="path", value=hook_path.as_posix()),
+                        ),
+                    )
+                    if hook_path is not None
+                    else toml.PhaseConfig(
+                        name="packaging",
+                        root_path=(),
+                        table_path=("build",),
+                        operations=(),
+                    )
+                ),
                 toml.PhaseConfig(
                     name="packaging",
                     root_path=(),
-                    table_path=("wheel",),
+                    table_path=("build", "targets", "wheel"),
                     operations=(
                         toml.ListOp(
                             key="only-include",
                             values=selected_paths,
-                            strategy=c.Infra.TomlMergeMode.MERGE,
+                            strategy=c.Infra.TomlMergeMode.REPLACE,
                         ),
                         toml.RemoveOp(key="packages"),
                         *(
@@ -275,7 +312,7 @@ class FlextInfraEnsurePackagingPhase:
                                 toml.ListOp(
                                     key="exclude",
                                     values=data_exclude_patterns,
-                                    strategy=c.Infra.TomlMergeMode.MERGE,
+                                    strategy=c.Infra.TomlMergeMode.REPLACE,
                                 ),
                             )
                             if data_exclude_patterns
@@ -286,7 +323,7 @@ class FlextInfraEnsurePackagingPhase:
                 toml.PhaseConfig(
                     name="packaging",
                     root_path=(),
-                    table_path=("wheel", "sources"),
+                    table_path=("build", "targets", "wheel", "sources"),
                     operations=tuple(
                         toml.SetOp(key=source, value=destination)
                         for source, destination in (
@@ -309,12 +346,12 @@ class FlextInfraEnsurePackagingPhase:
                 toml.PhaseConfig(
                     name="packaging",
                     root_path=(),
-                    table_path=("sdist",),
+                    table_path=("build", "targets", "sdist"),
                     operations=(
                         toml.ListOp(
                             key="only-include",
                             values=selected_paths,
-                            strategy=c.Infra.TomlMergeMode.MERGE,
+                            strategy=c.Infra.TomlMergeMode.REPLACE,
                         ),
                         toml.RemoveOp(key="packages"),
                         *(
@@ -322,7 +359,7 @@ class FlextInfraEnsurePackagingPhase:
                                 toml.ListOp(
                                     key="exclude",
                                     values=data_exclude_patterns,
-                                    strategy=c.Infra.TomlMergeMode.MERGE,
+                                    strategy=c.Infra.TomlMergeMode.REPLACE,
                                 ),
                             )
                             if data_exclude_patterns
@@ -334,7 +371,7 @@ class FlextInfraEnsurePackagingPhase:
                     toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("sdist", "force-include"),
+                        table_path=("build", "targets", "sdist", "force-include"),
                         operations=tuple(
                             toml.SetOp(key=source, value=source)
                             for source, _destination in sdist_force_include
@@ -344,7 +381,7 @@ class FlextInfraEnsurePackagingPhase:
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("sdist",),
+                        table_path=("build", "targets", "sdist"),
                         operations=(),
                     )
                 ),
@@ -352,7 +389,7 @@ class FlextInfraEnsurePackagingPhase:
                     toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("wheel", "force-include"),
+                        table_path=("build", "targets", "wheel", "force-include"),
                         operations=tuple(
                             toml.SetOp(key=key, value=value)
                             for key, value in force_include
@@ -362,7 +399,7 @@ class FlextInfraEnsurePackagingPhase:
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("wheel",),
+                        table_path=("build", "targets", "wheel"),
                         operations=(),
                     )
                 ),
@@ -370,7 +407,7 @@ class FlextInfraEnsurePackagingPhase:
                     toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("wheel", "extra-metadata"),
+                        table_path=("build", "targets", "wheel", "extra-metadata"),
                         operations=tuple(
                             toml.SetOp(key=key, value=value)
                             for key, value in extra_metadata
@@ -380,7 +417,7 @@ class FlextInfraEnsurePackagingPhase:
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
-                        table_path=("wheel",),
+                        table_path=("build", "targets", "wheel"),
                         operations=(),
                     )
                 ),
@@ -495,13 +532,49 @@ class FlextInfraEnsurePackagingPhase:
             data_paths,
             topology.packaged_data_excludes,
         )
+        # The pyproject ownership SSOT decides which packaging tables the
+        # generator owns; this phase replaces exactly those, like make gen.
+        owned = frozenset(u.Infra.pyproject_managed_file().unwrap().managed_tool_tables)
+        cache_keys = self.uv_cache_key_files(topology.hatch_build_hook_path)
+        toml = m.Infra.DepsToml
         return u.Infra.apply_toml_phases(
             payload,
-            self._phase(
-                package_name=package_name,
-                data=data_paths,
-                data_excludes=data_excludes,
-                topology=topology,
+            *(
+                (
+                    self._phase(
+                        package_name=package_name,
+                        data=data_paths,
+                        data_excludes=data_excludes,
+                        topology=topology,
+                        project_declaration_resource=self.declaration_resource(
+                            package=u.Infra.project_package_participation(
+                                m.Infra.ProjectPackagingDeclaration.model_validate(
+                                    payload,
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+                if c.Infra.HATCH_BUILD_TABLE in owned
+                else ()
+            ),
+            *(
+                (
+                    toml.PhaseConfig(
+                        name="packaging",
+                        table_path=("uv",),
+                        operations=(
+                            toml.SetOp(
+                                key="cache-keys",
+                                value=[{"file": item} for item in cache_keys],
+                            )
+                            if cache_keys
+                            else toml.RemoveOp(key="cache-keys"),
+                        ),
+                    ),
+                )
+                if c.Infra.UV_CACHE_KEYS_TABLE in owned
+                else ()
             ),
         )
 

@@ -163,14 +163,14 @@ class FlextInfraWorkspaceChecker(
         if project_targets_result.failure:
             return r[m.Infra.CheckReportSummary].from_failure(project_targets_result)
         project_targets = project_targets_result.value
-        # An omitted gate selection is the typed SSOT default: every default
-        # check gate (the set an unset CI token runs), never an empty run.
+        # An omitted gate selection resolves the requested gate set from the
+        # typed Make spec at runtime, never from a generated projection.
         gates = list(
             params.gates
-            or u.Infra
-            .load_codegen_inputs(params.repository_root)
-            .unwrap()
-            .spec.make.check_gates_default
+            or u.Infra.selected_check_gates(
+                u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
+                params.gate_set,
+            )
         )
         destination = params.report_output
         before = None
