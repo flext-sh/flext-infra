@@ -20,10 +20,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenMakeBootstrap,
-    FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenMiseToolchainProof,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.docs import FlextInfraDocGenerator
@@ -117,16 +114,10 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
                     and isinstance(file.before, m.Cli.AtomicFileState)
                     and not u.Infra.codegen_file_requires_effect(file)
                 )
-                rejected = rejected.model_copy(
-                    update={"source_states": (*rejected.source_states, original)},
-                )
+                rejected = rejected
                 independent = (
                     *(
-                        file.model_copy(
-                            update={"source_states": (*file.source_states, original)},
-                        )
-                        if file.path.name == c.Infra.MAKEFILE_FILENAME
-                        else file
+                        file if file.path.name == c.Infra.MAKEFILE_FILENAME else file
                         for file in independent
                     ),
                     bridge,
@@ -165,9 +156,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
             source = request.root / ".lifecycle-source"
             before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
             source.write_bytes(b"foreign source\n")
-            rejected = rejected.model_copy(
-                update={"source_states": (*rejected.source_states, before)},
-            )
+            rejected = rejected
             return r[m.Infra.CodegenPlan].ok(
                 planned.value.model_copy(
                     update={

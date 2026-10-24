@@ -13,8 +13,6 @@ from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsJournal,
-    FlextInfraMiseArtifactsVerification,
 )
 
 if TYPE_CHECKING:
@@ -153,9 +151,6 @@ class FlextInfraMisePublication:
                     project=plan.project,
                     before=before,
                     replacement=None,
-                    source_states=plan.source_states,
-                    source_directories=plan.source_directories,
-                    source_query_topology=plan.source_query_topology,
                     tracking=plan.tracking,
                     index_before=plan.index_before,
                     tracking_dependencies=plan.tracking_dependencies,
@@ -187,9 +182,6 @@ class FlextInfraMisePublication:
                 project=plan.project,
                 before=before,
                 replacement=staged.value,
-                source_states=plan.source_states,
-                source_directories=plan.source_directories,
-                source_query_topology=plan.source_query_topology,
                 tracking=plan.tracking,
                 index_before=plan.index_before,
                 tracking_dependencies=plan.tracking_dependencies,
@@ -267,12 +259,7 @@ class FlextInfraMisePublication:
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
             analysis.source_directories, analysis.source_query_topology
         )
-        analysis = analysis.model_copy(
-            update={
-                "source_directories": directories,
-                "source_query_topology": topology,
-            }
-        )
+        analysis = analysis
         current = FlextInfraMisePublication._source_prerequisites(
             inputs.value,
             {},
@@ -302,8 +289,6 @@ class FlextInfraMisePublication:
                 admitted_states=inputs.value,
                 phase=analysis.phase,
                 outputs=outputs.value,
-                source_directories=analysis.source_directories,
-                source_query_topology=analysis.source_query_topology,
             )
         )
 

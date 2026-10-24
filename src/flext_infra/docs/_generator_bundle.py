@@ -12,7 +12,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -91,7 +91,6 @@ class FlextInfraDocGeneratorBundleMixin:
                     before=source.value,
                     desired_content=projected.value.encode(c.DEFAULT_ENCODING),
                     desired_mode=source.value.mode,
-                    source_states=(*declaration.value.sources, source.value),
                     owner=ownership.value.owner,
                     policy=ownership.value.policy,
                 )
@@ -102,9 +101,6 @@ class FlextInfraDocGeneratorBundleMixin:
     def _prepare_batches(
         cls,
         request: m.Infra.DocsGenerateRequest,
-        *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-        | None = None,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
         """Capture each scope's consumed sources after its predecessor.
 
@@ -143,7 +139,6 @@ class FlextInfraDocGeneratorBundleMixin:
             declaration.value,
             (selected, aggregate),
             metadata_files=metadata.value,
-            publication_receipts=publication_receipts,
         )
 
     @classmethod
@@ -156,8 +151,6 @@ class FlextInfraDocGeneratorBundleMixin:
             t.VariadicTuple[m.Infra.DocScope],
         ],
         *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-        | None = None,
         metadata_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
         """Yield one settled bundle per non-collocated selected scope.
@@ -389,8 +382,6 @@ class FlextInfraDocGeneratorBundleMixin:
         cls,
         repository_root: Path,
         request: m.Infra.DocsGenerateRequest,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
     ) -> p.Result[FlextInfraDocGeneratorBundleMixin._DocsRenderedInventory]:
         """Resolve the docs scopes, their governance source and artifacts.
 
@@ -578,8 +569,6 @@ class FlextInfraDocGeneratorBundleMixin:
             t.VariadicTuple[m.Infra.DocScope],
             t.VariadicTuple[m.Infra.DocScope],
         ],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
         presentation: FlextInfraDocGeneratorBundleMixin._DocsPresentationInputs = (
             None,
             (),
@@ -630,8 +619,6 @@ class FlextInfraDocGeneratorBundleMixin:
                     scope,
                     repository_root=repository_root,
                     aggregate_scopes=aggregate,
-                    source_states=source_states,
-                    source_directories=source_directories,
                 )
             except SyntaxError as exc:
                 return r[list[_DocsScopeArtifacts]].fail(
@@ -738,11 +725,9 @@ class FlextInfraDocGeneratorBundleMixin:
             partial(
                 m.Infra.DocsGenerationBundle,
                 scopes=tuple(normalized.value),
-                source_states=source_states,
                 metadata_files=metadata_files,
                 source_roots=source_roots,
                 source_scope=source_scope,
-                source_directories=source_directories,
                 repository_root=repository_root,
             )
         )
@@ -757,7 +742,6 @@ class FlextInfraDocGeneratorBundleMixin:
     def _captured_governance_source(
         cls,
         repository_root: Path,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenBootstrapSource]:
         """Capture the referenced governance owner before rendering its links.
 

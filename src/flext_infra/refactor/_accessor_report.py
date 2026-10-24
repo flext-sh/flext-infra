@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, settings, t, u
-from flext_infra.codegen import FlextInfraCodegenFileLeases, FlextInfraStagedPackage
+
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraAccessorOriginResolver,
@@ -120,7 +120,6 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
                         desired_content=updated_source.encode(c.DEFAULT_ENCODING),
                         desired_mode=state.mode,
                         changes=tuple(change.original_name for change in automated),
-                        source_states=tuple(states.values()),
                     )
                 )
         return result_type.ok((tuple(plans), tuple(reports)))

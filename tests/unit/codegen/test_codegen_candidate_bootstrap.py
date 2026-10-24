@@ -15,8 +15,6 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm, u
@@ -365,7 +363,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                     before=before,
                     desired_content=tm.not_none(state.content),
                     desired_mode=state.mode,
-                    source_states=(state,),
                 ),
             ),
             inputs=(state,),
@@ -379,7 +376,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 roots,
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(directories=()),
-                publication_receipts=receipts,
             )
 
         tm.ok(transaction.run_files_locked(roots, publish))

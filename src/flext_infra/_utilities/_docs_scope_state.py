@@ -134,7 +134,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
     def project_state(
         project_root: Path,
         *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
         metadata_projection: m.Infra.CodegenFilePlan | None = None,
     ) -> m.Infra.ProjectPyprojectState:
         """Return the shared state bound to authenticated pyproject bytes.
@@ -179,8 +178,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
     @staticmethod
     def project_payload(
         project_root: Path,
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Return a project's ``pyproject.toml`` payload as a plain mapping.
 
@@ -190,7 +187,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         """
         return FlextInfraUtilitiesDocsScopeStateMixin.project_state(
             project_root,
-            source_states=source_states,
         ).payload
 
     @staticmethod

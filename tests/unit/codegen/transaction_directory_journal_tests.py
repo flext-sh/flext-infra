@@ -15,15 +15,7 @@ from uuid import uuid4
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsCandidates,
-    FlextInfraMiseArtifactsJournal,
-    FlextInfraMiseArtifactsState,
-    FlextInfraMiseArtifactsVerification,
-    FlextInfraMiseWorkspacePlanner,
-)
+
 from tests import c, m, p, r, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -102,7 +94,6 @@ class TestsFlextInfraTransactionDirectoryJournal:
             before=target_before,
             desired_content=b"generated document\n",
             desired_mode=target_before.mode,
-            source_states=(config_before, config_before),
             owner="conform",
         )
         owner = FlextInfraCodegenTransaction(
@@ -178,7 +169,6 @@ class TestsFlextInfraTransactionDirectoryJournal:
             before=before,
             desired_content=before.content,
             desired_mode=before.mode,
-            source_states=(template_state, *config_sources),
         )
 
         observed = tm.ok(planner.snapshot(layout, (config_plan,)))
@@ -285,7 +275,6 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 before=before,
                 desired_content=b"generated target\n",
                 desired_mode=before.mode,
-                source_states=(source,),
                 owner="docs",
             )
             return owner.publish_prepared_locked(

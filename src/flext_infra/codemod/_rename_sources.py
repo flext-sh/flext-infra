@@ -135,8 +135,6 @@ class FlextInfraRenameSources:
                 inputs=captured.states,
                 workspaces=candidate.candidate.workspaces,
                 modes=modes,
-                source_directories=directories,
-                source_query_topology=topology,
             ),
         ).map(
             lambda stage: candidate.model_copy(

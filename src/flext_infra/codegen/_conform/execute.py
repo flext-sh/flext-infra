@@ -13,12 +13,7 @@ from pathlib import Path
 from typing import Self, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenStaging,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
-)
+
 from flext_infra.codegen._conform.execute_directed import (
     FlextInfraCodegenConformExecuteDirected,
 )
@@ -216,7 +211,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 plan,
                 transaction,
                 (scope_root, roots),
-                publication_receipts=receipts,
             )
 
         def complete(
@@ -273,8 +267,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         plan: m.Infra.CodegenPlan,
         transaction: FlextInfraCodegenTransaction,
         publication_scope: t.Pair[Path, t.MappingKV[str, Path]],
-        *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Authorize the surface contract, then publish its changed files.
 
@@ -319,16 +311,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=plan.files,
             inputs=tuple(inputs.values()),
-            source_directories=tuple(
-                directory
-                for file in plan.files
-                for directory in file.source_directories
-            ),
-            source_query_topology=tuple(
-                topology
-                for file in plan.files
-                for topology in file.source_query_topology
-            ),
             issues=plan.issues,
             exception=plan.exception,
         )
@@ -352,7 +334,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     else None
                 ),
             ),
-            publication_receipts=publication_receipts,
         )
 
     def _bootstrap_expected_surface(
@@ -1065,16 +1046,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         by_path = {state.path: state for state in current_inputs.value}
         prepared = FlextInfraCodegenStaging.prepare_python_plans(
             request.root,
-            tuple(
-                file.model_copy(
-                    update={
-                        "source_states": tuple(
-                            by_path[state.path] for state in file.source_states
-                        ),
-                    }
-                )
-                for file in analysis.files
-            ),
+            tuple(file for file in analysis.files),
             prepare=u.Infra.normalize_source_plan,
         )
         if prepared.failure:
@@ -1088,9 +1060,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         files = analysis.files
         if len(files) > 1:
             group = f"{analysis.phase}:{files[0].path}"
-            files = tuple(
-                file.model_copy(update={"dependency_group": group}) for file in files
-            )
+            files = tuple(file for file in files)
         analysis = analysis.model_copy(
             update={
                 "files": files,
@@ -1146,7 +1116,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     roots,
                     analysis,
                     publication,
-                    publication_receipts=receipts,
                 ),
             ),
         )
@@ -1220,15 +1189,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         failures: list[p.FailureLike] = []
         runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
-            for prepared in docs_generator.prepare_batches(
-                publication_receipts=receipts,
-            ):
+            for prepared in docs_generator.prepare_batches():
                 published = prepared.flat_map(
                     lambda bundle: self._settle_generation_stage(
                         partial(
                             docs_generator.publish_batch,
                             bundle,
-                            publication_receipts=receipts,
                         ),
                     ),
                 )

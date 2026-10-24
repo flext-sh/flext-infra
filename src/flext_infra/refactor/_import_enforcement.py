@@ -151,7 +151,6 @@ class FlextInfraImportNormalization(
                     before=before,
                     desired_content=normalized.encode(c.DEFAULT_ENCODING),
                     desired_mode=before.mode,
-                    source_states=source_states,
                     owner="import-normalization",
                 )
             )

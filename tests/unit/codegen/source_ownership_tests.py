@@ -276,8 +276,7 @@ class TestsFlextInfraSourceOwnership:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         frontier = package / "pending" / "provider.py"
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as consumed:
-                tm.fail(project.source_query(frontier, "isfile"))
+            tm.fail(project.source_query(frontier, "isfile"))
             receipt = consumed.receipt()
         target = package / "consumer.py"
         plan = tm.ok(
@@ -286,8 +285,6 @@ class TestsFlextInfraSourceOwnership:
                 {target: "VALUE = 1\n"},
                 options=m.Infra.StageSourceOptions(
                     inputs=receipt.inputs,
-                    source_directories=receipt.source_directories,
-                    source_query_topology=receipt.source_query_topology,
                 ),
             )
         )
@@ -326,10 +323,9 @@ class TestsFlextInfraSourceOwnership:
             tm.scope(python_paths=(str(runtime),)),
             u.Infra.facade_source_project(root) as (project, _, _),
         ):
-            with project.source_consumption() as scope:
-                tm.fail(project.source_query(candidate, "isfile"))
-                tm.that(project.source_children(runtime), has=source)
-                tm.fail(project.source_query(candidate, "isfile"))
+            tm.fail(project.source_query(candidate, "isfile"))
+            tm.that(project.source_children(runtime), has=source)
+            tm.fail(project.source_query(candidate, "isfile"))
             tm.that(scope.receipt().source_query_topology, eq=())
             tm.that(scope.receipt().source_directories, eq=())
             candidate.parent.mkdir()
@@ -377,8 +373,7 @@ class TestsFlextInfraSourceOwnership:
             expectation,
             u.Infra.facade_source_project(root) as (project, _, _),
         ):
-            with project.source_consumption() as scope:
-                tm.fail(project.source_query(candidate, "isfile"))
+            tm.fail(project.source_query(candidate, "isfile"))
             tm.that(
                 any(
                     item.target == candidate.parent

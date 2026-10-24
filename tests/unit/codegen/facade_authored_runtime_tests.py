@@ -62,9 +62,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             source.write_text(
                 text + "# Changed after capture\n", encoding=c.DEFAULT_ENCODING
             )
-            with project.source_consumption() as scope:
-                if consume:
-                    tm.that(project.source_text(source), eq=text)
+            if consume:
+                tm.that(project.source_text(source), eq=text)
             tm.that(scope.receipt().inputs, eq=(original,) if consume else ())
 
     @staticmethod
@@ -87,16 +86,13 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         )
         with expectation, u.Infra.facade_source_project(root) as binding:
             project = binding[0]
-            with project.source_consumption() as scope:
-                predicates: tuple[Literal["exists", "isfile", "isdir"], ...] = (
-                    "exists",
-                    "isfile",
-                    "isdir",
-                )
-                for predicate in predicates:
-                    tm.that(
-                        project.source_query(source / descendant, predicate), eq=False
-                    )
+            predicates: tuple[Literal["exists", "isfile", "isdir"], ...] = (
+                "exists",
+                "isfile",
+                "isdir",
+            )
+            for predicate in predicates:
+                tm.that(project.source_query(source / descendant, predicate), eq=False)
             tm.that(scope.receipt().inputs, eq=())
             tm.that(
                 any(
@@ -137,7 +133,6 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 before=original,
                 desired_content=None,
                 desired_mode=None,
-                source_states=(incoming,),
             ),
             m.Infra.CodegenFilePlan(
                 project=root,
@@ -145,7 +140,6 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 before=opaque,
                 desired_content=b"\xff\x00",
                 desired_mode=opaque.mode,
-                source_states=(incoming,),
             ),
         )
         with u.Infra.facade_source_project(
@@ -155,10 +149,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             ),
         ) as binding:
             project = binding[0]
-            with project.source_consumption() as scope:
-                tm.fail(project.source_query(source, "isfile"))
-                tm.fail(source in project.source_children(package))
-                tm.that(project.source_bytes(binary), eq=b"\xff\x00")
+            tm.fail(project.source_query(source, "isfile"))
+            tm.fail(source in project.source_children(package))
+            tm.that(project.source_bytes(binary), eq=b"\xff\x00")
             states = {state.path: state for state in scope.receipt().inputs}
             tm.that(states[source], eq=original)
             tm.that(states[dependency], eq=incoming)
@@ -187,7 +180,6 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             before=original,
             desired_content=proposed,
             desired_mode=original.mode,
-            source_states=(incoming,),
         )
         with ExitStack() as contexts:
             project, _, _ = contexts.enter_context(
@@ -196,10 +188,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     source_options=m.Infra.StageSourceOptions(declared_files=(plan,)),
                 ),
             )
-            with project.source_consumption() as first:
-                tm.that(project.source_bytes(source), eq=proposed)
-            with project.source_consumption() as repeated:
-                tm.that(project.source_bytes(source), eq=proposed)
+            tm.that(project.source_bytes(source), eq=proposed)
+            tm.that(project.source_bytes(source), eq=proposed)
             dependency.write_text(
                 "# Changed producer input\n", encoding=c.DEFAULT_ENCODING
             )
@@ -292,14 +282,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
         tm.ok(u.Cli.atomic_write_text_file(unrelated, "__all__ = []\n"))
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as first:
-                original = project.source_state(source)
-            with project.source_consumption() as separate:
-                project.source_state(unrelated)
-            with project.source_consumption() as repeated:
-                tm.that(project.source_state(source), eq=original)
-            with project.source_consumption() as consumer:
-                project.replay_source_consumption(first.receipt())
+            original = project.source_state(source)
+            project.source_state(unrelated)
+            tm.that(project.source_state(source), eq=original)
+            project.replay_source_consumption(first.receipt())
             tm.that(first.receipt().inputs, eq=(original,))
             tm.that(repeated.receipt().inputs, eq=(original,))
             tm.that(consumer.receipt().inputs, eq=(original,))
@@ -313,15 +299,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         """Repeated misses do not inherit unrelated selectors or membership reads."""
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as first:
-                tm.fail(project.root.has_child("missing.py"))
-            with project.source_consumption():
-                tm.fail(project.root.has_child("other.py"))
-                project.root.get_children()
-            with project.source_consumption() as repeated:
-                tm.fail(project.root.has_child("missing.py"))
-            with project.source_consumption() as cached:
-                project.replay_source_consumption(first.receipt())
+            tm.fail(project.root.has_child("missing.py"))
+            tm.fail(project.root.has_child("other.py"))
+            project.root.get_children()
+            tm.fail(project.root.has_child("missing.py"))
+            project.replay_source_consumption(first.receipt())
             for scope in (first, repeated, cached):
                 inventories = tuple(
                     inventory
@@ -343,19 +325,16 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         parent = package / "absent" if absent_parent else package
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as first:
-                tm.fail(project.source_query(parent / "first.py", "exists"))
-            with project.source_consumption() as separate:
-                tm.fail(project.source_query(parent / "second.py", "isfile"))
-                tm.fail(project.source_query(parent / "first.py", "isdir"))
-                if absent_parent:
-                    with pytest.raises(FileNotFoundError):
-                        project.source_children(parent)
-                else:
+            tm.fail(project.source_query(parent / "first.py", "exists"))
+            tm.fail(project.source_query(parent / "second.py", "isfile"))
+            tm.fail(project.source_query(parent / "first.py", "isdir"))
+            if absent_parent:
+                with pytest.raises(FileNotFoundError):
                     project.source_children(parent)
-            with project.source_consumption() as repeated:
-                project.replay_source_consumption(first.receipt())
-                tm.fail(project.source_query(parent / "first.py", "exists"))
+            else:
+                project.source_children(parent)
+            project.replay_source_consumption(first.receipt())
+            tm.fail(project.source_query(parent / "first.py", "exists"))
             for scope in (first, repeated):
                 receipts = (
                     tuple(
@@ -419,10 +398,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         """A copied receipt and an unfinished consumer cannot authenticate a hit."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as scope:
-                project.source_state(package / "absent.py", required=False)
-                with pytest.raises(ValueError, match="no completed receipt"):
-                    scope.receipt()
+            project.source_state(package / "absent.py", required=False)
+            with pytest.raises(ValueError, match="no completed receipt"):
+                scope.receipt()
             with pytest.raises(ValueError, match="original epoch"):
                 project.replay_source_consumption(scope.receipt().model_copy())
             with pytest.raises(ValueError, match="active consumer"):
@@ -431,10 +409,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             scopes: list[p.Infra.RopeSourceConsumption] = []
 
             def fail_consumer() -> None:
-                with project.source_consumption() as failed:
-                    scopes.append(failed)
-                    project.source_state(package / "absent.py", required=False)
-                    raise failure
+                scopes.append(failed)
+                project.source_state(package / "absent.py", required=False)
+                raise failure
 
             with pytest.raises(RuntimeError, match="consumer failed") as caught:
                 fail_consumer()
@@ -475,12 +452,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
         with ExitStack() as contexts:
             project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
-            with project.source_consumption() as provider:
-                original = project.source_state(source)
+            original = project.source_state(source)
             tm.ok(u.Cli.atomic_write_text_file(source, "# Changed epoch\n"))
-            with project.source_consumption() as consumer:
-                project.replay_source_consumption(provider.receipt())
-                tm.that(project.source_state(source), eq=original)
+            project.replay_source_consumption(provider.receipt())
+            tm.that(project.source_state(source), eq=original)
             tm.that(consumer.receipt().inputs, eq=(original,))
             with pytest.raises(ValueError, match="atomic source changed"):
                 contexts.close()
@@ -496,13 +471,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         tm.ok(u.Cli.atomic_write_text_file(source, content))
         inode_before = source.stat().st_ino
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as provider:
-                original = project.source_state(source)
+            original = project.source_state(source)
             with source.open("wb") as handle:
                 handle.write(content.encode(c.DEFAULT_ENCODING))
             tm.that(source.stat().st_ino, eq=inode_before)
-            with project.source_consumption() as consumer:
-                project.replay_source_consumption(provider.receipt())
+            project.replay_source_consumption(provider.receipt())
             tm.that(project.source_state(source), eq=original)
             tm.that(consumer.receipt().inputs, eq=(original,))
 
@@ -517,11 +490,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
         def diverge() -> None:
             with u.Infra.facade_source_project(root) as (project, _, _):
-                with project.source_consumption() as provider:
-                    expected = project.source_state(source)
-                    tm.ok(project.source_query(source, "isfile"))
-                with project.source_consumption():
-                    tm.ok(project.source_query(source, "exists"))
+                expected = project.source_state(source)
+                tm.ok(project.source_query(source, "isfile"))
+                tm.ok(project.source_query(source, "exists"))
                 inventories = tuple(
                     item
                     for item in project.consumed_source_directories()
@@ -535,8 +506,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 with source.open("wb") as handle:
                     handle.write(b"__all__ = ['diverged']\n")
                 tm.that(source.stat().st_ino, eq=expected.inode)
-                with project.source_consumption():
-                    project.replay_source_consumption(provider.receipt())
+                project.replay_source_consumption(provider.receipt())
 
         with pytest.raises(
             ValueError, match=escape(f"atomic source changed: {source}")
@@ -553,10 +523,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         with ExitStack() as contexts:
             project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
             folder = project.get_folder(missing.relative_to(root).as_posix())
-            with project.source_consumption() as provider:
-                tm.fail(folder.has_child("provider.py"))
-            with project.source_consumption() as consumer:
-                project.replay_source_consumption(provider.receipt())
+            tm.fail(folder.has_child("provider.py"))
+            project.replay_source_consumption(provider.receipt())
             witnesses = tuple(
                 witness
                 for witness in consumer.receipt().source_query_topology
@@ -1109,7 +1077,6 @@ class TestsFlextInfraGeneratedRuntime:
                         )
                     ).encode(c.DEFAULT_ENCODING),
                     desired_mode=tm.not_none(by_path[model_facade].mode),
-                    source_states=binding[1]()[0],
                 )
             with u.Infra.facade_source_project(
                 root,
@@ -1128,7 +1095,6 @@ class TestsFlextInfraGeneratedRuntime:
                     before=by_path[consumer_facade],
                     desired_content=consumer.encode(c.DEFAULT_ENCODING),
                     desired_mode=tm.not_none(by_path[consumer_facade].mode),
-                    source_states=binding[1]()[0],
                 )
                 tm.that({state.path for state in binding[1]()[0]}, has=model_facade)
             with u.Infra.facade_source_project(

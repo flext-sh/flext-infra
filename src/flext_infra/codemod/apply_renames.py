@@ -363,7 +363,6 @@ class FlextInfraApplyRenames:
             desired_content=desired if edits else None,
             desired_mode=inventory[path].mode,
             changes=("CSV campaign",) if edits else (),
-            source_states=source_states,
         )
         return plan, len(edits)
 
@@ -476,7 +475,6 @@ class FlextInfraApplyRenames:
                     for path in roots
                     if params.bindings and u.Infra.layout(path) is not None
                 ),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             ),
         )
         if publication.failure:

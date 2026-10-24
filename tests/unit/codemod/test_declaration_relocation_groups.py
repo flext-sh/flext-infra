@@ -15,8 +15,6 @@ import pytest
 from flext_infra import infra, p
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -98,7 +96,6 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 before=independent_before,
                 desired_content=b"VALUE = 'after'\n",
                 desired_mode=independent_before.mode,
-                dependency_group=independent.stem if independent_group else None,
             )
         ]
         for edit in edits:
@@ -112,18 +109,13 @@ class TestsFlextInfraDeclarationRelocationGroups:
                     before=before,
                     desired_content=edit.updated_source.encode("utf-8"),
                     desired_mode=before.mode,
-                    dependency_group=package.name,
                 )
             )
         if refused == "exposure":
             exposure = tm.ok(
                 FlextInfraCodegenLazyInit(repository_root=root).plan_files()
             )
-            plans.extend(
-                item.model_copy(update={"dependency_group": package.name})
-                for item in exposure.files
-                if item.path == blocked
-            )
+            plans.extend(item for item in exposure.files if item.path == blocked)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
@@ -268,7 +260,6 @@ class TestsFlextInfraDeclarationRelocationGroups:
             repository_root=root,
             options=m.Infra.SemanticPublicationOptions(
                 projection_roots=(root,),
-                dependency_group=package.name,
                 validator=consume,
             ),
         )

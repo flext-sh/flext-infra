@@ -14,10 +14,7 @@ from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraMiseArtifactsProcess,
-    FlextInfraMiseArtifactsVerification,
-)
+
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -536,8 +533,6 @@ class FlextInfraStagedPackage:
                 dict.fromkeys((workspace, *(item.project_root for item in selected)))
             ),
             inputs=tuple(states.values()),
-            source_directories=directories,
-            source_query_topology=topology,
             updates=MappingProxyType(dict(normalized)),
             modes=MappingProxyType(dict(options.modes)),
             declared_files=cls._declared_source_effects(
@@ -644,8 +639,6 @@ class FlextInfraStagedPackage:
                         for file in options.declared_files
                         if file.path.is_relative_to(root)
                     ),
-                    source_directories=options.source_directories,
-                    source_query_topology=options.source_query_topology,
                 ),
             )
             if planned.failure:
@@ -675,8 +668,6 @@ class FlextInfraStagedPackage:
                 inputs=m.Infra.CodemodBindingSnapshot(
                     states=tuple(state for plan in plans for state in plan.inputs)
                 ).states,
-                source_directories=directories,
-                source_query_topology=topology,
                 updates=MappingProxyType({
                     path: source
                     for plan in plans
@@ -853,7 +844,6 @@ class FlextInfraStagedPackage:
                         before=states[path],
                         desired_content=content,
                         desired_mode=mode,
-                        source_states=tuple(states.values()),
                     )
                 )
         return tuple(effects)

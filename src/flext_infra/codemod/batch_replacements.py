@@ -211,7 +211,6 @@ class FlextInfraModReplacements:
                 desired_content=content,
                 desired_mode=before.mode,
                 changes=tuple(finding.rule_id for finding in findings),
-                source_states=tuple(bindings.values()),
             ),
         )
 

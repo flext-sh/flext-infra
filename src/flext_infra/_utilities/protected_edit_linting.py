@@ -134,14 +134,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 inputs=inputs,
                 workspaces=workspaces,
                 declared_files=declared_files,
-                source_directories=tuple(
-                    item for file in declared_files for item in file.source_directories
-                ),
-                source_query_topology=tuple(
-                    item
-                    for file in declared_files
-                    for item in file.source_query_topology
-                ),
             ),
         )
         if planned.failure:

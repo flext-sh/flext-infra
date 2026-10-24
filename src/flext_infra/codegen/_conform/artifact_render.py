@@ -61,18 +61,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return result_type.ok(
                 m.Infra.CodegenArtifactComposition(
                     rendered=content.decode(c.DEFAULT_ENCODING),
-                    source_states=tuple(sources),
-                    validation_context=m.Infra.ArtifactResourceValidationContext(
-                        source=primary,
-                        source_package=entry.source_package,
-                        source_states=tuple(sources),
-                    ),
                 ),
             )
         return u.Cli.template_render_authenticated(source, context).map(
             lambda rendered: m.Infra.CodegenArtifactComposition(
                 rendered=rendered.rendered,
-                source_states=rendered.source_states,
             ),
         )
 
@@ -134,9 +127,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 else f"artifacts:{root}:{min(group).relative_to(root)}"
             )
             for path in group:
-                by_path[path] = by_path[path].model_copy(
-                    update={"dependency_group": identity},
-                )
+                by_path[path] = by_path[path]
         return result_type.ok(tuple(by_path.values()))
 
     @staticmethod
@@ -252,7 +243,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         rendered: str,
         *,
         render_inputs: m.Infra.CodegenRenderInputs | None = None,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Apply typed project overlays after canonical template rendering.
 
@@ -300,7 +290,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if captured.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(captured)
         return r[m.Infra.CodegenArtifactComposition].ok(
-            composed.value.model_copy(update={"source_states": captured.value}),
+            composed.value,
         )
 
     @classmethod
@@ -427,7 +417,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 rendered=(
                     f"{c.Infra.BANNER}{cls.rendered_by_stamp()}\n{source.lstrip()}"
                 ),
-                source_states=tuple(source_states),
             ),
         )
 
@@ -474,7 +463,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return result_type.ok(
             m.Infra.CodegenArtifactComposition(
                 rendered=composed.value,
-                source_states=config_sources.value,
             ),
         )
 
@@ -515,7 +503,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return u.Cli.yaml_roundtrip_dump_text(parsed.value).map(
             lambda text: m.Infra.CodegenArtifactComposition(
                 rendered=text,
-                source_states=(current.value,),
             ),
         )
 
@@ -676,7 +663,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         ).map(
             lambda content: m.Infra.CodegenArtifactComposition(
                 rendered=content,
-                source_states=(*policy_sources, *rendered.value.source_states),
             ),
         )
 

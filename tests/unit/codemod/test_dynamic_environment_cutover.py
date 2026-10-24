@@ -124,17 +124,16 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                     source_project=project,
                 ) as captured,
             ):
-                with captured.rope_project.source_consumption() as consumption:
-                    tm.that(captured.rope_project.source_text(owner), eq=sources[owner])
-                    tm.that(captured.rope_project.source_query(owner, "isfile"))
-                    edits = tm.ok(
-                        u.Infra.plan_dynamic_environment_cutover(
-                            rope_workspace=captured,
-                            sources=sources,
-                            findings=(self._finding(path.relative_to(root), access),),
-                            dependency_codegen={supplier: declared},
-                        )
+                tm.that(captured.rope_project.source_text(owner), eq=sources[owner])
+                tm.that(captured.rope_project.source_query(owner, "isfile"))
+                edits = tm.ok(
+                    u.Infra.plan_dynamic_environment_cutover(
+                        rope_workspace=captured,
+                        sources=sources,
+                        findings=(self._finding(path.relative_to(root), access),),
+                        dependency_codegen={supplier: declared},
                     )
+                )
                 inputs = {state.path: state for state in consumption.receipt().inputs}
                 tm.that(inputs[owner], eq=before)
                 tm.that(

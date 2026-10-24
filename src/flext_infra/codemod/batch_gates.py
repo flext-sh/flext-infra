@@ -642,7 +642,6 @@ class FlextInfraModGateEngine:
                 )
         return FlextInfraModGateEngine.recounted(
             tuple(admitted),
-            source_states=report.source_states,
             native_artifacts=report.native_artifacts,
         )
 
@@ -737,7 +736,6 @@ class FlextInfraModGateEngine:
             return report
         return FlextInfraModGateEngine.recounted(
             entries,
-            source_states=report.source_states,
             native_artifacts=report.native_artifacts,
         )
 
@@ -745,7 +743,6 @@ class FlextInfraModGateEngine:
     def recounted(
         entries: t.VariadicTuple[m.Infra.ModScanFinding],
         *,
-        source_states: tuple[m.Cli.AtomicFileState, ...] | None = None,
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] | None = None,
     ) -> m.Infra.ModScanReport:
         """Return the scan report of exactly these findings, classes recounted.
@@ -757,7 +754,6 @@ class FlextInfraModGateEngine:
         return m.Infra.ModScanReport(
             files=frozenset(entry.file for entry in entries),
             entries=entries,
-            source_states=source_states,
             native_artifacts=(
                 tuple(
                     {
@@ -874,7 +870,6 @@ class FlextInfraModGateEngine:
     def _authenticated_snapshot(
         root: Path,
         file: str,
-        source_states: Mapping[Path, m.Cli.AtomicFileState],
     ) -> p.Result[t.Pair[Path, m.Cli.AtomicFileState]]:
         """Associate a finding with the scan's already authenticated source state.
 
@@ -1175,7 +1170,6 @@ class FlextInfraModGateEngine:
         return r.ok(
             cls.recounted(
                 tuple(entries),
-                source_states=tuple(authenticated_states.values()),
                 native_artifacts=(native_receipt,),
             ),
         )
@@ -1265,7 +1259,6 @@ class FlextInfraModGateEngine:
                 cls._validate_finding_receipt(stderr, error_findings).unwrap()
             report = cls.recounted(
                 report.entries,
-                source_states=report.source_states,
                 native_artifacts=tuple(
                     {
                         receipt.path: receipt
@@ -1509,7 +1502,7 @@ class FlextInfraModGateEngine:
                 if native_targets
                 else r[m.Infra.ModScanReport].ok(
                     cls.recounted(
-                        (), source_states=tuple(context.source_states.values())
+                        (),
                     )
                 )
             )
@@ -1538,7 +1531,6 @@ class FlextInfraModGateEngine:
             return r[m.Infra.ModScanReport].ok(
                 cls.recounted(
                     (*scanned.value.entries, *admitted_paths.value.entries),
-                    source_states=admitted_paths.value.source_states,
                     native_artifacts=(*scanned.value.native_artifacts, artifact),
                 )
             )
@@ -1619,7 +1611,6 @@ class FlextInfraModGateEngine:
             for path in sorted(cls._scan_source_paths(root, targets))
         }
         context = m.Infra.ModScanSourceContext(
-            source_states=source_states,
             repository_roots=tuple(
                 sorted(plan.project_rule_ids, key=cls._path_depth, reverse=True)
             ),
@@ -1780,12 +1771,6 @@ class FlextInfraModGateEngine:
         owned_sources = u.Infra.facade_original_sources(root, states)
         source_states = tuple(state for state in states if state.path in owned_sources)
         context = m.Infra.ModScanSourceContext(
-            source_states={
-                view_root / state.path.relative_to(root): state.model_copy(
-                    update={"path": view_root / state.path.relative_to(root)}
-                )
-                for state in source_states
-            },
             repository_roots=tuple(
                 sorted(
                     u.Infra.governed_project_roots(view_root),
@@ -1841,7 +1826,6 @@ class FlextInfraModGateEngine:
             )
         report = cls.recounted(
             tuple(entries),
-            source_states=source_states,
             native_artifacts=report.native_artifacts,
         )
         current = cls._validate_expected_receipts(plan.rules, report)

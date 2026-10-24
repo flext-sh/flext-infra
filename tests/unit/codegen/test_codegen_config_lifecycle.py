@@ -16,7 +16,6 @@ from jinja2 import Template
 from flext_infra import config, infra, settings
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance

@@ -496,7 +496,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 before=tm.ok(u.Cli.atomic_plan_directory_chain(target.parent)),
                 desired_content=content,
                 desired_mode=tm.not_none(original.mode),
-                source_states=states,
             )
             snapshot = u.Infra.snapshot_project(
                 workspace.rope_project,

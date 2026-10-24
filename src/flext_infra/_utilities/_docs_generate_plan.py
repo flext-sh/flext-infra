@@ -117,17 +117,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                     scoped.scope.path / artifact.relative_path,
                     artifact.desired_content,
                     desired_mode=artifact.desired_mode,
-                    source_states=bundle.source_states,
                 )
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
-                plans.append(
-                    planned.value.model_copy(
-                        update={
-                            "dependency_group": scoped.scope.path.as_posix(),
-                        }
-                    )
-                )
+                plans.append(planned.value)
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
             *plans,
             *bundle.metadata_files,

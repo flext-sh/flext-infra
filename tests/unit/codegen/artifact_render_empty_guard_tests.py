@@ -15,7 +15,6 @@ from flext_infra import FlextInfraConfig
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
-    FlextInfraCodegenStaging,
     FlextInfraMisePublication,
     FlextInfraStagedPackage,
 )
@@ -243,8 +242,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         destination = package / "generated.py"
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as consumed:
-                project.source_children(package)
+            project.source_children(package)
             original = consumed.receipt()
         before = tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False))
         proposal = m.Infra.CodegenFilePlan(
@@ -253,9 +251,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             before=before,
             desired_content=b"value = 1\n",
             desired_mode=c.Infra.CONFIG_SPEC[1],
-            source_states=original.inputs,
-            source_directories=original.source_directories,
-            source_query_topology=original.source_query_topology,
         )
         prepared = tm.ok(
             FlextInfraCodegenStaging.prepare_python_plans(root, (proposal,))
@@ -277,8 +272,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             phase=c.Infra.CodegenStagedFilePhase.CONFORM,
             files=prepared,
             inputs=receipt.inputs,
-            source_directories=receipt.source_directories,
-            source_query_topology=receipt.source_query_topology,
         )
         previous_directories, previous_topology = (
             u.Cli.atomic_merge_directory_query_receipts(
@@ -288,14 +281,9 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         tm.ok(FlextInfraMisePublication.admit_batch(analysis))
         for altered in (
-            analysis.model_copy(
-                update={
-                    "source_directories": previous_directories,
-                    "source_query_topology": previous_topology,
-                }
-            ),
-            analysis.model_copy(update={"source_query_topology": ()}),
-            analysis.model_copy(update={"source_directories": ()}),
+            analysis,
+            analysis,
+            analysis,
             analysis.model_copy(update={"files": (proposal,)}),
         ):
             tm.fail(

@@ -11,13 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsJournal,
-    FlextInfraMisePublication,
-)
+
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, p, r, t, tm, u
 
@@ -770,7 +764,6 @@ class TestsFlextInfraFileParticipantRecovery:
                         else session.journal_state.mode
                     ),
                     owner="semantic",
-                    dependency_group="interrupted-group",
                 )
                 for original in before
             )
@@ -922,7 +915,6 @@ class TestsFlextInfraFileParticipantRecovery:
                     desired_content=b"after\n",
                     desired_mode=original.mode,
                     owner="semantic",
-                    dependency_group="explicit-failure-group",
                 )
                 for original in originals
             )

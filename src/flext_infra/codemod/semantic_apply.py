@@ -18,7 +18,7 @@ from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import FlextInfraCodegenFileLeases, FlextInfraStagedPackage
+
 from flext_infra.codemod._rename_sources import FlextInfraRenameSources
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
@@ -647,9 +647,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 ),
                 candidate=planned[0].candidate,
                 consumer_roots=planned[0].consumer_roots,
-                source_states=planned[0].source_states,
-                source_directories=planned[0].source_directories,
-                source_query_topology=planned[0].source_query_topology,
                 moves=planned[1],
             )
         )
@@ -758,8 +755,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             options=m.Infra.StageSourceOptions(
                 inputs=staged_inputs.value,
                 workspaces=scopes if len(scopes) > 1 else (),
-                source_directories=directories,
-                source_query_topology=topology,
                 modes={
                     target: state.mode
                     for source, target in moves
@@ -772,9 +767,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 m.Infra.SemanticSourcePlan(
                     candidate=candidate,
                     consumer_roots=scopes[1:],
-                    source_states=receipts[2],
-                    source_directories=candidate.source_directories,
-                    source_query_topology=candidate.source_query_topology,
                 ),
                 moves,
             )
@@ -902,8 +894,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     )
                 )
             )
-            with project.source_consumption() as selected:
-                index = u.Infra.index_rope_workspace(project, root)
+            index = u.Infra.index_rope_workspace(project, root)
             with FlextInfraRopeWorkspace.open_workspace(
                 root,
                 rope_repository_root=candidate.workspace,
@@ -1005,9 +996,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                             if state.path == path
                         ),
                     ),
-                    source_states=seed.source_states,
-                    source_directories=seed.source_directories,
-                    source_query_topology=seed.source_query_topology,
                 )
                 for path, source in candidate.updates.items()
             ),
@@ -1304,10 +1292,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     if source is None
                     else artifact.candidate.modes.get(path, originals[path].mode)
                 ),
-                source_states=dependencies,
-                source_directories=directories,
-                source_query_topology=topology,
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             )
             for path, source in updates.items()
         )
@@ -1321,7 +1305,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                         *(u.Infra.project_root(path) or root for path in updates),
                     })
                 ),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             ),
             publish=publish,
         ).map(lambda _: True)
@@ -1657,8 +1640,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                     files=(),
                     inputs=states,
-                    source_directories=directories,
-                    source_query_topology=topology,
                 ),
             ),
         )
@@ -1784,7 +1765,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     original_source=original[path],
                     updated_source=working[path],
                     retire_file=path in retired,
-                    source_states=tuple(inputs.values()),
                     changes=("composed semantic cutover",),
                 )
                 for path in sorted(changed)
@@ -2390,7 +2370,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                         *(plan.project for plan in plans),
                     })
                 ),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 validator=validator,
             ),
         ).map(lambda _: True)
@@ -2444,9 +2423,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     if proposed is not None
                     else None,
                     desired_mode=state.mode if proposed is not None else None,
-                    source_states=dependencies,
-                    source_directories=directories,
-                    source_query_topology=topology,
                 ),
             )
         return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))

@@ -185,8 +185,7 @@ class FlextInfraCodegenLazyInit(
             roots,
             (publications, failures),
         ) as project:
-            with project.source_consumption() as consumption:
-                planned = self._plan_roots(roots, source_project=project)
+            planned = self._plan_roots(roots, source_project=project)
             if planned.success:
                 publications.extend(
                     (Path(path), receipt)
@@ -312,8 +311,6 @@ class FlextInfraCodegenLazyInit(
                 states=tuple(state for plan in composed for state in plan.source_states)
                 + tuple(state for plan in publications for state in plan.source_states),
             ).states,
-            source_directories=directories,
-            source_query_topology=topology,
             publications=publications,
             failed_targets=tuple(
                 target for analysis in analyses for target in analysis.failed_targets
@@ -419,12 +416,6 @@ class FlextInfraCodegenLazyInit(
                     phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                     files=(),
                     inputs=receipt.inputs if receipt is not None else (),
-                    source_directories=(
-                        receipt.source_directories if receipt is not None else ()
-                    ),
-                    source_query_topology=(
-                        receipt.source_query_topology if receipt is not None else ()
-                    ),
                     failed_targets=((root, receipt),) if receipt is not None else (),
                     issues=(
                         m.Infra.Issue(
@@ -793,13 +784,7 @@ class FlextInfraCodegenLazyInit(
             files=all_plans,
             inputs=(),
             publications=tuple(
-                plan.model_copy(
-                    update={
-                        "source_states": receipt.inputs,
-                        "source_directories": receipt.source_directories,
-                        "source_query_topology": receipt.source_query_topology,
-                    }
-                )
+                plan
                 for plan in package_plans.value
                 for receipt in (
                     self._publication_receipts[str(plan.context.pkg_dir.resolve())],

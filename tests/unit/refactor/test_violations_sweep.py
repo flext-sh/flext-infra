@@ -361,7 +361,6 @@ class TestsFlextInfraRefactorViolationsSweep(
                     entry for entry in after.entries if entry.rule_id == "absent-class"
                 ),
             ),
-            source_states=after.source_states,
         )
         duplicate_rows = {
             row.rule_id: row
@@ -375,7 +374,7 @@ class TestsFlextInfraRefactorViolationsSweep(
         with pytest.raises(ValueError, match="lacks complete source inventory"):
             u.Infra.rule_deltas(
                 before,
-                after.model_copy(update={"source_states": None}),
+                after,
                 options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
             )
         lexical = {row.rule_id: row for row in u.Infra.rule_deltas(before, after)}

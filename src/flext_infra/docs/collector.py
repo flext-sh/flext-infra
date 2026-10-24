@@ -10,10 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
+
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -171,7 +168,7 @@ class FlextInfraDocCollector:
             )
             if sources.failure:
                 return result_type.from_failure(sources)
-            files.append(plan.model_copy(update={"source_states": sources.value}))
+            files.append(plan)
         return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.DOCS_COLLECTION,

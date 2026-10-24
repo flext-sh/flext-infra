@@ -105,7 +105,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     original_source=source,
                     updated_source=working[path],
                     retire_file=path in retired,
-                    source_states=inputs.value,
                     changes=tuple(changes.get(path, ())),
                 )
                 for path, source in sorted(originals.items())

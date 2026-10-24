@@ -15,15 +15,7 @@ from typing import Literal
 import pytest
 
 from flext_infra import infra
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenStaging,
-    FlextInfraMiseArtifactsJournal,
-    FlextInfraMiseArtifactsProcess,
-    FlextInfraMiseWorkspacePlanner,
-    FlextInfraStagedPackage,
-    codegen_transaction as transaction,
-)
+
 from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, e, m, p, r, t, tm, u
@@ -1247,7 +1239,6 @@ class TestsFlextInfraTransactionPublication:
                             before=before,
                             desired_content=None,
                             desired_mode=None,
-                            source_states=(before,),
                             owner="docs",
                         ),
                     ),
@@ -1337,7 +1328,6 @@ class TestsFlextInfraTransactionPublication:
                         before=before,
                         desired_content=desired,
                         desired_mode=before.mode,
-                        source_states=states,
                         owner="sample",
                     ),
                 ),

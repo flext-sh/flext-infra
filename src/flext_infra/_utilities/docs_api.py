@@ -747,8 +747,6 @@ class FlextInfraUtilitiesDocsApi:
     def public_contract(
         project_root: Path,
         package_name: str,
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Build the public API contract from pyproject, exports, and Rope validation.
 

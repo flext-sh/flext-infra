@@ -125,7 +125,6 @@ class FlextInfraDuplicateApplyPhase:
                     before=before,
                     desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
                     desired_mode=before.mode,
-                    source_states=source_states,
                     owner=FlextInfraDuplicateApplyPhase.name,
                 )
             )

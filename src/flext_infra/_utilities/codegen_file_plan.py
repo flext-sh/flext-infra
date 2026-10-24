@@ -59,9 +59,6 @@ class FlextInfraUtilitiesCodegenFilePlan:
                         tracking=plan.tracking,
                         index_before=plan.index_before,
                         tracking_dependencies=plan.tracking_dependencies,
-                        source_states=plan.source_states,
-                        source_directories=plan.source_directories,
-                        source_query_topology=plan.source_query_topology,
                     ),
                 )
             else:

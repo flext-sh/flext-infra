@@ -37,10 +37,9 @@ class FlextInfraUtilitiesRopeRuntimeBase:
             yield False
         else:
             cached = key in cache
-            with project.source_consumption() as consumption:
-                if cached:
-                    project.replay_source_consumption(receipts[receipt_key])
-                yield cached
+            if cached:
+                project.replay_source_consumption(receipts[receipt_key])
+            yield cached
             if not cached:
                 receipts[receipt_key] = consumption.receipt()
 

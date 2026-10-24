@@ -158,7 +158,6 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
                     before=original.value[relative],
                     desired_content=content.encode(c.DEFAULT_ENCODING),
                     desired_mode=managed.mode,
-                    source_states=sources,
                     owner=managed.owner,
                     policy=managed.policy,
                     tracking=managed.tracking,

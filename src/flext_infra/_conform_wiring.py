@@ -10,10 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
+
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.gates import FlextInfraMarkdownFormatGate
 

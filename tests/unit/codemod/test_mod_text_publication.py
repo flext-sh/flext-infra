@@ -13,10 +13,7 @@ from typing import cast
 import pytest
 
 from flext_infra import config, m, p, t
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
+
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from tests import c, r, tm, u
 
@@ -125,7 +122,6 @@ class TestsFlextInfraModTextPublication:
             FlextInfraModTextGateEngine.plan(
                 mod_workspace,
                 sources=working,
-                source_states=states,
             )
         )
         tm.that(analysis.issues, empty=True)
@@ -150,13 +146,11 @@ class TestsFlextInfraModTextPublication:
             desired_mode=tm.not_none(
                 next(state.mode for state in states if state.path == first)
             ),
-            source_states=states,
         )
         _report, candidate = tm.ok(
             FlextInfraModTextGateEngine.plan(
                 mod_workspace,
                 sources={**working, virtual: original[first]},
-                source_states=states,
                 declared_files=(declaration,),
             )
         )
@@ -305,7 +299,6 @@ class TestsFlextInfraModTextPublication:
                     before=source,
                     desired_content=b'value = "after"\n',
                     desired_mode=source.mode,
-                    source_states=(identity, source),
                     owner="mod-text",
                 ),
                 m.Infra.CodegenFilePlan(
@@ -314,7 +307,6 @@ class TestsFlextInfraModTextPublication:
                     before=sibling,
                     desired_content=b'value = "after"\n',
                     desired_mode=sibling.mode,
-                    source_states=(sibling,),
                     owner="mod-text",
                 ),
             ),
@@ -353,9 +345,6 @@ class TestsFlextInfraModTextPublication:
                 before=state,
                 desired_content=b'value = "after"\n',
                 desired_mode=state.mode,
-                source_states=(first_state,)
-                if state.path == first
-                else (first_state, second_state),
                 owner="mod-text",
             )
             for state in (first_state, second_state)
@@ -404,7 +393,6 @@ class TestsFlextInfraModTextPublication:
                 before=state,
                 desired_content=b'value = "after"\n',
                 desired_mode=state.mode,
-                source_states=(state,),
                 owner="mod-text",
             )
             for state in states

@@ -124,7 +124,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     @staticmethod
     def docs_scope_from_sources(
         scope: m.Infra.DocScope,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
         *,
         metadata_projection: m.Infra.CodegenFilePlan | None = None,
     ) -> m.Infra.DocScope:
@@ -141,7 +140,6 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return scope
         state = FlextInfraUtilitiesDocsScope.project_state(
             scope.path,
-            source_states=source_states,
             metadata_projection=metadata_projection,
         )
         if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):

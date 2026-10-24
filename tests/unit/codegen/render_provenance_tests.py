@@ -19,9 +19,7 @@ import pytest
 from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
-    FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPreconditions,
-    FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsFiles,
 )
 from flext_infra.validate import FlextInfraValidateFreshImport
@@ -367,7 +365,6 @@ print('physical-provider-proof=' + mutation)
             before=state,
             desired_content=b"after",
             desired_mode=state.mode,
-            source_states=(state,),
         )
         original = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
@@ -446,7 +443,6 @@ print('physical-provider-proof=' + mutation)
             before=state,
             desired_content=b"VALUE = 'after'\n",
             desired_mode=state.mode,
-            source_states=(state,),
         )
         analysis = m.Infra.CodegenPhaseAnalysis(
             phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,

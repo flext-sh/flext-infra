@@ -162,13 +162,7 @@ class FlextInfraCodegenLazyInitPlanner(
             project.replay_source_consumption(index_receipt)
             plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
         receipt = consumption.receipt()
-        return plan.model_copy(
-            update={
-                "source_states": receipt.inputs,
-                "source_directories": receipt.source_directories,
-                "source_query_topology": receipt.source_query_topology,
-            }
-        ), receipt
+        return plan, receipt
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.

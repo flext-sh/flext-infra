@@ -17,7 +17,6 @@ from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
     FlextInfraStagedPackage,
     codegen_transaction as transaction,
 )
@@ -206,11 +205,10 @@ class TestsLazyInitScopedSourceElection:
         with u.Infra.facade_source_project(
             root, project_roots=(root,), source_publications=(publications, failures)
         ) as (project, _, _):
-            with project.source_consumption() as consumption:
-                resource = project.get_file(source.relative_to(root).as_posix())
-                TestsLazyInitScopedSourceElection._observe(
-                    project.get_pycore().observer, resource
-                )
+            resource = project.get_file(source.relative_to(root).as_posix())
+            TestsLazyInitScopedSourceElection._observe(
+                project.get_pycore().observer, resource
+            )
             receipt = consumption.receipt()
             publications.append((package, receipt))
             tm.fail(source in {state.path for state in receipt.inputs})
@@ -232,12 +230,11 @@ class TestsLazyInitScopedSourceElection:
         with u.Infra.facade_source_project(
             root, project_roots=(root,), source_publications=(publications, failures)
         ) as (project, _, _):
-            with project.source_consumption() as consumption:
-                resource = project.get_file(source.relative_to(root).as_posix())
-                TestsLazyInitScopedSourceElection._observe(
-                    project.get_pycore().observer, resource
-                )
-                tm.that(project.source_text(source), has="original")
+            resource = project.get_file(source.relative_to(root).as_posix())
+            TestsLazyInitScopedSourceElection._observe(
+                project.get_pycore().observer, resource
+            )
+            tm.that(project.source_text(source), has="original")
             receipt = consumption.receipt()
             publications.append((package, receipt))
             tm.that(source in {state.path for state in receipt.inputs}, eq=True)
@@ -338,11 +335,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             )
             with binding[0].source_capture():
                 tm.fail(binding[0].source_query(absent, "isfile"))
-            with binding[0].source_consumption() as first:
-                tm.fail(binding[0].source_query(absent, "isfile"))
-            with binding[0].source_consumption() as second:
-                tm.fail(binding[0].source_query(unrelated, "isfile"))
-                tm.fail(binding[0].source_query(absent, "isfile"))
+            tm.fail(binding[0].source_query(absent, "isfile"))
+            tm.fail(binding[0].source_query(unrelated, "isfile"))
+            tm.fail(binding[0].source_query(absent, "isfile"))
             tm.that(
                 {
                     query
@@ -361,9 +356,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 },
                 eq={(absent.name, "isfile"), (unrelated.name, "isfile")},
             )
-            with binding[0].source_consumption():
-                binding[0].replay_source_consumption(first.receipt())
-                binding[0].replay_source_consumption(second.receipt())
+            binding[0].replay_source_consumption(first.receipt())
+            binding[0].replay_source_consumption(second.receipt())
             tm.that(
                 any(
                     inventory.root.path == package
@@ -493,8 +487,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     phase=phase,
                     files=(planned,),
                     inputs=planned.source_states,
-                    source_directories=planned.source_directories,
-                    source_query_topology=planned.source_query_topology,
                 ),
                 m.Infra.CodegenPhasePublicationPolicy(directories=()),
             )
@@ -1013,8 +1005,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             )
             receipt = analysis.failed_targets[0][1]
             tm.that(receipt, is_=m.Infra.CodegenPhaseAnalysis)
-            with binding[0].source_consumption():
-                binding[0].replay_source_consumption(receipt)
+            binding[0].replay_source_consumption(receipt)
             plan = next(
                 file
                 for file in analysis.files

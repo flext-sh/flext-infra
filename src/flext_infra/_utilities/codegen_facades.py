@@ -195,7 +195,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     raise ValueError(msg)
                 project = stack.enter_context(
                     original_project.source_consumer(
-                        source_states=source_states,
                         declared_files=declared_files,
                         additional_source_folders=(
                             FlextInfraUtilitiesCodegenFacades._planned_folders(
@@ -251,7 +250,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     def _with_discovered_sources(
         root: Path,
         project_roots: tuple[Path, ...],
-        source_states: tuple[m.Cli.AtomicFileState, ...],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
     ) -> tuple[m.Cli.AtomicFileState, ...]:
         """Pin every discovered Python source not already carried by the inputs.
@@ -406,7 +404,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     @staticmethod
     def facade_original_sources(
         root: Path,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> t.MappingKV[Path, str]:
         """Select root-owned Python sources while retaining all inputs as receipts.
 
@@ -428,7 +425,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     @staticmethod
     def _facade_declared_sources(
         root: Path,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         planned_sources: t.MappingKV[Path, str | None],
     ) -> t.Pair[

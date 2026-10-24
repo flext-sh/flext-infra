@@ -265,8 +265,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     inputs=tuple(inputs.values()),
                     workspaces=seed.workspaces,
                     modes=seed.modes,
-                    source_directories=seed.source_directories,
-                    source_query_topology=seed.source_query_topology,
                 ),
             ).unwrap()
         return seed
@@ -321,8 +319,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 inputs=tuple(inputs.values()),
                 workspaces=seed.workspaces,
                 modes=seed.modes,
-                source_directories=seed.source_directories,
-                source_query_topology=seed.source_query_topology,
             ),
         ).unwrap()
         for source in candidate.inputs:
@@ -377,7 +373,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         planned = FlextInfraModTextGateEngine.plan(
             root,
             sources=sources,
-            source_states=original.states,
             declared_files=candidate.candidate.declared_files,
             validate_receipts=text_precondition_pending,
         )
@@ -621,36 +616,31 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         with FlextInfraCodemodSemanticApply.planning_workspace(
             root, seed, working
         ) as graph:
-            with graph.rope_project.source_consumption():
-                changed: set[Path] = set()
-                constants = FlextInfraCodemodSemanticApply.plan_census_constants(
-                    root,
-                    graph,
-                    sources=working,
-                )
-                if constants.failure:
-                    return outcome.from_failure(constants)
-                FlextInfraCodemodSemanticApply.apply_plan(
-                    working, constants.value, changed
-                )
-                transaction_paths = u.Infra.plan_transaction_path_cutover(
-                    rope_workspace=graph,
-                    sources=working,
-                )
-                FlextInfraCodemodSemanticApply.apply_plan(
-                    working, transaction_paths, changed
-                )
-                semantic = FlextInfraCodemodSemanticApply.plan(
-                    root,
-                    FlextInfraModGateEngine.authored(semantic_preflight),
-                    graph,
-                    working,
-                )
-                if semantic.failure:
-                    return outcome.from_failure(semantic)
-                FlextInfraCodemodSemanticApply.apply_plan(
-                    working, semantic.value, changed
-                )
+            changed: set[Path] = set()
+            constants = FlextInfraCodemodSemanticApply.plan_census_constants(
+                root,
+                graph,
+                sources=working,
+            )
+            if constants.failure:
+                return outcome.from_failure(constants)
+            FlextInfraCodemodSemanticApply.apply_plan(working, constants.value, changed)
+            transaction_paths = u.Infra.plan_transaction_path_cutover(
+                rope_workspace=graph,
+                sources=working,
+            )
+            FlextInfraCodemodSemanticApply.apply_plan(
+                working, transaction_paths, changed
+            )
+            semantic = FlextInfraCodemodSemanticApply.plan(
+                root,
+                FlextInfraModGateEngine.authored(semantic_preflight),
+                graph,
+                working,
+            )
+            if semantic.failure:
+                return outcome.from_failure(semantic)
+            FlextInfraCodemodSemanticApply.apply_plan(working, semantic.value, changed)
             source_states = m.Infra.CodemodBindingSnapshot(
                 states=(
                     *seed.candidate.inputs,
@@ -682,8 +672,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 inputs=source_states,
                 workspaces=seed.candidate.workspaces,
                 modes=seed.candidate.modes,
-                source_directories=directories,
-                source_query_topology=topology,
             ),
         )
         if staged.failure:
@@ -725,8 +713,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 files=(),
                 inputs=candidate.source_states,
-                source_directories=candidate.source_directories,
-                source_query_topology=candidate.source_query_topology,
                 generator_trees=tuple(
                     tree for analysis in analyses for tree in analysis.generator_trees
                 ),
@@ -1048,18 +1034,17 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             with FlextInfraCodemodSemanticApply.planning_workspace(
                 root, candidate, sources
             ) as graph:
-                with graph.rope_project.source_consumption():
-                    planned = callback.plan(
-                        root,
-                        preflight,
-                        graph,
-                        sources=sources,
-                        receipt=m.Infra.CodegenPhaseAnalysis(
-                            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                            files=candidate.candidate.declared_files,
-                            inputs=original.states,
-                        ),
-                    )
+                planned = callback.plan(
+                    root,
+                    preflight,
+                    graph,
+                    sources=sources,
+                    receipt=m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                        files=candidate.candidate.declared_files,
+                        inputs=original.states,
+                    ),
+                )
                 if planned.failure:
                     return outcome.from_failure(planned)
                 directories, topology = u.Cli.atomic_merge_directory_query_receipts(

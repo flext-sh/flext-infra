@@ -28,7 +28,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
     @staticmethod
     def _module_names(
         scope: m.Infra.DocScope,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> list[str]:
         """Return the public top-level modules of the scope's package.
 
@@ -57,7 +56,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
     @staticmethod
     def docs_project_api_artifacts(
         scope: m.Infra.DocScope,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
         *,
         width: int,
     ) -> list[t.Pair[Path, str]]:
@@ -107,7 +105,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
         """Render the complete target inventory for one FLEXT project.
 
@@ -137,7 +134,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         guides = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guides_artifacts(
             scope,
             repository_root=repository_root,
-            source_states=source_states,
         )
         if guides.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
@@ -173,12 +169,10 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path,
             scope.package_name,
-            source_states=source_states,
         )
         contract = FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             scope.path,
             analyzed_contract,
-            source_states=source_states,
         )
         module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(
             scope,
@@ -222,7 +216,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                     FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
                         contract,
                         ("src",),
-                        source_states=source_states,
                         documentation_language=scope.documentation_language,
                     )
                     if scope.path == repository_root
@@ -230,7 +223,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                         scope,
                         contract,
                         module_names,
-                        source_states=source_states,
                     )
                 ),
             ),

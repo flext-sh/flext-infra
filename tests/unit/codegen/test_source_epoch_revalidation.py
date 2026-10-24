@@ -79,8 +79,7 @@ class TestsFlextInfraSourceEpochRevalidation:
                     root, source_publications=(publications, failures)
                 )
             )
-            with project.source_consumption() as consumption:
-                project.source_text(source)
+            project.source_text(source)
             publications.append((package, consumption.receipt().model_copy()))
             with pytest.raises(
                 ValueError, match="does not belong to this original epoch"
@@ -187,8 +186,6 @@ class TestsFlextInfraSourceEpochRevalidation:
                     {destination: "value = 1\n"},
                     options=m.Infra.StageSourceOptions(
                         inputs=inputs,
-                        source_directories=tampered,
-                        source_query_topology=topology,
                     ),
                 ),
                 has="differs from admitted policy",
@@ -285,7 +282,6 @@ class TestsFlextInfraSourceEpochRevalidation:
             desired_content=desired.encode(c.DEFAULT_ENCODING),
             desired_mode=original.mode,
             before=original,
-            source_states=(original,),
         )
         with u.Infra.facade_source_project(
             root,
@@ -293,8 +289,7 @@ class TestsFlextInfraSourceEpochRevalidation:
                 inputs=(original,), declared_files=(declaration,)
             ),
         ) as (project, _, _):
-            with project.source_consumption() as consumed:
-                tm.that(project.source_text(source), eq=desired)
+            tm.that(project.source_text(source), eq=desired)
             witnesses = tuple(
                 state for state in consumed.receipt().inputs if state.path == source
             )

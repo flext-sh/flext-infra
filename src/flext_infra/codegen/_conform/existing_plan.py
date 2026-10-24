@@ -83,7 +83,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     def _source_view(
         self,
         root: Path,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
         source_publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]]
         | None = None,
@@ -349,50 +348,48 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             target.root,
-            source_states=sources.value[3],
             declared_files=sources.value[0],
             source_publications=publications,
         ) as binding:
-            with binding[0].source_consumption() as consumption:
-                if contract.custom:
-                    import_graph, _modules = u.Infra.snapshot_import_graph(binding[0])
-                    cycles = u.Infra.project_import_cycles(import_graph)
-                    if cycles:
-                        return result_type.fail(
-                            f"projected runtime import cycle: {sorted(cycles)}"
-                        )
-                if (
-                    contract.custom
-                    and self.state.planning_exception is None
-                    and not self.state.planning_issues
-                ):
-                    self.state.completed_source_plans = sources.value[0]
-                tooling_runtime = None
-                if contract.tooling:
-                    tooling_context = self._existing_tooling_context(
-                        self._existing_tooling_request(
-                            target, identity, codegen, (*initializers, *custom)
-                        ),
-                        managed_artifacts.value.resolution,
-                        source_project=binding[0],
+            if contract.custom:
+                import_graph, _modules = u.Infra.snapshot_import_graph(binding[0])
+                cycles = u.Infra.project_import_cycles(import_graph)
+                if cycles:
+                    return result_type.fail(
+                        f"projected runtime import cycle: {sorted(cycles)}"
                     )
-                    if tooling_context.failure:
-                        return result_type.from_failure(tooling_context)
-                    tooling_runtime = tooling_context.value
-                render_inputs = self.resolve_render_inputs(
-                    target=target,
-                    workspace=workspace,
-                    codegen=codegen,
-                    tooling_runtime=tooling_runtime,
-                    managed_artifacts=managed_artifacts.value,
-                )
-                rendered = self._render_existing_managed(
-                    render_inputs,
-                    contract,
-                    initializers,
-                    custom,
+            if (
+                contract.custom
+                and self.state.planning_exception is None
+                and not self.state.planning_issues
+            ):
+                self.state.completed_source_plans = sources.value[0]
+            tooling_runtime = None
+            if contract.tooling:
+                tooling_context = self._existing_tooling_context(
+                    self._existing_tooling_request(
+                        target, identity, codegen, (*initializers, *custom)
+                    ),
+                    managed_artifacts.value.resolution,
                     source_project=binding[0],
                 )
+                if tooling_context.failure:
+                    return result_type.from_failure(tooling_context)
+                tooling_runtime = tooling_context.value
+            render_inputs = self.resolve_render_inputs(
+                target=target,
+                workspace=workspace,
+                codegen=codegen,
+                tooling_runtime=tooling_runtime,
+                managed_artifacts=managed_artifacts.value,
+            )
+            rendered = self._render_existing_managed(
+                render_inputs,
+                contract,
+                initializers,
+                custom,
+                source_project=binding[0],
+            )
             return rendered.flat_map(
                 lambda completed: self._qualified_existing_tooling(
                     render_inputs, contract, completed, consumption, publications
@@ -510,24 +507,22 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
-            source_states=lazy_result.value[1],
             declared_files=cohort,
             source_publications=publications,
         ) as binding:
-            with binding[0].source_consumption() as consumption:
-                custom_result = (
-                    self._plan_existing_custom(
-                        root,
-                        codegen,
-                        profile=target.make_profile.value,
-                        binding=binding,
-                        declared_files=cohort,
-                    )
-                    if contract.custom
-                    else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+            custom_result = (
+                self._plan_existing_custom(
+                    root,
+                    codegen,
+                    profile=target.make_profile.value,
+                    binding=binding,
+                    declared_files=cohort,
                 )
-                if custom_result.failure:
-                    return result_type.from_failure(custom_result)
+                if contract.custom
+                else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+            )
+            if custom_result.failure:
+                return result_type.from_failure(custom_result)
             publications.extend(
                 (plan.path, consumption.receipt()) for plan in custom_result.value
             )
@@ -590,7 +585,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
-            source_states=inputs,
             declared_files=declared,
             source_publications=publications,
         ) as projected:
@@ -739,15 +733,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 (*file.source_directories, *directories),
                 (*file.source_query_topology, *topology),
             )
-            qualified.append(
-                file.model_copy(
-                    update={
-                        "source_states": inputs.value,
-                        "source_directories": queried,
-                        "source_query_topology": chains,
-                    }
-                )
-            )
+            qualified.append(file)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(qualified))
 
     @staticmethod
@@ -811,9 +797,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         group = f"{c.Infra.CodegenConformSurface.FACADES.value}:{root}"
         return result_type.ok((
             *(
-                item.model_copy(update={"dependency_group": group})
-                if item.path in grouped_paths
-                else item
+                item if item.path in grouped_paths else item
                 for item in by_path.values()
             ),
         ))
@@ -1026,7 +1010,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             destination,
             rendered.value.model_copy(update={"rendered": content}),
             mode=managed_spec.mode,
-            source_states=captured.value,
         ).map(
             lambda plan: plan.model_copy(
                 update={
@@ -1122,7 +1105,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             destination,
             rendered.value.rendered,
             mode=managed[0].mode,
-            source_states=rendered.value.source_states,
         )
         if plan.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(plan)
@@ -1407,7 +1389,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 entry.destination,
                 rendered.value.rendered,
                 render_inputs=render_inputs,
-                source_states=rendered.value.source_states,
             )
         )
         if composed.failure:
@@ -1564,26 +1545,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
-            source_states=inputs,
             declared_files=tuple(staged.values()),
             source_publications=publications,
         ) as current:
-            with current[0].source_consumption() as consumption:
-                planned = self._utility_facade_plan(root, package_dir, family, current)
+            planned = self._utility_facade_plan(root, package_dir, family, current)
             receipt = consumption.receipt()
             if planned.failure:
                 return result_type.from_failure(planned)
             publications.extend((plan.path, receipt) for plan in planned.value)
-            files = tuple(
-                plan.model_copy(
-                    update={
-                        "source_states": receipt.inputs,
-                        "source_directories": receipt.source_directories,
-                        "source_query_topology": receipt.source_query_topology,
-                    }
-                )
-                for plan in planned.value
-            )
+            files = tuple(plan for plan in planned.value)
             staged.update((plan.path, plan) for plan in files)
             captured = u.Infra.unique_states((
                 *inputs,
@@ -1835,7 +1805,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 governed=governed,
                 current=current.value,
                 vscode_spec=vscode_spec,
-                source_states=target.vscode_sources,
             )
             decided = self._decide_governed_plan(request)
             if decided.failure:
@@ -1979,7 +1948,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             request.relative.as_posix(),
             merged.value,
             mode=request.governed.mode,
-            source_states=sources,
         )
         if merged_plan.failure:
             return result_type.from_failure(merged_plan)

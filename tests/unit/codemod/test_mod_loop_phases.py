@@ -362,7 +362,6 @@ class TestsFlextInfraCodemodLoopPhases:
                 before=state,
                 desired_content=updates[state.path].encode("utf-8"),
                 desired_mode=state.mode,
-                source_states=candidate.inputs,
             )
             for state in states
         )

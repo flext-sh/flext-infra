@@ -795,9 +795,6 @@ class TestsFlextInfraSemanticPublication:
                                 artifact.candidate.updates[target]
                             ).encode(c.DEFAULT_ENCODING),
                             desired_mode=artifact.candidate.modes[target],
-                            source_states=artifact.source_states,
-                            source_directories=artifact.source_directories,
-                            source_query_topology=artifact.source_query_topology,
                         ),
                     ),
                 ),
@@ -1009,7 +1006,6 @@ class TestsFlextInfraSemanticPublication:
                 before=originals[path],
                 desired_content=tm.not_none(source).encode(c.DEFAULT_ENCODING),
                 desired_mode=originals[path].mode,
-                source_states=(driver,),
             )
             for path, source in candidate.updates.items()
         )

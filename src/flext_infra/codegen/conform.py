@@ -9,12 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenFileLeases,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
-)
+
 from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
@@ -107,7 +102,7 @@ class FlextInfraCodegenConform:
             The verified publication result, or the verification failure.
 
         """
-        with FlextInfraCodegenFileLeases.mutation_lease(request.root):
+        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(request.root).unwrap()):
             observed = FlextInfraMiseArtifactsVerification.publication_current(
                 request,
             )

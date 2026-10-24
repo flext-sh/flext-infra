@@ -221,7 +221,6 @@ class FlextInfraNamespaceRelocationCascade:
             repository_root=project_root,
             options=m.Infra.SemanticPublicationOptions(
                 projection_roots=(project_root,),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 validator=verify if gates is not None else None,
             ),
         )
@@ -561,7 +560,6 @@ class FlextInfraNamespaceRelocationCascade:
                     before=before,
                     desired_content=source.encode(c.DEFAULT_ENCODING),
                     desired_mode=state.modes[destination],
-                    source_states=tuple(state.originals.values()),
                     owner="namespace-relocations",
                 )
             )
@@ -636,7 +634,6 @@ class FlextInfraNamespaceRelocationCascade:
                         before=state.befores[path],
                         desired_content=source.encode(c.DEFAULT_ENCODING),
                         desired_mode=state.modes[path],
-                        source_states=dependencies,
                         owner="namespace-relocations",
                     )
                     for path, source in state.working.items()

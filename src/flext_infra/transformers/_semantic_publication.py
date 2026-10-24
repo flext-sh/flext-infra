@@ -12,10 +12,6 @@ from pathlib import Path
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenStaging,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
     FlextInfraStagedPackage,
 )
@@ -179,7 +175,6 @@ class FlextInfraSemanticPublication:
                 ).flat_map(
                     lambda _: FlextInfraStagedPackage.source_inputs_current(candidate)
                 ),
-                dependency_group=analysis.value.phase,
                 input_roots=candidate.roots,
             ),
         )
@@ -204,7 +199,10 @@ class FlextInfraSemanticPublication:
         ))
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
-        files = cls._concrete_file_plans(plans, codegen, source_states=snapshots.value)
+        files = cls._concrete_file_plans(
+            plans,
+            codegen,
+        )
         if files.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(files)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
@@ -322,8 +320,6 @@ class FlextInfraSemanticPublication:
                 phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 files=tuple(file for analysis in analyses for file in analysis.files),
                 inputs=inputs.value,
-                source_directories=directories,
-                source_query_topology=topology,
                 generator_trees=tuple(
                     tree for analysis in analyses for tree in analysis.generator_trees
                 ),
@@ -441,10 +437,7 @@ class FlextInfraSemanticPublication:
             if not options.projection_roots:
                 return r[m.Infra.CodegenPhaseAnalysis].ok(analysis)
             dependency_group = analysis.phase
-        combined = {
-            item.path: item.model_copy(update={"dependency_group": dependency_group})
-            for item in analysis.files
-        }
+        combined = {item.path: item for item in analysis.files}
         if not options.projection_roots:
             return r[m.Infra.CodegenPhaseAnalysis].ok(
                 analysis.model_copy(update={"files": tuple(combined.values())}),
@@ -463,7 +456,6 @@ class FlextInfraSemanticPublication:
         analysis: m.Infra.CodegenPhaseAnalysis,
         repository_root: Path,
         options: m.Infra.SemanticPublicationOptions,
-        dependency_group: str,
         combined: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Join generated projection files into one dependency-group analysis.
@@ -514,9 +506,7 @@ class FlextInfraSemanticPublication:
                     f"semantic projection changed "
                     f"its original destination: {item.path}",
                 )
-            combined[item.path] = item.model_copy(
-                update={"dependency_group": dependency_group},
-            )
+            combined[item.path] = item
         inputs = u.Infra.unique_states((
             *analysis.inputs,
             *projection.inputs,
@@ -907,8 +897,6 @@ class FlextInfraSemanticPublication:
     def _concrete_file_plans(
         plans: t.SequenceOf[m.Infra.SemanticFilePlan],
         codegen: m.Infra.CodegenConfigSpec | None = None,
-        *,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Convert every changed semantic plan into one owned codegen file plan.
 
@@ -949,7 +937,6 @@ class FlextInfraSemanticPublication:
                     before=plan.before,
                     desired_content=plan.desired_content,
                     desired_mode=plan.desired_mode,
-                    source_states=source_states,
                     owner="semantic",
                 ),
             )

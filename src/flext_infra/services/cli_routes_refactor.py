@@ -121,7 +121,6 @@ class FlextInfraRefactorRoutes:
                         repository_root=root,
                         options=m.Infra.SemanticPublicationOptions(
                             projection_roots=(root,),
-                            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                         ),
                     )
                 )

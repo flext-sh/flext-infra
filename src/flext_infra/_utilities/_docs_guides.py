@@ -79,7 +79,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
 
     @staticmethod
     def _classified_guide_sources(
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
         source_root: Path,
         destination_root: Path,
     ) -> p.Result[
@@ -253,7 +252,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
         """Plan root-owned guide projections from authenticated snapshot bytes.
 

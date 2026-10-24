@@ -154,7 +154,7 @@ class FlextInfraUtilitiesSemanticContracts(
                         f"{rule.id}: ownership transfer requires its project catalogue"
                     )
                     raise ValueError(message)
-                rules.append(rule.model_copy(update={"source_states": (state,)}))
+                rules.append(rule)
         ids = [rule.id for rule in rules]
         if len(ids) != len(set(ids)):
             message = "duplicate Rope contract rule identities"
@@ -549,7 +549,6 @@ class FlextInfraUtilitiesSemanticContracts(
                     original_source=source,
                     updated_source=working[path],
                     retire_file=path in retired,
-                    source_states=inputs,
                     changes=tuple(applied[path]),
                 )
                 for path, source in items

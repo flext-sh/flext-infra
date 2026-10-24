@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+
 from flext_infra.workspace import FlextInfraBindingService
 from tests import c, m, p, tm, u
 

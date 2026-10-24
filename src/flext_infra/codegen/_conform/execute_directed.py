@@ -10,13 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPreconditions,
-    FlextInfraCodegenStaging,
-    FlextInfraCodegenTransaction,
-    FlextInfraStagedPackage,
-)
+
 from flext_infra.codegen._conform.execute_scaffold import (
     FlextInfraCodegenConformExecuteScaffold,
 )
@@ -315,7 +309,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                 ),
                 staged_validator=validate_stage,
             ),
-            publication_receipts=receipts,
         )
         if published.failure:
             return r[p.Infra.CodegenResult].from_failure(published)
@@ -364,11 +357,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         authenticated = analysis.model_copy(
             update={
                 "inputs": source_states.value,
-                "files": (
-                    selected_file.model_copy(
-                        update={"source_states": source_states.value}
-                    ),
-                ),
+                "files": (selected_file,),
             },
         )
         return result_type.ok((

@@ -63,7 +63,6 @@ class TestsFlextInfraDocsGeneratorPlan:
                     ),
                 ),
             ),
-            source_states=(source_state.value,),
             repository_root=project,
         )
 

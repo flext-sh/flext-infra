@@ -10,10 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
+
 from flext_infra.docs import FlextInfraDocGeneratorBundleMixin, FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
@@ -66,13 +63,12 @@ class FlextInfraDocGenerator(
         receipts: list[m.Infra.CodegenPhaseOutcome] = []
         for prepared in self._prepare_batches(
             request,
-            publication_receipts=receipts,
         ):
             if prepared.failure:
                 terminal: p.FailureLike = prepared
             else:
                 published = self.publish_batch(
-                    prepared.value, publication_receipts=receipts
+                    prepared.value,
                 )
                 if published.success:
                     reports.extend(published.value)
@@ -109,9 +105,6 @@ class FlextInfraDocGenerator(
     def publish_batch(
         self,
         bundle: m.Infra.DocsGenerationBundle,
-        *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-        | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Admit and settle one captured batch before another batch is prepared.
 
@@ -139,7 +132,6 @@ class FlextInfraDocGenerator(
                 bundle,
                 roots,
                 scope_root,
-                publication_receipts=publication_receipts,
             ),
         )
 
@@ -149,9 +141,6 @@ class FlextInfraDocGenerator(
         bundle: m.Infra.DocsGenerationBundle,
         roots: t.MappingKV[str, Path],
         scope_root: Path,
-        *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-        | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Publish one planned docs scope through the shared file lifecycle.
 
@@ -192,7 +181,6 @@ class FlextInfraDocGenerator(
                 scope_roots=bundle.source_roots,
                 source_scope=bundle.source_scope,
             ),
-            publication_receipts=publication_receipts,
         )
         if written.failure:
             return report_type.from_failure(written)
@@ -304,9 +292,6 @@ class FlextInfraDocGenerator(
 
     def prepare_batches(
         self,
-        *,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-        | None = None,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
         """Capture each scope after the previous publication settles.
 
@@ -320,7 +305,6 @@ class FlextInfraDocGenerator(
         """
         return self._prepare_batches(
             self._configured_request(),
-            publication_receipts=publication_receipts,
         )
 
     @override

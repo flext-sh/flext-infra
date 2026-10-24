@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
 
 
 class FlextInfraCandidateBootstrapService:
@@ -72,7 +71,6 @@ class FlextInfraCandidateBootstrapService:
                         }),
                     ),
                 ),
-                publication_receipts=receipts,
             )
             if committed.failure:
                 return r[bool].from_failure(committed)
@@ -146,7 +144,7 @@ class FlextInfraCandidateBootstrapService:
                 ))
                 if sources.failure:
                     return r[m.Infra.CodegenPhaseAnalysis].from_failure(sources)
-                files.append(file.model_copy(update={"source_states": sources.value}))
+                files.append(file)
         sources = u.Infra.unique_states(
             tuple(source for file in files for source in file.source_states),
         )
@@ -161,8 +159,6 @@ class FlextInfraCandidateBootstrapService:
                 phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
                 files=tuple(files),
                 inputs=sources.value,
-                source_directories=directories,
-                source_query_topology=topology,
             ),
         )
 

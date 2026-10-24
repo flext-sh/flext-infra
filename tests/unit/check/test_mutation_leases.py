@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenFileLeases
+
 from flext_infra.gates import FlextInfraRuffFormatGate
 from tests import c, m, tm, u
 
@@ -63,7 +63,7 @@ class TestsFlextInfraMutationLeases:
             apply_fixes=True,
         )
         with ThreadPoolExecutor(max_workers=1) as pool:
-            with FlextInfraCodegenFileLeases.mutation_lease(root):
+            with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
                 applied = pool.submit(gate.fix, root, context)
                 with pytest.raises(TimeoutError):
                     applied.result(timeout=0.2)

@@ -379,17 +379,16 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin(
         by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = dict(retired.value)
         for plan in plans:
             key = str(plan.context.pkg_dir.resolve())
-            with self.source_project.source_consumption() as consumption:
-                self.source_project.replay_source_consumption(source_receipts[key])
-                cleanup = cleanup_receipts.get(key)
-                if cleanup is not None:
-                    self.source_project.replay_source_consumption(cleanup)
-                artifact_plans = self._package_file_plans(
-                    plan,
-                    index,
-                    snapshots,
-                    frozenset(by_path),
-                )
+            self.source_project.replay_source_consumption(source_receipts[key])
+            cleanup = cleanup_receipts.get(key)
+            if cleanup is not None:
+                self.source_project.replay_source_consumption(cleanup)
+            artifact_plans = self._package_file_plans(
+                plan,
+                index,
+                snapshots,
+                frozenset(by_path),
+            )
             if artifact_plans.failure:
                 return result_type.from_failure(artifact_plans)
             receipt = consumption.receipt()
@@ -432,11 +431,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin(
                     f"lazy-init package has no physical project owner: "
                     f"{plan.context.pkg_dir}",
                 )
-            with self.source_project.source_consumption() as consumption:
-                self.source_project.replay_source_consumption(
-                    source_receipts[str(plan.context.pkg_dir.resolve())],
-                )
-                support_states = self._cleanup_generated_support_file_states(plan)
+            self.source_project.replay_source_consumption(
+                source_receipts[str(plan.context.pkg_dir.resolve())],
+            )
+            support_states = self._cleanup_generated_support_file_states(plan)
             cleanup_receipts[str(plan.context.pkg_dir.resolve())] = (
                 consumption.receipt()
             )
@@ -525,16 +523,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin(
         ):
             msg = "lazy-init artifact has no original source consumption evidence"
             raise ValueError(msg)
-        return tuple(
-            file.model_copy(
-                update={
-                    "source_states": receipt.inputs,
-                    "source_directories": receipt.source_directories,
-                    "source_query_topology": receipt.source_query_topology,
-                }
-            )
-            for file in files
-        )
+        return tuple(file for file in files)
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitGenerationFilePlanMixin"]

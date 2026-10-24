@@ -144,48 +144,40 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
-            source_states=lazy_sources.value[1],
             declared_files=tuple(lazy_sources.value[0]),
             source_publications=publications,
         ) as binding:
-            with binding[0].source_consumption() as consumption:
-                tooling_result = modernizer.resolve_tooling_context(
-                    tooling_request, source_project=binding[0]
+            tooling_result = modernizer.resolve_tooling_context(
+                tooling_request, source_project=binding[0]
+            )
+            if tooling_result.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                    tooling_result
                 )
-                if tooling_result.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        tooling_result
-                    )
-                render_inputs = self.resolve_render_inputs(
-                    target=target,
-                    workspace=workspace,
-                    codegen=codegen,
-                    tooling_runtime=tooling_result.value,
-                    managed_artifacts=u.Infra.empty_snapshot(),
+            render_inputs = self.resolve_render_inputs(
+                target=target,
+                workspace=workspace,
+                codegen=codegen,
+                tooling_runtime=tooling_result.value,
+                managed_artifacts=u.Infra.empty_snapshot(),
+            )
+            context = self._project_render_context(
+                render_inputs,
+                planned_data_files=tuple(
+                    destination for _, destination in scaffold_entries
+                ),
+            )
+            if context.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context)
+            targets = self._validated_scaffold_targets(codegen, root, scaffold_entries)
+            planned = targets.flat_map(
+                lambda _validated: self._scaffold_planned_entries(
+                    render_inputs, context.value, scaffold_entries
                 )
-                context = self._project_render_context(
-                    render_inputs,
-                    planned_data_files=tuple(
-                        destination for _, destination in scaffold_entries
-                    ),
-                )
-                if context.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        context
-                    )
-                targets = self._validated_scaffold_targets(
-                    codegen, root, scaffold_entries
-                )
-                planned = targets.flat_map(
-                    lambda _validated: self._scaffold_planned_entries(
-                        render_inputs, context.value, scaffold_entries
-                    )
-                )
-                if planned.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        planned
-                    )
-                files = planned.value
+            )
+            if planned.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+            files = planned.value
             return self._qualified_existing_tooling(
                 render_inputs, contract, files, consumption, publications
             ).flat_map(
@@ -405,15 +397,13 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
-            source_states=source_states,
             declared_files=planned,
             source_publications=publications,
         ) as binding:
             tooling = render_inputs.tooling_runtime
-            with binding[0].source_consumption() as consumption:
-                render_inputs.tooling_runtime = self.planned_source_tooling(
-                    render_inputs, planned, source_project=binding[0]
-                )
+            render_inputs.tooling_runtime = self.planned_source_tooling(
+                render_inputs, planned, source_project=binding[0]
+            )
             if render_inputs.tooling_runtime is tooling:
                 return self._qualified_existing_tooling(
                     render_inputs, contract, planned, consumption, publications
@@ -486,7 +476,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 destination,
                 rendered.value.rendered,
                 render_inputs=render_inputs,
-                source_states=rendered.value.source_states,
             )
         )
         if rendered_content.failure:

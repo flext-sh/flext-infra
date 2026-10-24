@@ -212,11 +212,10 @@ class TestsFlextInfraRopeSnapshot:
                 inputs=(original,), declared_files=declarations
             ),
         ) as (project, receipts, _):
-            with project.source_consumption() as consumer:
-                tm.that(
-                    project.source_text(source).encode("utf-8"),
-                    eq=proposed if planned else physical,
-                )
+            tm.that(
+                project.source_text(source).encode("utf-8"),
+                eq=proposed if planned else physical,
+            )
             tm.that(consumer.receipt().inputs, eq=(original,))
             tm.that(receipts()[0], eq=(original,))
             tm.that(

@@ -221,11 +221,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     file_path=path,
                     original_source=source,
                     updated_source=working[path],
-                    source_states=tuple(
-                        state
-                        for edit in (*consumers.value, *declarations.value)
-                        for state in edit.source_states
-                    ),
                     changes=("resolved behavior and declaration ownership",),
                 )
                 for path, source in sources.items()
@@ -303,11 +298,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     file_path=path,
                     original_source=source,
                     updated_source=working[path],
-                    source_states=tuple(
-                        state
-                        for edit in (*aliases.value, *api.value)
-                        for state in edit.source_states
-                    ),
                     changes=("composed native alias retirement",),
                 )
                 for path, source in sources.items()

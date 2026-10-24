@@ -15,7 +15,6 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLayoutPlanMixin,
-    FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -90,7 +89,6 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             before=before.value,
             desired_content=desired.encode(c.DEFAULT_ENCODING),
             desired_mode=inputs.spec.modes.file_default,
-            source_states=source_states,
             owner="codegen",
             policy="full" if managed.value is not None else "merge",
         )

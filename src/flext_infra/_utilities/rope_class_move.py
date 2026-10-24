@@ -98,7 +98,6 @@ class FlextInfraUtilitiesRopeClassMove:
         source_file: Path,
         destination_file: Path,
         sources: t.MappingKV[Path, str],
-        source_states: tuple[m.Cli.AtomicFileState, ...],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose native resource rename and move in lookup-only source views.
 
@@ -246,12 +245,7 @@ class FlextInfraUtilitiesRopeClassMove:
             ),
         ).unwrap()
         return tuple(
-            plan.model_copy(
-                update={
-                    "source_directories": queries[0],
-                    "source_query_topology": queries[1],
-                }
-            )
+            plan
             for plan in cls._module_file_plans(
                 target_plan, source, before, changed, states
             )
@@ -861,7 +855,7 @@ class FlextInfraUtilitiesRopeClassMove:
         cls._module_reexport_sources(request, proposed, captured, virtual, reexports)
         return (
             request,
-            target_plan.model_copy(update={"source_states": source_states}),
+            target_plan,
             proposed,
             virtual,
             source_module_name,
@@ -872,7 +866,6 @@ class FlextInfraUtilitiesRopeClassMove:
         cls,
         request: m.Infra.ClassMoveRequest,
         prelude: str,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         sources: t.MappingKV[Path, str],
     ) -> t.Triple[
         m.Infra.CodegenFilePlan,
@@ -953,7 +946,6 @@ class FlextInfraUtilitiesRopeClassMove:
         root: Path,
         source: Path,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
         class_only: bool = True,
     ) -> t.Pair[m.Cli.AtomicFileState, m.Infra.CodemodSourceEpoch]:
@@ -1158,7 +1150,6 @@ class FlextInfraUtilitiesRopeClassMove:
         source: Path,
         before: m.Cli.AtomicFileState,
         changed: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         root, target = target_plan.project, target_plan.path
         states = {state.path.resolve(): state for state in source_states}
@@ -1175,7 +1166,6 @@ class FlextInfraUtilitiesRopeClassMove:
                 before=before,
                 desired_content=None,
                 desired_mode=None,
-                source_states=source_states,
             ),
         ]
         for path, content in changed.items():
@@ -1201,7 +1191,6 @@ class FlextInfraUtilitiesRopeClassMove:
                     before=state,
                     desired_content=content.encode(c.DEFAULT_ENCODING),
                     desired_mode=state.mode,
-                    source_states=source_states,
                 ),
             )
         return tuple(files)
@@ -1324,7 +1313,6 @@ class FlextInfraUtilitiesRopeClassMove:
         target: Path,
         source: str,
         mode: int,
-        source_states: tuple[m.Cli.AtomicFileState, ...],
     ) -> m.Infra.CodegenFilePlan:
         """Capture an absent file or absent parent chain without creating either.
 
@@ -1351,7 +1339,6 @@ class FlextInfraUtilitiesRopeClassMove:
             before=before,
             desired_content=source.encode(c.DEFAULT_ENCODING),
             desired_mode=mode,
-            source_states=source_states,
         )
 
     @classmethod

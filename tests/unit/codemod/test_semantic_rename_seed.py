@@ -57,7 +57,6 @@ class TestsFlextInfraSemanticRenameSeed:
             FlextInfraModTextGateEngine.plan(
                 root,
                 sources={destination: text},
-                source_states=plan.inputs,
                 declared_files=plan.declared_files,
             )
         )
@@ -80,7 +79,6 @@ class TestsFlextInfraSemanticRenameSeed:
             FlextInfraModTextGateEngine.plan(
                 root,
                 sources={destination: text},
-                source_states=plan.inputs,
                 declared_files=tuple(
                     effect.model_copy(
                         update={

@@ -15,8 +15,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenExecutionBase,
-    FlextInfraCodegenFileLeases,
-    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -97,7 +95,9 @@ class FlextInfraCodegenMakeBootstrap(
                 return admitted
             request = m.Infra.CodegenGenerateRequest(root=requested)
             if self.effective_dry_run:
-                with FlextInfraCodegenFileLeases.mutation_lease(requested):
+                with u.Cli.file_changes_lock(
+                    u.Infra.mutation_lock_path(requested).unwrap()
+                ):
                     return FlextInfraMiseArtifactsVerification.publication_current(
                         request,
                     ).map(lambda _: True)

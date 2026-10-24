@@ -61,9 +61,8 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         with u.Infra.facade_source_project(tmp_path) as (project, _, _):
             original = u.Infra.publication_policy(source, rope_project=project)
             repeated = original
-            with project.source_consumption() as consumption, Profile() as profile:
-                for _ in range(3):
-                    repeated = u.Infra.publication_policy(source, rope_project=project)
+            for _ in range(3):
+                repeated = u.Infra.publication_policy(source, rope_project=project)
             tm.ok(repeated == original)
             tm.that(
                 any(state.path == source for state in consumption.receipt().inputs),

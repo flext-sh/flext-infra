@@ -313,9 +313,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 path,
                 None,
                 desired_mode=None,
-                source_states=tuple(
-                    state.states[item] for item in sorted(state.states)
-                ),
             ).unwrap()
             for path in sorted(owned_outputs)
         ]
@@ -327,7 +324,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         }
         return m.Infra.PlanCollectionBundle(
             files=tuple(plans_list),
-            source_states=tuple(state.states[path] for path in sorted(state.states)),
             required_directories=(),
             prunable_directories=tuple(
                 sorted(
@@ -478,7 +474,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 path,
                 content,
                 desired_mode=c.Infra.DOCS_ARTIFACT_MODE,
-                source_states=inputs,
             ).unwrap()
             plans.append(planned)
         u.Cli.atomic_verify_binary_file_states(inputs).unwrap()
@@ -490,7 +485,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         )
         return m.Infra.PlanCollectionBundle(
             files=tuple(plans),
-            source_states=inputs,
             required_directories=required_directories,
             revisions=tuple(revisions),
             coverage=tuple(state.coverage),

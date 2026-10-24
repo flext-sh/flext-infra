@@ -692,8 +692,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 inputs=m.Infra.CodemodBindingSnapshot.unique_inputs(
                     tuple(self._states.values()),
                 ),
-                source_directories=directories,
-                source_query_topology=topology,
             )
             return (
                 self._receipt,
@@ -790,7 +788,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         def __init__(
             self,
             authority: FlextInfraRopeProject.OriginalAuthority,
-            source_states: tuple[m.Cli.AtomicFileState, ...],
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> None:
             """Bind one candidate to its original physical read authority."""
@@ -849,7 +846,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         def derive(
             self,
-            source_states: tuple[m.Cli.AtomicFileState, ...],
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> Self:
             """Derive one immutable candidate over the same physical authority.
@@ -910,7 +906,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         def _register_original_states(
             self,
-            source_states: tuple[m.Cli.AtomicFileState, ...],
         ) -> None:
             """Index the supplied original states or reject their conflicts.
 
@@ -1962,7 +1957,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def from_atomic_reads(
         cls,
         live: p.Infra.RopeProject,
-        source_states: tuple[m.Cli.AtomicFileState, ...],
         *,
         election: p.Infra.RopeProjectElection,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
@@ -1993,7 +1987,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         self,
         *,
         consumer_root: Path | None = None,
-        source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> Generator[Self]:

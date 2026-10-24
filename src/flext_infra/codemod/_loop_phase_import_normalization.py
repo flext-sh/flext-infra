@@ -109,7 +109,6 @@ class FlextInfraImportNormalizationPhase:
             repository_root=project_root,
             options=m.Infra.SemanticPublicationOptions(
                 projection_roots=(project_root,),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             ),
         )
         if published.failure:

@@ -136,7 +136,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             root,
             path.relative_to(root).as_posix(),
             "",
-            source_states=sources,
         )
         if captured.failure:
             return result_type.from_failure(captured)
@@ -510,7 +509,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         rendered: str | m.Infra.CodegenArtifactComposition,
         *,
         mode: int = 0o644,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Snapshot one target and bind it to exact desired bytes and mode.
 
@@ -538,8 +536,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                 before=before.value,
                 desired_content=rendered.encode(c.DEFAULT_ENCODING),
                 desired_mode=mode,
-                source_states=source_states,
-                validation_context=validation_context,
             ),
         )
 
@@ -729,7 +725,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             if absent_plan.failure:
                 return result_type.from_failure(absent_plan)
             planned.append(
-                absent_plan.value.model_copy(update={"source_states": sources}),
+                absent_plan.value,
             )
         return result_type.ok(tuple(planned))
 

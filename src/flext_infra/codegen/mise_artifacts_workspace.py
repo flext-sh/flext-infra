@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 

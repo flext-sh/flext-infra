@@ -99,11 +99,6 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                         file_path=path,
                         original_source=source,
                         updated_source=updated,
-                        source_states=(
-                            consumption.receipt().inputs
-                            if consumption is not None
-                            else ()
-                        ),
                         changes=tuple(changes),
                     ),
                 )

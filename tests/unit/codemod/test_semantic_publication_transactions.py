@@ -209,9 +209,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             (facade, private),
             source_plans=(authored,),
             repository_root=root,
-            options=m.Infra.SemanticPublicationOptions(
-                dependency_group="complete-native-type-cohort", validator=validate
-            ),
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
             publish=False,
         )
         tm.that(authored.path.read_bytes(), eq=authored.before.content)
@@ -240,9 +238,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 (facade, private),
                 source_plans=(authored,),
                 repository_root=root,
-                options=m.Infra.SemanticPublicationOptions(
-                    dependency_group="complete-native-type-cohort", validator=validate
-                ),
+                options=m.Infra.SemanticPublicationOptions(validator=validate),
             )
         )
         tm.ok(validate(root))
@@ -357,7 +353,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
                     else state.content
                 ),
                 desired_mode=state.mode,
-                source_states=states,
             )
             for state in states
         )
@@ -506,7 +501,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 before=original,
                 desired_content=None,
                 desired_mode=None,
-                source_states=inputs,
             ),
             m.Infra.CodegenFilePlan(
                 project=mod_workspace,
@@ -514,7 +508,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 before=parents,
                 desired_content=desired.encode(c.DEFAULT_ENCODING),
                 desired_mode=original.mode,
-                source_states=inputs,
             ),
         )
         previews: list[Path] = []
@@ -610,8 +603,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 if state.path == stub
                 else desired.encode(c.DEFAULT_ENCODING),
                 desired_mode=None if state.path == stub else state.mode,
-                source_states=states,
-                dependency_group="consumer-stub-retirement",
             )
             for state in states
         )

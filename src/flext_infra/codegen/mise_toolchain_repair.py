@@ -52,7 +52,6 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool])
             tool=entry.selector or entry.name,
             mise_executable=u.Infra.managed_mise_self(root).unwrap(),
             uv_executable=u.Infra.managed_mise_binary(c.Infra.UV, root).unwrap(),
-            source_states=(*inputs.sources, *states),
         )
 
     @override

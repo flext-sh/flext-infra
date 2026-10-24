@@ -25,12 +25,7 @@ from typing import TYPE_CHECKING
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraMiseArtifactsComparison,
-    FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsJournalRelocation,
-    FlextInfraMiseArtifactsVerification,
-)
+
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,

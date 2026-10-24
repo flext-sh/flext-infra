@@ -21,10 +21,6 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
 
 
 class FlextInfraModTextGateEngine:
@@ -725,7 +721,6 @@ class FlextInfraModTextGateEngine:
             before=before,
             desired_content=updated.encode(c.DEFAULT_ENCODING),
             desired_mode=before.mode,
-            source_states=(*base_states, before),
             owner="mod-text",
         )
 
@@ -1032,7 +1027,6 @@ class FlextInfraModTextGateEngine:
         root: Path,
         *,
         sources: t.MappingKV[Path, str] | None = None,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
         validate_receipts: bool = False,
     ) -> p.Result[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]]:

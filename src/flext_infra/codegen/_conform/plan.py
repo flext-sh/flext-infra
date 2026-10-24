@@ -16,7 +16,6 @@ from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenConformScaffoldPlan,
     FlextInfraCodegenLazyInit,
-    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -253,24 +252,14 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             destination.relative_to(root).as_posix(),
             rendered.value,
             mode=mode,
-            source_states=inputs,
         )
         if file.failure:
             return result_type.from_failure(file)
         return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM,
-                files=(
-                    file.value.model_copy(
-                        update={
-                            "source_directories": directories,
-                            "source_query_topology": topology,
-                        }
-                    ),
-                ),
+                files=(file.value,),
                 inputs=inputs,
-                source_directories=directories,
-                source_query_topology=topology,
             ),
         )
 
@@ -1684,9 +1673,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 )
                 continue
             complete.append(
-                file.model_copy(
-                    update={"source_states": sources.value},
-                ),
+                file,
             )
         return tuple(complete)
 

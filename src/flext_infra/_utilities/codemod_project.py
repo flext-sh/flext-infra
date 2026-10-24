@@ -1511,8 +1511,7 @@ class FlextInfraUtilitiesCodemodProject(
             )
         else:
             states = {state.path: state for state in project.consumed_source_states()}
-            with project.source_consumption(), project.frozen_layout():
-                cls._snapshot_project_imports(project, selection, states, ({}, {}))
+            cls._snapshot_project_imports(project, selection, states, ({}, {}))
             snapshot = m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
         return cls.codemod_source_epoch(snapshot)
 
@@ -1579,7 +1578,6 @@ class FlextInfraUtilitiesCodemodProject(
     def codemod_binding_snapshot(
         cls,
         root: Path,
-        source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         modules: t.StrSequence = (),
         *,
         projects: t.SequenceOf[m.Infra.CodemodBindingProject] | None = None,
