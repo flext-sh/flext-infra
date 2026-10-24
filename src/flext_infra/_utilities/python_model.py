@@ -259,32 +259,6 @@ class FlextInfraUtilitiesPythonModel:
         return target if owner is not None and not owner.is_alias else ""
 
     @classmethod
-    def python_model_static_class_alias(
-        cls, module: t.Infra.PythonModule, name: str
-    ) -> str:
-        """Return the class a name statically re-binds, read from the Griffe model.
-
-        The alias is an unannotated module-level ``name = Cls`` bound after the
-        ``class Cls`` declaration it names.
-
-        Returns:
-            The class name, or ``""`` when the binding is not a static alias.
-
-        """
-        original = cls.python_model_class_alias(module, name)
-        if not original:
-            return ""
-        alias_line = module.attributes[name].lineno
-        declaration_line = module.classes[original].lineno
-        proven = (
-            module.attributes[name].annotation is None
-            and alias_line is not None
-            and declaration_line is not None
-            and declaration_line < alias_line
-        )
-        return original if proven else ""
-
-    @classmethod
     def python_model_letters(cls, module: t.Infra.PythonModule) -> frozenset[str]:
         """Return exported lower-case names bound to a class or imported name.
 

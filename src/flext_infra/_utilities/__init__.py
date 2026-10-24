@@ -208,6 +208,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codemod_binding_chain import (
         FlextInfraUtilitiesCodemodBindingChain,
     )
+    from flext_infra._utilities.codemod_native_utilities import (
+        FlextInfraUtilitiesCodemodNativeUtilities,
+    )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
     from flext_infra._utilities.compatibility_alias_validation import (
@@ -260,6 +263,9 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesLazyInitRender,
     )
     from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
+    from flext_infra._utilities.lint_source_positions import (
+        FlextInfraUtilitiesLintSourcePositions,
+    )
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.managed_conflicts import (
         FlextInfraUtilitiesManagedConflicts,
@@ -336,6 +342,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_module_patch import (
         FlextInfraUtilitiesRopeModulePatch,
     )
+    from flext_infra._utilities.rope_nested_class_move import (
+        FlextInfraUtilitiesRopeNestedClassMove,
+    )
     from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
     from flext_infra._utilities.rope_runtime_base import (
         FlextInfraUtilitiesRopeRuntimeBase,
@@ -393,6 +402,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodemodBindingChain",
+    "FlextInfraUtilitiesCodemodNativeUtilities",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
@@ -475,6 +485,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLazyInitPlan",
     "FlextInfraUtilitiesLazyInitRender",
     "FlextInfraUtilitiesLintRecipes",
+    "FlextInfraUtilitiesLintSourcePositions",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesMiseBinary",
@@ -537,6 +548,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeInventorySitesMixin",
     "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
+    "FlextInfraUtilitiesRopeNestedClassMove",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
     "FlextInfraUtilitiesRopeRuntimeMatching",
@@ -614,6 +626,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
+        "FlextInfraUtilitiesCodemodNativeUtilities": ".codemod_native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
@@ -706,6 +719,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesLazyInitPlan": ".lazy_init_plan",
         "FlextInfraUtilitiesLazyInitRender": ".lazy_init_render",
         "FlextInfraUtilitiesLintRecipes": ".lint_recipes",
+        "FlextInfraUtilitiesLintSourcePositions": ".lint_source_positions",
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
@@ -770,6 +784,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeInventorySitesMixin": "._rope_inventory_sites",
         "FlextInfraUtilitiesRopeMethodOrderMixin": "._rope_method_order",
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
+        "FlextInfraUtilitiesRopeNestedClassMove": ".rope_nested_class_move",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
         "FlextInfraUtilitiesRopeRuntimeMatching": ".rope_runtime_matching",

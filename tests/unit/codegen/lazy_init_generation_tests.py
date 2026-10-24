@@ -47,85 +47,70 @@ class TestsFlextInfraLazyInitGeneration:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("declaration", "published", "promoted"),
+        "declaration",
         [
-            ("class Original: pass\ns = Original\n", True, True),
-            ("class Original[T]: pass\ns = Original\n", True, True),
-            ("class Original: pass\ns = Original()\n", True, False),
-            ("def Original(): pass\ns = Original\n", True, False),
-            ("class Original[T]: pass\ns = Original[int]\n", True, False),
-            ("class Original: pass\ns = Original\ns = Original\n", True, False),
-            ("class Original: pass\ns: type[Original] = Original\n", True, False),
-            (
-                (
-                    "class Original: pass\nclass Other: pass\nOriginal = Other\n"
-                    "s = Original\n"
-                ),
-                True,
-                False,
-            ),
-            ("class Original: pass\ns = Original\n", False, False),
+            "class Original: pass\ns = Original\n",
+            "class Original[T]: pass\ns = Original\n",
+            "class Original: pass\ns = Original()\n",
+            "def Original(): pass\ns = Original\n",
         ],
     )
-    def test_static_alias_requires_published_original_class(
-        tmp_path: Path, declaration: str, *, published: bool, promoted: bool
+    def test_initializer_imports_aliases_and_never_assigns(
+        tmp_path: Path, declaration: str
     ) -> None:
-        """A letter binds its class statically only when the binding is proven."""
+        """An initializer imports a declared alias from its module, never binds it.
+
+        Premise (operator ruling 2026-10-24): an initializer propagates and
+        never declares; the alias exists only where its owning module declares
+        it and lists it in ``__all__``.
+        """
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
-        exports = ("Original", "s") if published else ("s",)
         (package / "provider.py").write_text(
-            f"{declaration}__all__ = {exports!r}\n", encoding=c.DEFAULT_ENCODING
+            f"{declaration}__all__ = ('Original', 's')\n", encoding=c.DEFAULT_ENCODING
         )
 
         TestsFlextInfraLazyInitGeneration._apply(repository)
         generated = u.Tests.generated_init(package)
 
-        tm.that("    s = Original" in generated.splitlines(), eq=promoted)
+        tm.that(generated, has=f"from {package.name}.provider import Original, s")
+        tm.that(generated, lacks="s = Original")
         tm.that(generated, has='"s": ".provider"')
         compile(generated, "__init__.py", "exec")
 
     @staticmethod
-    @pytest.mark.parametrize("asynchronous", [False, True])
-    def test_deep_function_exports_keep_their_static_owner(
-        tmp_path: Path, *, asynchronous: bool
-    ) -> None:
-        """An owner line too long for Ruff binds through a stable module alias."""
+    def test_owner_import_beyond_the_line_length_stays_static(tmp_path: Path) -> None:
+        """An owner import longer than the line length is wrapped, never bound.
+
+        Premise: line length is the formatter's concern; the initializer keeps
+        the plain parenthesized import and never binds a name.
+        """
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
-        width = u.Infra.native_tool_setting(
+        width: int = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
         domain = package / ("_" + "d" * (width - len(package.name) - 22))
         domain.mkdir()
         (domain / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (domain / "provider.py").write_text(
-            f"{'async ' if asynchronous else ''}def encode(value: str) -> str:\n"
-            "    return value\n\n"
-            "class PublishedContract:\n    pass\n\n"
-            "__all__ = ['PublishedContract', 'encode']\n",
+            "class PublishedContract:\n    pass\n\n__all__ = ['PublishedContract']\n",
             encoding=c.DEFAULT_ENCODING,
         )
 
         TestsFlextInfraLazyInitGeneration._apply(repository)
         generated = u.Tests.generated_init(domain)
-
-        tm.that(max(map(len, generated.splitlines())), lte=width)
-        tm.that(generated, has="as _owner_0,")
-        TestsFlextInfraLazyInitGeneration._ruff(
-            "format", "--check", str(domain / c.Infra.INIT_PY)
-        )
         namespace = f"{package.name}.{domain.name}"
+
+        tm.that(generated, has=f"    from {namespace}.provider import (\n")
+        tm.that(generated, lacks="_owner_")
         tm.that(
             u.Tests.run_lazy_init_probe(
-                "import typing\nimport flext_core.lazy\n"
-                "typing.TYPE_CHECKING = True\n"
                 f"import {namespace} as public\n"
-                f"from {namespace}.provider import PublishedContract, encode\n"
-                "print(public.encode is encode)\n"
+                f"from {namespace}.provider import PublishedContract\n"
                 "print(public.PublishedContract is PublishedContract)\n",
                 python_paths=(str(package.parent),),
                 cwd=repository,
             ),
-            eq=["True", "True"],
+            eq=["True"],
         )
 
     @staticmethod
@@ -227,7 +212,7 @@ class TestsFlextInfraLazyInitGeneration:
     ) -> None:
         """``__all__``, the mapping and imports agree with Ruff at every width."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
-        width = u.Infra.native_tool_setting(
+        width: int = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
         first = "FlextDemoFirst"
@@ -256,7 +241,7 @@ class TestsFlextInfraLazyInitGeneration:
     def test_overlong_mapping_entry_keeps_its_trailing_comma(tmp_path: Path) -> None:
         """An exploded mapping entry carries the comma COM812 requires."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
-        width = u.Infra.native_tool_setting(
+        width: int = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
         # The owner import still fits once wrapped; the mapping entry does not.
@@ -301,7 +286,7 @@ class TestsFlextInfraLazyInitGeneration:
 
     @staticmethod
     def test_root_letters_import_their_classes_and_instances(tmp_path: Path) -> None:
-        """Class letters bind statically; instance letters import by name."""
+        """Class and instance letters both import by name from their module."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
         (package / "base.py").write_text(
             "class FlextDemoServiceBase: pass\n\ns = FlextDemoServiceBase\n\n"
@@ -321,11 +306,10 @@ class TestsFlextInfraLazyInitGeneration:
             lines,
             has=[
                 f"    from {package.name}._settings import FlextDemoSettings, settings",
-                f"    from {package.name}.base import FlextDemoServiceBase",
-                "    s = FlextDemoServiceBase",
+                f"    from {package.name}.base import FlextDemoServiceBase, s",
             ],
         )
-        tm.that("\n".join(lines), lacks="FlextDemoServiceBase as s")
+        tm.that("\n".join(lines), lacks="s = FlextDemoServiceBase")
 
     @staticmethod
     def test_nested_package_resolves_its_exports_lazily(tmp_path: Path) -> None:
@@ -384,10 +368,10 @@ class TestsFlextInfraLazyInitGeneration:
             has=(
                 "if TYPE_CHECKING:\n    from flext_tests import "
                 "d, e, h, m, p, r, s, t, td, tf, tk, tm, u, x\n\n"
-                "    from tests.constants import TestsDemoConstants\n\n"
-                "    c = TestsDemoConstants\n"
+                "    from tests.constants import TestsDemoConstants, c\n"
             ),
         )
+        tm.that(content, lacks="c = TestsDemoConstants")
         tm.that(
             u.Tests.run_lazy_init_probe(
                 "import sys\nimport tests as package\nfrom flext_tests import tm\n"

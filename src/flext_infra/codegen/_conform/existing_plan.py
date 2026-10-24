@@ -381,6 +381,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
+        # Custom facades resolve their owners through the provided initializers
+        # of this repository too; the initializers re-planned over the projected
+        # facades below supersede them by path.
         cohort = tuple(
             {
                 plan.path: plan
@@ -388,7 +391,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     *(
                         plan
                         for plan in self.state.provider_plans or ()
-                        if plan.project != root
+                        if plan.project != root or contract.custom
                     ),
                     *lazy_result.value,
                 )

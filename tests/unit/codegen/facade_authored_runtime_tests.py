@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
-from typing import Literal
 
 import pytest
 
@@ -109,7 +108,7 @@ class TestsFlextInfraGeneratedRuntime:
             },
             eager_dunders={},
         )
-        width = u.Infra.native_tool_setting(
+        width: int = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
         with u.Infra.facade_source_project(root, project_roots=(root,)) as binding:
@@ -337,12 +336,15 @@ class TestsFlextInfraGeneratedRuntime:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("failed_stage", ["sources", "tooling"])
     def test_failed_planning_retains_only_a_completed_source_cohort(
         tmp_path: Path,
-        failed_stage: Literal["sources", "tooling"],
     ) -> None:
-        """Reject source cycles before retaining output for a later tooling failure."""
+        """A tooling failure retains the completed source cohort, unpublished.
+
+        Premise: projected import cycles are a declarative catalog finding
+        (``ban-cyclic-import``), not a planning failure, so the first planning
+        failure here is the invalid tooling configuration.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_standalone_workspace_manifest(root, root.name)
         model = u.Infra.facade_families()["m"]
@@ -380,15 +382,6 @@ class TestsFlextInfraGeneratedRuntime:
                 "u = ConsumerUtilities\n__all__ = ['ConsumerUtilities', 'u']\n"
             ),
         }
-        if failed_stage == "sources":
-            sources.update({
-                package / "cycle_first.py": (
-                    "from . import cycle_second\n__all__ = []\n"
-                ),
-                package / "cycle_second.py": (
-                    "from . import cycle_first\n__all__ = []\n"
-                ),
-            })
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
@@ -428,34 +421,30 @@ class TestsFlextInfraGeneratedRuntime:
             )
         )
         tm.that(outcome.failed, eq=True)
-        if failed_stage == "sources":
-            tm.that(outcome.error, has="projected runtime import cycle")
-            tm.that(outcome.files, eq=())
-        else:
-            tm.that(outcome.error, has="settings")
-            tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)
-            projected = {file.path: file for file in outcome.files}
-            tm.that(set(projected), has=facade)
-            tm.that(set(projected), has=barrel)
-            tm.that(set(projected), has=utility_facade)
-            tm.that(set(projected), has=package / c.Infra.INIT_PY)
+        tm.that(outcome.error, has="settings")
+        tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)
+        projected = {file.path: file for file in outcome.files}
+        tm.that(set(projected), has=facade)
+        tm.that(set(projected), has=barrel)
+        tm.that(set(projected), has=utility_facade)
+        tm.that(set(projected), has=package / c.Infra.INIT_PY)
+        tm.that(
+            projected[facade].before,
+            eq=next(state for state in originals if state.path == facade),
+        )
+        tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
+        with u.Infra.facade_source_project(
+            root,
+            declared_files=outcome.files,
+        ) as binding:
             tm.that(
-                projected[facade].before,
-                eq=next(state for state in originals if state.path == facade),
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=binding[0], sources=binding[1]
+                    )
+                ).encode(c.DEFAULT_ENCODING),
+                eq=projected[utility_facade].desired_content,
             )
-            tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
-            with u.Infra.facade_source_project(
-                root,
-                declared_files=outcome.files,
-            ) as binding:
-                tm.that(
-                    tm.not_none(
-                        u.Infra.render_utility_facade(
-                            package, project=binding[0], sources=binding[1]
-                        )
-                    ).encode(c.DEFAULT_ENCODING),
-                    eq=projected[utility_facade].desired_content,
-                )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod

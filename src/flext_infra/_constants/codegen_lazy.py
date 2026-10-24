@@ -146,8 +146,6 @@ class FlextInfraConstantsCodegenLazy:
     "Package name whose modules are governed fixture publication owners."
     LAZY_INIT_CONSTANTS_MARKER: ClassVar[str] = "Constants"
     "Class-name marker of the facade class whose bases declare facade parents."
-    LAZY_INIT_OWNER_ALIAS_PREFIX: ClassVar[str] = "_owner_"
-    "Prefix of the module alias binding an over-long owned child import."
 
     @unique
     class LazyInitScore(IntEnum):

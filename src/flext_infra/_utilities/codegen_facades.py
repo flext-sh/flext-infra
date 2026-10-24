@@ -856,25 +856,61 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         contents: t.MappingKV[Path, str],
         project: p.Infra.RopeProject,
     ) -> str:
-        """Retain direct component ownership in the generated MRO composition.
+        """Import composed family owners through the family package's lazy exports.
 
         Authored declarations and unrelated imports retain their syntax. The
         namespace rule catalog owns their architecture checks; generation only
-        preserves the discovered component imports. Re-exporting those imports
-        through a family barrel would make the facade depend on a second public
-        surface instead of its actual declaration owners.
+        rewires the component imports the family package initializer publishes,
+        so the facade imports ``pkg._family`` (its lazy ``__init__``), never a
+        per-module path.
 
         Returns:
             Generated composition carrying the canonical ownership marker.
 
         """
-        cls._declared_sources(
-            pkg_dir,
+        owners_dir = (
             pkg_dir
-            / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
-            contents=contents,
-            project=project,
+            / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
         )
+        sources, declarations, package_name = cls._declared_sources(
+            pkg_dir, owners_dir, contents=contents, project=project
+        )
+        family_package = f"{package_name}.{owners_dir.name}"
+        barrel = sources.get(family_package)
+        published = (
+            frozenset(
+                FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                    barrel[1]
+                )
+            )
+            if barrel is not None
+            else frozenset[str]()
+        )
+        owners = {
+            item.qualified_base: item.target
+            for item in declarations
+            if item.qualified_base in published
+        }
+        for node in ast.parse(source).body:
+            if not isinstance(node, ast.ImportFrom) or node.module is None:
+                continue
+            module = (
+                resolve_name(f"{'.' * node.level}{node.module}", package_name)
+                if node.level
+                else node.module
+            )
+            for alias in node.names:
+                if owners.get(alias.name) != module:
+                    continue
+                source = (
+                    RenameCommand(
+                        CodemodContext(full_package_name=package_name),
+                        old_name=f"{module}.{alias.name}",
+                        new_name=f"{family_package}.{alias.name}",
+                    )
+                    .transform_module(parse_module(source))
+                    .code
+                )
         source = cls._wrap_facade_imports(cls._merged_facade_imports(source))
         if source.startswith(c.Infra.AUTOGEN_HEADERS):
             return source
@@ -1755,8 +1791,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> list[m.Infra.SourceClassReference]:
         """Elect plain namespace providers independently of whole model publications.
 
+        Every declared plain class composes the namespace; a Pydantic model or a
+        class the namespace already publishes whole by alias never does.
+
         Returns:
-            Declared providers proven by nested class identity or existing bases.
+            The declared plain namespace providers.
 
         """
         facade, namespace = cls._facade_classes(
@@ -1806,26 +1845,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
             ):
                 continue
-            nested = tuple(
-                child.pyobject
-                for child in owner.get_scope().get_scopes()
-                if FlextInfraUtilitiesRopeRuntime.abstract_class(child.pyobject)
-            )
-            if any(
-                resolved is not None and resolved.get_object() is owner
-                for base in namespace.bases
-                for resolved in (
-                    FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                        scope, base.value if isinstance(base, ast.Subscript) else base
-                    ),
-                )
-            ) or any(
-                name in owner.get_attributes()
-                and owner.get_attributes()[name].get_object() is value
-                and any(value is child for child in nested)
-                for name, value in aliases
-            ):
-                components.append(declaration)
+            components.append(declaration)
         return components
 
     @staticmethod

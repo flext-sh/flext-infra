@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from tests.typings import TestsFlextInfraTypes, t
     from tests.utilities import TestsFlextInfraUtilities, u
     from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
+    from tests.utilities_conform import TestsFlextInfraUtilitiesConform
     from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
     from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
     from tests.utilities_fixture_project import (
@@ -52,6 +53,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
     "TestsFlextInfraUtilitiesCodegenMixin",
+    "TestsFlextInfraUtilitiesConform",
     "TestsFlextInfraUtilitiesDepsMixin",
     "TestsFlextInfraUtilitiesDocsFixtureMixin",
     "TestsFlextInfraUtilitiesGatesMixin",
@@ -94,6 +96,7 @@ install_lazy_exports(
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",
         "TestsFlextInfraUtilitiesCodegenMixin": ".utilities_codegen",
+        "TestsFlextInfraUtilitiesConform": ".utilities_conform",
         "TestsFlextInfraUtilitiesDepsMixin": ".utilities_deps",
         "TestsFlextInfraUtilitiesDocsFixtureMixin": ".utilities_fixture_docs",
         "TestsFlextInfraUtilitiesGatesMixin": ".utilities_gates",

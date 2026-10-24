@@ -26,7 +26,6 @@ from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooli
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
 
 
 class FlextInfraUtilitiesLazyInitRender:
@@ -103,7 +102,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 runtime_import_lines=cls._lazy_init_runtime_imports(helpers),
                 type_checking_lines="\n".join(
                     cls._lazy_init_type_checking(
-                        {**public, **plan.eager_dunders}, plan, first_party, model
+                        {**public, **plan.eager_dunders}, plan, first_party
                     )
                 ),
                 eager_binding_lines=cls._lazy_init_eager_bindings(plan, first_party),
@@ -197,24 +196,19 @@ class FlextInfraUtilitiesLazyInitRender:
     def _lazy_init_import(
         cls, indent: str, module: str, parts: t.StrSequence
     ) -> t.StrSequence:
-        """Emit one Ruff-canonical ``from`` import within the line length.
+        """Emit one Ruff-canonical ``from`` import.
+
+        Line length is the formatter's concern: an import that does not fit is
+        emitted in Ruff's parenthesized one-member-per-line form, even when the
+        owner line itself is longer than the configured width.
 
         Returns:
             The compact line, or one member per wrapped line.
-
-        Raises:
-            ValueError: If even the wrapped owner line exceeds the line length.
 
         """
         compact = f"{indent}from {module} import {', '.join(parts)}"
         if len(compact) <= cls.lazy_init_width():
             return (compact,)
-        if len(f"{indent}from {module} import (") > cls.lazy_init_width():
-            msg = (
-                f"Absolute import owner {module!r} exceeds Ruff line length "
-                f"{cls.lazy_init_width()}; select its canonical public package export."
-            )
-            raise ValueError(msg)
         return (
             f"{indent}from {module} import (",
             *(f"{indent}    {part}," for part in parts),
@@ -357,12 +351,11 @@ class FlextInfraUtilitiesLazyInitRender:
         public: t.LazyAliasMap,
         plan: m.Infra.LazyInitPlan,
         first_party: frozenset[str],
-        model: m.Infra.PythonModelRun,
     ) -> t.StrSequence:
         """Render the static import contract of the public exports.
 
-        A class alias imports its original class and binds the alias; an
-        owner line too long for Ruff binds through ``_owner_N`` aliases.
+        Every name is imported from the module that declares it, never
+        assigned: an initializer propagates and never declares.
 
         Returns:
             The ``if TYPE_CHECKING:`` block lines, empty without exports.
@@ -373,9 +366,7 @@ class FlextInfraUtilitiesLazyInitRender:
         )
         if not merged:
             return ()
-        occupied = {name for items in merged.values() for name, _ in items}
         lines = ["if TYPE_CHECKING:"]
-        aliases: list[str] = []
         previous: int | None = None
         for module in sorted(
             merged, key=lambda name: cls._lazy_init_section(name, first_party)
@@ -384,24 +375,10 @@ class FlextInfraUtilitiesLazyInitRender:
             if previous is not None and section != previous:
                 lines.append("")
             previous = section
-            items = merged[module]
-            if (
-                len(f"    from {module} import (") > cls.lazy_init_width()
-                and module.rpartition(".")[0] == plan.context.current_pkg
-                and all(attr for _, attr in items)
-            ):
-                lines.extend(
-                    cls._lazy_init_owned_child(module, items, plan, occupied, model)
-                )
-            else:
-                lines.extend(
-                    cls._lazy_init_module_lines(
-                        module, items, module_objects, model, aliases
-                    )
-                )
-        if aliases:
-            lines.extend(("", *aliases))
-        return lines if len(lines) > 1 else ()
+            lines.extend(
+                cls._lazy_init_module_lines(module, merged[module], module_objects)
+            )
+        return lines
 
     @classmethod
     def _lazy_init_module_lines(
@@ -409,101 +386,27 @@ class FlextInfraUtilitiesLazyInitRender:
         module: str,
         items: t.SequenceOf[t.StrPair],
         module_objects: frozenset[str],
-        model: m.Infra.PythonModelRun,
-        aliases: list[str],
     ) -> t.StrSequence:
         """Render one importing module's static imports.
 
         Returns:
-            The module-object imports, then the member import; class aliases
-            are appended to ``aliases``.
+            The module-object imports, then the member import.
 
         """
-        python = FlextInfraUtilitiesPythonModel
-        source = python.python_model_module(model, module)
         lines: list[str] = []
         parts: list[str] = []
         for name, attr in sorted(items, key=cls._lazy_init_item_key):
             if not attr:
                 lines.extend(cls._lazy_init_module_alias("    ", module, name))
-                continue
-            original = (
-                python.python_model_static_class_alias(source, attr)
-                if source is not None
-                else ""
-            )
-            imported = original if (original, original) in items else attr
-            if imported[:1].isupper() and name[:1].islower():
-                parts.append(imported)
-                aliases.append(f"    {name} = {imported}")
-            elif name in module_objects or imported != name:
-                parts.append(f"{imported} as {name}")
+            elif name in module_objects or attr != name:
+                parts.append(f"{attr} as {name}")
             else:
-                parts.append(imported)
+                parts.append(attr)
         if parts:
             lines.extend(
                 cls._lazy_init_import("    ", module, tuple(dict.fromkeys(parts)))
             )
         return lines
-
-    @classmethod
-    def _lazy_init_owned_child(
-        cls,
-        module: str,
-        items: t.SequenceOf[t.StrPair],
-        plan: m.Infra.LazyInitPlan,
-        occupied: set[str],
-        model: m.Infra.PythonModelRun,
-    ) -> t.StrSequence:
-        """Bind a child module's declarations through one ``_owner_N`` alias.
-
-        An ``_owner_N`` already bound to this module in the current
-        initializer is reused, so a second render is byte-stable.
-
-        Returns:
-            The module alias import followed by its static bindings.
-
-        Raises:
-            ValueError: If a binding is not declared by the module or cannot fit.
-
-        """
-        python = FlextInfraUtilitiesPythonModel
-        source = python.python_model_module(model, module)
-        blocked = set(occupied)
-        if model.source_project.source_query(plan.context.init_path, "isfile"):
-            init = python.python_model_module_at(
-                model, plan.context.init_path, plan.context.current_pkg
-            )
-            blocked.update(
-                name
-                for name in python.python_model_members(init)
-                if python.python_model_import_target(init, name) != module
-            )
-        prefix = c.Infra.LAZY_INIT_OWNER_ALIAS_PREFIX
-        index = 0
-        while f"{prefix}{index}" in blocked:
-            index += 1
-        alias = f"{prefix}{index}"
-        occupied.add(alias)
-        # Ruff separates the owner import from its bindings by one blank line.
-        lines = [*cls._lazy_init_module_alias("    ", module, alias), ""]
-        for name, attr in sorted(items, key=cls._lazy_init_item_key):
-            if source is None or not python.python_model_defines(source, attr):
-                msg = (
-                    "Owned child static export is not declared by its module: "
-                    f"{module}.{attr}"
-                )
-                raise ValueError(msg)
-            compact = f"    {name} = {alias}.{attr}"
-            lines.extend(
-                (compact,)
-                if len(compact) <= cls.lazy_init_width()
-                else (f"    {name} = (", f"        {alias}.{attr}", "    )")
-            )
-        if any(len(line) > cls.lazy_init_width() for line in lines):
-            msg = f"Owned child static binding exceeds Ruff line length: {module}"
-            raise ValueError(msg)
-        return tuple(lines)
 
     @classmethod
     def _lazy_init_exports_tuple(cls, names: t.StrSequence) -> str:

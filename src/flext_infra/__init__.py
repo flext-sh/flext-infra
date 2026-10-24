@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
-from flext_infra.__version__ import __version__
-
 if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
 
@@ -40,6 +38,7 @@ if TYPE_CHECKING:
         __license__,
         __title__,
         __url__,
+        __version__,
         __version_info__,
     )
     from flext_infra._base_payload import FlextInfraCommandPayloadMixin
@@ -54,7 +53,7 @@ if TYPE_CHECKING:
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
     from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-    from flext_infra.cli import FlextInfraCli, main
+    from flext_infra.cli import FlextInfraCli
     from flext_infra.constants import FlextInfraConstants, c
     from flext_infra.git import FlextInfraGitService
     from flext_infra.git_lanes import FlextInfraGitLanes
@@ -114,7 +113,6 @@ __all__: tuple[str, ...] = (
     "h",
     "infra",
     "m",
-    "main",
     "maintenance",
     "p",
     "r",
@@ -180,7 +178,6 @@ install_lazy_exports(
         "h": "flext_cli",
         "infra": ".api",
         "m": ".models",
-        "main": ".cli",
         "maintenance": ".maintenance",
         "p": ".protocols",
         "r": "flext_cli",
@@ -198,3 +195,6 @@ install_lazy_exports(
     }),
     public_exports=__all__,
 )
+
+if not TYPE_CHECKING:
+    from flext_infra.__version__ import __version__
