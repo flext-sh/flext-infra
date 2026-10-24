@@ -209,56 +209,6 @@ class FlextInfraStagedPackage:
         return r[dict[Path, str | None]].ok(updates)
 
     @classmethod
-    def seal_sources(
-        cls,
-        plan: m.Infra.StageSourcePlan,
-        updates: t.MappingKV[Path, str | None],
-    ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Close preparation with original evidence and immutable desired bytes.
-
-        Returns:
-            The prepared receipt without any new live source observations.
-
-        """
-        if set(updates) != set(plan.updates):
-            return r[m.Infra.StageSourcePlan].fail(
-                "prepared source destinations changed"
-            )
-        current = cls.source_inputs_current(plan)
-        if current.failure:
-            return r[m.Infra.StageSourcePlan].from_failure(current)
-        return r[m.Infra.StageSourcePlan].ok(
-            plan.model_copy(
-                update={
-                    "updates": MappingProxyType(dict(updates)),
-                    "modes": MappingProxyType(dict(plan.modes)),
-                    "prepared_hashes": tuple(
-                        (
-                            path,
-                            None
-                            if content is None
-                            else u.Cli.sha256_bytes(content.encode(c.DEFAULT_ENCODING)),
-                        )
-                        for path, content in sorted(updates.items())
-                    ),
-                    "declared_files": tuple(
-                        file.model_copy(
-                            update={
-                                "desired_content": (
-                                    None
-                                    if (content := updates[file.path]) is None
-                                    else content.encode(c.DEFAULT_ENCODING)
-                                ),
-                                "prepared_sources": None,
-                            }
-                        )
-                        for file in plan.declared_files
-                    ),
-                }
-            )
-        )
-
-    @classmethod
     def materialize_sources(
         cls,
         plan: m.Infra.StageSourcePlan,
@@ -278,38 +228,6 @@ class FlextInfraStagedPackage:
             if written.failure:
                 return r[bool].from_failure(written)
         return r[bool].ok(value=True)
-
-    @classmethod
-    def consume_sources(
-        cls,
-        plan: m.Infra.StageSourcePlan,
-        consumer: Callable[[Path], p.Result[bool]],
-    ) -> p.Result[bool]:
-        """Consume exact candidates read-only without nesting a live journal.
-
-        Returns:
-            The original consumer result while candidate and source guards hold.
-
-        """
-        current = cls.source_inputs_current(plan)
-        if current.failure:
-            return r[bool].from_failure(current)
-        with TemporaryDirectory(prefix="flext-source-admit-") as directory:
-            root = Path(directory)
-            materialized = cls.materialize_sources(plan, root)
-            if materialized.failure:
-                return r[bool].from_failure(materialized)
-            manifest = u.Cli.atomic_inventory_physical_tree(root)
-            if manifest.failure:
-                return r[bool].from_failure(manifest)
-            consumed = consumer(root)
-            if consumed.failure:
-                return r[bool].from_failure(consumed)
-            if not consumed.value:
-                return r[bool].fail("candidate consumer returned no acceptance")
-            return cls._candidate_tree_unchanged(root, manifest.value).flat_map(
-                lambda _: cls.source_inputs_current(plan)
-            )
 
     @staticmethod
     def _candidate_tree_unchanged(
@@ -942,38 +860,6 @@ class FlextInfraStagedPackage:
         if pinned.failure:
             return result_type.from_failure(pinned)
         return result_type.ok(pinned.value)
-
-    @classmethod
-    def source_inputs_current(cls, plan: m.Infra.StageSourcePlan) -> p.Result[bool]:
-        """Reject additions as well as changes to the pinned governed inventory.
-
-        Returns:
-            Success only while every original source path remains in the closure.
-
-        """
-        current = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
-        if current.failure:
-            return current
-        ancestry = cls._declared_ancestry_current(
-            plan.declared_files, plan.directory_publications
-        )
-        if ancestry.failure:
-            return r[bool].from_failure(ancestry)
-        try:
-            return u.Cli.atomic_verify_directory_queries(
-                plan.source_directories,
-                plan.source_query_topology,
-                publications=m.Cli.AtomicDirectoryQueryEffects(
-                    membership_policy=tuple(
-                        sorted(config.Infra.codegen.source_scan_ignored)
-                    )
-                ),
-                directory_publications=plan.directory_publications,
-            ).flat_map(lambda _: cls._provider_elections_current(plan))
-        except OSError as exc:
-            return r[bool].fail(str(exc), exception=exc)
-        except c.EXC_BROAD_RUNTIME as exc:
-            return r[bool].fail(str(exc), exception=exc)
 
     @staticmethod
     def _provider_elections_current(plan: m.Infra.StageSourcePlan) -> p.Result[bool]:

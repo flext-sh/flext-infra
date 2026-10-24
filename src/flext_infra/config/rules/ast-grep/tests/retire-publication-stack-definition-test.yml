@@ -1,0 +1,23 @@
+id: retire-publication-stack-definition
+valid:
+  - |
+    class Project:
+        def source_text(self, path):
+            return path.read_text()
+  - |
+    def source_state(path): ...
+invalid:
+  - |
+    class Project:
+        def source_consumption(self):
+            return self._consumption
+  - |
+    class Project:
+        @contextmanager
+        def source_capture(self):
+            yield
+  - |
+    class SourceConsumption:
+        pass
+  - |
+    def publication_current(request): ...
