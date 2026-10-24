@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
+from typing import override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
@@ -16,17 +16,22 @@ from flext_infra.codegen import (
     FlextInfraCodegenStaging,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
-    FlextInfraMiseArtifactsProcess,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
+)
+from flext_infra.codegen._codegen_transaction_phases_package_view import (
+    FlextInfraCodegenTransactionPhasesPackageViewMixin,
 )
 from flext_infra.codegen._codegen_transaction_recovery import (
     FlextInfraCodegenTransactionRecovery,
 )
 
 
-class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
+class FlextInfraCodegenTransactionPhases(
+    FlextInfraCodegenTransactionPhasesPackageViewMixin,
+    FlextInfraCodegenTransactionRecovery,
+):
     """Append dependent phases and directories, then commit the journal."""
 
     def append_phase_locked(
@@ -100,35 +105,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             ),
         )
 
-    class _PendingPhaseSpec(Protocol):
-        """Read-only pending-phase contract across the transaction mixins."""
-
-        @property
-        def phase(self) -> str: ...
-
-        @property
-        def changed(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @property
-        def all_plans(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @property
-        def staged_validator(
-            self,
-        ) -> (
-            Callable[
-                [
-                    m.Infra.CodegenTransactionSession,
-                    t.VariadicTuple[m.Infra.CodegenStagedFile],
-                ],
-                p.Result[m.Infra.CodegenTransactionSession],
-            ]
-            | None
-        ): ...
-
-        @property
-        def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
-
     class _PendingPhase(m.Infra.FrozenArbitrary):
         """Dependent-phase append request bound by the phase entry point."""
 
@@ -196,7 +172,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ],
-        pending: _PendingPhaseSpec,
+        pending: p.Infra.CodegenPendingPhase,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Stage and publish a phase only after its source authority is proven.
 
@@ -257,7 +233,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         prepared: m.Infra.CodegenTransactionSession,
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
         current: m.Infra.CodegenTransactionSession,
-        pending: _PendingPhaseSpec,
+        pending: p.Infra.CodegenPendingPhase,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Publish the verified phase and bind its proof into the session.
 
@@ -337,14 +313,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         checked = validator(current, staged)
         if checked.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    current.plan.layout,
-                    r[bool].fail(
-                        checked.error or "staged consumer failed",
-                        exception=checked.exception,
-                        error_code=checked.error_code,
-                        error_data=checked.error_data,
-                    ),
+                self._recover_step(
+                    current.plan.layout, checked, "staged consumer failed"
                 )
             )
         current = checked.value
@@ -354,290 +324,35 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if journal_barrier.failure:
             return result_type.from_failure(
-                self._recover_failure(
+                self._recover_step(
                     current.plan.layout,
-                    r[bool].fail(
-                        journal_barrier.error or "staged consumer authority changed",
-                        exception=journal_barrier.exception,
-                        error_code=journal_barrier.error_code,
-                        error_data=journal_barrier.error_data,
-                    ),
+                    journal_barrier,
+                    "staged consumer authority changed",
                 )
             )
         return result_type.ok(current)
 
-    def materialize_package_view_locked(
+    def _recover_step(
         self,
-        session: m.Infra.CodegenTransactionSession,
-        plan: m.Infra.StagePackagePlan,
-        publication: m.Infra.CodegenStagedFile,
-    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionSession, m.Infra.StagePackageView]]:
-        """Materialize only journal-declared runtime bytes before live publication.
-
-        Returns:
-            The durable session and its descriptor-authenticated package view.
-
-        """
-        result_type = r[
-            t.Pair[m.Infra.CodegenTransactionSession, m.Infra.StagePackageView]
-        ]
-        authorized = self._package_sources_authorized(session, plan)
-        if authorized.failure:
-            return result_type.from_failure(authorized)
-        prepared = self._package_view_inputs(session, plan, publication)
-        if prepared.failure:
-            return result_type.from_failure(prepared)
-        root, layouts, writes, desired = prepared.value
-        materialized = self._materialize_package_writes(session, writes)
-        if materialized.failure:
-            return result_type.from_failure(materialized)
-        view = self._package_view_snapshot(plan, publication, root, layouts, desired)
-        if view.failure:
-            return result_type.from_failure(view)
-        return result_type.ok((materialized.value, view.value))
-
-    @staticmethod
-    def _package_sources_authorized(
-        session: m.Infra.CodegenTransactionSession,
-        plan: m.Infra.StagePackagePlan,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        failure: p.FailureLike,
+        message: str,
     ) -> p.Result[bool]:
-        """Bind each pinned source to its existing immutable journal authority.
+        """Recover after one failed transaction step, naming it when it is silent.
 
         Returns:
-            Whether every source matches its recorded journal identity.
+            The step's native failure, worded by ``message`` when it carries no
+            error text, after recovery of this invocation's journal.
 
         """
-        result_type = r[bool]
-        for source in plan.inputs:
-            previous = next(
-                (item for item in session.journal.sources if item.path == source.path),
-                None,
-            )
-            if previous is None:
-                return result_type.fail(
-                    f"candidate source has no journal authority: {source.path}"
-                )
-            record = FlextInfraMiseArtifactsJournal.source_record(
-                previous.phase, source, previous
-            )
-            if record.failure:
-                return result_type.from_failure(record)
-            if record.value != previous:
-                return result_type.fail(
-                    f"candidate source differs from journal authority: {source.path}"
-                )
-        return result_type.ok(value=True)
-
-    @staticmethod
-    def _package_view_inputs(
-        session: m.Infra.CodegenTransactionSession,
-        plan: m.Infra.StagePackagePlan,
-        publication: m.Infra.CodegenStagedFile,
-    ) -> p.Result[
-        tuple[
-            Path,
-            t.VariadicTuple[m.Infra.RopeProjectLayout],
-            t.VariadicTuple[tuple[Path, bytes, int]],
-            bytes,
-        ]
-    ]:
-        """Bind package paths and ordered bytes to the authenticated replacement.
-
-        Returns:
-            The transaction root, relocated layouts, writes, and desired bytes.
-
-        """
-        result_type = r[
-            tuple[
-                Path,
-                t.VariadicTuple[m.Infra.RopeProjectLayout],
-                t.VariadicTuple[tuple[Path, bytes, int]],
-                bytes,
-            ]
-        ]
-        participant = next(
-            (
-                item
-                for item in session.plan.layout.file_participants
-                if item.root == publication.project
+        return self._recover_failure(
+            layout,
+            r[bool].fail(
+                failure.error or message,
+                exception=failure.exception,
+                error_code=failure.error_code,
+                error_data=failure.error_data,
             ),
-            None,
-        )
-        replacement = publication.replacement
-        if participant is None or replacement is None or replacement.content is None:
-            return result_type.fail(
-                "candidate package has no authenticated replacement participant"
-            )
-        root = participant.transaction_root / "package-view"
-        layouts = tuple(
-            layout.model_copy(
-                update={
-                    "project_root": root / layout.package_name,
-                    "src_dir": root
-                    / layout.package_name
-                    / layout.src_dir.relative_to(layout.project_root),
-                    "package_dir": root
-                    / layout.package_name
-                    / layout.package_dir.relative_to(layout.project_root),
-                    "init_path": root
-                    / layout.package_name
-                    / layout.init_path.relative_to(layout.project_root),
-                }
-            )
-            for layout in plan.layouts
-        )
-        writes: list[tuple[Path, bytes, int]] = []
-        for before in plan.inputs:
-            if before.content is None:
-                continue
-            if before.mode is None:
-                return result_type.fail(
-                    f"candidate source mode is unauthenticated: {before.path}"
-                )
-            original = next(
-                (
-                    layout
-                    for layout in plan.layouts
-                    if before.path.is_relative_to(layout.project_root)
-                ),
-                None,
-            )
-            if original is None:
-                continue
-            path = (
-                root
-                / original.package_name
-                / before.path.relative_to(original.project_root)
-            )
-            content = (
-                replacement.content
-                if before.path == publication.before.path
-                else before.content
-            )
-            writes.append((path, content, before.mode))
-        return result_type.ok((root, layouts, tuple(writes), replacement.content))
-
-    def _materialize_package_writes(
-        self,
-        session: m.Infra.CodegenTransactionSession,
-        writes: t.VariadicTuple[tuple[Path, bytes, int]],
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Journal directories and absent intentions before guarded package writes.
-
-        Returns:
-            The package session with its physical manifest durably recorded.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        directories = FlextInfraMiseArtifactsState.plan_directories(
-            session.plan.layout,
-            phase=c.Infra.CodegenStagedFilePhase.TRANSACTION,
-            requested=tuple(sorted({path.parent for path, _content, _mode in writes})),
-            disposition="temporary",
-        )
-        if directories.failure:
-            return result_type.from_failure(directories)
-        materialized = self._persist_directories(
-            session, "transaction", directories.value
-        )
-        if materialized.failure:
-            return result_type.from_failure(materialized)
-        session = m.Infra.CodegenTransactionSession(
-            plan=session.plan,
-            journal=materialized.value[0],
-            journal_state=materialized.value[1],
-            written_files=session.written_files,
-            published_files=session.published_files,
-            retained_files=session.retained_files,
-            issues=session.issues,
-            exception=session.exception,
-        )
-        intended = self._persist_staging_intents(session, "package-view", writes)
-        if intended.failure:
-            return result_type.from_failure(intended)
-        session = intended.value
-        intents = {item.before.path: item for item in session.journal.staging_intents}
-        for path, content, mode in writes:
-            written = FlextInfraMiseArtifactsProcess.write_new(
-                path, content, mode, intent=intents[path]
-            )
-            if written.failure:
-                return result_type.from_failure(written)
-        return self._persist_package_manifest(session)
-
-    def _persist_package_manifest(
-        self,
-        session: m.Infra.CodegenTransactionSession,
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Finalize physical receipts and CAS-persist the resulting manifest.
-
-        Returns:
-            The session carrying the exact durable package manifest journal.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        recorded = FlextInfraMiseArtifactsJournal.record_transaction_manifests(
-            session.plan.layout, session.journal
-        )
-        if recorded.failure:
-            return result_type.from_failure(recorded)
-        durable = self._write_journal(
-            session.plan.layout, recorded.value, expected=session.journal_state
-        )
-        if durable.failure:
-            return result_type.from_failure(durable)
-        session = m.Infra.CodegenTransactionSession(
-            plan=session.plan,
-            journal=recorded.value,
-            journal_state=durable.value,
-            written_files=session.written_files,
-            published_files=session.published_files,
-            retained_files=session.retained_files,
-            issues=session.issues,
-            exception=session.exception,
-        )
-        return result_type.ok(session)
-
-    @staticmethod
-    def _package_view_snapshot(
-        plan: m.Infra.StagePackagePlan,
-        publication: m.Infra.CodegenStagedFile,
-        root: Path,
-        layouts: t.VariadicTuple[m.Infra.RopeProjectLayout],
-        desired: bytes,
-    ) -> p.Result[m.Infra.StagePackageView]:
-        """Inventory the materialized tree and require the exact desired target.
-
-        Returns:
-            The physical package view with its authenticated target receipt.
-
-        """
-        result_type = r[m.Infra.StagePackageView]
-        inventory = u.Cli.atomic_inventory_physical_tree(root)
-        if inventory.failure:
-            return result_type.from_failure(inventory)
-        local = next(
-            layout for layout in layouts if layout.package_name == plan.package
-        )
-        target_path = local.package_dir / publication.before.path.name
-        target = next(
-            (entry for entry in inventory.value.entries if entry.path == target_path),
-            None,
-        )
-        if target is None or target.sha256 != FlextInfraMiseArtifactsFiles.digest(
-            desired
-        ):
-            return result_type.fail(
-                "candidate target differs from desired staged replacement"
-            )
-        return result_type.ok(
-            m.Infra.StagePackageView(
-                plan=plan,
-                root=root,
-                layouts=layouts,
-                manifest=inventory.value,
-                target=target,
-            )
         )
 
     def prepare_phase_staging_locked(
@@ -772,6 +487,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 writes.append((root / f"{index:06d}.replacement", content, mode))
         return result_type.ok((tuple(writes), tuple(sorted(directories))))
 
+    @override
     def _persist_staging_intents(
         self,
         session: m.Infra.CodegenTransactionSession,
@@ -907,15 +623,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         sources = FlextInfraCodegenPreconditions.phase_sources(phase, plans)
         if sources.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        sources.error or "invalid phase sources",
-                        exception=sources.exception,
-                        error_code=sources.error_code,
-                        error_data=sources.error_data,
-                    ),
-                ),
+                self._recover_step(layout, sources, "invalid phase sources")
             )
         source_states = tuple(source for _phase, source in sources.value)
         return result_type.ok((session, sources.value, source_states))
@@ -951,30 +659,16 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if staged.failure:
             return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        staged.error or f"cannot stage {phase} phase",
-                        exception=staged.exception,
-                        error_code=staged.error_code,
-                        error_data=staged.error_data,
-                    ),
-                ),
+                self._recover_step(layout, staged, f"cannot stage {phase} phase")
             )
         bound = FlextInfraMiseArtifactsState.bind_created_parents(
             session.journal.directories, staged.value
         )
         if bound.failure:
             return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        bound.error or f"cannot bind {phase} destination parents",
-                        exception=bound.exception,
-                        error_code=bound.error_code,
-                        error_data=bound.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    layout, bound, f"cannot bind {phase} destination parents"
+                )
             )
         return bound
 
@@ -1008,30 +702,18 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if extended.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        extended.error or f"cannot append {phase} journal phase",
-                        exception=extended.exception,
-                        error_code=extended.error_code,
-                        error_data=extended.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    layout, extended, f"cannot append {phase} journal phase"
+                )
             )
         manifested = FlextInfraMiseArtifactsJournal.record_transaction_manifests(
             layout, extended.value
         )
         if manifested.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        manifested.error or f"cannot register {phase} staging tree",
-                        exception=manifested.exception,
-                        error_code=manifested.error_code,
-                        error_data=manifested.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    layout, manifested, f"cannot register {phase} staging tree"
+                )
             )
         persisted = self._write_journal(
             layout,
@@ -1071,15 +753,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if published.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        published.error or f"cannot publish {phase} phase",
-                        exception=published.exception,
-                        error_code=published.error_code,
-                        error_data=published.error_data,
-                    ),
-                ),
+                self._recover_step(layout, published, f"cannot publish {phase} phase")
             )
         grouped = tuple(item for item in staged if item.dependency_group is not None)
         if grouped:
@@ -1172,15 +846,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if planned.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    r[bool].fail(
-                        planned.error or f"cannot plan {phase} directories",
-                        exception=planned.exception,
-                        error_code=planned.error_code,
-                        error_data=planned.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    session.plan.layout, planned, f"cannot plan {phase} directories"
+                )
             )
         if not planned.value:
             return result_type.ok(session)
@@ -1201,6 +869,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             ),
         )
 
+    @override
     def _persist_directories(
         self,
         session: m.Infra.CodegenTransactionSession,
@@ -1253,15 +922,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         extended = FlextInfraMiseArtifactsJournal.append_directories(journal, planned)
         if extended.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        extended.error or f"cannot append {phase} directories",
-                        exception=extended.exception,
-                        error_code=extended.error_code,
-                        error_data=extended.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    layout, extended, f"cannot append {phase} directories"
+                )
             )
         persisted = self._write_journal(
             layout,
@@ -1385,15 +1048,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         committed = FlextInfraMiseArtifactsJournal.commit(session.journal)
         if committed.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        committed.error or "cannot validate generation commit",
-                        exception=committed.exception,
-                        error_code=committed.error_code,
-                        error_data=committed.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    layout, committed, "cannot validate generation commit"
+                )
             )
         committed_state = self._write_journal(
             layout,
@@ -1402,15 +1059,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         if committed_state.failure:
             return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    r[bool].fail(
-                        committed_state.error or "cannot persist generation commit",
-                        exception=committed_state.exception,
-                        error_code=committed_state.error_code,
-                        error_data=committed_state.error_data,
-                    ),
-                ),
+                self._recover_step(
+                    layout, committed_state, "cannot persist generation commit"
+                )
             )
         return result_type.ok((committed.value, committed_state.value))
 
