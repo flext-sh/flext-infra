@@ -1,0 +1,44 @@
+id: rewire-typings-cst-runtime-operand-to-constants
+snapshots:
+  ok = isinstance(node, t.Infra.Cst.List | t.Infra.Cst.Tuple):
+    fixed: ok = isinstance(node, c.Infra.Cst.List | t.Infra.Cst.Tuple)
+    labels:
+    - source: t.Infra.Cst.List
+      style: primary
+      start: 22
+      end: 38
+    - source: isinstance
+      style: secondary
+      start: 5
+      end: 15
+    - source: isinstance(node, t.Infra.Cst.List | t.Infra.Cst.Tuple)
+      style: secondary
+      start: 5
+      end: 59
+    - source: (node, t.Infra.Cst.List | t.Infra.Cst.Tuple)
+      style: secondary
+      start: 15
+      end: 59
+    - source: t.Infra.Cst.List | t.Infra.Cst.Tuple
+      style: secondary
+      start: 22
+      end: 58
+  ok = isinstance(node, t.Infra.Cst.Name):
+    fixed: ok = isinstance(node, c.Infra.Cst.Name)
+    labels:
+    - source: t.Infra.Cst.Name
+      style: primary
+      start: 22
+      end: 38
+    - source: isinstance
+      style: secondary
+      start: 5
+      end: 15
+    - source: isinstance(node, t.Infra.Cst.Name)
+      style: secondary
+      start: 5
+      end: 39
+    - source: (node, t.Infra.Cst.Name)
+      style: secondary
+      start: 15
+      end: 39

@@ -16,7 +16,7 @@ from libcst.metadata import (
     QualifiedNameSource,
 )
 
-from flext_infra import t
+from flext_infra import c, t
 
 if TYPE_CHECKING:
     from collections.abc import Container
@@ -35,7 +35,7 @@ class FlextInfraUtilitiesQualifiedNames:
             The leftmost receiver node.
 
         """
-        while isinstance(node, t.Infra.Cst.Attribute):
+        while isinstance(node, c.Infra.Cst.Attribute):
             node = node.value
         return node
 
@@ -83,9 +83,9 @@ class FlextInfraUtilitiesQualifiedNames:
             A static dotted name, or ``None`` for a dynamic expression.
 
         """
-        if isinstance(node, t.Infra.Cst.Name):
+        if isinstance(node, c.Infra.Cst.Name):
             return node.value
-        if isinstance(node, t.Infra.Cst.Attribute):
+        if isinstance(node, c.Infra.Cst.Attribute):
             parent = FlextInfraUtilitiesQualifiedNames.dotted_name(node.value)
             return f"{parent}.{node.attr.value}" if parent else None
         return None
@@ -101,13 +101,13 @@ class FlextInfraUtilitiesQualifiedNames:
             The resulting ``cst.BaseExpression``.
 
         """
-        if not isinstance(value, t.Infra.Cst.List | t.Infra.Cst.Tuple):
+        if not isinstance(value, c.Infra.Cst.List | c.Infra.Cst.Tuple):
             return value
         return value.with_changes(
             elements=tuple(
                 element
                 for element in value.elements
-                if not isinstance(element.value, t.Infra.Cst.SimpleString)
+                if not isinstance(element.value, c.Infra.Cst.SimpleString)
                 or not isinstance(element.value.evaluated_value, str)
                 or element.value.evaluated_value not in names
             ),
@@ -126,12 +126,12 @@ class FlextInfraUtilitiesQualifiedNames:
         """
         targets = (
             tuple(target.target for target in node.targets)
-            if isinstance(node, t.Infra.Cst.Assign)
+            if isinstance(node, c.Infra.Cst.Assign)
             else (node.target,)
         )
         if (
             len(targets) != 1
-            or not isinstance(targets[0], t.Infra.Cst.Name)
+            or not isinstance(targets[0], c.Infra.Cst.Name)
             or targets[0].value != "__all__"
             or node.value is None
         ):
@@ -159,13 +159,15 @@ class FlextInfraUtilitiesQualifiedNames:
             else alias.with_changes(
                 comma=cst.Comma(whitespace_after=cst.SimpleWhitespace(" ")),
             )
-            if index < last_index and not isinstance(alias.comma, t.Infra.Cst.Comma)
+            if index < last_index and not isinstance(alias.comma, c.Infra.Cst.Comma)
             else alias
             for index, alias in enumerate(aliases)
         )
 
     @staticmethod
-    def rebinds_name_in_place(parent: p.AttributeProbe, node: t.Infra.Cst.CSTNode) -> bool:
+    def rebinds_name_in_place(
+        parent: p.AttributeProbe, node: t.Infra.Cst.CSTNode
+    ) -> bool:
         """Return whether ``parent`` spells ``node`` as a binding, not a reference.
 
         An import alias, an attribute's own ``attr``, and a keyword argument's
@@ -176,11 +178,11 @@ class FlextInfraUtilitiesQualifiedNames:
             Whether ``parent`` spells ``node`` as a binding, not a reference.
 
         """
-        if isinstance(parent, t.Infra.Cst.ImportAlias):
+        if isinstance(parent, c.Infra.Cst.ImportAlias):
             return True
-        if isinstance(parent, t.Infra.Cst.Attribute) and parent.attr is node:
+        if isinstance(parent, c.Infra.Cst.Attribute) and parent.attr is node:
             return True
-        return isinstance(parent, t.Infra.Cst.Arg) and parent.keyword is node
+        return isinstance(parent, c.Infra.Cst.Arg) and parent.keyword is node
 
     @classmethod
     def qualified_name_residue(
@@ -205,7 +207,7 @@ class FlextInfraUtilitiesQualifiedNames:
             @override
             def on_visit(self, node: t.Infra.Cst.CSTNode) -> bool:
                 names = tuple(self.get_metadata(QualifiedNameProvider, node, ()))
-                if isinstance(node, t.Infra.Cst.Attribute) and any(
+                if isinstance(node, c.Infra.Cst.Attribute) and any(
                     name.name in self.candidates for name in names
                 ):
                     names = tuple(

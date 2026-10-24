@@ -21,7 +21,7 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
@@ -48,7 +48,9 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             self.plan = plan
             self.positions = positions
 
-        def _qualified_names(self, node: t.Infra.Cst.CSTNode) -> frozenset[QualifiedName]:
+        def _qualified_names(
+            self, node: t.Infra.Cst.CSTNode
+        ) -> frozenset[QualifiedName]:
             """Verify the lexical receiver before trusting dotted import metadata.
 
             Returns:
@@ -56,7 +58,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
             """
             names = tuple(self.get_metadata(QualifiedNameProvider, node, ()))
-            if isinstance(node, t.Infra.Cst.Attribute) and any(
+            if isinstance(node, c.Infra.Cst.Attribute) and any(
                 name.name in self.plan.qualified_aliases
                 or any(
                     name.name == alias.rpartition(".")[0]
@@ -83,7 +85,9 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 )
             return frozenset(names)
 
-        def _alias_target(self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute) -> str | None:
+        def _alias_target(
+            self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute
+        ) -> str | None:
             """Require all possible bindings to agree before changing a reference.
 
             Returns:
@@ -94,7 +98,10 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
             """
             names = self._qualified_names(node)
-            if isinstance(node, t.Infra.Cst.Name) and node.value in self.plan.upstream_aliases:
+            if (
+                isinstance(node, c.Infra.Cst.Name)
+                and node.value in self.plan.upstream_aliases
+            ):
                 position = self.positions[node].start
                 if (position.line, position.column) in self.plan.preserved_reads:
                     return None
@@ -122,7 +129,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 and (
                     name.source is QualifiedNameSource.IMPORT
                     or (
-                        isinstance(node, t.Infra.Cst.Name)
+                        isinstance(node, c.Infra.Cst.Name)
                         and name.source is QualifiedNameSource.LOCAL
                         and name.name in self.plan.local_aliases
                     )
@@ -139,7 +146,9 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 raise ValueError(msg)
             return self._checked_target(node, targets.pop())
 
-        def _checked_target(self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute, target: str) -> str:
+        def _checked_target(
+            self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute, target: str
+        ) -> str:
             """Refuse a rename that would capture a different lexical destination.
 
             Returns:
@@ -150,7 +159,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 ValueError: If another binding shadows the alias destination.
 
             """
-            if isinstance(node, t.Infra.Cst.Attribute):
+            if isinstance(node, c.Infra.Cst.Attribute):
                 return target
             scope = self.get_metadata(ScopeProvider, node, None)
             if not isinstance(scope, Scope):
@@ -180,7 +189,9 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 raise ValueError(message)
             return target
 
-        def _require_module_access(self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute) -> None:
+        def _require_module_access(
+            self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute
+        ) -> None:
             """Refuse opaque escapes of modules whose alias exports are retiring.
 
             Raises:
@@ -197,16 +208,16 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             if not retired:
                 return
             parent = self.get_metadata(ParentNodeProvider, node)
-            if isinstance(parent, t.Infra.Cst.ImportAlias | t.Infra.Cst.ImportFrom):
+            if isinstance(parent, c.Infra.Cst.ImportAlias | c.Infra.Cst.ImportFrom):
                 return
-            if isinstance(parent, t.Infra.Cst.Attribute) and parent.value is node:
+            if isinstance(parent, c.Infra.Cst.Attribute) and parent.value is node:
                 return
             call = (
                 self.get_metadata(ParentNodeProvider, parent)
-                if isinstance(parent, t.Infra.Cst.Arg)
+                if isinstance(parent, c.Infra.Cst.Arg)
                 else None
             )
-            if isinstance(call, t.Infra.Cst.Call) and call.args[0] is parent:
+            if isinstance(call, c.Infra.Cst.Call) and call.args[0] is parent:
                 reflectors = self._qualified_names(call.func)
                 if reflectors and all(
                     name.source
@@ -232,7 +243,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                         attribute.evaluated_value
                         if isinstance(
                             attribute,
-                            t.Infra.Cst.SimpleString | t.Infra.Cst.ConcatenatedString,
+                            c.Infra.Cst.SimpleString | c.Infra.Cst.ConcatenatedString,
                         )
                         else None
                     )
@@ -274,8 +285,8 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
             if (
                 len(original_node.targets) == 1
-                and isinstance(original_node.targets[0].target, t.Infra.Cst.Name)
-                and isinstance(original_node.value, t.Infra.Cst.Name)
+                and isinstance(original_node.targets[0].target, c.Infra.Cst.Name)
+                and isinstance(original_node.value, c.Infra.Cst.Name)
                 and self.plan.local_aliases.get(
                     original_node.targets[0].target.value,
                 )
@@ -311,7 +322,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 FlextInfraUtilitiesQualifiedNames.dotted_name(original_node.module)
                 or "",
             )
-            if not rewrites or isinstance(updated_node.names, t.Infra.Cst.ImportStar):
+            if not rewrites or isinstance(updated_node.names, c.Infra.Cst.ImportStar):
                 return updated_node
             retained: list[t.Infra.Cst.ImportAlias] = []
             for imported in updated_node.names:

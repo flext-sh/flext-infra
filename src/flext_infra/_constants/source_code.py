@@ -11,12 +11,58 @@ import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
+import libcst
+
 if TYPE_CHECKING:
     from flext_infra import t
 
 
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
+
+    class Cst:
+        """libcst runtime classes for isinstance operands; annotations read t."""
+
+        AnnAssign = libcst.AnnAssign
+        Annotation = libcst.Annotation
+        Arg = libcst.Arg
+        AsName = libcst.AsName
+        Assign = libcst.Assign
+        AssignTarget = libcst.AssignTarget
+        Attribute = libcst.Attribute
+        AugAssign = libcst.AugAssign
+        BaseCompoundStatement = libcst.BaseCompoundStatement
+        BaseExpression = libcst.BaseExpression
+        BaseStatement = libcst.BaseStatement
+        Call = libcst.Call
+        ClassDef = libcst.ClassDef
+        Comma = libcst.Comma
+        ConcatenatedString = libcst.ConcatenatedString
+        Del = libcst.Del
+        DictComp = libcst.DictComp
+        FunctionDef = libcst.FunctionDef
+        GeneratorExp = libcst.GeneratorExp
+        If = libcst.If
+        Import = libcst.Import
+        ImportAlias = libcst.ImportAlias
+        ImportFrom = libcst.ImportFrom
+        ImportStar = libcst.ImportStar
+        IndentedBlock = libcst.IndentedBlock
+        Index = libcst.Index
+        Lambda = libcst.Lambda
+        List = libcst.List
+        ListComp = libcst.ListComp
+        Module = libcst.Module
+        Name = libcst.Name
+        ParamSpec = libcst.ParamSpec
+        Pass = libcst.Pass
+        SetComp = libcst.SetComp
+        SimpleStatementLine = libcst.SimpleStatementLine
+        SimpleString = libcst.SimpleString
+        Tuple = libcst.Tuple
+        TypeAlias = libcst.TypeAlias
+        TypeVar = libcst.TypeVar
+        TypeVarTuple = libcst.TypeVarTuple
 
     class MergeConflictControl(StrEnum):
         """Closed Git merge-control vocabulary."""

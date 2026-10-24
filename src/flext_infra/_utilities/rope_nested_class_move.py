@@ -56,7 +56,8 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             (
                 statement
                 for statement in owner.body.body
-                if isinstance(statement, t.Infra.Cst.ClassDef) and statement.name.value == inner
+                if isinstance(statement, c.Infra.Cst.ClassDef)
+                and statement.name.value == inner
             ),
             None,
         )
@@ -78,7 +79,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             raise ValueError(msg)
         reference = cstm.Attribute(value=cstm.Name(outer), attr=cstm.Name(inner))
         lifted = cstm.replace(member, reference, cst.Name(inner))
-        if not isinstance(lifted, t.Infra.Cst.ClassDef):
+        if not isinstance(lifted, c.Infra.Cst.ClassDef):
             msg = f"extracting {outer}.{inner} did not yield a class"
             raise TypeError(msg)
         used = cls._loaded_names(lifted) - {inner}
@@ -91,7 +92,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             reference,
             cst.Name(inner),
         )
-        if not isinstance(updated, t.Infra.Cst.Module):
+        if not isinstance(updated, c.Infra.Cst.Module):
             msg = f"extracting {outer}.{inner} did not yield a module"
             raise TypeError(msg)
         return (
@@ -105,17 +106,20 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             (
                 statement
                 for statement in module.body
-                if isinstance(statement, t.Infra.Cst.ClassDef) and statement.name.value == name
+                if isinstance(statement, c.Infra.Cst.ClassDef)
+                and statement.name.value == name
             ),
             None,
         )
-        if owner is None or not isinstance(owner.body, t.Infra.Cst.IndentedBlock):
+        if owner is None or not isinstance(owner.body, c.Infra.Cst.IndentedBlock):
             msg = f"top-level class {name} is not declared with a block body"
             raise ValueError(msg)
         return owner
 
     @staticmethod
-    def _is_docstring(statement: t.Infra.Cst.BaseStatement | t.Infra.Cst.BaseSmallStatement) -> bool:
+    def _is_docstring(
+        statement: t.Infra.Cst.BaseStatement | t.Infra.Cst.BaseSmallStatement,
+    ) -> bool:
         return cstm.matches(
             statement,
             cstm.SimpleStatementLine(
@@ -134,22 +138,25 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         attributes = {
             id(found.attr)
             for found in cstm.findall(node, cstm.Attribute())
-            if isinstance(found, t.Infra.Cst.Attribute)
+            if isinstance(found, c.Infra.Cst.Attribute)
         }
         return frozenset(
             found.value
             for found in cstm.findall(node, cstm.Name())
-            if isinstance(found, t.Infra.Cst.Name) and id(found) not in attributes
+            if isinstance(found, c.Infra.Cst.Name) and id(found) not in attributes
         ) - frozenset(dir(builtins))
 
     @staticmethod
-    def _import_statements(module: t.Infra.Cst.Module) -> tuple[t.Infra.Cst.SimpleStatementLine, ...]:
+    def _import_statements(
+        module: t.Infra.Cst.Module,
+    ) -> tuple[t.Infra.Cst.SimpleStatementLine, ...]:
         return tuple(
             statement
             for statement in module.body
-            if isinstance(statement, t.Infra.Cst.SimpleStatementLine)
+            if isinstance(statement, c.Infra.Cst.SimpleStatementLine)
             and all(
-                isinstance(item, t.Infra.Cst.Import | t.Infra.Cst.ImportFrom) for item in statement.body
+                isinstance(item, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom)
+                for item in statement.body
             )
         )
 
@@ -166,7 +173,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         for statement in module.body:
             if statement in imports:
                 continue
-            if isinstance(statement, t.Infra.Cst.ClassDef | t.Infra.Cst.FunctionDef):
+            if isinstance(statement, c.Infra.Cst.ClassDef | c.Infra.Cst.FunctionDef):
                 bound.add(statement.name.value)
                 continue
             bound.update(
@@ -176,7 +183,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
                     cstm.AssignTarget() | cstm.AnnAssign() | cstm.ImportAlias(),
                 )
                 for found in cstm.findall(target, cstm.Name())
-                if isinstance(found, t.Infra.Cst.Name)
+                if isinstance(found, c.Infra.Cst.Name)
             )
         return frozenset(bound)
 
@@ -246,21 +253,22 @@ class FlextInfraUtilitiesRopeNestedClassMove:
                 declared alias to narrow.
 
         """
-        if isinstance(statement, t.Infra.Cst.ImportFrom) and isinstance(
-            statement.names, t.Infra.Cst.ImportStar
+        if isinstance(statement, c.Infra.Cst.ImportFrom) and isinstance(
+            statement.names, c.Infra.Cst.ImportStar
         ):
             msg = "a star import cannot be narrowed for an extracted member"
             raise TypeError(msg)
-        if not isinstance(statement, t.Infra.Cst.Import | t.Infra.Cst.ImportFrom) or isinstance(
-            statement.names, t.Infra.Cst.ImportStar
-        ):
+        if not isinstance(
+            statement, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom
+        ) or isinstance(statement.names, c.Infra.Cst.ImportStar):
             return None
         aliases = tuple(
             alias
             for alias in statement.names
             if (
                 alias.asname.name.value
-                if alias.asname is not None and isinstance(alias.asname.name, t.Infra.Cst.Name)
+                if alias.asname is not None
+                and isinstance(alias.asname.name, c.Infra.Cst.Name)
                 else csth.get_full_name_for_node_or_raise(alias.name).split(".")[0]
             )
             in used

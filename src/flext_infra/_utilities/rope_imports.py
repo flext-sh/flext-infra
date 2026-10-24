@@ -1348,13 +1348,13 @@ class FlextInfraUtilitiesRopeImports:
 
         """
         line = parsed.body[0]
-        if not isinstance(line, t.Infra.Cst.SimpleStatementLine):
+        if not isinstance(line, c.Infra.Cst.SimpleStatementLine):
             msg = f"unsupported Rope import statement: {location}"
             raise TypeError(msg)
         imported_statement = line.body[0]
-        if not isinstance(imported_statement, t.Infra.Cst.ImportFrom) or isinstance(
+        if not isinstance(imported_statement, c.Infra.Cst.ImportFrom) or isinstance(
             imported_statement.names,
-            t.Infra.Cst.ImportStar,
+            c.Infra.Cst.ImportStar,
         ):
             msg = f"unsupported Rope import statement: {location}"
             raise TypeError(msg)

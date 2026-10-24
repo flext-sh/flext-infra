@@ -341,7 +341,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 TypeError: If unsupported import alias target.
 
             """
-            if not isinstance(asname.name, t.Infra.Cst.Name):
+            if not isinstance(asname.name, c.Infra.Cst.Name):
                 msg = f"unsupported import alias target: {type(asname.name).__name__}"
                 raise TypeError(msg)
             return asname.name.value
@@ -421,11 +421,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def visit_ImportFrom(self, node: t.Infra.Cst.ImportFrom) -> None:
 
             if (
-                isinstance(node.module, t.Infra.Cst.Name)
+                isinstance(node.module, c.Infra.Cst.Name)
                 and node.module.value == "__future__"
-                and not isinstance(node.names, t.Infra.Cst.ImportStar)
+                and not isinstance(node.names, c.Infra.Cst.ImportStar)
                 and any(
-                    isinstance(alias.name, t.Infra.Cst.Name)
+                    isinstance(alias.name, c.Infra.Cst.Name)
                     and alias.name.value == "annotations"
                     for alias in node.names
                 )
@@ -434,7 +434,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             bindings = self.bindings_by_module.get(self._import_module(node), {})
             if not bindings:
                 return
-            if isinstance(node.names, t.Infra.Cst.ImportStar):
+            if isinstance(node.names, c.Infra.Cst.ImportStar):
                 self.wildcard_names.update(bindings)
 
         def _resolves_bare_after_nesting(self, node: t.Infra.Cst.CSTNode) -> bool:
@@ -471,9 +471,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 None,
             )
             while current is not None:
-                if isinstance(current, t.Infra.Cst.Annotation | t.Infra.Cst.TypeAlias):
+                if isinstance(current, c.Infra.Cst.Annotation | c.Infra.Cst.TypeAlias):
                     in_annotation = True
-                elif isinstance(current, t.Infra.Cst.FunctionDef | t.Infra.Cst.Lambda):
+                elif isinstance(current, c.Infra.Cst.FunctionDef | c.Infra.Cst.Lambda):
                     # Decorators and defaults run in the enclosing scope; only
                     # the body is a function scope. Annotations are tracked
                     # separately because a nested class does not bind its name
@@ -484,20 +484,25 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                         return False
                 elif isinstance(
                     current,
-                    t.Infra.Cst.ListComp | t.Infra.Cst.SetComp | t.Infra.Cst.DictComp | t.Infra.Cst.GeneratorExp,
+                    c.Infra.Cst.ListComp
+                    | c.Infra.Cst.SetComp
+                    | c.Infra.Cst.DictComp
+                    | c.Infra.Cst.GeneratorExp,
                 ):
                     return False
-                elif isinstance(current, t.Infra.Cst.ClassDef) and child is current.body:
+                elif (
+                    isinstance(current, c.Infra.Cst.ClassDef) and child is current.body
+                ):
                     name = current.name.value
                     if in_annotation and name in self.definitions:
                         return False
                     return name in self.definitions or name in set(
                         self.definitions.values(),
                     )
-                elif isinstance(current, t.Infra.Cst.Module):
+                elif isinstance(current, c.Infra.Cst.Module):
                     # A moved module binding executes in the owner body.
                     return (
-                        isinstance(child, t.Infra.Cst.BaseStatement)
+                        isinstance(child, c.Infra.Cst.BaseStatement)
                         and self.member_name(child) in self.definitions
                     )
                 child = current
@@ -515,17 +520,20 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 resolves to a type parameter or a non-binding shape.
 
             """
-            if not isinstance(original_node, t.Infra.Cst.BaseExpression):
+            if not isinstance(original_node, c.Infra.Cst.BaseExpression):
                 return None
             root = original_node
-            while isinstance(root, t.Infra.Cst.Attribute):
+            while isinstance(root, c.Infra.Cst.Attribute):
                 root = root.value
             if self._type_parameter_root(root):
                 return None
             current = self.get_metadata(ParentNodeProvider, original_node, None)
-            while isinstance(current, t.Infra.Cst.Attribute | t.Infra.Cst.ImportAlias | t.Infra.Cst.AsName):
+            while isinstance(
+                current,
+                c.Infra.Cst.Attribute | c.Infra.Cst.ImportAlias | c.Infra.Cst.AsName,
+            ):
                 current = self.get_metadata(ParentNodeProvider, current, None)
-            if isinstance(current, t.Infra.Cst.Import | t.Infra.Cst.ImportFrom):
+            if isinstance(current, c.Infra.Cst.Import | c.Infra.Cst.ImportFrom):
                 return None
             expression = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node)
             if expression is None:
@@ -553,7 +561,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 if lexical is None or not lexical[expression]:
                     msg = f"unresolved native wildcard nesting reference: {expression}"
                     raise ValueError(msg)
-            if actual is None and isinstance(root, t.Infra.Cst.Name):
+            if actual is None and isinstance(root, c.Infra.Cst.Name):
                 lexical = self.get_metadata(ScopeProvider, root, None)
                 if (
                     lexical is not None
@@ -567,14 +575,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                     raise ValueError(msg)
 
         def _type_parameter_root(self, root: t.Infra.Cst.CSTNode) -> bool:
-            if not isinstance(root, t.Infra.Cst.Name):
+            if not isinstance(root, c.Infra.Cst.Name):
                 return False
             scope = self.get_metadata(ScopeProvider, root, None)
             # Native assignments distinguish type parameters from module aliases.
             return scope is not None and any(
                 isinstance(binding, Assignment)
                 and isinstance(
-                    binding.node, t.Infra.Cst.TypeVar | t.Infra.Cst.TypeVarTuple | t.Infra.Cst.ParamSpec
+                    binding.node,
+                    c.Infra.Cst.TypeVar
+                    | c.Infra.Cst.TypeVarTuple
+                    | c.Infra.Cst.ParamSpec,
                 )
                 for binding in scope[root.value]
             )
@@ -595,16 +606,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if (
                 isinstance(
                     parent,
-                    t.Infra.Cst.ClassDef
-                    | t.Infra.Cst.FunctionDef
-                    | t.Infra.Cst.TypeAlias
-                    | t.Infra.Cst.TypeVar
-                    | t.Infra.Cst.TypeVarTuple
-                    | t.Infra.Cst.ParamSpec,
+                    c.Infra.Cst.ClassDef
+                    | c.Infra.Cst.FunctionDef
+                    | c.Infra.Cst.TypeAlias
+                    | c.Infra.Cst.TypeVar
+                    | c.Infra.Cst.TypeVarTuple
+                    | c.Infra.Cst.ParamSpec,
                 )
                 and parent.name is original_node
             ) or (
-                isinstance(parent, t.Infra.Cst.AssignTarget | t.Infra.Cst.AnnAssign)
+                isinstance(parent, c.Infra.Cst.AssignTarget | c.Infra.Cst.AnnAssign)
                 and parent.target is original_node
             ):
                 return updated_node
@@ -633,7 +644,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             updated_node: t.Infra.Cst.ImportFrom,
         ) -> t.Infra.Cst.BaseSmallStatement | t.Infra.Cst.RemovalSentinel:
 
-            if isinstance(updated_node.names, t.Infra.Cst.ImportStar):
+            if isinstance(updated_node.names, c.Infra.Cst.ImportStar):
                 return updated_node
             aliases: list[t.Infra.Cst.ImportAlias] = []
             seen: set[t.Pair[str, str]] = set()
@@ -701,9 +712,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         """
         targets: t.SequenceOf[t.Infra.Cst.BaseAssignTargetExpression] = ()
-        if isinstance(statement, t.Infra.Cst.AnnAssign):
+        if isinstance(statement, c.Infra.Cst.AnnAssign):
             targets = [statement.target]
-        elif isinstance(statement, t.Infra.Cst.Assign):
+        elif isinstance(statement, c.Infra.Cst.Assign):
             targets = [item.target for item in statement.targets]
         return tuple(targets)
 
@@ -715,18 +726,20 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             The class, function or single-target binding name, else ``None``.
 
         """
-        if isinstance(node, t.Infra.Cst.ClassDef | t.Infra.Cst.FunctionDef):
+        if isinstance(node, c.Infra.Cst.ClassDef | c.Infra.Cst.FunctionDef):
             return node.name.value
-        if not isinstance(node, t.Infra.Cst.SimpleStatementLine) or len(node.body) != 1:
+        if not isinstance(node, c.Infra.Cst.SimpleStatementLine) or len(node.body) != 1:
             return None
         statement = node.body[0]
-        if isinstance(statement, t.Infra.Cst.TypeAlias):
+        if isinstance(statement, c.Infra.Cst.TypeAlias):
             return statement.name.value
         targets = cls._assignment_targets(statement)
         if (
             len(targets) != 1
-            or not isinstance(targets[0], t.Infra.Cst.Name)
-            or (isinstance(statement, t.Infra.Cst.AnnAssign) and statement.value is None)
+            or not isinstance(targets[0], c.Infra.Cst.Name)
+            or (
+                isinstance(statement, c.Infra.Cst.AnnAssign) and statement.value is None
+            )
         ):
             return None
         return targets[0].value

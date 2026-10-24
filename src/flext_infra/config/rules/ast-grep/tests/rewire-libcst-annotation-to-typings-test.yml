@@ -1,0 +1,24 @@
+id: rewire-libcst-annotation-to-typings
+# `valid` MUST NOT match: a call, a runtime operand, the alias already read, or
+# a `cst` that is not the libcst module binding.
+valid:
+  - |
+    import libcst as cst
+    tree = cst.parse_module(source)
+  - |
+    import libcst as cst
+    ok = isinstance(node, cst.Name)
+  - |
+    from flext_infra import t
+    def leaf(node: t.Infra.Cst.CSTNode) -> str: ...
+  - |
+    cst = load()
+    def leaf(node: cst.Node) -> str: ...
+# `invalid` MUST match: a libcst class in an annotation position.
+invalid:
+  - |
+    import libcst as cst
+    def leaf(node: cst.CSTNode) -> str: ...
+  - |
+    import libcst as cst
+    def leaf(node: cst.Name | None) -> cst.BaseExpression: ...

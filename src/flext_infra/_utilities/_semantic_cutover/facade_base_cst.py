@@ -10,7 +10,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             return updated_node.with_changes(
                 bases=[
                     base.with_changes(value=cst.Name(self.owner))
-                    if isinstance(base.value, t.Infra.Cst.Name)
+                    if isinstance(base.value, c.Infra.Cst.Name)
                     and base.value.value == self.local
                     else base
                     for base in updated_node.bases
@@ -102,8 +102,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             if (
                 self.depth
                 or original_node.relative
-                or isinstance(original_node.names, t.Infra.Cst.ImportStar)
-                or isinstance(updated_node.names, t.Infra.Cst.ImportStar)
+                or isinstance(original_node.names, c.Infra.Cst.ImportStar)
+                or isinstance(updated_node.names, c.Infra.Cst.ImportStar)
                 or FlextInfraUtilitiesQualifiedNames.dotted_name(
                     original_node.module,
                 )
@@ -134,8 +134,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             retained: list[t.Infra.Cst.ImportAlias] = []
             if isinstance(
                 original_node.names,
-                t.Infra.Cst.ImportStar,
-            ) or isinstance(updated_node.names, t.Infra.Cst.ImportStar):
+                c.Infra.Cst.ImportStar,
+            ) or isinstance(updated_node.names, c.Infra.Cst.ImportStar):
                 return []
             for original, updated in zip(
                 original_node.names,
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
                         original.asname.name,
                     )
                     if original.asname is not None
-                    and isinstance(original.asname.name, t.Infra.Cst.Name)
+                    and isinstance(original.asname.name, c.Infra.Cst.Name)
                     else name
                 )
                 if name != self.imported or bound != self.local:
@@ -172,10 +172,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             # implicit alias of its facade class for annotations to resolve.
             if (
                 self.depth
-                or not isinstance(original_node.target, t.Infra.Cst.Name)
+                or not isinstance(original_node.target, c.Infra.Cst.Name)
                 or original_node.target.value
                 != (self.local if self.local_rebound else self.imported)
-                or not isinstance(original_node.value, t.Infra.Cst.Name)
+                or not isinstance(original_node.value, c.Infra.Cst.Name)
                 or original_node.value.value != self.facade
             ):
                 return updated_node

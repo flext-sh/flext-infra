@@ -112,7 +112,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 own_class = (
                     module == self.context.full_module_name
                     and isinstance(assignment, Assignment)
-                    and isinstance(assignment.node, t.Infra.Cst.ClassDef)
+                    and isinstance(assignment.node, c.Infra.Cst.ClassDef)
                     and assignment.node.name.value == receiver
                 )
                 if not own_class and (
@@ -150,7 +150,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             module, receiver, member = target
             if (
                 receiver != c.Infra.FacadeFamily.U
-                or not isinstance(node.value, t.Infra.Cst.Name)
+                or not isinstance(node.value, c.Infra.Cst.Name)
                 or scope[receiver]
             ):
                 return target

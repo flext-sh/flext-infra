@@ -206,7 +206,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             end = module.lines.get_line_start(region.end.line) + region.end.column
             code = (
                 node.decorators[0]
-                if isinstance(node, t.Infra.Cst.FunctionDef | t.Infra.Cst.ClassDef) and node.decorators
+                if isinstance(node, c.Infra.Cst.FunctionDef | c.Infra.Cst.ClassDef)
+                and node.decorators
                 else node
             )
             code_start = module.lines.get_line_start(positions[code].start.line)
@@ -289,7 +290,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         declaration = next(
             item
             for item in wrapper.module.body
-            if isinstance(item, t.Infra.Cst.ClassDef)
+            if isinstance(item, c.Infra.Cst.ClassDef)
             and positions[item].start.line == node.lineno
         )
         member = declaration.body.body[0]
@@ -587,7 +588,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             if Path(resource.real_path).name == "conftest.py"
             else frozenset(definitions),
             composition=not any(
-                isinstance(node, t.Infra.Cst.ClassDef) and node.name.value == owner_name
+                isinstance(node, c.Infra.Cst.ClassDef) and node.name.value == owner_name
                 for node in wrapper.module.body
             ),
         )

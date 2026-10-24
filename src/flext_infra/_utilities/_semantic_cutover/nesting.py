@@ -1642,15 +1642,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         facade_cst = next(
             node
             for node in parsed.body
-            if isinstance(node, t.Infra.Cst.ClassDef) and node.name.value == site.facade.name
+            if isinstance(node, c.Infra.Cst.ClassDef)
+            and node.name.value == site.facade.name
         )
-        if not isinstance(facade_cst.body, t.Infra.Cst.IndentedBlock):
+        if not isinstance(facade_cst.body, c.Infra.Cst.IndentedBlock):
             msg = "namespace facade requires an indented declaration"
             raise TypeError(msg)
         return next(
             node
             for node in facade_cst.body.body
-            if isinstance(node, t.Infra.Cst.ClassDef) and node.name.value == child.name
+            if isinstance(node, c.Infra.Cst.ClassDef) and node.name.value == child.name
         )
 
     @staticmethod
