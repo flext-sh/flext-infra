@@ -392,7 +392,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             if inputs.failure:
                 return result_type.from_failure(inputs)
         projected.update((plan.path, plan) for plan in exports.value.files)
-        source_states = inputs.value
         planned = tuple(projected.values())
         publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(

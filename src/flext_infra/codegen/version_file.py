@@ -20,9 +20,7 @@ from typing import TYPE_CHECKING, override
 from flext_core.__version__ import FlextVersion
 
 from flext_infra import c, config, m, r, u
-from flext_infra.codegen import (
-    FlextInfraCodegenExecutionBase,
-)
+from flext_infra.codegen import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from flext_infra import p, t

@@ -207,32 +207,23 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(own.read_bytes(), eq=before)
 
     @staticmethod
-    def test_make_bootstrap_publishes_only_its_actual_surface_receipt(
+    def test_make_bootstrap_check_is_repeatable_and_read_only(
         infra_git_repo: Path,
     ) -> None:
-        """Init qualifies changed and unchanged Make output without full gen."""
+        """Init qualifies unchanged Make output without full gen or effects."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
+        makefile = root / c.Infra.MAKEFILE_FILENAME
         for _ in range(2):
-            before = tm.ok(
-                u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-            )
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(makefile, required=True))
             tm.ok(
                 FlextInfraCodegenMakeBootstrap(
                     repository_root=root,
                     check_only=True,
                 ).execute(),
             )
-            tm.that(
-                tm.ok(
-                    u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-                ),
-                eq=before,
-            )
+            tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
             rejected = infra.codegen_conform(
                 u.Tests.conform_request(
                     root,
@@ -245,147 +236,28 @@ class TestsFlextInfraCodegenConformPublicSurface:
             tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
 
     @staticmethod
-    @pytest.mark.parametrize("drift", ["output", "source"])
-    def test_bootstrap_check_rejects_drift_without_republishing(
+    def test_bootstrap_check_rejects_output_drift_without_republishing(
         infra_git_repo: Path,
-        drift: str,
     ) -> None:
-        """Observational bootstrap rejects changed source and destination states."""
+        """Observational bootstrap rejects a drifted destination and keeps it."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        _, project_layer, _ = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        if drift == "source":
-            project_layer.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.yaml_dump(project_layer, {"Infra": {"codegen": {}}}))
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        if drift == "output":
-            target = root / c.Infra.MAKEFILE_FILENAME
-            content = target.read_bytes()
-        else:
-            captured = tuple(
-                source
-                for source in tm.ok(u.Infra.load_codegen_inputs(root)).sources
-                if source.path == project_layer
-            )
-            tm.that(len(captured), eq=1)
-            source = captured[0]
-            target = source.path
-            content = tm.not_none(source.content)
-        target.write_bytes(content + b"\n# publication drift\n")
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
+        target = root / c.Infra.MAKEFILE_FILENAME
+        target.write_bytes(target.read_bytes() + b"\n# publication drift\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         result = FlextInfraCodegenMakeBootstrap(
             repository_root=root,
             check_only=True,
         ).execute()
         tm.ok(result.failure)
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
 
     @staticmethod
-    def test_bootstrap_check_rejects_a_newly_created_optional_layer(
-        infra_git_repo: Path,
-    ) -> None:
-        """A declared absent layer becoming valid input invalidates publication."""
-        root = infra_git_repo
-        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        tm.fail(local_layer.exists())
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        local_layer.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
-
-        observed = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
-        tm.ok(observed.failure)
-
-    @staticmethod
-    def test_bootstrap_check_authenticates_imported_template_resources(
-        infra_git_repo: Path,
-        tmp_path: Path,
-    ) -> None:
-        """A consumed private Jinja import invalidates its read-only receipt."""
-        root = infra_git_repo
-        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        entry = next(
-            entry
-            for entry in codegen.templates.entries
-            if entry.destination == c.Infra.MAKEFILE_FILENAME
-        )
-        templates = tmp_path / "private-templates"
-        shutil.copytree(u.Infra.codegen_templates_root(codegen), templates)
-        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        local_layer.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                local_layer,
-                {"Infra": {"codegen": {"templates": {"root": str(templates)}}}},
-            ),
-        )
-        source = templates / tm.not_none(entry.source)
-        imported = tuple(
-            state
-            for state in tm.ok(u.Cli.template_capture_sources((source,)))
-            if state.path != source
-        )
-        tm.ok(bool(imported))
-        resource = imported[0]
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        resource.path.write_bytes(
-            tm.not_none(resource.content) + b"\n{# imported resource drift #}\n",
-        )
-
-        observed = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
-        tm.ok(observed.failure)
-
-    @staticmethod
-    def test_complete_fleet_receipt_covers_the_observed_root_subset(
+    def test_complete_fleet_apply_reaches_a_check_fixed_point(
         installed_artifact_consumer: Path,
     ) -> None:
-        """Complete ALL publication proves SELF without re-planning or effects."""
+        """Complete ALL publication leaves ALL and SELF checks without effects."""
         root = installed_artifact_consumer
         TestsFlextInfraConformSupport.standalone_workspace(root)
         declared = u.Tests.conform_request(
@@ -398,41 +270,12 @@ class TestsFlextInfraCodegenConformPublicSurface:
             declared.model_dump_json(),
         )
         tm.ok(infra.codegen_conform(request))
-        repeated = tm.ok(
-            FlextInfraCodegenConformExecute(
-                repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    request=request,
-                ),
-            ).plan(request),
-        )
-        matches = tuple(
-            file
-            for file in repeated.files
-            if file.path == root / c.Infra.MAKEFILE_FILENAME
-        )
-        tm.that(len(matches), eq=1)
-        tm.ok(matches[0].desired_content is not None)
-        receipt_path = (
-            tm.ok(u.Infra.refactor_report_evidence_root(root))
-            / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
-            tm.not_none(before.content),
-        )
-        tm.that(
-            tuple(output.path for batch in receipt.batches for output in batch.outputs),
-            has=root / c.Infra.MAKEFILE_FILENAME,
-        )
+        before = TestsFlextInfraConformSupport.project_tree(root)
         for scope in (
             c.Infra.CodegenConformScope.ALL,
             c.Infra.CodegenConformScope.SELF,
         ):
-            tm.ok(
+            checked = tm.ok(
                 infra.codegen_conform(
                     u.Tests.conform_request(
                         root,
@@ -442,10 +285,8 @@ class TestsFlextInfraCodegenConformPublicSurface:
                     ),
                 ),
             )
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
+            tm.that(checked.written_files, eq=())
+        tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
 
     @staticmethod
     @pytest.mark.parametrize("marker", ["<<<<<<< HEAD", "=======", ">>>>>>> incoming"])
@@ -724,12 +565,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
             c.Infra.CodegenConformSurface.MAKEFILE,
         )
         before = TestsFlextInfraConformSupport.project_tree(root)
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        receipt_before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
         route = next(
             route
             for route in FlextInfraCodegenRoutes.codegen_routes()
@@ -743,11 +578,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         tm.ok(route.handler(request))
         tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
-        if mode is c.Infra.CodegenConformMode.CHECK:
-            tm.that(
-                tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-                eq=receipt_before,
-            )
 
     @staticmethod
     def test_unchanged_pyproject_apply_uses_the_authenticated_noop_path(

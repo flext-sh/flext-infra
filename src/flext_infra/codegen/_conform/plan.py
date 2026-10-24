@@ -246,7 +246,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             if rendered.failure:
                 return result_type.from_failure(rendered)
-            inputs, directories, topology = consumed_states()
+            inputs, _directories, _topology = consumed_states()
         file = self.file_plan(
             root,
             destination.relative_to(root).as_posix(),

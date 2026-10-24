@@ -40,10 +40,10 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         tm.that(u.Infra.module_export_names_source(source), eq=expected)
 
     @staticmethod
-    def test_authenticated_publication_reuses_syntax_and_records_each_consumption(
+    def test_publication_policy_reuses_unchanged_syntax(
         tmp_path: Path,
     ) -> None:
-        """An unchanged declaration parses once without losing its source receipt."""
+        """An unchanged declaration parses once across repeated policy reads."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
         nested = package / "nested"
         nested.mkdir(parents=True)
@@ -58,16 +58,15 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        profile = Profile()
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
             repeated = original
+            profile.enable()
             for _ in range(3):
                 repeated = u.Infra.publication_policy(source, rope_project=project)
+            profile.disable()
             tm.ok(repeated == original)
-            tm.that(
-                any(state.path == source for state in consumption.receipt().inputs),
-                eq=True,
-            )
         output = io.StringIO()
         parser = f"{ast.__file__}:{ast.parse.__code__.co_firstlineno}(parse)"
         Stats(profile, stream=output).print_stats(re.escape(parser))
@@ -88,7 +87,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         source = package / "component.py"
         source.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
         original_time = source.stat()
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(
                 u.Infra.publication_policy(
                     source, rope_project=project
@@ -100,7 +99,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             encoding=c.DEFAULT_ENCODING,
         )
         os.utime(source, ns=(original_time.st_atime_ns, original_time.st_mtime_ns))
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(
                 u.Infra.publication_policy(
                     source, rope_project=project
@@ -118,7 +117,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         package.mkdir(parents=True)
         source = package / f"module{suffix}"
         source.write_text("", encoding=c.DEFAULT_ENCODING)
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(u.Infra.project_root(source, source_project=project), eq=tmp_path)
 
     @staticmethod
@@ -144,7 +143,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             )
         expected = nested if nested_manifest else tmp_path
         tm.that(u.Infra.project_root(source), eq=expected)
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(u.Infra.project_root(source, source_project=project), eq=expected)
 
     @staticmethod
@@ -165,7 +164,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             layout = u.Infra.layout(tmp_path, rope_project=project)
             tm.that(layout, none=False)
             implicit = u.Infra.publication_policy(source, rope_project=project)

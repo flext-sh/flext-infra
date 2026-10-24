@@ -239,7 +239,7 @@ class FlextInfraUtilitiesDocsContract:
         project_root: Path,
         rendered_contract: t.JsonMapping,
     ) -> t.JsonMapping:
-        """Bind rendered API analysis to the current authenticated pyproject bytes.
+        """Bind rendered API analysis to the current pyproject bytes.
 
         Returns:
             The resulting ``t.JsonMapping``.
@@ -341,8 +341,7 @@ class FlextInfraUtilitiesDocsContract:
         """Write generated content only when needed and allowed.
 
         This imperative helper belongs to non-generation docs fixers. Generated
-        documentation uses :meth:`docs_file_plan` and is published only by the
-        enclosing codegen transaction.
+        documentation uses :meth:`docs_file_plan` and the shared codegen publisher.
 
         Returns:
             The resulting ``m.Infra.GeneratedFile``.

@@ -516,13 +516,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
 
         """
-        validation_context: m.Infra.ArtifactResourceValidationContext | None = None
         if isinstance(rendered, m.Infra.CodegenArtifactComposition):
             captured = u.Infra.unique_states((*source_states, *rendered.source_states))
             if captured.failure:
                 return r[m.Infra.CodegenFilePlan].from_failure(captured)
-            source_states = captured.value
-            validation_context = rendered.validation_context
             rendered = rendered.rendered
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()

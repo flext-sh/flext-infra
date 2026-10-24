@@ -47,24 +47,17 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             if prepared.failure:
                 return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(prepared)
             bundle = prepared.value
-            states = {
-                state.path: state
-                for state in bundle.source_states
-                if state.content is not None
-            }
             elected: list[
                 tuple[
                     m.Infra.DocScope,
                     tuple[m.Cli.AtomicFileState, ...],
                 ]
             ] = []
-            declarations: list[m.Cli.AtomicFileState] = []
             # Every ownership boundary is checked before the first repair effect.
             for scoped in bundle.scopes:
                 scope = scoped.scope
                 loaded = u.Infra.load_codegen_inputs(scope.repository_root).unwrap()
-                declarations.extend(loaded.sources)
-                selected = u.Infra.docs_scope_markdown_paths(scope, tuple(states))
+                selected = u.Infra.iter_scope_markdown_files(scope)
                 managed = {
                     scope.repository_root / item.path: item
                     for item in loaded.spec.managed_file_specs
@@ -83,7 +76,9 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                 elected.append((
                     scope,
                     tuple(
-                        states[path]
+                        u.Cli.atomic_read_binary_file_state(
+                            path, required=True
+                        ).unwrap()
                         for path in selected
                         if path not in generated and path not in managed
                     ),
@@ -91,10 +86,6 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             plans = tuple(
                 (scope, *self._plan_scope(scope, sources)) for scope, sources in elected
             )
-            u.Cli.atomic_verify_binary_file_states((
-                *bundle.source_states,
-                *declarations,
-            )).unwrap()
             reports: list[m.Infra.DocsPhaseReport] = []
             for scope, files, items in plans:
                 for file in files:
@@ -102,7 +93,6 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                         if file.desired_content is None:
                             msg = f"docs repair has no proposed bytes: {file.path}"
                             raise ValueError(msg)
-                        u.Cli.atomic_verify_binary_file_states(declarations).unwrap()
                         u.Cli.atomic_write_binary_file_guarded(
                             file.before,
                             file.desired_content,
@@ -138,13 +128,13 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         tuple[m.Infra.SemanticFilePlan, ...],
         tuple[m.Infra.DocsPhaseItemModel, ...],
     ]:
-        """Compose authored repairs against captured bytes without publication.
+        """Compose authored repairs against read bytes without publication.
 
         Returns:
             The planned file repairs and their phase items.
 
         Raises:
-            FileNotFoundError: When a captured source has no content.
+            FileNotFoundError: When a selected source has no content.
 
         """
         planned: list[m.Infra.SemanticFilePlan] = []

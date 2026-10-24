@@ -538,7 +538,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 applied.setdefault(path, []).append(
                     "completed native ownership transfer"
                 )
-        inputs = (
+        (
             *epoch.snapshot.states,
             *(state for rule in rules for state in rule.source_states),
         )

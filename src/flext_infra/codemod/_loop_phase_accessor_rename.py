@@ -14,6 +14,7 @@ from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraAccessorOriginResolver,
 )
+from flext_infra.transformers import FlextInfraSemanticPublication
 
 
 class FlextInfraAccessorRenamePhase(
@@ -27,10 +28,6 @@ class FlextInfraAccessorRenamePhase(
 
     name: str = "accessor-rename"
 
-    def __init__(self, *, source_preview: p.Infra.SourcePreview) -> None:
-        """Receive the same authenticated candidate capability as the public verb."""
-        self.source_preview = source_preview
-
     def apply(
         self,
         root: Path,
@@ -43,76 +40,28 @@ class FlextInfraAccessorRenamePhase(
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
-        states = tuple(
-            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        sources = {
+            path: path.read_text(encoding=c.DEFAULT_ENCODING)
             for path in FlextInfraCodemodSemanticApply.source_inventory(root, preflight)
-        )
-        planned = self.plan_edits(
-            root,
-            preflight,
-            rope_workspace,
-            sources={
-                state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in states
-                if state.content is not None
-            },
-            receipt=m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC, files=(), inputs=states
-            ),
-        )
+        }
+        planned = self.plan(root, preflight, rope_workspace, sources=sources)
         if planned.failure:
             return r[bool].from_failure(planned)
-        return FlextInfraCodemodSemanticApply.publish_planned_edits(
-            root, planned.value, source_preview=self.source_preview
-        )
+        return u.Infra.publish_codegen_plans(root, planned.value).map(bool)
 
     def plan_edits(
         self,
         root: Path,
-        preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        *,
         sources: t.MappingKV[Path, str],
-        receipt: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan origin-owned accessors on a separate immutable working view.
 
         Returns:
-            The planned migration edits, or the first planning failure.
+            The planned migration edits.
 
         """
-        del preflight
-        source_states, declared_files = receipt.inputs, receipt.files
-        snapshot = u.Infra.snapshot_project(
-            rope_workspace.rope_project,
-            sources,
-            captured=u.Infra.codemod_source_epoch(
-                m.Infra.CodemodBindingSnapshot(
-                    states=tuple(
-                        state
-                        for state in source_states
-                        if state.path in sources
-                        or state.path.suffix
-                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                    )
-                )
-            ),
-            declared_files=tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": sources[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                for plan in declared_files
-                if plan.path in sources
-                and (
-                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                    or plan.before.content is None
-                )
-            ),
-        )
+        snapshot = u.Infra.snapshot_project(rope_workspace.rope_project, sources)
         resolver = FlextInfraAccessorOriginResolver(snapshot)
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for py_file, source in sources.items():
@@ -139,7 +88,7 @@ class FlextInfraAccessorRenamePhase(
                     ),
                 ),
             )
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(edits))
+        return tuple(edits)
 
     def plan(
         self,
@@ -148,70 +97,16 @@ class FlextInfraAccessorRenamePhase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        receipt: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Bind accessor effects to the original physical publication receipts.
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan accessor effects as final file plans.
 
         Returns:
-            The bound phase analysis, or the first planning failure.
+            The accessor file plans, or the first destination read failure.
 
         """
-        source_states, declared_files = receipt.inputs, receipt.files
-        captured = u.Infra.unique_states((
-            *source_states,
-            *(state for plan in declared_files for state in plan.source_states),
-        ))
-        if captured.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
-        source_states = captured.value
-        planned = self.plan_edits(
-            root,
-            preflight,
-            rope_workspace,
-            sources=sources,
-            receipt=receipt.model_copy(update={"inputs": source_states}),
-        )
-        if planned.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-        originals = {state.path: state for state in source_states}
-        declarations = {plan.path: plan for plan in declared_files}
-        files: list[m.Infra.CodegenFilePlan] = []
-        for edit in planned.value:
-            if edit.file_path in declarations:
-                files.append(
-                    declarations[edit.file_path].model_copy(
-                        update={
-                            "desired_content": edit.updated_source.encode(
-                                c.DEFAULT_ENCODING
-                            ),
-                            "source_states": source_states,
-                            "owner": self.name,
-                        }
-                    )
-                )
-                continue
-            if edit.file_path not in originals:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"accessor planning source lacks its original "
-                    f"receipt: {edit.file_path}"
-                )
-            before = originals[edit.file_path]
-            files.append(
-                m.Infra.CodegenFilePlan(
-                    project=u.Infra.project_root(edit.file_path) or root,
-                    path=edit.file_path,
-                    before=before,
-                    desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
-                    owner=self.name,
-                )
-            )
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                files=tuple(files),
-                inputs=source_states,
-            )
+        del preflight
+        return FlextInfraSemanticPublication.edit_file_plans(
+            root, self.plan_edits(root, rope_workspace, sources), owner=self.name
         )
 
 

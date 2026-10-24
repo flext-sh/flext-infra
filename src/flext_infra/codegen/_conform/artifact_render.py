@@ -121,7 +121,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 for identity, paths in existing.items()
                 if paths.intersection(group)
             )
-            identity = (
+            (
                 identities[0]
                 if identities
                 else f"artifacts:{root}:{min(group).relative_to(root)}"
@@ -385,7 +385,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if combined_sources.failure:
             return result_type.from_failure(combined_sources)
-        source_states: list[m.Cli.AtomicFileState] = list(combined_sources.value)
+        list(combined_sources.value)
         if render_inputs is not None:
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
@@ -618,13 +618,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 entry,
                 m.Infra.StaticTextRenderSpec(),
             )
-        policy_sources: t.VariadicTuple[m.Cli.AtomicFileState] = ()
         if destination == f"config/{c.Infra.INFRA_CONFIG_FILENAME}":
             policy = self._release_policy_render_inputs(render_inputs.target.root)
             if policy.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(policy)
             artifact_context = r[p.Model].ok(policy.value[0])
-            policy_sources = policy.value[1]
+            policy.value[1]
         else:
             artifact_context = self._artifact_render_context(
                 render_inputs,

@@ -6,20 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import cast
 
 import pytest
 
-from flext_infra import config, m, p, t
-
+from flext_infra import config, m, t
 from flext_infra.codemod import FlextInfraModTextGateEngine
-from tests import c, r, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraModTextPublication:
-    """Exercise text-phase publication, receipts, and scope election."""
+    """Exercise text-phase publication, rewrite receipts, and scope election."""
 
     def test_external_catalogue_id_collision_fails_before_publication(
         self,
@@ -118,14 +116,13 @@ class TestsFlextInfraModTextPublication:
         }
         working = {**original, first: original[first] + "# prior planned phase\n"}
         frozen = dict(working)
-        _report, analysis = tm.ok(
+        _report, planned = tm.ok(
             FlextInfraModTextGateEngine.plan(
                 mod_workspace,
                 sources=working,
             )
         )
-        tm.that(analysis.issues, empty=True)
-        targets = {plan.path: plan for plan in analysis.files}
+        targets = {plan.path: plan for plan in planned}
         for path in (first, second):
             tm.that(
                 targets[path].before,
@@ -137,37 +134,12 @@ class TestsFlextInfraModTextPublication:
                 eq=working[path].replace("before", "after"),
             )
         tm.that(working, eq=frozen)
-        virtual = first.parent / "planned" / "candidate.py"
-        declaration = m.Infra.CodegenFilePlan(
-            project=mod_workspace,
-            path=virtual,
-            before=tm.ok(u.Cli.atomic_plan_directory_chain(virtual.parent)),
-            desired_content=original[first].encode(c.DEFAULT_ENCODING),
-            desired_mode=tm.not_none(
-                next(state.mode for state in states if state.path == first)
-            ),
-        )
-        _report, candidate = tm.ok(
-            FlextInfraModTextGateEngine.plan(
-                mod_workspace,
-                sources={**working, virtual: original[first]},
-                declared_files=(declaration,),
-            )
-        )
-        tm.that(candidate.issues, empty=True)
-        virtual_plan = next(plan for plan in candidate.files if plan.path == virtual)
-        tm.that(virtual_plan.before, eq=declaration.before)
-        tm.that(
-            virtual_plan.desired_content,
-            eq=original[first].replace("before", "after").encode(c.DEFAULT_ENCODING),
-        )
-        tm.fail(virtual.parent.exists())
         _report, physical = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
         tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
-        for plan in physical.files:
+        for plan in physical:
             tm.that(plan.path.read_bytes(), eq=plan.desired_content)
         _report, fixed = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
-        tm.that(fixed.files, empty=True)
+        tm.that(fixed, empty=True)
 
     def test_generated_destination_keeps_the_text_candidate_unpublished(
         self,
@@ -265,79 +237,12 @@ class TestsFlextInfraModTextPublication:
         tm.that(second.read_bytes(), eq=original)
         tm.that(alias.read_bytes(), eq=original)
 
-    def test_project_identity_change_rejects_authenticated_text_publication(
+    def test_text_plans_publish_through_the_shared_owner(
         self,
         mod_workspace: Path,
     ) -> None:
-        """A changed dependency rejects its target and preserves an independent gain."""
+        """Planned text rewrites publish as one batch through the shared owner."""
         first, second = self._publication_inputs(mod_workspace)
-        original_source = first.read_bytes()
-        document = mod_workspace / c.PYPROJECT_FILENAME
-        identity = tm.ok(u.Cli.atomic_read_binary_file_state(document, required=True))
-        source = tm.ok(u.Cli.atomic_read_binary_file_state(first, required=True))
-        sibling = tm.ok(u.Cli.atomic_read_binary_file_state(second, required=True))
-        distribution = u.Infra.project_name_from_payload(
-            document,
-            u.Infra.pyproject_payload(document),
-        )
-        original_document = document.read_text(encoding="utf-8")
-        changed_document = original_document.replace(
-            f'name = "{distribution}"',
-            f'name = "changed-{distribution}"',
-        )
-        tm.fail(changed_document == original_document)
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=mod_workspace),
-        )
-        roots = {"@mod-text": mod_workspace}
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
-            files=(
-                m.Infra.CodegenFilePlan(
-                    project=mod_workspace,
-                    path=first,
-                    before=source,
-                    desired_content=b'value = "after"\n',
-                    desired_mode=source.mode,
-                    owner="mod-text",
-                ),
-                m.Infra.CodegenFilePlan(
-                    project=mod_workspace,
-                    path=second,
-                    before=sibling,
-                    desired_content=b'value = "after"\n',
-                    desired_mode=sibling.mode,
-                    owner="mod-text",
-                ),
-            ),
-            inputs=(identity, source, sibling),
-        )
-
-        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            tm.ok(u.Cli.atomic_write_text_file(document, changed_document))
-            return transaction.publish_file_phase_locked(
-                scope,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(),
-                ),
-            )
-
-        rejected = transaction.run_files_locked(roots, publish)
-        tm.fail(rejected, has="generation authenticated state changed")
-        tm.that(first.read_bytes(), eq=original_source)
-        tm.that(second.read_bytes(), eq=sibling.content)
-        tm.that(document.read_text(encoding="utf-8"), eq=changed_document)
-
-    def test_same_phase_dependency_uses_the_accepted_publication_receipt(
-        self,
-        mod_workspace: Path,
-    ) -> None:
-        """A later target can consume an earlier target's authenticated new state."""
-        first, second = self._publication_inputs(mod_workspace)
-        first_state = tm.ok(u.Cli.atomic_read_binary_file_state(first, required=True))
-        second_state = tm.ok(u.Cli.atomic_read_binary_file_state(second, required=True))
         plans = tuple(
             m.Infra.CodegenFilePlan(
                 project=mod_workspace,
@@ -347,120 +252,14 @@ class TestsFlextInfraModTextPublication:
                 desired_mode=state.mode,
                 owner="mod-text",
             )
-            for state in (first_state, second_state)
-        )
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
-            files=plans,
-            inputs=(first_state, second_state),
-        )
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=mod_workspace)
-        )
-        roots = {"@mod-text": mod_workspace}
-
-        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            return transaction.publish_file_phase_locked(
-                scope,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(),
-                ),
+            for state in (
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                for path in (first, second)
             )
-
-        tm.ok(transaction.run_files_locked(roots, publish))
+        )
+        tm.ok(u.Infra.publish_codegen_plans(mod_workspace, plans))
         for path in (first, second):
             tm.that(path.read_bytes(), eq=b'value = "after"\n')
-
-    @pytest.mark.parametrize("raise_failure", [False, True])
-    def test_text_phase_validation_failure_preserves_original_files(
-        self,
-        mod_workspace: Path,
-        *,
-        raise_failure: bool,
-    ) -> None:
-        """A complete staged consumer fails before any live target is modified."""
-        paths = self._publication_inputs(mod_workspace)
-        states = tuple(
-            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            for path in paths
-        )
-        plans = tuple(
-            m.Infra.CodegenFilePlan(
-                project=mod_workspace,
-                path=state.path,
-                before=state,
-                desired_content=b'value = "after"\n',
-                desired_mode=state.mode,
-                owner="mod-text",
-            )
-            for state in states
-        )
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
-            files=plans,
-            inputs=states,
-        )
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=mod_workspace),
-        )
-        roots = {"@mod-text": mod_workspace}
-        failure = RuntimeError("text publication acceptance rejected")
-
-        def reject_candidate(
-            session: m.Infra.CodegenTransactionSession,
-            staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        ) -> p.Result[m.Infra.CodegenTransactionSession]:
-            candidates = tuple(
-                tm.not_none(publication.replacement).path for publication in staged
-            )
-            consumed = tm.ok(
-                u.Cli.run_raw(
-                    (
-                        sys.executable,
-                        "-c",
-                        (
-                            "import runpy, sys; "
-                            "assert all(runpy.run_path(path)['value'] == 'after' "
-                            "for path in sys.argv[1:])"
-                        ),
-                        *(str(candidate) for candidate in candidates),
-                    ),
-                    cwd=session.plan.layout.scope_root,
-                ),
-            )
-            tm.ok(u.Cli.process_succeeded(consumed.outcome))
-            for state in states:
-                tm.that(state.path.read_bytes(), eq=state.content)
-            if raise_failure:
-                raise failure
-            return r[m.Infra.CodegenTransactionSession].fail(
-                str(failure),
-                exception=failure,
-            )
-
-        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            return transaction.publish_file_phase_locked(
-                scope,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(),
-                    staged_validator=reject_candidate,
-                ),
-            )
-
-        if raise_failure:
-            with pytest.raises(RuntimeError) as raised:
-                transaction.run_files_locked(roots, publish)
-            tm.ok(raised.value is failure)
-        else:
-            result = transaction.run_files_locked(roots, publish)
-            tm.fail(result, has="text publication acceptance rejected")
-        for state in states:
-            tm.that(state.path.read_bytes(), eq=state.content)
-        tm.that(tuple(mod_workspace.rglob("*.semantic-staging")), empty=True)
 
     @staticmethod
     def test_scan_proves_rewrite_receipt_and_fixed_point(

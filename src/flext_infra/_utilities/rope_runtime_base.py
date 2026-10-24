@@ -6,39 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Container, Generator, MutableMapping
-from contextlib import contextmanager
+from collections.abc import Callable
 from importlib import import_module
 from typing import TypeIs, get_protocol_members
 
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 
 
 class FlextInfraUtilitiesRopeRuntimeBase:
     """Resolve Rope runtime attributes without importing Rope in leaf modules."""
-
-    @staticmethod
-    @contextmanager
-    def cached_source_query[KeyT](
-        project: p.Infra.RopeProject,
-        cache: Container[KeyT],
-        key: KeyT,
-        receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis],
-        receipt_key: str,
-    ) -> Generator[bool]:
-        """Bind cached query data to its originating authenticated source reads.
-
-        Yields:
-            Whether a cache hit has authenticated evidence. Exploratory native
-            projects have no receipt authority and must run the query again.
-
-        """
-        cached = key in cache
-        if cached:
-            project.replay_source_consumption(receipts[receipt_key])
-        yield cached
-        if not cached:
-            receipts[receipt_key] = consumption.receipt()
 
     @classmethod
     def require_class_object(

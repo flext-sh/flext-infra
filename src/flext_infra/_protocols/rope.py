@@ -182,46 +182,6 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
 
     @runtime_checkable
-    class SemanticDirectoryRoot(Protocol):
-        """Native physical directory anchor."""
-
-        @property
-        def path(self) -> Path: ...
-
-    @runtime_checkable
-    class SemanticDirectoryState(Protocol):
-        """Original native membership receipt."""
-
-        @property
-        def root(self) -> FlextInfraProtocolsRope.SemanticDirectoryRoot: ...
-
-    @runtime_checkable
-    class SemanticTopologyState(Protocol):
-        """Original native absent-candidate receipt."""
-
-        @property
-        def target(self) -> Path: ...
-
-    @runtime_checkable
-    class SemanticSourceAnalysis(Protocol):
-        """Read port of the existing CodegenPhaseAnalysis provenance DTO."""
-
-        @property
-        def inputs(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
-
-        @property
-        def source_directories(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticDirectoryState]: ...
-
-        @property
-        def source_query_topology(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticTopologyState]: ...
-
-    @runtime_checkable
     class PrimitiveOwnerCondition(Protocol):
         """The qualified primitive operands used by native owner discovery."""
 
@@ -337,9 +297,6 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
 
-        @property
-        def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
-
         def refresh(
             self,
             *,
@@ -372,7 +329,6 @@ class FlextInfraProtocolsRope(Protocol):
             rope_repository_root: Path | None = None,
             source_project: FlextInfraProtocolsRopeRuntime.RopeProject | None = None,
             workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
-            index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
         ) -> Self: ...
 
         def resource(

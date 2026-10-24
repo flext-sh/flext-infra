@@ -13,9 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenLayoutPlanMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenLayoutPlanMixin
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 

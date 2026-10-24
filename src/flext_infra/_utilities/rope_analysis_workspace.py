@@ -110,7 +110,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         root = project_root.resolve()
         with ExitStack() as stack:
             if source_project is None:
-                source_project, _, captured = stack.enter_context(
+                source_project, captured = stack.enter_context(
                     FlextInfraUtilitiesCodegenFacades.facade_source_project(
                         root,
                         planned_sources=planned_sources,

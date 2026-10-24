@@ -37,7 +37,7 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool])
         if entry is None:
             message = f"toolchain repair refuses undeclared tool: {requested}"
             raise ValueError(message)
-        states = tuple(
+        tuple(
             u.Cli.atomic_read_binary_file_state(root / name, required=True).unwrap()
             for name in (c.Infra.MISE_TOML_FILENAME, c.Infra.MISE_LOCK_FILENAME)
         )

@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m, p, t
-
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 from tests import c, r, tm, u

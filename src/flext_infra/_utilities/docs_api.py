@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
@@ -70,7 +68,6 @@ class FlextInfraUtilitiesDocsApi:
     def _module_file(
         project_root: Path,
         module_name: str,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> Path:
         """Resolve a Python module path to its file path.
 
@@ -86,38 +83,20 @@ class FlextInfraUtilitiesDocsApi:
         if len(parts) == 1:
             return base / init_py
         module_file = base.joinpath(*parts[1:]).with_suffix(ext_python)
-        present = (
-            module_file in sources if sources is not None else module_file.exists()
-        )
-        if present:
+        if module_file.exists():
             return module_file
         package_init = base.joinpath(*parts[1:]) / init_py
-        present = (
-            package_init in sources if sources is not None else package_init.exists()
-        )
-        return package_init if present else module_file
+        return package_init if package_init.exists() else module_file
 
     @staticmethod
-    def _source_text(
-        path: Path,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None,
-    ) -> str | None:
-        """Read a module from the elected immutable inventory when supplied.
+    def _source_text(path: Path) -> str | None:
+        """Read a module source when it exists.
 
         Returns:
             The module source text, or no content when unavailable.
 
         """
-        if sources is None:
-            return (
-                path.read_text(encoding=c.DEFAULT_ENCODING) if path.exists() else None
-            )
-        state = sources.get(path)
-        return (
-            state.content.decode(c.DEFAULT_ENCODING)
-            if state is not None and state.content is not None
-            else None
-        )
+        return path.read_text(encoding=c.DEFAULT_ENCODING) if path.exists() else None
 
     @classmethod
     def _resolve_assignment_strings(
@@ -127,7 +106,6 @@ class FlextInfraUtilitiesDocsApi:
         module_name: str,
         symbol_name: str,
         visited: frozenset[str] = frozenset(),
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.StrSequence:
         """Resolve a literal string assignment through imported symbols.
 
@@ -138,8 +116,8 @@ class FlextInfraUtilitiesDocsApi:
         key = f"{module_name}:{symbol_name}"
         if key in visited:
             return []
-        module_file = cls._module_file(project_root, module_name, sources)
-        source = cls._source_text(module_file, sources)
+        module_file = cls._module_file(project_root, module_name)
+        source = cls._source_text(module_file)
         if source is None:
             return []
         values = FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
@@ -167,7 +145,6 @@ class FlextInfraUtilitiesDocsApi:
             module_name=imported_module,
             symbol_name=original_name,
             visited=visited | frozenset({key}),
-            sources=sources,
         )
 
     @staticmethod
@@ -190,7 +167,6 @@ class FlextInfraUtilitiesDocsApi:
         root_package: str,
         module_name: str,
         symbol_name: str,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.StrMapping:
         """Resolve one lazy-import map symbol into export target modules.
 
@@ -199,7 +175,6 @@ class FlextInfraUtilitiesDocsApi:
             root_package: The absolute package prefix of local modules.
             module_name: The module declaring the lazy-import map.
             symbol_name: The map symbol being resolved.
-            sources: Captured source states, or ``None`` for on-disk reads.
 
         Returns:
             The resulting ``t.StrMapping``.
@@ -209,7 +184,7 @@ class FlextInfraUtilitiesDocsApi:
             module_name,
             symbol_name,
             frozenset(),
-            (project_root, root_package, sources),
+            (project_root, root_package),
         )
 
     @classmethod
@@ -218,11 +193,7 @@ class FlextInfraUtilitiesDocsApi:
         module_name: str,
         symbol_name: str,
         visited: frozenset[str],
-        context: t.Triple[
-            Path,
-            str,
-            t.MappingKV[Path, m.Cli.AtomicFileState] | None,
-        ],
+        context: t.Pair[Path, str],
     ) -> t.StrMapping:
         """Resolve one symbol recursively against the shared project context.
 
@@ -230,18 +201,18 @@ class FlextInfraUtilitiesDocsApi:
             module_name: The module currently being resolved.
             symbol_name: The symbol being resolved in the module.
             visited: Already resolving module and symbol identities.
-            context: Project root, root package, and captured sources.
+            context: Project root and root package.
 
         Returns:
             The export target mapping contributed by the module.
 
         """
-        project_root, root_package, sources = context
+        project_root, root_package = context
         key = f"{module_name}:{symbol_name}"
         if key in visited:
             return {}
-        module_file = cls._module_file(project_root, module_name, sources)
-        source = cls._source_text(module_file, sources)
+        module_file = cls._module_file(project_root, module_name)
+        source = cls._source_text(module_file)
         if source is None:
             return {}
         entries, refs = (
@@ -311,7 +282,6 @@ class FlextInfraUtilitiesDocsApi:
         *,
         package_name: str,
         exports: t.StrSequence,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.StrMapping:
         """Return target modules declared by the package lazy import map.
 
@@ -324,7 +294,6 @@ class FlextInfraUtilitiesDocsApi:
             root_package=package_name,
             module_name=package_name,
             symbol_name="",
-            sources=sources,
         )
         export_names = frozenset(exports)
         return {
@@ -339,7 +308,6 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         package_name: str,
         source: str,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.StrSequence:
         """Return runtime public exports from lazy-loader or ``__all__`` contracts.
 
@@ -376,7 +344,6 @@ class FlextInfraUtilitiesDocsApi:
                     project_root,
                     module_name=imported_module,
                     symbol_name=original_name,
-                    sources=sources,
                 )
         return FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
             source,
@@ -564,7 +531,6 @@ class FlextInfraUtilitiesDocsApi:
     def _rope_public_symbols(
         project_root: Path,
         target_map: t.StrMapping,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.StrSequence:
         """Use Rope to verify which exported symbols resolve in real modules.
 
@@ -578,9 +544,8 @@ class FlextInfraUtilitiesDocsApi:
                 module_file = FlextInfraUtilitiesDocsApi._module_file(
                     project_root,
                     module_name,
-                    sources,
                 )
-                source = FlextInfraUtilitiesDocsApi._source_text(module_file, sources)
+                source = FlextInfraUtilitiesDocsApi._source_text(module_file)
                 if source is None:
                     continue
                 pymodule = FlextInfraUtilitiesRopeRuntime.build_string_module(
@@ -624,7 +589,6 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         package_name: str,
         source: str,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.Pair[list[str], t.StrDict]:
         """Collect the public exports and their target modules from one facade.
 
@@ -637,7 +601,6 @@ class FlextInfraUtilitiesDocsApi:
                 project_root,
                 package_name,
                 source,
-                sources,
             ),
         )
         target_map = dict(
@@ -652,7 +615,6 @@ class FlextInfraUtilitiesDocsApi:
                 project_root,
                 package_name=package_name,
                 exports=all_exports,
-                sources=sources,
             ),
         )
         return all_exports, target_map
@@ -662,7 +624,6 @@ class FlextInfraUtilitiesDocsApi:
         project_root: Path,
         target_map: t.StrMapping,
         symbol_exports: t.StrSequence,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> list[str]:
         """Filter declared symbols down to the names Rope resolves.
 
@@ -674,7 +635,6 @@ class FlextInfraUtilitiesDocsApi:
             FlextInfraUtilitiesDocsApi._rope_public_symbols(
                 project_root,
                 target_map,
-                sources,
             ),
         )
         return [name for name in symbol_exports if name in rope_symbols] or list(
@@ -687,7 +647,6 @@ class FlextInfraUtilitiesDocsApi:
         package_name: str,
         source: str,
         metadata: p.ProjectMetadata,
-        sources: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Build the contract of one live facade package through Rope validation.
 
@@ -701,7 +660,6 @@ class FlextInfraUtilitiesDocsApi:
             project_root,
             package_name,
             source,
-            sources,
         )
         aliases, module_exports, symbol_exports = (
             FlextInfraUtilitiesDocsApi._classify_exports(all_exports, target_map)
@@ -714,7 +672,6 @@ class FlextInfraUtilitiesDocsApi:
             project_root,
             target_map,
             symbol_exports,
-            sources,
         )
         facades = [
             name for name in public_symbols if name.startswith(metadata.class_stem)
@@ -759,46 +716,21 @@ class FlextInfraUtilitiesDocsApi:
         """
         # Retain flext-core's validated metadata object; no shadow DTO.
 
-        sources = (
-            {state.path: state for state in source_states}
-            if source_states is not None
-            else None
+        metadata_result = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+            project_root,
         )
-        if sources is None:
-            metadata_result = FlextInfraUtilitiesPyproject.read_project_metadata_result(
-                project_root,
+        if metadata_result.failure:
+            raise ValueError(
+                metadata_result.error
+                or f"project metadata unavailable: {project_root}",
             )
-            if metadata_result.failure:
-                raise ValueError(
-                    metadata_result.error
-                    or f"project metadata unavailable: {project_root}",
-                )
-            metadata = metadata_result.value
-        else:
-            content = FlextInfraUtilitiesDocsApi._source_text(
-                project_root / c.PYPROJECT_FILENAME,
-                sources,
-            )
-            if content is None:
-                msg = f"captured project metadata is absent: {project_root}"
-                raise ValueError(msg)
-            recovered = FlextInfraUtilitiesPyproject.recover_live_pyproject_text(
-                content,
-            ).unwrap()
-            payload = u.Cli.toml_mapping_from_text(recovered)
-            if payload is None:
-                msg = f"captured project metadata is invalid: {project_root}"
-                raise ValueError(msg)
-            metadata = u.build_project_metadata(
-                project_root,
-                u.PyprojectDocument.model_validate(payload),
-            )
+        metadata = metadata_result.value
         if not package_name:
             return FlextInfraUtilitiesDocsApi._bare_contract(metadata)
         init_path = (
             project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
         )
-        source = FlextInfraUtilitiesDocsApi._source_text(init_path, sources)
+        source = FlextInfraUtilitiesDocsApi._source_text(init_path)
         if source is None:
             return FlextInfraUtilitiesDocsApi._bare_contract(metadata)
         return FlextInfraUtilitiesDocsApi._resolved_contract(
@@ -806,7 +738,6 @@ class FlextInfraUtilitiesDocsApi:
             package_name,
             source,
             metadata,
-            sources,
         )
 
     @staticmethod

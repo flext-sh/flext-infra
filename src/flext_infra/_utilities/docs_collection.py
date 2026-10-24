@@ -11,17 +11,15 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
-from flext_cli import u
-
 from flext_infra import c, m, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesDocsCollectionVerify,
+    FlextInfraUtilitiesDocsCollectionSources,
     FlextInfraUtilitiesDocsContract,
 )
 
 
-class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify):
-    """Plan effects only; the docs transaction owns publication and locking."""
+class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources):
+    """Plan effects only; the shared publisher owns publication and locking."""
 
     class _CollectionState:
         """Mutable accumulators one collection pass fills."""
@@ -45,7 +43,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 item.identity: item for item in manifest.revisions
             }
             self.coverage: list[m.Infra.PlanCollectionCoverage] = []
-            self.inventories: list[m.Infra.PlanCollectionSourceInventory] = []
             self.invalid_owned: MutableMapping[Path, str] = {}
 
         def absorb_owned_artifacts(self) -> None:
@@ -123,7 +120,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             source: m.Infra.PlanCollectionSource,
             paths: t.VariadicTuple[Path],
         ) -> None:
-            """Record a private-inventory source's coverage and inventory."""
+            """Record a private-inventory source's coverage."""
             self.coverage.append(
                 m.Infra.PlanCollectionCoverage(
                     source_id=source.id,
@@ -132,12 +129,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                     files=len(paths),
                     status="private-inventory" if paths else "empty",
                     private_paths=paths,
-                ),
-            )
-            self.inventories.append(
-                m.Infra.PlanCollectionSourceInventory(
-                    source_id=source.id,
-                    paths=paths,
                 ),
             )
 
@@ -157,15 +148,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             self,
             source: m.Infra.PlanCollectionSource,
             paths: t.VariadicTuple[Path],
-            source_paths: t.IterableOf[Path],
         ) -> None:
-            """Record a published source's coverage and inventory."""
-            self.inventories.append(
-                m.Infra.PlanCollectionSourceInventory(
-                    source_id=source.id,
-                    paths=tuple(sorted(source_paths)),
-                ),
-            )
+            """Record a published source's coverage."""
             self.coverage.append(
                 m.Infra.PlanCollectionCoverage(
                     source_id=source.id,
@@ -324,7 +308,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         }
         return m.Infra.PlanCollectionBundle(
             files=tuple(plans_list),
-            required_directories=(),
             prunable_directories=tuple(
                 sorted(
                     directories,
@@ -334,8 +317,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             ),
             revisions=(),
             coverage=(),
-            inventories=(),
-            excluded_outputs=tuple(sorted(owned_outputs)),
         )
 
     @classmethod
@@ -346,17 +327,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         paths: t.VariadicTuple[Path],
         state: _CollectionState,
         excluded_outputs: t.VariadicTuple[Path],
-    ) -> set[Path]:
-        """Collect every published artifact of one source path set.
-
-        Returns:
-            The resulting ``set[Path]``.
-
-        """
-        source_paths: set[Path] = set(paths)
+    ) -> None:
+        """Collect every published artifact of one source path set."""
         for path in paths:
             artifacts = cls.collection_artifacts(path, source, excluded_outputs)
-            source_paths.update(item.path for item in artifacts)
             state.absorb_artifacts(artifacts)
             incoming_revision = cls._docs_incoming_revision(
                 state.canonical,
@@ -373,7 +347,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 states=state.states,
             )
             state.record_revision(revision)
-        return source_paths
 
     @classmethod
     def _collect_all_sources(
@@ -400,14 +373,14 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 continue
             state.require_publishable(source)
             source_root = cls.collection_source_root(root, source)
-            source_paths = cls._collect_source_paths(
+            cls._collect_source_paths(
                 source_root,
                 source,
                 paths,
                 state,
                 excluded_outputs,
             )
-            state.record_public(source, paths, source_paths)
+            state.record_public(source, paths)
 
     @staticmethod
     def _collection_index_text(
@@ -445,7 +418,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         cls,
         root: Path,
         state: _CollectionState,
-        excluded_outputs: t.VariadicTuple[Path],
         revisions: t.SequenceOf[m.Infra.PlanCollectionRevision],
     ) -> m.Infra.PlanCollectionBundle:
         """Plan every desired output and assemble the collection bundle.
@@ -454,15 +426,13 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             The resulting ``m.Infra.PlanCollectionBundle``.
 
         Raises:
-            ValueError: If a destination is undeclared or an original input
-                changes while planning.
+            ValueError: If a destination is undeclared.
 
         """
         canonical = state.canonical
         projection = state.projection
         state.record_manifest()
         state.mirror_projection()
-        inputs = tuple(state.states[path] for path in sorted(state.states))
         plans: list[m.Infra.CodegenFilePlan] = []
         for path, content in sorted(state.desired.items()):
             owner = root if path.is_relative_to(canonical) else projection
@@ -476,20 +446,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 desired_mode=c.Infra.DOCS_ARTIFACT_MODE,
             ).unwrap()
             plans.append(planned)
-        u.Cli.atomic_verify_binary_file_states(inputs).unwrap()
-        required_directories = tuple(
-            sorted(
-                {path.parent for path in state.desired},
-                key=lambda path: (len(path.parts), path.as_posix()),
-            ),
-        )
         return m.Infra.PlanCollectionBundle(
             files=tuple(plans),
-            required_directories=required_directories,
             revisions=tuple(revisions),
             coverage=tuple(state.coverage),
-            inventories=tuple(state.inventories),
-            excluded_outputs=excluded_outputs,
         )
 
     @classmethod
@@ -525,12 +485,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         index_text = cls._collection_index_text(revisions)
         state.desired[canonical / "collection-index.md"] = index_text.encode()
         state.verify_immutable_owned()
-        return cls._planned_collection_bundle(
-            root,
-            state,
-            excluded_outputs,
-            revisions,
-        )
+        return cls._planned_collection_bundle(root, state, revisions)
 
     @classmethod
     def _docs_incoming_revision(

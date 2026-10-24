@@ -28,20 +28,16 @@ class FlextInfraNamespaceRelocationPhase:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        receipt: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan selected declarations while retaining the full reference readscope.
 
         Returns:
-            The planned phase analysis, or the first planning failure.
+            The planned file plans, or the first planning failure.
 
         """
         cascade = FlextInfraNamespaceRelocationCascade()
-        source_states, declared_files = receipt.inputs, receipt.files
         working = dict(sources)
-        originals = {state.path: state for state in source_states}
         effects: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan] = {}
-        declarations = {plan.path: plan for plan in declared_files}
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):
                 continue
@@ -52,50 +48,40 @@ class FlextInfraNamespaceRelocationPhase:
                 and path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
-            findings = cascade.findings_from_report(
-                project_root,
-                py_files,
-                preflight.entries,
-                scan_root=root,
-            )
             planned = cascade.plan(
                 m.Infra.NamespaceRelocationRequest(
                     project_root=project_root,
-                    findings=findings,
+                    findings=cascade.findings_from_report(
+                        project_root, py_files, preflight.entries, scan_root=root
+                    ),
                     py_files=py_files,
                     sources=working,
-                    receipt=m.Infra.CodegenPhaseAnalysis(
-                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                        inputs=tuple(originals.values()),
-                        files=tuple(declarations.values()),
-                    ),
                 ),
                 rope_project=rope_workspace.rope_project,
             )
             if planned.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-            for state in planned.value.inputs:
-                previous = originals.setdefault(state.path, state)
-                if previous != state:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"relocation original receipts disagree: {state.path}"
-                    )
-            for plan in planned.value.files:
-                effects[plan.path] = plan
-                declarations[plan.path] = plan
+                return planned
+            for plan in planned.value:
                 if plan.desired_content is None:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                         f"declaration relocation unexpectedly retired "
                         f"a module: {plan.path}"
                     )
+                previous = effects.get(plan.path)
+                effects[plan.path] = (
+                    plan
+                    if previous is None
+                    else m.Infra.CodegenFilePlan(
+                        project=plan.project,
+                        path=plan.path,
+                        before=previous.before,
+                        desired_content=plan.desired_content,
+                        desired_mode=plan.desired_mode,
+                        owner=plan.owner,
+                    )
+                )
                 working[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                files=tuple(effects.values()),
-                inputs=tuple(originals.values()),
-            )
-        )
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(effects.values()))
 
     @staticmethod
     def apply(
@@ -116,22 +102,14 @@ class FlextInfraNamespaceRelocationPhase:
         )
         if inventory.failure:
             return r[bool].from_failure(inventory)
-        states = tuple(
-            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            for path in inventory.value
-        )
         planned = FlextInfraNamespaceRelocationPhase.plan(
             root,
             preflight,
             rope_workspace,
             sources={
-                state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in states
-                if state.content is not None
+                path: path.read_text(encoding=c.DEFAULT_ENCODING)
+                for path in inventory.value
             },
-            receipt=m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC, files=(), inputs=states
-            ),
         )
         if planned.failure:
             return r[bool].from_failure(planned)

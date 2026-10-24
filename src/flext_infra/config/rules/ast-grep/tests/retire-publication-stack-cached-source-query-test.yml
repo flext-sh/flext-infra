@@ -1,0 +1,17 @@
+id: retire-publication-stack-cached-source-query
+valid:
+  - |
+    if key in cache:
+        return cache[key]
+    cache[key] = build(key)
+invalid:
+  - |
+    def names(self, key):
+        with u.Infra.cached_source_query(
+            self.project, self._cache, key, self._receipts, f"k:{key}"
+        ) as cached:
+            if cached:
+                return self._cache[key]
+            value = build(key)
+            self._cache[key] = value
+            return value

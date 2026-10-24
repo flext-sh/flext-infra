@@ -57,12 +57,6 @@ class FlextInfraCodegenLazyInitPlanner(
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
-    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
-        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
-    )
-    _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
-        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
-    )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
     )
@@ -101,10 +95,9 @@ class FlextInfraCodegenLazyInitPlanner(
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
-            package_key = str(pkg_dir.resolve())
-            plan, receipt = self._package_plan(pkg_dir, dir_exports=dir_exports)
-            self._source_plan_cache[package_key] = plan
-            self._plan_receipts[package_key] = receipt
+            with self.rope_workspace.rope_project.frozen_layout():
+                plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
+            self._source_plan_cache[str(pkg_dir.resolve())] = plan
             if report_progress:
                 u.Cli.info(
                     f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
@@ -136,46 +129,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 f"{self._collision_count} collision(s)",
             )
         return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
-
-    def _package_plan(
-        self,
-        pkg_dir: Path,
-        *,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
-    ) -> t.Pair[m.Infra.LazyInitPlan, m.Infra.CodegenPhaseAnalysis]:
-        """Resolve one artifact in the repository's existing workspace and planner.
-
-        Cache hits replay query receipts into this artifact's own consumption
-        scope instead of inheriting an unrelated package's read union.
-
-        Returns:
-            The package plan bound to its original consumption receipt.
-
-        """
-        project = self.rope_workspace.rope_project
-        _ = self.rope_workspace.workspace_index
-        index_receipt = self.rope_workspace.source_index_receipt
-        with (
-            project.source_consumption() as consumption,
-            project.frozen_layout(),
-        ):
-            project.replay_source_consumption(index_receipt)
-            plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
-        receipt = consumption.receipt()
-        return plan, receipt
-
-    def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
-        """Return only the sealed receipt minted for an actual package decision.
-
-        Raises:
-            ValueError: If the package lacks its original provenance.
-
-        """
-        receipt = self._plan_receipts.get(str(package_dir.resolve()))
-        if receipt is None:
-            msg = f"lazy-init package lacks original provenance: {package_dir}"
-            raise ValueError(msg)
-        return receipt
 
     def build_plan(
         self,

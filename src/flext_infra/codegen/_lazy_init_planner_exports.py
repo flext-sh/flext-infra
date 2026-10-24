@@ -30,7 +30,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin(
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
-        _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
+
         _module_exports_cache: MutableMapping[
             tuple[str, bool, bool, bool, bool, bool],
             t.LazyAliasMap,
@@ -178,63 +178,56 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin(
             resolved_export_options.allow_functions,
             resolved_export_options.require_explicit_all,
         )
-        with u.Infra.cached_source_query(
-            self.rope_workspace.rope_project,
-            self._module_exports_cache,
-            cache_key,
-            self._query_receipts,
-            f"module:{cache_key}",
-        ) as cached:
-            if cached:
-                return dict(self._module_exports_cache[cache_key])
-            if self.rope_workspace.resource(py_file) is None:
+        if cache_key in self._module_exports_cache:
+            return dict(self._module_exports_cache[cache_key])
+        if self.rope_workspace.resource(py_file) is None:
+            msg = f"unindexed publication resource: {py_file}"
+            raise ValueError(msg)
+        names = self.rope_workspace.exports(
+            py_file,
+            export_options=resolved_export_options,
+        )
+        if not names:
+            self._module_exports_cache[cache_key] = {}
+            return {}
+        exports = {name: (module_path, name) for name in names}
+        entry = self.rope_workspace.module(py_file)
+        project_layout = (
+            self.rope_workspace.layout(entry.project_root)
+            if entry is not None and entry.project_root is not None
+            else None
+        )
+        policy = u.Infra.publication_policy(
+            py_file,
+            rope_project=self.rope_workspace.rope_project,
+            current_pkg=module_path.rpartition(".")[0],
+            project_layout=project_layout,
+        )
+        alias = policy.expected_alias
+        if alias is not None:
+            resource = self.rope_workspace.resource(py_file)
+            if resource is None:
                 msg = f"unindexed publication resource: {py_file}"
                 raise ValueError(msg)
-            names = self.rope_workspace.exports(
-                py_file,
-                export_options=resolved_export_options,
-            )
-            if not names:
-                self._module_exports_cache[cache_key] = {}
-                return {}
-            exports = {name: (module_path, name) for name in names}
-            entry = self.rope_workspace.module(py_file)
-            project_layout = (
-                self.rope_workspace.layout(entry.project_root)
-                if entry is not None and entry.project_root is not None
-                else None
-            )
-            policy = u.Infra.publication_policy(
-                py_file,
-                rope_project=self.rope_workspace.rope_project,
-                current_pkg=module_path.rpartition(".")[0],
-                project_layout=project_layout,
-            )
-            alias = policy.expected_alias
-            if alias is not None:
-                resource = self.rope_workspace.resource(py_file)
-                if resource is None:
-                    msg = f"unindexed publication resource: {py_file}"
-                    raise ValueError(msg)
-                module = u.Infra.resolve_pymodule(
-                    self.rope_workspace.rope_project, resource
-                ).get_module()
-                tree = ast.parse(module.source_code)
-                body = u.Infra.export_declaration_body(tree)
-                if body is not tree.body:
-                    owner = next(
-                        node for node in tree.body if isinstance(node, ast.ClassDef)
+            module = u.Infra.resolve_pymodule(
+                self.rope_workspace.rope_project, resource
+            ).get_module()
+            tree = ast.parse(module.source_code)
+            body = u.Infra.export_declaration_body(tree)
+            if body is not tree.body:
+                owner = next(
+                    node for node in tree.body if isinstance(node, ast.ClassDef)
+                )
+                if owner.name in exports or alias in exports:
+                    # Class-owned facades publish the root; layout owns its alias.
+                    exports[alias] = (
+                        module_path,
+                        alias
+                        if alias in exports and alias in module.get_attributes()
+                        else owner.name,
                     )
-                    if owner.name in exports or alias in exports:
-                        # Class-owned facades publish the root; layout owns its alias.
-                        exports[alias] = (
-                            module_path,
-                            alias
-                            if alias in exports and alias in module.get_attributes()
-                            else owner.name,
-                        )
-            self._module_exports_cache[cache_key] = exports
-            return dict(exports)
+        self._module_exports_cache[cache_key] = exports
+        return dict(exports)
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlannerExportsMixin"]

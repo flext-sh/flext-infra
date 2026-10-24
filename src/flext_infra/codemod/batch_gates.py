@@ -871,40 +871,21 @@ class FlextInfraModGateEngine:
         root: Path,
         file: str,
     ) -> p.Result[t.Pair[Path, m.Cli.AtomicFileState]]:
-        """Associate a finding with the scan's already authenticated source state.
-
-        Complete input verification brackets parsing and admission; individual
-        findings retain the captured bytes without repeating physical reads.
+        """Associate a finding with its source's current state.
 
         Returns:
-            The resulting ``(file_path, snapshot)`` pair for the unchanged source.
+            The resulting ``(file_path, state)`` pair, or the drift failure.
 
         """
         file_path = Path(file)
         resolved_file = (root / file_path).resolve()
-        snapshot = source_states.get(resolved_file)
-        if snapshot is None or snapshot.content is None:
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
-                f"finding has no authenticated source snapshot: {resolved_file}",
-            )
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
-        if observed.failure:
-            if not resolved_file.exists():
-                return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
-                    f"finding source vanished during scanning: {resolved_file}",
-                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
-                )
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].from_failure(observed)
-        if observed.value.content != snapshot.content:
+        if observed.failure and not resolved_file.exists():
             return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
-                f"finding source changed during scanning: {resolved_file}",
+                f"finding source vanished during scanning: {resolved_file}",
                 error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
             )
-        if observed.value != snapshot:
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].ok(
-                (file_path, observed.value),
-            )
-        return r[t.Pair[Path, m.Cli.AtomicFileState]].ok((file_path, snapshot))
+        return observed.map(lambda state: (file_path, state))
 
     @staticmethod
     def _classified_finding(
@@ -991,7 +972,7 @@ class FlextInfraModGateEngine:
         native_file = str(finding.get("file"))
         if native_file not in context.authenticated:
             context.authenticated[native_file] = cls._authenticated_snapshot(
-                root, native_file, context.source_states
+                root, native_file
             )
         authenticated = context.authenticated[native_file]
         file_path = Path(native_file)
@@ -1606,7 +1587,7 @@ class FlextInfraModGateEngine:
             plan = planned.value
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
-        source_states = {
+        {
             path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             for path in sorted(cls._scan_source_paths(root, targets))
         }
@@ -1769,7 +1750,7 @@ class FlextInfraModGateEngine:
         plan = u.Infra.codemod_rule_plan(root).unwrap()
         states = captured.value
         owned_sources = u.Infra.facade_original_sources(root, states)
-        source_states = tuple(state for state in states if state.path in owned_sources)
+        tuple(state for state in states if state.path in owned_sources)
         context = m.Infra.ModScanSourceContext(
             repository_roots=tuple(
                 sorted(

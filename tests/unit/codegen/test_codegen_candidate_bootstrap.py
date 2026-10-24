@@ -13,11 +13,9 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import (
-    FlextInfraCodegenConformExecute,
-)
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm, u
+from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
@@ -328,75 +326,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
             eq=projected,
         )
-
-    @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("foreign_change", [False, True])
-    def test_producer_continuation_requires_live_native_publication(
-        tmp_path: Path,
-        *,
-        foreign_change: bool,
-    ) -> None:
-        """A real journal receipt permits continuation only while outputs are live."""
-        root, _ = u.Tests.render_make_environment(
-            tmp_path / "continuation",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        source = root / "publication-input.txt"
-        source.write_text("captured producer input\n", encoding=c.DEFAULT_ENCODING)
-        state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-        destination = root / "publication-output.txt"
-        before = tm.ok(u.Infra.codegen_target_snapshot(destination))
-        planner = FlextInfraCodegenConformExecute(
-            repository_root=root,
-            state=m.Infra.CodegenConformState(repository_root=root, ports=None),
-        )
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=root),
-        )
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.CANDIDATE_BOOTSTRAP,
-            files=(
-                m.Infra.CodegenFilePlan(
-                    project=root,
-                    path=destination,
-                    before=before,
-                    desired_content=tm.not_none(state.content),
-                    desired_mode=state.mode,
-                ),
-            ),
-            inputs=(state,),
-        )
-        receipts: list[m.Infra.CodegenPhaseOutcome] = []
-        roots = {"@continuation": root}
-
-        def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
-            return transaction.publish_file_phase_locked(
-                scope_root,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            )
-
-        tm.ok(transaction.run_files_locked(roots, publish))
-        tm.ok(bool(receipts))
-        if foreign_change:
-            destination.write_text(
-                "foreign publication mutation\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-
-        continued = planner.continue_after_publication(tuple(receipts))
-
-        tm.that(continued.success, eq=not foreign_change)
-        if foreign_change:
-            tm.that(continued.error, has=str(destination))
-            tm.that(
-                destination.read_bytes(),
-                eq=b"foreign publication mutation\n",
-            )
-        else:
-            tm.that(destination.read_bytes(), eq=state.content)
 
     @staticmethod
     def _write_runtime_probe(candidate: Path) -> t.StrSequence:

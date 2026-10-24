@@ -333,7 +333,7 @@ class FlextInfraApplyRenames:
 
         """
         params, pairs, root, roots = scope
-        python_paths, source_states, inventory = context
+        python_paths, _source_states, inventory = context
         path, source = entry
         edits = list(symbols.get(path, ()))
         declared_text = any(

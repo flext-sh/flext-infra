@@ -10,7 +10,6 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
@@ -42,14 +41,9 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         if not scope.package_name:
             return []
         package_dir = scope.path / c.Infra.DEFAULT_SRC_DIR / scope.package_name
-        paths = (
-            (state.path for state in source_states if state.path.parent == package_dir)
-            if source_states is not None
-            else package_dir.glob(c.Infra.EXT_PYTHON_GLOB)
-        )
         return [
             f"{scope.package_name}.{module.stem}"
-            for module in sorted(paths)
+            for module in sorted(package_dir.glob(c.Infra.EXT_PYTHON_GLOB))
             if module.suffix == ".py" and not module.stem.startswith("_")
         ]
 
@@ -65,10 +59,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             The resulting ``list[t.Pair[Path, str]]``.
 
         """
-        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(
-            scope,
-            source_states,
-        )
+        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(scope)
         api_root = scope.path / "docs/api-reference/generated"
         rendered = [
             (
@@ -120,14 +111,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 tooling
             )
-        bound = FlextInfraUtilitiesCodegenFilePlan.unique_states((
-            *source_states,
-            *tooling.value.sources,
-        ))
-        if bound.failure:
-            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
-                bound
-            )
         width = FlextInfraUtilitiesDocsRender.docs_markdown_line_length(
             tooling.value.document
         )
@@ -140,19 +123,15 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 guides,
             )
         guide_paths = {
-            state.path
-            for state in source_states
-            if state.path.parent == scope.path / "docs/guides"
-            and state.path.suffix == ".md"
-            and state.path.name != "README.md"
+            path
+            for path in (scope.path / "docs/guides").glob("*.md")
+            if path.name != "README.md" and path.is_file()
         }
-        guide_contents = {
-            state.path: state.content.decode(c.DEFAULT_ENCODING)
-            for state in source_states
+        guide_contents = (
+            {path: path.read_text(encoding=c.DEFAULT_ENCODING) for path in guide_paths}
             if scope.documentation_language == "pt-BR"
-            and state.path in guide_paths
-            and state.content is not None
-        }
+            else {}
+        )
         for _project, path, content in guides.value:
             if content is None:
                 guide_paths.discard(path)
@@ -174,10 +153,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             scope.path,
             analyzed_contract,
         )
-        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(
-            scope,
-            source_states,
-        )
+        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(scope)
         rendered: list[t.Pair[Path, str]] = [
             (
                 scope.path / "README.md",
@@ -233,7 +209,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 ),
             ),
             *FlextInfraUtilitiesDocsGenerateProjectMixin.docs_project_api_artifacts(
-                scope, source_states, width=width
+                scope, width=width
             ),
         ]
         pruned = (

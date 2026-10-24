@@ -130,7 +130,7 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         )
         if ignored.failure:
             return result_type.from_failure(ignored)
-        sources = (
+        (
             *loaded.value.sources,
             *manifest.value[1],
             *(

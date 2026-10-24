@@ -9,12 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, r
 from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
 from flext_infra.refactor._census_collect_helpers import (
     FlextInfraRefactorCensusCollectHelpersMixin,
 )
 from flext_infra.refactor._census_filters import FlextInfraRefactorCensusFiltersMixin
+from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -68,82 +69,30 @@ class FlextInfraDuplicateApplyPhase:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        receipt: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Preserve native duplicate effects and unresolved diagnostic plans.
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan the trivial duplicate cures; a structural duplicate fails loud.
 
         Returns:
-            The preserved phase analysis, or the first planning failure.
+            The cure file plans, or the first unresolved duplicate plan.
 
         """
         del preflight
-        source_states, declared_files = receipt.inputs, receipt.files
-        captured = u.Infra.unique_states((
-            *source_states,
-            *(state for plan in declared_files for state in plan.source_states),
-        ))
-        if captured.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
-        source_states = captured.value
         planned = FlextInfraCodemodDuplicateApply.plan_census(
             root,
             rope_workspace,
             FlextInfraDuplicateApplyPhase._duplicate_groups(rope_workspace),
             sources=sources,
-            receipt=receipt.model_copy(update={"inputs": source_states}),
         )
         if planned.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
         outcome, _deletions = planned.value
-        originals = {state.path: state for state in source_states}
-        declarations = {plan.path: plan for plan in declared_files}
-        files: list[m.Infra.CodegenFilePlan] = []
-        for edit in outcome.edits:
-            if edit.file_path in declarations:
-                files.append(
-                    declarations[edit.file_path].model_copy(
-                        update={
-                            "desired_content": edit.updated_source.encode(
-                                c.DEFAULT_ENCODING
-                            ),
-                            "source_states": source_states,
-                            "owner": FlextInfraDuplicateApplyPhase.name,
-                        }
-                    )
-                )
-                continue
-            if edit.file_path not in originals:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"duplicate planning source lacks its original "
-                    f"receipt: {edit.file_path}"
-                )
-            before = originals[edit.file_path]
-            files.append(
-                m.Infra.CodegenFilePlan(
-                    project=u.Infra.project_root(edit.file_path) or root,
-                    path=edit.file_path,
-                    before=before,
-                    desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
-                    owner=FlextInfraDuplicateApplyPhase.name,
-                )
+        if outcome.plans:
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                "\n".join(plan.reason for plan in outcome.plans),
+                error_code=c.Infra.ToolOutcome.ERROR.value,
             )
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                files=tuple(files),
-                inputs=source_states,
-                issues=tuple(
-                    m.Infra.Issue(
-                        file=str(plan.owner_file_path),
-                        line=plan.owner_line,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=plan.reason,
-                    )
-                    for plan in outcome.plans
-                ),
-            )
+        return FlextInfraSemanticPublication.edit_file_plans(
+            root, outcome.edits, owner=FlextInfraDuplicateApplyPhase.name
         )
 
     @staticmethod

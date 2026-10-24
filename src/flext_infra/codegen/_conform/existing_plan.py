@@ -383,17 +383,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 tooling_runtime=tooling_runtime,
                 managed_artifacts=managed_artifacts.value,
             )
-            rendered = self._render_existing_managed(
+            return self._render_existing_managed(
                 render_inputs,
                 contract,
                 initializers,
                 custom,
                 source_project=binding[0],
-            )
-            return rendered.flat_map(
-                lambda completed: self._qualified_existing_tooling(
-                    render_inputs, contract, completed, consumption, publications
-                )
             )
 
     def _existing_untooled_runtime(
@@ -694,49 +689,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
 
     @staticmethod
-    def _qualified_existing_tooling(
-        render_inputs: m.Infra.CodegenRenderInputs,
-        contract: m.Infra.CodegenConformSurfaceContract,
-        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
-        consumption: p.Infra.RopeSourceConsumption,
-        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Bind consumed evidence to the pyproject output inside its source epoch.
-
-        The consumption context must be closed while its source view remains
-        open, so the receipt contains the completed native capture.
-
-        Returns:
-            File plans retaining their original and consumed native receipts.
-
-        """
-        receipt = consumption.receipt()
-        states = receipt.inputs
-        directories = receipt.source_directories
-        topology = receipt.source_query_topology
-        qualified: list[m.Infra.CodegenFilePlan] = []
-        for file in planned:
-            if (
-                file.path != render_inputs.target.root / c.PYPROJECT_FILENAME
-                or not contract.tooling
-            ):
-                qualified.append(file)
-                continue
-            publications.append((file.path, receipt))
-            inputs = u.Infra.unique_states((
-                *file.source_states,
-                *states,
-            ))
-            if inputs.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(inputs)
-            queried, chains = u.Cli.atomic_merge_directory_query_receipts(
-                (*file.source_directories, *directories),
-                (*file.source_query_topology, *topology),
-            )
-            qualified.append(file)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(qualified))
-
-    @staticmethod
     def _facade_runtime_plans(
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
@@ -784,23 +736,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 return result_type.fail(
                     f"runtime barrel has competing bootstrap plans: {barrel.path}"
                 )
-        if complete_governed:
-            by_path.update((item.path, item) for item in barrels)
-        grouped_paths = {
-            item.path
-            for item in (*barrels, *facades)
-            if item.path.parent in packages
-            or any(item.path.is_relative_to(family) for family in families)
-        }
-        if not complete_governed:
-            by_path.update((item.path, item) for item in (*barrels, *facades))
-        group = f"{c.Infra.CodegenConformSurface.FACADES.value}:{root}"
-        return result_type.ok((
-            *(
-                item if item.path in grouped_paths else item
-                for item in by_path.values()
-            ),
-        ))
+        by_path.update(
+            (item.path, item)
+            for item in (barrels if complete_governed else (*barrels, *facades))
+        )
+        return result_type.ok(tuple(by_path.values()))
 
     def _planned_lazy_init_files(
         self,
@@ -1930,13 +1870,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
         spec = request.vscode_spec
-        sources = request.source_states
         if spec is None:
             loaded = u.Infra.load_codegen_inputs(request.root)
             if loaded.failure:
                 return result_type.from_failure(loaded)
             spec = loaded.value.spec.vscode
-            sources = loaded.value.sources
         merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
             request.root,
             spec=spec,

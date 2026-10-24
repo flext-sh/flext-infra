@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenFacades
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -85,7 +84,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                 source_project.source_consumption()
                 if source_project is not None
                 else nullcontext()
-            ) as consumption:
+            ):
                 updated, changes = rewrite(path, source)
             if updated != source:
                 edits.append(

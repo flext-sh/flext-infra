@@ -57,13 +57,13 @@ class FlextInfraUtilitiesRopeClassMove:
             ValueError: If input identity or a native relocation proof differs.
 
         """
-        sources, source_states = inputs
+        sources = inputs[0]
         if destination_file is not None:
             if destination_directory is not None:
                 msg = "module move requires exactly one destination"
                 raise ValueError(msg)
             return cls._plan_module_resource_move(
-                rope_project, source_file, destination_file, sources, source_states
+                rope_project, source_file, destination_file, inputs
             )
         if destination_directory is None:
             msg = "module move requires a destination"
@@ -74,21 +74,17 @@ class FlextInfraUtilitiesRopeClassMove:
         if source == target:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
-        before, captured = cls._module_input_epoch(root, source, sources, source_states)
+        states = cls._module_input_states(source, inputs)
         request, target_plan, proposed, virtual, source_module_name = (
-            cls._module_move_preparation(
-                rope_project, source, target, sources, captured
-            )
+            cls._module_move_preparation(rope_project, source, target, sources, states)
         )
-        source_states = target_plan.source_states
         return cls._module_file_plans(
             target_plan,
             source,
-            before,
             cls._module_completed_changes(
-                request, source_module_name, sources, proposed, (captured, virtual)
+                request, source_module_name, sources, proposed, virtual
             ),
-            source_states,
+            states,
         )
 
     @classmethod
@@ -97,7 +93,7 @@ class FlextInfraUtilitiesRopeClassMove:
         project: p.Infra.RopeProject,
         source_file: Path,
         destination_file: Path,
-        sources: t.MappingKV[Path, str],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose native resource rename and move in lookup-only source views.
 
@@ -115,32 +111,7 @@ class FlextInfraUtilitiesRopeClassMove:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
         cls._validate_module_resource_paths(root, source, target)
-        parents = {
-            root,
-            *(path.parent for path in sources if path.is_relative_to(root)),
-        }
-        parents.update(
-            path
-            for path in target.parents
-            if path.is_relative_to(root) and path.is_dir()
-        )
-        directories = tuple(
-            u.Cli
-            .atomic_inventory_physical_directory(path)
-            .unwrap()
-            .model_copy(update={"membership_queried": True})
-            for path in sorted(parents)
-        )
-        topology = tuple(
-            u.Cli.atomic_plan_directory_chain(path).unwrap() for path in sorted(parents)
-        )
-        return cls._module_resource_move_plans(
-            project,
-            root,
-            (source, target),
-            (sources, source_states),
-            (directories, topology),
-        )
+        return cls._module_resource_move_plans(project, root, (source, target), inputs)
 
     @staticmethod
     def _validate_module_resource_paths(root: Path, source: Path, target: Path) -> None:

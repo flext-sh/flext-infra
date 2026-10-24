@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, settings, t, u
-
+from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraAccessorOriginResolver,
@@ -151,16 +151,12 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             for plan in plans
             if plan.desired_content is not None
         }
-        controlplanes = FlextInfraCodegenFileLeases.prepare_source_controlplanes((
+        staged = FlextInfraStagedPackage.plan_sources(
             params.repository_root,
-            *(plan.project for plan in plans),
-        ))
-        staged = controlplanes.flat_map(
-            lambda _: FlextInfraStagedPackage.plan_sources(
-                params.repository_root,
-                updates,
-                options=m.Infra.StageSourceOptions(inputs=plans[0].source_states),
-            )
+            updates,
+            options=m.Infra.StageSourceOptions(
+                inputs=tuple(plan.before for plan in plans)
+            ),
         )
         if staged.failure:
             return result_type.from_failure(staged)
@@ -169,9 +165,8 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
         if checked.failure:
             return result_type.from_failure(checked)
         if params.apply:
-            published = FlextInfraSemanticPublication.publish_source_candidate(
-                plans,
-                candidate=staged.value,
+            published = FlextInfraSemanticPublication.publish_semantic_file_plans(
+                plans, repository_root=params.repository_root
             )
             if published.failure:
                 return result_type.from_failure(published)

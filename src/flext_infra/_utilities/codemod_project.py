@@ -46,7 +46,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
@@ -99,10 +98,9 @@ class FlextInfraUtilitiesCodemodProject(
     ] = ContextVar("codemod_closed_walk_cache", default=None)
     _class_stem_context: ClassVar[
         ContextVar[
-            t.Triple[
+            t.Pair[
                 p.Infra.RopeProject,
                 t.MutableMappingKV[Path, m.Infra.RopeProjectLayout | None],
-                t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis],
             ]
             | None
         ]
@@ -1486,8 +1484,7 @@ class FlextInfraUtilitiesCodemodProject(
         ``pydantic.BaseModel`` resolves only when its module closure was
         captured before planning. Every dotted prefix of each identity is
         offered; a prefix that is not a module resolves to nothing and captures
-        nothing. The current native graph elects the desired import closure;
-        file receipts retain the original physical preimages for authentication.
+        nothing. The current native graph elects the desired import closure.
 
         Returns:
             The immutable epoch every snapshot of one planning pass shares.
@@ -1505,7 +1502,7 @@ class FlextInfraUtilitiesCodemodProject(
             source_paths=tuple(source_paths),
             modules=modules,
         )
-        states = {state.path: state for state in project.consumed_source_states()}
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         cls._snapshot_project_imports(project, selection, states, ({}, {}))
         snapshot = m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
         return cls.codemod_source_epoch(snapshot)
@@ -1529,16 +1526,13 @@ class FlextInfraUtilitiesCodemodProject(
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
-                    (),
                     election=FlextInfraUtilitiesRopeRuntimeModules.native_election(
                         live
                     ),
                 )
             ) as layout_project,
             closing(
-                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    live, sources, captured=epoch
-                )
+                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(live, sources)
             ) as project,
             project.frozen_layout(),
         ):
@@ -1551,17 +1545,10 @@ class FlextInfraUtilitiesCodemodProject(
                     layout_project
                 ),
                 {},
-                {},
             ))
             try:
-                # The admission pass is the consumer of every layout read, so a
-                # cached class-stem query replays its receipt into this scope.
-                with (
-                    layout_project.source_consumption(),
-                    FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context(),
-                ):
+                with FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context():
                     yield project, sources
-                layout_project.verify_source_states()
             finally:
                 cls._class_stem_context.reset(stems)
                 cls._closed_walk_cache.reset(walks)
@@ -1573,13 +1560,12 @@ class FlextInfraUtilitiesCodemodProject(
     def codemod_binding_snapshot(
         cls,
         root: Path,
+        source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         modules: t.StrSequence = (),
         *,
         projects: t.SequenceOf[m.Infra.CodemodBindingProject] | None = None,
     ) -> m.Infra.CodemodBindingSnapshot:
         """Capture every selected project's owners once before inference.
-
-        Each elected graph retains the same admitted dependency receipts.
 
         Args:
             root: The root path of the project to capture.
@@ -1610,7 +1596,6 @@ class FlextInfraUtilitiesCodemodProject(
                 closing(
                     FlextInfraRopeProject.from_atomic_reads(
                         live,
-                        tuple(states.values()),
                         election=FlextInfraUtilitiesRopeRuntimeModules.native_election(
                             live
                         ),
@@ -2776,15 +2761,12 @@ class FlextInfraUtilitiesCodemodProject(
         if context is None:
             layout = FlextInfraUtilitiesCodegenNamespace.layout(owner)
         else:
-            project, layouts, receipts = context
-            with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
-                project, layouts, owner, receipts, str(owner)
-            ) as cached:
-                if not cached:
-                    layouts[owner] = FlextInfraUtilitiesCodegenNamespace.layout(
-                        owner, rope_project=project
-                    )
-                layout = layouts[owner]
+            project, layouts = context
+            if owner not in layouts:
+                layouts[owner] = FlextInfraUtilitiesCodegenNamespace.layout(
+                    owner, rope_project=project
+                )
+            layout = layouts[owner]
         if layout is None:
             msg = f"project layout is unresolved: {owner}"
             raise ValueError(msg)

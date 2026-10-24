@@ -34,7 +34,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             raise NotImplementedError(type(self).__qualname__)
 
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
-        _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         def _add(
             self,
@@ -221,21 +220,12 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             The resulting ``t.Pair[str, t.LazyAliasMap] | None`` where None
             marks a child that does not merge.
 
-        Raises:
-            ValueError: If the child decision lacks its original provenance.
-
         """
         # Do not merge retired root registries into the
         # inline map that replaces them.
         resolved_child_dir = child_dir.resolve()
         child_key = str(resolved_child_dir)
         child_plan = self._source_plan_cache.get(child_key)
-        if child_plan is not None:
-            receipt = self._plan_receipts.get(child_key)
-            if receipt is None:
-                msg = f"lazy-init child decision lacks original provenance: {child_dir}"
-                raise ValueError(msg)
-            self.rope_workspace.rope_project.replay_source_consumption(receipt)
         planned_action = child_plan.action if child_plan is not None else None
         planned_write = planned_action == c.Infra.LazyInitAction.WRITE
         retired = child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES

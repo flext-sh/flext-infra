@@ -1,0 +1,16 @@
+id: retire-publication-stack-cached-source-query
+language: Python
+severity: error
+rule:
+  pattern: |
+    with $OWNER.cached_source_query($PROJECT, $CACHE, $KEY, $RECEIPTS, $RECEIPT_KEY) as $CACHED:
+        if $CACHED:
+            return $HIT
+        $$$BODY
+fix: |-
+  if $KEY in $CACHE:
+      return $HIT
+  $$$BODY
+message: >-
+  Cached source queries no longer replay consumption receipts: a cache hit is
+  a plain membership test of the owning cache.

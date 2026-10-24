@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import m, u
-
 from tests import c, tm
 
 
@@ -131,21 +130,14 @@ class TestsFlextInfraCodegenFilePlanState:
     @pytest.mark.parametrize(
         "content", [b"", b"def load() -> bytes: ...\n", b"invalid [\n"]
     )
-    def test_stub_output_is_rejected_at_model_and_copied_plan_publication(
+    def test_stub_output_is_rejected_at_the_plan_model(
         tmp_path: Path,
         content: bytes,
     ) -> None:
-        """Unchecked copies cannot bypass the model law at either public writer."""
+        """A first-party stub write cannot even be planned; live bytes stay."""
         target = tmp_path / "boundary.pyi"
         target.write_bytes(content)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        retirement = m.Infra.CodegenFilePlan(
-            project=tmp_path,
-            path=target,
-            before=before,
-            desired_content=None,
-            desired_mode=None,
-        )
         with pytest.raises(m.ValidationError, match=r"\.pyi publication is forbidden"):
             m.Infra.CodegenFilePlan(
                 project=tmp_path,
@@ -154,30 +146,11 @@ class TestsFlextInfraCodegenFilePlanState:
                 desired_content=content,
                 desired_mode=before.mode,
             )
-        unchecked = retirement.model_copy(
-            update={"desired_content": content, "desired_mode": before.mode}
-        )
-        analysis = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=(retirement,),
-            inputs=(before,),
-        ).model_copy(update={"files": (unchecked,)})
-        for result in (
-            u.Cli.publish_file_changes(
-                (unchecked,),
-                lock_path=u.Infra.mutation_lock_path(unchecked.project).unwrap(),
-            ),
-            FlextInfraMisePublication.admit_batch(analysis),
-        ):
-            tm.fail(result, has=".pyi publication is forbidden")
         tm.that(target.read_bytes(), eq=content)
         tm.that(tuple(tmp_path.iterdir()), eq=(target,))
 
     @staticmethod
-    @pytest.mark.parametrize("route", ["plan", "staged", "raw"])
-    def test_stub_retirement_uses_the_real_absent_state(
-        tmp_path: Path, route: str
-    ) -> None:
+    def test_stub_retirement_uses_the_real_absent_state(tmp_path: Path) -> None:
         """The publication law permits guarded removal, not empty stub replacement."""
         target = tmp_path / "boundary.pyi"
         target.write_bytes(b"value: int\n")
@@ -189,63 +162,8 @@ class TestsFlextInfraCodegenFilePlanState:
             desired_content=None,
             desired_mode=None,
         )
-        if route == "plan":
-            tm.ok(
-                u.Cli.publish_file_changes(
-                    (plan,), lock_path=u.Infra.mutation_lock_path(plan.project).unwrap()
-                )
-            )
-        else:
-            staged = m.Infra.CodegenStagedFile(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                project=tmp_path,
-                before=before,
-                replacement=None,
-            )
-            if route == "staged":
-                tm.ok(FlextInfraMisePublication.publish((staged,)))
-            else:
-                tm.ok(FlextInfraMiseArtifactsFiles.write_publication(staged))
+        tm.ok(u.Infra.publish_codegen_plans(tmp_path, (plan,)))
         tm.that(target.exists(), eq=False)
-
-    @staticmethod
-    @pytest.mark.parametrize("copied", [False, True])
-    @pytest.mark.parametrize("content", [b"", b"value: int\n"])
-    def test_raw_staged_publication_cannot_bypass_the_plan_law(
-        tmp_path: Path,
-        content: bytes,
-        *,
-        copied: bool,
-    ) -> None:
-        """Raw stages and copied admission receipts cannot authorize stub bytes."""
-        target = tmp_path / "boundary.pyi"
-        target.write_bytes(b"original\n")
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        replacement = tmp_path / "replacement"
-        replacement.write_bytes(content)
-        staged = m.Infra.CodegenStagedFile(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            project=tmp_path,
-            before=tm.ok(u.Cli.atomic_read_binary_file_state(tmp_path / "source.py"))
-            if copied
-            else before,
-            replacement=tm.ok(
-                u.Cli.atomic_read_binary_file_state(replacement, required=True)
-            ),
-        )
-        if copied:
-            staged = staged.model_copy(update={"before": before})
-        admission = m.Infra.CodegenPhaseOutcome().model_copy(
-            update={"published_files": (staged,)},
-        )
-        for result in (
-            FlextInfraMisePublication.publish((staged,)),
-            FlextInfraMisePublication.publish((staged,), batch_admission=admission),
-            FlextInfraMiseArtifactsFiles.write_publication(staged),
-        ):
-            tm.fail(result, has=".pyi publication is forbidden")
-        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
-        tm.that(replacement.read_bytes(), eq=content)
 
     @staticmethod
     @pytest.mark.parametrize("name", ["py.typed", "typings.py", "protocols.py"])

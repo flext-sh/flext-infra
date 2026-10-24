@@ -104,20 +104,9 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             with (
                 u.Infra.facade_source_project(
                     Path(commonpath((root, supplier))),
-                    source_options=m.Infra.StageSourceOptions(
-                        inputs=(
-                            original,
-                            *declared.sources,
-                            tm.ok(
-                                u.Cli.atomic_read_binary_file_state(
-                                    supplier / c.PYPROJECT_FILENAME, required=True
-                                )
-                            ),
-                        ),
-                    ),
                     planned_sources=sources,
                     project_roots=(root, supplier),
-                ) as (project, _, _),
+                ) as (project, _),
                 FlextInfraRopeWorkspace.open_workspace(
                     root,
                     rope_repository_root=Path(project.root.real_path),
@@ -134,18 +123,6 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                         dependency_codegen={supplier: declared},
                     )
                 )
-                inputs = {state.path: state for state in consumption.receipt().inputs}
-                tm.that(inputs[owner], eq=before)
-                tm.that(
-                    any(
-                        directory.root.path == owner.parent
-                        and all(entry.name != owner.name for entry in directory.entries)
-                        for directory in consumption.receipt().source_directories
-                    )
-                )
-                tm.ok(supplier / c.PYPROJECT_FILENAME in inputs)
-                for state in declared.sources:
-                    tm.that(inputs[state.path], eq=state)
                 tm.that(len(edits), eq=1)
                 sources[path] = edits[0].updated_source
                 tm.that(

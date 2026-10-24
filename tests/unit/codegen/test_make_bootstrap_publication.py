@@ -13,9 +13,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-
 from flext_infra.workspace import FlextInfraBindingService
-from tests import c, m, p, tm, u
+from tests import c, p, tm, u
 
 
 class TestsMakeBootstrapPublication:
@@ -85,17 +84,6 @@ class TestsMakeBootstrapPublication:
         return root, members
 
     @staticmethod
-    def _receipt(root: Path) -> m.Infra.CodegenPhaseOutcome:
-        return m.Infra.CodegenPhaseOutcome.model_validate_json(
-            (
-                root
-                / FlextInfraMiseArtifactsVerification.publication_receipt(
-                    c.Infra.CodegenConformSurface.MAKEFILE,
-                )
-            ).read_bytes(),
-        )
-
-    @staticmethod
     def _run(
         root: Path,
         *,
@@ -139,16 +127,12 @@ class TestsMakeBootstrapPublication:
         self,
         tmp_path: Path,
     ) -> None:
-        """Every requested target publishes its own independent bootstrap receipt."""
+        """Every requested target publishes its own Makefile and stays checkable."""
         root, members = self.workspace(tmp_path)
 
         for path in (root, *members):
             tm.ok(u.Cli.process_succeeded(self._run(path).outcome))
-            receipt = self._receipt(path)
-            tm.that(receipt.scope_roots, eq=(path,))
-            tm.that(receipt.surface, eq=c.Infra.CodegenConformSurface.MAKEFILE)
-            tm.that(receipt.scope, eq=c.Infra.CodegenConformScope.SELF)
-            tm.that(receipt.written_files, eq=(path / c.Infra.MAKEFILE_FILENAME,))
+            tm.ok((path / c.Infra.MAKEFILE_FILENAME).is_file())
             tm.that(
                 u.Cli.process_succeeded(self._run(path, check_only=True).outcome),
                 eq=True,
@@ -281,13 +265,11 @@ class TestsMakeBootstrapPublication:
         self,
         tmp_path: Path,
     ) -> None:
-        """A failed member request cannot overwrite another target's receipt."""
+        """A failed member request cannot overwrite another target's output."""
         root, members = self.workspace(tmp_path)
         tm.ok(u.Cli.process_succeeded(self._run(root).outcome))
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE,
-        )
-        root_before = receipt_path.read_bytes()
+        root_makefile = root / c.Infra.MAKEFILE_FILENAME
+        root_before = root_makefile.read_bytes()
         foreign = members[-1] / "unowned.mk"
         foreign.write_text("# authored fixture\n", encoding=c.DEFAULT_ENCODING)
         target = members[-1] / c.Infra.MAKEFILE_FILENAME
@@ -296,7 +278,8 @@ class TestsMakeBootstrapPublication:
         result = self._run(members[-1])
         tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has=str(target))
-        tm.that(receipt_path.read_bytes(), eq=root_before)
+        tm.that(root_makefile.read_bytes(), eq=root_before)
+        tm.that(foreign.read_text(encoding=c.DEFAULT_ENCODING), eq="# authored fixture\n")
 
     def test_workspace_bootstrap_rejects_an_editable_from_another_checkout(
         self,
@@ -349,7 +332,4 @@ class TestsMakeBootstrapPublication:
         tm.that(
             u.Cli.process_succeeded(self._run(root, hosted=hosted).outcome), eq=True
         )
-        tm.that(
-            self._receipt(root).scope_roots,
-            eq=(root,),
-        )
+        tm.ok((root / c.Infra.MAKEFILE_FILENAME).is_file())

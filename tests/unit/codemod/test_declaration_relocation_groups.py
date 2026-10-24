@@ -13,12 +13,10 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra, p
-from flext_infra.codegen import (
-    FlextInfraCodegenLazyInit,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
 from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import c, m, r, t, tm, u
+from tests import c, m, r, tm, u
 from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
 )
@@ -58,14 +56,11 @@ class TestsFlextInfraDeclarationRelocationGroups:
 
     @staticmethod
     @pytest.mark.parametrize("refused", ["destination", "exposure"])
-    @pytest.mark.parametrize("independent_group", [False, True])
-    def test_failed_dependent_group_preserves_independent_public_runtime(
+    def test_concurrent_destination_edit_refuses_the_whole_batch(
         tmp_path: Path,
         refused: str,
-        *,
-        independent_group: bool,
     ) -> None:
-        """A destination refusal recovers only its invocation's dependent group."""
+        """A concurrently edited destination refuses the whole batch without effects."""
         root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body="count: int = Field(default=3)",
@@ -116,45 +111,18 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 FlextInfraCodegenLazyInit(repository_root=root).plan_files()
             )
             plans.extend(item for item in exposure.files if item.path == blocked)
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        blocked_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(blocked, required=True)
         )
-        receipts: list[m.Infra.CodegenStagedFile] = []
-
-        def refuse_destination(
-            session: m.Infra.CodegenTransactionSession,
-            _staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
-        ) -> p.Result[m.Infra.CodegenTransactionSession]:
-            before = tm.ok(u.Cli.atomic_read_binary_file_state(blocked, required=True))
-            tm.ok(
-                u.Cli.atomic_write_binary_file_guarded(
-                    before,
-                    sources[blocked].encode("utf-8")
-                    + b"\n# authored destination change\n",
-                    permission_mode=before.mode,
-                )
+        tm.ok(
+            u.Cli.atomic_write_binary_file_guarded(
+                blocked_before,
+                sources[blocked].encode("utf-8") + b"\n# authored destination change\n",
+                permission_mode=blocked_before.mode,
             )
-            return r[m.Infra.CodegenTransactionSession].ok(session)
-
-        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
-            started = transaction.begin_files_locked(scope, {f"@{root.name}": root}, ())
-            if started.failure:
-                return r[t.VariadicTuple[Path]].from_failure(started)
-            admitted = transaction.append_phase_locked(
-                started.value,
-                c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                tuple(plans),
-                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(), staged_validator=refuse_destination
-                ),
-            )
-            if admitted.failure:
-                return r[t.VariadicTuple[Path]].from_failure(admitted)
-            return transaction.commit_locked(admitted.value, published_files=receipts)
-
-        failed = transaction.run_files_locked({f"@{root.name}": root}, publish)
-        tm.fail(failed)
-        tm.that(independent.read_text(encoding="utf-8"), eq="VALUE = 'after'\n")
+        )
+        tm.fail(u.Infra.publish_codegen_plans(root, tuple(plans)))
+        tm.that(independent.read_text(encoding="utf-8"), eq="VALUE = 'before'\n")
         tm.that(
             blocked.read_text(encoding="utf-8"),
             eq=sources[blocked] + "\n# authored destination change\n",
@@ -162,7 +130,6 @@ class TestsFlextInfraDeclarationRelocationGroups:
         for path, source in sources.items():
             if path != blocked:
                 tm.that(path.read_text(encoding="utf-8"), eq=source)
-        tm.that(tuple(item.before.path for item in receipts), eq=(independent,))
         consumer = tm.ok(
             u.Cli.run(
                 (
@@ -174,7 +141,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                         f"from {package.name} import m; "
                         "from independent import VALUE; "
                         "assert not hasattr(m, 'Payload'); "
-                        "assert build().count == 3; assert VALUE == 'after'"
+                        "assert build().count == 3; assert VALUE == 'before'"
                     ),
                 ),
                 cwd=root,
