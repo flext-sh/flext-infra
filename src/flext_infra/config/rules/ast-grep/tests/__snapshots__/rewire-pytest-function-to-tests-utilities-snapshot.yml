@@ -1,0 +1,21 @@
+id: rewire-pytest-function-to-tests-utilities
+snapshots:
+  ? |
+    with pytest.raises(c.ValidationError):
+        build()
+  : fixed: |
+      with u.Tests.raises(c.ValidationError):
+          build()
+    labels:
+    - source: pytest.raises
+      style: primary
+      start: 5
+      end: 18
+    - source: pytest
+      style: secondary
+      start: 5
+      end: 11
+    - source: raises
+      style: secondary
+      start: 12
+      end: 18

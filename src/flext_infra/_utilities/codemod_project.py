@@ -2010,6 +2010,7 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.MODULE_EXPORT
                 | c.Infra.CodemodContextPredicate.FILE_FAMILY
                 | c.Infra.CodemodContextPredicate.FAMILY_PEER
+                | c.Infra.CodemodContextPredicate.LIBRARY_MEMBER_OWNER
                 | c.Infra.CodemodContextPredicate.PACKAGE_EXPORT
                 | c.Infra.CodemodContextPredicate.FACADE_MODULE
                 | c.Infra.CodemodContextPredicate.LATER_LAYER
@@ -2259,32 +2260,13 @@ class FlextInfraUtilitiesCodemodProject(
                         & exports
                     )
                 )
-            case c.Infra.CodemodContextPredicate.FILE_FAMILY:
-                return value in cls._file_families(file_path)
-            case c.Infra.CodemodContextPredicate.FAMILY_PEER:
-                shared = cls._closed_walk_cache.get()
-                facade_words = frozenset(
-                    cls._class_family_word(name)
-                    for name in cls._module_exports(file_path)
-                    if name[:1].isupper()
-                )
-                package_inits = (
-                    file_path.parent / f"_{file_path.stem}" / "__init__.py",
-                    *(
-                        directory / "__init__.py"
-                        for directory in file_path.parents
-                        if directory.name.startswith("_")
-                        and not directory.name.startswith("__")
-                    ),
-                )
-                return cls._class_family_word(value) in facade_words or any(
-                    value in cls._module_exports(init)
-                    for init in package_inits
-                    if (
-                        init.is_file()
-                        if shared is None
-                        else shared[0].source_query(init, "isfile")
-                    )
+            case (
+                c.Infra.CodemodContextPredicate.FILE_FAMILY
+                | c.Infra.CodemodContextPredicate.FAMILY_PEER
+                | c.Infra.CodemodContextPredicate.LIBRARY_MEMBER_OWNER
+            ):
+                return cls._context_family_holds(
+                    predicate, captured, file_path, condition
                 )
             case c.Infra.CodemodContextPredicate.PACKAGE_EXPORT:
                 if of is None:
@@ -2462,6 +2444,63 @@ class FlextInfraUtilitiesCodemodProject(
         facade = ".".join((*parts[:private], parts[private].removeprefix("_")))
         module = located[1]
         return module in {family, facade} or module.startswith(f"{family}.")
+
+    @classmethod
+    def _context_family_holds(
+        cls,
+        predicate: c.Infra.CodemodContextPredicate,
+        captured: t.Pair[str, str | None],
+        file_path: Path,
+        condition: m.Infra.CodemodContextCondition,
+    ) -> bool:
+        """Evaluate one facade-family membership predicate.
+
+        ``file-family`` reads the module's family letters, ``family-peer`` the
+        family's peer and component classes, ``library-member-owner`` the owner
+        letter of a library member's kind.
+
+        Returns:
+            Whether the captured value belongs to the predicate's family.
+
+        Raises:
+            ValueError: If ``library-member-owner`` has no ``of`` capture.
+
+        """
+        value, of = captured
+        if predicate is c.Infra.CodemodContextPredicate.FILE_FAMILY:
+            return value in cls._file_families(file_path)
+        if predicate is c.Infra.CodemodContextPredicate.LIBRARY_MEMBER_OWNER:
+            if of is None:
+                msg = f"predicate {predicate} requires an 'of' capture"
+                raise ValueError(msg)
+            return (
+                FlextInfraUtilitiesFacadeMembers.library_member_owner(of, value)
+                == condition.arg
+            )
+        shared = cls._closed_walk_cache.get()
+        facade_words = frozenset(
+            cls._class_family_word(name)
+            for name in cls._module_exports(file_path)
+            if name[:1].isupper()
+        )
+        package_inits = (
+            file_path.parent / f"_{file_path.stem}" / "__init__.py",
+            *(
+                directory / "__init__.py"
+                for directory in file_path.parents
+                if directory.name.startswith("_")
+                and not directory.name.startswith("__")
+            ),
+        )
+        return cls._class_family_word(value) in facade_words or any(
+            value in cls._module_exports(init)
+            for init in package_inits
+            if (
+                init.is_file()
+                if shared is None
+                else shared[0].source_query(init, "isfile")
+            )
+        )
 
     @staticmethod
     def _class_family_word(name: str) -> str:

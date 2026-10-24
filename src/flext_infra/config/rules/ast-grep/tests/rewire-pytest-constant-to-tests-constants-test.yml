@@ -1,0 +1,11 @@
+id: rewire-pytest-constant-to-tests-constants
+valid:
+  - |
+    @c.Tests.MARK.slow
+    def test_value() -> None: ...
+  - |
+    code = pytest.ExitCode.OK
+invalid:
+  - |
+    @pytest.mark.slow
+    def test_value() -> None: ...

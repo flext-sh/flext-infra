@@ -112,6 +112,19 @@ class FlextInfraUtilitiesFacadeMembers:
         return config.Infra.tooling.facade_members.owners[cls.facade_member_kind(value)]
 
     @classmethod
+    def library_member_owner(cls, module: str, member: str) -> str:
+        """Return the facade letter that owns a library's public member.
+
+        The member is read from the imported library itself, so the owner
+        follows the object's kind exactly as for a facade member.
+
+        Returns:
+            The owner letter declared for the member's kind.
+
+        """
+        return cls.facade_member_owner(getattr(import_module(module), member))
+
+    @classmethod
     def foreign_facade_member(
         cls,
         package: str,

@@ -1,0 +1,11 @@
+id: rewire-pytest-function-to-tests-utilities
+# Native tests prove the syntax shape; the engine's library-member-owner
+# context admits only pytest members whose object kind the u family owns.
+valid:
+  - |
+    with u.Tests.raises(c.ValidationError):
+        build()
+invalid:
+  - |
+    with pytest.raises(c.ValidationError):
+        build()

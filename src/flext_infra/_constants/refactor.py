@@ -241,6 +241,10 @@ class FlextInfraConstantsRefactor:
           package (``<pkg>/_<facade>`` beside a facade module, or the
           ``_family`` package holding the module), the family's own component;
           never an arbitrary concrete class;
+        - ``library-member-owner``: the captured member of the library module
+          named by the ``of`` capture is owned by the facade letter in
+          ``arg``, from the kind of the library's own object (tooling
+          ``facade-members.owners``), exactly as for a facade member;
         - ``facade-module``: the finding's module declares a facade letter in
           its ``__all__`` (the captured value is not read);
         - ``later-layer``: the captured import (a module of the own package or
@@ -309,6 +313,7 @@ class FlextInfraConstantsRefactor:
         PACKAGE_EXPORT = "package-export"
         FILE_FAMILY = "file-family"
         FAMILY_PEER = "family-peer"
+        LIBRARY_MEMBER_OWNER = "library-member-owner"
         FACADE_MODULE = "facade-module"
         LATER_LAYER = "later-layer"
         IMPORT_CYCLE = "import-cycle"
