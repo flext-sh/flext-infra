@@ -1,4 +1,4 @@
-"""Conformance plan selection and repository topology resolution.
+"""Conformance plan selection across scaffold and existing repositories.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,14 +15,19 @@ from typing import Literal
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.codegen._conform._plan_topology import (
+    FlextInfraCodegenConformPlanTopologyMixin,
+)
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
-class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
+class FlextInfraCodegenConformPlan(
+    FlextInfraCodegenConformScaffoldPlan,
+    FlextInfraCodegenConformPlanTopologyMixin,
+):
     """Conformance planning across scaffold and existing repositories."""
 
     @staticmethod
@@ -135,20 +140,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
     def _extended_pyproject_views(
         self,
-        root: Path,
-        repository: m.Infra.RepositoryRef,
+        task: m.Infra.CodegenRepositoryPlanTask,
         selected: t.VariadicTuple[m.Infra.RepositoryRef],
-        workspace: m.Infra.WorkspaceSpec,
         inputs: m.Infra.CodegenInputs,
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> p.Result[list[m.Infra.CodegenFilePlan]]:
         """Resolve one repository's views without consulting failed selected metadata.
 
         Args:
-            root: Resolved repository root of the request.
-            repository: Repository whose native views are being extended.
+            task: The repository's planning task, carrying the request root,
+                its loaded workspace and the repository whose views extend.
             selected: Repository references selected for planning.
-            workspace: Loaded workspace specification of the request root.
             inputs: Loaded codegen inputs of the request root.
             files: Governed file plans planned so far.
 
@@ -158,7 +160,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[list[m.Infra.CodegenFilePlan]]
-        project_root = (root / repository.path).resolve()
+        root = task.root
+        workspace = task.workspace
+        project_root = (root / task.repository.path).resolve()
         project_inputs = (
             r[m.Infra.CodegenInputs].ok(inputs)
             if project_root == root
@@ -539,75 +543,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         return result_type.ok((plan, analysis))
 
-    def _planning_workspace(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        root: Path,
-        *,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[
-        t.Triple[
-            m.Infra.WorkspaceSpec,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.RepositoryRef,
-        ]
-    ]:
-        """Load the planning workspace and its current conformance target.
-
-        Returns:
-            The resulting ``p.Result[t.Triple[m.Infra.WorkspaceSpec,
-                m.Infra.RepositoryConformTarget, m.Infra.RepositoryRef]]``.
-
-        """
-        result_type = r[
-            t.Triple[
-                m.Infra.WorkspaceSpec,
-                m.Infra.RepositoryConformTarget,
-                m.Infra.RepositoryRef,
-            ]
-        ]
-        workspace = self.initial_workspace
-        if workspace is None:
-            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                root,
-                inputs=inputs,
-                allow_unprovisioned_members=(
-                    request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
-                ),
-            )
-            if workspace_result.failure:
-                return result_type.from_failure(workspace_result)
-            workspace = workspace_result.value
-        current_repository = workspace.repository
-        if (
-            self.initial_workspace is None
-            and request.what not in c.Infra.DECLARED_TARGET_SURFACES
-        ):
-            current_target_result = FlextInfraWorkspaceDetector.conform_target(
-                root,
-                workspace,
-                inputs=inputs,
-            )
-            if current_target_result.failure:
-                return result_type.from_failure(current_target_result)
-            current_target = current_target_result.value
-            current_repository = current_target.repository
-        else:
-            current_target = m.Infra.RepositoryConformTarget(
-                repository=current_repository,
-                root=root,
-                toolchain_root=root,
-                make_profile=current_repository.role,
-                beads=workspace.beads,
-                project=workspace.project,
-                canonical_project_name=current_repository.distribution,
-                ci_enabled=True,
-                publishes_release=current_repository.publishes_release,
-                gascity_enabled=workspace.gascity_enabled,
-                external_dependency_paths=workspace.external_dependency_paths,
-            )
-        return result_type.ok((workspace, current_target, current_repository))
-
     @staticmethod
     def _planning_report_evidence(
         root: Path,
@@ -707,7 +642,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 list[m.Infra.UvEnvironmentPlan]]]``.
 
         """
-        workspace, current_target, _current_repository = planning
         result_type = r[
             t.Triple[
                 list[m.Infra.CodegenFilePlan],
@@ -716,6 +650,67 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ]
         ]
         u.Cli.info(f"stage=plan repositories={len(selected)}")
+        tasks = self._repository_plan_tasks(root, planning, selected, surface, inputs)
+        # Every repository plans independently and read-only, so the fleet
+        # plans them across worker processes; the results keep declaration
+        # order, and publication stays serial under the generation lease.
+        outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
+        if self.planning_exception is None:
+            self.planning_exception = next(
+                (
+                    outcome.exception
+                    for outcome in outcomes
+                    if outcome.exception is not None
+                ),
+                None,
+            )
+        contract = self.surface_contract(surface, codegen=inputs.spec)
+        if contract.pyproject and (
+            contract.destinations is None
+            or c.PYPROJECT_FILENAME in contract.destinations
+        ):
+            outcomes = self._outcomes_with_pyproject_views(
+                tasks,
+                outcomes,
+                selected,
+                inputs,
+            )
+        repository_paths = {
+            repository.name: root / repository.path for repository in selected
+        }
+        evidence = self._planning_report_evidence(root, outcomes, repository_paths)
+        if evidence.failure:
+            return result_type.from_failure(evidence)
+        published = u.Infra.publish_refactor_report_evidence(
+            root,
+            evidence.value,
+            relative_path=c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH,
+        )
+        if published.failure:
+            return result_type.from_failure(published)
+        return result_type.ok(
+            self._collected_repository_outcomes(outcomes, repository_paths),
+        )
+
+    def _repository_plan_tasks(
+        self,
+        root: Path,
+        planning: t.Triple[
+            m.Infra.WorkspaceSpec,
+            m.Infra.RepositoryConformTarget,
+            m.Infra.RepositoryRef,
+        ],
+        selected: t.VariadicTuple[m.Infra.RepositoryRef],
+        surface: c.Infra.CodegenConformSurface,
+        inputs: m.Infra.CodegenInputs,
+    ) -> list[m.Infra.CodegenRepositoryPlanTask]:
+        """Build one self-contained planning task per generated repository.
+
+        Returns:
+            The tasks of every selected ``internal_flext`` repository.
+
+        """
+        workspace, current_target, _current_repository = planning
         tasks: list[m.Infra.CodegenRepositoryPlanTask] = []
         for repository in selected:
             if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
@@ -739,76 +734,75 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     ),
                 ),
             )
-        # Every repository plans independently and read-only, so the fleet
-        # plans them across worker processes; the results keep declaration
-        # order, and publication stays serial under the generation lease.
-        outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
-        if self.planning_exception is None:
-            self.planning_exception = next(
-                (
-                    outcome.exception
-                    for outcome in outcomes
-                    if outcome.exception is not None
-                ),
-                None,
-            )
-        contract = self.surface_contract(surface, codegen=inputs.spec)
-        if contract.pyproject and (
-            contract.destinations is None
-            or c.PYPROJECT_FILENAME in contract.destinations
-        ):
-            # Views consume the complete desired metadata, never a failed
-            # selected repository's older document still present on disk.
-            metadata = tuple(
-                file
-                for outcome in outcomes
-                if not (outcome.error or outcome.error_type or outcome.issues)
-                for file in outcome.files
-            )
-            extended_outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
-            for task, outcome in zip(tasks, outcomes, strict=True):
-                if outcome.error or outcome.error_type or outcome.issues:
-                    extended_outcomes.append(outcome)
-                    continue
-                extended = self._extended_pyproject_views(
-                    root,
-                    task.repository,
-                    selected,
-                    workspace,
-                    inputs,
-                    metadata,
-                )
-                extended_outcomes.append(
-                    outcome.model_copy(
-                        update=(
-                            {
-                                "files": (),
-                                "environment": None,
-                                "error": (
-                                    extended.error
-                                    or "native resolution planning failed"
-                                ),
-                                "exception": extended.exception,
-                            }
-                            if extended.failure
-                            else {"files": (*outcome.files, *extended.value)}
-                        ),
-                    ),
-                )
-            outcomes = tuple(extended_outcomes)
-        repository_paths = {
-            repository.name: root / repository.path for repository in selected
-        }
-        evidence = self._planning_report_evidence(root, outcomes, repository_paths)
-        if evidence.failure:
-            return result_type.from_failure(evidence)
-        published = u.Infra.publish_refactor_report_evidence(
-            root,
-            evidence.value,
-            relative_path=c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH,
+        return tasks
+
+    def _outcomes_with_pyproject_views(
+        self,
+        tasks: t.SequenceOf[m.Infra.CodegenRepositoryPlanTask],
+        outcomes: t.SequenceOf[m.Infra.CodegenRepositoryPlanOutcome],
+        selected: t.VariadicTuple[m.Infra.RepositoryRef],
+        inputs: m.Infra.CodegenInputs,
+    ) -> t.VariadicTuple[m.Infra.CodegenRepositoryPlanOutcome]:
+        """Extend each successful outcome with its native resolution views.
+
+        Views consume the complete desired metadata, never a failed selected
+        repository's older document still present on disk.
+
+        Returns:
+            The outcomes in task order, each failed view resolution retained
+            as its repository's planning failure.
+
+        """
+        metadata = tuple(
+            file
+            for outcome in outcomes
+            if not (outcome.error or outcome.error_type or outcome.issues)
+            for file in outcome.files
         )
-        if published.failure:
-            return result_type.from_failure(published)
+        extended_outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
+        for task, outcome in zip(tasks, outcomes, strict=True):
+            if outcome.error or outcome.error_type or outcome.issues:
+                extended_outcomes.append(outcome)
+                continue
+            extended = self._extended_pyproject_views(
+                task,
+                selected,
+                inputs,
+                metadata,
+            )
+            extended_outcomes.append(
+                outcome.model_copy(
+                    update=(
+                        {
+                            "files": (),
+                            "environment": None,
+                            "error": (
+                                extended.error or "native resolution planning failed"
+                            ),
+                            "exception": extended.exception,
+                        }
+                        if extended.failure
+                        else {"files": (*outcome.files, *extended.value)}
+                    ),
+                ),
+            )
+        return tuple(extended_outcomes)
+
+    def _collected_repository_outcomes(
+        self,
+        outcomes: t.SequenceOf[m.Infra.CodegenRepositoryPlanOutcome],
+        repository_paths: t.MappingKV[str, Path],
+    ) -> t.Triple[
+        list[m.Infra.CodegenFilePlan],
+        list[m.Infra.UvEnvironmentPlan],
+        list[m.Infra.Issue],
+    ]:
+        """Report each repository outcome and collect its plans and issues.
+
+        Returns:
+            The governed file plans, uv environment plans and planning issues.
+
+        """
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         issues: list[m.Infra.Issue] = list(self.planning_issues)
@@ -848,7 +842,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 result=not outcome.issues,
                 elapsed=outcome.elapsed,
             )
-        return result_type.ok((files, environments, issues))
+        return files, environments, issues
 
     @classmethod
     def plan_repository_task(
@@ -982,136 +976,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             exception=planner.planning_exception,
         )
 
-    def _repository_planning_inputs(
-        self,
-        repository_root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        current_target: m.Infra.RepositoryConformTarget,
-        repository: m.Infra.RepositoryRef,
-        *,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[
-        t.Triple[
-            Path,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.WorkspaceSpec,
-        ]
-    ]:
-        """Resolve one repository's checkout root, target, and local workspace.
-
-        Returns:
-            The resulting ``p.Result[t.Triple[Path,
-                m.Infra.RepositoryConformTarget, m.Infra.WorkspaceSpec]]``.
-
-        """
-        result_type = r[
-            t.Triple[
-                Path,
-                m.Infra.RepositoryConformTarget,
-                m.Infra.WorkspaceSpec,
-            ]
-        ]
-        is_current_repository = repository.name == current_target.repository.name
-        if is_current_repository:
-            return result_type.ok(
-                (repository_root, current_target, workspace),
-            )
-        local = self._member_local_workspace(
-            workspace,
-            repository,
-            repository_root,
-            inputs=inputs,
-        )
-        if local.failure:
-            return result_type.from_failure(local)
-        local_workspace = local.value
-        target_result = FlextInfraWorkspaceDetector.conform_target(
-            repository_root,
-            local_workspace,
-            inputs=inputs,
-        )
-        if target_result.failure:
-            return result_type.from_failure(target_result)
-        target = target_result.value.model_copy(
-            update={"toolchain_root": current_target.toolchain_root},
-        )
-        if repository.path != Path():
-            target = target.model_copy(update={"repository": repository})
-        return result_type.ok((repository_root, target, local_workspace))
-
-    def _resolved_repository_root(
-        self,
-        root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        current_target: m.Infra.RepositoryConformTarget,
-        repository: m.Infra.RepositoryRef,
-    ) -> p.Result[Path]:
-        """Resolve and authenticate one repository's checkout root.
-
-        Returns:
-            The resulting ``p.Result[Path]``.
-
-        """
-        result_type = r[Path]
-        is_current_repository = repository.name == current_target.repository.name
-        if is_current_repository:
-            repository_root = current_target.root
-            if repository_root != root:
-                return result_type.fail(
-                    "current conformance target differs from the requested root: "
-                    f"{repository_root} != {root}",
-                )
-            return result_type.ok(repository_root)
-        # The governing root is the requested checkout, never the
-        # previous iteration's member: resolving the second declared
-        # repository against the first produced <root>/alpha/beta.
-        repository_root_result = self._repository_root(root, workspace, repository)
-        if repository_root_result.failure:
-            return result_type.from_failure(repository_root_result)
-        repository_root = repository_root_result.value
-        if repository_root.exists() and not repository_root.is_dir():
-            return result_type.fail(
-                f"declared repository path is not a directory: {repository_root}",
-            )
-        if not repository_root.is_dir() and self.initial_workspace is None:
-            return result_type.fail(
-                f"declared repository checkout is missing: {repository_root}",
-            )
-        return result_type.ok(repository_root)
-
-    @staticmethod
-    def _member_local_workspace(
-        workspace: m.Infra.WorkspaceSpec,
-        repository: m.Infra.RepositoryRef,
-        repository_root: Path,
-        *,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[m.Infra.WorkspaceSpec]:
-        """Load the local workspace a declared member plans from.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
-
-        """
-        declared_member = FlextInfraWorkspaceDetector.load_workspace_spec(
-            repository_root,
-            inputs=inputs,
-        )
-        if declared_member.failure or repository.path == Path():
-            return declared_member
-        # The parent owns topology; the member owns its local project metadata.
-        return r[m.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(
-                name=repository.name,
-                docs_audit=declared_member.value.docs_audit,
-                beads=workspace.beads,
-                repository=repository.model_copy(update={"path": Path()}),
-                project=declared_member.value.project,
-                namespace_scan_dirs=declared_member.value.namespace_scan_dirs,
-                candidate_dependencies=workspace.candidate_dependencies,
-            ),
-        )
-
     def _governed_repository_plans(
         self,
         target: m.Infra.RepositoryConformTarget,
@@ -1190,107 +1054,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 list(self._bind_codegen_sources(retired_files, inputs)),
             ),
         )
-
-    def _bind_codegen_sources(
-        self,
-        files: t.SequenceOf[m.Infra.CodegenFilePlan],
-        inputs: m.Infra.CodegenInputs,
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
-        """Bind each file to the same captured configuration without duplicate sources.
-
-        Returns:
-            Valid file plans; source conflicts retain their target issue and cause.
-
-        """
-        complete: list[m.Infra.CodegenFilePlan] = []
-        for file in files:
-            sources = FlextInfraCodegenPreconditions.unique_states(
-                (*file.source_states, *inputs.sources),
-            )
-            if sources.failure:
-                self._record_file_failure(
-                    file.path,
-                    sources.error or "configuration source identity conflicts",
-                    exception=sources.exception,
-                )
-                continue
-            complete.append(
-                file.model_copy(
-                    update={"source_states": sources.value},
-                ),
-            )
-        return tuple(complete)
-
-    @staticmethod
-    def _select_repositories(
-        request: m.Infra.CodegenConformRequest,
-        workspace: m.Infra.WorkspaceSpec,
-        current_repository: m.Infra.RepositoryRef,
-    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
-        """Resolve self/subprojects/all from the local read-only topology.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]``.
-
-        """
-        scope = c.Infra.CodegenConformScope(request.scope)
-        selected: t.VariadicTuple[m.Infra.RepositoryRef]
-        if scope is c.Infra.CodegenConformScope.SELF:
-            selected = (current_repository,)
-        elif scope is c.Infra.CodegenConformScope.DECLARED:
-            if not workspace.subprojects:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
-                    "subprojects scope requires local .gitmodules entries",
-                )
-            selected = tuple(workspace.subprojects)
-        else:
-            selected = (workspace.repository, *workspace.subprojects)
-        mutable = tuple(
-            repository
-            for repository in selected
-            if repository.codegen is not c.Infra.CodegenKind.NONE
-            and not repository.read_only
-        )
-        if not mutable:
-            return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
-                "selected repositories do not permit code generation",
-            )
-        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(mutable)
-
-    @staticmethod
-    def _repository_root(
-        root: Path,
-        workspace: p.Infra.WorkspaceSpec,
-        repository: p.Infra.RepositoryRef,
-    ) -> p.Result[Path]:
-        """Resolve one declared checkout without escaping its workspace owner.
-
-        Returns:
-            The resulting ``p.Result[Path]``.
-
-        """
-        if repository.name == workspace.repository.name:
-            return r[Path].ok(root)
-        resolved_root = root.resolve()
-        resolved: Path = (resolved_root / repository.path).resolve()
-        if not resolved.is_relative_to(resolved_root):
-            return r[Path].fail(
-                "declared repository path escapes workspace root: "
-                f"{repository.path.as_posix()}",
-            )
-        return r[Path].ok(resolved)
-
-    @staticmethod
-    def _repository_provider(
-        repository: m.Infra.RepositoryRef,
-    ) -> p.Result[m.Infra.ProviderIdentitySpec]:
-        """Resolve one repository to its self-declared provider identity.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.ProviderIdentitySpec]``.
-
-        """
-        return u.Infra.repository_provider(repository)
 
 
 __all__: list[str] = ["FlextInfraCodegenConformPlan"]

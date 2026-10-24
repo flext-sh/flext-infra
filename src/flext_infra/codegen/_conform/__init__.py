@@ -13,6 +13,18 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.codegen._conform._execute_generation import (
+        FlextInfraCodegenConformExecuteGenerationMixin,
+    )
+    from flext_infra.codegen._conform._existing_plan_governed import (
+        FlextInfraCodegenConformExistingPlanGovernedMixin,
+    )
+    from flext_infra.codegen._conform._existing_plan_recovery import (
+        FlextInfraCodegenConformExistingPlanRecoveryMixin,
+    )
+    from flext_infra.codegen._conform._plan_topology import (
+        FlextInfraCodegenConformPlanTopologyMixin,
+    )
     from flext_infra.codegen._conform.artifact_render import (
         FlextInfraCodegenConformArtifactRender,
     )
@@ -57,11 +69,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformDocsOwnership",
     "FlextInfraCodegenConformExecute",
     "FlextInfraCodegenConformExecuteDirected",
+    "FlextInfraCodegenConformExecuteGenerationMixin",
     "FlextInfraCodegenConformExecuteScaffold",
     "FlextInfraCodegenConformExistingPlan",
+    "FlextInfraCodegenConformExistingPlanGovernedMixin",
+    "FlextInfraCodegenConformExistingPlanRecoveryMixin",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformGitignore",
     "FlextInfraCodegenConformPlan",
+    "FlextInfraCodegenConformPlanTopologyMixin",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
 )
@@ -77,11 +93,15 @@ install_lazy_exports(
         "FlextInfraCodegenConformDocsOwnership": ".docs_ownership",
         "FlextInfraCodegenConformExecute": ".execute",
         "FlextInfraCodegenConformExecuteDirected": ".execute_directed",
+        "FlextInfraCodegenConformExecuteGenerationMixin": "._execute_generation",
         "FlextInfraCodegenConformExecuteScaffold": ".execute_scaffold",
         "FlextInfraCodegenConformExistingPlan": ".existing_plan",
+        "FlextInfraCodegenConformExistingPlanGovernedMixin": "._existing_plan_governed",
+        "FlextInfraCodegenConformExistingPlanRecoveryMixin": "._existing_plan_recovery",
         "FlextInfraCodegenConformFilePlans": ".file_plans",
         "FlextInfraCodegenConformGitignore": ".gitignore",
         "FlextInfraCodegenConformPlan": ".plan",
+        "FlextInfraCodegenConformPlanTopologyMixin": "._plan_topology",
         "FlextInfraCodegenConformPyprojectPolicy": ".pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": ".scaffold_plan",
     }),

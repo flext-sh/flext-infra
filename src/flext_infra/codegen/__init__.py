@@ -45,6 +45,18 @@ if TYPE_CHECKING:
     from flext_infra.codegen._codegen_transaction_recovery import (
         FlextInfraCodegenTransactionRecovery,
     )
+    from flext_infra.codegen._conform._execute_generation import (
+        FlextInfraCodegenConformExecuteGenerationMixin,
+    )
+    from flext_infra.codegen._conform._existing_plan_governed import (
+        FlextInfraCodegenConformExistingPlanGovernedMixin,
+    )
+    from flext_infra.codegen._conform._existing_plan_recovery import (
+        FlextInfraCodegenConformExistingPlanRecoveryMixin,
+    )
+    from flext_infra.codegen._conform._plan_topology import (
+        FlextInfraCodegenConformPlanTopologyMixin,
+    )
     from flext_infra.codegen._conform.artifact_render import (
         FlextInfraCodegenConformArtifactRender,
     )
@@ -209,11 +221,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformDocsOwnership",
     "FlextInfraCodegenConformExecute",
     "FlextInfraCodegenConformExecuteDirected",
+    "FlextInfraCodegenConformExecuteGenerationMixin",
     "FlextInfraCodegenConformExecuteScaffold",
     "FlextInfraCodegenConformExistingPlan",
+    "FlextInfraCodegenConformExistingPlanGovernedMixin",
+    "FlextInfraCodegenConformExistingPlanRecoveryMixin",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformGitignore",
     "FlextInfraCodegenConformPlan",
+    "FlextInfraCodegenConformPlanTopologyMixin",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
@@ -301,11 +317,21 @@ install_lazy_exports(
         "FlextInfraCodegenConformDocsOwnership": "._conform.docs_ownership",
         "FlextInfraCodegenConformExecute": "._conform.execute",
         "FlextInfraCodegenConformExecuteDirected": "._conform.execute_directed",
+        "FlextInfraCodegenConformExecuteGenerationMixin": (
+            "._conform._execute_generation"
+        ),
         "FlextInfraCodegenConformExecuteScaffold": "._conform.execute_scaffold",
         "FlextInfraCodegenConformExistingPlan": "._conform.existing_plan",
+        "FlextInfraCodegenConformExistingPlanGovernedMixin": (
+            "._conform._existing_plan_governed"
+        ),
+        "FlextInfraCodegenConformExistingPlanRecoveryMixin": (
+            "._conform._existing_plan_recovery"
+        ),
         "FlextInfraCodegenConformFilePlans": "._conform.file_plans",
         "FlextInfraCodegenConformGitignore": "._conform.gitignore",
         "FlextInfraCodegenConformPlan": "._conform.plan",
+        "FlextInfraCodegenConformPlanTopologyMixin": "._conform._plan_topology",
         "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
