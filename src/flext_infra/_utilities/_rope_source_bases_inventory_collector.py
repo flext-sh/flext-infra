@@ -794,12 +794,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         ):
             return cls._reference(expression, bindings, spec)
         owner = cls._reference(expression.args[0], bindings, spec)
-        # A governed target (module or local class identity) starts with the
-        # governed package; its metaclass is never read from runtime.
-        governed = bool(spec.package) and (
-            owner.target == spec.package
-            or owner.target.startswith((f"{spec.package}.", f"{spec.module}:"))
-        )
+        # A target of the scanned distribution (module or local class
+        # identity) is governed; its metaclass is never read from runtime.
+        root = spec.module.partition(".")[0]
+        governed = owner.target == root or owner.target.startswith((
+            f"{root}.",
+            f"{root}:",
+        ))
         if governed or len(owner.attributes) != 1:
             message = (
                 f"Unsupported metaclass base in {spec.module}: "
