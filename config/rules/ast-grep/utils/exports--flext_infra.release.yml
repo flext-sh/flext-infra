@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.release
+language: Python
+rule:
+  regex: ^(?:FlextInfraReleaseArtifactMixin|FlextInfraReleaseBoundaryMixin|FlextInfraReleaseBuildMixin|FlextInfraReleaseMetadataMixin|FlextInfraReleaseOrchestrator|FlextInfraReleasePlanMixin|FlextInfraReleaseProjectMixin|FlextInfraReleasePublishMixin|FlextInfraReleaseSourceMixin)$

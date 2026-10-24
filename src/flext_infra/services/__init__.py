@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.services import _codegen as _codegen
     from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
     from flext_infra.services.candidate_bootstrap import (
         FlextInfraCandidateBootstrapService,
@@ -45,7 +44,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraValidationCommandRoutes",
     "FlextInfraValidationRoutes",
     "FlextInfraWorkspaceRoutes",
-    "_codegen",
 )
 
 install_lazy_exports(
@@ -64,7 +62,6 @@ install_lazy_exports(
         "FlextInfraValidationCommandRoutes": ".cli_routes_validate_commands",
         "FlextInfraValidationRoutes": ".cli_routes_validate",
         "FlextInfraWorkspaceRoutes": ".cli_routes_workspace",
-        "_codegen": "._codegen",
     }),
     public_exports=__all__,
 )

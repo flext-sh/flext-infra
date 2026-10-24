@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codegen import _conform as _conform
     from flext_infra.codegen._conform import (
         FlextInfraCodegenConformArtifactRender,
         FlextInfraCodegenConformBootstrap,
@@ -97,7 +96,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
     "FlextInfraStagedPackage",
-    "_conform",
 )
 
 install_lazy_exports(
@@ -138,7 +136,6 @@ install_lazy_exports(
         "FlextInfraCodegenScaffolder": ".scaffolder",
         "FlextInfraCodegenVersionFile": ".version_file",
         "FlextInfraStagedPackage": ".staged_package",
-        "_conform": "._conform",
     }),
     public_exports=__all__,
 )

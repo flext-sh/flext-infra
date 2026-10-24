@@ -13,14 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._utilities import (
-        _git as _git,
-        _promoted as _promoted,
-        _pyproject as _pyproject,
-        _rope as _rope,
-        _rope_analysis as _rope_analysis,
-        _semantic_cutover as _semantic_cutover,
-    )
     from flext_infra._utilities._codemod_rules_distributions import (
         FlextInfraUtilitiesCodemodRulesDistributionsMixin,
     )
@@ -208,11 +200,20 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codemod_binding_chain import (
         FlextInfraUtilitiesCodemodBindingChain,
     )
+    from flext_infra._utilities.codemod_native_cascade import (
+        FlextInfraUtilitiesCodemodNativeCascade,
+    )
+    from flext_infra._utilities.codemod_native_package_utilities import (
+        FlextInfraUtilitiesCodemodNativePackageUtilities,
+    )
     from flext_infra._utilities.codemod_native_utilities import (
         FlextInfraUtilitiesCodemodNativeUtilities,
     )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
+    from flext_infra._utilities.codemod_type_set_rules import (
+        FlextInfraUtilitiesCodemodTypeSetRules,
+    )
     from flext_infra._utilities.compatibility_alias_validation import (
         FlextInfraUtilitiesCompatibilityAliasValidation,
     )
@@ -402,10 +403,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodemodBindingChain",
+    "FlextInfraUtilitiesCodemodNativeCascade",
+    "FlextInfraUtilitiesCodemodNativePackageUtilities",
     "FlextInfraUtilitiesCodemodNativeUtilities",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
+    "FlextInfraUtilitiesCodemodTypeSetRules",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
@@ -604,12 +608,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
-    "_git",
-    "_promoted",
-    "_pyproject",
-    "_rope",
-    "_rope_analysis",
-    "_semantic_cutover",
 )
 
 install_lazy_exports(
@@ -626,12 +624,17 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
+        "FlextInfraUtilitiesCodemodNativeCascade": ".codemod_native_cascade",
+        "FlextInfraUtilitiesCodemodNativePackageUtilities": (
+            ".codemod_native_package_utilities"
+        ),
         "FlextInfraUtilitiesCodemodNativeUtilities": ".codemod_native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
         "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
             "._codemod_rules_distributions"
         ),
+        "FlextInfraUtilitiesCodemodTypeSetRules": ".codemod_type_set_rules",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
             ".compatibility_alias_validation"
         ),
@@ -886,12 +889,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesWorkspaceManifest": ".workspace_manifest",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",
-        "_git": "._git",
-        "_promoted": "._promoted",
-        "_pyproject": "._pyproject",
-        "_rope": "._rope",
-        "_rope_analysis": "._rope_analysis",
-        "_semantic_cutover": "._semantic_cutover",
     }),
     public_exports=__all__,
 )

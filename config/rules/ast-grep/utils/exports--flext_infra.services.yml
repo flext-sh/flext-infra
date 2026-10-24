@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.services
+language: Python
+rule:
+  regex: ^(?:FlextInfraCandidateBootstrapService|FlextInfraCliDispatchService|FlextInfraCliModProgress|FlextInfraCliRouteService|FlextInfraCodegenHandlers|FlextInfraCodegenRoutes|FlextInfraCodegenVscodeMixin|FlextInfraModHandlers|FlextInfraRefactorRoutes|FlextInfraValidationCommandRoutes|FlextInfraValidationRoutes|FlextInfraWorkspaceRoutes)$

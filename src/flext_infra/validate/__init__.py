@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.validate import _pytest_runner as _pytest_runner
     from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
     from flext_infra.validate._pytest_runner import (
         FlextInfraPytestRunnerBase,
@@ -61,7 +60,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateLazyMapFreshness",
     "FlextInfraValidateTestImportDag",
-    "_pytest_runner",
 )
 
 install_lazy_exports(
@@ -88,7 +86,6 @@ install_lazy_exports(
         "FlextInfraValidateFreshImport": ".fresh_import",
         "FlextInfraValidateLazyMapFreshness": ".lazy_map_freshness",
         "FlextInfraValidateTestImportDag": ".test_import_dag",
-        "_pytest_runner": "._pytest_runner",
     }),
     public_exports=__all__,
 )

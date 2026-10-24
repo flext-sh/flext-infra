@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Constants facade for flext-infra — c.Infra project namespace.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -14,16 +15,22 @@ from flext_infra._constants import (
     FlextInfraConstantsCheck,
     FlextInfraConstantsCli,
     FlextInfraConstantsCodegen,
+    FlextInfraConstantsCodegenDetection,
+    FlextInfraConstantsCodegenLazy,
     FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsCodegenRenderNames,
+    FlextInfraConstantsConfig,
     FlextInfraConstantsDeps,
     FlextInfraConstantsDocs,
     FlextInfraConstantsGit,
+    FlextInfraConstantsMake,
     FlextInfraConstantsNamespace,
     FlextInfraConstantsPromoted,
     FlextInfraConstantsPromotedMessages,
     FlextInfraConstantsRefactor,
     FlextInfraConstantsRelease,
     FlextInfraConstantsRope,
+    FlextInfraConstantsSharedInfra,
     FlextInfraConstantsSourceCode,
     FlextInfraConstantsWorkspace,
 )
@@ -34,21 +41,27 @@ class FlextInfraConstants(FlextCliConstants):
 
     class Infra(
         FlextInfraConstantsBase,
+        FlextInfraConstantsSharedInfra,
+        FlextInfraConstantsMake,
         FlextInfraConstantsCensus,
         FlextInfraConstantsCheck,
         FlextInfraConstantsCli,
         FlextInfraConstantsCodegen,
+        FlextInfraConstantsCodegenLazy,
+        FlextInfraConstantsCodegenDetection,
+        FlextInfraConstantsCodegenRenderNames,
         FlextInfraConstantsCodegenProject,
-        FlextInfraConstantsRope,
         FlextInfraConstantsDeps,
+        FlextInfraConstantsConfig,
+        FlextInfraConstantsSourceCode,
         FlextInfraConstantsDocs,
         FlextInfraConstantsGit,
         FlextInfraConstantsNamespace,
         FlextInfraConstantsPromoted,
         FlextInfraConstantsPromotedMessages,
-        FlextInfraConstantsSourceCode,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,
+        FlextInfraConstantsRope,
         FlextInfraConstantsWorkspace,
     ):
         """Infra-domain constants — merged mixin namespace."""

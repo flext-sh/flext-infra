@@ -1,17 +1,21 @@
 Infra:
   release:
     publishable_prefixes:
-    - flext-
+      - flext-
+    maintenance_line:
+      - 0
+      - 12
+    finalize_maintenance: true
   refactor_csv_campaigns:
     campaigns:
-    - csv: rules/mod/renames/infra-dedup.csv
-      bindings:
-        t: [flext_infra.t, flext_core.t]
-        c: [flext_infra.c, flext_core.c]
-      python_documentation: true
-      text_globs:
-      - "**/*.md"
-      - "config/**/*.yaml"
-      - "config/**/*.yml"
-      - "src/**/*.j2"
-      exclude_globs: []
+      - csv: rules/mod/renames/infra-dedup.csv
+        bindings:
+          t: [flext_infra.t, flext_core.t]
+          c: [flext_infra.c, flext_core.c]
+        python_documentation: true
+        text_globs:
+          - "**/*.md"
+          - "config/**/*.yaml"
+          - "config/**/*.yml"
+          - "src/**/*.j2"
+        exclude_globs: []

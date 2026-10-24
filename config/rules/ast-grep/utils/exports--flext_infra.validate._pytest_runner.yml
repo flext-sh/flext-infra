@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.validate._pytest_runner
+language: Python
+rule:
+  regex: ^(?:FlextInfraPytestRunnerBase|FlextInfraPytestRunnerCommand|FlextInfraPytestRunnerExecution|FlextInfraPytestRunnerReports)$

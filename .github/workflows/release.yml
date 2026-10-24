@@ -2,14 +2,14 @@
 #
 # Release protocol projection. The workflow selects which protocol phase to
 # run; every decision (next version, guard, tag identity, receipt, upload set)
-# is made by the direct `make release-*` and `make publication` verbs, never here.
+# is made by the repository's elected `make release-<phase>` commands, never here.
 #
 # - A push to the integration branch whose head is NOT the protocol's release
 #   commit opens or updates the release pull request (`make release-version
 #   `); when nothing is releasable the run is a no-op.
 # - Release commits are validated but never publish unattended.
-# - `workflow_dispatch` validates an existing tag, then builds one receipt and
-#   publishes exactly what that receipt attests.
+# - `workflow_dispatch` selects exactly one existing tag for publication or
+#   retained checkpoint for versioning. Checkpoint dispatch never publishes.
 name: Release
 
 "on":
@@ -20,7 +20,11 @@ name: Release
     inputs:
       tag:
         description: "Existing release tag to build and publish again (example: v0.12.0)"
-        required: true
+        required: false
+        type: string
+      checkpoint_ref:
+        description: "Existing retained, published and integrated checkpoint for versioning only"
+        required: false
         type: string
 
 concurrency:
@@ -45,18 +49,29 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.sha }}
       - name: Classify HEAD
         id: head
         env:
           EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          LANE_CHECKPOINT_REF: ${{ inputs.checkpoint_ref }}
         shell: bash
         run: |
           set -euo pipefail
           subject="$(git log -1 --format=%s)"
           echo "ref=$(git rev-parse HEAD^{commit})" >> "${GITHUB_OUTPUT}"
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            echo "release_commit=true" >> "${GITHUB_OUTPUT}"
+            if [ -n "${RELEASE_TAG}" ] && [ -z "${LANE_CHECKPOINT_REF}" ]; then
+              git check-ref-format "refs/tags/${RELEASE_TAG}"
+              echo "release_commit=true" >> "${GITHUB_OUTPUT}"
+            elif [ -z "${RELEASE_TAG}" ] && [ -n "${LANE_CHECKPOINT_REF}" ]; then
+              git check-ref-format "${LANE_CHECKPOINT_REF}"
+              echo "release_commit=false" >> "${GITHUB_OUTPUT}"
+            else
+              printf '%s\n' 'dispatch requires exactly one tag or checkpoint_ref' >&2
+              exit 2
+            fi
           else
             case "${subject}" in
               "chore(release): v"*) echo "release_commit=true" >> "${GITHUB_OUTPUT}" ;;
@@ -93,90 +108,19 @@ jobs:
       # the release pull request. version-ci validates its resulting HEAD
       # directly: this token does not trigger pull-request or push workflows.
       GH_TOKEN: ${{ github.token }}
+      LANE_CHECKPOINT_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.checkpoint_ref || vars.LANE_CHECKPOINT_REF }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ needs.identity.outputs.ref }}
-          submodules: false
+          submodules: recursive
           token: ${{ github.token }}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Install the mise release pinned by mise.lock
-        shell: bash
-        run: |
-          set -eu
-          mise_system="${RUNNER_OS}"
-          if [ "${mise_system}" = "macOS" ]; then mise_system=Darwin; fi
-          case "${RUNNER_OS}-${RUNNER_ARCH}" in
-            Windows-X64) mise_machine=AMD64 ;;
-            Linux-ARM64) mise_machine=aarch64 ;;
-            *-X64) mise_machine=x86_64 ;;
-            *-ARM64) mise_machine=arm64 ;;
-            *) echo "ERROR: unsupported runner identity ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
-          esac
-          case "${mise_system}/${mise_machine}" in
-            Linux/x86_64) mise_platform=linux-x64 ;;
-            Linux/aarch64) mise_platform=linux-arm64 ;;
-            Darwin/x86_64) mise_platform=macos-x64 ;;
-            Darwin/arm64) mise_platform=macos-arm64 ;;
-            Windows/AMD64) mise_platform=windows-x64 ;;
-            *) echo "ERROR: no mise.lock platform for ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
-          esac
-          mise_field() {
-            awk -v section="[tools.\"github:jdx/mise\".\"platforms.${mise_platform}\"]" -v key="$1" '
-              $0 == section { inside = 1; next }
-              inside && substr($0, 1, 1) == "[" { exit }
-              inside && $1 == key { gsub(/"/, "", $3); print $3; exit }
-            ' mise.lock
-          }
-          mise_url="$(mise_field url)"
-          mise_checksum="$(mise_field checksum)"
-          case "${mise_url}" in
-            https://github.com/jdx/mise/releases/download/*) ;;
-            *) echo "ERROR: mise.lock has no GitHub release URL for ${mise_platform}: '${mise_url}'" >&2; exit 2 ;;
-          esac
-          case "${mise_checksum}" in
-            sha256:*) mise_sha256="${mise_checksum#sha256:}" ;;
-            *) echo "ERROR: mise.lock has no sha256 for ${mise_platform}: '${mise_checksum}'" >&2; exit 2 ;;
-          esac
-          mise_stage="${RUNNER_TEMP}/mise-install"
-          mkdir -p "${mise_stage}" "${HOME}/.local/bin"
-          mise_archive="${mise_stage}/${mise_url##*/}"
-          curl --proto '=https' --tlsv1.2 -fsSL -o "${mise_archive}" "${mise_url}"
-          if command -v sha256sum >/dev/null 2>&1; then
-            echo "${mise_sha256}  ${mise_archive}" | sha256sum -c -
-          else
-            echo "${mise_sha256}  ${mise_archive}" | shasum -a 256 -c -
-          fi
-          case "${mise_archive}" in
-            *.zip) unzip -q "${mise_archive}" -d "${mise_stage}" ;;
-            *) tar -xf "${mise_archive}" -C "${mise_stage}" ;;
-          esac
-          if [ "${RUNNER_OS}" = "Windows" ]; then
-            cp "${mise_stage}/mise/bin/mise.exe" "${HOME}/.local/bin/mise.exe"
-          else
-            install -m 0755 "${mise_stage}/mise/bin/mise" "${HOME}/.local/bin/mise"
-          fi
-          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
-          echo "${HOME}/.local/share/mise/shims" >> "${GITHUB_PATH}"
-          mise_pin="$(awk 'index($0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($0, 1, 1) == "[" { exit } inside && $1 == "version" { gsub(/[",]/, "", $3); print $3; exit }' mise.lock)"
-          if [ -z "${mise_pin}" ]; then
-            printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2
-            exit 2
-          fi
-          "${HOME}/.local/bin/mise" install --locked "github:jdx/mise"
-          mise_path="$("${HOME}/.local/bin/mise" which mise)"
-          mise_receipt="$("${mise_path}" --version | cut -d ' ' -f1)"
-          if [ "${mise_receipt}" != "${mise_pin}" ]; then
-            printf 'ERROR: provisioned Mise %s differs from mise.lock pin %s; run make setup\n' "${mise_receipt}" "${mise_pin}" >&2
-            exit 2
-          fi
-          echo "${mise_path%/*}" >> "${GITHUB_PATH}"
-
       - name: Boot
         run: make setup
       - name: Admit validated integration commit
@@ -219,83 +163,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.identity.outputs.ref }}
-          submodules: false
+          submodules: recursive
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Install the mise release pinned by mise.lock
-        shell: bash
-        run: |
-          set -eu
-          mise_system="${RUNNER_OS}"
-          if [ "${mise_system}" = "macOS" ]; then mise_system=Darwin; fi
-          case "${RUNNER_OS}-${RUNNER_ARCH}" in
-            Windows-X64) mise_machine=AMD64 ;;
-            Linux-ARM64) mise_machine=aarch64 ;;
-            *-X64) mise_machine=x86_64 ;;
-            *-ARM64) mise_machine=arm64 ;;
-            *) echo "ERROR: unsupported runner identity ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
-          esac
-          case "${mise_system}/${mise_machine}" in
-            Linux/x86_64) mise_platform=linux-x64 ;;
-            Linux/aarch64) mise_platform=linux-arm64 ;;
-            Darwin/x86_64) mise_platform=macos-x64 ;;
-            Darwin/arm64) mise_platform=macos-arm64 ;;
-            Windows/AMD64) mise_platform=windows-x64 ;;
-            *) echo "ERROR: no mise.lock platform for ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
-          esac
-          mise_field() {
-            awk -v section="[tools.\"github:jdx/mise\".\"platforms.${mise_platform}\"]" -v key="$1" '
-              $0 == section { inside = 1; next }
-              inside && substr($0, 1, 1) == "[" { exit }
-              inside && $1 == key { gsub(/"/, "", $3); print $3; exit }
-            ' mise.lock
-          }
-          mise_url="$(mise_field url)"
-          mise_checksum="$(mise_field checksum)"
-          case "${mise_url}" in
-            https://github.com/jdx/mise/releases/download/*) ;;
-            *) echo "ERROR: mise.lock has no GitHub release URL for ${mise_platform}: '${mise_url}'" >&2; exit 2 ;;
-          esac
-          case "${mise_checksum}" in
-            sha256:*) mise_sha256="${mise_checksum#sha256:}" ;;
-            *) echo "ERROR: mise.lock has no sha256 for ${mise_platform}: '${mise_checksum}'" >&2; exit 2 ;;
-          esac
-          mise_stage="${RUNNER_TEMP}/mise-install"
-          mkdir -p "${mise_stage}" "${HOME}/.local/bin"
-          mise_archive="${mise_stage}/${mise_url##*/}"
-          curl --proto '=https' --tlsv1.2 -fsSL -o "${mise_archive}" "${mise_url}"
-          if command -v sha256sum >/dev/null 2>&1; then
-            echo "${mise_sha256}  ${mise_archive}" | sha256sum -c -
-          else
-            echo "${mise_sha256}  ${mise_archive}" | shasum -a 256 -c -
-          fi
-          case "${mise_archive}" in
-            *.zip) unzip -q "${mise_archive}" -d "${mise_stage}" ;;
-            *) tar -xf "${mise_archive}" -C "${mise_stage}" ;;
-          esac
-          if [ "${RUNNER_OS}" = "Windows" ]; then
-            cp "${mise_stage}/mise/bin/mise.exe" "${HOME}/.local/bin/mise.exe"
-          else
-            install -m 0755 "${mise_stage}/mise/bin/mise" "${HOME}/.local/bin/mise"
-          fi
-          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
-          echo "${HOME}/.local/share/mise/shims" >> "${GITHUB_PATH}"
-          mise_pin="$(awk 'index($0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($0, 1, 1) == "[" { exit } inside && $1 == "version" { gsub(/[",]/, "", $3); print $3; exit }' mise.lock)"
-          if [ -z "${mise_pin}" ]; then
-            printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2
-            exit 2
-          fi
-          "${HOME}/.local/bin/mise" install --locked "github:jdx/mise"
-          mise_path="$("${HOME}/.local/bin/mise" which mise)"
-          mise_receipt="$("${mise_path}" --version | cut -d ' ' -f1)"
-          if [ "${mise_receipt}" != "${mise_pin}" ]; then
-            printf 'ERROR: provisioned Mise %s differs from mise.lock pin %s; run make setup\n' "${mise_receipt}" "${mise_pin}" >&2
-            exit 2
-          fi
-          echo "${mise_path%/*}" >> "${GITHUB_PATH}"
-
       - name: Boot
         run: make setup
       - name: Tag
@@ -303,4 +175,4 @@ jobs:
       - name: Build receipt
         run: make release-build
       - name: Publish
-        run: make publication
+        run: make release-publish

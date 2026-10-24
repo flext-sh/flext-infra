@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra._utilities._promoted
+language: Python
+rule:
+  regex: ^(?:FlextInfraUtilitiesPromotedCommands|FlextInfraUtilitiesPromotedExecution|FlextInfraUtilitiesPromotedInvocation|FlextInfraUtilitiesPromotedRendering|FlextInfraUtilitiesPromotedWorkspace)$

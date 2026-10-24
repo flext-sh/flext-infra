@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--tests.unit.codegen._utility_facade_projection
+language: Python
+rule:
+  regex: \b\B

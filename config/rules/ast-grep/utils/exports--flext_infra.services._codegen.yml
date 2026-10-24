@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.services._codegen
+language: Python
+rule:
+  regex: ^(?:FlextInfraCodegenVscodeMixin)$

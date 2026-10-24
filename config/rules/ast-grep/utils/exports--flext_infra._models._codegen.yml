@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra._models._codegen
+language: Python
+rule:
+  regex: ^(?:FlextInfraCodegen|FlextInfraModelsCodegenFixModels|FlextInfraModelsCodegenLazyInitModels|FlextInfraModelsCodegenPipelineModels|FlextInfraModelsCodegenScaffoldModels|FlextInfraModelsCodegenTransactionModels)$

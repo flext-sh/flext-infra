@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra._models._git
+language: Python
+rule:
+  regex: ^(?:FlextInfraModelsGitIdentity|FlextInfraModelsGitWorktreeFacts|FlextInfraModelsGitWorktreeState)$

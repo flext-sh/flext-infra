@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.maintenance
+language: Python
+rule:
+  regex: ^(?:FlextInfraCleanService|FlextInfraPythonVersionEnforcer|FlextInfraSonarcloudClient|FlextInfraSonarcloudIssues|FlextInfraSonarcloudSettingsSync)$

@@ -13,14 +13,36 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from tests.unit.codegen.ci_matrix_support import (
+        TestsFlextInfraCodegenCiMatrixSupport,
+    )
     from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
+    from tests.unit.codegen.test_codegen_ci_matrix import TestsFlextInfraCodegenCiMatrix
+    from tests.unit.codegen.test_codegen_ci_matrix_analysis import (
+        TestsFlextInfraCodegenCiMatrixAnalysis,
+    )
+    from tests.unit.codegen.test_codegen_ci_matrix_artifacts import (
+        TestsFlextInfraCodegenCiMatrixArtifacts,
+    )
 
 
-__all__: tuple[str, ...] = ("TestsFlextInfraCodegenLayoutSupport",)
+__all__: tuple[str, ...] = (
+    "TestsFlextInfraCodegenCiMatrix",
+    "TestsFlextInfraCodegenCiMatrixAnalysis",
+    "TestsFlextInfraCodegenCiMatrixArtifacts",
+    "TestsFlextInfraCodegenCiMatrixSupport",
+    "TestsFlextInfraCodegenLayoutSupport",
+)
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({"TestsFlextInfraCodegenLayoutSupport": ".layout_support"}),
+    MappingProxyType({
+        "TestsFlextInfraCodegenCiMatrix": ".test_codegen_ci_matrix",
+        "TestsFlextInfraCodegenCiMatrixAnalysis": ".test_codegen_ci_matrix_analysis",
+        "TestsFlextInfraCodegenCiMatrixArtifacts": ".test_codegen_ci_matrix_artifacts",
+        "TestsFlextInfraCodegenCiMatrixSupport": ".ci_matrix_support",
+        "TestsFlextInfraCodegenLayoutSupport": ".layout_support",
+    }),
     public_exports=__all__,
 )

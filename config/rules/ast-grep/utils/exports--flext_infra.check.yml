@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.check
+language: Python
+rule:
+  regex: ^(?:FlextInfraGateRegistry|FlextInfraWorkspaceCheckGatesMixin|FlextInfraWorkspaceCheckReportsMixin|FlextInfraWorkspaceChecker)$

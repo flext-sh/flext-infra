@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.deps._modernizer
+language: Python
+rule:
+  regex: ^(?:FlextInfraPyprojectModernizerBase|FlextInfraPyprojectModernizerDocument|FlextInfraPyprojectModernizerRun|FlextInfraPyprojectModernizerTooling)$

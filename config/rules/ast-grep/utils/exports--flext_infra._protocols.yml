@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra._protocols
+language: Python
+rule:
+  regex: ^(?:FlextInfraProtocolsBase|FlextInfraProtocolsCheck|FlextInfraProtocolsDeps|FlextInfraProtocolsDocs|FlextInfraProtocolsPromoted|FlextInfraProtocolsRope|FlextInfraProtocolsRopeRuntime)$

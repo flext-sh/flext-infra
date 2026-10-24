@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra
+language: Python
+rule:
+  regex: ^(?:FlextInfra|FlextInfraCli|FlextInfraCommandPayloadMixin|FlextInfraConfig|FlextInfraConformWiring|FlextInfraConstants|FlextInfraGitLanes|FlextInfraGitService|FlextInfraModels|FlextInfraPreviewWiring|FlextInfraProjectSelectionMixin|FlextInfraProjectSelectionServiceBase|FlextInfraPromoted|FlextInfraProtocols|FlextInfraProtocolsBase|FlextInfraPytestClock|FlextInfraPytestCollection|FlextInfraPytestProfile|FlextInfraPytestProfileChild|FlextInfraServiceBase|FlextInfraSettings|FlextInfraTypes|FlextInfraUtilities|FlextInfraVersion|FlextInfraWorktreeService|__author__|__author_email__|__description__|__license__|__title__|__url__|__version__|__version_info__|c|config|d|e|h|infra|m|p|r|s|settings|t|u|x)$

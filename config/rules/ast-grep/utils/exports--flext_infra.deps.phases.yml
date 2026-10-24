@@ -1,0 +1,5 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+id: exports--flext_infra.deps.phases
+language: Python
+rule:
+  regex: ^(?:FlextInfraConsolidateGroupsPhase|FlextInfraEnsurePackagingPhase|FlextInfraEnsurePyreflyConfigPhase|FlextInfraEnsurePyrightConfigPhase|FlextInfraEnsureRuffConfigPhase|FlextInfraInjectCommentsPhase|FlextInfraToolTablesPhase)$

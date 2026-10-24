@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps import _modernizer as _modernizer, phases as phases
     from flext_infra.deps._detection_runners import (
         FlextInfraDependencyDetectionRunnersMixin,
     )
@@ -67,8 +66,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraPyprojectModernizerTooling",
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraToolTablesPhase",
-    "_modernizer",
-    "phases",
 )
 
 install_lazy_exports(
@@ -96,8 +93,6 @@ install_lazy_exports(
         "FlextInfraPyprojectModernizerTooling": "._modernizer.tooling",
         "FlextInfraRuntimeDevDependencyDetector": ".detector",
         "FlextInfraToolTablesPhase": ".phases.tool_tables",
-        "_modernizer": "._modernizer",
-        "phases": ".phases",
     }),
     public_exports=__all__,
 )

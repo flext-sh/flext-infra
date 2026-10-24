@@ -279,7 +279,16 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                 groups.setdefault((package, scope, nested), set()).add(name)
         utils = cls._codemod_name_utils()
         documents: dict[str, t.JsonMapping] = {}
-        for (package, scope, nested), names in sorted(groups.items()):
+        # The root scope is None; order it before every directory scope.
+        for (package, scope, nested), names in sorted(
+            groups.items(),
+            key=lambda item: (
+                item[0][0],
+                item[0][1] is not None,
+                item[0][1] or "",
+                item[0][2],
+            ),
+        ):
             qualifier = (
                 package
                 if scope is None and not nested

@@ -13,11 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._models import (
-        _codegen as _codegen,
-        _config as _config,
-        _git as _git,
-    )
     from flext_infra._models._codegen import (
         FlextInfraCodegen,
         FlextInfraModelsCodegenFixModels,
@@ -193,9 +188,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
-    "_codegen",
-    "_config",
-    "_git",
 )
 
 install_lazy_exports(
@@ -279,9 +271,6 @@ install_lazy_exports(
         "FlextInfraModelsWorkspace": ".workspace",
         "FlextInfraModelsWorktree": ".worktree",
         "FlextInfraSettingsModels": ".settings",
-        "_codegen": "._codegen",
-        "_config": "._config",
-        "_git": "._git",
     }),
     public_exports=__all__,
 )
