@@ -198,7 +198,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     forwarded_signal=None,
                 ),
             )
-        rendered_config = self._render_config(project_dir)
+        rendered_config = self._render_config(project_dir, scope.value)
         if rendered_config.failure:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -363,7 +363,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         repository = loaded.value.spec.repository
         return r[t.StrSequence].ok(repository.duplication_trees)
 
-    def _render_config(self, project_dir: Path) -> p.Result[Path]:
+    def _render_config(self, project_dir: Path, scope: t.StrSequence) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
         R2: Reads thresholds from [tool.flext.project] config SSOT.
@@ -386,7 +386,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=self._derived_ignore_patterns(),
+            ignore=(
+                *self._derived_ignore_patterns(),
+                *self._generated_source_ignores(scope),
+            ),
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
             mode=overrides.mode,
@@ -406,6 +409,44 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         rendered = jscpd_config.model_dump_json(by_alias=True, exclude_none=True)
         u.Cli.atomic_write_text_file(config_path, rendered).unwrap()
         return r[Path].ok(config_path)
+
+    def _generated_source_ignores(self, scope: t.StrSequence) -> t.StrSequence:
+        """Exact ignores for the generator projections inside the scanned scope.
+
+        Projections of one template repeat that template by contract, so their
+        clones are the generator's obligation, never duplication to repair.
+        Generation is proven per file by its declared marker
+        (``u.Infra.generated_source``), never by a hand-listed name; the files
+        come from the canonical source inventory of each owning project.
+
+        Returns:
+            One exact repository-relative pattern per generated source in scope.
+
+        """
+        directories = tuple(Path(directory) for directory in scope)
+        owners = tuple(
+            dict.fromkeys(
+                owner
+                for directory in directories
+                if (
+                    owner := u.Infra.nearest_project_root(
+                        self._repository_root, directory
+                    )
+                )
+                is not None
+            )
+        )
+        if not owners:
+            return ()
+        sources = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(project_roots=owners)
+        ).unwrap()
+        return tuple(
+            f"**/{source.relative_to(self._repository_root).as_posix()}"
+            for source in sources
+            if any(source.is_relative_to(directory) for directory in directories)
+            and u.Infra.generated_source(source)
+        )
 
     @staticmethod
     def semantic_not_executed() -> bool:

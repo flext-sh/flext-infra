@@ -51,6 +51,21 @@ class FlextInfraUtilitiesCodegenFilePlan:
         )
 
     @staticmethod
+    def generated_source(path: Path) -> bool:
+        """Prove a source file is a generator projection from its declared marker.
+
+        A generated file opens with one of the declared generator headers; its
+        content is the generator's obligation, owned by the template that
+        renders it. Read failures propagate.
+
+        Returns:
+            Whether the file's first line carries a declared generator header.
+
+        """
+        with path.open(encoding=c.DEFAULT_ENCODING) as handle:
+            return handle.readline().startswith(c.Infra.AUTOGEN_HEADERS)
+
+    @staticmethod
     def required_file_states(
         paths: t.IterableOf[Path],
     ) -> p.Result[t.VariadicTuple[cli_m.Cli.AtomicFileState]]:

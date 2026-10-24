@@ -135,19 +135,8 @@ class FlextInfraLocCapGate(FlextInfraGate):
             if language.name == c.Infra.SCC_PYTHON_LANG
             for file in language.files
             if file.code > cap
-            and not cls._is_generated_facade(project_dir / file.location)
+            and not u.Infra.generated_source(project_dir / file.location)
         )
-
-    @staticmethod
-    def _is_generated_facade(path: Path) -> bool:
-        """Return True when the file opens with the generator's AUTOGEN_HEADER.
-
-        Returns:
-            True when the file opens with the generator's AUTOGEN_HEADER.
-
-        """
-        with path.open(encoding=c.DEFAULT_ENCODING) as handle:
-            return handle.readline().startswith(c.Infra.AUTOGEN_HEADER)
 
 
 __all__: list[str] = ["FlextInfraLocCapGate"]
