@@ -23,8 +23,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         codegen: m.Infra.CodegenConfigSpec,
         entry: m.Infra.TemplateEntrySpec,
         context: p.Model,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
-        """Capture an explicit package resource or authenticate a Jinja render.
+    ) -> p.Result[str]:
+        """Read an explicit package resource or render a Jinja template.
 
         Args:
             codegen: The code generation configuration.
@@ -32,41 +32,18 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             context: The rendering context for the template.
 
         Returns:
-            A result containing the composed artifact or an error.
+            A result containing the rendered artifact or an error.
 
         """
-        result_type = r[m.Infra.CodegenArtifactComposition]
         source = u.Infra.codegen_artifact_source(codegen, entry)
         if entry.source_kind == "resource":
             if entry.source_package is None:
-                return result_type.fail(
+                return r[str].fail(
                     f"resource has no explicit package owner: {entry.destination}",
                 )
-            sources: list[m.Cli.AtomicFileState] = []
-            for declared_source in entry.source_closure:
-                original = u.Infra.codegen_artifact_source(
-                    codegen,
-                    entry.model_copy(update={"source": declared_source}),
-                )
-                captured = u.Cli.atomic_read_binary_file_state(original, required=True)
-                if captured.failure:
-                    return result_type.from_failure(captured)
-                sources.append(captured.value)
-            primary = next(state for state in sources if state.path == source)
-            content = primary.content
-            if content is None:
-                return result_type.fail(
-                    f"required resource has no captured bytes: {source}",
-                )
-            return result_type.ok(
-                m.Infra.CodegenArtifactComposition(
-                    rendered=content.decode(c.DEFAULT_ENCODING),
-                ),
-            )
+            return u.Cli.files_read_text(source)
         return u.Cli.template_render_authenticated(source, context).map(
-            lambda rendered: m.Infra.CodegenArtifactComposition(
-                rendered=rendered.rendered,
-            ),
+            lambda rendered: rendered.rendered,
         )
 
     @staticmethod
@@ -75,7 +52,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Keep each selected artifact and its required outputs in one publication.
+        """Require every selected artifact's outputs in the same plan set.
 
         Args:
             codegen: The code generation configuration.
@@ -83,52 +60,26 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             planned: A sequence of planned file artifacts.
 
         Returns:
-            File plans with connected publication dependencies resolved.
+            The planned files, or the first artifact with unplanned dependencies.
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        by_path = {plan.path: plan for plan in planned}
-        existing: dict[str, set[Path]] = {}
-        for plan in planned:
-            if plan.dependency_group is not None:
-                existing.setdefault(plan.dependency_group, set()).add(plan.path)
-        groups = list(existing.values())
+        paths = {plan.path for plan in planned}
         for entry in codegen.templates.entries:
-            path = root / entry.destination
-            if path not in by_path or not entry.requires_artifacts:
+            if root / entry.destination not in paths or not entry.requires_artifacts:
                 continue
-            required = {
+            missing = {
                 root / destination
                 for destination in codegen.templates.required_destinations(
                     frozenset({entry.destination}),
                 )
-            }
-            missing = required.difference(by_path)
+            }.difference(paths)
             if missing:
                 return result_type.fail(
                     f"artifact {entry.destination} has unplanned dependencies: "
                     f"{', '.join(str(item) for item in sorted(missing))}",
                 )
-            groups.append(required)
-        while groups:
-            group = groups.pop().copy()
-            while touching := [item for item in groups if item.intersection(group)]:
-                for item in touching:
-                    group.update(item)
-                    groups.remove(item)
-            identities = sorted(
-                identity
-                for identity, paths in existing.items()
-                if paths.intersection(group)
-            )
-            (
-                identities[0]
-                if identities
-                else f"artifacts:{root}:{min(group).relative_to(root)}"
-            )
-            for path in group:
-                by_path[path] = by_path[path]
-        return result_type.ok(tuple(by_path.values()))
+        return result_type.ok(tuple(planned))
 
     @staticmethod
     def planned_source_tooling(
@@ -243,17 +194,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         rendered: str,
         *,
         render_inputs: m.Infra.CodegenRenderInputs | None = None,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+    ) -> p.Result[str]:
         """Apply typed project overlays after canonical template rendering.
 
         Python repairs require the complete planned policy and source context;
-        the staging owner prepares those bytes after composition, never here.
+        the shared publisher normalizes those bytes, never here.
 
         Without ``render_inputs`` the committed project catalog overlays the
         render and no pyproject conformance runs.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenArtifactComposition]``.
+            The composed artifact text.
 
         """
         if destination == c.Infra.GITIGNORE:
@@ -263,35 +214,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 render_inputs,
             )
             if overlay.failure:
-                return r[m.Infra.CodegenArtifactComposition].from_failure(overlay)
+                return r[str].from_failure(overlay)
             rendered = overlay.value
         composer = {
             c.PYPROJECT_FILENAME: cls._composed_pyproject_overlay,
             c.Infra.MISE_TOML_FILENAME: cls._composed_mise_overlay,
             f"config/{c.Infra.INFRA_CONFIG_FILENAME}": cls._composed_release_overlay,
         }.get(destination)
-        composed = (
-            composer(repository_root, rendered, render_inputs)
-            if composer is not None
-            else r[m.Infra.CodegenArtifactComposition].ok(
-                m.Infra.CodegenArtifactComposition(rendered=rendered),
-            )
-        )
-        if composed.failure:
-            return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
-        tooling_sources = (
-            ()
-            if render_inputs is None or render_inputs.tooling_runtime is None
-            else render_inputs.tooling_runtime.sources
-        )
-        captured = u.Infra.unique_states(
-            (*source_states, *tooling_sources, *composed.value.source_states),
-        )
-        if captured.failure:
-            return r[m.Infra.CodegenArtifactComposition].from_failure(captured)
-        return r[m.Infra.CodegenArtifactComposition].ok(
-            composed.value,
-        )
+        if composer is None:
+            return r[str].ok(rendered)
+        return composer(repository_root, rendered, render_inputs)
 
     @classmethod
     def _composed_gitignore_overlay(
@@ -328,7 +260,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         cls,
         live_path: Path,
         rendered: str,
-    ) -> p.Result[t.Pair[str, m.Cli.AtomicFileState]]:
+    ) -> p.Result[str]:
         """Read the live declaration and preserve its project-owned values.
 
         Returns:
@@ -337,20 +269,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         state = u.Cli.atomic_read_binary_file_state(live_path)
         if state.failure:
-            return r[t.Pair[str, m.Cli.AtomicFileState]].from_failure(state)
-        original = state.value
-        if original.content is None:
-            return u.Infra.overlay_preserved(rendered, None).map(
-                lambda source: (source, original),
-            )
+            return r[str].from_failure(state)
+        if state.value.content is None:
+            return u.Infra.overlay_preserved(rendered, None)
         return (
             u.Infra
             .recover_live_pyproject_text(
-                original.content.decode(c.DEFAULT_ENCODING),
+                state.value.content.decode(c.DEFAULT_ENCODING),
             )
             .flat_map(u.Infra.pyproject_regeneration_source)
             .flat_map(lambda live_text: u.Infra.overlay_preserved(rendered, live_text))
-            .map(lambda source: (source, original))
         )
 
     @classmethod
@@ -359,40 +287,25 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         repository_root: Path,
         rendered: str,
         render_inputs: m.Infra.CodegenRenderInputs | None,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+    ) -> p.Result[str]:
         """Overlay, conform, and format the pyproject render.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenArtifactComposition]``.
+            The composed pyproject text.
 
         """
-        result_type = r[m.Infra.CodegenArtifactComposition]
-        tooling = u.Infra.load_tooling_inputs(repository_root)
-        if tooling.failure:
-            return result_type.from_failure(tooling)
         live_path = repository_root / c.PYPROJECT_FILENAME
         overlaid = cls._live_pyproject_overlay(live_path, rendered)
         if overlaid.failure:
-            return result_type.from_failure(overlaid)
-        composed_rendered, original = overlaid.value
-        original_tooling_sources = (
-            ()
-            if render_inputs is None or render_inputs.tooling_runtime is None
-            else render_inputs.tooling_runtime.sources
-        )
-        combined_sources = u.Infra.unique_states(
-            (*original_tooling_sources, *tooling.value.sources, original),
-        )
-        if combined_sources.failure:
-            return result_type.from_failure(combined_sources)
-        list(combined_sources.value)
+            return overlaid
+        composed_rendered = overlaid.value
         if render_inputs is not None:
             conformed = cls.conformed_pyproject_source(
                 composed_rendered,
                 render_inputs,
             )
             if conformed.failure:
-                return result_type.from_failure(conformed)
+                return conformed
             composed_rendered = conformed.value
         formatted = u.Infra.format_toml_source(
             composed_rendered,
@@ -411,12 +324,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         # The render-provenance line names the running generator's version:
         # drift reports can then state both sides (rendered-by vs consumed)
         # instead of a bare byte diff (aihub-l42it.11 consolidation postmortem).
-
         return formatted.map(
-            lambda source: m.Infra.CodegenArtifactComposition(
-                rendered=(
-                    f"{c.Infra.BANNER}{cls.rendered_by_stamp()}\n{source.lstrip()}"
-                ),
+            lambda source: (
+                f"{c.Infra.BANNER}{cls.rendered_by_stamp()}\n{source.lstrip()}"
             ),
         )
 
@@ -426,25 +336,24 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         repository_root: Path,
         rendered: str,
         render_inputs: m.Infra.CodegenRenderInputs | None,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+    ) -> p.Result[str]:
         """Compose the mise declaration from the resolved artifact catalog.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenArtifactComposition]``.
+            The composed mise declaration.
 
         """
-        result_type = r[m.Infra.CodegenArtifactComposition]
         if render_inputs is None:
             snapshot = u.Infra.snapshot_committed_project_managed_artifacts(
                 repository_root,
                 read_committed_directory=u.Infra.git_committed_directory_blobs,
             )
             if snapshot.failure:
-                return result_type.from_failure(snapshot)
+                return r[str].from_failure(snapshot)
             resolved_artifacts = snapshot.value
         else:
             resolved_artifacts = render_inputs.managed_artifacts
-        composed = (
+        return (
             u.Infra.compose_mise_toml_from_snapshot(
                 resolved_artifacts.sources,
                 rendered,
@@ -455,16 +364,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 rendered,
             )
         )
-        if composed.failure:
-            return result_type.from_failure(composed)
-        config_sources = u.Infra.snapshot_config_sources(repository_root)
-        if config_sources.failure:
-            return result_type.from_failure(config_sources)
-        return result_type.ok(
-            m.Infra.CodegenArtifactComposition(
-                rendered=composed.value,
-            ),
-        )
 
     @classmethod
     def _composed_release_overlay(
@@ -472,39 +371,34 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         repository_root: Path,
         rendered: str,
         _render_inputs: m.Infra.CodegenRenderInputs | None,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+    ) -> p.Result[str]:
         """Replace only the declared closure keys, retaining authored YAML.
 
         Returns:
-            The comment-preserving document and its original file witness.
+            The comment-preserving document text.
 
         """
-        result_type = r[m.Infra.CodegenArtifactComposition]
         current = u.Cli.atomic_read_binary_file_state(
             repository_root / "config" / c.Infra.INFRA_CONFIG_FILENAME,
             required=False,
         )
         if current.failure:
-            return result_type.from_failure(current)
+            return r[str].from_failure(current)
         parsed = u.Cli.yaml_roundtrip_load_map_text(
             current.value.content.decode(c.DEFAULT_ENCODING)
             if current.value.content is not None
             else "{}",
         )
         if parsed.failure:
-            return result_type.from_failure(parsed)
+            return r[str].from_failure(parsed)
         declaration = cls._release_declaration(parsed.value)
         if declaration.failure:
-            return result_type.from_failure(declaration)
+            return r[str].from_failure(declaration)
         overlay = u.Cli.yaml_parse(rendered)
         if overlay.failure:
-            return result_type.from_failure(overlay)
+            return r[str].from_failure(overlay)
         u.Cli.yaml_overlay_preserving_order(parsed.value, overlay.value)
-        return u.Cli.yaml_roundtrip_dump_text(parsed.value).map(
-            lambda text: m.Infra.CodegenArtifactComposition(
-                rendered=text,
-            ),
-        )
+        return u.Cli.yaml_roundtrip_dump_text(parsed.value)
 
     @staticmethod
     def _release_declaration(
@@ -529,23 +423,18 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _release_policy_render_inputs(
         cls,
         root: Path,
-    ) -> p.Result[
-        t.Pair[m.Infra.ReleasePolicySpec, t.VariadicTuple[m.Cli.AtomicFileState]]
-    ]:
+    ) -> p.Result[m.Infra.ReleasePolicySpec]:
         """Select committed closure declarations, never local/private policy.
 
         Returns:
-            The existing typed release policy and exact declaration witnesses.
+            The existing typed release policy.
 
         """
-        result_type = r[
-            t.Pair[m.Infra.ReleasePolicySpec, t.VariadicTuple[m.Cli.AtomicFileState]]
-        ]
+        result_type = r[m.Infra.ReleasePolicySpec]
         owner = u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=root))
         if owner.failure:
             return result_type.from_failure(owner)
         workspace = owner.value.repository_root.resolve()
-        witnesses: list[m.Cli.AtomicFileState] = []
         if workspace != root.resolve():
             members = u.Infra.git_submodule_declarations(workspace)
             if members.failure:
@@ -555,36 +444,25 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 for member in members.value
             ):
                 return result_type.fail(f"undeclared release policy member: {root}")
-            membership = u.Cli.atomic_read_binary_file_state(
-                workspace / ".gitmodules",
-                required=True,
-            )
-            if membership.failure:
-                return result_type.from_failure(membership)
-            witnesses.append(membership.value)
         declaration = u.Cli.atomic_read_binary_file_state(
             workspace / "config" / c.Infra.INFRA_CONFIG_FILENAME,
             required=False,
         )
         if declaration.failure:
             return result_type.from_failure(declaration)
-        witnesses.append(declaration.value)
         document = u.Cli.yaml_parse(
             declaration.value.content.decode(c.DEFAULT_ENCODING)
             if declaration.value.content is not None
             else "{}",
         )
-        selected = document.flat_map(cls._release_declaration)
-        return selected.flat_map(
-            lambda section: r[m.Infra.ReleasePolicySpec].create_from_callable(
+        return document.flat_map(cls._release_declaration).flat_map(
+            lambda section: result_type.create_from_callable(
                 lambda: m.Infra.ReleasePolicySpec.model_validate({
                     "build_constraints": config.Infra.release.build_constraints,
                     "maintenance_line": section.get("maintenance_line"),
                     "finalize_maintenance": section.get("finalize_maintenance", False),
                 }),
             ),
-        ).map(
-            lambda policy: (policy, tuple(witnesses)),
         )
 
     def _rendered_artifact_source(
@@ -595,7 +473,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         destination: str,
         failure_prefix: str,
         project_context: m.Infra.ProjectRenderContext | None,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+    ) -> p.Result[str]:
         """Resolve one artifact render context and render its template source.
 
         ``failure_prefix`` carries the only difference between the scaffold and
@@ -603,7 +481,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         prepends to a render failure.
 
         Returns:
-            Rendered content and the exact templates consumed by Jinja.
+            The rendered content.
 
         Raises:
             ValueError: If the catalog entry has no renderable source.
@@ -618,51 +496,35 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 entry,
                 m.Infra.StaticTextRenderSpec(),
             )
-        if destination == f"config/{c.Infra.INFRA_CONFIG_FILENAME}":
-            policy = self._release_policy_render_inputs(render_inputs.target.root)
-            if policy.failure:
-                return r[m.Infra.CodegenArtifactComposition].from_failure(policy)
-            artifact_context = r[p.Model].ok(policy.value[0])
-            policy.value[1]
-        else:
-            artifact_context = self._artifact_render_context(
+        artifact_context: p.Result[p.Model] = (
+            self._release_policy_render_inputs(render_inputs.target.root)
+            if destination == f"config/{c.Infra.INFRA_CONFIG_FILENAME}"
+            else self._artifact_render_context(
                 render_inputs,
                 destination=destination,
                 project_context=project_context,
             )
+        )
         if artifact_context.failure:
-            return r[m.Infra.CodegenArtifactComposition].from_failure(artifact_context)
-        template_path = u.Infra.codegen_artifact_source(render_inputs.codegen, entry)
+            return r[str].from_failure(artifact_context)
         rendered = self.render_artifact_source(
             render_inputs.codegen,
             entry,
             artifact_context.value,
         )
-        if rendered.failure:
-            return r[m.Infra.CodegenArtifactComposition].from_failure(rendered)
-        primary = next(
-            (
-                source
-                for source in rendered.value.source_states
-                if source.path == template_path.expanduser().absolute()
-            ),
-            None,
+        if rendered.failure or rendered.value.strip():
+            return rendered
+        template = u.Cli.files_read_text(
+            u.Infra.codegen_artifact_source(render_inputs.codegen, entry)
         )
-        if primary is None or primary.content is None:
-            return r[m.Infra.CodegenArtifactComposition].fail(
-                f"authenticated template has no captured primary source: "
-                f"{template_path}",
-            )
+        if template.failure:
+            return r[str].from_failure(template)
         return self._require_rendered_content(
-            rendered.value.rendered,
+            rendered.value,
             template_relpath=entry.source,
             destination=destination,
             failure_prefix=failure_prefix,
-            template_source=primary.content.decode(c.DEFAULT_ENCODING),
-        ).map(
-            lambda content: m.Infra.CodegenArtifactComposition(
-                rendered=content,
-            ),
+            template_source=template.value,
         )
 
     @staticmethod

@@ -354,30 +354,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         )
         if declaration.failure:
             return result_type.from_failure(declaration)
-        if legacy.external_consumers:
-            discovered = u.Infra.discover_external_consumers(
-                root,
-                inputs,
-            )
-            if discovered.failure:
-                return result_type.from_failure(discovered)
-            covered = {consumer.root for consumer in discovered.value}
-            missing = tuple(
-                consumer
-                for consumer in legacy.external_consumers
-                if consumer.root.resolve() not in covered
-            )
-            if missing:
-                return result_type.fail(
-                    "manifest retirement requires verified public host inventory "
-                    "coverage for its external consumers: "
-                    + ", ".join(str(consumer.root) for consumer in missing),
-                )
-        if legacy.candidate_dependencies:
-            return result_type.fail(
-                "candidate dependency coordinates must be adopted by the "
-                "declared dependency provenance before manifest retirement",
-            )
+        admitted = cls._retirement_admitted(root, inputs, legacy)
+        if admitted.failure:
+            return result_type.from_failure(admitted)
         if delta.project is not None and any(
             captured.path.is_relative_to(root / path)
             for path in delta.project.packaged_data_paths
@@ -396,14 +375,50 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         ))
 
     @staticmethod
+    def _retirement_admitted(
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        legacy: m.Infra.WorkspaceManifestSpec,
+    ) -> p.Result[bool]:
+        """Admit manifest retirement only once its consumers are covered.
+
+        Returns:
+            Acceptance, or the first retirement obstacle.
+
+        """
+        if legacy.external_consumers:
+            discovered = u.Infra.discover_external_consumers(root, inputs)
+            if discovered.failure:
+                return r[bool].from_failure(discovered)
+            covered = {consumer.root for consumer in discovered.value}
+            missing = tuple(
+                consumer
+                for consumer in legacy.external_consumers
+                if consumer.root.resolve() not in covered
+            )
+            if missing:
+                return r[bool].fail(
+                    "manifest retirement requires verified public host inventory "
+                    "coverage for its external consumers: "
+                    + ", ".join(str(consumer.root) for consumer in missing),
+                )
+        if legacy.candidate_dependencies:
+            return r[bool].fail(
+                "candidate dependency coordinates must be adopted by the "
+                "declared dependency provenance before manifest retirement",
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
     def file_plan(
         root: Path,
         relative_path: str,
         rendered: str,
         *,
         mode: int = 0o644,
+        ownership: m.Infra.ManagedFileOwnership | None = None,
     ) -> p.Result[m.Infra.CodegenFilePlan]:
-        """Snapshot one target and bind it to exact desired bytes and mode.
+        """Snapshot one target and bind it to exact desired bytes and ownership.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
@@ -421,6 +436,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                 before=before.value,
                 desired_content=rendered.encode(c.DEFAULT_ENCODING),
                 desired_mode=mode,
+                owner="" if ownership is None else ownership.owner,
+                policy=None if ownership is None else ownership.policy,
+                tracking="versioned" if ownership is None else ownership.tracking,
             ),
         )
 

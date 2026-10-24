@@ -229,9 +229,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_collection_sources import (
         FlextInfraUtilitiesDocsCollectionSources,
     )
-    from flext_infra._utilities.docs_collection_verify import (
-        FlextInfraUtilitiesDocsCollectionVerify,
-    )
     from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
     from flext_infra._utilities.docs_fix import FlextInfraUtilitiesDocsFix
     from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
@@ -401,7 +398,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsBuild",
     "FlextInfraUtilitiesDocsCollection",
     "FlextInfraUtilitiesDocsCollectionSources",
-    "FlextInfraUtilitiesDocsCollectionVerify",
     "FlextInfraUtilitiesDocsCommandContractMixin",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
@@ -623,7 +619,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsBuild": ".docs_build",
         "FlextInfraUtilitiesDocsCollection": ".docs_collection",
         "FlextInfraUtilitiesDocsCollectionSources": ".docs_collection_sources",
-        "FlextInfraUtilitiesDocsCollectionVerify": ".docs_collection_verify",
         "FlextInfraUtilitiesDocsCommandContractMixin": "._docs_command_contract",
         "FlextInfraUtilitiesDocsContract": ".docs_contract",
         "FlextInfraUtilitiesDocsFix": ".docs_fix",

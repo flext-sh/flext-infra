@@ -165,10 +165,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         publish_child_exports = (
             parent_context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
-        # Direct source exports delimit an authored facade's API. A private
-        # child cannot widen it; an explicit reexport is already in lazy_map.
-        # Namespace-only packages can still bridge their implementation owners.
-        owns_export_surface = self._is_facade_root(parent_context) or bool(lazy_map)
+        # Only the public facade root keeps private ``_x`` children out of its
+        # surface; every nested package publishes them into its importing
+        # package (operator ruling 2026-10-24: export what ``__all__`` holds).
+        owns_export_surface = self._is_facade_root(parent_context)
         direct: list[str] = []
         children = dict.fromkeys((
             *package_entry.descendant_child_dirs,

@@ -471,7 +471,9 @@ class TestsFlextInfraSemanticPublication:
         )
         root = (artifact.candidate.workspaces or (artifact.candidate.workspace,))[0]
         origin_mode = (
-            stat.S_IMODE(artifact.moves[0][0].stat().st_mode) if artifact.moves else None
+            stat.S_IMODE(artifact.moves[0][0].stat().st_mode)
+            if artifact.moves
+            else None
         )
         tm.ok(
             u.Cli.atomic_write_text_file(

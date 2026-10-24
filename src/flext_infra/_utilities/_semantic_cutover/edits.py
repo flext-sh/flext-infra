@@ -7,34 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable
 
     from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverEdits:
     """Turn per-module rewrites into edits while keeping every module failure."""
-
-    @staticmethod
-    @contextmanager
-    def _semantic_source_project(
-        project: p.Infra.RopeProject,
-    ) -> Generator[p.Infra.RopeProject]:
-        """Borrow original authority, or capture it independently of the mutable SDK.
-
-        Yields:
-            The existing authenticated source owner for this semantic phase.
-
-        """
-        with project.source_consumer() as source_project:
-            yield source_project
 
     @staticmethod
     def _editable_sources(

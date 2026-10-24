@@ -6,10 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import time
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
-from threading import Barrier
+from threading import Barrier, Event, Thread
 
 import pytest
 
@@ -20,6 +23,35 @@ from tests import c, t, tm, u
 
 class TestsFlextInfraPytestRunnerZeroTest:
     """Preserve native empty-suite status and its typed accounting."""
+
+    @staticmethod
+    @contextmanager
+    def _held_elsewhere(lock: Path) -> Generator[None]:
+        """Hold the shared lock from another thread, as a concurrent run would.
+
+        The shared lock is reentrant within its holding thread, so contention
+        is only observable from a different thread or process.
+
+        Yields:
+            Control while the lock is held by the other thread.
+
+        """
+        acquired = Event()
+        release = Event()
+
+        def hold() -> None:
+            with u.Cli.file_changes_lock(lock):
+                acquired.set()
+                release.wait()
+
+        holder = Thread(target=hold)
+        holder.start()
+        acquired.wait()
+        try:
+            yield
+        finally:
+            release.set()
+            holder.join()
 
     @staticmethod
     def _zero_test_project(tmp_path: Path) -> Path:
@@ -152,9 +184,10 @@ class TestsFlextInfraPytestRunnerZeroTest:
             elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
 
+        lock = runner.testmon_db.with_name(f"{runner.testmon_db.name}.lock")
         with (
-            u.Infra.codegen_transaction_lease(runner.testmon_db),
-            pytest.raises(TimeoutError, match="held elsewhere"),
+            self._held_elsewhere(lock),
+            pytest.raises(TimeoutError, match=re.escape(str(lock))),
         ):
             runner.execute()
 
@@ -189,11 +222,10 @@ class TestsFlextInfraPytestRunnerZeroTest:
         latest = reports / "latest.txt"
         tm.ok(u.Cli.atomic_write_text_file(latest, "previous-run\n"))
         lock = latest.with_name(f"{latest.name}.lock")
-        with u.Infra.codegen_transaction_lease(latest):
+        with self._held_elsewhere(lock):
             before = lock.stat()
-            with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
+            with pytest.raises(TimeoutError, match=re.escape(str(lock))):
                 runner.execute()
-            tm.that(failure.value.lock_file, eq=str(lock))
             receipts = tuple(reports.glob("*/run-context.json"))
             tm.that(len(receipts), eq=1)
             context = m.Infra.PytestRunContext.model_validate_json(
@@ -208,7 +240,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 tuple(path.name for path in receipts[0].parent.iterdir()),
                 eq=("run-context.json",),
             )
-        with u.Infra.codegen_transaction_lease(latest, wait_seconds=0.0):
+        with u.Cli.file_changes_lock(lock).acquire(timeout=0.0):
             after = lock.stat()
             tm.that(
                 (after.st_dev, after.st_ino),
@@ -239,17 +271,16 @@ class TestsFlextInfraPytestRunnerZeroTest:
             f"{runners[0].testmon_db.name}.lock",
         )
         pointer_lock = latest.with_name(f"{latest.name}.lock")
-        with u.Infra.codegen_transaction_lease(latest):
+        with u.Cli.file_changes_lock(pointer_lock):
             pointer_before = pointer_lock.stat()
         start = Barrier(len(runners))
 
         def contend(runner: FlextInfraPytestRunner) -> None:
             start.wait(timeout=policy.run_timeout_seconds)
-            with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
+            with pytest.raises(TimeoutError, match=re.escape(str(cache_lock))):
                 runner.execute()
-            tm.that(failure.value.lock_file, eq=str(cache_lock))
 
-        with u.Infra.codegen_transaction_lease(runners[0].testmon_db):
+        with u.Cli.file_changes_lock(cache_lock):
             cache_before = cache_lock.stat()
             with ThreadPoolExecutor(max_workers=len(runners)) as executor:
                 tuple(executor.map(contend, runners))

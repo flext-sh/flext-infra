@@ -660,7 +660,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 return None
             message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
-        # Parser inputs share the native read receipts. Unresolved module
+        # Parser inputs share the native Rope reads. Unresolved module
         # inventory remains available to the MRO resolver without being read.
         sources = {
             path: (

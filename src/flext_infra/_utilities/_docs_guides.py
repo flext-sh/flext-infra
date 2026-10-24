@@ -228,7 +228,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         *,
         repository_root: Path,
     ) -> p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]:
-        """Plan root-owned guide projections from authenticated snapshot bytes.
+        """Plan root-owned guide projections from the canonical guides.
 
         Returns:
             The resulting

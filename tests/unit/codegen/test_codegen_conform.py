@@ -285,7 +285,7 @@ class TestsFlextInfraCodegenConform:
         conformed_template: Path,
         scenario: str,
     ) -> None:
-        """A failed apply keeps independent gains and never overwrites a concurrent edit."""
+        """A failed apply keeps independent gains and never overwrites an edit."""
         root, request, published, original = self._lifecycle_fixture(
             tmp_path,
             scenario,

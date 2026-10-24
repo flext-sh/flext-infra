@@ -152,27 +152,25 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         """
         root = rope_workspace.repository_root
-        with cls._semantic_source_project(
-            rope_workspace.rope_project
-        ) as source_project:
-            captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                root, source_project=source_project
+        source_project = rope_workspace.rope_project
+        captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            root, source_project=source_project
+        )
+        if captured.failure:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                captured
             )
-            if captured.failure:
-                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                    captured
-                )
-            codegen = captured.value.spec
-            if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
-                return cls._plan_class_nesting(rope_workspace, sources, codegen)
-            return cls._plan_dynamic_environment(
-                sources,
-                frozenset((root / finding.file).resolve() for finding in selected),
-                source_project=source_project,
-                owner_context=cls._settings_owner_contexts(
-                    root, codegen, source_project, dependency_codegen
-                ),
-            )
+        codegen = captured.value.spec
+        if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
+            return cls._plan_class_nesting(rope_workspace, sources, codegen)
+        return cls._plan_dynamic_environment(
+            sources,
+            frozenset((root / finding.file).resolve() for finding in selected),
+            source_project=source_project,
+            owner_context=cls._settings_owner_contexts(
+                root, codegen, source_project, dependency_codegen
+            ),
+        )
 
     @classmethod
     def _plan_behavior_and_declarations(
@@ -190,18 +188,15 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             A result containing a tuple of semantic migration edits.
 
         """
-        with (
-            cls._semantic_source_project(rope_workspace.rope_project) as source_project,
-            closing(
-                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    rope_workspace.rope_project, sources
-                )
-            ) as project,
-        ):
+        with closing(
+            FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                rope_workspace.rope_project, sources
+            )
+        ) as project:
             consumers = cls._plan_behavior_consumers(
                 sources,
                 native_project=project,
-                source_project=source_project,
+                source_project=rope_workspace.rope_project,
             )
         if consumers.failure:
             return consumers

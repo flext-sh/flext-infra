@@ -401,12 +401,12 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             resolved = path.resolve()
             content = source.encode("utf-8")
             declared.pop(resolved, None)
-            if not resolved.is_relative_to(root):
-                msg = f"Rope proposed source is outside its project: {path}"
-                raise ValueError(msg)
             before = project.source_state(resolved, required=False)
             if before.content == content:
                 continue
+            if not resolved.is_relative_to(root):
+                msg = f"Rope proposed source is outside its project: {path}"
+                raise ValueError(msg)
             declared[resolved] = m.Infra.CodegenFilePlan(
                 project=root,
                 path=resolved,

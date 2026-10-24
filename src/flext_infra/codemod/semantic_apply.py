@@ -803,7 +803,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         cls,
         request: m.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
-        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[bool]:
         """Re-derive an artifact and validate its complete candidate before effects.
 
@@ -819,7 +818,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 request,
                 workspace,
                 pair,
-                source_preview=source_preview,
             )
         )
         if verified.failure:
@@ -885,8 +883,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         request: m.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
         pair: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
-        *,
-        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[bool]:
         """Re-derive, candidate-validate, and re-authenticate the artifact.
 
@@ -900,7 +896,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         verified = cls.authenticate_rename_candidate(root, artifact, driver, workspace)
         if verified.failure:
             return verified
-        del source_preview
         return cls._publish_authenticated_source(
             root,
             artifact,
@@ -1032,7 +1027,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         apply: bool,
-        source_preview: p.Infra.SourcePreview,
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose declaration and constant consumers before census acceptance.
@@ -1041,15 +1035,12 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             root: Repository root governing the census scope.
             rope_workspace: The native workspace DSL used for planning.
             apply: Whether the composed candidate is also published.
-            source_preview: Reserved preview channel owned by the publication.
             workspace_factory: Validator workspace factory for staged candidates.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
         inventory: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
             m.Infra.ModOccurrenceReport(files=frozenset(), entries=())
         )
@@ -1250,11 +1241,9 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         cls,
         root: Path,
         edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit],
-        *,
-        source_preview: p.Infra.SourcePreview,
     ) -> None:
         """Publish the exact callback included in the existing progress fingerprint."""
-        cls.publish_planned_edits(root, edits, source_preview=source_preview).unwrap()
+        cls.publish_planned_edits(root, edits).unwrap()
         cli.display_text(f"mod: Rope transaction paths changed_files={len(edits)}")
 
     @classmethod
@@ -1263,7 +1252,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         root: Path,
         edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
         *,
-        source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[bool]:
         """Compose a complete edit batch and publish through the semantic owner.
@@ -1271,15 +1259,12 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         Args:
             root: Repository root governing the publication.
             edits: The complete validated edit batch to compose.
-            source_preview: Reserved preview channel owned by the publication.
             validator: Optional staged-candidate validator.
 
         Returns:
             Whether the accepted batch contains source changes.
 
         """
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
         original: t.MutableMappingKV[Path, str] = {}
         for edit in edits:
             if edit.file_path not in original:
@@ -1302,7 +1287,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
         preflight: m.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        source_preview: p.Infra.SourcePreview,
         workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl],
     ) -> p.Result[bool]:
         """Apply every semantic cutover selected by the canonical mod circuit.
@@ -1314,8 +1298,6 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             The resulting ``p.Result[bool]``.
 
         """
-        # The publication owner consumes the complete semantic/projection group.
-        del source_preview
         authority = Path(rope_workspace.rope_project.root.real_path)
         with (
             u.Infra.open_project(

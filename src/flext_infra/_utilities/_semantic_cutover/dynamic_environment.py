@@ -226,7 +226,6 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 item for item in cls._editable_sources(sources) if item[0] in selected
             ),
             rewrite,
-            source_project=source_project,
         )
 
     @classmethod

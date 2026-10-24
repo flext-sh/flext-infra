@@ -61,8 +61,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         originals = dict(cls._editable_sources(sources))
         changes: t.MutableMappingKV[Path, list[str]] = {}
         retired: set[Path] = set()
+        source_project = rope_workspace.rope_project
         with (
-            cls._semantic_source_project(rope_workspace.rope_project) as source_project,
             rope_workspace.open_workspace(
                 rope_workspace.repository_root,
                 rope_repository_root=rope_workspace.rope_repository_root,

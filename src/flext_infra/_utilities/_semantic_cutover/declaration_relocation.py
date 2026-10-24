@@ -111,15 +111,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
-        # One closed epoch serves every snapshot of this pass: the sources, their
-        # import closure and the identities payload relocation resolves.
-        epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
-            workspace.rope_project,
-            tuple(sources),
-            c.Infra.DECLARATION_RELOCATION_IDENTITIES,
-        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, sources, captured=epoch
+            workspace.rope_project,
+            sources,
         )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
@@ -132,7 +126,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if working != sources:
                 project.close()
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project, working, captured=epoch
+                    workspace.rope_project,
+                    working,
                 )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -183,7 +178,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working, captured=epoch
+                        workspace.rope_project,
+                        working,
                     )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (

@@ -20,13 +20,13 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):
-    """Load one authenticated pyproject state for every docs decision."""
+    """Load one pyproject state for every docs decision."""
 
     @staticmethod
     def _project_state(
         project_root: Path,
     ) -> m.Infra.ProjectPyprojectState:
-        """Return project state bound to the current authenticated file bytes.
+        """Return project state bound to the current file bytes.
 
         When the pyproject is absent or empty, the returned state carries
         empty ``project_name``/``package_name`` (legitimate "not a project"
@@ -35,7 +35,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         silent fallback to directory-name.
 
         Returns:
-            Project state bound to the current authenticated file bytes.
+            Project state bound to the current file bytes.
 
         Raises:
             ValueError: If ``snapshot.failure``.

@@ -4,12 +4,9 @@ severity: error
 rule:
   pattern: |
     with $OWNER.cached_source_query($PROJECT, $CACHE, $KEY, $RECEIPTS, $RECEIPT_KEY) as $CACHED:
-        if $CACHED:
-            return $HIT
         $$$BODY
 fix: |-
-  if $KEY in $CACHE:
-      return $HIT
+  $CACHED = $KEY in $CACHE
   $$$BODY
 message: >-
   Cached source queries no longer replay consumption receipts: a cache hit is
