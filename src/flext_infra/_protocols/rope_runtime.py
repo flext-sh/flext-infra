@@ -370,6 +370,21 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
     @runtime_checkable
+    class RopeSourceBindingContext(Protocol):
+        """Native binding environment recorded for one source position."""
+
+        @property
+        def environment(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
+    @runtime_checkable
+    class RopeSourceBindingIndex(Protocol):
+        """Native source binding index, including PEP 695 type parameters."""
+
+        def context_at(
+            self, offset: int
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext: ...
+
+    @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 
@@ -413,6 +428,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_resource(
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
+
+        def get_source_binding_index(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingIndex: ...
 
     @runtime_checkable
     class RopeSourceModule(RopePyModule, Protocol):

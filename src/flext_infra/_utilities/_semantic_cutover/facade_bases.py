@@ -202,23 +202,44 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         )
         if resolved is None:
             return ()
+        return cls._class_identity_lineage(modules, resolved, project=project)
+
+    @classmethod
+    def _class_identity_lineage(
+        cls,
+        modules: t.MappingKV[str, t.Pair[str, bool]],
+        identity: t.Pair[str, str],
+        *,
+        project: p.Infra.RopeProject,
+    ) -> t.VariadicTuple[t.Pair[str, str]]:
+        """Linearize one declared class identity through its proven bases.
+
+        Returns:
+            The C3 lineage of module and class name pairs, starting at it.
+
+        A ``ValueError`` fails on a cyclic, undeclared, or inconsistent facade
+        inheritance identity, and a ``TypeError`` propagates from unsupported
+        facade inheritance identities through ``_behavior_base_identity``.
+
+        """
         cache: MutableMapping[t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]] = {}
 
         def linearize(
-            identity: t.Pair[str, str],
+            current: t.Pair[str, str],
             visiting: frozenset[t.Pair[str, str]],
         ) -> t.VariadicTuple[t.Pair[str, str]]:
-            if identity in visiting:
-                msg = f"cyclic facade inheritance identity: {identity}"
+            if current in visiting:
+                msg = f"cyclic facade inheritance identity: {current}"
                 raise ValueError(msg)
-            if identity in cache:
-                return cache[identity]
-            owner_module, owner_name = identity
-            declaration = next(
-                node
-                for node in ast.parse(modules[owner_module][0]).body
-                if isinstance(node, ast.ClassDef) and node.name == owner_name
+            if current in cache:
+                return cache[current]
+            owner_module, owner_name = current
+            declaration = cls._declared_class_node(
+                modules[owner_module][0], owner_name
             )
+            if declaration is None:
+                msg = f"facade inheritance identity has no declaration: {current}"
+                raise ValueError(msg)
             bases: list[t.Pair[str, str]] = []
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
@@ -227,19 +248,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 )
                 if inherited is not None:
                     bases.append(inherited)
-            cache[identity] = (
-                identity,
+            cache[current] = (
+                current,
                 *FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                     (
-                        *(linearize(base, visiting | {identity}) for base in bases),
+                        *(linearize(base, visiting | {current}) for base in bases),
                         tuple(bases),
                     ),
-                    message=f"inconsistent facade inheritance identity: {identity}",
+                    message=f"inconsistent facade inheritance identity: {current}",
                 ),
             )
-            return cache[identity]
+            return cache[current]
 
-        return linearize(resolved, frozenset())
+        return linearize(identity, frozenset())
 
     @classmethod
     def _behavior_base_identity(
@@ -279,11 +300,57 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     frozenset(),
                     project=project,
                 )
+        if isinstance(expression, ast.Attribute):
+            owner = (
+                cls._facade_declared_class(
+                    modules, module, expression.value.id, frozenset(), project=project
+                )
+                if isinstance(expression.value, ast.Name)
+                else cls._behavior_base_identity(
+                    modules, module, expression.value, project=project
+                )
+            )
+            if owner is not None:
+                # A class attribute resolves through the owner's own C3 lineage:
+                # the nested class may be declared on an inherited base.
+                for lineage_module, lineage_name in cls._class_identity_lineage(
+                    modules, owner, project=project
+                ):
+                    nested = f"{lineage_name}.{expression.attr}"
+                    if (
+                        cls._declared_class_node(modules[lineage_module][0], nested)
+                        is not None
+                    ):
+                        return lineage_module, nested
         msg = (
             "unsupported facade inheritance identity: "
             f"{module}.{ast.unparse(expression)}"
         )
         raise TypeError(msg)
+
+    @staticmethod
+    def _declared_class_node(source: str, qualified: str) -> ast.ClassDef | None:
+        """Find a module class, or a class nested in one, by its dotted name.
+
+        Returns:
+            The declaration reached through each enclosing class body, if any.
+
+        """
+        body: t.SequenceOf[ast.stmt] = ast.parse(source).body
+        declaration: ast.ClassDef | None = None
+        for name in qualified.split("."):
+            declaration = next(
+                (
+                    node
+                    for node in body
+                    if isinstance(node, ast.ClassDef) and node.name == name
+                ),
+                None,
+            )
+            if declaration is None:
+                return None
+            body = declaration.body
+        return declaration
 
     @classmethod
     def behavior_source_modules(
@@ -415,11 +482,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         """
         tree = ast.parse(source)
         names = {
-            base.id
+            root.id
             for declaration in tree.body
             if isinstance(declaration, ast.ClassDef)
             for base in declaration.bases
-            if isinstance(base, ast.Name)
+            for root in ast.walk(base)
+            if isinstance(root, ast.Name)
         }
         return tuple(
             ast.unparse(node)
@@ -559,13 +627,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         Returns:
             The effective declaring class identity, or no declaration.
 
+        Raises:
+            ValueError: If a lineage identity has no class declaration.
+
         """
         for owner_module, class_name in lineage:
-            declaration = next(
-                node
-                for node in ast.parse(modules[owner_module][0]).body
-                if isinstance(node, ast.ClassDef) and node.name == class_name
+            declaration = cls._declared_class_node(
+                modules[owner_module][0], class_name
             )
+            if declaration is None:
+                msg = (
+                    "facade inheritance identity has no declaration: "
+                    f"{owner_module}.{class_name}"
+                )
+                raise ValueError(msg)
             if cls._behavior_member_binding(declaration, member) is not None:
                 return owner_module, class_name
         return None
@@ -1227,8 +1302,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         if target is not None:
             obsolete.add(imported)
 
-    @staticmethod
+    @classmethod
     def _effective_declaration_node(
+        cls,
         modules: t.MappingKV[str, t.Pair[str, bool]],
         effective: t.Pair[str, str] | None,
     ) -> ast.ClassDef | None:
@@ -1238,14 +1314,22 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             The declared class node, or ``None`` when there is no effective
             declaration.
 
+        Raises:
+            ValueError: If the effective identity has no class declaration.
+
         """
         if effective is None:
             return None
-        return next(
-            node
-            for node in ast.parse(modules[effective[0]][0]).body
-            if isinstance(node, ast.ClassDef) and node.name == effective[1]
+        declaration = cls._declared_class_node(
+            modules[effective[0]][0], effective[1]
         )
+        if declaration is None:
+            msg = (
+                "facade inheritance identity has no declaration: "
+                f"{effective[0]}.{effective[1]}"
+            )
+            raise ValueError(msg)
+        return declaration
 
     @classmethod
     def _context_free_static_member(

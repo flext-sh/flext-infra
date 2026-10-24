@@ -194,13 +194,15 @@ class TestsFlextInfraSelfFacadeCutover:
         declarations.mkdir()
         (declarations / c.Infra.INIT_PY).write_text("", encoding="utf-8")
         consumer = declarations / "consumer.py"
+        facade = f"{u.derive_class_stem(root.name)}Models"
         sources = {
-            package / c.Infra.INIT_PY: "from .models import Models as m\n",
+            package / c.Infra.INIT_PY: f"from .models import {facade} as m\n",
             package / c.Infra.MODELS_PY: (
+                "from typing import ClassVar\n"
                 "from flext_core import m as core_m\n"
-                "class Models(core_m):\n"
-                "    empty = None\n"
-                "__all__ = ('Models',)\n"
+                f"class {facade}(core_m):\n"
+                "    empty: ClassVar[None] = None\n"
+                f"__all__ = ('{facade}',)\n"
             ),
             consumer: (
                 f"from {package.name} import m\n"
@@ -765,12 +767,13 @@ class TestsFlextInfraSelfFacadeCutover:
         }
         for path, content in sources.items():
             path.write_text(content, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            result = u.Infra.plan_semantic_cutover(
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=expected),
+        ):
+            u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                 rope_workspace=rope,
                 sources=sources,
             )
-        tm.fail(result, has=expected)
-        tm.ok(isinstance(result.exception, ValueError))
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)

@@ -725,8 +725,17 @@ class FlextInfraUtilitiesImportLaw:
             root = expression.split(".", 1)[0]
             root_name = runtime.expression_name(scope, root)
             if root_name is None:
-                continue
-            actual = runtime.expression_name(scope, expression)
+                binding = (
+                    module
+                    .get_source_binding_index()
+                    .context_at(offset)
+                    .environment.lookup(root)
+                )
+                if binding is None:
+                    continue
+                actual = binding
+            else:
+                actual = runtime.expression_name(scope, expression)
             if not runtime.same_name(identity, actual):
                 message = (
                     f"{rule.id}: destination {expression} is shadowed "
