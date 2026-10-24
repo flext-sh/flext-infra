@@ -14,6 +14,12 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+    from flext_infra.codemod._batch_gates_findings import (
+        FlextInfraModGateEngineFindingsMixin,
+    )
+    from flext_infra.codemod._batch_gates_fixtures import (
+        FlextInfraModGateEngineFixturesMixin,
+    )
     from flext_infra.codemod._batch_orphan_import import FlextInfraOrphanImport
     from flext_infra.codemod._extract_duplicate import FlextInfraExtractDuplicatePhase
     from flext_infra.codemod._loop_phase_accessor_rename import (
@@ -58,6 +64,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraExtractDuplicatePhase",
     "FlextInfraImportNormalizationPhase",
     "FlextInfraModGateEngine",
+    "FlextInfraModGateEngineFindingsMixin",
+    "FlextInfraModGateEngineFixturesMixin",
     "FlextInfraModReplacements",
     "FlextInfraModTextGateEngine",
     "FlextInfraNamespaceRelocationPhase",
@@ -83,6 +91,8 @@ install_lazy_exports(
         "FlextInfraExtractDuplicatePhase": "._extract_duplicate",
         "FlextInfraImportNormalizationPhase": "._loop_phase_import_normalization",
         "FlextInfraModGateEngine": ".batch_gates",
+        "FlextInfraModGateEngineFindingsMixin": "._batch_gates_findings",
+        "FlextInfraModGateEngineFixturesMixin": "._batch_gates_fixtures",
         "FlextInfraModReplacements": ".batch_replacements",
         "FlextInfraModTextGateEngine": ".text_gates",
         "FlextInfraNamespaceRelocationPhase": "._loop_phase_namespace_relocation",
