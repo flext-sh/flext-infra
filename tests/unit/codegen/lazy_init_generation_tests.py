@@ -160,7 +160,7 @@ class TestsFlextInfraLazyInitGeneration:
     def test_root_initializer_carries_static_and_lazy_contracts(
         tmp_path: Path,
     ) -> None:
-        """The root publishes modules, children and eager version metadata."""
+        """The root publishes module exports and eager version, never children."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
         (package / "api.py").write_text(
             "class Demo: pass\n__all__ = ['Demo']\n", encoding=c.DEFAULT_ENCODING
@@ -183,15 +183,14 @@ class TestsFlextInfraLazyInitGeneration:
         tm.that(
             content,
             has=[
-                f"    from {package.name} import services as services\n",
                 f"    from {package.name}.__version__ import __version__\n",
                 f"    from {package.name}.api import Demo\n",
-                '__all__: tuple[str, ...] = ("Demo", "__version__", "services")',
+                '__all__: tuple[str, ...] = ("Demo", "__version__")',
                 '"Demo": ".api"',
-                '"services": ".services"',
                 "install_lazy_exports(",
             ],
         )
+        tm.that(content, lacks=["services as services", '"services": ".services"'])
         runtime_prefix = content.split("if TYPE_CHECKING:", maxsplit=1)[0]
         tm.that(runtime_prefix, lacks=f"from {package.name}.api import Demo")
         tm.that(runtime_prefix, lacks=f"from {package.name}.__version__ import")
@@ -313,7 +312,7 @@ class TestsFlextInfraLazyInitGeneration:
 
     @staticmethod
     def test_nested_package_resolves_its_exports_lazily(tmp_path: Path) -> None:
-        """A nested package publishes its modules and children without importing."""
+        """A nested package propagates module and child exports without importing."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
         services = package / "services"
         nested = services / "nested"
@@ -340,7 +339,7 @@ class TestsFlextInfraLazyInitGeneration:
                 python_paths=(str(package.parent),),
                 cwd=repository,
             ),
-            eq=["True", "True", "['Demo', 'Nested', 'nested']"],
+            eq=["True", "True", "['Demo', 'Nested']"],
         )
 
     @staticmethod

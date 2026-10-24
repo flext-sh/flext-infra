@@ -202,8 +202,7 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.ok(result.success)
         tm.that(generated_root, contains="FlextTestsLibraryRunner")
-        tm.that(generated_root, contains='"services": ".services"')
-        tm.that(generated_root, lacks="FlextTestsDbtServiceBase")
+        tm.that(generated_root, lacks=['"services"', "FlextTestsDbtServiceBase"])
         tm.that(generated_services, contains="FlextTestsDbtServiceBase")
 
     @staticmethod

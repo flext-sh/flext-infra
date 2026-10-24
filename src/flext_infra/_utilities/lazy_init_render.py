@@ -84,11 +84,9 @@ class FlextInfraUtilitiesLazyInitRender:
             for name, target in plan.lazy_map.items()
             if name in plan.exports and name not in helpers
         }
-        children = frozenset(plan.child_packages_for_lazy)
         entries = {
             name: (cls._lazy_init_compact_module(current, module), attr)
             for name, (module, attr) in public.items()
-            if attr or module not in children or name == module.rsplit(".", 1)[-1]
         }
         project_root = cls.lazy_init_project_root(model, plan.context.pkg_dir)
         first_party |= {current}
@@ -216,28 +214,6 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _lazy_init_module_alias(
-        cls, indent: str, module: str, name: str
-    ) -> t.StrSequence:
-        """Emit ``from parent import child as name`` for one module object.
-
-        Returns:
-            The compact line, or its wrapped form.
-
-        """
-        if "." not in module:
-            return (f"{indent}import {module} as {name}",)
-        parent, _, child = module.rpartition(".")
-        compact = f"{indent}from {parent} import {child} as {name}"
-        if len(compact) <= cls.lazy_init_width():
-            return (compact,)
-        return (
-            f"{indent}from {parent} import (",
-            f"{indent}    {child} as {name},",
-            f"{indent})",
-        )
-
-    @classmethod
     def _lazy_init_runtime_imports(cls, helpers: t.StrSequence) -> str:
         """Render the lazy-helper import, the only pre-installer runtime import.
 
@@ -309,15 +285,13 @@ class FlextInfraUtilitiesLazyInitRender:
     @staticmethod
     def _lazy_init_import_groups(
         public: t.LazyAliasMap, children: t.StrSequence
-    ) -> t.Pair[t.MappingKV[str, t.SequenceOf[t.StrPair]], frozenset[str]]:
+    ) -> t.MappingKV[str, t.SequenceOf[t.StrPair]]:
         """Group public targets by the module their static import names.
 
-        Child-module targets collapse into their child package and module
-        objects import from their parent package.
+        Child-module targets collapse into their child package.
 
         Returns:
-            The ``(export, imported)`` pairs per importing module, and the
-            names published as module objects.
+            The ``(export, imported)`` pairs per importing module.
 
         """
         ordered = sorted(set(children), key=len, reverse=True)
@@ -333,17 +307,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 module,
             )
             collapsed[owner].append((name, attr))
-        merged: defaultdict[str, list[t.StrPair]] = defaultdict(list)
-        for module, items in collapsed.items():
-            for name, attr in items:
-                if not attr and "." in module:
-                    parent, _, child = module.rpartition(".")
-                    merged[parent].append((name, child))
-                else:
-                    merged[module].append((name, attr))
-        return merged, frozenset(
-            name for items in collapsed.values() for name, attr in items if not attr
-        )
+        return collapsed
 
     @classmethod
     def _lazy_init_type_checking(
@@ -361,9 +325,7 @@ class FlextInfraUtilitiesLazyInitRender:
             The ``if TYPE_CHECKING:`` block lines, empty without exports.
 
         """
-        merged, module_objects = cls._lazy_init_import_groups(
-            public, plan.child_packages_for_lazy
-        )
+        merged = cls._lazy_init_import_groups(public, plan.child_packages_for_lazy)
         if not merged:
             return ()
         lines = ["if TYPE_CHECKING:"]
@@ -375,38 +337,26 @@ class FlextInfraUtilitiesLazyInitRender:
             if previous is not None and section != previous:
                 lines.append("")
             previous = section
-            lines.extend(
-                cls._lazy_init_module_lines(module, merged[module], module_objects)
-            )
+            lines.extend(cls._lazy_init_module_lines(module, merged[module]))
         return lines
 
     @classmethod
     def _lazy_init_module_lines(
-        cls,
-        module: str,
-        items: t.SequenceOf[t.StrPair],
-        module_objects: frozenset[str],
+        cls, module: str, items: t.SequenceOf[t.StrPair]
     ) -> t.StrSequence:
-        """Render one importing module's static imports.
+        """Render one importing module's static member import.
 
         Returns:
-            The module-object imports, then the member import.
+            The member import lines.
 
         """
-        lines: list[str] = []
-        parts: list[str] = []
-        for name, attr in sorted(items, key=cls._lazy_init_item_key):
-            if not attr:
-                lines.extend(cls._lazy_init_module_alias("    ", module, name))
-            elif name in module_objects or attr != name:
-                parts.append(f"{attr} as {name}")
-            else:
-                parts.append(attr)
-        if parts:
-            lines.extend(
-                cls._lazy_init_import("    ", module, tuple(dict.fromkeys(parts)))
+        parts = tuple(
+            dict.fromkeys(
+                attr if attr == name else f"{attr} as {name}"
+                for name, attr in sorted(items, key=cls._lazy_init_item_key)
             )
-        return lines
+        )
+        return cls._lazy_init_import("    ", module, parts) if parts else ()
 
     @classmethod
     def _lazy_init_exports_tuple(cls, names: t.StrSequence) -> str:
@@ -436,7 +386,7 @@ class FlextInfraUtilitiesLazyInitRender:
         ordered = sorted(entries, key=cls.lazy_init_export_key)
         inner = ", ".join(
             f'"{name}": "{module}"'
-            if name == attr or not attr
+            if name == attr
             else f'"{name}": ("{module}", "{attr}")'
             for name in ordered
             for module, attr in (entries[name],)
@@ -448,7 +398,7 @@ class FlextInfraUtilitiesLazyInitRender:
         indent = "        "
         for name in ordered:
             module, attr = entries[name]
-            if attr in {name, ""}:
+            if attr == name:
                 line = f'{indent}"{name}": "{module}",'
                 lines.extend(
                     (line,)

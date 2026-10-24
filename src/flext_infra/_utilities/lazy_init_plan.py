@@ -508,11 +508,14 @@ class FlextInfraUtilitiesLazyInitPlan:
         context: m.Infra.LazyInitPackageContext,
         lazy_map: t.MutableLazyAliasMap,
     ) -> t.StrSequence:
-        """Publish direct child packages and their exports into the parent.
+        """Propagate the exports of direct child packages into the parent.
 
-        Non-public tiers (tests, examples, scripts) list no children; the
-        facade root withholds private ``_x`` children; every other package
-        publishes all of them (operator ruling 2026-10-24).
+        A child package is never itself a published name: an initializer
+        propagates what modules declare in ``__all__`` (generator law p.1-2),
+        and a package object reached by attribute is banned (ADR-028), so
+        consumers import a child's names from the child package. Non-public
+        tiers (tests, examples, scripts) propagate nothing; the facade root
+        withholds private ``_x`` children.
 
         Returns:
             The sorted names of the merged child packages.
@@ -543,7 +546,6 @@ class FlextInfraUtilitiesLazyInitPlan:
             leaf = child.rsplit(".", maxsplit=1)[-1]
             if not publish or (facade_root and leaf.startswith("_")):
                 continue
-            cls._lazy_init_add(run, lazy_map, leaf, (child, ""))
             plan = run.plans.get(child_dir)
             for name, (module_name, attr) in (
                 plan.lazy_map.items() if plan is not None else ()
@@ -673,8 +675,8 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         python = FlextInfraUtilitiesPythonModel
         modules = tuple(
-            python.python_model_module(run.model, module_name) if attr else None
-            for module_name, attr in (a, b)
+            python.python_model_module(run.model, module_name)
+            for module_name, _attr in (a, b)
         )
         if any(
             module is None or target[1] not in python.python_model_members(module)
