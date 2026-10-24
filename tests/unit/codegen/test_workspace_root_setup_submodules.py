@@ -528,9 +528,8 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         still provisions the environment from the manifests
         (operator-ruling-2026-10-09-setup-resilient) and never derives a lock;
         only `make upg` writes uv.lock. The fixture manifest declares no
-        flext-infra, so the recipe's next stage (`workspace sync-environment`,
-        owned by the flext-infra every governed project declares) cannot run
-        here; the full lockless setup is proven by the make-environment suite.
+        flext-infra, so the later lifecycle stages cannot run here; the full
+        lockless setup is proven by the make-environment suite.
         """
         rendered = self._render_repository_root_makefile(tmp_path)
         tm.that(rendered, has="MAKE_PROFILE := workspace")

@@ -417,11 +417,6 @@ def _provision_consumer_template(
             ),
         ),
     )
-    tm.ok(
-        infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root),
-        ),
-    )
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.

@@ -206,13 +206,12 @@ bindings remain lexical inventory inputs, and package names such as `tests`
 receive no separate lazy-mapping exemption. Unsupported initializer declarations
 fail through the canonical reader.
 
-Generation is the sole writer of `.envrc`. Environment synchronization consumes
-that projection and may authorize it with native `direnv allow`; it never renders,
-replaces, or removes environment files. The existing conform planner checks the
-selected repository's current declaration and exact projected bytes before
-authorization. A fresh clone with a valid committed `.envrc` needs no local
-generation journal. A missing or divergent projection fails without repair;
-`make gen` owns its regeneration.
+Generation is the sole writer of `.envrc`. Local `make setup` authorizes that
+projection with native `direnv allow`; it never renders, replaces, or removes
+environment files. `make check` verifies the selected repository's projection
+against its current declaration. A fresh clone with a valid committed `.envrc`
+needs no local generation journal. A missing or divergent projection fails
+without repair; `make gen` owns its regeneration.
 
 The publication owner authenticates each file's captured destination and declared
 inputs. A changed dependency rejects its affected file with a causal issue while
