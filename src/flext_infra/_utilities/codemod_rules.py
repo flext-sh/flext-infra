@@ -176,8 +176,8 @@ class FlextInfraUtilitiesCodemodRules(
             The utility document's ``rule`` mapping.
 
         Raises:
-            ValueError: If the provider declares no such utility or the
-                document carries no rule mapping.
+            ValueError: If the provider declares no single such utility.
+            TypeError: If the utility document carries no rule mapping.
 
         """
         documents = cls._collect_utility_documents(
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesCodemodRules(
         rule = matches[0].get("rule")
         if not isinstance(rule, Mapping):
             msg = f"utility {identity} of {config_path} declares no rule mapping"
-            raise ValueError(msg)
+            raise TypeError(msg)
         return rule
 
     @classmethod

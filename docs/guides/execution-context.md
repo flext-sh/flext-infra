@@ -3,6 +3,7 @@
 <!-- TOC START -->
 
 - [Runtime is the authority](#runtime-is-the-authority)
+  - [Post-install cold atomic resource ownership](#post-install-cold-atomic-resource-ownership)
   - [Native-bootstrap task route: flext-0029c](#native-bootstrap-task-route-flext-0029c)
 - [Canonical architecture checkpoints](#canonical-architecture-checkpoints)
 - [Namespace migration](#namespace-migration)

@@ -69,21 +69,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             msg = f"extracting {qualified} would leave {'.'.join(path[:-1])} empty"
             raise ValueError(msg)
         reference = cls._qualified_matcher(path)
-        attributes = tuple(
-            found
-            for found in cstm.findall(member, cstm.Attribute())
-            if isinstance(found, c.Infra.Cst.Attribute)
-        )
-        objects = {id(found.value) for found in attributes}
-        foreign = sorted({
-            name
-            for found in attributes
-            if id(found) not in objects
-            and (name := csth.get_full_name_for_node_or_raise(found)).split(".")[0]
-            == path[0]
-            and name != qualified
-            and not name.startswith(f"{qualified}.")
-        })
+        foreign = cls._foreign_family_references(member, path)
         if foreign:
             msg = (
                 f"{qualified} references other {path[0]} members: {', '.join(foreign)}"
@@ -104,11 +90,43 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             cst.Name(inner),
         )
         if not isinstance(updated, c.Infra.Cst.Module):
-            msg = f"extracting {outer}.{inner} did not yield a module"
+            msg = f"extracting {qualified} did not yield a module"
             raise TypeError(msg)
         return (
             cls._with_import(updated, target_module, inner).code,
             cls._extracted_module(module, lifted, used).code,
+        )
+
+    @staticmethod
+    def _foreign_family_references(
+        member: t.Infra.Cst.ClassDef, path: t.StrSequence
+    ) -> t.StrSequence:
+        """Return the other family members ``member`` reads by qualified name.
+
+        Only outermost attribute chains rooted at the family class count; the
+        member's own qualified name and its descendants are not foreign.
+
+        Returns:
+            The sorted foreign qualified names.
+
+        """
+        qualified = ".".join(path)
+        attributes = tuple(
+            found
+            for found in cstm.findall(member, cstm.Attribute())
+            if isinstance(found, c.Infra.Cst.Attribute)
+        )
+        objects = {id(found.value) for found in attributes}
+        return tuple(
+            sorted({
+                name
+                for found in attributes
+                if id(found) not in objects
+                and (name := csth.get_full_name_for_node_or_raise(found)).split(".")[0]
+                == path[0]
+                and name != qualified
+                and not name.startswith(f"{qualified}.")
+            })
         )
 
     @staticmethod

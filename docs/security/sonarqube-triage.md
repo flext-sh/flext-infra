@@ -1,5 +1,11 @@
 # SonarCloud triage — flext-sh/flext-infra
 
+<!-- TOC START -->
+
+- [Pull request #2095 — reliability gate (2026-10-24)](#pull-request-2095-reliability-gate-2026-10-24)
+
+<!-- TOC END -->
+
 This is an evidence report, not a task tracker. The canonical tracker is bead
 `flext-y9dqj` (P0 security lane under epic `flext-1engx`).
 

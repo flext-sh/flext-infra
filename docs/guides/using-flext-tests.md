@@ -150,7 +150,7 @@ mutation, including assertion failure:
 
 ```python
 from flext_core import FlextSettings
-from tests import c, tm
+from tests import tm
 
 
 def test_settings_override() -> None:
