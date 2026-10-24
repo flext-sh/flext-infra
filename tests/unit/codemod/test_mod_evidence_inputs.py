@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, m, main, t
+from flext_infra import FlextInfraCli, infra, m, t
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm, u
 
@@ -428,7 +428,12 @@ class TestsFlextInfraModEvidenceInputs:
         mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The public whole-catalog summary consumes the existing scan receipt."""
-        exit_code = main(["refactor", "ast", "--repository-root", str(mod_workspace)])
+        exit_code = FlextInfraCli.infra_main([
+            "refactor",
+            "ast",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         console = capsys.readouterr()
         evidence = m.Infra.ModScanEvidence.model_validate_json(
             (mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH).read_bytes()

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import tm
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ class TestsFlextInfraCheckMain:
     @staticmethod
     def test_check_main_executes_real_cli(capsys: CaptureFixture[str]) -> None:
         """Test check main executes real cli."""
-        exit_code = main(["check", "run", "--help"])
+        exit_code = FlextInfraCli.infra_main(["check", "run", "--help"])
         captured = capsys.readouterr()
         tm.that(exit_code, eq=0)
         tm.that(captured.out.lower(), has="usage:")

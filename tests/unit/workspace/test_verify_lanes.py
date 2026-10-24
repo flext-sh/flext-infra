@@ -11,7 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, FlextInfraWorktreeService, config, main
+from flext_infra import (
+    FlextInfraCli,
+    FlextInfraGitService,
+    FlextInfraWorktreeService,
+    config,
+)
 from tests import c, m, tm, u
 
 
@@ -145,14 +150,14 @@ class TestsVerifyLanes:
             registry.entries[0].head,
             eq=u.Tests.git_capture(request.repo_root, "rev-parse", "HEAD"),
         )
-        tm.that(main(cls._argv(request)), eq=0)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=0)
         _ = capsys.readouterr()
         branch = "completed-slice"
         u.Tests.git_run(request.repo_root, "branch", branch)
         policy = config.Infra.codegen.branch_policy
         u.Tests.git_run(request.repo_root, "push", policy.lane_remote, branch)
         refs = u.Tests.git_capture(request.repo_root, "show-ref")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         text = output.out + output.err
         tm.that(text, has=f"refs/heads/{branch}")
@@ -160,7 +165,7 @@ class TestsVerifyLanes:
         tm.that(text, has="merged but alive")
         tm.that(u.Tests.git_capture(request.repo_root, "show-ref"), eq=refs)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lanes",
                 "--repo-root",
@@ -198,7 +203,7 @@ class TestsVerifyLanes:
         untracked.write_bytes(b"untracked WIP\xff\n")
         index = (repo / c.GIT_DIR_NAME / "index").read_bytes()
         refs = u.Tests.git_capture(repo, "show-ref")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has=f"forbidden stash: {head}")
         tm.that((repo / c.GIT_DIR_NAME / "index").read_bytes(), eq=index)
@@ -229,7 +234,7 @@ class TestsVerifyLanes:
         (repo / "work.txt").write_text("unique work\n", encoding="utf-8")
         u.Tests.git_run(repo, "add", "work.txt")
         u.Tests.git_run(repo, "commit", "-m", "unidentified work")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         tm.that(
             output.out + output.err,
@@ -329,7 +334,7 @@ class TestsVerifyLanes:
             encoding="utf-8",
         )
         refs = u.Tests.git_capture(repo, "show-ref")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has="stale/future ownership receipt")
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
@@ -352,7 +357,7 @@ class TestsVerifyLanes:
         tracking = f"refs/remotes/{policy.lane_remote}/integration/divergent"
         u.Tests.git_run(repo, "update-ref", tracking, previous)
         refs = u.Tests.git_capture(repo, "show-ref")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has="stale integration")
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
@@ -361,13 +366,13 @@ class TestsVerifyLanes:
                 "evidence_file": tmp_path / "missing-evidence.json",
             },
         )
-        tm.that(main(cls._argv(missing)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(missing)), eq=1)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has="ownership read error")
         tm.that(output.out + output.err, has=tracking)
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "workspace",
                 "verify-lanes",
                 "--repo-root",
@@ -427,7 +432,7 @@ class TestsVerifyLanes:
         if artifact == "orphan":
             lane.rename(tmp_path / "preserved-worktree")
         registry = u.Tests.git_capture(repo, "worktree", c.Action.LIST, "--porcelain")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         expected = (
             "orphan worktree registration"
@@ -501,7 +506,7 @@ class TestsVerifyLanes:
             encoding="utf-8",
         )
         refs = u.Tests.git_capture(repo, "show-ref")
-        tm.that(main(cls._argv(request)), eq=1)
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has="abandoned unique ref without PR")
         tm.that(output.out + output.err, has=f"refs/heads/{branch}")

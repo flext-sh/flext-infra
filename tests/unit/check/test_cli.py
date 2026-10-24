@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, main
+from flext_infra import FlextInfraCli, config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, m, tm, u
 
@@ -84,7 +84,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", source)
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -107,7 +107,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         blocked = tmp_path / "blocked"
         blocked.write_text("not a directory\n", encoding="utf-8")
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -187,7 +187,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         caller_report.write_text("Caller report must survive.\n", encoding="utf-8")
 
         with tm.scope(cwd=str(caller)):
-            exit_code = main(arguments)
+            exit_code = FlextInfraCli.infra_main(arguments)
 
         tm.that(exit_code, eq=0)
         (report_path,) = (workspace / relative_reports).glob(f"*/{report_name}")
@@ -297,7 +297,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         )
         unselected.write_text("import os\n", encoding="utf-8")
         before = selected.read_bytes()
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -326,7 +326,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
             "import os\n" + ("missing_name()\n" if residual else ""),
         )
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -350,7 +350,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -400,7 +400,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             encoding="utf-8",
         )
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -432,7 +432,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         workspace = self._create_workspace(tmp_path)
         self._write_module(workspace, "flext-core", "VALUE = 1\n")
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -457,7 +457,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             "import os\n\nvalue = 1\n",
         )
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -483,7 +483,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", "value = 1\n")
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "--dry-run",
             "run",

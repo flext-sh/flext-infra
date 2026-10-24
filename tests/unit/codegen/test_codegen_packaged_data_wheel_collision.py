@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, m, main
+from flext_infra import FlextInfraCli, config, m
 from tests import c, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -156,7 +156,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_CODEGEN,
             "conform",
             "--root",

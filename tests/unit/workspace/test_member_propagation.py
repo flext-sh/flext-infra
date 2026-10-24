@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, main
+from flext_infra import FlextInfraCli, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 
@@ -163,7 +163,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_WORKSPACE,
             "propagate",
             "--repository-root",

@@ -11,7 +11,7 @@ from typing import Literal
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, t, tm, u
 
@@ -109,7 +109,7 @@ class TestsFlextInfraDepsModernizerPackaging:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_CODEGEN,
             "conform",
             "--root",
@@ -209,7 +209,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         tm.that(u.Tests.toml_mapping(repaired["force-include"]), lacks="stale.txt")
 
-        fixed_point = main([
+        fixed_point = FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_CODEGEN,
             "conform",
             "--root",

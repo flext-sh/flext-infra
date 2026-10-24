@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import tm
 
 
@@ -18,5 +18,5 @@ class TestsFlextInfraWorkspaceCheckModule:
     @staticmethod
     def test_workspace_check_main_returns_error_without_projects() -> None:
         """Test workspace check main returns error without projects."""
-        exit_code = main(["check", "run"])
+        exit_code = FlextInfraCli.infra_main(["check", "run"])
         tm.that(exit_code, eq=1)

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.workspace import FlextInfraWorkspaceLifecycle
 from tests import c, m, p, tm, u
 
@@ -187,7 +187,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
 
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 c.Infra.CLI_GROUP_WORKSPACE,
                 "validate-lifecycle",
                 "--repository-root",

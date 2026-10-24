@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, m, t, tm, u
 
@@ -126,7 +126,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
             The resulting ``int``.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_WORKSPACE,
             c.Infra.FLEET_GAPS_ROUTE_NAME,
             "--repository-root",

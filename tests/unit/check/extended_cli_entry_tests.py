@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, tm, u
 
 
@@ -35,13 +35,21 @@ class TestsFlextInfraExtendedCliEntry:
     @staticmethod
     def test_empty_workspace_errors(tmp_path: Path) -> None:
         """Test empty workspace errors."""
-        tm.that(main(["check", "run", "--repository-root", str(tmp_path)]), eq=1)
+        tm.that(
+            FlextInfraCli.infra_main([
+                "check",
+                "run",
+                "--repository-root",
+                str(tmp_path),
+            ]),
+            eq=1,
+        )
 
     def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
         """Test run accepts explicit scope."""
         workspace = self._workspace(tmp_path)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "check",
                 "run",
                 "--repository-root",
@@ -76,7 +84,7 @@ class TestsFlextInfraExtendedCliEntry:
             encoding="utf-8",
         )
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "check",
                 "run",
                 "--repository-root",
@@ -91,7 +99,7 @@ class TestsFlextInfraExtendedCliEntry:
         """Test with projects success."""
         workspace = self._workspace(tmp_path)
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "check",
                 "run",
                 "--repository-root",
@@ -110,7 +118,7 @@ class TestsFlextInfraExtendedCliEntry:
         broken_file = workspace / "p1" / "src" / "broken.py"
         broken_file.write_text("def broken(:\n", encoding="utf-8")
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "check",
                 "run",
                 "--repository-root",
@@ -126,12 +134,14 @@ class TestsFlextInfraExtendedCliEntry:
     @staticmethod
     def test_check_main_routes_real_help() -> None:
         """Test check main routes real help."""
-        tm.that(main(["check", "run", "--help"]), eq=0)
+        tm.that(FlextInfraCli.infra_main(["check", "run", "--help"]), eq=0)
 
     @staticmethod
     def test_fix_pyrefly_config_routes_real_help() -> None:
         """Test fix pyrefly config routes real help."""
-        tm.that(main(["check", "fix-pyrefly-settings", "--help"]), eq=0)
+        tm.that(
+            FlextInfraCli.infra_main(["check", "fix-pyrefly-settings", "--help"]), eq=0
+        )
 
     def test_run_cli_anchors_relative_reports_dir_at_repository_root(
         self,
@@ -143,7 +153,7 @@ class TestsFlextInfraExtendedCliEntry:
         caller.mkdir(parents=True, exist_ok=True)
         relative_reports = Path("reports/check")
         with tm.scope(cwd=str(caller)):
-            exit_code = main([
+            exit_code = FlextInfraCli.infra_main([
                 "check",
                 "run",
                 "--repository-root",

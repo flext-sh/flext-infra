@@ -11,7 +11,7 @@ from signal import SIGTERM
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.workspace import (
     FlextInfraWorkspaceEnvironmentProvenance,
     FlextInfraWorkspaceFleetVerbs,
@@ -30,7 +30,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             The resulting CLI exit code.
 
         """
-        return main([
+        return FlextInfraCli.infra_main([
             c.Infra.CLI_GROUP_WORKSPACE,
             c.Infra.FLEET_ROUTE_NAME,
             "--repository-root",

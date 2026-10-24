@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import tm
 
 
@@ -19,4 +19,4 @@ class TestsFlextInfraDepsMainDispatch:
         # pyproject normalization is consumed only by the codegen owner.
         """Verify subcommand help is available."""
         for subcommand in ("detect", "extra-paths", "modernize", "verify-locks"):
-            tm.that(main(["deps", subcommand, "--help"]), eq=0)
+            tm.that(FlextInfraCli.infra_main(["deps", subcommand, "--help"]), eq=0)

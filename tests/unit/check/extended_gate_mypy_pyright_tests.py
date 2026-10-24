@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import check, config, gates, main
+from flext_infra import FlextInfraCli, check, config, gates
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -185,7 +185,7 @@ class TestsFlextInfraTypeGates:
         sibling = source_root / "unselected_file.py"
         sibling.write_text("def :\n", encoding="utf-8")
         reports = checker_context.reports_dir / "literal-file"
-        code = main([
+        code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",

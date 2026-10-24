@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraCli, main
+from flext_infra import FlextInfraCli
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class TestsFlextInfraDocsMainEntry:
     @staticmethod
     def test_requires_subcommand() -> None:
         """Return the usage exit code when docs has no subcommand."""
-        tm.that(main(["docs"]), eq=1)
+        tm.that(FlextInfraCli.infra_main(["docs"]), eq=1)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -51,7 +51,7 @@ class TestsFlextInfraDocsMainEntry:
     )
     def test_help_routes(argv: t.SequenceOf[str]) -> None:
         """Expose help successfully for every public docs route."""
-        tm.that(main(argv), eq=0)
+        tm.that(FlextInfraCli.infra_main(argv), eq=0)
 
     @staticmethod
     def test_package_entrypoint_routes_through_docs_group() -> None:
@@ -69,7 +69,7 @@ class TestsFlextInfraDocsMainEntry:
         output_dir = tmp_path.name
 
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "docs",
                 "audit",
                 "--repository-root",
@@ -96,7 +96,13 @@ class TestsFlextInfraDocsMainEntry:
         workspace = self._workspace(tmp_path, fixable=True)
 
         tm.that(
-            main(["docs", "fix", "--repository-root", str(workspace), "--apply"]),
+            FlextInfraCli.infra_main([
+                "docs",
+                "fix",
+                "--repository-root",
+                str(workspace),
+                "--apply",
+            ]),
             eq=0,
         )
         tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
@@ -109,7 +115,7 @@ class TestsFlextInfraDocsMainEntry:
         workspace = self._workspace(tmp_path)
 
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "docs",
                 "generate",
                 "--repository-root",
@@ -139,7 +145,12 @@ class TestsFlextInfraDocsMainEntry:
             encoding="utf-8",
         )
         tm.that(
-            main(["docs", "build", "--repository-root", str(build_workspace)]),
+            FlextInfraCli.infra_main([
+                "docs",
+                "build",
+                "--repository-root",
+                str(build_workspace),
+            ]),
             eq=0,
         )
         tm.ok((build_workspace / ".reports/docs/build-report.md").exists())

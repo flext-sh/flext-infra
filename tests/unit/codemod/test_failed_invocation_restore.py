@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, tm, u
@@ -39,7 +39,7 @@ class TestsFlextInfraFailedInvocationProgress:
         )
         sample = mod_workspace / "accounting.py"
         tm.ok(u.Cli.atomic_write_text_file(sample, "marker = dict()\n" * copies))
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -84,7 +84,7 @@ class TestsFlextInfraFailedInvocationProgress:
             tuple(rule_id for ruleset in plan.rulesets for rule_id in ruleset.rule_ids),
             eq=selected,
         )
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -129,7 +129,7 @@ class TestsFlextInfraFailedInvocationProgress:
         )
         sample = mod_workspace / "sample.py"
         before = sample.read_bytes()
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -192,7 +192,7 @@ class TestsFlextInfraFailedInvocationProgress:
                 "    find: 'before'\n    replace: 'text-phase-ran'\n",
             )
         )
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -282,7 +282,7 @@ class TestsFlextInfraFailedInvocationProgress:
             '    value = "unresolved"\n'
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",

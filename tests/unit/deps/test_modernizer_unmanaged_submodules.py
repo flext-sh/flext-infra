@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -58,7 +58,7 @@ class TestsFlextInfraDepsModernizerUnmanagedSubmodules:
 
     @staticmethod
     def _modernize(workspace: Path) -> int:
-        return main([
+        return FlextInfraCli.infra_main([
             "deps",
             "modernize",
             "--repository-root",

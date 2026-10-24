@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, main
+from flext_infra import FlextInfraCli, infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
@@ -138,7 +138,13 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             for path, source in sources.items():
                 tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
             tm.that(
-                main(["refactor", "mod", "--repository-root", str(root), "--apply"]),
+                FlextInfraCli.infra_main([
+                    "refactor",
+                    "mod",
+                    "--repository-root",
+                    str(root),
+                    "--apply",
+                ]),
                 eq=0,
             )
         else:

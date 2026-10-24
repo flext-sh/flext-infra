@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codemod, m, main, t
+from flext_infra import FlextInfraCli, codemod, m, t
 from tests import c, tm, u
 
 
@@ -345,7 +345,7 @@ class TestsFlextInfraBatchReplacements:
         tm.that(
             generated.read_bytes(), eq=sources["generated"].encode(c.DEFAULT_ENCODING)
         )
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",

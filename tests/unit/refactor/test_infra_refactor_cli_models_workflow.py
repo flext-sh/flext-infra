@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, main
+from flext_infra import FlextInfraCli, m
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         original = source.read_bytes()
         output = StringIO()
         with redirect_stdout(output):
-            result = main([
+            result = FlextInfraCli.infra_main([
                 "refactor",
                 "mod",
                 f"--repository-root={root}",
@@ -113,7 +113,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             f"--output={artifact_path.name}",
             f"--decisions={selections.model_dump_json()}",
         ]
-        tm.that(main(arguments), eq=0)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=0)
         artifact = m.Infra.SemanticRenamePlan.model_validate_json(
             artifact_path.read_bytes()
         )
@@ -139,7 +139,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
                 tm.not_none(artifact.candidate.updates[declaration]),
                 has="class Renamed:",
             )
-        tm.that(main(arguments), eq=0)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=0)
         tm.that(
             m.Infra.SemanticRenamePlan.model_validate_json(
                 artifact_path.read_bytes()
@@ -189,7 +189,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             )
         )
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "refactor",
                 "rename-plan",
                 f"--repository-root={producer}",
@@ -256,7 +256,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             f"--output={output.relative_to(workspace)}",
             f"--decisions={selections.model_dump_json()}",
         ]
-        result = main(arguments)
+        result = FlextInfraCli.infra_main(arguments)
         if output_kind == "artifact":
             tm.that(result, eq=0)
             artifact = m.Infra.SemanticRenamePlan.model_validate_json(
@@ -264,7 +264,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             )
             tm.that(artifact.candidate.workspace, eq=workspace)
             tm.that(artifact.edits[0].updated_source, has="def meaningful(")
-            tm.that(main(arguments), eq=0)
+            tm.that(FlextInfraCli.infra_main(arguments), eq=0)
             repeated = m.Infra.SemanticRenamePlan.model_validate_json(
                 output.read_bytes()
             )
@@ -280,7 +280,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             source.write_bytes(drifted)
             driver = output.read_bytes()
             tm.that(
-                main([
+                FlextInfraCli.infra_main([
                     "refactor",
                     "rename-preview",
                     f"--repository-root={workspace}",
@@ -324,7 +324,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "--dry-run",
         ]
         with redirect_stdout(buffer):
-            result = main(["refactor", *cli_args])
+            result = FlextInfraCli.infra_main(["refactor", *cli_args])
         tm.that(result, ne=0)
 
     @staticmethod
@@ -350,7 +350,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         u.Tests.initialize_git_repo(workspace)
 
         with redirect_stdout(StringIO()):
-            result = main([
+            result = FlextInfraCli.infra_main([
                 "refactor",
                 "wrapper-root-namespace",
                 f"--repository-root={workspace!s}",
@@ -383,7 +383,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         )
         u.Tests.initialize_git_repo(workspace)
 
-        result = main([
+        result = FlextInfraCli.infra_main([
             "refactor",
             "wrapper-root-namespace",
             f"--repository-root={workspace!s}",
@@ -416,7 +416,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         )
         u.Tests.provision_checkout(workspace)
 
-        result = main([
+        result = FlextInfraCli.infra_main([
             "refactor",
             "wrapper-root-namespace",
             f"--repository-root={workspace!s}",

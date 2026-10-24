@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import config, main, u
+from flext_infra import FlextInfraCli, config, u
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
@@ -219,7 +219,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             if ownership is not None
             else ()
         )
-        return main([
+        return FlextInfraCli.infra_main([
             "release",
             "run",
             "--repository-root",

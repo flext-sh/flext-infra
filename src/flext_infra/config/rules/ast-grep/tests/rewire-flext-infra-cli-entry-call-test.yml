@@ -1,0 +1,23 @@
+id: rewire-flext-infra-cli-entry-call
+valid:
+  - |
+    from flext_cli import main
+    main(["x"])
+  - |
+    from flext_infra import FlextInfraCli
+    def main() -> int:
+        return 0
+    main()
+  - |
+    from flext_infra import FlextInfraCli
+    FlextInfraCli.infra_main(["check"])
+invalid:
+  - |
+    from flext_infra.cli import main
+    code = main(["check"])
+  - |
+    from flext_infra import main
+    code = main(["check", "run"])
+  - |
+    from flext_infra import FlextInfraCli
+    code = main([])

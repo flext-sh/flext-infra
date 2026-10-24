@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, m, main
+from flext_infra import FlextInfraCli, FlextInfraGitService, m
 from tests import c, tm, u
 
 
@@ -98,7 +98,7 @@ class TestsFlextInfraGitFacetWorktreeStatus:
     ) -> None:
         """The public CLI passes a clean checkout and exposes a dirty Git report."""
         argv = ["workspace", "verify-clean", "--repo-root", str(real_git_repo)]
-        tm.that(main(argv), eq=0)
+        tm.that(FlextInfraCli.infra_main(argv), eq=0)
         _ = capsys.readouterr()
 
         if change == "untracked":
@@ -120,7 +120,7 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         report = tm.ok(FlextInfraGitService.verify_clean(request))
         tm.that(report.dirty, eq=True)
         tm.that(report.porcelain, eq=before.porcelain)
-        tm.that(main(argv), eq=0)
+        tm.that(FlextInfraCli.infra_main(argv), eq=0)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has="existing work preserved")
         tm.that(tm.ok(u.Infra.git_status(request)).porcelain, eq=before.porcelain)
@@ -185,7 +185,12 @@ class TestsFlextInfraGitFacetWorktreeStatus:
 
         tm.that(tm.ok(result).dirty, eq=False)
         tm.that(
-            main(["workspace", "verify-clean", "--repo-root", str(repository)]),
+            FlextInfraCli.infra_main([
+                "workspace",
+                "verify-clean",
+                "--repo-root",
+                str(repository),
+            ]),
             eq=0,
         )
         output = capsys.readouterr()
@@ -219,7 +224,12 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.not_none(result.exception)
         tm.that(type(result.exception), eq=type(probe.exception))
         tm.that(
-            main(["workspace", "verify-clean", "--repo-root", str(tmp_path)]),
+            FlextInfraCli.infra_main([
+                "workspace",
+                "verify-clean",
+                "--repo-root",
+                str(tmp_path),
+            ]),
             eq=1,
         )
         output = capsys.readouterr()

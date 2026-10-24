@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, main
+from flext_infra import FlextInfraCli, config
 from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.services.cli_routes import FlextInfraCliRouteService
 from tests import c, m, tm, u
@@ -93,4 +93,4 @@ class TestsFlextInfraCliRepositoryRootContract:
         )
         # The route model field IS the CLI option (typed contract above); help must
         # render, and its styled text is presentation, never the contract.
-        tm.that(main([group, route.name, "--help"]), eq=0)
+        tm.that(FlextInfraCli.infra_main([group, route.name, "--help"]), eq=0)

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from typing_extensions import TypeForm
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from tests import c, m, t, tm, u
@@ -1005,8 +1005,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         snapshot = self._snapshot(mod_workspace)
         route = ["refactor", "mod-snapshots", "--repository-root", str(mod_workspace)]
 
-        tm.that(main(route), ne=0)
+        tm.that(FlextInfraCli.infra_main(route), ne=0)
         tm.fail(snapshot.exists())
-        tm.that(main([*route, "--apply"]), eq=0)
+        tm.that(FlextInfraCli.infra_main([*route, "--apply"]), eq=0)
         tm.ok(snapshot.exists())
-        tm.that(main(route), eq=0)
+        tm.that(FlextInfraCli.infra_main(route), eq=0)

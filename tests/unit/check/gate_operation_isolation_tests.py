@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class TestsFlextInfraGateOperationIsolation:
         original = "# Fixture\n\n\nParagraph.\n"
         document.write_text(original, encoding="utf-8")
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",

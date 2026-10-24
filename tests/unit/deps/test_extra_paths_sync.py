@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraExtraPathsManager
 from tests import c, t, tf, tm, u
 
@@ -175,7 +175,10 @@ class TestsFlextInfraDepsExtraPathsSync:
             argv = ["prog", "--projects", str(project), "--dry-run"]
         u.Tests.initialize_git_repo(tmp_path)
         argv = [argv[0], "--repository-root", str(tmp_path), *argv[1:]]
-        tm.that(main(["deps", "extra-paths", *argv[1:]]), eq=expected_exit)
+        tm.that(
+            FlextInfraCli.infra_main(["deps", "extra-paths", *argv[1:]]),
+            eq=expected_exit,
+        )
 
     @pytest.mark.parametrize(
         "scenario",

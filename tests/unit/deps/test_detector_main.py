@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, deps, m, main
+from flext_infra import FlextInfraCli, config, deps, m
 from tests import c, tm, u
 
 
@@ -55,7 +55,7 @@ class TestsFlextInfraDepsDetectorMain:
     def test_main_preserves_repository_failure(tmp_path: Path) -> None:
         """Preserve the native repository error at the public CLI boundary."""
         with pytest.raises(OSError, match="cannot open git repository"):
-            main([
+            FlextInfraCli.infra_main([
                 "deps",
                 "detect",
                 "--repository-root",

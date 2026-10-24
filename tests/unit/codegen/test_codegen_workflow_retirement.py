@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codegen, config, infra, m, main, workspace
+from flext_infra import FlextInfraCli, codegen, config, infra, m, workspace
 from tests import c, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -152,7 +152,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.that(
-            main(
+            FlextInfraCli.infra_main(
                 [
                     "codegen",
                     "generate",

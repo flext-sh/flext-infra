@@ -1,0 +1,14 @@
+id: rewire-flext-infra-cli-entry-import
+valid:
+  - from flext_infra import FlextInfraCli, u
+  - from flext_cli import main
+  - from flext_infra import maintenance
+invalid:
+  - from flext_infra.cli import main
+  - from flext_infra import main
+  - from flext_infra import config, main, u
+  - |
+    from flext_infra import (
+        c,
+        main,
+    )

@@ -12,7 +12,7 @@ import pytest
 from tomlkit.exceptions import ParseError
 from typing_extensions import TypeForm
 
-from flext_infra import config, main
+from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, t, tm, u
 
@@ -265,7 +265,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
             modernizer_workspace_with_projects / "ignored" / c.PYPROJECT_FILENAME
         )
         tm.that(
-            main([
+            FlextInfraCli.infra_main([
                 "deps",
                 "modernize",
                 "--repository-root",

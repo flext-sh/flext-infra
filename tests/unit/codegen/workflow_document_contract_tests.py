@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import codegen, config, main
+from flext_infra import FlextInfraCli, codegen, config
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -55,7 +55,7 @@ class TestsFlextInfraWorkflowDocumentContract:
             "--scope",
             c.Infra.CodegenConformScope.ALL.value,
         ]
-        tm.that(main(arguments), eq=0)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=0)
         tm.that(
             {path for path in expected if path.is_relative_to(workflow_root)},
             eq={path for path in expected if path.is_file()},
@@ -68,5 +68,5 @@ class TestsFlextInfraWorkflowDocumentContract:
             for raw_job in jobs.values():
                 job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
                 tm.ok("steps" in job or "uses" in job)
-        tm.that(main(arguments), eq=0)
+        tm.that(FlextInfraCli.infra_main(arguments), eq=0)
         tm.that({path: path.read_bytes() for path in expected}, eq=published)

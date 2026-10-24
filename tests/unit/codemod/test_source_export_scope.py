@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, m, tm, u
 
 
@@ -41,7 +41,7 @@ class TestsFlextInfraSourceExportScope:
             tm.ok(u.Cli.ensure_dir(path.parent))
             tm.ok(u.Cli.atomic_write_text_file(path, text))
         rules = ("declare-single-class-export", "ban-test-suite-module-all")
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",

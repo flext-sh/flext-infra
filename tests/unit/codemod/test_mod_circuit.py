@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from tests import c, m, t, tm, u
 
 
@@ -32,7 +32,7 @@ class TestsFlextInfraModCliRoute:
         path = mod_workspace / "unicode_source.py"
         tm.ok(u.Cli.atomic_write_text_file(path, source))
         rule_id = "require-future-annotations"
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -73,7 +73,7 @@ class TestsFlextInfraModCliRoute:
             )
         )
         rules = ("rewire-test-assert-truth", "test-assert-tm-binding-required")
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
@@ -133,7 +133,7 @@ class TestsFlextInfraModCliRoute:
         tm.fail(rule_id in planned.project_rule_ids[owner.resolve()])
         tm.ok(rule_id in planned.project_rule_ids[consumer.resolve()])
         for root in (mod_workspace, consumer):
-            exit_code = main([
+            exit_code = FlextInfraCli.infra_main([
                 "refactor",
                 "ast",
                 "--repository-root",
@@ -175,7 +175,7 @@ class TestsFlextInfraModCliRoute:
 
         """
         report_path = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -299,7 +299,7 @@ class TestsFlextInfraModCliRoute:
         )
         tm.ok(u.Cli.atomic_write_text_file(generated_path, generated_source))
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -353,7 +353,7 @@ class TestsFlextInfraModCliRoute:
         sample_path = mod_workspace / "sample.py"
         tm.ok(u.Cli.atomic_write_text_file(sample_path, "value = dict()\n"))
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -448,7 +448,7 @@ class TestsFlextInfraModCliRoute:
             ),
         )
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -519,7 +519,7 @@ class TestsFlextInfraModCliRoute:
             ),
         )
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -583,7 +583,7 @@ class TestsFlextInfraModCliRoute:
             u.Cli.atomic_write_text_file(mod_workspace / "sample.py", f"{statement}\n"),
         )
 
-        exit_code = main([
+        exit_code = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -636,7 +636,7 @@ class TestsFlextInfraModCliRoute:
                 ),
             )
 
-        _ = main([
+        _ = FlextInfraCli.infra_main([
             "refactor",
             "mod",
             "--repository-root",
@@ -702,7 +702,12 @@ class TestsFlextInfraModCliRoute:
             )
         expected = {"tests/bare.py", f"src/{package}/wrong.py"}
         for root in (mod_workspace, member):
-            _ = main(["refactor", "mod", "--repository-root", str(root)])
+            _ = FlextInfraCli.infra_main([
+                "refactor",
+                "mod",
+                "--repository-root",
+                str(root),
+            ])
             state = tm.ok(
                 u.Cli.atomic_read_binary_file_state(
                     root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,

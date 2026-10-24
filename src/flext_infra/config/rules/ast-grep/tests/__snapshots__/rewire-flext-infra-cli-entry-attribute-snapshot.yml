@@ -1,0 +1,9 @@
+id: rewire-flext-infra-cli-entry-attribute
+snapshots:
+  flext_infra.main(sys.argv[2:]):
+    fixed: flext_infra.FlextInfraCli.infra_main(sys.argv[2:])
+    labels:
+    - source: flext_infra.main
+      style: primary
+      start: 0
+      end: 16

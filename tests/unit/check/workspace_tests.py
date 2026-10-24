@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import main
+from flext_infra import FlextInfraCli
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import c, r, tm, u
 
@@ -69,7 +69,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that check run fails when a workspace has no projects."""
-        exit_code = main(["check", "run", "--repository-root", str(tmp_path)])
+        exit_code = FlextInfraCli.infra_main([
+            "check",
+            "run",
+            "--repository-root",
+            str(tmp_path),
+        ])
         tm.that(exit_code, eq=1)
 
     @staticmethod
@@ -101,7 +106,7 @@ class TestsFlextInfraWorkspaceChecker:
         tm.ok(init_result)
         tm.ok(add_result)
 
-        implicit_exit_code = main([
+        implicit_exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
@@ -110,7 +115,7 @@ class TestsFlextInfraWorkspaceChecker:
             "lint",
         ])
         tm.that(implicit_exit_code, eq=1)
-        selected_exit_code = main([
+        selected_exit_code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",

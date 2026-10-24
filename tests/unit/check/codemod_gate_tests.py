@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.cli import main
+from flext_infra.cli import FlextInfraCli
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 from tests import c, m, t, tm, u
@@ -508,7 +508,7 @@ class TestsFlextInfraCodemodGate:
         sibling.write_text("second(2)\n", encoding="utf-8")
         before = (selected.read_bytes(), sibling.read_bytes())
         reports = tmp_path / "reports"
-        code = main([
+        code = FlextInfraCli.infra_main([
             "check",
             "run",
             "--repository-root",
