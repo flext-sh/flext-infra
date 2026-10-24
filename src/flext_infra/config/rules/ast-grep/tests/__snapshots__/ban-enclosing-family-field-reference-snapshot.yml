@@ -1,0 +1,186 @@
+id: ban-enclosing-family-field-reference
+snapshots:
+  ? |
+    class FlextModelsEnforcementBase:
+        class Report(Base):
+            violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
+  : labels:
+    - source: FlextModelsEnforcementBase.Violation
+      style: primary
+      start: 91
+      end: 127
+    - source: FlextModelsEnforcementBase
+      style: secondary
+      start: 6
+      end: 32
+    - source: |-
+        class FlextModelsEnforcementBase:
+            class Report(Base):
+                violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
+      style: secondary
+      start: 0
+      end: 133
+    - source: |-
+        class Report(Base):
+                violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
+      style: secondary
+      start: 38
+      end: 133
+    - source: |-
+        class Report(Base):
+                violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()
+      style: secondary
+      start: 38
+      end: 133
+    - source: 'violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()'
+      style: secondary
+      start: 66
+      end: 133
+    - source: 'violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()'
+      style: secondary
+      start: 66
+      end: 133
+    - source: 'violations: t.SequenceOf[FlextModelsEnforcementBase.Violation] = ()'
+      style: secondary
+      start: 66
+      end: 133
+    - source: t.SequenceOf[FlextModelsEnforcementBase.Violation]
+      style: secondary
+      start: 78
+      end: 128
+    - source: FlextModelsEnforcementBase
+      style: secondary
+      start: 91
+      end: 117
+  ? |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            execution_context: FlextModelsHandler.ExecutionContext
+  : labels:
+    - source: FlextModelsHandler.ExecutionContext
+      style: primary
+      start: 90
+      end: 125
+    - source: FlextModelsHandler
+      style: secondary
+      start: 6
+      end: 24
+    - source: |-
+        class FlextModelsHandler:
+            class HandlerRuntimeState(Base):
+                execution_context: FlextModelsHandler.ExecutionContext
+      style: secondary
+      start: 0
+      end: 125
+    - source: |-
+        class HandlerRuntimeState(Base):
+                execution_context: FlextModelsHandler.ExecutionContext
+      style: secondary
+      start: 30
+      end: 125
+    - source: |-
+        class HandlerRuntimeState(Base):
+                execution_context: FlextModelsHandler.ExecutionContext
+      style: secondary
+      start: 30
+      end: 125
+    - source: 'execution_context: FlextModelsHandler.ExecutionContext'
+      style: secondary
+      start: 71
+      end: 125
+    - source: 'execution_context: FlextModelsHandler.ExecutionContext'
+      style: secondary
+      start: 71
+      end: 125
+    - source: 'execution_context: FlextModelsHandler.ExecutionContext'
+      style: secondary
+      start: 71
+      end: 125
+    - source: FlextModelsHandler.ExecutionContext
+      style: secondary
+      start: 90
+      end: 125
+    - source: FlextModelsHandler
+      style: secondary
+      start: 90
+      end: 108
+  ? |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            stack: Annotated[
+                MutableSequence[FlextModelsHandler.ExecutionContext],
+                Field(description="Stack."),
+            ]
+  : labels:
+    - source: FlextModelsHandler.ExecutionContext
+      style: primary
+      start: 117
+      end: 152
+    - source: FlextModelsHandler
+      style: secondary
+      start: 6
+      end: 24
+    - source: |-
+        class FlextModelsHandler:
+            class HandlerRuntimeState(Base):
+                stack: Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 0
+      end: 205
+    - source: |-
+        class HandlerRuntimeState(Base):
+                stack: Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 30
+      end: 205
+    - source: |-
+        class HandlerRuntimeState(Base):
+                stack: Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 30
+      end: 205
+    - source: |-
+        stack: Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 71
+      end: 205
+    - source: |-
+        stack: Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 71
+      end: 205
+    - source: |-
+        stack: Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 71
+      end: 205
+    - source: |-
+        Annotated[
+                    MutableSequence[FlextModelsHandler.ExecutionContext],
+                    Field(description="Stack."),
+                ]
+      style: secondary
+      start: 78
+      end: 205
+    - source: FlextModelsHandler
+      style: secondary
+      start: 117
+      end: 135

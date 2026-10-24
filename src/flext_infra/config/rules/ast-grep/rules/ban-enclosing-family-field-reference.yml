@@ -1,0 +1,44 @@
+# A field annotation of a nested model must never name a sibling through its
+# own enclosing family class (operator order 2026-10-24: no incomplete
+# protocols, settings, config, models or services). The enclosing class is not
+# bound while its body executes, so the model library cannot resolve the
+# annotation at class creation and the model stays incomplete at import
+# (`__pydantic_complete__` False) until a lazy rebuild. The bare sibling name
+# is not a fix: static checkers reject it, because a nested class body does not
+# see the enclosing class scope.
+id: ban-enclosing-family-field-reference
+language: python
+severity: error
+rule:
+  kind: attribute
+  has:
+    field: object
+    pattern: $OUTER
+  inside:
+    kind: type
+    stopBy: end
+    inside:
+      kind: assignment
+      inside:
+        kind: expression_statement
+        inside:
+          kind: block
+          inside:
+            kind: class_definition
+            inside:
+              kind: block
+              inside:
+                kind: class_definition
+                has:
+                  field: name
+                  pattern: $OUTER
+message: >-
+  Field annotation names a sibling through its own enclosing family `$OUTER`,
+  so the model is incomplete at import.
+note: >-
+  Where: this field of a class nested in `$OUTER`. Why: `$OUTER` is not bound
+  while its body executes, so the annotation cannot resolve when the model is
+  built and the model stays incomplete (no lazy rebuild is acceptable). How:
+  declare the referenced sibling in its own family module (one nested class
+  per module) and annotate through that family class, which is bound before
+  this module executes.
