@@ -115,7 +115,7 @@ language: python
 severity: error
 constraints:
   OWNER:
-    regex: "^[a-z]$"
+    regex: "^[ctpmu]$"
   MEMBER:
     regex: "^[A-Za-z_][A-Za-z0-9_]*$"
 metadata:
@@ -134,7 +134,7 @@ language: python
 severity: error
 constraints:
   OWNER:
-    regex: "^[a-z]$"
+    regex: "^[ctpmu]$"
   MEMBER:
     regex: "^[A-Za-z_][A-Za-z0-9_]*$"
 metadata:
@@ -153,7 +153,7 @@ language: python
 severity: error
 constraints:
   OWNER:
-    regex: "^[a-z]$"
+    regex: "^[ctpmu]$"
   MEMBER:
     regex: "^[A-Za-z_][A-Za-z0-9_]*$"
 metadata:
@@ -172,7 +172,7 @@ language: python
 severity: error
 constraints:
   OWNER:
-    regex: "^[a-z]$"
+    regex: "^[ctpmu]$"
   MEMBER:
     regex: "^[A-Za-z_][A-Za-z0-9_]*$"
 metadata:
@@ -191,7 +191,7 @@ language: python
 severity: error
 constraints:
   OWNER:
-    regex: "^[a-z]$"
+    regex: "^[ctpmu]$"
   MEMBER:
     regex: "^[A-Za-z_][A-Za-z0-9_]*$"
 metadata:

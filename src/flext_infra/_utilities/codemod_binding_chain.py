@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 from contextvars import ContextVar
+from functools import cache
 from importlib import import_module
 from pathlib import Path
 from typing import ClassVar
@@ -222,7 +223,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return False
             definition = scope.pyobject
             node = definition.get_ast()
-            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if not isinstance(node, c.Infra.AST_FUNCTION_TYPES):
                 msg = "captured native function has no function syntax"
                 raise TypeError(msg)
             declaring = scope.parent
@@ -244,7 +245,31 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
 
         @staticmethod
+        @cache
+        def _facade_owns(core: str, target: str, member: str) -> bool:
+            """Whether ``target`` of ``core`` binds ``member`` and owns its kind.
+
+            The verdict depends only on the loaded runtime facades, so one
+            evaluation per (core, target, member) serves every occurrence of a
+            pass instead of rebuilding ``dir`` of a facade per candidate.
+
+            Returns:
+                Whether the target facade binds the member and owns its kind.
+
+            """
+            facade = getattr(import_module(core), target, None)
+            return (
+                isinstance(facade, type)
+                and member in dir(facade)
+                and FlextInfraUtilitiesFacadeMembers.facade_member_owner(
+                    getattr(facade, member)
+                )
+                == target
+            )
+
+        @classmethod
         def _facade_member_relocation(
+            cls,
             condition: m.Infra.CodemodContextCondition,
             captures: t.JsonMapping,
         ) -> m.Infra.CodemodContextCondition | None:
@@ -268,16 +293,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             member = m.Infra.AstGrepCapture.model_validate(captures[condition.of]).text
             target = condition.arg[0]
             core = c.Infra.PKG_CORE_UNDERSCORE
-            facade = getattr(import_module(core), target, None)
-            if (
-                receiver == target
-                or not isinstance(facade, type)
-                or member not in dir(facade)
-                or FlextInfraUtilitiesFacadeMembers.facade_member_owner(
-                    getattr(facade, member)
-                )
-                != target
-            ):
+            if receiver == target or not cls._facade_owns(core, target, member):
                 return None
             emitted = f"{target}.{member}"
             return condition.model_copy(
