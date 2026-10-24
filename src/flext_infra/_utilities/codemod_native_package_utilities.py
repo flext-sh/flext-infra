@@ -516,5 +516,112 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             ]
         }
 
+    @staticmethod
+    def _codemod_nearest_publisher(
+        facts: m.Infra.CodemodPackageExportsFacts, module: str, name: str
+    ) -> str | None:
+        """Nearest package containing ``module`` whose ``__all__`` declares ``name``.
+
+        Returns:
+            The dotted package, or ``None`` when no ancestor publishes the name.
+
+        """
+        package = module.rpartition(".")[0]
+        while package:
+            if name in facts.exports.get(package, ()):
+                return package
+            package = package.rpartition(".")[0]
+        return None
+
+    @classmethod
+    def codemod_package_deep_import_rules(
+        cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Rebind a one-name import from a module to its nearest publishing package.
+
+        For each package P, one rule matches ``from <module> import <Name>``
+        for every module file below P whose nearest package publishing
+        ``Name`` is P, and rewrites it to ``from P import <Name>``. Module files
+        and publish sets come from the package facts; a child package is never
+        a module file, and a package's own initializer is never rewritten.
+
+        Returns:
+            The generated ``deep-import`` rule documents keyed by id.
+
+        """
+        del project
+        branches: dict[str, list[t.JsonMapping]] = {}
+        for package, children in sorted(facts.modules.items()):
+            for leaf in children:
+                module = f"{package}.{leaf}"
+                if module in facts.exports:
+                    continue
+                targets: dict[str, list[str]] = {}
+                for owner, names in facts.exports.items():
+                    if not module.startswith(f"{owner}."):
+                        continue
+                    targets[owner] = [
+                        name
+                        for name in names
+                        if name.isidentifier()
+                        and cls._codemod_nearest_publisher(facts, module, name) == owner
+                    ]
+                for owner, names in sorted(targets.items()):
+                    if names:
+                        branches.setdefault(owner, []).append(
+                            cls._codemod_deep_import_branch(module, names)
+                        )
+        documents: dict[str, t.JsonMapping] = {}
+        for owner, alternatives in sorted(branches.items()):
+            rule_id = (
+                f"{c.Infra.CODEMOD_DEEP_IMPORT_SHAPE}"
+                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{owner}"
+            )
+            documents[rule_id] = {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    f"Import the name from `{owner}`, its nearest publishing "
+                    "package, not from a module below it."
+                ),
+                "ignores": [f"**/{c.Infra.INIT_PY}"],
+                "rule": {
+                    "kind": "import_from_statement",
+                    "regex": c.Infra.CODEMOD_SINGLE_NAME_IMPORT_REGEX,
+                    "any": alternatives,
+                },
+                "fix": f"from {owner} import $NAME",
+            }
+        return documents
+
+    @classmethod
+    def _codemod_deep_import_branch(
+        cls, module: str, names: t.StrSequence
+    ) -> t.JsonMapping:
+        """Match an import of one of ``names`` from exactly ``module``.
+
+        Returns:
+            The native branch of one ``deep-import`` document.
+
+        """
+        return {
+            "all": [
+                {
+                    "has": {
+                        "field": "module_name",
+                        **cls.codemod_exact_names_rule((module,)),
+                    }
+                },
+                {
+                    "has": {
+                        "field": "name",
+                        "kind": "dotted_name",
+                        "pattern": "$NAME",
+                        **cls.codemod_exact_names_rule(names),
+                    }
+                },
+            ]
+        }
+
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodNativePackageUtilities"]

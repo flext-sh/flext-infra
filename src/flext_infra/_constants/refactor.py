@@ -490,6 +490,15 @@ class FlextInfraConstantsRefactor:
     # Generated rule shape that reaches a member through its package import
     # instead of a module object: 'module-member--<package>'.
     CODEMOD_MODULE_MEMBER_SHAPE: ClassVar[str] = "module-member"
+    # Generated rule shape that rebinds a one-name import from a module to the
+    # nearest package publishing the name: 'deep-import--<package>'.
+    CODEMOD_DEEP_IMPORT_SHAPE: ClassVar[str] = "deep-import"
+    # An import statement binding exactly one plain name, so a rewrite of the
+    # module path never drops another imported name.
+    CODEMOD_SINGLE_NAME_IMPORT_REGEX: ClassVar[str] = (
+        r"^from\s+[A-Za-z0-9_.]+\s+import\s+"
+        r"(?:[A-Za-z_][A-Za-z0-9_]*|\(\s*[A-Za-z_][A-Za-z0-9_]*\s*,?\s*\))$"
+    )
     # Universal catalog utility the generated shapes embed as their local
     # utility: an identifier that binds a name in its module.
     CODEMOD_NAME_BINDING_UTILITY: ClassVar[str] = "name-binding"
