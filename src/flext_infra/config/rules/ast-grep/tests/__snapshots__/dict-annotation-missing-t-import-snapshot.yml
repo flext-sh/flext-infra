@@ -1,0 +1,28 @@
+id: dict-annotation-missing-t-import
+snapshots:
+  ? |
+    class Payload:
+        values: dict[str, int]
+  : labels:
+    - source: dict[str, int]
+      style: primary
+      start: 27
+      end: 41
+    - source: |
+        class Payload:
+            values: dict[str, int]
+      style: secondary
+      start: 0
+      end: 42
+  ? |
+    def f(x: dict[str, int]) -> None: ...
+  : labels:
+    - source: dict[str, int]
+      style: primary
+      start: 9
+      end: 23
+    - source: |
+        def f(x: dict[str, int]) -> None: ...
+      style: secondary
+      start: 0
+      end: 38

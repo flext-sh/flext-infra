@@ -76,5 +76,14 @@ rule:
                   - any:
                       - kind: delete_statement
                       - kind: case_pattern
-                      - kind: type_parameter
+                  - regex: "\\bt\\b"
+              # A PEP 695 type-parameter list (`def f[t]()`, `class C[t]`,
+              # `type A[t] = ...`) binds names; the subscript of a generic type
+              # annotation (`dict[str, t.JsonValue]`) is the same node kind but
+              # only reads `t`, so its generic_type parent is excluded.
+              - all:
+                  - kind: type_parameter
+                  - not:
+                      inside:
+                        kind: generic_type
                   - regex: "\\bt\\b"

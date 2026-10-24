@@ -1,0 +1,58 @@
+id: dict-annotation-field-contract
+snapshots:
+  ? |
+    from flext_core import t
+    REGISTRY: dict[str, int] = {}
+  : labels:
+    - source: dict[str, int]
+      style: primary
+      start: 35
+      end: 49
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        REGISTRY: dict[str, int] = {}
+      style: secondary
+      start: 0
+      end: 55
+  ? |
+    from flext_core import t
+    class Payload:
+        values: dict[str, int]
+  : labels:
+    - source: dict[str, int]
+      style: primary
+      start: 52
+      end: 66
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        class Payload:
+            values: dict[str, int]
+      style: secondary
+      start: 0
+      end: 67
+  ? |
+    from flext_core import t
+    type Table = dict[str, int]
+  : labels:
+    - source: dict[str, int]
+      style: primary
+      start: 38
+      end: 52
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        type Table = dict[str, int]
+      style: secondary
+      start: 0
+      end: 53
