@@ -16,24 +16,26 @@ from libcst.metadata import (
     QualifiedNameSource,
 )
 
+from flext_infra import t
+
 if TYPE_CHECKING:
     from collections.abc import Container
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesQualifiedNames:
     """Resolve lazy LibCST qualified-name metadata through its public visitor API."""
 
     @staticmethod
-    def lexical_root(node: cst.CSTNode) -> cst.CSTNode:
+    def lexical_root(node: t.Infra.Cst.CSTNode) -> t.Infra.Cst.CSTNode:
         """Return the lexical receiver underlying a dotted attribute expression.
 
         Returns:
             The leftmost receiver node.
 
         """
-        while isinstance(node, cst.Attribute):
+        while isinstance(node, t.Infra.Cst.Attribute):
             node = node.value
         return node
 
@@ -74,45 +76,45 @@ class FlextInfraUtilitiesQualifiedNames:
         return frozenset(proven)
 
     @staticmethod
-    def dotted_name(node: cst.BaseExpression | None) -> str | None:
+    def dotted_name(node: t.Infra.Cst.BaseExpression | None) -> str | None:
         """Return a static dotted name, or ``None`` for a dynamic expression.
 
         Returns:
             A static dotted name, or ``None`` for a dynamic expression.
 
         """
-        if isinstance(node, cst.Name):
+        if isinstance(node, t.Infra.Cst.Name):
             return node.value
-        if isinstance(node, cst.Attribute):
+        if isinstance(node, t.Infra.Cst.Attribute):
             parent = FlextInfraUtilitiesQualifiedNames.dotted_name(node.value)
             return f"{parent}.{node.attr.value}" if parent else None
         return None
 
     @staticmethod
     def without_exports(
-        value: cst.BaseExpression,
+        value: t.Infra.Cst.BaseExpression,
         names: Container[str],
-    ) -> cst.BaseExpression:
+    ) -> t.Infra.Cst.BaseExpression:
         """Drop ``names`` from a literal ``__all__`` list or tuple expression.
 
         Returns:
             The resulting ``cst.BaseExpression``.
 
         """
-        if not isinstance(value, cst.List | cst.Tuple):
+        if not isinstance(value, t.Infra.Cst.List | t.Infra.Cst.Tuple):
             return value
         return value.with_changes(
             elements=tuple(
                 element
                 for element in value.elements
-                if not isinstance(element.value, cst.SimpleString)
+                if not isinstance(element.value, t.Infra.Cst.SimpleString)
                 or not isinstance(element.value.evaluated_value, str)
                 or element.value.evaluated_value not in names
             ),
         )
 
     @staticmethod
-    def filter_exports[N: (cst.Assign, cst.AnnAssign)](
+    def filter_exports[N: (t.Infra.Cst.Assign, t.Infra.Cst.AnnAssign)](
         node: N,
         names: Container[str],
     ) -> N:
@@ -124,12 +126,12 @@ class FlextInfraUtilitiesQualifiedNames:
         """
         targets = (
             tuple(target.target for target in node.targets)
-            if isinstance(node, cst.Assign)
+            if isinstance(node, t.Infra.Cst.Assign)
             else (node.target,)
         )
         if (
             len(targets) != 1
-            or not isinstance(targets[0], cst.Name)
+            or not isinstance(targets[0], t.Infra.Cst.Name)
             or targets[0].value != "__all__"
             or node.value is None
         ):
@@ -140,10 +142,10 @@ class FlextInfraUtilitiesQualifiedNames:
 
     @staticmethod
     def normalized_import_aliases(
-        aliases: t.SequenceOf[cst.ImportAlias],
+        aliases: t.SequenceOf[t.Infra.Cst.ImportAlias],
         *,
         parenthesized: bool,
-    ) -> t.VariadicTuple[cst.ImportAlias]:
+    ) -> t.VariadicTuple[t.Infra.Cst.ImportAlias]:
         """Repair separators after import aliases were dropped or rewritten.
 
         Returns:
@@ -157,13 +159,13 @@ class FlextInfraUtilitiesQualifiedNames:
             else alias.with_changes(
                 comma=cst.Comma(whitespace_after=cst.SimpleWhitespace(" ")),
             )
-            if index < last_index and not isinstance(alias.comma, cst.Comma)
+            if index < last_index and not isinstance(alias.comma, t.Infra.Cst.Comma)
             else alias
             for index, alias in enumerate(aliases)
         )
 
     @staticmethod
-    def rebinds_name_in_place(parent: p.AttributeProbe, node: cst.CSTNode) -> bool:
+    def rebinds_name_in_place(parent: p.AttributeProbe, node: t.Infra.Cst.CSTNode) -> bool:
         """Return whether ``parent`` spells ``node`` as a binding, not a reference.
 
         An import alias, an attribute's own ``attr``, and a keyword argument's
@@ -174,11 +176,11 @@ class FlextInfraUtilitiesQualifiedNames:
             Whether ``parent`` spells ``node`` as a binding, not a reference.
 
         """
-        if isinstance(parent, cst.ImportAlias):
+        if isinstance(parent, t.Infra.Cst.ImportAlias):
             return True
-        if isinstance(parent, cst.Attribute) and parent.attr is node:
+        if isinstance(parent, t.Infra.Cst.Attribute) and parent.attr is node:
             return True
-        return isinstance(parent, cst.Arg) and parent.keyword is node
+        return isinstance(parent, t.Infra.Cst.Arg) and parent.keyword is node
 
     @classmethod
     def qualified_name_residue(
@@ -201,9 +203,9 @@ class FlextInfraUtilitiesQualifiedNames:
                 self.residue: set[str] = set()
 
             @override
-            def on_visit(self, node: cst.CSTNode) -> bool:
+            def on_visit(self, node: t.Infra.Cst.CSTNode) -> bool:
                 names = tuple(self.get_metadata(QualifiedNameProvider, node, ()))
-                if isinstance(node, cst.Attribute) and any(
+                if isinstance(node, t.Infra.Cst.Attribute) and any(
                     name.name in self.candidates for name in names
                 ):
                     names = tuple(

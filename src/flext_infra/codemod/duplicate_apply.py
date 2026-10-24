@@ -902,12 +902,17 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         """Compose validated edits into the shared working map.
 
         Raises:
-            ValueError: If two plans disagree about one file's base.
+            ValueError: If two plans disagree about one file's base, or a
+                plan declares a creation a duplicate cure never performs.
 
         """
         for edit in edits:
-            current = working.setdefault(edit.file_path, edit.original_source)
-            if current != edit.original_source:
+            original = edit.original_source
+            if original is None:
+                msg = f"duplicate cure plans never create files: {edit.file_path}"
+                raise ValueError(msg)
+            current = working.setdefault(edit.file_path, original)
+            if current != original:
                 msg = f"duplicate cure plans disagree for {edit.file_path}"
                 raise ValueError(msg)
             working[edit.file_path] = edit.updated_source

@@ -10,6 +10,7 @@ from ast import ClassDef, Import, ImportFrom
 from collections.abc import Callable
 from pathlib import Path
 
+import libcst
 from flext_core import t
 from libcst import (
     Arg,
@@ -27,6 +28,57 @@ from flext_infra._typings import FlextInfraTypesRopeNative
 
 class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     """Rope type aliases — accessed via t.Infra.*."""
+
+    class Cst:
+        """libcst node classes, aliased once for annotations and isinstance."""
+
+        AnnAssign = libcst.AnnAssign
+        Annotation = libcst.Annotation
+        Arg = libcst.Arg
+        AsName = libcst.AsName
+        Assign = libcst.Assign
+        AssignTarget = libcst.AssignTarget
+        Attribute = libcst.Attribute
+        AugAssign = libcst.AugAssign
+        BaseAssignTargetExpression = libcst.BaseAssignTargetExpression
+        BaseCompoundStatement = libcst.BaseCompoundStatement
+        BaseExpression = libcst.BaseExpression
+        BaseSmallStatement = libcst.BaseSmallStatement
+        BaseStatement = libcst.BaseStatement
+        CSTNode = libcst.CSTNode
+        Call = libcst.Call
+        ClassDef = libcst.ClassDef
+        Comma = libcst.Comma
+        ConcatenatedString = libcst.ConcatenatedString
+        Del = libcst.Del
+        DictComp = libcst.DictComp
+        EmptyLine = libcst.EmptyLine
+        FlattenSentinel = libcst.FlattenSentinel
+        FunctionDef = libcst.FunctionDef
+        GeneratorExp = libcst.GeneratorExp
+        If = libcst.If
+        Import = libcst.Import
+        ImportAlias = libcst.ImportAlias
+        ImportFrom = libcst.ImportFrom
+        ImportStar = libcst.ImportStar
+        IndentedBlock = libcst.IndentedBlock
+        Index = libcst.Index
+        Lambda = libcst.Lambda
+        List = libcst.List
+        ListComp = libcst.ListComp
+        Module = libcst.Module
+        Name = libcst.Name
+        ParamSpec = libcst.ParamSpec
+        Pass = libcst.Pass
+        RemovalSentinel = libcst.RemovalSentinel
+        SetComp = libcst.SetComp
+        SimpleStatementLine = libcst.SimpleStatementLine
+        SimpleString = libcst.SimpleString
+        Subscript = libcst.Subscript
+        Tuple = libcst.Tuple
+        TypeAlias = libcst.TypeAlias
+        TypeVar = libcst.TypeVar
+        TypeVarTuple = libcst.TypeVarTuple
 
     type PythonImportNode = Import | ImportFrom
     type RopeSourcePath = Path

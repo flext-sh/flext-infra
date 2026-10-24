@@ -65,6 +65,35 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
     @staticmethod
+    def test_runtime_gate_selection_follows_the_ci_token() -> None:
+        """The checker resolves each requested gate set from the typed Make spec."""
+        make = config.Infra.codegen.make
+        ci = make.ci
+        expected = {
+            ci.value: make.check_gates_ci,
+            ci.local_value: make.check_gates_local,
+        }
+        for token, gates in expected.items():
+            with u.Tests.env_vars_context(env_vars={ci.variable: token}):
+                tm.that(
+                    u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
+                    eq=gates,
+                )
+        with u.Tests.env_vars_context(vars_to_clear=(ci.variable,)):
+            tm.that(
+                u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
+                eq=make.check_gates_default,
+            )
+        tm.that(
+            u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.FIX),
+            eq=make.check_gates_fixable,
+        )
+        tm.that(
+            u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.FMT),
+            eq=make.fmt_gates,
+        )
+
+    @staticmethod
     def test_ci_excludes_only_declared_local_only_gates() -> None:
         """Local checks cover every active gate; CI excludes its declared set."""
         make = config.Infra.codegen.make

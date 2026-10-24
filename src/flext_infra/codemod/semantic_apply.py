@@ -1239,11 +1239,14 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             Whether the accepted batch contains source changes.
 
         """
-        original: t.MutableMappingKV[Path, str] = {}
+        original: t.MutableMappingKV[Path, str | None] = {}
         for edit in edits:
             if edit.file_path not in original:
                 original[edit.file_path] = edit.original_source
-        working = dict(original)
+        # A creation (original None) starts absent from the working view.
+        working: t.MutableMappingKV[Path, str] = {
+            path: source for path, source in original.items() if source is not None
+        }
         changed: set[Path] = set()
         retired: t.Infra.RopeMutablePaths = set()
         cls.apply_plan(working, edits, changed, retirements=retired)
@@ -1843,7 +1846,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
     def _publish(
         cls,
         root: Path,
-        original: t.MappingKV[Path, str],
+        original: t.MappingKV[Path, str | None],
         updated: t.MappingKV[Path, str | None],
         *,
         validator: Callable[[Path], p.Result[bool]] | None = None,
@@ -1852,7 +1855,8 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
 
         Args:
             root: Repository root governing the publication.
-            original: The original sources the plan was derived from.
+            original: The original sources the plan was derived from; ``None``
+                declares a creation whose destination must be absent.
             updated: The desired bytes per path, or ``None`` to retire a file.
             validator: Optional acceptance gate over the published tree.
 
@@ -1871,9 +1875,12 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             if before.failure:
                 return r[bool].from_failure(before)
             state = before.value
-            if path in original and (
+            expected = original.get(path)
+            if path in original and expected is None and state.content is not None:
+                return r[bool].fail(f"semantic creation destination exists: {path}")
+            if expected is not None and (
                 state.content is None
-                or state.content.decode(c.DEFAULT_ENCODING) != original[path]
+                or state.content.decode(c.DEFAULT_ENCODING) != expected
             ):
                 return r[bool].fail(f"source changed after semantic preflight: {path}")
             source = updated[path]
@@ -1885,7 +1892,11 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     desired_content=None
                     if source is None
                     else source.encode(c.DEFAULT_ENCODING),
-                    desired_mode=None if source is None else state.mode,
+                    desired_mode=None
+                    if source is None
+                    else state.mode
+                    if state.mode is not None
+                    else config.Infra.codegen.modes.file_default,
                 )
             )
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(

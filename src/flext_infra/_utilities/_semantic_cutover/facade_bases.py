@@ -80,9 +80,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         @override
         def leave_Attribute(
             self,
-            original_node: cst.Attribute,
-            updated_node: cst.Attribute,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Attribute,
+            updated_node: t.Infra.Cst.Attribute,
+        ) -> t.Infra.Cst.BaseExpression:
             names = self.get_metadata(QualifiedNameProvider, original_node, None)
             if names is None:
                 return updated_node
@@ -112,7 +112,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 own_class = (
                     module == self.context.full_module_name
                     and isinstance(assignment, Assignment)
-                    and isinstance(assignment.node, cst.ClassDef)
+                    and isinstance(assignment.node, t.Infra.Cst.ClassDef)
                     and assignment.node.name.value == receiver
                 )
                 if not own_class and (
@@ -137,7 +137,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         @staticmethod
         def _scoped_target(
-            node: cst.Attribute,
+            node: t.Infra.Cst.Attribute,
             scope: Scope,
             target: t.Triple[str, str, str],
         ) -> t.Triple[str, str, str]:
@@ -150,7 +150,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             module, receiver, member = target
             if (
                 receiver != c.Infra.FacadeFamily.U
-                or not isinstance(node.value, cst.Name)
+                or not isinstance(node.value, t.Infra.Cst.Name)
                 or scope[receiver]
             ):
                 return target

@@ -176,6 +176,13 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_WORKER_RESTARTS_DISABLED: ClassVar[int] = 0
     """Native xdist sentinel prohibiting replacement of crashed workers."""
+    PYTEST_TESTMON_ACTIVATION_DESTS: ClassVar[tuple[str, ...]] = (
+        "testmon",
+        "testmon_noselect",
+        "testmon_nocollect",
+        "testmon_forceselect",
+    )
+    """pytest-testmon option destinations that open its SQLite datafile."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_WORKER_COLLECTION_KEY: ClassVar[str] = "flext_collection_manifest"
     """Native xdist worker-output key carrying the observed manifest as JSON."""

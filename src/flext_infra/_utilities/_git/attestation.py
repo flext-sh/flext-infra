@@ -21,6 +21,7 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, settings, t
+from flext_infra._utilities import FlextInfraUtilitiesBase
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -198,7 +199,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         """
         root = request.repository_root.resolve()
         gates = request.gates or ",".join(
-            u.Infra.selected_check_gates(
+            FlextInfraUtilitiesBase.selected_check_gates(
                 inputs.spec.make, c.Infra.CheckGateSet.CHECK
             )
         )
@@ -231,7 +232,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             "--repository-root",
             str(root),
             "--gates",
-            request.gates,
+            gates,
             "--reports-dir",
             str(report_root / c.Infra.VERB_CHECK),
             *(
@@ -241,7 +242,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             ),
         )
         native_request = m.Infra.RunCommand.model_validate(
-            {"repository_root": root, "gates": request.gates},
+            {"repository_root": root, "gates": gates},
         )
         started_capture = cls.git_begin_gate_capture(
             m.Infra.GateCaptureBeginRequest(

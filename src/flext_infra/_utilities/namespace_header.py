@@ -34,44 +34,37 @@ class FlextInfraUtilitiesNamespaceHeader:
     """Pure facts of the canonical namespace import header of a project."""
 
     @classmethod
-    def namespace_import_header(cls, project: Path) -> t.JsonMapping:
+    def namespace_import_header(cls, project: Path) -> m.Infra.NamespaceImportHeader:
         """Return the import header facts of ``project``.
 
         ``aliases`` are the lowercase names the package root exports bound to
         a class, plus the layer-zero root singletons it exports. ``namespace``
         maps each namespace object of a directly required library to its
-        import package. ``families`` maps every facade letter to its module
-        stem, private directory and the package its facade class extends.
+        import package. ``upstreams`` maps every facade letter to the package
+        its facade class extends.
 
         Returns:
-            The JSON facts consumed by the generated header rules.
+            The facts the generated header rules are rendered from.
 
         """
         package = FlextInfraUtilitiesPyproject.project_package_name(project)
         root = import_module(package)
-        aliases = sorted(
-            name
-            for name in cls._root_exports(package)
-            if isinstance(getattr(root, name), type)
-            or name in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        return m.Infra.NamespaceImportHeader(
+            package=package,
+            aliases=tuple(
+                sorted(
+                    name
+                    for name in cls._root_exports(package)
+                    if isinstance(getattr(root, name), type)
+                    or name in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+                )
+            ),
+            namespace=cls._namespace_objects(project, package),
+            families=tuple(family for _letter, family in sorted(families.items())),
+            upstreams={letter: cls._upstream(package, letter) for letter in families},
+            layers=tuple(config.Infra.tooling.lazy_init.import_layer_order),
         )
-        families = {
-            letter: {
-                "module": family.module,
-                "directory": family.directory,
-                "upstream": cls._upstream(package, letter),
-            }
-            for letter, family in sorted(
-                FlextInfraUtilitiesCodegenNamespace.facade_families().items()
-            )
-        }
-        return {
-            "package": package,
-            "aliases": aliases,
-            "namespace": cls._namespace_objects(project, package),
-            "families": families,
-            "layers": list(config.Infra.tooling.lazy_init.import_layer_order),
-        }
 
     @staticmethod
     def _root_exports(package: str) -> t.StrSequence:

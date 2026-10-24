@@ -1628,7 +1628,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _facade_namespace_child_cst(
         site: m.Infra.FacadeNamespaceSite,
         child: ast.ClassDef,
-    ) -> cst.ClassDef:
+    ) -> t.Infra.Cst.ClassDef:
         """Extract one facade child's concrete-syntax node.
 
         Returns:
@@ -1642,22 +1642,22 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         facade_cst = next(
             node
             for node in parsed.body
-            if isinstance(node, cst.ClassDef) and node.name.value == site.facade.name
+            if isinstance(node, t.Infra.Cst.ClassDef) and node.name.value == site.facade.name
         )
-        if not isinstance(facade_cst.body, cst.IndentedBlock):
+        if not isinstance(facade_cst.body, t.Infra.Cst.IndentedBlock):
             msg = "namespace facade requires an indented declaration"
             raise TypeError(msg)
         return next(
             node
             for node in facade_cst.body.body
-            if isinstance(node, cst.ClassDef) and node.name.value == child.name
+            if isinstance(node, t.Infra.Cst.ClassDef) and node.name.value == child.name
         )
 
     @staticmethod
     def _facade_namespace_child_module(
         tree: ast.Module,
         child: ast.ClassDef,
-        child_cst: cst.ClassDef,
+        child_cst: t.Infra.Cst.ClassDef,
     ) -> str:
         """Render one relocated child module with the imports it still uses.
 

@@ -56,7 +56,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             (
                 statement
                 for statement in owner.body.body
-                if isinstance(statement, cst.ClassDef) and statement.name.value == inner
+                if isinstance(statement, t.Infra.Cst.ClassDef) and statement.name.value == inner
             ),
             None,
         )
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             raise ValueError(msg)
         reference = cstm.Attribute(value=cstm.Name(outer), attr=cstm.Name(inner))
         lifted = cstm.replace(member, reference, cst.Name(inner))
-        if not isinstance(lifted, cst.ClassDef):
+        if not isinstance(lifted, t.Infra.Cst.ClassDef):
             msg = f"extracting {outer}.{inner} did not yield a class"
             raise TypeError(msg)
         used = cls._loaded_names(lifted) - {inner}
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             reference,
             cst.Name(inner),
         )
-        if not isinstance(updated, cst.Module):
+        if not isinstance(updated, t.Infra.Cst.Module):
             msg = f"extracting {outer}.{inner} did not yield a module"
             raise TypeError(msg)
         return (
@@ -100,22 +100,22 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         )
 
     @staticmethod
-    def _top_level_class(module: cst.Module, name: str) -> cst.ClassDef:
+    def _top_level_class(module: t.Infra.Cst.Module, name: str) -> t.Infra.Cst.ClassDef:
         owner = next(
             (
                 statement
                 for statement in module.body
-                if isinstance(statement, cst.ClassDef) and statement.name.value == name
+                if isinstance(statement, t.Infra.Cst.ClassDef) and statement.name.value == name
             ),
             None,
         )
-        if owner is None or not isinstance(owner.body, cst.IndentedBlock):
+        if owner is None or not isinstance(owner.body, t.Infra.Cst.IndentedBlock):
             msg = f"top-level class {name} is not declared with a block body"
             raise ValueError(msg)
         return owner
 
     @staticmethod
-    def _is_docstring(statement: cst.BaseStatement | cst.BaseSmallStatement) -> bool:
+    def _is_docstring(statement: t.Infra.Cst.BaseStatement | t.Infra.Cst.BaseSmallStatement) -> bool:
         return cstm.matches(
             statement,
             cstm.SimpleStatementLine(
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         )
 
     @staticmethod
-    def _loaded_names(node: cst.CSTNode) -> frozenset[str]:
+    def _loaded_names(node: t.Infra.Cst.CSTNode) -> frozenset[str]:
         """Every bare name the node reads (attribute roots included).
 
         Returns:
@@ -134,27 +134,27 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         attributes = {
             id(found.attr)
             for found in cstm.findall(node, cstm.Attribute())
-            if isinstance(found, cst.Attribute)
+            if isinstance(found, t.Infra.Cst.Attribute)
         }
         return frozenset(
             found.value
             for found in cstm.findall(node, cstm.Name())
-            if isinstance(found, cst.Name) and id(found) not in attributes
+            if isinstance(found, t.Infra.Cst.Name) and id(found) not in attributes
         ) - frozenset(dir(builtins))
 
     @staticmethod
-    def _import_statements(module: cst.Module) -> tuple[cst.SimpleStatementLine, ...]:
+    def _import_statements(module: t.Infra.Cst.Module) -> tuple[t.Infra.Cst.SimpleStatementLine, ...]:
         return tuple(
             statement
             for statement in module.body
-            if isinstance(statement, cst.SimpleStatementLine)
+            if isinstance(statement, t.Infra.Cst.SimpleStatementLine)
             and all(
-                isinstance(item, cst.Import | cst.ImportFrom) for item in statement.body
+                isinstance(item, t.Infra.Cst.Import | t.Infra.Cst.ImportFrom) for item in statement.body
             )
         )
 
     @classmethod
-    def _module_local_bindings(cls, module: cst.Module) -> frozenset[str]:
+    def _module_local_bindings(cls, module: t.Infra.Cst.Module) -> frozenset[str]:
         """Names the module binds other than by its top-level imports.
 
         Returns:
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         for statement in module.body:
             if statement in imports:
                 continue
-            if isinstance(statement, cst.ClassDef | cst.FunctionDef):
+            if isinstance(statement, t.Infra.Cst.ClassDef | t.Infra.Cst.FunctionDef):
                 bound.add(statement.name.value)
                 continue
             bound.update(
@@ -176,24 +176,24 @@ class FlextInfraUtilitiesRopeNestedClassMove:
                     cstm.AssignTarget() | cstm.AnnAssign() | cstm.ImportAlias(),
                 )
                 for found in cstm.findall(target, cstm.Name())
-                if isinstance(found, cst.Name)
+                if isinstance(found, t.Infra.Cst.Name)
             )
         return frozenset(bound)
 
     @classmethod
     def _extracted_module(
         cls,
-        module: cst.Module,
-        member: cst.ClassDef,
+        module: t.Infra.Cst.Module,
+        member: t.Infra.Cst.ClassDef,
         used: frozenset[str],
-    ) -> cst.Module:
+    ) -> t.Infra.Cst.Module:
         """Render the member at top level with only the imports it reads.
 
         Returns:
             The extracted module tree.
 
         """
-        imports: list[cst.SimpleStatementLine] = []
+        imports: list[t.Infra.Cst.SimpleStatementLine] = []
         for statement in cls._import_statements(module):
             kept = tuple(
                 item
@@ -233,9 +233,9 @@ class FlextInfraUtilitiesRopeNestedClassMove:
 
     @staticmethod
     def _kept_import(
-        statement: cst.BaseSmallStatement,
+        statement: t.Infra.Cst.BaseSmallStatement,
         used: frozenset[str],
-    ) -> cst.BaseSmallStatement | None:
+    ) -> t.Infra.Cst.BaseSmallStatement | None:
         """Keep only the aliases of one import that the member reads.
 
         Returns:
@@ -246,13 +246,13 @@ class FlextInfraUtilitiesRopeNestedClassMove:
                 declared alias to narrow.
 
         """
-        if isinstance(statement, cst.ImportFrom) and isinstance(
-            statement.names, cst.ImportStar
+        if isinstance(statement, t.Infra.Cst.ImportFrom) and isinstance(
+            statement.names, t.Infra.Cst.ImportStar
         ):
             msg = "a star import cannot be narrowed for an extracted member"
             raise TypeError(msg)
-        if not isinstance(statement, cst.Import | cst.ImportFrom) or isinstance(
-            statement.names, cst.ImportStar
+        if not isinstance(statement, t.Infra.Cst.Import | t.Infra.Cst.ImportFrom) or isinstance(
+            statement.names, t.Infra.Cst.ImportStar
         ):
             return None
         aliases = tuple(
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             for alias in statement.names
             if (
                 alias.asname.name.value
-                if alias.asname is not None and isinstance(alias.asname.name, cst.Name)
+                if alias.asname is not None and isinstance(alias.asname.name, t.Infra.Cst.Name)
                 else csth.get_full_name_for_node_or_raise(alias.name).split(".")[0]
             )
             in used
@@ -274,7 +274,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         )
 
     @staticmethod
-    def _summary(member: cst.ClassDef) -> str:
+    def _summary(member: t.Infra.Cst.ClassDef) -> str:
         """First docstring line of the member, or a declaration summary.
 
         Returns:
@@ -287,8 +287,8 @@ class FlextInfraUtilitiesRopeNestedClassMove:
 
     @classmethod
     def _with_import(
-        cls, module: cst.Module, target_module: str, name: str
-    ) -> cst.Module:
+        cls, module: t.Infra.Cst.Module, target_module: str, name: str
+    ) -> t.Infra.Cst.Module:
         """Bind ``name`` from ``target_module`` after the last top-level import.
 
         Returns:

@@ -175,27 +175,24 @@ class TestsFlextInfraCodegenMakeVerbs:
         # The dispatch chain that carries the declared gate list to the runtime.
         tm.that(makefile, has="_builtin-check: _builtin_check_all")
         tm.that(makefile, has="_builtin_check_all: _builtin_require_environment")
-        # Every profile, the workspace root included, schedules the declared
-        # gates on its own project through one local `check run` body.
-        scheduled = ",".join(config.Infra.codegen.make.check_gates_default)
-        tm.that(makefile, has=f'gates="{scheduled}"')
-        for gate in config.Infra.codegen.make.check_gates_default:
-            tm.that(scheduled.split(","), has=gate)
-        tm.that(makefile, has='--gates "$$gates"')
-        check_invocations = tuple(
-            line for line in makefile.splitlines() if '--gates "$$gates"' in line
+        # No projection enumerates a gate id: check asks the checker, which
+        # resolves the gate inventory from the typed Make spec at runtime.
+        tm.that(makefile, lacks="--gates")
+        capture_invocations = tuple(
+            line for line in makefile.splitlines() if "capture-gate" in line
         )
-        tm.that(check_invocations, empty=False)
-        for invocation in check_invocations:
+        tm.that(capture_invocations, empty=False)
+        for invocation in capture_invocations:
             tm.that(invocation, lacks="--apply")
-        tm.that(makefile, has="--apply")
+        for gate_set in (c.Infra.CheckGateSet.FIX, c.Infra.CheckGateSet.FMT):
+            tm.that(makefile, has=f"--gate-set {gate_set.value} --apply")
         tm.that(makefile, lacks="--report-findings")
 
     @staticmethod
-    def test_standalone_check_executes_its_declared_default_gates(
+    def test_standalone_check_resolves_its_gates_at_runtime(
         tmp_path: Path,
     ) -> None:
-        """Standalone check runs exactly the owner-declared default gate set."""
+        """Standalone check delegates gate selection to the runtime checker."""
         project_root, _repository_root = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -225,10 +222,9 @@ class TestsFlextInfraCodegenMakeVerbs:
             eq=True,
             msg=process.stdout + process.stderr,
         )
-        gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra workspace capture-gate")
-        tm.that(invocation, has=f"--gates {gates}")
+        tm.that(invocation, lacks="--gates")
         tm.that(invocation, lacks="--apply")
 
     @staticmethod

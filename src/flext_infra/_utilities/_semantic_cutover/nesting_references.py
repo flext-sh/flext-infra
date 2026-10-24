@@ -64,7 +64,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             inventory: t.Pair[str, t.MappingKV[Path, str]],
             resolvers: t.Triple[
                 Callable[..., str],
-                Callable[[cst.BaseStatement], str | None],
+                Callable[[t.Infra.Cst.BaseStatement], str | None],
                 Callable[..., t.Pair[str, str]],
             ],
         ) -> None:
@@ -273,7 +273,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         ) -> str | None:
             return self._replacement(scope, expression, len(self.original.source_code))
 
-        def _span(self, node: cst.CSTNode) -> CodeRange:
+        def _span(self, node: t.Infra.Cst.CSTNode) -> CodeRange:
             """Read the total position metadata through an explicit default.
 
             The sentinel default in libcst's ``get_metadata`` binds the return
@@ -300,9 +300,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         def _quoted_literal(
             self,
-            original_node: cst.BaseExpression,
-            updated_node: cst.BaseExpression,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.BaseExpression,
+            updated_node: t.Infra.Cst.BaseExpression,
+        ) -> t.Infra.Cst.BaseExpression:
             position = self._span(original_node)
             start = self.line_offsets[position.start.line - 1] + position.start.column
             end = self.line_offsets[position.end.line - 1] + position.end.column
@@ -312,21 +312,21 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def leave_SimpleString(
             self,
-            original_node: cst.SimpleString,
-            updated_node: cst.SimpleString,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.SimpleString,
+            updated_node: t.Infra.Cst.SimpleString,
+        ) -> t.Infra.Cst.BaseExpression:
             return self._quoted_literal(original_node, updated_node)
 
         @override
         def leave_ConcatenatedString(
             self,
-            original_node: cst.ConcatenatedString,
-            updated_node: cst.ConcatenatedString,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.ConcatenatedString,
+            updated_node: t.Infra.Cst.ConcatenatedString,
+        ) -> t.Infra.Cst.BaseExpression:
             return self._quoted_literal(original_node, updated_node)
 
         @staticmethod
-        def _alias_name(asname: cst.AsName) -> str:
+        def _alias_name(asname: t.Infra.Cst.AsName) -> str:
             """Return the bound alias identifier, rejecting impossible shapes.
 
             libcst types ``AsName.name`` as ``Name | Tuple | List``, but import
@@ -341,19 +341,19 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 TypeError: If unsupported import alias target.
 
             """
-            if not isinstance(asname.name, cst.Name):
+            if not isinstance(asname.name, t.Infra.Cst.Name):
                 msg = f"unsupported import alias target: {type(asname.name).__name__}"
                 raise TypeError(msg)
             return asname.name.value
 
-        def _import_module(self, node: cst.ImportFrom) -> str:
+        def _import_module(self, node: t.Infra.Cst.ImportFrom) -> str:
             return self.imported_module(
                 node,
                 module_name=self.module_name,
                 is_package_init=self.is_package_init,
             )
 
-        def _import_owner(self, node: cst.ImportFrom, name: str) -> str | None:
+        def _import_owner(self, node: t.Infra.Cst.ImportFrom, name: str) -> str | None:
             """Admit an import only through its original native declaration.
 
             Returns:
@@ -418,14 +418,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             return owner
 
         @override
-        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+        def visit_ImportFrom(self, node: t.Infra.Cst.ImportFrom) -> None:
 
             if (
-                isinstance(node.module, cst.Name)
+                isinstance(node.module, t.Infra.Cst.Name)
                 and node.module.value == "__future__"
-                and not isinstance(node.names, cst.ImportStar)
+                and not isinstance(node.names, t.Infra.Cst.ImportStar)
                 and any(
-                    isinstance(alias.name, cst.Name)
+                    isinstance(alias.name, t.Infra.Cst.Name)
                     and alias.name.value == "annotations"
                     for alias in node.names
                 )
@@ -434,10 +434,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             bindings = self.bindings_by_module.get(self._import_module(node), {})
             if not bindings:
                 return
-            if isinstance(node.names, cst.ImportStar):
+            if isinstance(node.names, t.Infra.Cst.ImportStar):
                 self.wildcard_names.update(bindings)
 
-        def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
+        def _resolves_bare_after_nesting(self, node: t.Infra.Cst.CSTNode) -> bool:
             """Report whether a moved class stays reachable by its bare name here.
 
             References are rewritten before the structural move, so the current
@@ -463,17 +463,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 The resulting ``bool``.
 
             """
-            child: cst.CSTNode = node
+            child: t.Infra.Cst.CSTNode = node
             in_annotation = False
-            current: cst.CSTNode | None = self.get_metadata(
+            current: t.Infra.Cst.CSTNode | None = self.get_metadata(
                 ParentNodeProvider,
                 node,
                 None,
             )
             while current is not None:
-                if isinstance(current, cst.Annotation | cst.TypeAlias):
+                if isinstance(current, t.Infra.Cst.Annotation | t.Infra.Cst.TypeAlias):
                     in_annotation = True
-                elif isinstance(current, cst.FunctionDef | cst.Lambda):
+                elif isinstance(current, t.Infra.Cst.FunctionDef | t.Infra.Cst.Lambda):
                     # Decorators and defaults run in the enclosing scope; only
                     # the body is a function scope. Annotations are tracked
                     # separately because a nested class does not bind its name
@@ -484,20 +484,20 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                         return False
                 elif isinstance(
                     current,
-                    cst.ListComp | cst.SetComp | cst.DictComp | cst.GeneratorExp,
+                    t.Infra.Cst.ListComp | t.Infra.Cst.SetComp | t.Infra.Cst.DictComp | t.Infra.Cst.GeneratorExp,
                 ):
                     return False
-                elif isinstance(current, cst.ClassDef) and child is current.body:
+                elif isinstance(current, t.Infra.Cst.ClassDef) and child is current.body:
                     name = current.name.value
                     if in_annotation and name in self.definitions:
                         return False
                     return name in self.definitions or name in set(
                         self.definitions.values(),
                     )
-                elif isinstance(current, cst.Module):
+                elif isinstance(current, t.Infra.Cst.Module):
                     # A moved module binding executes in the owner body.
                     return (
-                        isinstance(child, cst.BaseStatement)
+                        isinstance(child, t.Infra.Cst.BaseStatement)
                         and self.member_name(child) in self.definitions
                     )
                 child = current
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         def _single_binding(
             self,
-            original_node: cst.CSTNode,
+            original_node: t.Infra.Cst.CSTNode,
         ) -> str | None:
             """Authorize one reference in the immutable original native scope.
 
@@ -515,17 +515,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 resolves to a type parameter or a non-binding shape.
 
             """
-            if not isinstance(original_node, cst.BaseExpression):
+            if not isinstance(original_node, t.Infra.Cst.BaseExpression):
                 return None
             root = original_node
-            while isinstance(root, cst.Attribute):
+            while isinstance(root, t.Infra.Cst.Attribute):
                 root = root.value
             if self._type_parameter_root(root):
                 return None
             current = self.get_metadata(ParentNodeProvider, original_node, None)
-            while isinstance(current, cst.Attribute | cst.ImportAlias | cst.AsName):
+            while isinstance(current, t.Infra.Cst.Attribute | t.Infra.Cst.ImportAlias | t.Infra.Cst.AsName):
                 current = self.get_metadata(ParentNodeProvider, current, None)
-            if isinstance(current, cst.Import | cst.ImportFrom):
+            if isinstance(current, t.Infra.Cst.Import | t.Infra.Cst.ImportFrom):
                 return None
             expression = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node)
             if expression is None:
@@ -543,8 +543,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         def _validate_wildcard_binding(
             self,
-            original_node: cst.CSTNode,
-            root: cst.BaseExpression,
+            original_node: t.Infra.Cst.CSTNode,
+            root: t.Infra.Cst.BaseExpression,
             expression: str,
             actual: p.Infra.RopePyName | None,
         ) -> None:
@@ -553,7 +553,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 if lexical is None or not lexical[expression]:
                     msg = f"unresolved native wildcard nesting reference: {expression}"
                     raise ValueError(msg)
-            if actual is None and isinstance(root, cst.Name):
+            if actual is None and isinstance(root, t.Infra.Cst.Name):
                 lexical = self.get_metadata(ScopeProvider, root, None)
                 if (
                     lexical is not None
@@ -566,15 +566,15 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                     msg = f"unresolved native nesting import reference: {expression}"
                     raise ValueError(msg)
 
-        def _type_parameter_root(self, root: cst.CSTNode) -> bool:
-            if not isinstance(root, cst.Name):
+        def _type_parameter_root(self, root: t.Infra.Cst.CSTNode) -> bool:
+            if not isinstance(root, t.Infra.Cst.Name):
                 return False
             scope = self.get_metadata(ScopeProvider, root, None)
             # Native assignments distinguish type parameters from module aliases.
             return scope is not None and any(
                 isinstance(binding, Assignment)
                 and isinstance(
-                    binding.node, cst.TypeVar | cst.TypeVarTuple | cst.ParamSpec
+                    binding.node, t.Infra.Cst.TypeVar | t.Infra.Cst.TypeVarTuple | t.Infra.Cst.ParamSpec
                 )
                 for binding in scope[root.value]
             )
@@ -582,9 +582,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def leave_Name(
             self,
-            original_node: cst.Name,
-            updated_node: cst.Name,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Name,
+            updated_node: t.Infra.Cst.Name,
+        ) -> t.Infra.Cst.BaseExpression:
 
             parent = self.get_metadata(ParentNodeProvider, original_node)
             if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
@@ -595,16 +595,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if (
                 isinstance(
                     parent,
-                    cst.ClassDef
-                    | cst.FunctionDef
-                    | cst.TypeAlias
-                    | cst.TypeVar
-                    | cst.TypeVarTuple
-                    | cst.ParamSpec,
+                    t.Infra.Cst.ClassDef
+                    | t.Infra.Cst.FunctionDef
+                    | t.Infra.Cst.TypeAlias
+                    | t.Infra.Cst.TypeVar
+                    | t.Infra.Cst.TypeVarTuple
+                    | t.Infra.Cst.ParamSpec,
                 )
                 and parent.name is original_node
             ) or (
-                isinstance(parent, cst.AssignTarget | cst.AnnAssign)
+                isinstance(parent, t.Infra.Cst.AssignTarget | t.Infra.Cst.AnnAssign)
                 and parent.target is original_node
             ):
                 return updated_node
@@ -618,9 +618,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def leave_Attribute(
             self,
-            original_node: cst.Attribute,
-            updated_node: cst.Attribute,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Attribute,
+            updated_node: t.Infra.Cst.Attribute,
+        ) -> t.Infra.Cst.BaseExpression:
             bound = self._single_binding(original_node)
             if bound is None:
                 return updated_node
@@ -629,13 +629,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def leave_ImportFrom(
             self,
-            original_node: cst.ImportFrom,
-            updated_node: cst.ImportFrom,
-        ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+            original_node: t.Infra.Cst.ImportFrom,
+            updated_node: t.Infra.Cst.ImportFrom,
+        ) -> t.Infra.Cst.BaseSmallStatement | t.Infra.Cst.RemovalSentinel:
 
-            if isinstance(updated_node.names, cst.ImportStar):
+            if isinstance(updated_node.names, t.Infra.Cst.ImportStar):
                 return updated_node
-            aliases: list[cst.ImportAlias] = []
+            aliases: list[t.Infra.Cst.ImportAlias] = []
             seen: set[t.Pair[str, str]] = set()
             for imported in updated_node.names:
                 name = (
@@ -667,9 +667,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def leave_Assign(
             self,
-            original_node: cst.Assign,
-            updated_node: cst.Assign,
-        ) -> cst.BaseSmallStatement:
+            original_node: t.Infra.Cst.Assign,
+            updated_node: t.Infra.Cst.Assign,
+        ) -> t.Infra.Cst.BaseSmallStatement:
 
             del original_node
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
@@ -680,9 +680,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def leave_AnnAssign(
             self,
-            original_node: cst.AnnAssign,
-            updated_node: cst.AnnAssign,
-        ) -> cst.BaseSmallStatement:
+            original_node: t.Infra.Cst.AnnAssign,
+            updated_node: t.Infra.Cst.AnnAssign,
+        ) -> t.Infra.Cst.BaseSmallStatement:
 
             del original_node
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
@@ -692,41 +692,41 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
     @staticmethod
     def _assignment_targets(
-        statement: cst.BaseSmallStatement,
-    ) -> t.VariadicTuple[cst.BaseAssignTargetExpression]:
+        statement: t.Infra.Cst.BaseSmallStatement,
+    ) -> t.VariadicTuple[t.Infra.Cst.BaseAssignTargetExpression]:
         """Return the targets one assignment statement binds.
 
         Returns:
             The bound targets, or an empty tuple for other statements.
 
         """
-        targets: t.SequenceOf[cst.BaseAssignTargetExpression] = ()
-        if isinstance(statement, cst.AnnAssign):
+        targets: t.SequenceOf[t.Infra.Cst.BaseAssignTargetExpression] = ()
+        if isinstance(statement, t.Infra.Cst.AnnAssign):
             targets = [statement.target]
-        elif isinstance(statement, cst.Assign):
+        elif isinstance(statement, t.Infra.Cst.Assign):
             targets = [item.target for item in statement.targets]
         return tuple(targets)
 
     @classmethod
-    def _member_name(cls, node: cst.BaseStatement) -> str | None:
+    def _member_name(cls, node: t.Infra.Cst.BaseStatement) -> str | None:
         """Return the name one module-level member statement defines.
 
         Returns:
             The class, function or single-target binding name, else ``None``.
 
         """
-        if isinstance(node, cst.ClassDef | cst.FunctionDef):
+        if isinstance(node, t.Infra.Cst.ClassDef | t.Infra.Cst.FunctionDef):
             return node.name.value
-        if not isinstance(node, cst.SimpleStatementLine) or len(node.body) != 1:
+        if not isinstance(node, t.Infra.Cst.SimpleStatementLine) or len(node.body) != 1:
             return None
         statement = node.body[0]
-        if isinstance(statement, cst.TypeAlias):
+        if isinstance(statement, t.Infra.Cst.TypeAlias):
             return statement.name.value
         targets = cls._assignment_targets(statement)
         if (
             len(targets) != 1
-            or not isinstance(targets[0], cst.Name)
-            or (isinstance(statement, cst.AnnAssign) and statement.value is None)
+            or not isinstance(targets[0], t.Infra.Cst.Name)
+            or (isinstance(statement, t.Infra.Cst.AnnAssign) and statement.value is None)
         ):
             return None
         return targets[0].value

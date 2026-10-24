@@ -1333,11 +1333,11 @@ class FlextInfraUtilitiesRopeImports:
 
     @staticmethod
     def _relocated_import_groups(
-        parsed: cst.Module,
+        parsed: t.Infra.Cst.Module,
         target_module: str,
         aliases: frozenset[str],
         location: str,
-    ) -> list[cst.ImportFrom]:
+    ) -> list[t.Infra.Cst.ImportFrom]:
         """Preserve alias ordering and trivia while splitting selected CST groups.
 
         Returns:
@@ -1348,17 +1348,17 @@ class FlextInfraUtilitiesRopeImports:
 
         """
         line = parsed.body[0]
-        if not isinstance(line, cst.SimpleStatementLine):
+        if not isinstance(line, t.Infra.Cst.SimpleStatementLine):
             msg = f"unsupported Rope import statement: {location}"
             raise TypeError(msg)
         imported_statement = line.body[0]
-        if not isinstance(imported_statement, cst.ImportFrom) or isinstance(
+        if not isinstance(imported_statement, t.Infra.Cst.ImportFrom) or isinstance(
             imported_statement.names,
-            cst.ImportStar,
+            t.Infra.Cst.ImportStar,
         ):
             msg = f"unsupported Rope import statement: {location}"
             raise TypeError(msg)
-        groups: list[t.Pair[bool, list[cst.ImportAlias]]] = []
+        groups: list[t.Pair[bool, list[t.Infra.Cst.ImportAlias]]] = []
         for alias in imported_statement.names:
             selected = parsed.code_for_node(alias.name) in aliases
             if groups and groups[-1][0] == selected:

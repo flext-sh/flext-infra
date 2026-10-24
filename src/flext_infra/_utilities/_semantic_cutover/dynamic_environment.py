@@ -20,7 +20,7 @@ from libcst.metadata import (
     QualifiedNameSource,
 )
 
-from flext_infra import FlextInfraConfig, c
+from flext_infra import FlextInfraConfig, c, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
@@ -49,31 +49,31 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
 
         def __init__(self, bindings: t.MappingKV[str, int]) -> None:
-            self.aliases: t.MutableMappingKV[t.Pair[str, cst.FunctionDef], str] = {}
+            self.aliases: t.MutableMappingKV[t.Pair[str, t.Infra.Cst.FunctionDef], str] = {}
             self.packages: set[str] = set()
             self.bindings = bindings
 
-        def _qualified(self, node: cst.CSTNode, expected: str) -> bool:
+        def _qualified(self, node: t.Infra.Cst.CSTNode, expected: str) -> bool:
             names = self.get_metadata(QualifiedNameProvider, node, ())
             return bool(names) and all(name.name == expected for name in names)
 
-        def _function(self, node: cst.CSTNode) -> cst.FunctionDef | None:
+        def _function(self, node: t.Infra.Cst.CSTNode) -> t.Infra.Cst.FunctionDef | None:
             while parent := self.get_metadata(ParentNodeProvider, node, None):
-                if isinstance(parent, cst.FunctionDef):
+                if isinstance(parent, t.Infra.Cst.FunctionDef):
                     return parent
                 node = parent
             return None
 
-        def _config_package(self, node: cst.BaseExpression) -> str | None:
+        def _config_package(self, node: t.Infra.Cst.BaseExpression) -> str | None:
             if (
-                isinstance(node, cst.Call)
+                isinstance(node, t.Infra.Cst.Call)
                 and self._qualified(node.func, "builtins.str")
                 and len(node.args) == 1
             ):
                 return self._config_package(node.args[0].value)
-            if isinstance(node, cst.Attribute):
+            if isinstance(node, t.Infra.Cst.Attribute):
                 return self._config_package(node.value)
-            if not isinstance(node, cst.Name):
+            if not isinstance(node, t.Infra.Cst.Name):
                 return None
             if self.bindings.get(node.value) != 1:
                 return None
@@ -91,19 +91,19 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             return next(iter(packages)) if len(packages) == 1 else None
 
         @override
-        def visit_Assign(self, node: cst.Assign) -> None:
+        def visit_Assign(self, node: t.Infra.Cst.Assign) -> None:
             parent = self.get_metadata(ParentNodeProvider, node)
-            if not isinstance(parent, cst.SimpleStatementLine):
+            if not isinstance(parent, t.Infra.Cst.SimpleStatementLine):
                 return
             block = self.get_metadata(ParentNodeProvider, parent)
-            if not isinstance(block, cst.IndentedBlock):
+            if not isinstance(block, t.Infra.Cst.IndentedBlock):
                 return
             function = self.get_metadata(ParentNodeProvider, block, None)
-            if not isinstance(function, cst.FunctionDef):
+            if not isinstance(function, t.Infra.Cst.FunctionDef):
                 return
             package = self._config_package(node.value)
             for target in node.targets:
-                if not isinstance(target.target, cst.Name):
+                if not isinstance(target.target, t.Infra.Cst.Name):
                     continue
                 for name in self.get_metadata(QualifiedNameProvider, target.target, ()):
                     key = (name.name, function)
@@ -112,7 +112,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                     else:
                         self.aliases[key] = package
 
-        def _read(self, key: cst.BaseExpression, method: str) -> cst.Call:
+        def _read(self, key: t.Infra.Cst.BaseExpression, method: str) -> t.Infra.Cst.Call:
             package = self._config_package(key)
             if package is None:
                 msg = "environment key lacks unambiguous typed-config provenance"
@@ -126,9 +126,9 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         @override
         def leave_Call(
             self,
-            original_node: cst.Call,
-            updated_node: cst.Call,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Call,
+            updated_node: t.Infra.Cst.Call,
+        ) -> t.Infra.Cst.BaseExpression:
             if not self._qualified(original_node.func, "os.environ.get"):
                 return updated_node
             if (
@@ -145,19 +145,19 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         @override
         def leave_Subscript(
             self,
-            original_node: cst.Subscript,
-            updated_node: cst.Subscript,
-        ) -> cst.BaseExpression:
+            original_node: t.Infra.Cst.Subscript,
+            updated_node: t.Infra.Cst.Subscript,
+        ) -> t.Infra.Cst.BaseExpression:
             if not self._qualified(original_node.value, "os.environ"):
                 return updated_node
             if len(original_node.slice) != 1 or not isinstance(
                 original_node.slice[0].slice,
-                cst.Index,
+                t.Infra.Cst.Index,
             ):
                 msg = "dynamic environment lookup requires a single key"
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if isinstance(parent, cst.AssignTarget | cst.Del | cst.AugAssign):
+            if isinstance(parent, t.Infra.Cst.AssignTarget | t.Infra.Cst.Del | t.Infra.Cst.AugAssign):
                 msg = "environment mutation is not a settings lookup"
                 raise TypeError(msg)
             return self._read(original_node.slice[0].slice.value, "env_required")

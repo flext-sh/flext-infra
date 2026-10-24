@@ -65,7 +65,8 @@ class FlextInfraUtilitiesBase:
         """Resolve one gate inventory from the typed Make spec at runtime.
 
         The CI token selects the check partition: its declared CI value runs
-        the CI partition, every other value the complete default set.
+        the CI partition, its declared local value the strict local
+        complement, and any other value the complete default set.
 
         Returns:
             The registered gate ids of the requested inventory.
@@ -78,11 +79,11 @@ class FlextInfraUtilitiesBase:
                 return make.fmt_gates
             case c.Infra.CheckGateSet.CHECK:
                 token = FlextInfraUtilitiesBase.env_value(make.ci.variable)
-                return (
-                    make.check_gates_ci
-                    if token == make.ci.value
-                    else make.check_gates_default
-                )
+                if token == make.ci.value:
+                    return make.check_gates_ci
+                if token == make.ci.local_value:
+                    return make.check_gates_local
+                return make.check_gates_default
 
     @staticmethod
     def resolve_repository_root_or_cwd(

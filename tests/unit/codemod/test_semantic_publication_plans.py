@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from functools import partial
 from pathlib import Path
 
 import pytest
 
 from flext_infra import codemod, config, transformers
-from tests import c, m, t, tm, u
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraSemanticPublicationPlans:
@@ -361,3 +362,63 @@ class TestsFlextInfraSemanticPublicationPlans:
             )
         )
         tm.that(first.path.read_text(), eq=published)
+
+    @staticmethod
+    def _creation(mod_workspace: Path) -> m.Infra.SemanticMigrationEdit:
+        """Declare one new module beside the fixture plans (absent before)."""
+        first, _ = TestsFlextInfraSemanticPublicationPlans._plans(mod_workspace)
+        return m.Infra.SemanticMigrationEdit(
+            file_path=first.path.with_name("created_family.py"),
+            original_source=None,
+            updated_source='value = "created"\n',
+            changes=("semantic creation",),
+        )
+
+    def test_creation_publishes_an_absent_destination(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A ``None`` original creates the module when its destination is absent."""
+        edit = self._creation(mod_workspace)
+        tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
+                mod_workspace, (edit,)
+            )
+        )
+        tm.that(edit.file_path.read_text(), has='value = "created"')
+
+    def test_creation_refuses_an_existing_destination(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A destination that already exists at publish fails and stays intact."""
+        edit = self._creation(mod_workspace)
+        edit.file_path.write_text('value = "foreign"\n')
+        tm.fail(
+            codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
+                mod_workspace, (edit,)
+            ),
+            has=str(edit.file_path),
+        )
+        tm.that(edit.file_path.read_text(), eq='value = "foreign"\n')
+
+    def test_creation_refuses_a_destination_created_concurrently(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A destination created after the absent snapshot never gets overwritten."""
+        edit = self._creation(mod_workspace)
+        tm.fail(
+            codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
+                mod_workspace,
+                (edit,),
+                validator=partial(self._concurrent_creator, edit.file_path),
+            ),
+        )
+        tm.that(edit.file_path.read_text(), eq='value = "concurrent"\n')
+
+    @staticmethod
+    def _concurrent_creator(destination: Path, _candidate_root: Path) -> p.Result[bool]:
+        """Create the live destination while the candidate is being accepted."""
+        destination.write_text('value = "concurrent"\n')
+        return r[bool].ok(value=True)

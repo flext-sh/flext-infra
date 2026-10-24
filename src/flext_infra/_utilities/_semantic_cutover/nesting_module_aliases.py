@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import libcst as cst
-
 from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportAncestry,
@@ -188,7 +186,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
     @classmethod
     def _imported_module(
         cls,
-        node: cst.ImportFrom,
+        node: t.Infra.Cst.ImportFrom,
         *,
         module_name: str,
         is_package_init: bool,

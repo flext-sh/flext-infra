@@ -43,7 +43,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 self.names = frozenset({name})
 
             @override
-            def leave_Assign[N: (cst.Assign, cst.AnnAssign)](
+            def leave_Assign[N: (t.Infra.Cst.Assign, t.Infra.Cst.AnnAssign)](
                 self,
                 original_node: N,
                 updated_node: N,
@@ -57,9 +57,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             @override
             def leave_AnnAssign(
                 self,
-                original_node: cst.AnnAssign,
-                updated_node: cst.AnnAssign,
-            ) -> cst.AnnAssign:
+                original_node: t.Infra.Cst.AnnAssign,
+                updated_node: t.Infra.Cst.AnnAssign,
+            ) -> t.Infra.Cst.AnnAssign:
                 return self.leave_Assign(original_node, updated_node)
 
         editable = {

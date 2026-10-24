@@ -156,7 +156,13 @@ class TestsFlextInfraRepositoryGitmodulesContract:
     def test_uninitialized_gitlink_does_not_borrow_parent_origin(
         tmp_path: Path,
     ) -> None:
-        """Classify an indexed but uninitialized checkout as an external dependency."""
+        """Fail closed on an indexed, uninitialized checkout.
+
+        The empty directory sits inside the parent repository, so a Git probe
+        from it would resolve the parent's identity. The governed declaration
+        (no ``flext-managed=false``) must therefore report the missing checkout
+        instead of borrowing the parent origin.
+        """
         root = u.Tests.WorktreeFixture.governed_workspace(
             tmp_path,
             "uninitialized-gitlink",
@@ -180,10 +186,9 @@ class TestsFlextInfraRepositoryGitmodulesContract:
         )
         (root / child_path).mkdir()
 
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.that(workspace.subprojects, empty=True)
-        tm.that(workspace.external_dependency_paths, eq=(child_path,))
+        tm.fail(result, has=f"governed subproject checkout is missing: {child_path}")
 
     @staticmethod
     def test_gitmodule_rejects_provider_branch_divergence(tmp_path: Path) -> None:

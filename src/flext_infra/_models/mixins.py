@@ -115,8 +115,8 @@ class FlextInfraModelsMixins:
         gates: t.StrSequence = m.Field(
             default=(),
             description=(
-                "Gate names for post-transform validation; empty selects the SSOT"
-                " snapshot gates (make.check_gates_ci)."
+                "Gate names for post-transform validation; empty resolves the"
+                " requested gate set from the typed Make spec at runtime."
             ),
         )
 

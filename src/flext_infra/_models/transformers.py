@@ -87,8 +87,13 @@ class FlextInfraModelsTransformers:
 
         file_path: Annotated[Path, m.Field(description="Source file to rewrite")]
         original_source: Annotated[
-            str,
-            m.Field(description="Source bytes before migration"),
+            str | None,
+            m.Field(
+                description=(
+                    "Source bytes before migration; None declares a creation "
+                    "whose destination must not exist when published"
+                ),
+            ),
         ]
         updated_source: Annotated[
             str,

@@ -1,0 +1,133 @@
+id: rewire-libcst-type-reference-to-typings
+snapshots:
+  ? |
+    import libcst as cst
+    def leaf(node: cst.CSTNode) -> str: ...
+  : fixed: |
+      import libcst as cst
+      def leaf(node: t.Infra.Cst.CSTNode) -> str: ...
+    labels:
+    - source: cst.CSTNode
+      style: primary
+      start: 36
+      end: 47
+    - source: cst.CSTNode
+      style: secondary
+      start: 36
+      end: 47
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        def leaf(node: cst.CSTNode) -> str: ...
+      style: secondary
+      start: 0
+      end: 61
+  ? |
+    import libcst as cst
+    ok = isinstance(node, cst.List | cst.Tuple)
+  : fixed: |
+      import libcst as cst
+      ok = isinstance(node, t.Infra.Cst.List | cst.Tuple)
+    labels:
+    - source: cst.List
+      style: primary
+      start: 43
+      end: 51
+    - source: isinstance
+      style: secondary
+      start: 26
+      end: 36
+    - source: isinstance(node, cst.List | cst.Tuple)
+      style: secondary
+      start: 26
+      end: 64
+    - source: (node, cst.List | cst.Tuple)
+      style: secondary
+      start: 36
+      end: 64
+    - source: cst.List | cst.Tuple
+      style: secondary
+      start: 43
+      end: 63
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        ok = isinstance(node, cst.List | cst.Tuple)
+      style: secondary
+      start: 0
+      end: 65
+  ? |
+    import libcst as cst
+    ok = isinstance(node, cst.Name)
+  : fixed: |
+      import libcst as cst
+      ok = isinstance(node, t.Infra.Cst.Name)
+    labels:
+    - source: cst.Name
+      style: primary
+      start: 43
+      end: 51
+    - source: isinstance
+      style: secondary
+      start: 26
+      end: 36
+    - source: isinstance(node, cst.Name)
+      style: secondary
+      start: 26
+      end: 52
+    - source: (node, cst.Name)
+      style: secondary
+      start: 36
+      end: 52
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        ok = isinstance(node, cst.Name)
+      style: secondary
+      start: 0
+      end: 53

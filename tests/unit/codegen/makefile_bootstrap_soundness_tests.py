@@ -68,18 +68,13 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             body = rendered.split(
                 f"_builtin_{verb}_all: _builtin_require_environment\n", 1
             )[1].split("\n\n", 1)[0]
-            for gates in (
-                inputs.spec.make.check_gates_default,
-                inputs.spec.make.check_gates_ci,
-                inputs.spec.make.check_gates_local,
-            ):
-                tm.that(body, has=f'gates="{",".join(gates)}"')
+            tm.that(body, lacks="--gates")
+            tm.that(body, has=f"--gate-set {verb} --apply")
             capture = body.index('capture-gate --repository-root "$(PROJECT_ROOT)"')
             conform = body.index(
                 'codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check'
             )
             tm.ok(body.index("--apply") < capture < conform)
-            tm.that(body[capture:conform], has='--gates "$$gates"')
             tm.that(body[capture:], lacks="--apply")
 
     @staticmethod
