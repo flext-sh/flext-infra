@@ -17,6 +17,74 @@ class FlextInfraUtilitiesRopeRuntimeBase:
     """Resolve Rope runtime attributes without importing Rope in leaf modules."""
 
     @classmethod
+    def require_class_object(
+        cls, value: p.AttributeProbe, label: str
+    ) -> p.Infra.RopeClassObject:
+        """Admit the actual SDK class and its consumed superclass capability.
+
+        Returns:
+            The original native class by reference.
+
+        Raises:
+            TypeError: The producer does not supply a native class contract.
+
+        """
+        if not isinstance(
+            value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass")
+        ) or not isinstance(value, p.Infra.RopeClassObject):
+            msg = f"expected a native Rope class: {label}"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
+    def require_source_object(
+        cls, value: p.AttributeProbe, label: str
+    ) -> p.Infra.RopeSourceObject:
+        """Admit source and scope capabilities only on native Python definitions.
+
+        Returns:
+            The original native definition by reference.
+
+        Raises:
+            TypeError: The producer does not supply a native source definition.
+
+        """
+        if not isinstance(
+            value,
+            tuple(
+                cls.runtime_type("rope.base.pyobjectsdef", kind)
+                for kind in ("PyClass", "PyFunction", "PyModule", "PyPackage")
+            ),
+        ) or not isinstance(value, p.Infra.RopeSourceObject):
+            msg = f"expected a native Rope source definition: {label}"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
+    def require_named_object(
+        cls, value: p.AttributeProbe, label: str
+    ) -> p.Infra.RopeNamedObject:
+        """Admit name queries only on actual native class, function or module owners.
+
+        Returns:
+            The original named native object by reference.
+
+        Raises:
+            TypeError: The producer does not supply a native named object.
+
+        """
+        if not isinstance(
+            value,
+            tuple(
+                cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, kind)
+                for kind in ("AbstractClass", "AbstractFunction", "AbstractModule")
+            ),
+        ) or not isinstance(value, p.Infra.RopeNamedObject):
+            msg = f"expected a named native Rope object: {label}"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
     def rope_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
         """Return the generic Rope exception boundary.
 

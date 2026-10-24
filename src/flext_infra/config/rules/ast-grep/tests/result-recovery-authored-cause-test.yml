@@ -1,9 +1,0 @@
-id: result-recovery-authored-cause
-valid:
-  - recover(layout, failure)
-  - recover(layout, r[bool].fail("destination conflict"))
-  - recover(layout, make_context())
-invalid:
-  - recover(layout, "destination conflict")
-  - |
-    recover(layout, "multiple generation phases own one destination: " f"{relative.value}")

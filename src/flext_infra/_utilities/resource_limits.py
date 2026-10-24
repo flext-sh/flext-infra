@@ -11,6 +11,7 @@ import platform
 import shutil
 import signal
 import sys
+import time
 from importlib import metadata
 from pathlib import Path
 from typing import ClassVar
@@ -18,10 +19,7 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, config, m, p, settings, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -225,7 +223,11 @@ class FlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     def project_cache_directory(project_dir: Path, cache_root: Path) -> Path:
-        """Namespace one declared cache by the real project's metadata.
+        """Namespace one declared cache by its physical project root.
+
+        Analyzer storage must not parse package metadata before the native tool
+        can diagnose its inputs. Physical roots also separate checkouts declaring
+        the same distribution name.
 
         Args:
             project_dir: The path to the project whose cache is being namespaced.
@@ -235,17 +237,12 @@ class FlextInfraUtilitiesResourceLimits:
         Returns:
             The resulting ``Path``.
 
-        Raises:
-            ValueError: If the project metadata cannot be read.
-
         """
-        metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
-            project_dir,
+        physical = project_dir.resolve(strict=True)
+        return (
+            cache_root
+            / hashlib.sha256(str(physical).encode(c.DEFAULT_ENCODING)).hexdigest()
         )
-        if metadata.failure:
-            msg = metadata.error or f"project metadata unreadable: {project_dir}"
-            raise ValueError(msg)
-        return cache_root / metadata.value.project.name
 
     @staticmethod
     def external_cache_directory(
@@ -298,6 +295,7 @@ class FlextInfraUtilitiesResourceLimits:
         )
         return (
             timeout_executable,
+            "--verbose",
             "--signal=TERM",
             f"--kill-after={c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s",
             f"{validated_limit.timeout_seconds}s",
@@ -327,34 +325,60 @@ class FlextInfraUtilitiesResourceLimits:
         )
         return timeout_seconds
 
+    @staticmethod
+    def mypy_runner_deadline(timeout: int) -> m.Cli.ProcessDeadline:
+        """Compose the runner deadline after the complete inner supervisor window.
+
+        Returns:
+            An explicit deadline preserving analysis and inner forced-kill grace.
+
+        """
+        return m.Cli.ProcessDeadline(
+            expires_at_monotonic=time.monotonic() + timeout,
+            termination_grace_seconds=(
+                c.Infra.MYPY_TIMEOUT_GRACE_SECONDS - c.Infra.TIMEOUT_KILL_AFTER_SECONDS
+            ),
+        )
+
     @classmethod
     def mypy_runner_timeout_for_project(cls, project_dir: Path) -> int:
-        """Runner timeout honoring the project ``config/tooling.yaml`` budget.
-
-        A project budget may only lower the fleet ``tools.mypy.timeout_seconds``
-        bound; a budget above it fails loud.
+        """Runner timeout honoring the same effective limit as the child.
 
         Returns:
             The resulting ``int``.
 
+        """
+        return cls.mypy_runner_timeout(cls.mypy_resource_limit_for_project(project_dir))
+
+    @classmethod
+    def mypy_resource_limit_for_project(
+        cls,
+        project_dir: Path,
+    ) -> m.Infra.MypyResourceLimit:
+        """Resolve a project budget without changing the fleet default.
+
+        Returns:
+            The effective validated memory and analysis-time limits.
+
         Raises:
-            ValueError: If project mypy budget.
+            ValueError: If the project exceeds the finite fleet ceiling.
 
         """
         limit = cls.mypy_resource_limit()
         budget = cls._project_mypy_budget(project_dir)
         if budget is not None:
-            if budget > limit.timeout_seconds:
+            ceiling = config.Infra.tooling.tools.mypy.max_timeout_seconds
+            if budget > ceiling:
                 msg = (
-                    f"project mypy budget {budget}s exceeds the fleet bound "
-                    f"tools.mypy.timeout_seconds={limit.timeout_seconds}s"
+                    f"project mypy budget {budget}s exceeds the fleet ceiling "
+                    f"tools.mypy.max_timeout_seconds={ceiling}s"
                 )
                 raise ValueError(msg)
             limit = m.Infra.MypyResourceLimit(
                 memory_limit_mb=limit.memory_limit_mb,
                 timeout_seconds=budget,
             )
-        return cls.mypy_runner_timeout(limit)
+        return limit
 
     @staticmethod
     def _project_mypy_budget(project_dir: Path) -> int | None:
@@ -466,9 +490,10 @@ class FlextInfraUtilitiesResourceLimits:
             return None
         detail = (
             "\n".join(
-                stream.strip()
+                line
                 for stream in (output.stdout, output.stderr)
-                if stream.strip()
+                for line in stream.splitlines()
+                if line.strip() and not line.startswith(("LOG:", "TRACE:"))
             )
             or "resource limit reached"
         )

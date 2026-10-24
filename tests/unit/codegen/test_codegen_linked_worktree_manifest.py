@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra import infra, m
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import tm, u
+from tests import c, tm, u
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use
@@ -68,7 +68,7 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=lane,
                 state=m.Infra.CodegenConformState(
                     repository_root=lane,

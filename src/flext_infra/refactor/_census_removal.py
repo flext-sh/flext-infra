@@ -10,14 +10,16 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraRefactorCensusRemovalMixin:
+class FlextInfraRefactorCensusRemovalMixin(
+    FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
+):
     """Preview and apply the inventory's removal candidates through gates.
 
     Removal of unreferenced objects is the census's own effect: it acts on
@@ -25,17 +27,14 @@ class FlextInfraRefactorCensusRemovalMixin:
     rule can see.
     """
 
-    if TYPE_CHECKING:
-        dry_run: bool
+    @property
+    def dry_run_gate_names(self) -> t.StrSequence:
+        """Per-candidate lint and Pyrefly gates.
 
-        @property
-        def fail_fast(self) -> bool: ...
-
-        @property
-        def root(self) -> Path: ...
-
-        @property
-        def dry_run_gate_names(self) -> t.StrSequence: ...
+        Transitive checkers consume regenerated exports, so candidate previews
+        validate the modified file before the publication normalizes exports.
+        """
+        return (c.Infra.LINT, c.Infra.PYREFLY)
 
     def _validated_project_reports(
         self,

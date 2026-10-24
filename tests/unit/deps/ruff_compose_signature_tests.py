@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
@@ -126,9 +127,23 @@ class TestsFlextInfraRuffProjectPolicy:
             analysis_exclusions=(),
         )
         actual = tm.not_none(u.Cli.toml_mapping_path(payload, ("tool", "ruff", "lint")))
-        tm.that(actual["ignore"], eq=sorted(owners))
-        tm.that(actual["select"], eq=sorted(lint.select))
-        tm.that(actual["unfixable"], eq=sorted(lint.unfixable))
+        tm.that(
+            actual["ignore"],
+            eq=sorted({
+                *owners,
+                *lint.ruling_disabled_rules,
+                *u.Infra.native_tool_setting(
+                    policy, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                ),
+            }),
+        )
+        for key in ("select", "unfixable"):
+            tm.that(
+                actual[key],
+                eq=u.Infra.native_tool_setting(
+                    policy, "ruff.lint", key, TypeForm(t.StrSequence)
+                ),
+            )
         tm.that(
             phase.apply_payload(
                 payload,
@@ -140,7 +155,7 @@ class TestsFlextInfraRuffProjectPolicy:
 
     @staticmethod
     def test_modernization_retires_all_rule_suppression_tables(tmp_path: Path) -> None:
-        """Retirement preserves full declared rules and converges without exemptions."""
+        """Remove per-file overrides while preserving the declared native policy."""
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(
                 '[project]\nname = "retired-exemptions"\n'
@@ -163,14 +178,19 @@ class TestsFlextInfraRuffProjectPolicy:
         ):
             tm.that(lint, lacks=retired)
         tm.that(
-            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+            lint["ignore"],
+            eq=sorted({
+                *config.Infra.tooling.tools.ruff.lint.rule_owners,
+                *config.Infra.tooling.tools.ruff.lint.ruling_disabled_rules,
+                *u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                ),
+            }),
         )
         tm.that(
             lint["select"],
-            eq=sorted(
-                u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff.lint", "select", list[str]
-                )
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff.lint", "select", TypeForm(t.StrSequence)
             ),
         )
         tm.that(
@@ -192,7 +212,11 @@ class TestsFlextInfraRuffProjectPolicy:
         surface: str,
     ) -> None:
         """The native owner sees formerly masked findings on every code root."""
-        project = u.Tests.mk_project(tmp_path, "native-policy")
+        project = u.Tests.mk_project(
+            tmp_path,
+            "native-policy",
+            pyproject='[project]\nname = "native-policy"\nversion = "0.0.0"\n',
+        )
         selected = project / surface / "selected.py"
         selected.parent.mkdir(parents=True, exist_ok=True)
         selected.write_text("import os\n", encoding="utf-8")
@@ -209,6 +233,12 @@ class TestsFlextInfraRuffProjectPolicy:
         (project / c.PYPROJECT_FILENAME).write_text(
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding="utf-8",
+        )
+        tm.that(
+            u.Tests.toml_table_at(
+                (project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), "project"
+            )["name"],
+            eq=project.name,
         )
         gate = FlextInfraRuffLintGate(tmp_path)
         context = m.Infra.GateContext(

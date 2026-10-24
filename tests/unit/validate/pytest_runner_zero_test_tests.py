@@ -6,20 +6,53 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import time
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
-from threading import Barrier
+from threading import Barrier, Event, Thread
 
 import pytest
+from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, u
+from flext_infra import config, m
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import t, tm
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
     """Preserve native empty-suite status and its typed accounting."""
+
+    @staticmethod
+    @contextmanager
+    def _held_elsewhere(lock: Path) -> Generator[None]:
+        """Hold the shared lock from another thread, as a concurrent run would.
+
+        The shared lock is reentrant within its holding thread, so contention
+        is only observable from a different thread or process.
+
+        Yields:
+            Control while the lock is held by the other thread.
+
+        """
+        acquired = Event()
+        release = Event()
+
+        def hold() -> None:
+            with u.Cli.file_changes_lock(lock):
+                acquired.set()
+                release.wait()
+
+        holder = Thread(target=hold)
+        holder.start()
+        acquired.wait()
+        try:
+            yield
+        finally:
+            release.set()
+            holder.join()
 
     @staticmethod
     def _zero_test_project(tmp_path: Path) -> Path:
@@ -42,7 +75,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         # marker registry exactly as generated projects do, so collection and
         # the runner's ownership check read the same declarations.
         pytest_settings = config.Infra.tooling.tools.pytest
-        (project_root / "pyproject.toml").write_text(
+        (project_root / c.PYPROJECT_FILENAME).write_text(
             u.Cli.toml_dumps(
                 u.Cli.toml_document_from_mapping({
                     "tool": {
@@ -54,7 +87,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                                         config.Infra.tooling,
                                         "pytest.ini_options",
                                         "python_files",
-                                        t.StrSequence,
+                                        TypeForm(t.StrSequence),
                                     ),
                                 ),
                                 "markers": list(pytest_settings.standard_markers),
@@ -152,9 +185,10 @@ class TestsFlextInfraPytestRunnerZeroTest:
             elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
 
+        lock = runner.testmon_db.with_name(f"{runner.testmon_db.name}.lock")
         with (
-            u.Infra.codegen_transaction_lease(runner.testmon_db),
-            pytest.raises(TimeoutError, match="held elsewhere"),
+            self._held_elsewhere(lock),
+            pytest.raises(TimeoutError, match=re.escape(str(lock))),
         ):
             runner.execute()
 
@@ -189,11 +223,10 @@ class TestsFlextInfraPytestRunnerZeroTest:
         latest = reports / "latest.txt"
         tm.ok(u.Cli.atomic_write_text_file(latest, "previous-run\n"))
         lock = latest.with_name(f"{latest.name}.lock")
-        with u.Infra.codegen_transaction_lease(latest):
+        with self._held_elsewhere(lock):
             before = lock.stat()
-            with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
+            with pytest.raises(TimeoutError, match=re.escape(str(lock))):
                 runner.execute()
-            tm.that(failure.value.lock_file, eq=str(lock))
             receipts = tuple(reports.glob("*/run-context.json"))
             tm.that(len(receipts), eq=1)
             context = m.Infra.PytestRunContext.model_validate_json(
@@ -208,7 +241,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 tuple(path.name for path in receipts[0].parent.iterdir()),
                 eq=("run-context.json",),
             )
-        with u.Infra.codegen_transaction_lease(latest, wait_seconds=0.0):
+        with u.Cli.file_changes_lock(lock).acquire(timeout=0.0):
             after = lock.stat()
             tm.that(
                 (after.st_dev, after.st_ino),
@@ -220,7 +253,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """Contenders publish unique contexts and one valid pointer before cache wait."""
+        """Contenders publish unique contexts before waiting for the shared cache."""
         project = self._zero_test_project(tmp_path)
         policy = config.Infra.tooling.tools.pytest
         runners = tuple(
@@ -239,17 +272,16 @@ class TestsFlextInfraPytestRunnerZeroTest:
             f"{runners[0].testmon_db.name}.lock",
         )
         pointer_lock = latest.with_name(f"{latest.name}.lock")
-        with u.Infra.codegen_transaction_lease(latest):
+        with u.Cli.file_changes_lock(pointer_lock):
             pointer_before = pointer_lock.stat()
         start = Barrier(len(runners))
 
         def contend(runner: FlextInfraPytestRunner) -> None:
             start.wait(timeout=policy.run_timeout_seconds)
-            with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
+            with pytest.raises(TimeoutError, match=re.escape(str(cache_lock))):
                 runner.execute()
-            tm.that(failure.value.lock_file, eq=str(cache_lock))
 
-        with u.Infra.codegen_transaction_lease(runners[0].testmon_db):
+        with u.Cli.file_changes_lock(cache_lock):
             cache_before = cache_lock.stat()
             with ThreadPoolExecutor(max_workers=len(runners)) as executor:
                 tuple(executor.map(contend, runners))
@@ -351,9 +383,14 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """Full execution preserves an empty incremental prerequisite's native status."""
+        """One bounded full execution preserves the native empty-suite status.
+
+        FULL derives its inventory from the suite's single collection and must
+        execute a nonempty inventory, so an empty project keeps pytest's
+        native status without a selection plan or promoted accounting.
+        """
         project = self._zero_test_project(tmp_path)
-        runner = self._runner(project, tmp_path).model_copy(update={"unbounded": True})
+        runner = self._runner(project, tmp_path)
 
         outcome = tm.ok(runner.execute_full())
 
@@ -364,24 +401,24 @@ class TestsFlextInfraPytestRunnerZeroTest:
         context = m.Infra.PytestRunContext.model_validate_json(
             self._read(report_dir / "run-context.json"),
         )
-        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.INCREMENTAL)
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(context.testmon_db, eq=runner.testmon_db)
         tm.that(context.testmon_lease_acquired, eq=True)
-        tm.that(context.deadline_monotonic, none=True)
+        tm.that(
+            context.deadline_monotonic,
+            eq=runner.started_at_monotonic
+            + config.Infra.tooling.tools.pytest.run_timeout_seconds,
+        )
         tm.that(len(tuple(reports_root.glob("*/run-context.json"))), eq=1)
         suite = m.Cli.ProcessOutcome.model_validate_json(
             self._read(report_dir / "suite-outcome.json"),
         )
         tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            self._read(report_dir / "run-accounting.json"),
-        )
-        tm.ok(accounting.owns_no_tests)
-        tm.that(accounting.executed_count, eq=0)
-        tm.that(
-            self._read(report_dir / "summary.txt"),
-            has=["outcome=failed\n", f"exit={outcome}\n"],
-        )
+        for promoted in ("selection-plan.json", "run-accounting.json"):
+            tm.fail((report_dir / promoted).exists())
+        summary = self._read(report_dir / "summary.txt").splitlines()
+        tm.that(summary, has=["phase=suite", f"exit={outcome}"])
+        tm.that(summary, lacks="outcome=passed")
 
     @pytest.mark.slow
     def test_slow_only_declared_file_executes_its_slow_items(
@@ -415,6 +452,83 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.fail(plan.owns_no_tests)
 
+    @staticmethod
+    @pytest.mark.slow
+    def test_conftest_import_failure_preserves_native_startup_status(
+        cached_runner_project: Path,
+    ) -> None:
+        """A failed real conftest import retains status without inventing a suite."""
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        proof = cached_runner_project / "suite-executed.txt"
+        (cached_runner_project / runner.target / "test_runtime.py").write_text(
+            "from pathlib import Path\n\n"
+            "def test_runtime() -> None:\n"
+            f"    Path({str(proof)!r}).write_text('executed', encoding='utf-8')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (cached_runner_project / "conftest.py").write_text(
+            "from runner_sample import missing_startup_dependency\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        status = tm.ok(runner.execute_full())
+
+        tm.that(status, eq=pytest.ExitCode.USAGE_ERROR.value)
+        (context_path,) = (cached_runner_project / runner.reports).glob(
+            "*/run-context.json",
+        )
+        report_dir = context_path.parent
+        context = m.Infra.PytestRunContext.model_validate_json(
+            context_path.read_bytes(),
+        )
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that(
+            context.deadline_monotonic,
+            eq=runner.started_at_monotonic
+            + config.Infra.tooling.tools.pytest.run_timeout_seconds,
+        )
+        # FULL has no separate inventory phase: its one suite collection owns
+        # the startup failure, the raw log and the native outcome.
+        for phase in ("inventory", "selection"):
+            tm.fail((report_dir / f"{phase}-outcome.json").exists())
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            (report_dir / "suite-outcome.json").read_bytes(),
+        )
+        tm.that(outcome.raw_return_code, eq=status)
+        tm.fail(outcome.timed_out)
+        tm.that(outcome.forwarded_signal, none=True)
+        raw_log = report_dir / "pytest.log"
+        tm.that(
+            raw_log.read_text(encoding=c.DEFAULT_ENCODING),
+            has=["ImportError", "missing_startup_dependency"],
+        )
+        summary = (report_dir / "summary.txt").read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            summary.splitlines(),
+            has=[
+                "phase=suite",
+                "inventory_complete=false",
+                "diagnostics=not_produced",
+                f"exit={status}",
+                f"raw_log={raw_log}",
+            ],
+        )
+        tm.that(summary, lacks="collection_errors=0")
+        report_log = report_dir / "events.jsonl"
+        warning_log = report_log.with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
+        for missing_report in (report_log, warning_log):
+            tm.fail(missing_report.exists())
+            tm.that(summary.splitlines(), has=f"missing_report={missing_report}")
+        tm.fail(proof.exists())
+        for absent_artifact in (
+            "junit.xml",
+            "run-accounting.json",
+            "selection-plan.json",
+        ):
+            tm.fail((report_dir / absent_artifact).exists())
+
     @pytest.mark.slow
     def test_target_file_collection_failure_stays_red(
         self,
@@ -424,14 +538,52 @@ class TestsFlextInfraPytestRunnerZeroTest:
         project = self._zero_test_project(tmp_path)
         cache = config.Infra.codegen.make.testmon_cache
         relative = Path(cache.target_directory) / "test_broken.py"
+        proof = project / "broken-suite-executed.txt"
         (project / relative).write_text(
             "import not_a_real_collection_module\n\n"
-            "def test_broken() -> None:\n    assert True\n",
+            "from pathlib import Path\n\n"
+            "def test_broken() -> None:\n"
+            f"    Path({str(proof)!r}).write_text('executed', encoding='utf-8')\n",
             encoding="utf-8",
         )
+        runner = self._runner(project, tmp_path, target_file=relative)
 
-        with pytest.raises(RuntimeError, match="testmon selection failed"):
-            self._runner(project, tmp_path, target_file=relative).execute()
+        status = tm.ok(runner.execute())
+
+        tm.that(status, eq=pytest.ExitCode.INTERRUPTED.value)
+        summary = self._latest_summary(project / runner.reports)
+        report_dir = summary.parent
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            self._read(report_dir / "inventory-outcome.json"),
+        )
+        tm.that(outcome.raw_return_code, eq=status)
+        tm.fail(outcome.timed_out)
+        tm.that(outcome.forwarded_signal, none=True)
+        diagnostics = m.Infra.PytestDiagnostics.model_validate_json(
+            self._read(report_dir / "diagnostics.json"),
+        )
+        tm.that(
+            set(diagnostics.collection_failed_cases),
+            eq={relative.as_posix()},
+        )
+        tm.that(diagnostics.collection_failed_count, gt=0)
+        tm.that(diagnostics.reported_node_ids, eq=())
+        tm.that(
+            self._read(summary),
+            has=[
+                "outcome=collection_failed\n",
+                "suite=not_executed\n",
+                f"exit={status}\n",
+            ],
+        )
+        tm.that(
+            self._read(report_dir / "testmon-inventory.log"),
+            has="not_a_real_collection_module",
+        )
+        tm.fail(proof.exists())
+        tm.fail((report_dir / "suite-outcome.json").exists())
+        tm.fail((report_dir / "junit.xml").exists())
+        tm.fail((report_dir / "run-accounting.json").exists())
 
     @pytest.mark.slow
     def test_target_file_failure_stays_red(self, tmp_path: Path) -> None:

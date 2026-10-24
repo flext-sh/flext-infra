@@ -8,16 +8,15 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from typing_extensions import TypeForm
 
-from flext_infra import c, m, main
+from flext_infra import main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
-from tests import t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraModRuleFixtureSnapshots:
@@ -129,68 +128,6 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(sorted(names), eq=sorted(expected))
             tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    @pytest.mark.slow
-    def test_failure_transport_uses_resolved_inherited_owner(
-        self, tmp_path: Path
-    ) -> None:
-        """The native root guard admits inherited recovery, not foreign homonyms."""
-        u.Tests.WorktreeFixture.write_python_project(tmp_path, "failure-transport")
-        self._owner(tmp_path)
-        owner = Path(__file__).resolve().parents[3]
-        source_catalog = self._source_catalog(owner)
-        rule = source_catalog / "rules" / "result-failure-rebind.yml"
-        plan = tm.ok(u.Infra.codemod_rule_plan(owner))
-        selected = tuple(item.id for item in plan.rules if item.resource == rule)
-        u.Tests.provision_checkout(tmp_path)
-        sample = tmp_path / "src" / "consumer.py"
-        source = (
-            "from flext_infra import p\n"
-            "from flext_infra.codegen import FlextInfraCodegenTransaction\n"
-            "class Consumer(FlextInfraCodegenTransaction):\n"
-            "    def accept(self, layout, result: p.Result[bool]):\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure(layout, "
-            "result.error or 'context', "
-            "exception=result.exception, error_code=result.error_code, "
-            "error_data=result.error_data)\n"
-            "    def unstable(self, layout, result, other):\n"
-            "        if result.failure:\n"
-            "            result = other\n"
-            "            return self._recover_failure("
-            "layout, result.error or 'context')\n"
-            "    def effectful(self, layout, result, context):\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure("
-            "layout, result.error or context())\n"
-            "    def getter(self, layout):\n"
-            "        if self.result.failure:\n"
-            "            return self._recover_failure("
-            "layout, self.result.error or 'context')\n"
-            "    def rebound(self, layout, result, other):\n"
-            "        self = other\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure("
-            "layout, result.error or 'context')\n"
-            "class Foreign:\n"
-            "    def _recover_failure(self, layout, text, **kwargs):\n"
-            "        return text\n"
-            "    def accept(self, layout, result):\n"
-            "        if result.failure:\n"
-            "            return self._recover_failure("
-            "layout, result.error or 'context')\n"
-        )
-        tm.ok(u.Cli.atomic_write_text_file(sample, source))
-        report = tm.ok(
-            FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=selected)
-        )
-        tm.that(len(report.entries), eq=1)
-        finding = report.entries[0]
-        tm.that(finding.file, eq=sample.relative_to(tmp_path))
-        tm.that(
-            tm.not_none(finding.replacement), has="context=result.error or 'context'"
-        )
-        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-
     @pytest.mark.parametrize("relative_catalog", ["policy", "nested/native/policy"])
     def test_native_snapshots_follow_declared_catalog_root(
         self,
@@ -218,16 +155,66 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         tm.that(changes, eq=(f"created {snapshot}",))
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
-        snapshots = tm.ok(u.Cli.yaml_safe_load(snapshot))["snapshots"]
-        tm.that(isinstance(snapshots, Mapping), truth=True)
+        snapshots = self._snapshots(snapshot)
         for source, projection in snapshots.items():
-            tm.that(isinstance(source, str), truth=True)
-            tm.that(isinstance(projection, Mapping), truth=True)
-            fixed = projection["fixed"]
-            tm.that(isinstance(fixed, str), truth=True)
+            fixed = tm.instance(projection["fixed"], str)
             _ = ast.parse(source)
             _ = ast.parse(fixed)
         tm.fail((tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH).exists())
+
+    @pytest.mark.parametrize(
+        "rule_id",
+        [
+            "rewire-test-assert-truth",
+            "rewire-test-assert-falsity",
+            "rewire-test-assert-not-none-message",
+            "rewire-test-assert-instance-message",
+        ],
+    )
+    @pytest.mark.parametrize("value", [1, None])
+    def test_assert_snapshot_preserves_native_guard_execution(
+        self, rule_id: str, value: int | None
+    ) -> None:
+        """Run native snapshots without rebinding globals or repeating truth."""
+        owner = Path(__file__).resolve().parents[3]
+        snapshot_path = (
+            self._source_catalog(owner)
+            / "tests"
+            / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
+            / f"{rule_id}{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"
+        )
+        source, snapshot = next(
+            (source, snapshot)
+            for source, snapshot in self._snapshots(snapshot_path).items()
+            if "def check():" in source
+        )
+        rewritten = u.type_adapter(str).validate_python(snapshot["fixed"], strict=True)
+        source = source.replace("value = 1", f"value = {value!r}")
+        rewritten = rewritten.replace("value = 1", f"value = {value!r}")
+        prefix = (
+            "events = []\n"
+            "class Verdict:\n"
+            "    def __bool__(self):\n"
+            "        events.append('truth')\n        return True\n"
+            "def verdict():\n    return Verdict()\n"
+            "def unexpected():\n    events.append('unexpected')\n    return False\n"
+            "def explain():\n    events.append('message')\n    return events\n"
+        )
+        suffix = (
+            "\ntry:\n    check()\n"
+            "except AssertionError as error:\n"
+            "    print(('assertion', events, bool(error.args), "
+            "bool(error.args) and error.args[0] is events))\n"
+            "else:\n    print(('ok', events))\n"
+        )
+        original = tm.ok(
+            u.Cli.run_raw((sys.executable, "-c", prefix + source + suffix))
+        )
+        converted = tm.ok(
+            u.Cli.run_raw((sys.executable, "-c", prefix + rewritten + suffix))
+        )
+        tm.that(converted.stdout, eq=original.stdout)
+        tm.that(converted.stderr, eq=original.stderr)
 
     @pytest.mark.slow
     def test_contract_review_fixtures_preserve_assertions_and_syntax(
@@ -262,16 +249,11 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (demo, rule)))
         u.Tests.provision_checkout(tmp_path)
-        snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
-            "snapshots"
-        ]
-        tm.that(isinstance(snapshots, Mapping), truth=True)
+        snapshots = self._snapshots(self._snapshot(tmp_path, rule_id))
         tests = tmp_path / "tests"
         tm.ok(u.Cli.ensure_dir(tests))
         sample = tests / "test_consumer.py"
         for source, snapshot in snapshots.items():
-            tm.that(isinstance(source, str), truth=True)
-            tm.that(isinstance(snapshot, Mapping), truth=True)
             tm.fail("fixed" in snapshot)
             _ = ast.parse(source)
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
@@ -373,29 +355,13 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         self,
         tmp_path: Path,
         operator: str,
+        *,
         verdict: bool,
     ) -> None:
         """Native apply preserves non-complementary operators and lazy messages."""
         u.Tests.WorktreeFixture.write_python_project(tmp_path, "assertion-fixture")
         self._owner(tmp_path)
         u.Tests.provision_checkout(tmp_path)
-        original = (
-            f"from flext_tests import tm\nassert left() {operator} right(), explain()\n"
-        )
-        sample = tmp_path / c.Infra.DIR_TESTS / "test_consumer.py"
-        tm.ok(u.Cli.ensure_dir(sample.parent))
-        tm.ok(u.Cli.atomic_write_text_file(sample, original))
-        tm.ok(
-            FlextInfraModGateEngine.scan(
-                tmp_path,
-                fix=True,
-                source_files=(sample,),
-            ),
-        )
-        fixed = sample.read_text(encoding=c.DEFAULT_ENCODING)
-        expected_events = ["left", "right", operator, "truth"]
-        if not verdict:
-            expected_events.append("message")
         setup = (
             "from flext_tests import tm\n"
             f"verdict = {verdict!r}\nevents = []\npayload = ('failure',)\n"
@@ -411,10 +377,24 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "def right():\n    events.append('right')\n    return Probe()\n"
             "def explain():\n    events.append('message')\n    return payload\n"
         )
+        original = setup + f"assert left() {operator} right(), explain()\n"
+        sample = tmp_path / c.Infra.DIR_TESTS / "test_consumer.py"
+        tm.ok(u.Cli.ensure_dir(sample.parent))
+        tm.ok(u.Cli.atomic_write_text_file(sample, original))
+        tm.ok(
+            FlextInfraModGateEngine.scan(
+                tmp_path,
+                fix=True,
+                source_files=(sample,),
+            ),
+        )
+        fixed = sample.read_text(encoding=c.DEFAULT_ENCODING)
+        expected_events = ["left", "right", operator, "truth"]
+        if not verdict:
+            expected_events.append("message")
         for candidate in (original, fixed):
             source = (
-                setup
-                + "try:\n"
+                "try:\n"
                 + "".join(f"    {line}\n" for line in candidate.splitlines())
                 + "except AssertionError as error:\n"
                 "    tm.that(verdict, truth=False)\n"
@@ -426,7 +406,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(outcome.exit_code, eq=0, msg=outcome.stderr)
             tm.that(outcome.stderr, eq="")
 
-    @pytest.mark.parametrize("collection", ["dict", "list"])
+    @pytest.mark.parametrize("collection", ["dict", c.Action.LIST])
     def test_typing_collection_fixes_preserve_runtime_values(
         self,
         tmp_path: Path,
@@ -490,15 +470,10 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             ),
         )
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, rules))
-        snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
-            "snapshots"
-        ]
-        tm.that(isinstance(snapshots, Mapping), truth=True)
+        snapshots = self._snapshots(self._snapshot(tmp_path, rule_id))
         runtime_consumers = 0
         for snapshot in snapshots.values():
-            tm.that(isinstance(snapshot, Mapping), truth=True)
-            fixed = snapshot["fixed"]
-            tm.that(isinstance(fixed, str), truth=True)
+            fixed = tm.instance(snapshot["fixed"], str)
             _ = ast.parse(fixed)
             if "class Payload(m.ArbitraryTypesModel):" in fixed:
                 outcome = tm.ok(u.Cli.run_raw((sys.executable, "-c", fixed)))
@@ -567,15 +542,10 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 ),
             )
             if expect_fix:
-                snapshots = tm.ok(
-                    u.Cli.yaml_safe_load(self._snapshot(root, rule_id)),
-                )["snapshots"]
-                tm.that(isinstance(snapshots, Mapping), truth=True)
+                snapshots = self._snapshots(self._snapshot(root, rule_id))
                 tm.that(len(snapshots), eq=1)
                 snapshot = next(iter(snapshots.values()))
-                tm.that(isinstance(snapshot, Mapping), truth=True)
-                fixed = snapshot["fixed"]
-                tm.that(isinstance(fixed, str), truth=True)
+                fixed = tm.instance(snapshot["fixed"], str)
                 source = fixed
             _ = ast.parse(source)
             staged.append((root, demo, rule, rule_id))
@@ -604,17 +574,16 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tmp_path: Path,
     ) -> None:
         """Run the owned rules against the live initializer and consumer fixtures."""
-        demo = self._owner(tmp_path)
+        rules = [self._owner(tmp_path)]
         tm.ok(
             FlextInfraModGateEngine.refresh_rule_snapshots(
                 tmp_path,
-                (demo,),
+                tuple(rules),
                 apply=True,
             ),
         )
         owner = Path(__file__).resolve().parents[3]
         catalog = self._source_catalog(owner)
-        rules = [demo]
         for filename in (
             "remove-project-managed-artifacts-private-import",
             "rewire-project-managed-artifacts",
@@ -654,26 +623,26 @@ class TestsFlextInfraModRuleFixtureSnapshots:
 
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, tuple(rules)))
         for rule in rules[1:]:
-            rule_id = tm.ok(u.Cli.yaml_safe_load(rule))["id"]
-            tm.that(isinstance(rule_id, str), truth=True)
-            cases = tm.ok(
-                u.Cli.yaml_safe_load(
-                    self._catalog(tmp_path) / "tests" / f"{rule_id}-test.yml",
+            document = u.type_adapter(TypeForm(t.JsonMapping)).validate_python(
+                tm.ok(u.Cli.yaml_safe_load(rule)),
+            )
+            rule_id = tm.instance(document["id"], str)
+            document = u.type_adapter(TypeForm(t.JsonMapping)).validate_python(
+                tm.ok(
+                    u.Cli.yaml_safe_load(
+                        self._catalog(tmp_path) / "tests" / f"{rule_id}-test.yml",
+                    )
                 ),
-            )["valid"]
-            tm.that(isinstance(cases, list), truth=True)
+            )
+            cases = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
+                document["valid"],
+            )
             for source in cases:
-                tm.that(isinstance(source, str), truth=True)
                 _ = ast.parse(source)
-            snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
-                "snapshots"
-            ]
-            tm.that(isinstance(snapshots, Mapping), truth=True)
+            snapshots = self._snapshots(self._snapshot(tmp_path, rule_id))
             fixed_cases = ""
             for snapshot in snapshots.values():
-                tm.that(isinstance(snapshot, Mapping), truth=True)
-                fixed = snapshot["fixed"]
-                tm.that(isinstance(fixed, str), truth=True)
+                fixed = tm.instance(snapshot["fixed"], str)
                 _ = ast.parse(fixed)
                 fixed_cases += "  - |\n" + "".join(
                     f"    {line}\n" for line in fixed.splitlines()
@@ -689,6 +658,18 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 ),
             )
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, tuple(rules)))
+
+    @staticmethod
+    def _snapshots(path: Path) -> t.MappingKV[str, t.JsonMapping]:
+        """Validate one native snapshot document at its input boundary.
+
+        Returns:
+            Native source cases with their complete snapshot metadata.
+
+        """
+        return m.Tests.AstGrepFixtureSnapshots.model_validate(
+            tm.ok(u.Cli.yaml_safe_load(path)),
+        ).snapshots
 
     @staticmethod
     def _source_catalog(root: Path) -> Path:
@@ -807,8 +788,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         project = u.Tests.toml_table_at(
             pyproject.read_text(encoding=c.DEFAULT_ENCODING), "project"
         )
-        version = project["version"]
-        tm.that(isinstance(version, str), truth=True)
+        version = tm.instance(project["version"], str)
         dependencies = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
             project["dependencies"],
         )

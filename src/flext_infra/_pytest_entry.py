@@ -7,9 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+import traceback
 from pathlib import Path
 
 import flext_infra
+from flext_infra import settings
 from flext_infra._pytest_clock import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
@@ -21,14 +23,14 @@ class FlextInfraPytestEntry:
     def main(cls) -> int:
         """Parse the Make boundary and return the exact child process status.
 
-        ``full`` runs incremental then complete testmon execution. ``coverage``
+        ``full`` runs one complete testmon execution. ``coverage``
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
-        only, as its own bounded process outside the budgeted clock. The
-        ``file`` runs the complete declared target once without a
-        deadline, including slow items. ``file-slow`` retains its bounded
-        incremental operation. Both require Make to export the single-file target.
-        ``full-slow`` runs the full slow phase without the incremental budget.
+        only, as its own process with an aggregate operation deadline. The
+        ``file`` runs the complete declared target once within the shared
+        deadline, including slow items. ``file-slow`` retains its incremental
+        operation. Both require Make to export the single-file target.
+        ``full-slow`` runs the full slow phase under the same operation budget.
 
         Returns:
             The resulting ``int``.
@@ -52,14 +54,28 @@ class FlextInfraPytestEntry:
                     profile=profiler,
                 )
             finally:
-                profiler.disable()
+                primary = sys.exception()
+                try:
+                    profiler.disable()
+                except BaseException as cleanup_failure:
+                    if primary is None or (
+                        isinstance(primary, SystemExit)
+                        and (primary.code is None or primary.code == 0)
+                    ):
+                        raise
+                    primary.add_note(
+                        "profile stop failed:\n"
+                        + "".join(
+                            traceback.format_exception(cleanup_failure, chain=False)
+                        )
+                    )
             return status
 
         slow_phase = mode in {"slow", "full-slow", "file-slow"}
         runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
+            profile_enabled=settings.Infra.profile,
             slow_phase=slow_phase,
-            unbounded=mode in {"full", "full-slow", "file"},
         )
         if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (

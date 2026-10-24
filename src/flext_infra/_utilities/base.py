@@ -11,7 +11,7 @@ import re
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import c, m, t
 from flext_infra._settings import FlextInfraSettings
@@ -318,7 +318,7 @@ class FlextInfraUtilitiesBase:
                 for line in raw_document.splitlines()
             ):
                 continue
-            parsed = cli_u.Cli.yaml_parse(raw_document).unwrap()
+            parsed = u.Cli.yaml_parse(raw_document).unwrap()
             rule_id = parsed.get("id")
             if not isinstance(rule_id, str) or not rule_id:
                 msg = f"ast-grep rule document missing required id: {rule_path}"

@@ -32,7 +32,7 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
         child_source = tmp_path / "child-source"
         child_source.mkdir()
         (child_source / "README.md").write_text("child\n", encoding="utf-8")
-        (child_source / "pyproject.toml").write_text(
+        (child_source / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "child"\nversion = "0.1.0"\n'
             'description = "Attached child fixture"\n',
             encoding="utf-8",

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, config, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import m, t
 
 
 class FlextInfraMarkdownCodeSources:
@@ -54,6 +54,25 @@ class FlextInfraMarkdownCodeSources:
         )
 
     @staticmethod
+    def formattable_fences(
+        content: str,
+        origin: Path,
+    ) -> t.VariadicTuple[t.Pair[int, m.Cli.MarkdownFence]]:
+        """Index governed ``python`` fences and keep those that compile.
+
+        Returns:
+            The ``(index, fence)`` pairs; the index counts every governed fence.
+
+        """
+        return tuple(
+            (index, fence)
+            for index, fence in enumerate(
+                filter(u.Infra.docs_is_python_fence, u.Cli.markdown_fences(content)),
+            )
+            if not FlextInfraMarkdownCodeSources.syntax_broken(fence.code, origin)
+        )
+
+    @staticmethod
     def fenced_block_sources(
         project_dir: Path,
         markdown_files: t.SequenceOf[Path],
@@ -72,19 +91,17 @@ class FlextInfraMarkdownCodeSources:
         for md_path in markdown_files:
             relative_posix = md_path.relative_to(project_dir).as_posix()
             content = md_path.read_text(c.DEFAULT_ENCODING)
-            for index, match in enumerate(
-                match
-                for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
-                if c.Infra.MARKDOWN_CODE_SKIP_MARKER not in match.group("info")
-            ):
-                source_text = match.group("code")
-                if FlextInfraMarkdownCodeSources.syntax_broken(source_text, md_path):
-                    continue
-                collected.append((
+            collected.extend(
+                (
                     FlextInfraMarkdownCodeSources.source_name(relative_posix, index),
-                    source_text,
-                    (relative_posix, content[: match.start()].count("\n") + 1),
-                ))
+                    fence.code,
+                    (relative_posix, fence.opening_line),
+                )
+                for index, fence in FlextInfraMarkdownCodeSources.formattable_fences(
+                    content,
+                    md_path,
+                )
+            )
         return tuple(collected)
 
     @staticmethod

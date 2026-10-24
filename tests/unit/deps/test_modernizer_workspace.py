@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from tomlkit.exceptions import ParseError
+from typing_extensions import TypeForm
 
 from flext_infra import config, main
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -56,17 +58,17 @@ class TestsFlextInfraDepsModernizerWorkspace:
         formatted = tm.ok(
             formatter(
                 source,
-                path=tmp_path / "first" / "pyproject.toml",
+                path=tmp_path / "first" / c.PYPROJECT_FILENAME,
                 toolchain_root=tmp_path,
                 taplo_version=taplo_version,
                 process_timeout_seconds=process_timeout_seconds,
             ),
         )
-        config_path.write_text('include = ["pyproject.toml"]\n', encoding="utf-8")
+        config_path.write_text("include = [ c.PYPROJECT_FILENAME]\n", encoding="utf-8")
         reformatted = tm.ok(
             formatter(
                 source,
-                path=tmp_path / "first" / "pyproject.toml",
+                path=tmp_path / "first" / c.PYPROJECT_FILENAME,
                 toolchain_root=tmp_path,
                 taplo_version=taplo_version,
                 process_timeout_seconds=process_timeout_seconds,
@@ -88,7 +90,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         formatted = tm.ok(
             u.Infra.format_toml_source(
                 'name="demo"\n',
-                path=future_root / "pyproject.toml",
+                path=future_root / c.PYPROJECT_FILENAME,
                 toolchain_root=future_root,
                 taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
                 process_timeout_seconds=(
@@ -102,18 +104,13 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(formatted, eq='name = "demo"\n')
 
     @staticmethod
-    def test_taplo_formats_without_a_committed_lock(tmp_path: Path) -> None:
-        """A declared toolchain formats even when no mise.lock exists yet.
-
-        Premise (operator-ruling-2026-10-09-setup-resilient): a missing or
-        outdated lock never stops a verb; ``make audit`` reports the lock and
-        ``make upg`` writes it.
-        """
+    def test_taplo_refuses_to_format_without_a_committed_lock(tmp_path: Path) -> None:
+        """Generation stays offline: an unpinned toolchain fails and names ``upg``."""
         u.Tests.copy_tracked_mise_seeds(tmp_path)
         (tmp_path / c.Infra.MISE_LOCK_FILENAME).unlink()
         formatted = u.Infra.format_toml_source(
             'name="demo"\n',
-            path=tmp_path / "pyproject.toml",
+            path=tmp_path / c.PYPROJECT_FILENAME,
             toolchain_root=tmp_path,
             taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
             process_timeout_seconds=(
@@ -121,7 +118,8 @@ class TestsFlextInfraDepsModernizerWorkspace:
             ),
         )
 
-        tm.that(tm.ok(formatted), eq='name = "demo"\n')
+        tm.fail(formatted)
+        tm.that(formatted.error or "", has="make upg")
         tm.fail((tmp_path / c.Infra.MISE_LOCK_FILENAME).exists())
 
     @staticmethod
@@ -129,7 +127,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
         ("content", "exists", "expected"),
         [
             pytest.param('key = "value"\n', True, True, id="valid"),
-            pytest.param("invalid toml content [[[", True, False, id="invalid"),
             pytest.param("", False, False, id="missing"),
         ],
     )
@@ -147,11 +144,15 @@ class TestsFlextInfraDepsModernizerWorkspace:
         with u.structlog().testing.capture_logs() as log_entries:
             result = u.Cli.toml_read(toml_file)
         tm.that(result is not None, eq=expected)
-        if exists and not expected:
-            tm.that(log_entries, len=1)
-            tm.that(log_entries[0].get("log_level"), eq="warning")
-        else:
-            tm.that(log_entries, empty=True)
+        tm.that(log_entries, empty=True)
+
+    @staticmethod
+    def test_toml_read_propagates_native_parse_errors(tmp_path: Path) -> None:
+        """An existing but invalid document raises the native parse error."""
+        toml_file = tmp_path / "test.toml"
+        toml_file.write_text("invalid toml content [[[", encoding="utf-8")
+        with pytest.raises(ParseError):
+            u.Cli.toml_read(toml_file)
 
     @staticmethod
     def test_repository_root_returns_explicit_path(tmp_path: Path) -> None:
@@ -201,7 +202,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         package_init.write_text("", encoding="utf-8")
         expected_order = (
             u.Infra.native_tool_setting(
-                config.Infra.tooling, "tomlsort", "sort_first", t.StrSequence
+                config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
             )
             if sort_first is None
             else sort_first

@@ -7,10 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from functools import cache
 from pathlib import Path
 from time import monotonic
+from types import MappingProxyType
 from typing import Literal
 
+import flext_core
 from flext_cli import settings, u
 
 from flext_infra import c, config, m, p, t
@@ -18,6 +21,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -69,7 +73,7 @@ class FlextInfraUtilitiesImportLaw:
         """Return the module-level statement binding each top-level name.
 
         Returns:
-            The first declaring statement for each module-level name.
+            The last declaring statement for each module-level name.
 
         """
         bindings: t.MutableMappingKV[str, ast.stmt] = {}
@@ -96,7 +100,7 @@ class FlextInfraUtilitiesImportLaw:
                 case _:
                     pass
             for bound in names:
-                bindings.setdefault(bound, statement)
+                bindings[bound] = statement
         return bindings
 
     @classmethod
@@ -118,7 +122,7 @@ class FlextInfraUtilitiesImportLaw:
         directory = cls.import_package_dir(scope.project_root, module, sources=sources)
         if directory is not None:
             return cls._declared_subpackage_source(scope, module, name, sources=sources)
-        if not package or module == scope.module:
+        if not package or scope.module in {module, package}:
             return None
         if (
             cls.import_lazy_exports(scope.project_root, module, sources=sources)
@@ -409,12 +413,7 @@ class FlextInfraUtilitiesImportLaw:
             binding = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
                 project, qualified
             )
-        if binding.get_object().get_kind() not in {
-            "function",
-            "method",
-            "staticmethod",
-            "classmethod",
-        }:
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(binding.get_object()):
             return None
         holder, line = binding.get_definition_location()
         if holder is None or line is None:
@@ -779,12 +778,44 @@ class FlextInfraUtilitiesImportLaw:
             return None
         namespace_dir = base / namespace_name
         init = namespace_dir / c.Infra.INIT_PY
-        if not (init.is_file() if sources is None else init in sources):
+        declared_namespace = (
+            base == root
+            and namespace_name
+            in FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(root)
+        )
+        if not declared_namespace and not (
+            init.is_file() if sources is None else init in sources
+        ):
             return None
         parts = relative.with_suffix("").parts
         if parts[-1] == "__init__":
             parts = parts[:-1]
         return namespace_dir, ".".join(parts)
+
+    @staticmethod
+    @cache
+    def _layer_alias_modules() -> t.MappingKV[str, str]:
+        """Derive the module stem of every declared layer alias.
+
+        The core package binds each ``layer-aliases`` entry to a class; that
+        class's module stem (and its private ``_<module>/`` package) ranks at
+        the alias's declared layer. No module is listed here.
+
+        Returns:
+            The module stem of each alias mapped to the layer it ranks at.
+
+        Raises:
+            TypeError: If the core package binds an alias to no class.
+
+        """
+        modules: dict[str, str] = {}
+        for alias, layer in config.Infra.tooling.lazy_init.layer_aliases.items():
+            facade = getattr(flext_core, alias, None)
+            if not isinstance(facade, type):
+                msg = f"core package binds no class to layer alias: {alias}"
+                raise TypeError(msg)
+            modules[facade.__module__.rpartition(".")[2]] = layer
+        return MappingProxyType(modules)
 
     @staticmethod
     def module_import_layer(module: str) -> int:
@@ -794,7 +825,8 @@ class FlextInfraUtilitiesImportLaw:
         downwards, that names a layer either directly (``settings``,
         ``config``, ``base``, ``services``, ``api``, ``cli``) or through the
         facade family it stands for (``_models`` and ``models.py`` stand for
-        ``m``); a module naming no layer sits in the ``other`` slot.
+        ``m``) or a declared layer alias binds it to (``_result`` ranks with
+        ``u``); a module naming no layer sits in the ``other`` slot.
 
         Returns:
             The index of the module's layer in the declared order.
@@ -802,10 +834,13 @@ class FlextInfraUtilitiesImportLaw:
         """
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         families = {
-            family.module: letter
-            for letter, family in (
-                FlextInfraUtilitiesCodegenNamespace.facade_families().items()
-            )
+            **FlextInfraUtilitiesImportLaw._layer_alias_modules(),
+            **{
+                family.module: letter
+                for letter, family in (
+                    FlextInfraUtilitiesCodegenNamespace.facade_families().items()
+                )
+            },
         }
         for part in module.split(".")[1:]:
             stem = part.lstrip("_")
@@ -820,18 +855,19 @@ class FlextInfraUtilitiesImportLaw:
 
         Layer-zero declarations cannot depend on their own namespace, even
         through a typing guard. Family assembly may retain canonical private
-        imports; it cannot consume the facade it produces.
+        imports; it cannot consume the facade it produces. Singleton names
+        identify namespace roots only; nested declarations require native ancestry.
 
         Returns:
             The resulting ``Literal['layer0', 'family', 'consumer']``.
 
         """
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
-        for part in module.split(".")[1:]:
+        for index, part in enumerate(module.split(".")[1:]):
             stem = part.lstrip("_")
             if any(stem == family.module for family in families.values()):
                 return "family"
-            if any(
+            if index == 0 and any(
                 stem == role or stem.startswith(f"{role}_")
                 for role in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
             ):
@@ -839,6 +875,51 @@ class FlextInfraUtilitiesImportLaw:
             if stem in config.Infra.tooling.lazy_init.import_layer_order:
                 return "consumer"
         return "consumer"
+
+    @classmethod
+    def import_source_role(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        source: Path,
+    ) -> Literal["layer0", "family", "consumer"]:
+        """Resolve declaration roles by native ancestry, not consumer imports.
+
+        Returns:
+            The lexical family role or the source-defined configuration role.
+
+        """
+        role = cls.import_module_role(
+            FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
+                source, project_root=Path(project.root.real_path)
+            ),
+        )
+        if role != "consumer":
+            return role
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        roots = tuple(
+            runtime.qualified_name(project, name, module_name="flext_core").get_object()
+            for name in ("FlextConfig", "FlextSettings")
+        )
+        pending = [
+            value
+            for attribute in module.get_attributes().values()
+            if types.py_class(value := attribute.get_object())
+            and value.get_module() is module
+        ]
+        visited: set[int] = set()
+        while pending:
+            declaration = pending.pop()
+            if id(declaration) in visited:
+                continue
+            visited.add(id(declaration))
+            if any(declaration is root for root in roots):
+                return "layer0"
+            pending.extend(
+                base for base in declaration.get_superclasses() if types.py_class(base)
+            )
+        return role
 
     @staticmethod
     def import_direct_module(namespace_dir: Path, file_path: Path) -> bool:
@@ -1045,7 +1126,24 @@ class FlextInfraUtilitiesImportLaw:
                 provider.get_name(), path, source, project=project, pymodule=provider
             ).get(alias_name)
             if route is None:
-                break
+                alias_name, _declaration = (
+                    FlextInfraUtilitiesImportLaw._declared_binding(
+                        ast.parse(source), alias_name
+                    )
+                )
+                binding = provider.get_attributes().get(alias_name)
+                if not isinstance(binding, p.Infra.RopeImportedName):
+                    return binding
+                alias_name = binding.imported_name
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        project,
+                        FlextInfraUtilitiesRopeRuntimeModules.imported_module_resource(
+                            project, binding
+                        ),
+                    )
+                )
+                continue
             if len(route.attributes) != 1:
                 msg = f"declaration export is not a named binding: {identity}"
                 raise ValueError(msg)

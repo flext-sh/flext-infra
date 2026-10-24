@@ -14,7 +14,7 @@ import libcst as cst
 from libcst.helpers import get_full_name_for_node
 from libcst.metadata import MetadataWrapper, QualifiedNameProvider, ScopeProvider
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.refactor import (
     FlextInfraImportNormalizationPlacementMixin,
     FlextInfraImportNormalizationRoutesMixin,
@@ -63,110 +63,49 @@ class FlextInfraImportNormalization(
         files: t.SequenceOf[Path],
         *,
         sources: t.MappingKV[Path, str],
-        receipt: m.Infra.CodegenPhaseAnalysis,
         rope_project: p.Infra.RopeProject,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan imports against immutable working sources and original receipts.
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan import rewrites against the working sources.
 
         Returns:
-            The planned phase analysis, or the first planning failure.
+            One plan per rewritten file, or the first planning failure.
 
         """
-        source_states, declared_files = receipt.inputs, receipt.files
-        captured = u.Infra.unique_states((
-            *source_states,
-            *(state for plan in declared_files for state in plan.source_states),
-        ))
-        if captured.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
-        source_states = captured.value
-        snapshot = u.Infra.snapshot_project(
-            rope_project,
-            sources,
-            captured=u.Infra.codemod_source_epoch(
-                m.Infra.CodemodBindingSnapshot(
-                    states=tuple(
-                        state
-                        for state in source_states
-                        if state.path in sources
-                        or state.path.suffix
-                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                    )
-                )
-            ),
-            declared_files=tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": sources[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                for plan in declared_files
-                if plan.path in sources
-                and (
-                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                    or plan.before.content is None
-                )
-            ),
-        )
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        snapshot = u.Infra.snapshot_project(rope_project, sources)
         import_graph, _modules = u.Infra.snapshot_import_graph(snapshot)
-        originals = {state.path: state for state in source_states}
-        declarations = {plan.path: plan for plan in declared_files}
         plans: list[m.Infra.CodegenFilePlan] = []
         for path in files:
             if not path.is_relative_to(project_root):
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                return result_type.fail(
                     f"import declaration is outside its selected project: {path}"
-                )
-            if path not in sources or (
-                path not in originals and path not in declarations
-            ):
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"import planning source lacks its original receipt: {path}"
                 )
             source = sources[path]
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
-            normalized = cls.normalize_source(
-                project_root=project_root,
-                file_path=path,
+            normalized = cls._normalize_source(
+                location=(project_root, path),
                 source=source,
-                import_graph=import_graph,
-                sources=sources,
+                inputs=(import_graph, sources, snapshot),
             )
-            if normalized is None:
-                normalized = source
-            if path in declarations:
-                plans.append(
-                    declarations[path].model_copy(
-                        update={
-                            "desired_content": normalized.encode(c.DEFAULT_ENCODING),
-                            "source_states": source_states,
-                            "owner": "import-normalization",
-                        }
-                    )
-                )
+            if normalized is None or normalized == source:
                 continue
-            before = originals[path]
+            before = u.Infra.codegen_target_snapshot(path)
+            if before.failure:
+                return result_type.from_failure(before)
             plans.append(
                 m.Infra.CodegenFilePlan(
                     project=project_root,
                     path=path,
-                    before=before,
+                    before=before.value,
                     desired_content=normalized.encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
-                    source_states=source_states,
+                    desired_mode=before.value.mode
+                    if before.value.content is not None
+                    else config.Infra.codegen.modes.file_default,
                     owner="import-normalization",
                 )
             )
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                files=tuple(plans),
-                inputs=source_states,
-            )
-        )
+        return result_type.ok(tuple(plans))
 
     @classmethod
     def normalize_source(
@@ -184,14 +123,43 @@ class FlextInfraImportNormalization(
             The rewritten source, or ``None`` when the module is out of scope
             or already canonical.
 
+        """
+        return cls._normalize_source(
+            location=(project_root, file_path),
+            source=source,
+            inputs=(import_graph, sources, None),
+        )
+
+    @classmethod
+    def _normalize_source(
+        cls,
+        *,
+        location: t.Pair[Path, Path],
+        source: str,
+        inputs: t.Triple[
+            t.MappingKV[str, frozenset[str]] | None,
+            t.MappingKV[Path, str] | None,
+            p.Infra.RopeProject | None,
+        ],
+    ) -> str | None:
+        """Normalize against the caller's existing native inventory when supplied.
+
+        Returns:
+            The canonical source, or None at the fixed point.
+
         Raises:
-            ValueError: If ``root_exports is None``.
+            ValueError: If the namespace has no owned package initializer.
 
         """
+        project_root, file_path = location
+        import_graph, sources, _ = inputs
         if file_path.name == c.Infra.INIT_PY:
             return None
-        located = u.Infra.import_namespace(project_root, file_path, sources=sources)
-        if located is None:
+        if (
+            located := u.Infra.import_namespace(
+                project_root, file_path, sources=sources
+            )
+        ) is None:
             return None
         namespace_dir, module = located
         root_exports = u.Infra.import_lazy_exports(
@@ -235,7 +203,9 @@ class FlextInfraImportNormalization(
                 bindings=cls._module_bindings(tree),
                 root_exports=root_exports,
             )
-            updated = cls._one_pass(state, current, sources=sources)
+            updated = cls._one_pass(
+                state, current, sources=sources, rope_project=inputs[2]
+            )
             if updated is None:
                 break
             current = updated
@@ -335,6 +305,7 @@ class FlextInfraImportNormalization(
         source: str,
         *,
         sources: t.MappingKV[Path, str] | None = None,
+        rope_project: p.Infra.RopeProject | None = None,
     ) -> str | None:
         """Apply the first rewrite category that changes the module.
 
@@ -354,8 +325,10 @@ class FlextInfraImportNormalization(
             lambda: cls._relative_import_edits(state, lines),
             lambda: cls._guard_edits(state.tree, lines),
             lambda: cls._placement_edits(state, lines),
-            lambda: cls._route_edits(state, lines, sources=sources),
             lambda: cls._root_alias_binding_edits(state, lines),
+            lambda: cls._route_edits(
+                state, lines, sources=sources, rope_project=rope_project
+            ),
             lambda: cls._layer_order_edits(state, lines),
         )
         for build in builders:
@@ -416,7 +389,7 @@ class FlextInfraImportNormalization(
                 if (
                     isinstance(node, ast.ImportFrom)
                     and target == scope.namespace
-                    and node in state.tree.body
+                    and cls._enclosing_scope(node, state.parents) is None
                     and any(
                         isinstance(statement, ast.Assign | ast.AnnAssign)
                         and (alias.asname or alias.name)

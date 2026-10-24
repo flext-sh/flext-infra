@@ -179,6 +179,18 @@ class FlextInfraModelsWorkspace:
             validate_default=True,
             description="Ordered native binding and executable observations",
         )
+        evidence_index: t.MutableMappingKV[
+            str, FlextInfraModelsWorkspace.NativeBindingEvidence
+        ] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MutableMappingKV[
+                        str, FlextInfraModelsWorkspace.NativeBindingEvidence
+                    ]
+                )
+            ),
+            description="Invocation-local references to the first binding evidence",
+        )
         generated_owners: t.MutableMappingKV[
             int, t.Triple[str, str, p.AttributeProbe | None]
         ] = m.Field(
@@ -485,11 +497,6 @@ class FlextInfraModelsWorkspace:
     class WorkspaceRuntimeContext(m.ContractModel):
         """Physical runtime ownership and its selected native resolution input."""
 
-        editable_supplier_root: Path | None = m.Field(
-            default=None,
-            description="Validated external supplier elected for this physical runtime",
-        )
-
         project_root: Annotated[
             Path, m.Field(description="Submitted Git worktree root")
         ]
@@ -624,14 +631,11 @@ class FlextInfraModelsWorkspace:
         """Workspace governance scope shared by every declared subproject entry."""
 
         integration_branch: Annotated[
-            str | None,
+            str,
             m.Field(
-                description=(
-                    "Resolved workspace integration line; absent defers to the "
-                    "provider's conventional branch fallback"
-                ),
+                description="Successfully resolved workspace integration line",
             ),
-        ] = None
+        ]
         workspace_beads: Annotated[
             FlextInfraConfigModels.BeadsProjectSpec | None,
             m.Field(description="Workspace Beads ledger spec; absent disables routing"),
@@ -697,21 +701,6 @@ class FlextInfraModelsWorkspace:
             FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
             m.Field(description="Physical environment and native resolver ownership"),
         ] = None
-
-    class FlextBindingRequest(m.ContractModel):
-        """Session request binding one consumer onto a flext worktree."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-        repository_root: Annotated[Path, m.Field(description="Consumer project root")]
-        flext_root: Annotated[
-            Path,
-            m.Field(description="Flext worktree supplying the packages"),
-        ]
-        python: Annotated[
-            Path,
-            m.Field(description="Interpreter of the environment to rebind"),
-        ]
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""
@@ -827,23 +816,41 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Resolved package edges; absent for a leaf package"),
         ] = ()
         optional_dependencies: Annotated[
-            dict[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
+            t.MappingKV[
+                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
+            ],
             m.Field(
                 alias="optional-dependencies",
                 description="Resolved edges by extra; absent when no extras exist",
             ),
         ] = m.Field(
-            default_factory=dict,
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                    ]
+                ),
+            ),
             validate_default=True,
         )
         dev_dependencies: Annotated[
-            dict[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
+            t.MappingKV[
+                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
+            ],
             m.Field(
                 alias="dev-dependencies",
                 description="Resolved edges by development group; absent means none",
             ),
         ] = m.Field(
-            default_factory=dict,
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                    ]
+                ),
+            ),
             validate_default=True,
         )
         resolution_markers: Annotated[

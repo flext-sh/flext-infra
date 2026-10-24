@@ -1,8 +1,6 @@
-{% from "tool_bootstrap_recipe.j2" import mise_locked_qualification, mise_staging_cleanup, mise_network_admission -%}
-{#- Native Git owns physical boundaries; native UV owns membership. The same
-    shell readers serve Make parsing and direnv without importing Python or
-    inspecting workspace member patterns. Only public setup/upg may provision
-    their frozen native reader before association is known. -#}
+{#- Git identifies the tool-bootstrap scope without installing anything. Once
+    provisioned, native uv elects the runtime workspace for Make and direnv.
+    Neither reader parses project membership or provisions missing tools. -#}
 {% macro physical_file_reader(path, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 set -eu; \
@@ -63,51 +61,44 @@ case "{{ d }}{project_root}/" in ("{{ d }}{git_root}/"*) ;; (*) printf 'ERROR: p
 printf '%s\n' "{{ d }}{git_root}"
 {%- endmacro %}
 
-{% macro runtime_root_reader(project_root, uv_tool, uv_resolution, make_syntax=false, toolchain=none) -%}
+{% macro bootstrap_root_reader(project_root, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 {{ git_discovery_context(project_root, make_syntax) }} \
-if [ "{{ d ~ '{' ~ uv_resolution.hosted_variable ~ ':-}' }}" = "{{ uv_resolution.hosted_value }}" ]; then printf '%s\n' "{{ d }}{project_root}"; exit 0; fi; \
-superproject="{{ d }}(git -C "{{ d }}{project_root}" rev-parse --show-superproject-working-tree)"; \
-if [ -n "{{ d }}{superproject}" ] && [ -f "{{ d }}{superproject}/pyproject.toml" ]; then \
-	cd "{{ d }}{superproject}" && pwd -P; \
-	exit 0; \
+attached="{{ d }}(git -C "{{ d }}{git_root}" rev-parse --show-superproject-working-tree)"; \
+if [ -n "{{ d }}{attached}" ] && [ -f "{{ d }}{attached}/pyproject.toml" ]; then \
+	attached="{{ d }}(cd "{{ d }}{attached}" && pwd -P)"; \
+	member_keys="{{ d }}(git -C "{{ d }}{attached}" config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path{{ d }}')"; \
+	for member_key in {{ d }}{member_keys}; do \
+		member_path="{{ d }}(git -C "{{ d }}{attached}" config --file .gitmodules --get "{{ d }}{member_key}")"; \
+		if [ "{{ d }}{attached}/{{ d }}{member_path}" -ef "{{ d }}{git_root}" ]; then printf '%s\n' "{{ d }}{attached}"; exit 0; fi; \
+	done; \
+	printf 'ERROR: attached runtime has no original member declaration: %s\n' "{{ d }}{git_root}" >&2; exit 2; \
 fi; \
-reader_root=; \
-parent="{{ d }}(dirname "{{ d }}{project_root}")"; \
-while [ "{{ d }}{parent}" != / ]; do \
-	if [ -f "{{ d }}{parent}/pyproject.toml" ]; then reader_root="{{ d }}{parent}"; break; fi; \
-	if [ "{{ d }}{parent}" = "{{ d }}{git_root}" ]; then break; fi; \
-	parent="{{ d }}(dirname "{{ d }}{parent}")"; \
-done; \
-if [ -z "{{ d }}{reader_root}" ]; then printf '%s\n' "{{ d }}{project_root}"; exit 0; fi; \
-{{ authenticate_git_marker('"' ~ d ~ '{reader_root}"', make_syntax) }} \
-if [ ! -e "{{ d }}{git_parent}/.git" ] && [ ! -L "{{ d }}{git_parent}/.git" ]; then printf '%s\n' "{{ d }}{project_root}"; exit 0; fi; \
+printf '%s\n' "{{ d }}{project_root}"
+{%- endmacro %}
+
+{% macro runtime_root_reader(project_root, uv_tool, mise_selector, native_environment_unset, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+{{ git_discovery_context(project_root, make_syntax) }} \
+reader_root="{{ d }}( {{ bootstrap_root_reader(project_root, make_syntax) }} )"; \
 scope="{{ d }}(git -C "{{ d }}{reader_root}" rev-parse --show-toplevel)"; \
 scope="{{ d }}(cd "{{ d }}{scope}" && pwd -P)"; \
-case "{{ d }}{project_root}/" in ("{{ d }}{scope}/"*) ;; (*) printf 'ERROR: native workspace discovery scope does not contain this project: %s\n' "{{ d }}{scope}" >&2; exit 2 ;; esac; \
-if [ -f "{{ d }}{scope}/pyproject.toml" ]; then reader_root="{{ d }}{scope}"; fi; \
-unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE UV_PROJECT UV_PROJECT_ENVIRONMENT UV_WORKING_DIRECTORY UV_NO_CONFIG; \
+unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE {{ native_environment_unset | join(" ") }}; \
 MISE_CONFIG_DIR="{{ d }}{reader_root}/.mise"; \
 MISE_SYSTEM_CONFIG_DIR="{{ d }}{MISE_CONFIG_DIR}"; \
 MISE_GLOBAL_CONFIG_FILE="{{ d }}{MISE_CONFIG_DIR}/config.toml"; \
 MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}{reader_root}")"; \
-export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS; \
-reader_mise=mise; \
-{% if make_syntax and toolchain is not none %}case "$(strip $(MAKECMDGOALS))" in (setup|upg) \
-	mise_stage=; \
-	trap 'bootstrap_status=$$?; trap - EXIT; {{ mise_staging_cleanup() }} exit "$${bootstrap_status}"' EXIT; \
-	{ \
-		{{ mise_network_admission() }} \
-		{{ mise_locked_qualification('$${reader_root}', toolchain) }} \
-		mise_qualify; \
-		"$${mise_bootstrap_bin}" -C "$${reader_root}" install --locked --yes "{{ uv_tool.selector or uv_tool.name }}"; \
-	} >&2; \
-	reader_mise="$${mise_bootstrap_bin}"; \
-;; esac; \
-{% endif %}uv_requested="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" tool "{{ uv_tool.selector or uv_tool.name }}" --requested)"; \
-uv_binary="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}" --tool "{{ uv_tool.selector or uv_tool.name }}@{{ d }}{uv_requested}")"; \
+MISE_AUTO_INSTALL=0; \
+export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS MISE_AUTO_INSTALL; \
+case "{{ d }}{OS:-}" in (Windows_NT) reader_mise="{{ d }}{reader_root}/.bin/mise.exe" ;; (*) reader_mise="{{ d }}{reader_root}/.bin/mise" ;; esac; \
+if [ -L "{{ d }}{reader_root}/.bin" ] || [ -L "{{ d }}{reader_mise}" ]; then printf 'ERROR: Mise acquisition must be physical: %s\n' "{{ d }}{reader_mise}" >&2; exit 2; fi; \
+reader_mise="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which mise)"; \
+if [ "{{ d }}{OS:-}" = Windows_NT ]; then reader_mise="{{ d }}(cygpath --unix "{{ d }}{reader_mise}")"; fi; \
+uv_binary="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}")"; \
+if [ "{{ d }}{OS:-}" = Windows_NT ]; then uv_binary="{{ d }}(cygpath --unix "{{ d }}{uv_binary}")"; fi; \
 if [ ! -x "{{ d }}{uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
 owner="{{ d }}("{{ d }}{uv_binary}" workspace dir --project "{{ d }}{project_root}")"; \
+if [ "{{ d }}{OS:-}" = Windows_NT ]; then owner="{{ d }}(cygpath --unix "{{ d }}{owner}")"; fi; \
 case "{{ d }}{owner}" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d }}{owner}" >&2; exit 2 ;; esac; \
 owner="{{ d }}(cd "{{ d }}{owner}" && pwd -P)"; \
 case "{{ d }}{owner}/" in ("{{ d }}{scope}/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "{{ d }}{owner}" >&2; exit 2 ;; esac; \

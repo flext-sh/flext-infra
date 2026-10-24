@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from enum import StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -148,28 +147,6 @@ class FlextInfraConstantsCodegen(
     "Worktree-specific administrative lock for complete generation."
     CODEGEN_TRANSACTION_LOCK_MODE: ClassVar[int] = 0o600
     "Owner-private mode required for the generation lock."
-
-    # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
-    @unique
-    class PipelineStage(StrEnum):
-        """Canonical codegen pipeline stage identifiers."""
-
-        DISCOVER = "discover"
-        TOOLCHAIN = "toolchain"
-        PY_TYPED = "py_typed"
-        CENSUS_BEFORE = "census_before"
-        SCAFFOLD = "scaffold"
-        AUTO_FIX = "auto_fix"
-        DEPS = "deps"
-        LAZY_INIT = "lazy_init"
-        CENSUS_AFTER = "census_after"
-
-    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = tuple(
-        PipelineStage
-    )
-    "Stage execution follows the canonical enumeration's declaration order."
-    PIPELINE_KEY_DRY_RUN: ClassVar[str] = "dry_run"
-    "Config key for pipeline dry-run mode."
 
     # --- Quality gate constants (was: class QualityGate) ---
     QG_REPORT_DIR: ClassVar[str] = ".reports/codegen/constants-quality-gate"

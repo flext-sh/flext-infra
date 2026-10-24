@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.deps import (
@@ -49,7 +50,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         changes = FlextInfraToolTablesPhase(
             tool_config or config.Infra.tooling,
-        ).apply_payload(payload, path=project_dir / "pyproject.toml")
+        ).apply_payload(payload, path=project_dir / c.PYPROJECT_FILENAME)
         return payload, changes
 
     @staticmethod
@@ -341,7 +342,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tooling = config.Infra.tooling
         payload, changes = self._applied(
             tmp_path,
-            '[tool.codespell]\nskip = ".git"\n'
+            f'[tool.codespell]\nskip = "{c.GIT_DIR_NAME}"\n'
             "[tool.pydantic-mypy]\nwarn_untyped_fields = true\n",
         )
         codespell = self._table(payload, "codespell")
@@ -365,7 +366,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.toml_strings(tomlsort["sort_first"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "tomlsort", "sort_first", t.StrSequence
+                    tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
                 )
             ),
         )
@@ -405,7 +406,10 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.strings(self._table(payload, "coverage", "run")["omit"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    config.Infra.tooling, "coverage.run", "omit", t.StrSequence
+                    config.Infra.tooling,
+                    "coverage.run",
+                    "omit",
+                    TypeForm(t.StrSequence),
                 )
             ),
         )
@@ -463,7 +467,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         phase = FlextInfraToolTablesPhase(config.Infra.tooling)
         phase.apply_payload(
             payload,
-            path=project_dir / "pyproject.toml",
+            path=project_dir / c.PYPROJECT_FILENAME,
             repository_namespace_packages=namespaces,
         )
 
@@ -478,7 +482,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(
             phase.apply_payload(
                 payload,
-                path=project_dir / "pyproject.toml",
+                path=project_dir / c.PYPROJECT_FILENAME,
                 repository_namespace_packages=namespaces,
             ),
             empty=True,
@@ -493,7 +497,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         package_dir = project_dir / "src" / "dc_backup"
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text('"""Package."""\n', encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "datacosmos-backup"\n',
             encoding="utf-8",
         )
@@ -505,7 +509,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         payload, first = self._applied(tmp_path)
         second = FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
             payload,
-            path=tmp_path / "flext-sample" / "pyproject.toml",
+            path=tmp_path / "flext-sample" / c.PYPROJECT_FILENAME,
         )
         tm.that(first, empty=False)
         tm.that(second, empty=True)
@@ -520,7 +524,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             repository_root=tmp_path,
             skip_check=True,
         )
-        root_path = tmp_path / "pyproject.toml"
+        root_path = tmp_path / c.PYPROJECT_FILENAME
         root_topology = m.Infra.PyprojectDeclaredTopology(project_kind="platform")
         member_topology = m.Infra.PyprojectDeclaredTopology()
         root_first: str = tm.ok(
@@ -530,7 +534,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                 topology=root_topology,
             ),
         )
-        member_path = tmp_path / "arbitrary-member" / "pyproject.toml"
+        member_path = tmp_path / "arbitrary-member" / c.PYPROJECT_FILENAME
         member_path.parent.mkdir()
         member_first: str = tm.ok(
             modernizer.conform_source(
@@ -636,7 +640,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         FlextInfraToolTablesPhase(config.Infra.tooling).apply_payload(
             payload,
-            path=project_dir / "pyproject.toml",
+            path=project_dir / c.PYPROJECT_FILENAME,
         )
         paths = u.Tests.toml_strings(self._table(payload, "vulture")["paths"])
         tm.that(paths, lacks="scripts", has="src")
@@ -656,7 +660,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             config.Infra.tooling,
         ).apply_payload(
             payload,
-            path=project_dir / "pyproject.toml",
+            path=project_dir / c.PYPROJECT_FILENAME,
         )
         table = self._table(payload, "ruff")
         tm.that(

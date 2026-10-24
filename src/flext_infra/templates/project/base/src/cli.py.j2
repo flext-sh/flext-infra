@@ -12,6 +12,7 @@ from __future__ import annotations{# NOTE: consume validated config directly. #}
 import sys
 
 from flext_cli import cli
+from flext_cli import m as cli_m
 
 from {{ package_name }} import config, m, p, t
 from {{ package_name }}.api import {{ alias }}
@@ -39,7 +40,7 @@ class {{ class_stem }}Cli:
         """Register the configured example result route."""
         cli.register_result_route(
             self._app,
-            route=m.Cli.ResultCommandRoute(
+            route=cli_m.Cli.ResultCommandRoute(
                 name=config.{{ ns }}.ping_command_name,
                 help_text=config.{{ ns }}.ping_help_text,
                 model_cls=m.{{ ns }}.PingInput,

@@ -17,12 +17,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import config, m
 from flext_infra.maintenance import FlextInfraSonarcloudSettingsSync
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -150,7 +147,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
             f"{self._REPOSITORY}",
         )
 
-    @pytest.mark.parametrize("count", [None, 0, 1, 3])
+    @pytest.mark.parametrize(c.Aggregation.COUNT, [None, 0, 1, 3])
     def test_plan_selects_reset_or_the_complete_property_set(
         self,
         count: int | None,
@@ -183,7 +180,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         tm.that(plan.api_url, eq=spec.api_url)
         tm.that(plan.timeout_seconds, eq=spec.api_timeout_seconds)
 
-    @pytest.mark.parametrize("count", [0, 1, 3])
+    @pytest.mark.parametrize(c.Aggregation.COUNT, [0, 1, 3])
     @pytest.mark.parametrize("inherited", [False, True])
     def test_plan_matches_effective_server_values(
         self,
@@ -216,7 +213,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         )
         tm.fail(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, extra))
 
-    @pytest.mark.parametrize("count", [1, 3])
+    @pytest.mark.parametrize(c.Aggregation.COUNT, [1, 3])
     def test_repeated_config_entries_fail_and_server_duplicates_require_a_write(
         self,
         count: int,
@@ -258,7 +255,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         """A whitespace-only token is absent, never trimmed into a request."""
         u.Tests.initialize_git_repo(tmp_path)
 
-        code, output = self._cli(tmp_path, env={"SONAR_TOKEN": "   "})
+        code, output = self._cli(tmp_path, env={"SONAR_TOKEN": " " * 3})
 
         tm.that(code, ne=0)
         tm.that(output, has="SONAR_TOKEN is required")

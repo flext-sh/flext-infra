@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from keyword import iskeyword
 from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
@@ -48,6 +49,8 @@ class FlextInfraConfigModelsRepository:
 
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
 
         flext_source: Annotated[
             t.NonEmptyStr | None,
@@ -218,6 +221,42 @@ class FlextInfraConfigModelsRepository:
             m.Field(description="Declared relative path to the workspace root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
+
+        @m.field_validator("class_stem", "namespace", "alias")
+        @classmethod
+        def _validate_python_identifier(cls, value: str) -> str:
+            """Validate code identifiers without normalizing declared identity.
+
+            Returns:
+                The original, valid Python identifier.
+
+            Raises:
+                ValueError: The declaration cannot be emitted as a Python name.
+
+            """
+            if not value.isidentifier() or iskeyword(value):
+                msg = f"project declaration requires a Python identifier: {value!r}"
+                raise ValueError(msg)
+            return value
+
+        @m.field_validator("package_name", "upstream")
+        @classmethod
+        def _validate_python_module(cls, value: str) -> str:
+            """Validate qualified import names without choosing another package.
+
+            Returns:
+                The unchanged qualified Python import name.
+
+            Raises:
+                ValueError: An import component is empty or not a Python name.
+
+            """
+            if any(
+                not part.isidentifier() or iskeyword(part) for part in value.split(".")
+            ):
+                msg = f"project declaration requires a Python module name: {value!r}"
+                raise ValueError(msg)
+            return value
 
         @m.field_validator("hatch_build_hook_path")
         @classmethod

@@ -71,7 +71,7 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         """The reserved lane container sits outside every project uv could discover."""
         outer_project = tmp_path / "outer"
         outer_project.mkdir()
-        (outer_project / "pyproject.toml").write_text(
+        (outer_project / c.PYPROJECT_FILENAME).write_text(
             '[dependency-groups]\ndescription = "dirty outer WIP"\n',
             encoding="utf-8",
         )
@@ -84,7 +84,7 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         tm.ok(lane.is_dir())
         tm.fail(lane.is_relative_to(outer_project))
         tm.that(
-            (outer_project / "pyproject.toml").read_text(encoding="utf-8"),
+            (outer_project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             eq='[dependency-groups]\ndescription = "dirty outer WIP"\n',
         )
 
@@ -95,7 +95,7 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         """Repository names never collide inside one outer lane container."""
         outer_project = tmp_path / "outer"
         outer_project.mkdir()
-        (outer_project / "pyproject.toml").write_text(
+        (outer_project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "outer"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )

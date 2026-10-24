@@ -92,7 +92,7 @@ class TestsFlextInfraGitSubmoduleComposition:
             "--file",
             c.Infra.GITMODULES,
             f"submodule.beta.{c.Infra.GITMODULE_MANAGED_KEY}",
-            "false",
+            c.ParserBooleanToken.FALSE,
         )
         declared = tm.ok(u.Infra.git_submodule_declarations(parent))
         tm.that([item.path for item in declared], eq=[Path("alpha"), Path("beta")])
@@ -106,8 +106,8 @@ class TestsFlextInfraGitSubmoduleComposition:
         tm.that({item.branch for item in declared}, eq={c.Infra.GIT_MAIN})
         tm.that([item.managed for item in declared], eq=[None, False])
 
+    @staticmethod
     def test_repository_without_gitmodules_declares_no_members(
-        self,
         tmp_path: Path,
     ) -> None:
         """A standalone repository composes nothing."""
@@ -116,7 +116,8 @@ class TestsFlextInfraGitSubmoduleComposition:
         u.Tests.initialize_git_repo(standalone)
         tm.that(tm.ok(u.Infra.git_submodule_declarations(standalone)), eq=())
 
-    def test_malformed_gitmodules_fails_closed(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_malformed_gitmodules_fails_closed(tmp_path: Path) -> None:
         """Git's own parser rejects the file and the owner propagates it."""
         root = tmp_path / "broken"
         root.mkdir()
@@ -130,7 +131,8 @@ class TestsFlextInfraGitSubmoduleComposition:
             has="failed to read Git submodule declarations",
         )
 
-    def test_duplicated_path_fails_closed(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_duplicated_path_fails_closed(tmp_path: Path) -> None:
         """Two sections claiming one path are a declaration defect."""
         root = tmp_path / "duplicated"
         root.mkdir()

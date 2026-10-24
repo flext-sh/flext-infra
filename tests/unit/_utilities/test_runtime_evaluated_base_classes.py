@@ -11,8 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraRuntimeEvaluatedBaseClasses:
@@ -45,8 +44,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ("original = True\nchecking = original", "checking", True),
         ],
     )
+    @staticmethod
     def test_runtime_guard_uses_import_identity_and_boolean_rebindings(
-        self,
         tmp_path: Path,
         setup: str,
         condition: str,
@@ -95,8 +94,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ("", "TYPE_CHECKING"),
         ],
     )
+    @staticmethod
     def test_unknown_guard_cannot_borrow_standard_constant_semantics(
-        self,
         tmp_path: Path,
         setup: str,
         condition: str,
@@ -137,8 +136,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         ],
     )
+    @staticmethod
     def test_provider_guard_member_write_fails_before_stale_selection(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
         setup: str,
@@ -178,8 +177,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tm.fail("guard_provider" in sys.modules)
 
     @pytest.mark.parametrize("replacement_model", [False, True])
+    @staticmethod
     def test_provider_class_member_write_updates_exact_aliased_owner(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
         *,
@@ -223,8 +222,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             eq=tuple(sorted(expected)),
         )
 
+    @staticmethod
     def test_provider_boolean_member_preserves_sdk_non_class_failure(
-        self,
         tmp_path: Path,
         installed_dependency_path: Path,
     ) -> None:
@@ -256,8 +255,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+    @staticmethod
     def test_unpublished_project_is_not_imported_or_created(
-        self,
         tmp_path: Path,
     ) -> None:
         root = tmp_path / "unpublished"
@@ -286,8 +285,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tm.fail(root.exists())
         tm.fail("unpublished_contract" in sys.modules)
 
+    @staticmethod
     def test_import_aliases_relative_generic_bases_and_planned_disk_convergence(
-        self,
         tmp_path: Path,
     ) -> None:
         package = tmp_path / "src" / "planned_contract"
@@ -336,8 +335,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         )
 
     @pytest.mark.parametrize("model_on_right", [False, True])
+    @staticmethod
     def test_nested_member_lookup_obeys_c3_not_depth_first(
-        self,
         tmp_path: Path,
         *,
         model_on_right: bool,
@@ -368,7 +367,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             eq=expected,
         )
 
-    def test_nested_bare_names_do_not_collide(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_nested_bare_names_do_not_collide(tmp_path: Path) -> None:
         source = u.Tests.runtime_root_import() + (
             "class First:\n"
             "    class Contract(RuntimeRoot): pass\n"
@@ -394,9 +394,25 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         )
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "mapping",
+        [
+            'MappingProxyType({"m": ".models"})',
+            'MappingProxyType({"m": (".models", "m")})',
+            (
+                "MappingProxyType({\n# Preserve colon: and comma, inside comments.\n"
+                '"m": (".models", "m"),\n})'
+            ),
+            'MappingProxyType({"m": ".mo" + "dels"})',
+            'MappingProxyType({("m"): (".models", # provider comment\n"m")})',
+            'build_lazy_import_map({".models": ("m",)}, sort_keys=True)',
+            'build_lazy_import_map({".models": ("m",)}, sort_keys=False)',
+        ],
+    )
     def test_generated_lazy_bindings_are_indexed_without_importing(
-        self,
         tmp_path: Path,
+        mapping: str,
     ) -> None:
         """Generated package exports bind the same source-defined model identity."""
         package = tmp_path / "src" / "generated_contract"
@@ -405,10 +421,11 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             c.Infra.AUTOGEN_HEADERS[0]
             + "\nfrom types import MappingProxyType\n"
             + "from typing import TYPE_CHECKING\n"
-            + "from flext_core.lazy import install_lazy_exports\n"
+            + "from flext_core.lazy import (\n"
+            + "    build_lazy_import_map, install_lazy_exports,\n)\n"
             + "if TYPE_CHECKING:\n    from .models import m\n"
             + "__getattr__, __dir__ = install_lazy_exports(__name__, globals(), "
-            'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
+            + f'{mapping}, public_exports=("m",))\n'
             + 'raise RuntimeError("This package must not be imported")\n',
             encoding="utf-8",
         )
@@ -441,8 +458,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ("Alias, (other, *rest)", "None, (None, None)"),
         ],
     )
+    @staticmethod
     def test_computed_unpacking_cannot_preserve_a_shadowed_class_base(
-        self,
         tmp_path: Path,
         target: str,
         values: str,
@@ -462,8 +479,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             )
 
     @pytest.mark.parametrize("qualified", [False, True])
+    @staticmethod
     def test_generated_lazy_member_keeps_the_export_binding(
-        self,
         tmp_path: Path,
         *,
         qualified: bool,
@@ -502,7 +519,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         )
         tm.that("flext" in sys.modules, eq=was_imported)
 
-    def test_missing_direct_package_base_is_not_invented(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_missing_direct_package_base_is_not_invented(tmp_path: Path) -> None:
         """An available provider class does not imply a package-level export."""
         package = tmp_path / "src" / "flext"
         planned = {
@@ -520,8 +538,88 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 tmp_path, planned, u.Tests.runtime_evaluated_roots()
             )
 
+    @staticmethod
+    @pytest.mark.parametrize("duplicate", [False, True])
+    def test_planned_barrel_chain_preserves_the_leaf_class_identity(
+        tmp_path: Path, *, duplicate: bool
+    ) -> None:
+        """Generation follows explicit exports without inventing a second base."""
+        package = tmp_path / "src" / "barrel_contract"
+        planned = {
+            package / "__init__.py": "from .services import Base\n",
+            package / "services" / "__init__.py": (
+                "from typing import TYPE_CHECKING\n"
+                "from types import MappingProxyType\n"
+                "from flext_core.lazy import install_lazy_exports\n"
+                "if TYPE_CHECKING:\n    from ._parts import Base\n"
+                "install_lazy_exports(__name__, globals(), "
+                "MappingProxyType({'Base': '._parts'}), public_exports=('Base',))\n"
+            ),
+            package / "services" / "_parts" / "__init__.py": (
+                "from .base import Base\n"
+            ),
+            package / "services" / "_parts" / "base.py": (
+                u.Tests.runtime_root_import() + "class Base(RuntimeRoot): pass\n"
+            ),
+            package / "services" / "_parts" / "release.py": (
+                "from barrel_contract.services import Base\nclass Release(Base): pass\n"
+            ),
+            package / "consumer.py": (
+                "from barrel_contract import Base\n"
+                "from barrel_contract.services._parts.base import Base as Leaf\n"
+                + (
+                    "class Consumer(Base, Leaf): pass\n"
+                    if duplicate
+                    else "class Consumer(Base): pass\n"
+                )
+            ),
+        }
+        if duplicate:
+            with pytest.raises(ValueError, match="Duplicate class base:"):
+                u.Infra.runtime_evaluated_base_classes(
+                    tmp_path, planned, u.Tests.runtime_evaluated_roots()
+                )
+            return
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
+            eq=tuple(
+                sorted({
+                    *u.Tests.runtime_evaluated_roots(),
+                    "barrel_contract.Base",
+                    "barrel_contract.services.Base",
+                })
+            ),
+        )
+
+    @staticmethod
+    def test_planned_barrel_cannot_borrow_a_removed_live_export(tmp_path: Path) -> None:
+        """A stale export plan fails even when the live barrel is valid."""
+        package = tmp_path / "src" / "removed_export"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text(
+            "from .base import Base\n", encoding=c.DEFAULT_ENCODING
+        )
+        (package / "base.py").write_text(
+            "class Base: pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        with pytest.raises(
+            ValueError, match=r"Unresolved planned base: removed_export\.Base$"
+        ):
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    package / "__init__.py": "",
+                    package / "consumer.py": (
+                        "from removed_export import Base\nclass Consumer(Base): pass\n"
+                    ),
+                },
+                (),
+            )
+
+    @staticmethod
     def test_native_stdlib_aliases_preserve_the_same_qualified_bases(
-        self,
         tmp_path: Path,
     ) -> None:
         """A native stdlib provider has one identity through either import form."""
@@ -549,7 +647,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tm.that(aliased, eq=direct)
         tm.ok(set(u.Tests.runtime_evaluated_roots()).issubset(aliased))
 
-    def test_value_shadowing_is_a_visible_invalid_base(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_value_shadowing_is_a_visible_invalid_base(tmp_path: Path) -> None:
         source = u.Tests.runtime_root_import() + (
             "class Origin:\n"
             "    class Contract(RuntimeRoot): pass\n"
@@ -563,135 +662,43 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 u.Tests.runtime_evaluated_roots(),
             )
 
+
+class TestsFlextInfraLazyAliasOrdering:
+    """Validate the native lazy-builder literal ordering contract."""
+
+    @staticmethod
     @pytest.mark.parametrize(
-        "import_statement",
+        "ordering",
         [
-            "from {module}.{parts} import document as part",
-            "from .{parts} import document as part",
-            "import {module}.{parts}.document as part",
+            c.ParserBooleanToken.ZERO,
+            c.ParserBooleanToken.ONE,
+            "None",
+            "c.ParserBooleanToken.TRUE",
+            "True and False",
         ],
     )
-    @pytest.mark.parametrize("initialized", [True, False])
-    @pytest.mark.parametrize(
-        "package_binding",
-        [
-            ("src/binding_contract", "binding_contract", "parts"),
-            ("tests/unit", "tests.unit", "_parts"),
-        ],
-    )
-    def test_planned_submodule_import_resolves_its_declared_class(
-        self,
-        tmp_path: Path,
-        import_statement: str,
-        package_binding: tuple[str, str, str],
-        *,
-        initialized: bool,
+    def test_builder_rejects_non_boolean_literals(
+        tmp_path: Path, ordering: str
     ) -> None:
-        """Private and namespace submodules do not require initializer exports."""
-        package_path, module, parts = package_binding
-        package = tmp_path / package_path
-        planned = {
-            package / parts / "document.py": u.Tests.runtime_root_import()
-            + "class Document(RuntimeRoot): pass\n",
-            package / "facade.py": (
-                f"{import_statement.format(module=module, parts=parts)}\n"
-                "class Facade(part.Document): pass\n"
-                "class Consumer(Facade): pass\n"
-            ),
-        }
-        if initialized:
-            planned[package / "__init__.py"] = ""
-            planned[package / parts / "__init__.py"] = ""
-        tm.that(
-            u.Infra.runtime_evaluated_base_classes(
-                tmp_path, planned, u.Tests.runtime_evaluated_roots()
-            ),
-            eq=tuple(
-                sorted((
-                    *u.Tests.runtime_evaluated_roots(),
-                    f"{module}.{parts}.document.Document",
-                    f"{module}.facade.Facade",
-                )),
-            ),
+        """Truthy values and boolean expressions retain the exact failure."""
+        package = tmp_path / "src" / "ordering_contract"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text(
+            "from flext_core.lazy import (\n"
+            "    build_lazy_import_map, install_lazy_exports,\n)\n"
+            "install_lazy_exports(__name__, globals(), "
+            'build_lazy_import_map({".models": ("m",)}, '
+            f"sort_keys={ordering}))\n",
+            encoding="utf-8",
         )
-        tm.fail(package.exists())
-        tm.fail(f"{module}.{parts}.document" in sys.modules)
-
-    def test_missing_planned_private_module_is_not_a_similarly_named_provider(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """An existing private provider cannot validate an obsolete import path."""
-        package = tmp_path / "tests" / "unit"
         with pytest.raises(
-            ValueError, match=r"Unresolved planned base: tests\.unit\._retired$"
+            ValueError, match=r"^Lazy builder ordering requires a literal boolean$"
         ):
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
                 {
-                    package / "__init__.py": "",
-                    package
-                    / "_retired_parts"
-                    / "document.py": "class Document: pass\n",
-                    package / "consumer.py": (
-                        "from tests.unit._retired import document as part\n"
-                        "class Invalid(part.Document): pass\n"
-                    ),
-                },
-                (),
-            )
-
-    @pytest.mark.parametrize(
-        ("shadow", "diagnostic"),
-        [
-            ("document = 0", r"Unresolved planned base: shadowed_submodule\.document"),
-            ("class document: pass", "Missing inherited class member:"),
-        ],
-    )
-    def test_planned_package_binding_is_not_replaced_by_a_submodule(
-        self,
-        tmp_path: Path,
-        shadow: str,
-        diagnostic: str,
-    ) -> None:
-        """Explicit package values/classes retain precedence over file names."""
-        package = tmp_path / "src" / "shadowed_submodule"
-        planned = {
-            package / "__init__.py": shadow + "\n",
-            package / "document.py": u.Tests.runtime_root_import()
-            + "class Document(RuntimeRoot): pass\n",
-            package / "consumer.py": (
-                "from . import document as part\nclass Invalid(part.Document): pass\n"
-            ),
-        }
-        with pytest.raises(ValueError, match=diagnostic):
-            u.Infra.runtime_evaluated_base_classes(
-                tmp_path, planned, u.Tests.runtime_evaluated_roots()
-            )
-
-    def test_planned_submodule_does_not_invent_a_missing_class(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A captured submodule proves its location, not arbitrary class exports."""
-        package = tmp_path / "src" / "missing_submodule_class"
-        with pytest.raises(
-            ValueError,
-            match=(
-                r"Unresolved planned base: missing_submodule_class\.parts"
-                r"\.document\.Missing"
-            ),
-        ):
-            u.Infra.runtime_evaluated_base_classes(
-                tmp_path,
-                {
-                    package / "__init__.py": "",
-                    package / "parts" / "__init__.py": "",
-                    package / "parts" / "document.py": "class Document: pass\n",
-                    package / "consumer.py": (
-                        "from .parts import document as part\n"
-                        "class Invalid(part.Missing): pass\n"
-                    ),
+                    package / "models.py": u.Tests.runtime_root_import()
+                    + "class Contract(RuntimeRoot): pass\nm = Contract\n",
                 },
                 u.Tests.runtime_evaluated_roots(),
             )

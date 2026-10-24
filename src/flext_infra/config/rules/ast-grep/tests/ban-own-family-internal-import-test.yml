@@ -1,0 +1,13 @@
+id: ban-own-family-internal-import
+valid:
+  - from flext_core import c, m, t, u
+  - from flext_core.models import FlextModels
+  - import flext_core
+  - import os.path
+  - import __future__
+invalid:
+  - from flext_core._models.base import FlextModelsBase
+  - from flext_core._utilities import FlextUtilities
+  - from flext_core.services._parts.runner import FlextRunner
+  - import flext_core._typings.base
+  - import flext_core._protocols.base as base

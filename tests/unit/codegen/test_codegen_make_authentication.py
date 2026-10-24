@@ -73,7 +73,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
             ),
             "gh",
         )
-        extraction = "0" if source == "gh" else "not-selected"
+        extraction = c.ParserBooleanToken.ZERO if source == "gh" else "not-selected"
         tm.that(
             process.stdout,
             has=f"github-auth source={source} extraction-exit={extraction} present=yes",
@@ -94,14 +94,15 @@ class TestsFlextInfraCodegenMakeAuthentication:
     ) -> None:
         """GITHUB_TOKEN wins and replaces every inherited alias."""
         selected = "fixture-github-token"
+        stale = "stale-alias"
         TestsFlextInfraCodegenMakeAuthentication._probe_credential(
             tmp_path,
             selected,
             {
                 "GITHUB_TOKEN": selected,
-                "GH_TOKEN": "stale-alias",
-                "MISE_GITHUB_TOKEN": "stale-alias",
-                "GITHUB_API_TOKEN": "stale-alias",
+                "GH_TOKEN": stale,
+                "MISE_GITHUB_TOKEN": stale,
+                "GITHUB_API_TOKEN": stale,
             },
         )
 
@@ -231,7 +232,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         receipt = report.receipts[0]
         tm.that(receipt.stage, eq="network-auth")
         tm.that(receipt.native_exit_code, eq=int(extraction_exit))
-        tm.fail(receipt.completed)
+        tm.that(receipt.completed, eq=False)
         tm.that(receipt.files, eq=())
         tm.that(receipt.root, eq=Path())
         tm.fail(u.Infra.runtime_environment_dir(project_root).exists())

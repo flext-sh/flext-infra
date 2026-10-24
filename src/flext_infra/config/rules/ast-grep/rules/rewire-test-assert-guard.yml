@@ -1,5 +1,5 @@
 # Explicit failure preserves native guard narrowing and lazy message evaluation.
-# The emitted-symbol predicate requires the real built-in exception binding.
+# The emitted-symbol predicate requires the real tm facade binding.
 # A non-None name narrows through tm.not_none and a name type guard through
 # tm.instance (rewire-test-assert-not-none.yml, rewire-test-assert-instance.yml);
 # any other non-narrowing condition is a tm.that observation.
@@ -10,7 +10,7 @@ metadata:
   context:
     COND:
       is: emitted-symbol
-      arg: AssertionError builtins AssertionError
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -28,9 +28,11 @@ rule:
           pattern: "isinstance($VALUE, $TYPE)"
           stopBy: end
 fix: |-
-  if not ($COND):
-      raise AssertionError($MSG)
-message: Preserve the lazy assertion message through an explicit native failure.
+  if $COND:
+      pass
+  else:
+      tm.reject($MSG)
+message: Preserve lazy assertion arguments and narrowing through tm.reject.
 ---
 id: rewire-test-assert-guard
 language: Python
@@ -39,7 +41,7 @@ metadata:
   context:
     COND:
       is: emitted-symbol
-      arg: AssertionError builtins AssertionError
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -59,13 +61,14 @@ rule:
           pattern: "isinstance($VALUE, $TYPE)"
           stopBy: end
 fix: |-
-  if not ($COND):
-      raise AssertionError
-message: Preserve the native guard through an explicit failure.
+  if $COND:
+      pass
+  else:
+      tm.reject()
+message: Preserve native guard narrowing through tm.reject.
 ---
 # A type guard the tm.instance rule cannot express (attribute subject, tuple
-# kind, compound condition) keeps native narrowing and fails with TypeError,
-# the exception an invalid type raises (Ruff TRY004).
+# kind, compound condition) retains native assertion failure and narrowing.
 id: rewire-test-assert-type-guard
 language: Python
 severity: error
@@ -73,7 +76,7 @@ metadata:
   context:
     COND:
       is: emitted-symbol
-      arg: TypeError builtins TypeError
+      arg: tm flext_tests tm
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
@@ -94,6 +97,8 @@ rule:
     - not:
         regex: "^(assert |if not \\()isinstance\\([A-Za-z_][A-Za-z0-9_]*, [^(]"
 fix: |-
-  if not ($COND):
-      raise TypeError
-message: Fail an unmet type guard with the exception an invalid type raises.
+  if $COND:
+      pass
+  else:
+      tm.reject()
+message: Preserve type-guard narrowing and native assertion failure through tm.reject.

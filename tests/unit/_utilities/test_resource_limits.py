@@ -70,6 +70,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
             u.Tests.mypy_workload(tmp_path),
             limit,
         )
+        if sys.platform != "darwin":
+            tm.that(command, has="--verbose")
         result = u.Cli.run_raw(command, timeout=u.Infra.mypy_runner_timeout(limit))
 
         tm.ok(result)
@@ -186,11 +188,15 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("ceiling", [False, True])
     def test_mypy_budget_resolves_the_project_tooling_overlay(
         tmp_path: Path,
+        *,
+        ceiling: bool,
     ) -> None:
         """A project tooling.yaml budget drives the runner timeout."""
-        budget = config.Infra.tooling.tools.mypy.timeout_seconds // 2
+        policy = config.Infra.tooling.tools.mypy
+        budget = policy.max_timeout_seconds if ceiling else policy.timeout_seconds // 2
         (tmp_path / "config").mkdir()
         (tmp_path / "config" / "tooling.yaml").write_text(
             "Infra:\n  tooling:\n    tools:\n      mypy:\n"
@@ -206,13 +212,36 @@ class TestsFlextInfraUtilitiesResourceLimits:
             u.Infra.mypy_runner_timeout_for_project(tmp_path),
             eq=u.Infra.mypy_runner_timeout(expected_limit),
         )
+        effective = u.Infra.mypy_resource_limit_for_project(tmp_path)
+        tm.that(effective, eq=expected_limit)
+        command = u.Infra.mypy_limited_command(
+            u.Tests.mypy_workload(tmp_path),
+            effective,
+        )
+        tm.that(
+            command,
+            has=str(budget) if sys.platform == "darwin" else f"{budget}s",
+        )
+        diagnostic = u.Infra.mypy_failure_diagnostic(
+            m.Cli.CommandOutput(
+                stdout="",
+                stderr="deadline exhausted",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=124,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
+            ),
+            effective,
+        )
+        tm.that(diagnostic, has=f"timeout={budget}s")
 
     @staticmethod
     def test_mypy_budget_overlay_above_the_fleet_bound_fails_loud(
         tmp_path: Path,
     ) -> None:
-        """A project budget can only lower the fleet tooling bound."""
-        above = config.Infra.tooling.tools.mypy.timeout_seconds + 1
+        """A project budget above the ceiling fails without clamping."""
+        above = config.Infra.tooling.tools.mypy.max_timeout_seconds + 1
         (tmp_path / "config").mkdir()
         (tmp_path / "config" / "tooling.yaml").write_text(
             "Infra:\n  tooling:\n    tools:\n      mypy:\n"
@@ -220,7 +249,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             encoding="utf-8",
         )
 
-        with pytest.raises(ValueError, match="exceeds the fleet bound"):
+        with pytest.raises(ValueError, match="exceeds the fleet ceiling"):
             u.Infra.mypy_runner_timeout_for_project(tmp_path)
 
     @staticmethod
@@ -258,7 +287,9 @@ class TestsFlextInfraUtilitiesResourceLimits:
         """A hostile request cannot turn the supervisor into an arbitrary executor."""
         project = u.Tests.mypy_workload(tmp_path)
         command = u.Infra.mypy_limited_command(project, host_system="Darwin")
-        injected = project.model_dump_json()[:-1] + ',"command":["/bin/sh"]}'
+        injected = (
+            project.model_dump_json()[:-1] + ',c.HandlerMode.COMMAND:["/bin/sh"]}'
+        )
         result = u.Cli.run_raw(
             (*command[:-1], injected),
             timeout=u.Infra.mypy_runner_timeout(),
@@ -529,8 +560,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
         diagnostic = u.Infra.mypy_failure_diagnostic(
             m.Cli.CommandOutput(
-                stdout="",
-                stderr="",
+                stdout="LOG:  Parsing oci.models\nTRACE: dependency graph",
+                stderr="timeout: sending signal TERM to command 'prlimit'",
                 outcome=m.Cli.ProcessOutcome(
                     raw_return_code=exit_code,
                     timed_out=timed_out,
@@ -547,8 +578,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 f"timeout={limit.timeout_seconds}s",
                 f"exit={exit_code}",
                 "signal=none",
+                "timeout: sending signal TERM",
             ],
         )
+        tm.that(diagnostic, lacks=["LOG:", "TRACE:"])
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -624,10 +657,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def test_mypy_cache_directory_is_project_keyed_and_survives_relocks(
+    def test_mypy_cache_directory_is_physical_and_survives_metadata_changes(
         tmp_path: Path,
     ) -> None:
-        """One shared Mypy cache per project, reused by every checkout and relock."""
+        """Physical checkouts stay isolated without reading mutable TOML or locks."""
         spec = config.Infra.codegen.make.mypy_cache
 
         def checkout(name: str, project: str) -> Path:
@@ -642,15 +675,17 @@ class TestsFlextInfraUtilitiesResourceLimits:
         lane = checkout("lane", "fixture-alpha")
         primary = checkout("primary", "fixture-alpha")
         other = checkout("other", "fixture-beta")
-        shared = u.Infra.mypy_cache_directory(lane)
-        # Every checkout of one project reuses one analysis.
-        tm.that(u.Infra.mypy_cache_directory(primary), eq=shared)
+        cached = u.Infra.mypy_cache_directory(lane)
+        tm.ok(u.Infra.mypy_cache_directory(primary) != cached)
         tm.that(
-            shared.is_relative_to(u.Infra.external_cache_directory(spec)),
+            cached.is_relative_to(u.Infra.external_cache_directory(spec)),
             eq=True,
         )
-        # A relock keeps the directory: Mypy revalidates changed modules itself.
         (lane / c.Infra.UV_LOCK_FILENAME).write_text("rotated\n", encoding="utf-8")
-        tm.that(u.Infra.mypy_cache_directory(lane), eq=shared)
-        # Distinct projects never share one tests package namespace.
-        tm.ok(u.Infra.mypy_cache_directory(other) != shared)
+        tm.that(u.Infra.mypy_cache_directory(lane), eq=cached)
+        metadata = lane / c.PYPROJECT_FILENAME
+        metadata.write_text("[project", encoding="utf-8")
+        before = metadata.read_bytes()
+        tm.that(u.Infra.mypy_cache_directory(lane), eq=cached)
+        tm.that(metadata.read_bytes(), eq=before)
+        tm.ok(u.Infra.mypy_cache_directory(other) != cached)

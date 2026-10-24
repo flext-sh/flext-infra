@@ -61,7 +61,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         root = symbolic_workspace
         consumer = root / "tests" / "unit" / "codegen" / "consumer.py"
         before = (
-            "from tests import u, utilities\n"
+            "from tests import c, r, u, utilities\n"
             "import tests.utilities as canonical\n"
             "class Independent:\n"
             "    class TestsFlextInfraUtilities:\n"
@@ -198,7 +198,9 @@ class TestsFlextInfraSymbolicBindingPublication:
             root / "tests" / "unit" / "codegen" / name
             for name in ("consumer.py", "peer.py")
         )
-        source = "from tests import u, utilities\n" + _OWNED_CI_LINE + "print(owned)\n"
+        source = (
+            "from tests import c, r, u, utilities\n" + _OWNED_CI_LINE + "print(owned)\n"
+        )
         for path in consumers:
             path.write_text(source, encoding="utf-8")
         u.Tests.git_bootstrap(root, ("add", "tests"))
@@ -247,7 +249,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         consumer = root / "tests" / "unit" / "codegen" / "consumer.py"
         source = (
             "from typing import Annotated, Literal\n"
-            "from tests import u, utilities\n"
+            "from tests import c, r, u, utilities\n"
             "class Result:\n    code = 'TOOL_ERROR'\n"
             "result = Result()\n"
             "type Pep = Annotated[str, "
@@ -271,7 +273,7 @@ class TestsFlextInfraSymbolicBindingPublication:
             "import json\n"
             "from typing import get_args\n"
             "from tests.unit.codegen import consumer as value\n"
-            "from tests import u\n"
+            "from tests import c, r, u\n"
             "owner = u.CodegenTestSupport.Ci\n"
             "print(json.dumps({\n"
             " 'pep': get_args(value.Pep.__value__)[1] is owner,\n"

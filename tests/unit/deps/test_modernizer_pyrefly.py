@@ -75,8 +75,10 @@ class TestsFlextInfraModernizerPyrefly:
         child_origin.mkdir()
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=child_origin))
         pyproject_text = "[project]\nname = 'fixture-child'\nversion = '0.1.0'\n"
-        (child_origin / "pyproject.toml").write_text(pyproject_text, encoding="utf-8")
-        tm.ok(u.Cli.run_raw(["git", "add", "pyproject.toml"], cwd=child_origin))
+        (child_origin / c.PYPROJECT_FILENAME).write_text(
+            pyproject_text, encoding="utf-8"
+        )
+        tm.ok(u.Cli.run_raw(["git", "add", c.PYPROJECT_FILENAME], cwd=child_origin))
         tm.ok(
             u.Cli.run_raw(
                 [
@@ -117,7 +119,7 @@ class TestsFlextInfraModernizerPyrefly:
             ),
         )
         for project_dir in (workspace / "attached", linked):
-            pyproject = project_dir / "pyproject.toml"
+            pyproject = project_dir / c.PYPROJECT_FILENAME
             rendered = tm.ok(
                 FlextInfraPyprojectModernizer(
                     repository_root=project_dir,
@@ -276,7 +278,6 @@ class TestsFlextInfraModernizerPyrefly:
             "VALUE = 2\n",
             encoding="utf-8",
         )
-        scaffold_project = config.Infra.codegen.scaffold.project
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=tmp_path,
             skip_check=True,
@@ -293,7 +294,7 @@ class TestsFlextInfraModernizerPyrefly:
             project_name=project_dir.name,
             package_name=u.Tests.project_spec(project_dir.name).package_name,
             path=project_dir / c.PYPROJECT_FILENAME,
-            scaffold_project=scaffold_project,
+            scaffold_project=config.Infra.codegen.scaffold.project,
             runtime_dependency_overlay=(),
             declared_project_dependencies=(),
             topology=topology,
@@ -315,8 +316,6 @@ class TestsFlextInfraModernizerPyrefly:
         tooling_runtime = tm.ok(modernizer.resolve_tooling_context(request))
         runtime_pyrefly = tooling_runtime.tool_options["pyrefly"]
         runtime_includes = u.Tests.strings(runtime_pyrefly[c.Infra.PROJECT_INCLUDES])
-        runtime_search = u.Tests.strings(runtime_pyrefly["search-path"])
-        runtime_excludes = u.Tests.strings(runtime_pyrefly[c.Infra.PROJECT_EXCLUDES])
 
         tm.that(
             runtime_includes,
@@ -332,32 +331,14 @@ class TestsFlextInfraModernizerPyrefly:
             ),
         )
         pyrefly = u.Tests.toml_table_at(rendered, c.Infra.TOOL, "pyrefly")
-        tm.that(
-            list(runtime_includes),
-            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
-            msg=(
-                f"runtime={list(runtime_includes)!r}; "
-                "rendered="
-                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES]))!r}"
-            ),
-        )
-        tm.that(
-            list(runtime_search),
-            eq=list(u.Tests.strings(pyrefly["search-path"])),
-            msg=(
-                f"runtime={list(runtime_search)!r}; "
-                f"rendered={list(u.Tests.strings(pyrefly['search-path']))!r}"
-            ),
-        )
-        tm.that(
-            list(runtime_excludes),
-            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES])),
-            msg=(
-                f"runtime={list(runtime_excludes)!r}; "
-                "rendered="
-                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES]))!r}"
-            ),
-        )
+        for key in (c.Infra.PROJECT_INCLUDES, "search-path", c.Infra.PROJECT_EXCLUDES):
+            runtime = list(u.Tests.strings(runtime_pyrefly[key]))
+            rendered_values = list(u.Tests.strings(pyrefly[key]))
+            tm.that(
+                runtime,
+                eq=rendered_values,
+                msg=f"{key}: runtime={runtime!r}; rendered={rendered_values!r}",
+            )
 
     def test_pyright_include_feeds_project_includes(self, tmp_path: Path) -> None:
         """Existing Pyright roots feed project-scoped Pyrefly includes."""

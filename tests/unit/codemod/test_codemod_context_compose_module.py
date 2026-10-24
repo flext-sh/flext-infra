@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
-from tests import tm, u
+from flext_infra import m
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodemodContextComposeModule:
@@ -44,34 +45,35 @@ class TestsFlextInfraCodemodContextComposeModule:
             path = mod_workspace / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"class {name}: pass\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="source"):
-            with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
-                project,
-                sources,
-            ):
-                for _repeat in range(2):
-                    for relative, name, expected in cases:
-                        tm.that(
-                            u.Infra.codemod_context_admits(
-                                m.Infra.CodemodAdmission(
-                                    root=mod_workspace,
-                                    rule=rule,
-                                    file_path=Path(relative),
-                                    captures={"NAME": {"text": name}},
-                                    facts=facts,
-                                    snapshot=epoch.snapshot,
-                                ),
-                                project=project,
-                                sources=sources,
+        with ExitStack() as scope:
+            project, sources = scope.enter_context(
+                u.Infra.codemod_binding_project(mod_workspace, epoch)
+            )
+            for _repeat in range(2):
+                for relative, name, expected in cases:
+                    tm.that(
+                        u.Infra.codemod_context_admits(
+                            m.Infra.CodemodAdmission(
+                                root=mod_workspace,
+                                rule=rule,
+                                file_path=Path(relative),
+                                captures={"NAME": {"text": name}},
+                                facts=facts,
+                                snapshot=epoch.snapshot,
                             ),
-                            eq=expected,
-                        )
-                target = (
-                    export
-                    if changed == "export"
-                    else layout.package_dir / "new_stem_probe.py"
-                )
-                target.write_text("__all__ = [missing]\n", encoding="utf-8")
+                            project=project,
+                            sources=sources,
+                        ),
+                        eq=expected,
+                    )
+            target = (
+                export
+                if changed == "export"
+                else layout.package_dir / "new_stem_probe.py"
+            )
+            target.write_text("__all__ = [missing]\n", encoding="utf-8")
+            with pytest.raises(ValueError, match="source"):
+                scope.close()
         with (
             pytest.raises(ValueError, match="invalid __all__"),
             u.Infra.codemod_binding_project(mod_workspace, epoch) as (project, sources),
@@ -175,6 +177,7 @@ class TestsFlextInfraCodemodContextComposeModule:
             eq=False,
         )
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("relative", "module", "expected"),
         [
@@ -190,7 +193,6 @@ class TestsFlextInfraCodemodContextComposeModule:
     )
     @pytest.mark.parametrize("outside_src", [False, True])
     def test_compose_import_cannot_bypass_the_declaration_layer(
-        self,
         mod_workspace: Path,
         relative: str,
         module: str,
@@ -248,6 +250,8 @@ class TestsFlextInfraCodemodContextComposeModule:
         ("relative", "service", "expected"),
         [
             ("workspace/detector.py", True, False),
+            ("workspace/cases/parts/detector.py", True, False),
+            ("workspace/cases/parts/detector.py", False, True),
             ("base.py", True, True),
             ("workspace/detector.py", False, True),
             ("_utilities/worker.py", True, True),
@@ -280,6 +284,18 @@ class TestsFlextInfraCodemodContextComposeModule:
             "    pass\nordinary = 1\nunresolved: Unavailable\n",
             encoding="utf-8",
         )
+        if "/cases/" in relative:
+            worker.with_name("__init__.py").write_text("", encoding="utf-8")
+            worker.with_name("document.py").write_text(
+                f"from {package}.base import RootService\n"
+                f"class Parent({'RootService[bool]' if service else 'object'}): pass\n",
+                encoding="utf-8",
+            )
+            worker.write_text(
+                f"from {package}.workspace.cases.parts import document as part\n"
+                "class DetectorService(part.Parent): pass\n",
+                encoding="utf-8",
+            )
         source = base if relative == "base.py" else worker
         target = f"{package}.workspace.worker" if source == base else f"{package}.base"
         if source == base:
@@ -294,7 +310,7 @@ class TestsFlextInfraCodemodContextComposeModule:
             mod_workspace,
             tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in (base, worker)
+                for path in dict.fromkeys((base, worker, *worker.parent.glob("*.py")))
             ),
         )
         with u.Infra.codemod_binding_project(

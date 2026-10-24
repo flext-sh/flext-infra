@@ -22,21 +22,15 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
     @staticmethod
     def _editor_snapshots(
         root: Path, destinations: frozenset[str]
-    ) -> p.Result[
-        t.MappingKV[str, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
-    ]:
-        """Capture every destination before rendering its replacement.
+    ) -> p.Result[t.MappingKV[str, m.Cli.AtomicFileState]]:
+        """Read every destination before rendering its replacement.
 
         Returns:
-            Physical file states or witnessed missing directory chains.
+            The destination file states.
 
         """
-        result_type = r[
-            t.MappingKV[str, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
-        ]
-        original: t.MutableMappingKV[
-            str, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
-        ] = {}
+        result_type = r[t.MappingKV[str, m.Cli.AtomicFileState]]
+        original: t.MutableMappingKV[str, m.Cli.AtomicFileState] = {}
         for relative in sorted(destinations):
             observed = u.Infra.codegen_target_snapshot(root / relative)
             if observed.failure:
@@ -48,23 +42,20 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         self,
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
-        captured: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
-    ) -> p.Result[t.Pair[str, t.SequenceOf[m.Cli.AtomicFileState]]]:
-        """Render the analyzer table against the captured project manifest.
+        captured: m.Cli.AtomicFileState,
+    ) -> p.Result[str]:
+        """Render the analyzer table against the project manifest.
 
         Returns:
-            The formatted manifest and its elected tooling source snapshots.
+            The formatted manifest.
 
         """
-        result_type = r[t.Pair[str, t.SequenceOf[m.Cli.AtomicFileState]]]
+        result_type = r[str]
         tooling = u.Infra.load_tooling_inputs(target.root)
         if tooling.failure:
             return result_type.from_failure(tooling)
         tool_config = tooling.value.document
-        if (
-            isinstance(captured, m.Cli.AtomicDirectoryChainPlan)
-            or captured.content is None
-        ):
+        if captured.content is None:
             return result_type.fail(
                 f"editor projection requires {c.PYPROJECT_FILENAME}"
             )
@@ -80,15 +71,12 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         )
         if manifest.failure:
             return result_type.from_failure(manifest)
-        formatted = u.Infra.format_toml_source(
+        return u.Infra.format_toml_source(
             manifest.value,
             path=target.root / c.PYPROJECT_FILENAME,
             toolchain_root=self.state.repository_root,
             taplo_version=codegen.toolchain.tool_versions["taplo"],
         )
-        if formatted.failure:
-            return result_type.from_failure(formatted)
-        return result_type.ok((formatted.value, tooling.value.sources))
 
     def _plan_existing_editor(
         self,
@@ -130,22 +118,13 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
         )
         if ignored.failure:
             return result_type.from_failure(ignored)
-        sources = (
-            *loaded.value.sources,
-            *manifest.value[1],
-            *(
-                state
-                for state in original.value.values()
-                if isinstance(state, m.Cli.AtomicFileState)
-            ),
-        )
         plans: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_file_specs:
             relative = managed.path.as_posix()
             if relative not in destinations:
                 continue
             content = (
-                manifest.value[0]
+                manifest.value
                 if relative == c.PYPROJECT_FILENAME
                 else (
                     ignored.value if relative == c.Infra.GITIGNORE else settings.value
@@ -158,7 +137,6 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
                     before=original.value[relative],
                     desired_content=content.encode(c.DEFAULT_ENCODING),
                     desired_mode=managed.mode,
-                    source_states=sources,
                     owner=managed.owner,
                     policy=managed.policy,
                     tracking=managed.tracking,

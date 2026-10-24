@@ -9,8 +9,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p
-from tests import tm, u
+from flext_infra import p
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,7 +36,8 @@ class TestsFlextInfraLazyInitTransforms:
         (utilities_dir / "mapper.py").write_text(
             "from __future__ import annotations\n\n"
             "class FlextDemoUtilitiesMapper:\n"
-            "    pass\n",
+            "    pass\n\n"
+            "__all__ = ['FlextDemoUtilitiesMapper']\n",
             encoding=c.DEFAULT_ENCODING,
         )
 
@@ -56,21 +57,23 @@ class TestsFlextInfraLazyInitTransforms:
         tm.that(init_content, has="FlextDemoUtilitiesMapper")
         tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
-        tm.that(init_content, lacks="__unit__")
 
     @staticmethod
     def test_source_packages_exclude_test_named_modules(tmp_path: Path) -> None:
-        """Never publish test artifacts from an installable source package."""
+        """A parent never republishes declarations of test-named child modules."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
         )
-        models_dir = package_root / "_models"
-        models_dir.mkdir()
+        services_dir = package_root / "services"
+        models_dir = services_dir / "_models"
+        models_dir.mkdir(parents=True)
+        (services_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (models_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (models_dir / "model.py").write_text(
-            "from __future__ import annotations\n\nclass FlextDemoModel:\n    pass\n",
+            "from __future__ import annotations\n\nclass FlextDemoModel:\n    pass\n\n"
+            "__all__ = ['FlextDemoModel']\n",
             encoding=c.DEFAULT_ENCODING,
         )
         test_modules = (
@@ -82,24 +85,23 @@ class TestsFlextInfraLazyInitTransforms:
             (models_dir / filename).write_text(
                 "from __future__ import annotations\n\n"
                 f"class {class_name}:\n"
-                "    pass\n",
+                "    pass\n\n"
+                f"__all__ = ['{class_name}']\n",
                 encoding=c.DEFAULT_ENCODING,
             )
 
         result = u.Tests.run_lazy_init(repository_root)
-        init_content = (models_dir / c.Infra.INIT_PY).read_text(
-            encoding=c.DEFAULT_ENCODING,
-        )
+        models_content = u.Tests.generated_init(models_dir)
+        parent_content = u.Tests.generated_init(services_dir)
 
         tm.that(result, eq=0)
-        tm.that(init_content, has='"FlextDemoModel"')
-        entries, _refs = u.Infra.lazy_import_mapping_source(init_content)
-        tm.that(dict(entries).get(".model", ()), has="FlextDemoModel")
+        tm.that(
+            models_content,
+            has=[f'"{class_name}"' for _filename, class_name in test_modules],
+        )
+        tm.that(parent_content, has='"FlextDemoModel": "._models.model"')
         for _filename, class_name in test_modules:
-            tm.that(init_content, lacks=class_name)
-        tm.that(init_content, lacks="_test_tmp")
-        tm.that(init_content, lacks="test_fixture")
-        tm.that(init_content, lacks="model_tests")
+            tm.that(parent_content, lacks=class_name)
 
     @staticmethod
     def test_version_exports_are_explicit_runtime_reexports(
@@ -114,7 +116,8 @@ class TestsFlextInfraLazyInitTransforms:
         (package_root / "__version__.py").write_text(
             "from __future__ import annotations\n\n"
             '__version__ = "1.0.0"\n'
-            "__version_info__ = (1, 0, 0)\n",
+            "__version_info__ = (1, 0, 0)\n\n"
+            "__all__ = ['__version__', '__version_info__']\n",
             encoding=c.DEFAULT_ENCODING,
         )
 
@@ -145,4 +148,3 @@ class TestsFlextInfraLazyInitTransforms:
         tm.that(content, has="__all__: tuple[str, ...]")
         tm.that(content, has='"__version__"')
         tm.that(content, has='"__version_info__"')
-        tm.that(content, lacks="__unit__")

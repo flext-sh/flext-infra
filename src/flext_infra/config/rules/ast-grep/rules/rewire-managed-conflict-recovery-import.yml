@@ -3,11 +3,11 @@ id: rewire-managed-conflict-recovery-import
 language: Python
 severity: error
 files:
-  - "flext-infra/src/**/*.py"
-  - "flext-infra/tests/**/*.py"
+- "flext-infra/src/**/*.py"
+- "flext-infra/tests/**/*.py"
 ignores:
-  - "**/__init__.py"
+- "**/__init__.py"
 rule:
-  pattern: from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
+  pattern: from flext_infra.codegen import FlextInfraCodegenManagedConflicts
 fix: from flext_infra import u
 message: Remove the deleted managed-conflict implementation import.

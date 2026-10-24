@@ -62,7 +62,7 @@ class FlextInfraUtilitiesDocsRender:
             ValueError: If repository URL does not identify owner/repository.
 
         """
-        normalized = repo_url.strip().rstrip("/").removesuffix(".git")
+        normalized = repo_url.strip().rstrip("/").removesuffix(c.GIT_DIR_NAME)
         if not normalized:
             return c.Infra.GITHUB_REPO_NAME
         if "://" in normalized:
@@ -125,20 +125,23 @@ class FlextInfraUtilitiesDocsRender:
             The resulting ``str``.
 
         """
-        rendered: t.MutableSequenceOf[str] = []
-        in_fence = False
-        for line in lines:
-            stripped = line.lstrip()
-            if stripped.startswith("```"):
-                in_fence = not in_fence
-                rendered.append(line)
-            elif in_fence:
-                rendered.append(line)
-            else:
-                rendered.extend(
-                    FlextInfraUtilitiesDocsRender._wrap_markdown_line(line, width=width)
+        document = "\n".join(lines)
+        verbatim = frozenset(
+            number
+            for fence in u.Cli.markdown_fences(document)
+            for number in range(fence.opening_line, fence.closing_line + 1)
+        )
+        return "\n".join(
+            wrapped
+            for number, line in enumerate(document.split("\n"), start=1)
+            for wrapped in (
+                (line,)
+                if number in verbatim
+                else FlextInfraUtilitiesDocsRender._wrap_markdown_line(
+                    line, width=width
                 )
-        return "\n".join(rendered)
+            )
+        )
 
     @staticmethod
     def _is_object_list(value: t.JsonValue | None) -> bool:
@@ -236,7 +239,7 @@ class FlextInfraUtilitiesDocsRender:
                 .validate_git_remote_url(governance_source.url)
                 .unwrap()
                 .rstrip("/")
-                .removesuffix(".git")
+                .removesuffix(c.GIT_DIR_NAME)
             )
             if normalized != prefix.rstrip("/"):
                 msg = "governance link differs from its captured owner"
@@ -803,8 +806,6 @@ class FlextInfraUtilitiesDocsRender:
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: t.SequenceOf[str],
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
@@ -860,7 +861,6 @@ class FlextInfraUtilitiesDocsRender:
             .template_render_authenticated(
                 template_path,
                 context,
-                source_states=source_states,
             )
             .unwrap()
             .rendered,
@@ -1013,7 +1013,6 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.JsonMapping,
         src_paths: t.SequenceOf[str] = (),
         *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
         documentation_language: t.Infra.DocumentationLanguage = "en",
     ) -> str:
         """Return the managed mkdocs.yml for the repository root.
@@ -1065,7 +1064,6 @@ class FlextInfraUtilitiesDocsRender:
             .template_render_authenticated(
                 template_path,
                 context,
-                source_states=source_states,
             )
             .unwrap()
             .rendered,

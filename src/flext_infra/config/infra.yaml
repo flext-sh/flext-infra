@@ -6,6 +6,8 @@ Infra:
   # Generic release protocol defaults. Repository-owned eligibility belongs
   # in the consumer's own Infra declaration.
   release:
+    # GitHub Releases only; consumers opt into index publication explicitly.
+    publish_index: false
     publishable_prefixes: []
     # A consumer workspace that also publishes distributions outside this
     # prefix declares the extra prefix in its own config/infra.yaml, or in

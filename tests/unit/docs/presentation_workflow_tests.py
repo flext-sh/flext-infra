@@ -56,14 +56,9 @@ class TestsFlextInfraPresentationWorkflow:
 
     @staticmethod
     def _unused_planner() -> Never:
-        """Reject selecting an unrelated code-generation capability.
-
-        Raises:
-            AssertionError: Always, because docs must not select this factory.
-
-        """
+        """Reject selecting an unrelated code-generation capability."""
         msg = "documentation selected a Python generation factory"
-        raise AssertionError(msg)
+        tm.reject(msg)
 
     @pytest.mark.parametrize("projection", [None, "en", "pt-BR"])
     def test_generate_projects_metadata_and_portuguese_docs_in_one_publication(
@@ -157,35 +152,6 @@ class TestsFlextInfraPresentationWorkflow:
         tm.fail(result)
         tm.that(tuple(target.read_bytes() for target in targets), eq=before)
 
-    @pytest.mark.parametrize(
-        "changed_source", ["pyproject.toml", "src/flext_a/__init__.py"]
-    )
-    def test_projection_source_race_prevents_metadata_and_document_publication(
-        self, tmp_path: Path, changed_source: str
-    ) -> None:
-        """A stale metadata plan cannot publish either participant of the batch."""
-        _workspace, project, generator = self._workspace(tmp_path)
-        self._declaration(project, "pt-BR")
-        bundle = tm.ok(next(generator.prepare_batches()))
-        tm.that(
-            all(
-                state.path.suffix in {".yaml", ".toml"}
-                for plan in bundle.metadata_files
-                for state in plan.source_states
-            ),
-            eq=True,
-        )
-        path = project / changed_source
-        metadata = project / c.PYPROJECT_FILENAME
-        concurrent = path.read_bytes() + b"\n# concurrent source edit\n"
-        path.write_bytes(concurrent)
-        metadata_before = metadata.read_bytes()
-        readme = (project / "README.md").read_bytes()
-        tm.fail(generator.publish_batch(bundle))
-        tm.that(path.read_bytes(), eq=concurrent)
-        tm.that(metadata.read_bytes(), eq=metadata_before)
-        tm.that((project / "README.md").read_bytes(), eq=readme)
-
     def test_render_failure_does_not_publish_prepared_metadata(
         self, tmp_path: Path
     ) -> None:
@@ -270,7 +236,7 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(captured.out, lacks='"desired_content"')
         tm.that(captured.out, lacks='"source_states"')
 
-    @pytest.mark.parametrize("entry", ["generate", "request", "execute"])
+    @pytest.mark.parametrize("entry", ["generate", c.ContextScope.REQUEST, "execute"])
     @pytest.mark.parametrize("failed_project", ["flext-a", "flext-b"])
     def test_terminal_failure_retains_only_preceding_committed_effects(
         self, tmp_path: Path, entry: str, failed_project: str
@@ -293,7 +259,7 @@ class TestsFlextInfraPresentationWorkflow:
             projects=["flext-a", "flext-b"],
             include_root=False,
         )
-        if entry == "request":
+        if entry == c.ContextScope.REQUEST:
             result = docs.FlextInfraDocGenerator.execute_request(request)
         elif entry == "execute":
             result = generator.execute()
@@ -343,7 +309,7 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(encoded, lacks='"desired_content"')
         tm.that(encoded, lacks='"source_states"')
 
-    @pytest.mark.parametrize("entry", ["request", "execute"])
+    @pytest.mark.parametrize("entry", [c.ContextScope.REQUEST, "execute"])
     def test_service_success_retains_the_existing_report_collection(
         self, tmp_path: Path, entry: str
     ) -> None:
@@ -357,7 +323,7 @@ class TestsFlextInfraPresentationWorkflow:
         )
         result = (
             docs.FlextInfraDocGenerator.execute_request(request)
-            if entry == "request"
+            if entry == c.ContextScope.REQUEST
             else generator.execute()
         )
         reports = tm.ok(result).root

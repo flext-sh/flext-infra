@@ -9,9 +9,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import override
 
+from flext_cli import u
 from rope.base.project import Project
 from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
+from typing_extensions import TypeForm
 
 from flext_infra import m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
@@ -105,7 +107,9 @@ class FlextInfraRopeRestructure(Restructure):
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
 
-        return super()._compute_changes(selected, pymodule)
+        return u.type_adapter(
+            TypeForm(t.Port[t.Infra.RopeNativeChangeComputer])
+        ).validate_python(super()._compute_changes(selected, pymodule), strict=True)
 
     @override
     def _add_imports(
@@ -134,7 +138,9 @@ class FlextInfraRopeRestructure(Restructure):
                 if binding not in names
             )
 
-        return super()._add_imports(resource, source, selected)
+        return u.type_adapter(str).validate_python(
+            super()._add_imports(resource, source, selected), strict=True
+        )
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

@@ -10,10 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
-from flext_infra.services._codegen import (
-    FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
-)
+from flext_infra import config, m, services
 from tests import c, tm, u
 
 
@@ -90,7 +87,9 @@ class TestsFlextInfraCodegenRenderPurityGolden:
                 encoding="utf-8",
             )
 
-        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
+        rendered: str = tm.ok(
+            services.FlextInfraCodegenVscodeMixin.render_vscode_settings(project),
+        )
         settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
 
         for key, value in expected.items():
@@ -111,7 +110,12 @@ class TestsFlextInfraCodegenRenderPurityGolden:
             encoding="utf-8",
         )
 
-        committed = tm.ok(u.Infra.load_committed_project_managed_artifacts(project))
+        committed = tm.ok(
+            u.Infra.load_committed_project_managed_artifacts(
+                project,
+                read_committed_directory=u.Infra.git_committed_directory_blobs,
+            ),
+        )
         working = tm.ok(u.Infra.load_project_managed_artifacts(project))
 
         tm.that(committed.artifacts.Gitignore.patterns, eq=("committed-cache/",))

@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, m, main, r
+from flext_infra import infra, m, main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import t, tm, u
+from tests import c, r, t, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -204,7 +204,7 @@ class TestsFlextInfraRefactorMainCli:
         "from __future__ import annotations\n\n"
         "import typing as _t\n\n"
         "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
-        "if _t.TYPE_CHECKING:\n"
+        "if t.TYPE_CHECKING:\n"
         "    from sample_pkg.operations import helper_used, only_for_tests\n"
         "_LAZY_IMPORTS = build_lazy_import_map(\n"
         "    {\n"
@@ -259,7 +259,7 @@ class TestsFlextInfraRefactorMainCli:
     @staticmethod
     def _write_workspace_pyproject(workspace: Path) -> None:
         TestsFlextInfraRefactorMainCli._write(
-            workspace / "pyproject.toml",
+            workspace / c.PYPROJECT_FILENAME,
             "[project]\n"
             'name = "sample-pkg"\n'
             'version = "0.1.0"\n\n'
@@ -299,9 +299,7 @@ class TestsFlextInfraRefactorMainCli:
             The resulting ``list[t.JsonMapping]``.
 
         """
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = tm.ok(u.Cli.json_read(impact_map_path))
         files = u.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         return [u.Tests.toml_mapping(item) for item in files]
 
@@ -797,8 +795,8 @@ class TestsFlextInfraRefactorMainCli:
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
-        tm.ok(service_entry["modified"])
-        tm.ok(service_entry["success"])
+        tm.that(service_entry["modified"], eq=True)
+        tm.that(service_entry["success"], eq=True)
         tm.that(
             list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_cleanup (unused)"],
@@ -842,8 +840,8 @@ class TestsFlextInfraRefactorMainCli:
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
         service_entry = next(item for item in entries if item["path"] == service_path)
 
-        tm.ok(service_entry["modified"])
-        tm.ok(service_entry["success"])
+        tm.that(service_entry["modified"], eq=True)
+        tm.that(service_entry["success"], eq=True)
         tm.that(
             list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_tests (unused)"],

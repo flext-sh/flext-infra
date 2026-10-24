@@ -17,11 +17,13 @@ from typing import ClassVar
 
 import flext_core
 from flext_cli import u
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSource,
@@ -163,6 +165,23 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
+    def facade_family_of_source(cls, source: Path) -> str | None:
+        """Return the nearest family owning a source, including split parts.
+
+        Callers selecting a repository scope pass a repository-relative path
+        so a homonymous directory outside that scope cannot elect an owner.
+
+        Returns:
+            The family letter, or ``None`` outside private family directories.
+
+        """
+        for parent in source.parents:
+            family = cls.facade_family_of_directory(parent.name)
+            if family is not None:
+                return family
+        return None
+
+    @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether *file_name* is a governed root-namespace facade file.
 
@@ -173,7 +192,34 @@ class FlextInfraUtilitiesCodegenNamespace:
         return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
 
     @staticmethod
-    def runtime_singleton_export(file_name: str) -> str | None:
+    def runtime_module_names(
+        *, project_name: str, codegen: m.Infra.CodegenConfigSpec
+    ) -> t.StrMapping:
+        """Resolve singleton roles to physical stems for exactly one project.
+
+        Returns:
+            The canonical stems with the project's declared overrides applied.
+
+        """
+        defaults = {
+            Path(module_file).stem.removeprefix("_"): Path(module_file).stem
+            for module_file, *_ in c.Infra.RUNTIME_MODULES
+        }
+        defaults.update(
+            codegen.runtime_module_overrides.get(
+                canonicalize_name(project_name), {}
+            ).items()
+        )
+        return defaults
+
+    @classmethod
+    def runtime_singleton_export(
+        cls,
+        file_name: str,
+        *,
+        project_name: str,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> str | None:
         """Return the sole public singleton owned by a sanctioned runtime module.
 
         Returns:
@@ -182,9 +228,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         """
         return next(
             (
-                Path(module_file).stem.removeprefix("_")
-                for module_file, *_ in c.Infra.RUNTIME_MODULES
-                if file_name == module_file
+                role
+                for role, module in cls.runtime_module_names(
+                    project_name=project_name, codegen=codegen
+                ).items()
+                if file_name == f"{module}.py"
             ),
             None,
         )
@@ -359,8 +407,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         rope_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
-        if rope_project is not None and not rope_project.authenticated_sources:
-            rope_project = None
+
         if not (
             file_path.is_file()
             if rope_project is None
@@ -414,7 +461,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         resolved_root = project_root.resolve()
-        if rope_project is not None and rope_project.authenticated_sources:
+        if rope_project is not None:
             project = None
         else:
             rope_project = None
@@ -466,6 +513,11 @@ class FlextInfraUtilitiesCodegenNamespace:
             runtime_aliases=cls._runtime_aliases(
                 package_dir, rope_project=rope_project
             ),
+            repository_namespace_packages=tuple(
+                cls.repository_namespace_packages(
+                    resolved_root, source_project=rope_project
+                )
+            ),
         )
 
     @classmethod
@@ -505,9 +557,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project_layout is not None
             else FlextInfraUtilitiesDiscovery.project_root(
                 file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             )
         )
         if project_root is not None:
@@ -518,7 +568,13 @@ class FlextInfraUtilitiesCodegenNamespace:
             public_root = layout is not None and file_path.parent == layout.package_dir
             # A stub is never a facade source: Rope loads only Python sources,
             # and stub law is judged by its own rule.
-            facade_source = file_path.suffix == c.Infra.EXT_PYTHON
+            # A source outside the analyzed Rope project (an installed
+            # provider) keeps its declared exports as its only ownership fact.
+            facade_source = file_path.suffix == c.Infra.EXT_PYTHON and (
+                file_path.resolve().is_relative_to(
+                    Path(rope_project.root.real_path).resolve()
+                )
+            )
             if facade_source and (direct_tier or public_root):
                 resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
                     rope_project,
@@ -617,12 +673,34 @@ class FlextInfraUtilitiesCodegenNamespace:
         if not file_path.is_relative_to(project_root):
             return class_stem
         rel_parts = file_path.relative_to(project_root).parts
+        declared = layout.repository_namespace_packages
+        if rel_parts and rel_parts[0] in declared:
+            return u.derive_class_stem(rel_parts[0].replace("_", "-"))
         surface_prefix = (
             rel_parts[0].title()
             if rel_parts and rel_parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
             else ""
         )
         return f"{surface_prefix}{class_stem}" if surface_prefix else class_stem
+
+    @staticmethod
+    def repository_namespace_packages(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
+        """Read independent repository packages from their typed declaration.
+
+        Returns:
+            Explicit namespace packages, never directories inferred from layout.
+
+        """
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declaration = artifacts.load_repository_declaration_inputs(
+            project_root, source_project=source_project
+        ).unwrap()
+        project = declaration.spec.project
+        return () if project is None else project.repository_namespace_packages
 
     @staticmethod
     def _policy_surface_name(package_parts: t.StrSequence) -> str:
@@ -776,9 +854,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if project_layout is not None
             else FlextInfraUtilitiesDiscovery.project_root(
                 file_path,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             )
         )
         if project_layout is None and project_root is not None:
@@ -818,9 +894,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_prefix=cls.project_prefix(
                 file_path,
                 project_layout=project_layout,
-                source_project=rope_project
-                if rope_project.authenticated_sources
-                else None,
+                source_project=rope_project,
             ),
             expected_alias=expected_alias,
             expected_family=expected_family,

@@ -23,6 +23,18 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
+    def _published_name(attribute: p.Infra.RopePyName) -> str:
+        """Resolve the declared name of the native object behind one attribute.
+
+        Returns:
+            The name reported by the native named object.
+
+        """
+        return u.Infra.require_named_object(
+            attribute.get_object(), "published attribute"
+        ).get_name()
+
+    @staticmethod
     @pytest.mark.parametrize("warm_ast", [False, True])
     def test_semantic_regions_include_try_else_with_finally(
         tmp_path: Path,
@@ -114,7 +126,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
         with closing(u.Infra.init_rope_project(tmp_path)) as project:
             resource = project.get_resource(consumer.name)
-            module = project.get_pymodule(resource)
+            module = u.Infra.resolve_pymodule(project, resource)
             request = m.Infra.RopeRestructureRequest(
                 pattern="${owner}.value",
                 goal="New.value",
@@ -129,6 +141,8 @@ class TestsFlextInfraRopeRuntimePymodule:
                 has=f"matched=1 admitted={int(admitted)}",
             )
             tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            if not isinstance(module, p.Infra.RopePyModule):
+                pytest.fail("Native source module must expose its source text")
             tm.that(module.source_code, eq=source)
             tm.ok(project.get_pymodule(resource) is module)
             tm.that(len(changes.changes), eq=int(admitted))
@@ -145,6 +159,31 @@ class TestsFlextInfraRopeRuntimePymodule:
         expected_value = ("existing" if reuse_binding else "new") if admitted else "old"
         output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
         tm.that(output.stdout, eq=f"{expected_value} foreign\n")
+
+    @staticmethod
+    @pytest.mark.parametrize("package", [False, True])
+    def test_selected_source_resource_preserves_native_public_scope(
+        tmp_path: Path,
+        *,
+        package: bool,
+    ) -> None:
+        """Source-resource resolution retains the elected module and bindings."""
+        provider = tmp_path / "provider"
+        if package:
+            provider.mkdir()
+        source = provider / c.Infra.INIT_PY if package else provider.with_suffix(".py")
+        source.write_text(
+            "class PublishedContract:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        with closing(u.Infra.init_rope_project(tmp_path)) as project:
+            selected = u.Infra.require_semantic_module(project.get_module("provider"))
+            resource = tm.not_none(selected.get_resource())
+            parsed = u.Infra.resolve_pymodule(project, resource)
+            tm.ok(parsed is selected)
+            tm.ok(
+                parsed.get_scope().get_names()["PublishedContract"]
+                is selected.get_attribute("PublishedContract")
+            )
 
     @staticmethod
     @pytest.mark.parametrize("captured", [False, True])
@@ -187,13 +226,11 @@ class TestsFlextInfraRopeRuntimePymodule:
                 eq=project.get_resource(owner.relative_to(tmp_path).as_posix()),
             )
             tm.that(
-                u.Infra
-                .require_semantic_module(
-                    project.get_relative_module("owner", folder, 1)
-                )
-                .get_attribute("PublishedContract")
-                .get_object()
-                .get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    u.Infra.require_semantic_module(
+                        project.get_relative_module("owner", folder, 1)
+                    ).get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
             tm.that(project.find_relative_module("missing", folder, 1), none=True)
@@ -221,10 +258,10 @@ class TestsFlextInfraRopeRuntimePymodule:
         )
 
     @staticmethod
-    def test_regular_package_precedes_namespace_in_captured_sources(
+    def test_regular_package_precedes_namespace_in_snapshot_view(
         tmp_path: Path,
     ) -> None:
-        """The same source package wins before and after capturing its files."""
+        """The same source package wins in the live view and its snapshot view."""
         roots = (tmp_path / "first", tmp_path / "second")
         namespace, package = (root / "provider" for root in roots)
         namespace.mkdir(parents=True)
@@ -247,57 +284,45 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(u.Infra.snapshot_project(original, {})) as captured,
         ):
             tm.that(
-                u.Infra
-                .require_semantic_module(original.get_module("provider"))
-                .get_attribute("PublishedContract")
-                .get_object()
-                .get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    u.Infra.require_semantic_module(
+                        original.get_module("provider")
+                    ).get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
-            initializer.unlink()
             tm.that(
-                u.Infra
-                .require_semantic_module(captured.get_module("provider"))
-                .get_attribute("PublishedContract")
-                .get_object()
-                .get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    u.Infra.require_semantic_module(
+                        captured.get_module("provider")
+                    ).get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
 
     @staticmethod
-    def test_snapshot_project_uses_only_captured_sources(tmp_path: Path) -> None:
-        """A later disk edit cannot change the closed Rope source view."""
-        captured = tmp_path / "captured.py"
-        captured.write_text("VALUE = 42\n", encoding=c.Infra.ENCODING_DEFAULT)
+    def test_snapshot_project_overlays_proposed_sources_without_writing(
+        tmp_path: Path,
+    ) -> None:
+        """A proposed source is visible in the snapshot view and never written."""
+        planned = tmp_path / "planned.py"
         with (
             closing(u.Infra.init_rope_project(tmp_path)) as original,
             closing(
-                u.Infra.snapshot_project(
-                    original,
-                    {captured: captured.read_text(encoding=c.Infra.ENCODING_DEFAULT)},
-                ),
+                u.Infra.snapshot_project(original, {planned: "VALUE = 42\n"}),
             ) as project,
         ):
-            captured.unlink()
-            (tmp_path / "uncaptured.py").write_text(
-                "VALUE = 99\n", encoding=c.Infra.ENCODING_DEFAULT
-            )
             resource = u.Infra.require_file_resource(
-                tm.not_none(project.find_module("captured")), captured
+                tm.not_none(project.find_module("planned")), planned
             )
             tm.that(resource.read(), eq="VALUE = 42\n")
-            tm.that(project.find_module("uncaptured"), none=True)
+            tm.that(planned.exists(), eq=False)
 
     @staticmethod
     def test_declared_package_root_resolves_its_qualified_name(
         tmp_path: Path,
     ) -> None:
-        """A declared package folder exposes its real qualified import.
-
-        Raises:
-            AssertionError: If declared package root did not resolve its qualified name.
-
-        """
+        """A declared package folder exposes its real qualified import."""
         package = tmp_path / "qualified_package"
         initializer = package / c.Infra.INIT_PY
         source = "class PublishedContract:\n    pass\n"
@@ -320,10 +345,12 @@ class TestsFlextInfraRopeRuntimePymodule:
             tm.that(resource, none=False)
             if resource is None:
                 msg = "declared package root did not resolve its qualified name"
-                raise AssertionError(msg)
+                tm.reject(msg)
             module = u.Infra.resolve_pymodule(project, resource)
             tm.that(
-                module.get_attribute("PublishedContract").get_object().get_name(),
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    module.get_attribute("PublishedContract")
+                ),
                 eq="PublishedContract",
             )
             tm.not_none(u.Infra.resolve_module_imports(project, resource))
@@ -335,12 +362,7 @@ class TestsFlextInfraRopeRuntimePymodule:
         *,
         regular_package: bool,
     ) -> None:
-        """Python source wins over a data directory, not an initialized package.
-
-        Raises:
-            AssertionError: If Native Rope finder did not resolve the fixture module.
-
-        """
+        """Python source wins over a data directory, not an initialized package."""
         root = tmp_path / "consumer"
         source = root / "src"
         source.mkdir(parents=True)
@@ -360,10 +382,15 @@ class TestsFlextInfraRopeRuntimePymodule:
             tm.that(resource, none=False)
             if resource is None:
                 message = "Native Rope finder did not resolve the fixture module"
-                raise AssertionError(message)
+                tm.reject(message)
             module = u.Infra.resolve_pymodule(workspace.rope_project, resource)
             expected = "PackageContract" if regular_package else "ModuleContract"
-            tm.that(module.get_attribute(expected).get_object().get_name(), eq=expected)
+            tm.that(
+                TestsFlextInfraRopeRuntimePymodule._published_name(
+                    module.get_attribute(expected)
+                ),
+                eq=expected,
+            )
 
     @staticmethod
     def test_pymodule_contract_accepts_packages(tmp_path: Path) -> None:

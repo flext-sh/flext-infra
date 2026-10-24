@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticConstantConsumers,
+    FlextInfraUtilitiesSemanticContracts,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
@@ -19,13 +24,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
-)
-from flext_infra._utilities._semantic_cutover.contracts import (
-    FlextInfraUtilitiesSemanticContracts,
 )
 from flext_infra._utilities._semantic_cutover.model_aliases import (
     FlextInfraUtilitiesSemanticModelAliases,
@@ -66,6 +65,8 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         ``rope_workspace`` supplies the repository root that reported findings
         are relative to and, for class nesting, the module ownership policy.
         Finding-driven phases select their own rule findings from ``findings``.
+        Original policy and layout reads share authenticated source authority;
+        the exploratory Rope SDK retains its independent mutable lifetime.
 
         Returns:
             The immutable result view of the selected phase's source edits.
@@ -74,16 +75,22 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             ValueError: If the phase is unsupported.
 
         """
-        if not phase:
+        if type(phase) is not c.Infra.SemanticCutoverPhase:
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
         root = rope_workspace.repository_root
         rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
         selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
+        if (
+            phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING
+            or phase is c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
+        ):
+            return cls._plan_source_project_phase(
+                phase, rope_workspace, sources, selected, None
+            )
         match phase:
             case (
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
-                | c.Infra.SemanticCutoverPhase.CLASS_NESTING
                 | c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
                 | c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
@@ -99,11 +106,71 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     import_normalizer,
                 )
             case (
-                c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
-                | c.Infra.SemanticCutoverPhase.MODULE_END
+                c.Infra.SemanticCutoverPhase.MODULE_END
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
+
+    @classmethod
+    def plan_dynamic_environment_cutover(
+        cls,
+        *,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs],
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        """Plan the dynamic-environment phase over explicitly projected policy.
+
+        ``dependency_codegen`` supplies captured policy by owning project root;
+        roots absent from it are captured through source authority.
+
+        Returns:
+            The immutable result view of the phase's source edits.
+
+        """
+        phase = c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
+        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
+        selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
+        return cls._plan_source_project_phase(
+            phase, rope_workspace, sources, selected, dependency_codegen
+        )
+
+    @classmethod
+    def _plan_source_project_phase(
+        cls,
+        phase: c.Infra.SemanticCutoverPhase,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        selected: t.SequenceOf[m.Infra.ModOccurrence],
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        """Plan a phase whose policy is captured through one source project.
+
+        Returns:
+            The immutable result view of the selected phase's source edits.
+
+        """
+        root = rope_workspace.repository_root
+        source_project = rope_workspace.rope_project
+        captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            root, source_project=source_project
+        )
+        if captured.failure:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                captured
+            )
+        codegen = captured.value.spec
+        if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
+            return cls._plan_class_nesting(rope_workspace, sources, codegen)
+        return cls._plan_dynamic_environment(
+            sources,
+            frozenset((root / finding.file).resolve() for finding in selected),
+            source_project=source_project,
+            owner_context=cls._settings_owner_contexts(
+                root, codegen, source_project, dependency_codegen
+            ),
+        )
 
     @classmethod
     def _plan_behavior_and_declarations(
@@ -127,7 +194,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             )
         ) as project:
             consumers = cls._plan_behavior_consumers(
-                rope_workspace.repository_root, sources, native_project=project
+                sources,
+                native_project=project,
+                source_project=rope_workspace.rope_project,
             )
         if consumers.failure:
             return consumers
@@ -167,9 +236,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         dispatch = {
             c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION: lambda: (
                 cls._plan_behavior_and_declarations(rope_workspace, sources)
-            ),
-            c.Infra.SemanticCutoverPhase.CLASS_NESTING: lambda: cls._plan_class_nesting(
-                rope_workspace, sources
             ),
             c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS: lambda: (
                 cls._plan_constant_consumers(rope_workspace, sources)
@@ -252,8 +318,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         """
         match phase:
-            case c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT:
-                return cls._plan_dynamic_environment(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.MODULE_END:
                 return cls._plan_module_end(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.NOTICE_LAST:

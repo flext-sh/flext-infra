@@ -113,6 +113,7 @@ class FlextInfraAccessorOriginResolver:
             TypeError: If the defining module has no syntax tree.
 
         """
+        owner = u.Infra.require_class_object(owner, "accessor lineage")
         key = id(owner)
         if key in self._lineages:
             if not self._lineages[key]:
@@ -121,8 +122,8 @@ class FlextInfraAccessorOriginResolver:
             return self._lineages[key]
         self._lineages[key] = ()
         bases = tuple(owner.get_superclasses())
-        scope = owner.get_scope() if u.Infra.py_class(owner) else None
-        if scope is not None:
+        if u.Infra.py_class(owner):
+            scope = owner.get_scope()
             module = owner.get_module()
             if not u.Infra.source_module(module):
                 msg = f"accessor class has no defining module: {owner.get_name()}"
@@ -577,6 +578,33 @@ class FlextInfraAccessorOriginResolver:
         if binding is None:
             msg = f"Unresolved accessor receiver: {py_file}:{receiver.lineno}"
             raise ValueError(msg)
+        if u.Infra.parameter_name(binding):
+            module, line = binding.get_definition_location()
+            if not u.Infra.source_module(module) or line is None:
+                msg = f"Unresolved accessor parameter declaration: {py_file}"
+                raise ValueError(msg)
+            scope = module.get_scope().get_inner_scope_for_line(line)
+            declaration = scope.pyobject.get_ast()
+            if isinstance(declaration, ast.FunctionDef | ast.AsyncFunctionDef):
+                for argument in (
+                    *declaration.args.posonlyargs,
+                    *declaration.args.args,
+                    *declaration.args.kwonlyargs,
+                ):
+                    if (
+                        argument.annotation is not None
+                        and scope.get_names().get(argument.arg) is binding
+                    ):
+                        declared = u.Infra.annotation_origin(
+                            self._rope_project, argument.annotation, scope
+                        )
+                        if declared is None:
+                            msg = (
+                                "Unresolved accessor receiver annotation: "
+                                f"{py_file}:{argument.lineno}"
+                            )
+                            raise ValueError(msg)
+                        return declared.get_object()
         return binding.get_object()
 
     def receiver_inherits(
@@ -610,7 +638,10 @@ class FlextInfraAccessorOriginResolver:
             if self._matches_declaration(candidate, declaring_class):
                 return True
             pending.extend(
-                (base, ancestors | {id(candidate)})
+                (
+                    u.Infra.require_class_object(base, "accessor receiver lineage"),
+                    ancestors | {id(candidate)},
+                )
                 for base in candidate.get_superclasses()
             )
         return False

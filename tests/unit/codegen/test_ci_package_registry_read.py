@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c
-from tests import t, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCiPackageRegistryRead:
@@ -33,12 +32,11 @@ class TestsFlextInfraCiPackageRegistryRead:
             ),
         )
         rendered = tm.ok(u.Cli.template_render(cls.ci_template, spec))
-        jobs = tm.ok(u.Cli.yaml_parse(rendered))["jobs"]
-        tm.that(isinstance(jobs, Mapping), truth=True)
+        adapter = u.Cli.JSON_MAPPING_ADAPTER
+        document = adapter.validate_python(tm.ok(u.Cli.yaml_parse(rendered)))
         permissions: t.MutableJsonMapping = {}
-        for name, job in jobs.items():
-            tm.that(isinstance(job, Mapping), truth=True)
-            permissions[name] = job["permissions"]
+        for name, job in adapter.validate_python(document["jobs"]).items():
+            permissions[name] = adapter.validate_python(job)["permissions"]
         return permissions
 
     def test_declared_consumer_ci_job_reads_packages(self) -> None:

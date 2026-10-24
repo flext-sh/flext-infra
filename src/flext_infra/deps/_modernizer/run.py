@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerTooling
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -18,58 +19,8 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyprojectModernizerRun:
+class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
     """Drive file selection, modernization, reporting, and post-write checks."""
-
-    if TYPE_CHECKING:
-        # Members supplied by the composed modernizer service.
-        audit: bool
-        check_only: bool
-        skip_check: bool
-        skip_comments: bool
-        rewrite_constraints: bool
-        git_source_url_prefix: str | None
-        git_source_ref_from: str | None
-        git_source_ref_to: str | None
-
-        @property
-        def root(self) -> Path: ...
-
-        @property
-        def effective_dry_run(self) -> bool: ...
-
-        @property
-        def project_names(self) -> t.StrSequence | None: ...
-
-        @staticmethod
-        def _read_document_state(
-            path: Path,
-            *,
-            source: str | None = None,
-        ) -> p.Result[m.Infra.PyprojectDocumentState]:
-            del path, source
-
-        def _process_document_state(
-            self,
-            state: m.Infra.PyprojectDocumentState,
-            *,
-            canonical_dev: t.StrSequence,
-            dry_run: bool,
-            skip_comments: bool,
-            source_migration: m.Infra.GitSourceReferenceMigration | None = None,
-        ) -> p.Result[t.StrSequence]:
-            del state, canonical_dev, dry_run, skip_comments, source_migration
-
-        def _render_document_state(
-            self,
-            state: m.Infra.PyprojectDocumentState,
-            changes: t.StrSequence,
-            *,
-            skip_comments: bool,
-            format_source: bool = True,
-            preserve_layout: bool = False,
-        ) -> p.Result[t.StrSequence]:
-            del state, changes, skip_comments, format_source, preserve_layout
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
         """Resolve selected names by path, directory basename, or declared name.

@@ -6,16 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 import pytest
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.version import Version
 
-from tests import c, tm, u
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerHelpers:

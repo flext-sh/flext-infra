@@ -19,29 +19,15 @@ class TestsFlextInfraPyprojectConformTopologySupport:
 
     @staticmethod
     def _conform_options(
-        root: Path,
         workspace: m.Infra.WorkspaceSpec,
     ) -> u.Infra.PyprojectConformOptions:
-        """Capture each declared package through the public atomic file owner.
+        """Bind the conform inputs to the workspace's detected integration line.
 
         Returns:
-            Conform inputs bound to the workspace and its captured metadata.
+            Conform inputs carrying the workspace integration provenance.
 
         """
-        return u.Infra.PyprojectConformOptions(
-            repository_root=root,
-            flext_line=workspace.integration,
-            member_declarations=tuple(
-                tm.ok(
-                    u.Cli.atomic_read_binary_file_state(
-                        root / member.path / c.PYPROJECT_FILENAME,
-                        required=True,
-                    )
-                )
-                for member in workspace.subprojects
-                if member.package
-            ),
-        )
+        return u.Infra.PyprojectConformOptions(flext_line=workspace.integration)
 
     def _member_ref(self, distribution: str, path: str) -> m.Infra.RepositoryRef:
         """Declare one standalone-capable member through the provider contract.
@@ -139,7 +125,8 @@ class TestsFlextInfraPyprojectConformTopologySupport:
             ),
         )
 
-    def _overlay(self, source: str, rendered: str) -> str:
+    @staticmethod
+    def _overlay(source: str, rendered: str) -> str:
         """Merge one render through the preserved-overlay owner.
 
         Returns:

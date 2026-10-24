@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 import flext_infra
-from flext_infra import c, m
-from tests import tm, u
+from flext_infra import m
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,7 +55,7 @@ class TestsFlextInfraRefactorCensusPreview:
             suggested_action="remove",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with u.Tests.authenticated_rope_workspace(repository_root) as rope:
             updates = u.Infra.build_simple_removal_sources(rope, candidate)
 
         tm.that(updates, none=False)
@@ -122,7 +122,7 @@ class TestsFlextInfraRefactorCensusPreview:
             ),
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with u.Tests.authenticated_rope_workspace(repository_root) as rope:
             updates = u.Infra.build_simple_removal_sources(rope, candidate)
 
         tm.that(updates, none=False)
@@ -166,7 +166,7 @@ class TestsFlextInfraRefactorCensusPreview:
             suggested_action="remove",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with u.Tests.authenticated_rope_workspace(repository_root) as rope:
             preview = u.Infra.preview_simple_removal_candidate(
                 rope,
                 repository_root,

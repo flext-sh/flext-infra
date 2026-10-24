@@ -196,12 +196,12 @@ class TestsVerifyLanes:
         u.Tests.git_run(repo, "add", staged.name)
         untracked = repo / "untracked.txt"
         untracked.write_bytes(b"untracked WIP\xff\n")
-        index = (repo / ".git" / "index").read_bytes()
+        index = (repo / c.GIT_DIR_NAME / "index").read_bytes()
         refs = u.Tests.git_capture(repo, "show-ref")
         tm.that(main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         tm.that(output.out + output.err, has=f"forbidden stash: {head}")
-        tm.that((repo / ".git" / "index").read_bytes(), eq=index)
+        tm.that((repo / c.GIT_DIR_NAME / "index").read_bytes(), eq=index)
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
         tm.that(staged.read_bytes(), eq=b"staged WIP\x00\n")
         tm.that(untracked.read_bytes(), eq=b"untracked WIP\xff\n")
@@ -426,7 +426,7 @@ class TestsVerifyLanes:
         u.Tests.git_run(repo, "worktree", "add", "--detach", str(lane), "HEAD")
         if artifact == "orphan":
             lane.rename(tmp_path / "preserved-worktree")
-        registry = u.Tests.git_capture(repo, "worktree", "list", "--porcelain")
+        registry = u.Tests.git_capture(repo, "worktree", c.Action.LIST, "--porcelain")
         tm.that(main(cls._argv(request)), eq=1)
         output = capsys.readouterr()
         expected = (
@@ -437,7 +437,7 @@ class TestsVerifyLanes:
         tm.that(output.out + output.err, has=expected)
         tm.that(output.out + output.err, has=str(lane))
         tm.that(
-            u.Tests.git_capture(repo, "worktree", "list", "--porcelain"),
+            u.Tests.git_capture(repo, "worktree", c.Action.LIST, "--porcelain"),
             eq=registry,
         )
 

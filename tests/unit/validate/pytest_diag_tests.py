@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 import pytest
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra.validate import FlextInfraPytestDiagExtractor
-from tests import m, tm
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

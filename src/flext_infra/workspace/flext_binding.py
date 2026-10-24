@@ -1,22 +1,8 @@
-"""Session binding of an external consumer onto one flext worktree.
+"""Observe the provisioned consumer's physical Python environment.
 
-An external project declares flext packages by pinned git URL, so it always
-validates PUBLISHED code. A cross-project change therefore could not be reviewed
-until it was published, which inverts the order of work.
-
-The explicit ``workspace flext-binding`` CLI rebinds the consumer's physical
-environment onto that checkout for the session. The consumer's
-``pyproject.toml`` is never modified; running canonical setup restores its
-declared resolution. This operation requires the provisioned consumer Python
-and rejects CI before reading or changing the consumer environment.
-
-Like canonical setup, binding considers all declared extras and dependency
-groups. Consumer interpreter markers select active requirements; unrelated
-dependencies constrain resolution without being installed as new roots.
-
-The rebind set is derived from the intersection of what the consumer declares
-and what the worktree actually provides, read from the worktree's own manifest —
-never a hardcoded package list.
+Native uv declarations and locks own installation and source selection. This
+service only observes interpreter markers, package resolution and metadata for
+the existing post-install provenance consumers; it never rebinds packages.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -26,12 +12,10 @@ from __future__ import annotations
 
 import os
 import sysconfig
-from collections.abc import MutableMapping
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -39,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraBindingService:
-    """Resolve and apply one session binding onto a flext worktree."""
+    """Observe installed interpreter and package facts without changing sources."""
 
     @staticmethod
     def _consumer_environment(consumer_root: Path, python: Path) -> p.Result[Path]:
@@ -229,216 +213,6 @@ class FlextInfraBindingService:
                 "package environment identity changed during observation",
             )
         return result_type.ok(value=True)
-
-    @staticmethod
-    def _document(consumer_root: Path) -> t.Cli.TomlDocument:
-        """Read the consumer declaration through its canonical parser.
-
-        Returns:
-            The resulting ``t.Cli.TomlDocument``.
-
-        Raises:
-            ValueError: If consumer dependency declaration is not valid TOML.
-
-        """
-        document = u.Cli.toml_parse_text(
-            u.Cli.files_read_text(consumer_root / c.PYPROJECT_FILENAME).unwrap(),
-        )
-        if document is None:
-            msg = "consumer dependency declaration is not valid TOML"
-            raise ValueError(msg)
-        return document
-
-    @staticmethod
-    def _binding_paths(
-        *,
-        requirements: t.StrSequence,
-        flext_root: Path,
-    ) -> p.Result[t.MappingKV[str, m.Infra.RepositoryRef]]:
-        """Return the distributions this worktree can supply to the consumer.
-
-        Fails closed when ``flext_root`` is not a flext workspace, so a mistyped
-        path can never silently bind nothing and leave the consumer on its pins.
-
-        Returns:
-            The supplier repository of each selected distribution, by name.
-
-        """
-        result = r[t.MappingKV[str, m.Infra.RepositoryRef]]
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
-        if workspace.failure:
-            return result.fail(
-                f"FLEXT is not a flext workspace: {flext_root}: "
-                f"{workspace.error or 'manifest unreadable'}",
-            )
-        available: MutableMapping[str, m.Infra.RepositoryRef] = {}
-        for repository in (workspace.value.repository, *workspace.value.subprojects):
-            if not repository.package:
-                continue
-            name = u.Infra.dep_name(repository.distribution)
-            if name is None or name in available:
-                return result.fail(
-                    f"binding supplier has an invalid or duplicate "
-                    f"distribution: {repository.distribution}",
-                )
-            available[name] = repository
-        names = {u.Infra.dep_name(item) for item in requirements}
-        selected = {
-            name: available[name] for name in sorted(available) if name in names
-        }
-        if not selected:
-            return result.fail(
-                "requested binding selects no active declared dependency: "
-                f"declared={names!r}; available={tuple(available)!r}",
-            )
-        for repository in selected.values():
-            path = (flext_root / repository.path).resolve()
-            if not (path / c.PYPROJECT_FILENAME).is_file():
-                return result.fail(
-                    f"binding supplier package is not provisioned: {path}",
-                )
-        return result.ok(selected)
-
-    @classmethod
-    def plan_targets(
-        cls,
-        *,
-        consumer_root: Path,
-        flext_root: Path,
-        python: Path,
-    ) -> p.Result[t.MappingKV[str, m.Infra.RepositoryRef]]:
-        """Resolve targets with marker facts from the consumer's interpreter.
-
-        Returns:
-            The supplier repository of each selected distribution, by name.
-
-        """
-        environment = cls.consumer_marker_environment(
-            consumer_root=consumer_root,
-            python=python,
-        )
-        if environment.failure:
-            return r[t.MappingKV[str, m.Infra.RepositoryRef]].from_failure(environment)
-        requirements = u.Infra.active_session_requirements(
-            cls._document(consumer_root),
-            environment=environment.value,
-        )
-        return cls._binding_paths(requirements=requirements, flext_root=flext_root)
-
-    @classmethod
-    def apply(
-        cls,
-        *,
-        consumer_root: Path,
-        flext_root: Path,
-        python: Path,
-    ) -> p.Result[int]:
-        """Rebind the consumer environment onto the worktree for this session.
-
-        Returns:
-            The resulting ``p.Result[int]``.
-
-        """
-        ci = config.Infra.codegen.make.ci
-        if u.Infra.env_value(ci.variable) == ci.value:
-            return r[int].fail(
-                f"local editable binding is prohibited with {ci.variable}={ci.value}",
-            )
-        environment = cls.consumer_marker_environment(
-            consumer_root=consumer_root,
-            python=python,
-        )
-        if environment.failure:
-            return r[int].from_failure(environment)
-        document = cls._document(consumer_root)
-        requirements = u.Infra.active_session_requirements(
-            document,
-            environment=environment.value,
-        )
-        planned = cls._binding_paths(requirements=requirements, flext_root=flext_root)
-        if planned.failure:
-            return r[int].from_failure(planned)
-        paths = {
-            name: (flext_root / repository.path).resolve()
-            for name, repository in planned.value.items()
-        }
-        resolution = u.Infra.session_dependency_requirements(
-            document,
-            requirements=requirements,
-            selected=tuple(paths),
-            environment=environment.value,
-        )
-        if resolution.failure:
-            return r[int].from_failure(resolution)
-        editables: list[str] = []
-        for name, path in paths.items():
-            editables.extend((
-                "--editable",
-                str(path) + u.Infra.dependency_extras(requirements, name),
-            ))
-        owned_environment = cls._consumer_environment(consumer_root, python).unwrap()
-        with TemporaryDirectory(dir=owned_environment) as directory:
-            arguments: list[str] = []
-            for (option, filename), lines in zip(
-                c.Infra.BINDING_RESOLUTION_FILES,
-                (
-                    (
-                        *resolution.value.overrides,
-                        *(
-                            f"{name}{u.Infra.dependency_extras(requirements, name)}"
-                            f" @ {path.as_uri()}"
-                            for name, path in paths.items()
-                        ),
-                    ),
-                    resolution.value.constraints,
-                ),
-                strict=True,
-            ):
-                if lines:
-                    path = Path(directory) / filename
-                    u.Cli.files_write_text(path, "\n".join(lines) + "\n").unwrap()
-                    arguments.extend((option, str(path)))
-            installed = u.Cli.run_checked(
-                (
-                    c.Infra.UV,
-                    "pip",
-                    "install",
-                    # Why: the binding already translated the consumer's
-                    # [tool.uv] overrides/constraints into the files above;
-                    # uv would otherwise rediscover them from the cwd project
-                    # and re-apply an override to the bound editable, sending
-                    # its name to the registry instead of the worktree path.
-                    "--no-config",
-                    "--python",
-                    str(python),
-                    *arguments,
-                    *editables,
-                ),
-                cwd=consumer_root,
-            )
-            if installed.failure:
-                return r[int].from_failure(installed)
-        # Resolve the consumer contract first; directory overrides are not editable.
-        # Bind the sources without resolving that already-validated closure again.
-        u.Cli.run_checked(
-            (
-                c.Infra.UV,
-                "pip",
-                "install",
-                "--no-config",
-                "--no-deps",
-                "--reinstall",
-                "--python",
-                str(python),
-                *editables,
-            ),
-            cwd=consumer_root,
-        ).unwrap()
-        u.Cli.info(
-            f"flext binding: {len(paths)} package(s) bound to {flext_root} "
-            f"({', '.join(paths)}); consumer_python={python}",
-        )
-        return r[int].ok(0)
 
 
 __all__: list[str] = ["FlextInfraBindingService"]

@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, p, t
-from tests import tm, u
+from flext_infra import config, m, p, t
+from tests import c, tm, u
 
 
 class TestsFlextInfraUpgOwnedDependencyPin:
@@ -45,30 +45,20 @@ class TestsFlextInfraUpgOwnedDependencyPin:
             The resulting ``str``.
 
         """
-        (root / "config").mkdir(parents=True)
-        repository: t.JsonDict = {
-            "name": "consumer",
-            "distribution": "consumer",
-            "provider": "example",
-            "url": "https://example.org/consumer.git",
-            "path": ".",
-            "role": "standalone",
-            "codegen": "conform",
-            "package": True,
-            "editable": False,
-            "read_only": False,
-        }
-        manifest: t.JsonDict = {
-            "version": 3,
-            "name": "consumer",
-            "repository": repository,
-        }
+        config_dir = root / c.CONFIG_DIR_NAME
+        config_dir.mkdir(parents=True)
+        repository: t.JsonDict = {}
         if flext_source:
-            manifest["project"] = {
+            repository["project"] = {
                 **u.Tests.project_spec("consumer").model_dump(mode="json"),
                 "flext_source": flext_source,
             }
-        tm.ok(u.Cli.yaml_dump(root / "config" / "workspace.yaml", manifest))
+        tm.ok(
+            u.Cli.yaml_dump(
+                config_dir / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {"Infra": {"codegen": {"repository": repository}}},
+            )
+        )
         source = (
             '[project]\nname = "consumer"\nversion = "0.1.0"\n'
             f'dependencies = ["{cls._requirement("flext-core", core_ref)}"]\n'

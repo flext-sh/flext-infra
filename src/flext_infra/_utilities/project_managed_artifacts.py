@@ -8,20 +8,18 @@ from __future__ import annotations
 
 import os
 import stat
-from collections.abc import MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from copy import deepcopy
 from functools import lru_cache, partial
 from pathlib import Path
+from typing import ClassVar
+from weakref import WeakKeyDictionary
 
 from flext_cli import u
-from flext_core.config_sources import FlextStrictYamlConfigSource
+from flext_core import FlextStrictYamlConfigSource
 
-from flext_infra import c, m, p, r, t
-from flext_infra._config import FlextInfraConfig
-from flext_infra._utilities._git.semantic_index import (
-    FlextInfraUtilitiesGitSemanticIndexMixin,
-)
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
+from flext_infra import FlextInfraConfig, c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
@@ -33,8 +31,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         repository_root: Path,
         *,
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.CodegenInputs]:
         """Load one root's full policy through the ordered strict YAML source.
+
+        An injected source project serves the same file observations to its
+        consumer, including read-only dependency projects.
 
         Returns:
             The effective codegen declaration and exact consulted file snapshots.
@@ -45,6 +47,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             repository_root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             projections=projections,
+            source_project=source_project,
         )
         if document.failure:
             return result_type.from_failure(document)
@@ -53,9 +56,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = cls._verify_unchanged_snapshots(document.value.sources)
-        if verified.failure:
-            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.CodegenInputs(
                 spec=loaded.value,
@@ -86,22 +86,17 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if document.failure:
             return result_type.from_failure(document)
-        section = r[m.Infra.ToolConfigDocument].create_from_callable(
-            partial(
-                m.Infra.ToolConfigDocument.model_validate,
-                u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
-                context={"project_root": repository_root.resolve()},
-            ),
+        section = u.validate_value(
+            m.Infra.ToolConfigDocument,
+            u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
         )
         if section.failure:
             return result_type.from_failure(section)
-        verified = (
-            cls._verify_unchanged_snapshots(document.value.sources)
-            if source_project is None
-            else r[bool].ok(value=True)
+        admitted_paths = cls.native_tool_search_path_admission(
+            section.value, repository_root
         )
-        if verified.failure:
-            return result_type.from_failure(verified)
+        if admitted_paths.failure:
+            return result_type.from_failure(admitted_paths)
         return result_type.ok(
             m.Infra.ToolingInputs(
                 document=section.value,
@@ -121,6 +116,38 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         An absent optional repository subsection declares no self-owned deltas.
         Invalid declared policy retains its cause; unrelated editor or tool policy
         belongs to its own typed consumer and does not determine topology.
+
+        Returns:
+            Strict repository policy with current consulted source snapshots.
+
+        """
+        if source_project is None:
+            return cls._repository_declaration_inputs(repository_root)
+        cache = cls._DECLARATION_CACHE.setdefault(source_project, {})
+        key = str(repository_root)
+        if key in cache:
+            return r[m.Infra.RepositoryDeclarationInputs].ok(cache[key])
+        loaded = cls._repository_declaration_inputs(
+            repository_root, source_project=source_project
+        )
+        if loaded.success:
+            cache[key] = loaded.value
+        return loaded
+
+    _DECLARATION_CACHE: ClassVar[
+        WeakKeyDictionary[
+            p.Infra.RopeProject, dict[str, m.Infra.RepositoryDeclarationInputs]
+        ]
+    ] = WeakKeyDictionary()
+
+    @classmethod
+    def _repository_declaration_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
+        """Load repository policy once through the captured YAML layers.
 
         Returns:
             Strict repository policy with current consulted source snapshots.
@@ -146,13 +173,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = (
-            cls._verify_unchanged_snapshots(document.value.sources)
-            if source_project is None
-            else r[bool].ok(value=True)
-        )
-        if verified.failure:
-            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.RepositoryDeclarationInputs(
                 spec=loaded.value,
@@ -224,43 +244,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = (
-            cls._verify_unchanged_snapshots(snapshots)
-            if source_project is None
-            else r[bool].ok(value=True)
-        )
-        if verified.failure:
-            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.ConfigDocumentInputs(
                 values=loaded.value,
                 sources=tuple(snapshots),
             ),
         )
-
-    @staticmethod
-    def _verify_unchanged_snapshots(
-        snapshots: t.SequenceOf[m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Fail when a consulted configuration file changed during loading.
-
-        Returns:
-            Success when every snapshot still matches its consulted bytes.
-
-        """
-        for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(
-                before.path,
-                required=before.content is not None,
-            )
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            if observed.value != before:
-                error = ValueError(
-                    f"codegen configuration changed during read: {before.path}"
-                )
-                return r[bool].fail(str(error), exception=error)
-        return r[bool].ok(value=True)
 
     @classmethod
     def load_refactor_csv_campaigns(
@@ -448,6 +437,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 if projected is not None
                 else dict(payload)
             )
+            # A command is one ordered invocation, not an additive rule list.
+            beads_path = ("Infra", "codegen", "toolchain", "beads")
+            declared_beads = u.Cli.json_walk_path(values, beads_path)
+            if isinstance(declared_beads, Mapping) and (
+                "ownership_command_prefix" in declared_beads
+            ):
+                retained_beads: t.JsonValue = merged
+                for namespace in beads_path:
+                    if not isinstance(retained_beads, dict):
+                        break
+                    retained_beads = retained_beads.get(namespace)
+                if isinstance(retained_beads, dict):
+                    retained_beads.pop("ownership_command_prefix", None)
             merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
 
@@ -759,6 +761,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def load_committed_project_managed_artifacts(
         cls,
         project_dir: Path,
+        *,
+        read_committed_directory: Callable[
+            [Path, str], p.Result[t.MappingKV[str, bytes]]
+        ],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Load ManagedArtifacts from the project's committed ``HEAD`` catalog.
 
@@ -771,7 +777,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             The resulting ``p.Result[m.Infra.ProjectManagedArtifactsResolution]``.
 
         """
-        snapshot = cls.snapshot_committed_project_managed_artifacts(project_dir)
+        snapshot = cls.snapshot_committed_project_managed_artifacts(
+            project_dir,
+            read_committed_directory=read_committed_directory,
+        )
         if snapshot.failure:
             return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
@@ -782,19 +791,22 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def snapshot_committed_project_managed_artifacts(
         cls,
         project_dir: Path,
+        *,
+        read_committed_directory: Callable[
+            [Path, str], p.Result[t.MappingKV[str, bytes]]
+        ],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
         """Capture and parse the committed catalog without physical source states.
 
-        ``sources`` stays empty because Git objects are already immutable: they
-        must not enter the transaction's live-file source barrier, and their
-        object identity makes a physical re-read meaningless.
+        ``sources`` stays empty because Git objects are already immutable, so a
+        physical re-read is meaningless.
 
         Returns:
             The resulting ``p.Result[m.Infra.ProjectManagedArtifactsSnapshot]``.
 
         """
         resolved = project_dir.expanduser().resolve()
-        blobs = FlextInfraUtilitiesGitSemanticIndexMixin.git_committed_directory_blobs(
+        blobs = read_committed_directory(
             resolved,
             c.CONFIG_DIR_NAME,
         )
@@ -1034,18 +1046,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         tools = u.Cli.toml_ensure_table(doc, "tools")
         for selector, tool in local_tools.items():
             if selector in tools:
-                # Resilient composition: a project
-                # declaring a tool the fleet now provides is promotion residue,
-                # never an ambiguous contract. The fleet SSOT wins, the stale
-                # local declaration is reported for removal, and generation
-                # keeps flowing instead of blocking every consumer.
                 source = resolution.mise_tool_sources[selector]
-                u.Cli.warning(
-                    "project Mise selector "
-                    f"{selector!r} ({source}) is now a fleet tool; "
-                    "the fleet version wins — remove the local declaration",
+                return r[str].fail(
+                    f"project Mise selector {selector!r} ({source}) "
+                    "duplicates its packaged owner",
                 )
-                continue
             tools[selector] = tool.version
         return r[str].ok(u.Cli.toml_dumps(doc))
 

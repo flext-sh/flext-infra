@@ -28,7 +28,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         ),
     ] = m.Field(default_factory=m.Infra.CodegenConformState, validate_default=True)
 
-    def _retain_diagnostics(
+    def retain_diagnostics(
         self,
         *exceptions: BaseException | None,
         issues: t.SequenceOf[m.Infra.Issue] = (),
@@ -49,7 +49,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         exception: BaseException | None = None,
     ) -> None:
         """Retain an actual target failure through the shared diagnostic model."""
-        self._retain_diagnostics(
+        self.retain_diagnostics(
             exception,
             issues=(
                 m.Infra.Issue(
@@ -227,8 +227,6 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 # Metadata must bootstrap before the consumer's imports exist.
                 # Complete generation owns source-derived analyzer settings.
-                # Every managed resolver view stays a destination: the runtime
-                # supplier selection decides whether the editable view renders.
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
@@ -246,10 +244,8 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
-                # The dependency planner projects the root pyproject and every
-                # uv resolution pyproject, so the surface owns the same derived
-                # destination set as PYPROJECT; a second enumeration refused
-                # the resolution inputs a candidate needs before `make upg`.
+                # Dependency changes publish the same native declaration as
+                # PYPROJECT; UV owns its resolution after publication.
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
@@ -333,15 +329,16 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         """Collect the managed pyproject destinations.
 
         Args:
-            codegen: The codegen configuration owning resolution pyprojects.
+            codegen: The codegen configuration owning the root pyproject.
 
         Returns:
-            The root and resolution pyproject paths as POSIX strings.
+            The declared native pyproject paths as POSIX strings.
 
         """
         return frozenset(
             path.as_posix()
-            for path in (Path(c.PYPROJECT_FILENAME), *codegen.uv_resolution_pyprojects)
+            for path in (item.path for item in codegen.managed_file_specs)
+            if path == Path(c.PYPROJECT_FILENAME)
         )
 
 

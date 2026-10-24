@@ -27,7 +27,7 @@ class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
     @staticmethod
-    @pytest.mark.parametrize("mode", ["basic", "off"])
+    @pytest.mark.parametrize("mode", ["basic", c.ParserBooleanToken.OFF])
     def test_native_options_cannot_weaken_strict_analysis(
         tool_config_document: m.Infra.ToolConfigDocument,
         mode: str,
@@ -64,7 +64,7 @@ class TestsFlextInfraDepsModernizerPyright:
                 **tool_config_document.settings,
                 c.Infra.PYRIGHT: (
                     *tool_config_document.settings[c.Infra.PYRIGHT],
-                    ("typeCheckingMode", "off"),
+                    ("typeCheckingMode", c.ParserBooleanToken.OFF),
                     ("typeCheckingMode", expected),
                 ),
             },
@@ -136,7 +136,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(second, eq=first)
         document = tm.ok(u.Cli.toml_mapping_from_text_result(first))
         tools = u.Tests.toml_mapping(document["tool"])
-        tm.that(tools["unrelated"], eq={"keep": "yes"})
+        tm.that(tools["unrelated"], eq={"keep": c.ParserBooleanToken.YES})
         tm.that(document["project"], eq={"name": "fixture", "version": "0.1.0"})
         pyright = u.Tests.toml_mapping(tools["pyright"])
         tm.that(pyright, lacks="venv")
@@ -181,7 +181,7 @@ class TestsFlextInfraDepsModernizerPyright:
         source_dir = project_dir / source_dir_name / "flext_sample"
         source_dir.mkdir(parents=True)
         (source_dir / "__init__.py").write_text("", encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext-sample'\nversion='0.1.0'\n",
             encoding="utf-8",
         )
@@ -191,7 +191,7 @@ class TestsFlextInfraDepsModernizerPyright:
     @staticmethod
     def _workspace(tmp_path: Path, *members: str) -> None:
         """Declare one governed workspace root with governed member manifests."""
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\nversion='0.1.0'\n",
             encoding="utf-8",
         )
@@ -199,7 +199,7 @@ class TestsFlextInfraDepsModernizerPyright:
             package = tmp_path / member / "src" / member.replace("-", "_")
             package.mkdir(parents=True, exist_ok=True)
             (package / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
-            (tmp_path / member / "pyproject.toml").write_text(
+            (tmp_path / member / c.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname='{member}'\nversion='0.1.0'\n",
                 encoding="utf-8",
             )
@@ -215,7 +215,7 @@ class TestsFlextInfraDepsModernizerPyright:
         root_source = tmp_path / "src"
         root_source.mkdir()
         (root_source / "root.py").write_text("VALUE = 1\n", encoding="utf-8")
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\nversion='0.1.0'\n",
             encoding="utf-8",
         )
@@ -223,7 +223,7 @@ class TestsFlextInfraDepsModernizerPyright:
         member = tmp_path / "apps" / "member"
         member_source = member / "src" / "member"
         member_source.mkdir(parents=True)
-        (member / "pyproject.toml").write_text(
+        (member / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='member'\nversion='0.1.0'\n",
             encoding="utf-8",
         )
@@ -281,7 +281,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         detached = tmp_path / "demo-migration-tool"
         (detached / "src").mkdir(parents=True)
-        (detached / "pyproject.toml").write_text(
+        (detached / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='demo-migration-tool'\n",
             encoding="utf-8",
         )
@@ -361,7 +361,7 @@ class TestsFlextInfraDepsModernizerPyright:
         """
         pyright_rules = tool_config_document.tools.pyright
         rules = pyright_rules.path_rules
-        _ = (tmp_path / "pyproject.toml").write_text(
+        _ = (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\nversion='0.1.0'\n",
             encoding="utf-8",
         )
@@ -407,7 +407,7 @@ class TestsFlextInfraDepsModernizerPyright:
         if src_env is None:
             return
         extra_paths = u.Tests.toml_strings(
-            u.Cli.toml_unwrap_item(src_env.get("extraPaths", ())),
+            u.Cli.toml_unwrap_item(src_env["extraPaths"]),
         )
         tm.ok("flext-core/src" in extra_paths)
         tm.ok("flext-api/src" in extra_paths)
@@ -448,6 +448,66 @@ class TestsFlextInfraDepsModernizerPyright:
                 for env_dir in rules.env_dirs
             ],
         )
+
+    @pytest.mark.parametrize("is_root", [False, True])
+    def test_package_parent_environment_preserves_strict_included_namespace(
+        self,
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+        *,
+        is_root: bool,
+    ) -> None:
+        """A first-party namespace child must not shadow an installed top-level SDK."""
+        rules = tool_config_document.tools.pyright.path_rules
+        selected = tool_config_document.model_copy(
+            update={
+                "tools": tool_config_document.tools.model_copy(
+                    update={
+                        "pyright": tool_config_document.tools.pyright.model_copy(
+                            update={
+                                "path_rules": rules.model_copy(
+                                    update={"project_root_env_dirs": ("infra",)},
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            },
+        )
+        project = self._sample_project(tmp_path, rules.source_dir)
+        namespace = project / "infra" / "pulumi"
+        namespace.mkdir(parents=True)
+        (namespace / "consumer.py").write_text(
+            "import pulumi\nconfig = pulumi.Config()\n"
+            "invalid: int = 'strict sentinel'\n",
+            encoding="utf-8",
+        )
+        pyright = self._applied(
+            selected,
+            m.Infra.PyprojectAnalyzerContext(
+                is_root=is_root,
+                project_dir=project,
+                repository_root=project if is_root else None,
+            ),
+        )
+        tm.ok("infra" in u.Tests.toml_strings(pyright["include"]))
+        tm.that(pyright["typeCheckingMode"], eq="strict")
+        environments = [
+            u.Tests.toml_mapping(item)
+            for item in u.Tests.toml_list(pyright["executionEnvironments"])
+        ]
+        roots = [environment["root"] for environment in environments]
+        tm.ok("infra" not in roots)
+        tm.that(roots[-1], eq=rules.project_root)
+        tm.that(
+            environments[-1]["reportPrivateUsage"],
+            eq=rules.other_report_private_usage,
+        )
+        tm.ok(rules.source_dir in roots)
+        declared = FlextInfraEnsurePyrightConfigPhase(
+            selected,
+        ).environment_payloads_for_dirs(("infra", rules.source_dir))
+        tm.that([entry["root"] for entry in declared], eq=roots)
 
     def test_project_config_uses_canonical_typings_and_fixture_excludes(
         self,
@@ -503,7 +563,7 @@ class TestsFlextInfraDepsModernizerPyright:
         """Declared future roots survive alongside existing source discovery."""
         rules = tool_config_document.tools.pyright.path_rules
         project_dir = self._sample_project(tmp_path, rules.source_dir)
-        pyproject = project_dir / "pyproject.toml"
+        pyproject = project_dir / c.PYPROJECT_FILENAME
 
         rendered = tm.ok(
             FlextInfraPyprojectModernizer(
@@ -556,17 +616,16 @@ class TestsFlextInfraDepsModernizerPyright:
     @pytest.mark.parametrize("local_environment", [False, True])
     @pytest.mark.parametrize("complete", [False, True])
     @pytest.mark.parametrize(
-        ("project_name", "authored_root", "planned_root"),
+        ("project_name", "authored_and_planned"),
         [
-            ("flext-alpha", "automation", "future_checks"),
-            ("flext-beta", "quality_tools.py", "generated_checks.pyi"),
+            ("flext-alpha", ("automation", "future_checks")),
+            ("flext-beta", ("quality_tools.py", "generated_checks.pyi")),
         ],
     )
     def test_render_context_retains_actual_and_planned_python_scopes(
         tmp_path: Path,
         project_name: str,
-        authored_root: str,
-        planned_root: str,
+        authored_and_planned: t.Pair[str, str],
         *,
         complete: bool,
         local_environment: bool,
@@ -579,7 +638,13 @@ class TestsFlextInfraDepsModernizerPyright:
             pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n[tool.flext.docs]\npackage_name='{u.Tests.project_spec(project_name).package_name}'\n",
         )
         package_name = u.Tests.project_spec(project_name).package_name
-        active_roots = (rules.source_dir, "docs", "scripts", "examples", authored_root)
+        active_roots = (
+            rules.source_dir,
+            "docs",
+            "scripts",
+            "examples",
+            authored_and_planned[0],
+        )
         for root in active_roots:
             directory = project_dir / root / package_name
             directory.mkdir(parents=True, exist_ok=True)
@@ -593,20 +658,20 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         foreign = project_dir / "foreign_project"
         foreign.mkdir()
-        (foreign / "pyproject.toml").write_text(
+        (foreign / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='foreign-project'\n",
             encoding="utf-8",
         )
         (foreign / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
-        artifact = project_dir / next(
+        directory = project_dir / next(
             root
             for root in config.Infra.codegen.source_scan_ignored
             if not root.startswith(".")
         )
-        artifact.mkdir(parents=True, exist_ok=True)
-        (artifact / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
         topology = m.Infra.PyprojectDeclaredTopology(
-            declared_python_dirs=(rules.source_dir, planned_root),
+            declared_python_dirs=(rules.source_dir, authored_and_planned[1]),
             declared_python_dirs_are_complete=complete,
             project_kind="core",
         )
@@ -616,7 +681,7 @@ class TestsFlextInfraDepsModernizerPyright:
             planned_sources={},
             project_name=project_name,
             package_name=package_name,
-            path=project_dir / "pyproject.toml",
+            path=project_dir / c.PYPROJECT_FILENAME,
             scaffold_project=config.Infra.codegen.scaffold.project,
             runtime_dependency_overlay=(),
             declared_project_dependencies=(),
@@ -628,7 +693,7 @@ class TestsFlextInfraDepsModernizerPyright:
             skip_comments=True,
         )
         first_context = tm.ok(modernizer.resolve_tooling_context(request))
-        expected_roots = frozenset((*active_roots, planned_root))
+        expected_roots = frozenset((*active_roots, authored_and_planned[1]))
         first_pyright = u.Tests.toml_table_at(
             first_context.configuration, "tool", "pyright"
         )
@@ -660,8 +725,8 @@ class TestsFlextInfraDepsModernizerPyright:
             )
         first = tm.ok(
             modernizer.conform_source(
-                (project_dir / "pyproject.toml").read_text(encoding="utf-8"),
-                path=project_dir / "pyproject.toml",
+                (project_dir / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                path=project_dir / c.PYPROJECT_FILENAME,
                 format_source=False,
                 topology=topology,
             ),
@@ -681,9 +746,9 @@ class TestsFlextInfraDepsModernizerPyright:
             ),
             eq=sorted(expected_roots),
         )
-        (project_dir / "pyproject.toml").write_text(first, encoding="utf-8")
-        (project_dir / planned_root).mkdir()
-        (project_dir / planned_root / "probe.py").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(first, encoding="utf-8")
+        (project_dir / authored_and_planned[1]).mkdir()
+        (project_dir / authored_and_planned[1] / "probe.py").write_text(
             "VALUE = 1\n", encoding="utf-8"
         )
         second_context = tm.ok(modernizer.resolve_tooling_context(request))
@@ -695,7 +760,7 @@ class TestsFlextInfraDepsModernizerPyright:
             tm.ok(
                 modernizer.conform_source(
                     first,
-                    path=project_dir / "pyproject.toml",
+                    path=project_dir / c.PYPROJECT_FILENAME,
                     format_source=False,
                     topology=topology,
                 )
@@ -754,13 +819,17 @@ class TestsFlextInfraDepsModernizerPyright:
         source = tmp_path / rules.source_dir
         source.mkdir(parents=True)
         (source / "mod.py").write_text("x = 1\n", encoding="utf-8")
+        for directory in rules.env_dirs:
+            owned = tmp_path / directory
+            owned.mkdir(parents=True, exist_ok=True)
+            (owned / "owned.py").write_text("VALUE = 1\n", encoding="utf-8")
         outside = tmp_path / "docs" / "tools"
         outside.mkdir(parents=True)
         (outside / "validate_docs.py").write_text("y = 2\n", encoding="utf-8")
         root_modules = ("worker.py", "worker.pyi")
         for module in root_modules:
             (tmp_path / module).write_text("VALUE = 1\n", encoding="utf-8")
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\nversion='0.1.0'\n",
             encoding="utf-8",
         )
@@ -794,4 +863,28 @@ class TestsFlextInfraDepsModernizerPyright:
                 for environment in u.Tests.toml_list(pyright["executionEnvironments"])
             ),
             eq=sorted(root for root in targets if not (tmp_path / root).is_file()),
+        )
+        for module in root_modules:
+            (tmp_path / module).unlink()
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({
+            "tool": {"pyright": pyright}
+        })
+        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
+        tm.that(
+            phase.apply_payload(
+                payload,
+                context=m.Infra.PyprojectAnalyzerContext(
+                    is_root=False, project_dir=tmp_path
+                ),
+            ),
+            empty=False,
+        )
+        retired = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["pyright"])
+        tm.that(
+            sorted(u.Tests.toml_strings(retired["include"])),
+            eq=sorted(set(targets) - set(root_modules)),
+        )
+        tm.that(
+            retired["executionEnvironments"],
+            eq=pyright["executionEnvironments"],
         )

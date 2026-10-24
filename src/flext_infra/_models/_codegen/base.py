@@ -12,7 +12,6 @@ from flext_infra._models import (
 )
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenFixModels,
-    FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenLazyInitModels,
     FlextInfraModelsCodegenPipelineModels,
     FlextInfraModelsCodegenScaffoldModels,
@@ -23,7 +22,6 @@ from flext_infra._models._codegen import (
 class FlextInfraCodegen(
     FlextInfraModelsCodegenToolchain,
     FlextInfraModelsCodegenRender,
-    FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenTransactionModels,
     FlextInfraModelsCodegenScaffoldModels,
     FlextInfraModelsCodegenFixModels,

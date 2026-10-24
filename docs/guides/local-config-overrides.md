@@ -37,10 +37,9 @@ Infra:
         branch: feature/integration
 ```
 
-Private local adjustments belong in `config/codegen.local.yaml`. Generated
-`.vscode/settings.json` is a runtime-local binding: portable editor declarations
-remain in the repository's own codegen delta, while setup projects the interpreter
-for its actual workspace or standalone environment.
+Private configuration deltas belong in `config/codegen.local.yaml`. Generated
+editor settings follow the artifact catalog's tracking policy; portable editor
+declarations remain in the repository's own codegen delta.
 
 Workspace composition comes from `.gitmodules`. Documentation URL ownership and
 branches derive from native Git origins, declared submodule branches, and the
@@ -51,6 +50,9 @@ The shared package contains generic rules. Consumer-specific Sed campaigns and C
 inputs belong to that consumer's configuration; they are not shipped as library
 policy. Dependency resolution preserves real graph edges and never emits a
 project exclusion roster to hide incompatible requirements.
+Each Mise selector has one owner. A project declaration that duplicates a packaged
+selector is an ownership conflict and fails with its source path; generation never
+chooses a winner and reports the conflict as a warning.
 
 ## Mandatory Mypy policy
 
@@ -99,55 +101,33 @@ read-only verification of the repaired targets.
 
 ## Local dependency binding
 
-Canonical setup can opt into an external supplier workspace through the consumer's
-untracked `config/codegen.local.yaml`:
+The approved `flext-0029c` cutover replaces runtime supplier selection with native
+pyproject sources and locks. Retire `FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT`, additional
+supplier settings, persisted selection and synthetic local/standalone/editable
+resolver views. Do not recover those mechanisms through a new environment alias,
+host-path guess or compatibility reader. The separate `workspace flext-binding`
+installation operation and its temporary constraints/pip overlay are also retired;
+explicit native sources and locked setup are the single installation route.
 
-```yaml
-Infra:
-  codegen:
-    make:
-      uv_resolution:
-        editable_supplier_root: /absolute/path/to/workspace
-```
+The approved root target declares one native uv workspace, derived from `.gitmodules`,
+and one root lock. Root CI checks out those declared submodules and installs the
+same workspace noneditable; it does not select a remote-only resolver. Independent
+checkouts retain their own native project declarations. Preserve requirement bounds,
+extras, groups, markers, portable dependency metadata and authored native source
+policy; do not aggregate a second dependency graph or discard native tables during
+managed pyproject publication. See uv's official
+[dependency sources](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources)
+and [workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/) contracts.
 
-Configure the physical runtime root, not an attached member. The existing consumer
-environment supplies the authenticated interpreter used for marker selection.
-Run `make gen` to project the isolated editable resolution view, then `make upg`
-to reconcile its development lock, and `make setup` to replay that lock frozen.
-This opt-in never resolves the root or default view locks and does not request
-version upgrades. Hosted setup continues selecting the standalone view. The
-supplier root is explicit; no home directory or package roster is shared policy.
-Only active declared dependencies supplied by that workspace are rebound; supplier
-development groups are not added to the consumer environment. The consumer keeps
-its own physical environment. Removing the opt-in returns setup to its default view.
-
-The explicit `workspace flext-binding` CLI accepts `--repository-root`, `--flext-root`,
-and `--python`. It changes only the provisioned consumer environment; it never edits the
-consumer's dependency declarations. Canonical setup restores the declared resolution.
-Workspace setup installs its declared local editable sources through `uv sync`; it
-does not invoke the external-consumer binding service on itself.
-The workspace root owns local path sources and source-replacement overrides. A
-transitive Git requirement for the same distribution is replaced by that local
-identity, not deleted from the dependency graph. Declared version bounds remain in
-constraints, and requested extras remain on the replacement requirement. Member
-metadata keeps its portable Git provenance and renders identically when detached.
-Conformance removes dependency-edge exclusions; no reverse-edge exclusion catalog
-or project-routing declaration is required. See the official UV
-[override semantics](https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides)
-and [development sources](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources).
-The interpreter must belong to the consumer's physical environment as determined by the
-workspace topology. A symlinked environment or a foreign interpreter is rejected.
-
-Binding evaluates dependency markers with that interpreter's facts and matches
-normalized distribution names against the supplier root and its package members. Like
-canonical setup, it includes all declared extras and dependency groups. Selected extras,
-version bounds, declared constraints, and unrelated source overrides remain effective.
-An empty active selection fails. CI rejects binding before accessing the consumer, using
-the configured CI variable and value.
-
-The public service's `plan_targets` method also requires the consumer `python` path;
-planning must use the same interpreter as installation. Its in-repository callers use
-that explicit contract, avoiding host-interpreter marker evaluation.
+Resolve changed native declarations through the explicit upgrade owner, then
+install through setup using `uv sync --frozen` into the consumer's owned physical
+`.venv`. Attached members share their containing workspace's environment; independent
+consumers never borrow a supplier's environment. Native declarations and locked
+consistency replace the stronger independent pre-install supplier admission;
+post-provision environment/provenance checks and actual authenticated imports remain
+distinct runtime concerns. This is the approved target, not implementation or
+runtime acceptance. The [execution-context contract](execution-context.md#native-bootstrap-task-route-flext-0029c)
+owns the task-only direct-CLI route and final Make integration sequence.
 
 ## Generation and recovery
 
@@ -155,11 +135,113 @@ Use canonical `make setup`, `make upg`, and `make gen`. Setup installs existing
 locks; upgrade resolves them; generation projects the declared artifacts. Generated
 files are changed through their owning renderer and native conform surface.
 
+`Infra.codegen.templates.entries` is one mapping keyed by repository-relative
+destination. Each value owns that artifact's applicable profiles, source and
+ownership. The same destination key composes through the existing recursive
+mapping layers, so a repository changes only its own delta without copying the
+catalog. List declarations and duplicated destination fields are invalid.
+Every entry declares
+`ownership`: `null` seeds an authored file during project creation; an ownership
+mapping declares `full` generation or `merge` of owned sections with authored
+content. Managed views and native project projections derive from this catalog.
+An explicit repository delta can retain a product-owned workflow as an authored
+seed with `ownership: null`; its existing Git-managed content is neither rendered
+nor retired. Generated GitHub workflows require full ownership and a template
+source. The internal tuple of entries derives from this one mapping and is not a
+second serialized declaration.
+An owner without a template must resolve through its existing specialized
+planner. Missing owners, duplicate destinations and invalid paths fail rather
+than preserving an unrendered artifact as success. Includes and macros remain
+captured template dependencies, not separate output declarations.
+Includes resolve relative to the declaring template's directory. A sibling policy
+template uses its filename, without repeating the directory in its include path.
+
+Recovery surfaces authorize the same exact dependency cohort that they plan:
+`requires_artifacts` expands the selected destination keys for both planning and
+publication checks. The `makefile` surface publishes only its currently declared
+dependencies, without selecting facade generation or requiring environment activation.
+The approved native cutover retires copied Python setup helpers and their dependency
+edges; it must not retain a generated admission resource as a cold-start prerequisite.
+Undeclared extra destinations and missing required outputs remain publication failures.
+
+New-project generation consumes the destination's own project, integration, kind
+and dependency-provenance declarations. Its Git checkout is prepared separately;
+generation never initializes a repository, adds a remote or creates a commit.
+An unborn symbolic HEAD is represented explicitly as absent commit identity,
+while corrupted references still fail. An established repository missing its
+project metadata is not a new scaffold. The selected operation owns the coherent
+publication of its generated dependencies through the existing shared planner
+and publisher; it does not repeat whole-tree lazy planning after publication or
+invoke another public verb.
+
+The preferred creation path is a declared new member, with its Git checkout
+prepared, consumed by the workspace's `make gen`. A standalone target without a
+Makefile uses the internal `codegen init` adapter from an already provisioned
+generation tool runtime. After the same detector positively admits its own
+declarations and new-tree identity, that adapter selects the existing complete
+generation planner and publisher. An existing project retains the bounded
+Makefile recovery surface. A project-metadata symlink is an existing input, never
+evidence of a new tree.
+The cold sequence is `codegen init`, `make upg`, `make setup`, then `make gen`.
+The generation tool runtime supplies its own declared native Mise, Python and UV
+prerequisites; it is not the destination's product runtime. Upgrade resolves the
+generated manifests, setup creates the destination's physical environment from
+those locks, and later generation uses that environment. Initialization and
+generation never install dependencies, write locks or borrow another checkout's
+environment. Beads participation uses the destination's own policy and identity;
+the adapter neither invents an identity nor changes those flags.
+
+Private child packages publish their own implementation owners. Their parent
+initializer does not widen its authored API by flattening those private exports.
+Infrastructure implementation imports therefore name the owning child package;
+external projects consume the public facade. Generation resolves class ancestry
+against the planned initializer and rejects a consumer of a retired parent export
+instead of restoring that export or resolving it through stale installed code.
+
+The source inventory consumes the same native `lazy_export_bindings` reader as
+class-base resolution. A lazy route retains its declared provider and exact
+attribute; an empty attribute denotes the provider module itself. Inventory
+never reconstructs that attribute from the exported name. Ordinary module
+bindings remain lexical inventory inputs, and package names such as `tests`
+receive no separate lazy-mapping exemption. Unsupported initializer declarations
+fail through the canonical reader.
+
+Generation is the sole writer of `.envrc`. Local `make setup` authorizes that
+projection with native `direnv allow`; it never renders, replaces, or removes
+environment files. `make check` verifies the selected repository's projection
+against its current declaration. A fresh clone with a valid committed `.envrc`
+needs no local generation journal. A missing or divergent projection fails
+without repair; `make gen` owns its regeneration.
+
 The publication owner authenticates each file's captured destination and declared
 inputs. A changed dependency rejects its affected file with a causal issue while
 independent valid files retain their published gains. Reports preserve original
 failures and actual accounting. Publication never rolls back the whole campaign
 because an unrelated file changed.
+
+When late byte verification rejects an output, planning retains that output's
+original consumption receipt and first exception beside the other candidate
+plans. Candidate providers remain observations from the same captured epoch,
+not admitted publications: every consuming component must still pass the full
+byte, query, absence and native-issuer guards before effects. A partial lazy
+failure does not discard independently planned managed files. Tooling
+consumption qualifies its actual pyproject output; unrelated templates do not
+inherit that receipt. Publication groups follow declared dependencies and
+consumed output elections, including separate unchanged components, rather than
+one whole-repository group. A projection manifest declares dependencies on the
+exact candidate output paths used to derive its entries, so it settles in the
+same component as those outputs. The invocation remains failed after those independent
+components settle. Structural, issuer and absence failures that prevent planning
+still fail closed before effects; this late-byte contract does not certify those
+other failure paths or complete runtime acceptance.
+The existing planning report retains each outcome's original exception identity,
+message and traceback. A later repository failure must remain inspectable even
+when an earlier exception owns the process exit; the report does not replace or
+reconstruct that first exception.
+Execution outcomes and complete generation plans belong to the existing codegen
+pipeline model owner, alongside their original consumption receipts. The artifact
+configuration owner retains declarations, worker requests and report evidence;
+it does not import execution receipts back through a model dependency cycle.
 
 A completed invocation still needs native consumer validation and a repeated
 unchanged generation before its fixed point can be accepted.

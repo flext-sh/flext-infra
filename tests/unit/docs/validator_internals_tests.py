@@ -40,8 +40,7 @@ class TestsFlextInfraDocsValidatorInternals:
 
         result = u.Infra.docs_load_required_skills(tmp_path)
 
-        tm.ok(result)
-        tm.that(result.value, eq=["rules-docs", "readme-standardization"])
+        tm.ok(result, eq=["rules-docs", "readme-standardization"])
 
     @staticmethod
     def test_docs_write_todo_writes_only_for_project_scopes(

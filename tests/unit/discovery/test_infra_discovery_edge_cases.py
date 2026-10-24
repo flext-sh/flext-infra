@@ -23,41 +23,27 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
     @staticmethod
-    def test_export_cache_reuses_only_identical_authenticated_content(
-        tmp_path: Path,
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            ("class Alpha: ...\n__all__ = ['Alpha']\n", ("Alpha",)),
+            ("class Alpha: ...\nclass Beta: ...\n", ("Alpha", "Beta")),
+            ("from x import Gamma\nclass Alpha: ...\n", ("Alpha",)),
+            ("__all__ = ['Beta', 'Alpha']\nclass Alpha: ...\n", ("Beta", "Alpha")),
+        ],
+    )
+    def test_module_exports_follow_declared_source(
+        source: str,
+        expected: tuple[str, ...],
     ) -> None:
-        """Planned content, not an unchanged physical mtime, owns export facts."""
-        module_path = tmp_path / "module.py"
-        module_path.write_text("class Alpha: ...\n", encoding=c.DEFAULT_ENCODING)
-        before = module_path.stat()
-        with Profile() as profile:
-            for name in ("Alpha", "Beta", "Alpha"):
-                with u.Infra.facade_source_project(
-                    tmp_path, planned_sources={module_path: f"class {name}: ...\n"}
-                ) as binding:
-                    project = binding[0]
-                    tm.that(
-                        u.Infra.resolve_module_export_names(
-                            project, project.get_file("module.py")
-                        ),
-                        eq=(name,),
-                    )
-        tm.that(module_path.stat().st_mtime_ns, eq=before.st_mtime_ns)
-        tm.that(
-            sum(
-                entry.callcount
-                for entry in profile.getstats()
-                if not isinstance(entry.code, str)
-                and entry.code.co_name == "_module_export_names"
-            ),
-            eq=2,
-        )
+        """Explicit ``__all__`` wins; otherwise only local classes are exported."""
+        tm.that(u.Infra.module_export_names_source(source), eq=expected)
 
     @staticmethod
-    def test_authenticated_publication_reuses_syntax_and_records_each_consumption(
+    def test_publication_policy_reuses_unchanged_syntax(
         tmp_path: Path,
     ) -> None:
-        """An unchanged declaration parses once without losing its source receipt."""
+        """An unchanged declaration parses once across repeated policy reads."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
         nested = package / "nested"
         nested.mkdir(parents=True)
@@ -72,17 +58,15 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        profile = Profile()
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
             repeated = original
-            with project.source_consumption() as consumption, Profile() as profile:
-                for _ in range(3):
-                    repeated = u.Infra.publication_policy(source, rope_project=project)
+            profile.enable()
+            for _ in range(3):
+                repeated = u.Infra.publication_policy(source, rope_project=project)
+            profile.disable()
             tm.ok(repeated == original)
-            tm.that(
-                any(state.path == source for state in consumption.receipt().inputs),
-                eq=True,
-            )
         output = io.StringIO()
         parser = f"{ast.__file__}:{ast.parse.__code__.co_firstlineno}(parse)"
         Stats(profile, stream=output).print_stats(re.escape(parser))
@@ -103,7 +87,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         source = package / "component.py"
         source.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
         original_time = source.stat()
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(
                 u.Infra.publication_policy(
                     source, rope_project=project
@@ -115,7 +99,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             encoding=c.DEFAULT_ENCODING,
         )
         os.utime(source, ns=(original_time.st_atime_ns, original_time.st_mtime_ns))
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(
                 u.Infra.publication_policy(
                     source, rope_project=project
@@ -133,7 +117,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         package.mkdir(parents=True)
         source = package / f"module{suffix}"
         source.write_text("", encoding=c.DEFAULT_ENCODING)
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(u.Infra.project_root(source, source_project=project), eq=tmp_path)
 
     @staticmethod
@@ -159,7 +143,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             )
         expected = nested if nested_manifest else tmp_path
         tm.that(u.Infra.project_root(source), eq=expected)
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             tm.that(u.Infra.project_root(source, source_project=project), eq=expected)
 
     @staticmethod
@@ -180,7 +164,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+        with u.Infra.facade_source_project(tmp_path) as (project, _):
             layout = u.Infra.layout(tmp_path, rope_project=project)
             tm.that(layout, none=False)
             implicit = u.Infra.publication_policy(source, rope_project=project)
@@ -198,7 +182,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         repository_root = tmp_path
         non_git_dir = repository_root / "non_git_project"
         non_git_dir.mkdir()
-        (non_git_dir / "pyproject.toml").write_text(
+        (non_git_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='non_git_project'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
@@ -212,8 +196,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         service = u.Infra()
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.find_all_pyproject_files(nonexistent)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.ok(result, eq=[])
 
     @staticmethod
     def test_standalone_pyproject_scan_never_reads_parent_or_sibling(
@@ -225,10 +208,10 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         sibling = tmp_path / "sibling"
         child.mkdir()
         sibling.mkdir()
-        own_pyproject = child / "pyproject.toml"
+        own_pyproject = child / c.PYPROJECT_FILENAME
         own_pyproject.touch()
-        (tmp_path / "pyproject.toml").touch()
-        (sibling / "pyproject.toml").touch()
+        (tmp_path / c.PYPROJECT_FILENAME).touch()
+        (sibling / c.PYPROJECT_FILENAME).touch()
 
         result = service.find_all_pyproject_files(child)
 
@@ -241,7 +224,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     ) -> None:
         """Test find all pyproject files with permission error."""
         service = u.Infra()
-        (tmp_path / "pyproject.toml").touch()
+        (tmp_path / c.PYPROJECT_FILENAME).touch()
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
         tm.ok(len(result.value) >= 1)
@@ -255,7 +238,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         repository_root = tmp_path
         proj = repository_root / "incomplete_project"
         proj.mkdir()
-        (proj / "pyproject.toml").write_text(
+        (proj / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='incomplete_project'\n",
             encoding="utf-8",
         )
@@ -271,7 +254,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         service = u.Infra()
         blocked_dir = tmp_path / "blocked"
         blocked_dir.mkdir()
-        (blocked_dir / "pyproject.toml").write_text(
+        (blocked_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='blocked'\n",
             encoding="utf-8",
         )
@@ -280,5 +263,4 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             result = service.find_all_pyproject_files(tmp_path)
         finally:
             blocked_dir.chmod(0o755)
-        tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.ok(result, eq=[])

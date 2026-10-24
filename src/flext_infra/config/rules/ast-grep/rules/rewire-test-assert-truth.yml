@@ -1,8 +1,5 @@
-# Every non-narrowing raw assert is a native truth observation: the subject
-# expression is kept verbatim, so evaluation order, chained comparisons and
-# operand types are unchanged. Narrowing guards stay with
-# rewire-test-assert-guard.yml / rewire-test-assert-not-none.yml so type
-# checkers keep the narrowing an assert gave them.
+# Keep conditions in Python's conditional context. Materializing their values
+# before matching can repeat truth conversion in short-circuit expressions.
 id: rewire-test-assert-truth
 language: Python
 severity: error
@@ -41,8 +38,12 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.that($COND, truth=True)
-message: Observe the asserted truth through the tm matcher facade.
+fix: |-
+  if $COND:
+      pass
+  else:
+      tm.reject()
+message: Preserve native conditional evaluation and fail through tm.reject.
 ---
 id: rewire-test-assert-falsity
 language: Python
@@ -78,5 +79,7 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.that($COND, truth=False)
-message: Observe the asserted falsity through the tm matcher facade.
+fix: |-
+  if $COND:
+      tm.reject()
+message: Preserve native falsity evaluation and fail through tm.reject.

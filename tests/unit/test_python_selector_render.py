@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, u
-from tests import tm
+from flext_infra import config, u
+from tests import c, tm
 
 
 class TestsFlextInfraPythonSelectorRender:

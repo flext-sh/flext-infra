@@ -46,12 +46,20 @@ class FlextInfraConstantsDocs:
         QUALITY_GATES = ("Quality Gates", "Verificações de qualidade")
         QUALITY_BODY = (
             (
-                "Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
-                "`docs`) execute their declared operations directly."
+                "Consult `make help` for the current command surface. Each verb "
+                "performs only its declared operation; `make check` validates "
+                "without applying repairs. Environment setup delegates tool "
+                "provisioning to Mise and project/workspace installation to native "
+                "uv declarations and locks. Python runs the installed project; "
+                "no custom Python bootstrap or lock parser precedes installation."
             ),
             (
-                "Os verbos canônicos do `make` (`gen`, `check`, `test`, `fmt`, "
-                "`docs`) executam diretamente as operações declaradas."
+                "Consulte `make help` para conhecer os comandos atuais. Cada verbo "
+                "executa apenas sua operação declarada; `make check` valida "
+                "sem aplicar reparos. O setup delega as ferramentas ao Mise e a "
+                "instalação do projeto/workspace às declarações e locks nativos "
+                "do uv. Python executa o projeto instalado; nenhum bootstrap Python "
+                "ou parser de lock próprio precede a instalação."
             ),
         )
         QUALITY_LINK = (
@@ -356,54 +364,6 @@ class FlextInfraConstantsDocs:
     # rendered into docs_config.json and validated by DocsAuditPolicySpec),
     # and the detector flags per-user absolute paths outside the checkout
     # root instead of allowlisting names.
-    PYTHON_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^```python\s*\n(?P<body>.*?)^```\s*$",
-        re.MULTILINE | re.DOTALL,
-    )
-    """Regex matching ``python`` fenced blocks; ``body`` group yields contents."""
-
-    PYTHON_FENCE_FIX_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<indent>[ \t]*)(?P<open>```python[ \t]*\n)(?P<body>.*?)^```[ \t]*$",
-        re.MULTILINE | re.DOTALL,
-    )
-    """Regex matching ``python`` fenced blocks for fix-in-place replacement."""
-
-    WELDED_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<indent>[ \t]*)(?P<body>.*[^\s`])```[ \t]*$",
-        re.MULTILINE,
-    )
-    """Match a closing fence welded to the final code line by an older fixer.
-
-    The body must end in a non-whitespace, non-backtick character so that a
-    legitimately indented closing fence (``   ``` ``) and an existing
-    four-backtick fence are never rewritten; only a code line with the fence
-    welded onto it matches, and its indentation is preserved on repair.
-    """
-
-    FENCE_NOTEST_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^```(\S+)\s+notest\s*$",
-        re.MULTILINE,
-    )
-    """Regex matching fenced code blocks with a ``notest`` info qualifier."""
-
-    FENCE_NOTEST_ATTR_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^```([A-Za-z0-9_+-]+)\s+notest\s*$",
-        re.MULTILINE,
-    )
-    """Regex matching a bare ``notest`` qualifier for the buildable rewrite.
-
-    ``pymdownx.superfences`` rejects an info string whose second token is not a
-    known option, so a bare ``python notest`` fence is not rendered as code and
-    its contents leak into the page as prose, swallowing the headings that
-    follow. The fix phase rewrites it to the ``attr_list`` form
-    ``{.python .notest}``, which superfences renders and whose info string still
-    carries the marker the code gates skip. The language token excludes ``{``
-    so an already-rewritten fence never matches again.
-    """
-
-    # --- Markdown link/heading patterns ---
-    MARKDOWN_LINK_RE: ClassVar[t.RegexPattern] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
-    """Match markdown links capturing text (group 1) and URL (group 2)."""
     DOCS_GITHUB_BLOB_TREE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^https://github\.com/"
         r"(?P<org>[^/]+)/(?P<repo>[^/]+)/"
@@ -422,13 +382,10 @@ class FlextInfraConstantsDocs:
     """File mode every rendered documentation artifact is published with."""
     DOCS_OWNED_HEADER_LINES: ClassVar[int] = 2
     """Lines an owned member guide carries before its body: marker + source."""
-    HEADING_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^#{1,6}\s+(.+?)\s*$",
-        re.MULTILINE,
-    )
-    """Match any markdown heading (h1-h6), capturing the text."""
-    INLINE_CODE_RE: ClassVar[t.RegexPattern] = re.compile(r"`[^`]*`")
-    """Match inline code spans for stripping before analysis."""
+    DOCS_BARE_NOTEST_TOKENS: ClassVar[int] = 2
+    """Token count of a bare ``<lang> notest`` fence info string."""
+    DOCS_NOTEST_ATTR_INFO_FORMAT: ClassVar[str] = "{{.{} .notest}}"
+    """``attr_list`` fence info that superfences renders and the code gates skip."""
     DOCS_INLINE_COMMAND_DIRECTIVE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"\b(?:run|execute|invoke|try|use)(?:\s+the\s+command)?\s*$",
         re.IGNORECASE,

@@ -9,6 +9,7 @@ from __future__ import annotations
 import signal
 import sys
 from pathlib import Path
+from time import monotonic
 
 import pytest
 
@@ -27,7 +28,7 @@ class TestsFlextInfraCProfileReport:
         capsys: pytest.CaptureFixture[str],
         suite_state: str,
     ) -> None:
-        """Missing snapshots stay incomplete; present snapshots still require identity."""
+        """Keep missing snapshots incomplete and require present ones to match."""
         directory = tmp_path / c.Infra.REPORTS_DIR_NAME / "interrupted"
         directory.mkdir(parents=True)
         policy = config.Infra.tooling.tools.pytest
@@ -38,7 +39,7 @@ class TestsFlextInfraCProfileReport:
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
             testmon_db=tmp_path / "testmon",
             testmon_lease_acquired=True,
-            deadline_monotonic=None,
+            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=directory,
         )
         (directory / "run-context.json").write_text(
@@ -79,7 +80,9 @@ class TestsFlextInfraCProfileReport:
             suite.write_bytes(profile.read_bytes())
             suite.with_suffix(".pstats.json").write_text(
                 (
-                    receipt.model_copy(update={"profile_sha256": "0" * 64})
+                    receipt.model_copy(
+                        update={"profile_sha256": c.ParserBooleanToken.ZERO * 64}
+                    )
                     if suite_state == "stale"
                     else receipt
                 ).model_dump_json(),
@@ -112,11 +115,12 @@ class TestsFlextInfraCProfileReport:
         directory = reports / "waiting"
         directory.mkdir(parents=True)
         profile = native_cprofile
+        policy = config.Infra.tooling.tools.pytest
         context = m.Infra.PytestRunContext(
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
             testmon_db=tmp_path / "testmon",
             testmon_lease_acquired=False,
-            deadline_monotonic=None,
+            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=directory,
         )
         (directory / "run-context.json").write_text(
@@ -158,6 +162,7 @@ class TestsFlextInfraCProfileReport:
         directory = tmp_path / c.Infra.REPORTS_DIR_NAME / "selection"
         directory.mkdir(parents=True)
         profile = native_cprofile
+        policy = config.Infra.tooling.tools.pytest
         selection = directory / (
             c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME
             if stage == "inventory"
@@ -168,7 +173,7 @@ class TestsFlextInfraCProfileReport:
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
             testmon_db=tmp_path / "testmon",
             testmon_lease_acquired=True,
-            deadline_monotonic=None,
+            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=directory,
         )
         (directory / "run-context.json").write_text(
@@ -381,7 +386,7 @@ class TestsFlextInfraCProfileReport:
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
             testmon_db=tmp_path / "testmon",
             testmon_lease_acquired=True,
-            deadline_monotonic=None,
+            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=report_dir,
         )
         tm.ok(

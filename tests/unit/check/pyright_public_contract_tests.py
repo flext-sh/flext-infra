@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates import FlextInfraPyrightGate
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +43,7 @@ class TestsFlextInfraPyrightPublicContract:
             (tests / "__init__.py").write_text(
                 "from typing import TYPE_CHECKING\n"
                 "if TYPE_CHECKING:\n"
-                "    from tests.constants import c as c\n",
+                "    from tests.constants import c\n",
                 encoding="utf-8",
             )
             (tests / "constants.py").write_text(
@@ -57,7 +57,7 @@ class TestsFlextInfraPyrightPublicContract:
                 encoding="utf-8",
             )
             (tests / "consumer.py").write_text(
-                "from tests import c\n"
+                "from tests import c, r\n"
                 f"def catalog() -> {annotation}:\n"
                 "    return c.Tests.RULES_CATALOG_BASIC\n",
                 encoding="utf-8",
@@ -73,7 +73,7 @@ class TestsFlextInfraPyrightPublicContract:
                     declared_python_dirs_are_complete=True,
                 ),
             )
-            (root / "pyproject.toml").write_text(
+            (root / c.PYPROJECT_FILENAME).write_text(
                 u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
                 encoding="utf-8",
             )
@@ -90,7 +90,7 @@ class TestsFlextInfraPyrightPublicContract:
                     is_root=True, repository_root=project
                 ),
             )
-            (project / "pyproject.toml").write_text(
+            (project / c.PYPROJECT_FILENAME).write_text(
                 u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
                 encoding="utf-8",
             )
@@ -176,7 +176,7 @@ class TestsFlextInfraPyrightPublicContract:
                 declared_python_dirs_are_complete=True,
             ),
         )
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding="utf-8",
         )
@@ -189,7 +189,7 @@ class TestsFlextInfraPyrightPublicContract:
         private_issues = tuple(
             issue for issue in result.issues if issue.code == "reportPrivateUsage"
         )
-        assert bool(private_issues) is private
-        assert result.result.passed is not private, result.raw_output
+        tm.that(bool(private_issues), eq=private)
+        tm.that(result.result.passed, eq=not private, msg=result.raw_output)
         if private:
             tm.that(len(private_issues), eq=len(roots), msg=result.raw_output)

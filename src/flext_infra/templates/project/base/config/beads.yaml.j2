@@ -2,3 +2,6 @@ version: {{ beads.version }}
 workspace: {{ beads.workspace | tojson }}
 database: {{ beads.database | tojson }}
 issue_prefix: {{ beads.issue_prefix | tojson }}
+ownership_command_prefix: {{ ownership_command_prefix | tojson }}
+ownership_command_cwd: .
+custom_issue_types: {{ beads.custom_issue_types | tojson }}

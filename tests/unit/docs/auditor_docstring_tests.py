@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +53,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         project = tmp_path / "flext-demo"
         package = project / "src" / "flext_demo"
         package.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
@@ -131,15 +131,11 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (report_dir / "audit-summary.json").read_text(encoding="utf-8"),
         )
-        metric = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(summary["summary"])["docstring_coverage"],
+        metric = m.Infra.DocstringCoverage.model_validate(
+            u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])["docstring_coverage"],
         )
-        checked = metric["checked"]
-        percent = metric["percent"]
-        tm.that(isinstance(checked, int), truth=True)
-        tm.that(isinstance(percent, float), truth=True)
-        tm.ok(checked > 0)
-        tm.ok(0.0 <= percent < self._FULL_COVERAGE_PERCENT)
+        tm.ok(metric.checked > 0)
+        tm.ok(0.0 <= metric.percent < self._FULL_COVERAGE_PERCENT)
 
     def test_checks_docstrings_runs_only_that_check(self, tmp_path: Path) -> None:
         """Test checks docstrings runs only that check."""
@@ -154,13 +150,13 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (project / ".reports/docs/audit-summary.json").read_text(encoding="utf-8"),
         )
-        summary = u.Tests.toml_mapping(summary["summary"])
+        summary = u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])
         tm.that(summary["checks"], eq=["docstrings"])
         tm.that(u.Tests.number(summary["issues"]), gt=0)
-        coverage = u.Tests.toml_mapping(summary["docstring_coverage"])
-        checked = coverage["checked"]
-        tm.that(isinstance(checked, int), truth=True)
-        tm.ok(checked > 0)
+        coverage = m.Infra.DocstringCoverage.model_validate(
+            summary["docstring_coverage"],
+        )
+        tm.ok(coverage.checked > 0)
 
     def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
         """Test default checks runs full suite."""
@@ -172,7 +168,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (project / ".reports/docs/audit-summary.json").read_text(encoding="utf-8"),
         )
-        summary = u.Tests.toml_mapping(summary["summary"])
+        summary = u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])
         tm.that(summary["checks"], has="docstrings")
         tm.that(summary["checks"], has="links")
         tm.that(u.Tests.number(summary["issues"]), gt=0)
@@ -194,7 +190,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         summary = u.Tests.json_payload(
             (project / ".reports/docs/audit-summary.json").read_text(encoding="utf-8"),
         )
-        summary = u.Tests.toml_mapping(summary["summary"])
+        summary = u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])
         tm.that(
             (
                 u.Tests.number(

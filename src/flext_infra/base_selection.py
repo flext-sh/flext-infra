@@ -6,16 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
 from typing import Annotated
 
 from flext_infra import FlextInfraProjectSelectionMixin, FlextInfraServiceBase, m, t
 
 
-class FlextInfraProjectSelectionServiceBase[TDomainResult: t.JsonPayload](
+class FlextInfraProjectSelectionServiceBase[
+    TDomainResult: t.JsonValue | t.BaseModelType | Path | datetime,
+](
     FlextInfraServiceBase[TDomainResult],
     FlextInfraProjectSelectionMixin,
 ):
-    """Shared service foundation for commands that target workspace projects."""
+    """Shared service foundation for commands that target workspace projects.
+
+    The bound is JsonPayload's value union without its Pydantic serialization
+    metadata, which Mypy's Pydantic plugin erases when used as an upper bound.
+    """
 
     selected_projects: Annotated[
         t.StrSequence | None,

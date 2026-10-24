@@ -484,7 +484,11 @@ class FlextInfraImportNormalizationPlacementMixin(
         if isinstance(node, ast.Import):
             target = alias.name
         elif node.module == scope.namespace:
-            target = state.root_exports.get(alias.name, scope.namespace)
+            target = (
+                f"{scope.namespace}.{alias.name}"
+                if alias.name in u.Infra.facade_families()
+                else state.root_exports.get(alias.name, scope.namespace)
+            )
         else:
             target = node.module or ""
             exports = u.Infra.import_lazy_exports(scope.project_root, target)

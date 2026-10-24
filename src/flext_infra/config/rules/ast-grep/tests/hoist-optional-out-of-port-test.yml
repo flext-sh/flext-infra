@@ -1,0 +1,11 @@
+id: hoist-optional-out-of-port
+valid:
+  - |
+    settings: t.Port[p.Settings] | None = None
+  - |
+    context: t.Port[p.Context]
+invalid:
+  - |
+    settings: t.Port[p.Settings | None] = None
+  - |
+    loader: Annotated[t.Port[p.Plugin.Loader | None], m.Field(exclude=True)] = None

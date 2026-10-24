@@ -136,7 +136,7 @@ class TestsFlextInfraAuditorScope:
             tmp_path,
             origin_url=u.Tests.repository_ref("test-project").url,
         )
-        _ = (tmp_path / "pyproject.toml").write_text(
+        _ = (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "test-project"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
@@ -175,7 +175,7 @@ class TestsFlextInfraAuditorScope:
         summary = u.Tests.json_payload(
             (scope.report_dir / "audit-summary.json").read_text(encoding="utf-8"),
         )
-        tm.that(u.Tests.toml_mapping(summary["summary"])["issues"], eq=1)
+        tm.that(u.Tests.toml_mapping(summary[c.MetricType.SUMMARY])["issues"], eq=1)
         tm.that(
             (scope.report_dir / "audit-report.md").read_text(encoding="utf-8"),
             has="missing.md",

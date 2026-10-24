@@ -62,14 +62,13 @@ class FlextInfraRuntimeDependencyCollector:
         if lock.content is None or scan.settings.content is None:
             return result.fail("dependency collector lacks native lock or declarations")
         payload = u.Cli.toml_mapping_from_text(lock.content.decode(c.DEFAULT_ENCODING))
-        if payload is None:
-            return result.fail(f"invalid native dependency lock: {lock.path}")
-        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         document = u.Cli.toml_parse_text(
             scan.settings.content.decode(c.DEFAULT_ENCODING),
         )
-        if document is None:
-            return result.fail(f"invalid target declarations: {scan.settings.path}")
+        if payload is None or document is None:
+            invalid = lock.path if payload is None else scan.settings.path
+            return result.fail(f"invalid native dependency input: {invalid}")
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
         markers = FlextInfraBindingService.consumer_marker_environment(
             consumer_root=project_root,
             python=self._python,
@@ -353,6 +352,27 @@ class FlextInfraRuntimeDependencyCollector:
         """
         result = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         name = package.name
+        local_source = (
+            package.source.editable
+            if package.source.editable is not None
+            else package.source.directory
+        )
+        if local_source is not None:
+            FlextInfraWorkspaceEnvironmentProvenance.validate_local_installation(
+                package,
+                context,
+                distribution,
+                observation=None,
+                repository=repository,
+            ).unwrap()
+            if package.source.editable is not None:
+                return result.ok((
+                    u.Cli.atomic_read_binary_file_state(
+                        context.resolution_root / local_source / c.PYPROJECT_FILENAME,
+                        required=True,
+                    ).unwrap(),
+                ))
+            return result.ok(())
         receipt = (
             m.Infra.DirectUrlReceipt.model_validate_json(receipt_state.content)
             if receipt_state.content is not None
@@ -371,31 +391,7 @@ class FlextInfraRuntimeDependencyCollector:
                 else None,
             ).unwrap()
             return result.ok(())
-        if (
-            repository is None
-            or package.source.editable is None
-            or not repository.editable
-        ):
-            return result.fail(
-                f"editable dependency lacks declared lock ownership: {name}"
-            )
-        expected_root = (context.runtime_root / repository.path).resolve()
-        if (
-            context.resolution_root / package.source.editable
-        ).resolve() != expected_root:
-            return result.fail(f"editable dependency differs from locked path: {name}")
-        FlextInfraWorkspaceEnvironmentProvenance.validate_editable_installation(
-            repository,
-            context.runtime_root,
-            distribution,
-            receipt,
-        ).unwrap()
-        return result.ok((
-            u.Cli.atomic_read_binary_file_state(
-                expected_root / c.PYPROJECT_FILENAME,
-                required=True,
-            ).unwrap(),
-        ))
+        return result.fail(f"editable dependency lacks a native locked path: {name}")
 
     @staticmethod
     def _record_modules(distribution: Distribution) -> set[str]:

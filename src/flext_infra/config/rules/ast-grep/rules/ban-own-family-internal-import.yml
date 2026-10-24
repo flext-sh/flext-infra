@@ -1,0 +1,68 @@
+# Law 3 of the module/facade layout (tracker memory
+# operator-ruling-20261022-module-facade-config-layout): a private family's
+# internal modules are imported only by that family and by its facade.
+#
+# `ban-private-import` owns another package's private modules and
+# `ban-test-own-private-import` owns the test tiers. This rule owns the
+# remaining own-package variant: a production module that reaches into
+# `<pkg>._<family>.<sub>` (or `<pkg>.<area>._<family>.<sub>`) from outside
+# that family couples itself to the family's internal layout. The consumer
+# binds the facade instead (its letter, under TYPE_CHECKING when the facade
+# is a later layer).
+#
+# Genericity: no document names a package, family, or letter. The imported
+# module is captured as $MOD; `own-package` admits only the scanned project's
+# own package, and `family-member` (on the same path, copied to $FAMILY)
+# admits the finding only when the importing module is neither inside the
+# family tree (the path up to its first `_` segment) nor its facade module
+# (that segment without the `_`).
+#
+# Detection-only: the repair rebinds the consumer to the facade.
+
+id: ban-own-family-internal-import
+language: Python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+  - "**/tests/**"
+  - "**/examples/**"
+  - "**/conftest.py"
+metadata:
+  ruling: operator-ruling-20261022-module-facade-config-layout
+  context:
+    MOD:
+      is: own-package
+    FAMILY:
+      not: family-member
+rule:
+  any:
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+\w[\w.]*\._[A-Za-z]\w*(\.[\w.]+)*\s+import\b'
+        - has:
+            field: module_name
+            pattern: $MOD
+    - all:
+        - kind: dotted_name
+        - regex: '^\w[\w.]*\._[A-Za-z]\w*(\.[\w.]+)*$'
+        - pattern: $MOD
+        - any:
+            - inside:
+                kind: import_statement
+            - inside:
+                kind: aliased_import
+                field: name
+                inside:
+                  kind: import_statement
+transform:
+  FAMILY:
+    replace:
+      source: $MOD
+      replace: "(?<PATH>.+)"
+      by: "$PATH"
+message: >-
+  Own-package import of a private family's internal module from outside that
+  family. Internal modules are imported only by their family and its facade;
+  bind the facade (its letter, under TYPE_CHECKING when it is a later layer).

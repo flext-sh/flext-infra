@@ -1,4 +1,7 @@
 id: concrete-mixin-runtime-ellipsis
+# These cases test AST preselection. Native binding admission in
+# test_rule_binding_inputs.py excludes actual Protocol/abstractmethod/overload
+# declarations and non-typing guards, not same-spelling local substitutes.
 valid:
   - |
     class RuntimeMixin:
@@ -8,7 +11,7 @@ valid:
     class RuntimeProtocol(Protocol):
         def run(self) -> int: ...
   - |
-    class RuntimeMixin(ABC):
+    class AbstractReader(ABC):
         @abstractmethod
         def run(self) -> int: ...
   - |
@@ -18,13 +21,96 @@ valid:
     def run(value: int) -> str: ...
   - |
     if TYPE_CHECKING:
-        class RuntimeMixin:
-            def run(self) -> int: ...
+        from pathlib import Path
+    class Runtime:
+        if TYPE_CHECKING:
+            type Paths = tuple[Path, ...]
+        def run(self, value: int) -> int:
+            return value
   - |
     class RuntimeMixin:
         class RuntimeProtocol(Protocol):
             def run(self) -> int: ...
+  - |
+    class Runtime:
+        def discard(self, value: int) -> None:
+            del value
+  - |
+    class Runtime:
+        def run(self) -> int:
+            def deferred() -> int: ...
+            return 1
+  - |
+    class Runtime:
+        if TYPE_CHECKING:
+            def run(self, value: int) -> int:
+                del value
+                return 1
 invalid:
   - |
     class RuntimeMixin:
         def run(self) -> int: ...
+  - |
+    class Runtime:
+        if TYPE_CHECKING:
+            @property
+            def source_project(self) -> Project: ...
+  - |
+    class Runtime:
+        if typing.TYPE_CHECKING:
+            @staticmethod
+            def generated(content: bytes | None) -> bool:
+                del content
+  - |
+    class Runtime:
+        if TYPE_CHECKING:
+            def cleanup(self, plan: Plan) -> Result:
+                del plan
+                raise NotImplementedError(type(self).__qualname__)
+  - |
+    from typing import TYPE_CHECKING as types_only
+    class Runtime:
+        if types_only:
+            def process(self, state, *, dry_run):
+                del state, dry_run
+  - |
+    if TYPE_CHECKING:
+        class Runtime:
+            def run(self) -> int: ...
+  - |
+    # AUTO-GENERATED FILE
+    class Runtime:
+        if TYPE_CHECKING:
+            @classmethod
+            def process(cls, value: str) -> str:
+                del value
+  - |
+    class Runtime:
+        if TYPE_CHECKING:
+            async def process(self, value: str) -> str:
+                del value
+  - |
+    class Runtime:
+        if TYPE_CHECKING:
+            def process(self, value: str) -> str:
+                """A copied signature is still a shell."""
+                del value
+  - |
+    from typing import Protocol as Contract
+    class ReaderMixin(Contract):
+        def read(self) -> str: ...
+  - |
+    from abc import ABC, abstractmethod as required
+    class ReaderMixin(ABC):
+        @required
+        def read(self) -> str: ...
+  - |
+    from typing import overload as signature
+    class Runtime:
+        if TYPE_CHECKING:
+            @signature
+            def select(self, value: int) -> int: ...
+            @signature
+            def select(self, value: str) -> str: ...
+        def select(self, value: int | str) -> int | str:
+            return value

@@ -9,8 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLazyInit
-from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
+from flext_infra.codegen import (
+    FlextInfraCodegenConformExistingPlan,
+    FlextInfraCodegenLazyInit,
+)
 from flext_infra.deps import FlextInfraPyprojectModernizer
 
 
@@ -37,7 +39,19 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 f"scaffold workspace has no project metadata: {workspace.name}",
             )
         root = target.root
-        profile = target.make_profile
+        required_data_destinations = frozenset(
+            entry.destination
+            for entry in codegen.templates.entries
+            if any(
+                Path(entry.destination).is_relative_to(Path(path))
+                for path in project.packaged_data_paths
+            )
+        )
+        selected_destinations = (
+            None
+            if contract.destinations is None
+            else codegen.templates.required_destinations(contract.destinations)
+        )
         # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
         # A declared subproject consumes the workspace root
@@ -48,30 +62,37 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 entry.destination.format(
                     package_name=project.package_name,
                     ns=project.namespace,
+                    **u.Infra.runtime_module_names(
+                        project_name=target.repository.distribution,
+                        codegen=codegen,
+                    ),
                 ),
             )
             for entry in codegen.templates.entries
-            if profile in entry.profiles
+            if entry.source is not None
+            and target.make_profile in entry.profiles
             and (entry.destination != c.PYPROJECT_FILENAME or contract.pyproject)
-            and (contract.delegates or entry.destination == c.PYPROJECT_FILENAME)
+            and (
+                contract.delegates
+                or entry.destination == c.PYPROJECT_FILENAME
+                or entry.destination in required_data_destinations
+                or (
+                    selected_destinations is not None
+                    and entry.destination in selected_destinations
+                )
+            )
             and (not entry.requires_release_protocol or target.publishes_release)
             and (not entry.requires_beads or workspace.beads is not None)
             and (
-                contract.destinations is None
-                or entry.destination in contract.destinations
+                selected_destinations is None
+                or entry.destination in selected_destinations
+                or entry.destination in required_data_destinations
             )
         )
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
             managed_artifacts=u.Infra.empty_snapshot().resolution,
-        )
-        analysis_exclusions = tuple(
-            path.as_posix()
-            for path in (
-                *target.external_dependency_paths,
-                *workspace.external_dependency_paths,
-            )
         )
         # Why: a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
@@ -85,7 +106,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             environment_dir=u.Infra.runtime_environment_dir(root, runtime_root=root),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
-                for plan in lazy_sources.value[0]
+                for plan in lazy_sources.value
                 if plan.path.suffix == c.Infra.EXT_PYTHON
                 and plan.desired_content is not None
             },
@@ -104,75 +125,75 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                     destination for _, destination in scaffold_entries
                 ),
                 declared_python_dirs=tuple(
-                    self._scaffold_python_dirs(codegen.templates.entries, profile),
+                    self._scaffold_python_dirs(
+                        codegen.templates.entries, target.make_profile
+                    ),
                 ),
                 declared_python_dirs_are_complete=(
-                    profile is not c.Infra.MakeProfile.WORKSPACE
+                    target.make_profile is not c.Infra.MakeProfile.WORKSPACE
                 ),
-                analysis_exclusions=analysis_exclusions,
+                analysis_exclusions=tuple(
+                    path.as_posix()
+                    for path in (
+                        *target.external_dependency_paths,
+                        *workspace.external_dependency_paths,
+                    )
+                ),
             ),
         )
         with self._source_view(
             root,
-            source_states=lazy_sources.value[1],
-            declared_files=tuple(lazy_sources.value[0]),
+            declared_files=tuple(lazy_sources.value),
         ) as binding:
             tooling_result = modernizer.resolve_tooling_context(
                 tooling_request, source_project=binding[0]
             )
-            tooling_evidence = binding[1]()
-        if tooling_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
-        prepared = self._scaffold_render_setup(
-            target,
-            workspace,
-            codegen,
-            scaffold_entries,
-            tooling_result.value,
-        )
-        if prepared.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(prepared)
-        targets = self._validated_scaffold_targets(codegen, root, scaffold_entries)
-        planned = targets.flat_map(
-            lambda _validated: self._scaffold_planned_entries(
-                prepared.value, scaffold_entries, workspace
-            )
-        )
-        if planned.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        files, render_inputs = planned.value
-        return self._qualified_existing_tooling(
-            render_inputs, contract, files, tooling_evidence
-        ).flat_map(
-            lambda qualified: self._with_planned_facade_rebinds(
-                planned=tuple(qualified),
-                scaffold_entries=scaffold_entries,
+            if tooling_result.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                    tooling_result
+                )
+            render_inputs = self.resolve_render_inputs(
+                target=target,
                 workspace=workspace,
-                render_inputs=render_inputs,
-                contract=contract,
+                codegen=codegen,
+                tooling_runtime=tooling_result.value,
+                managed_artifacts=u.Infra.empty_snapshot(),
             )
-        )
+            context = self._project_render_context(
+                render_inputs,
+                planned_data_files=tuple(
+                    destination for _, destination in scaffold_entries
+                ),
+            )
+            if context.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context)
+            targets = self._validated_scaffold_targets(codegen, root, scaffold_entries)
+            planned = targets.flat_map(
+                lambda _validated: self._scaffold_planned_entries(
+                    render_inputs, context.value, scaffold_entries
+                )
+            )
+            if planned.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+            return self._with_planned_facade_rebinds(
+                planned=tuple(planned.value),
+                scaffold_entries=scaffold_entries,
+                render_inputs=render_inputs,
+            )
 
     def _scaffold_planned_entries(
         self,
-        prepared: t.Pair[m.Infra.CodegenRenderInputs, m.Infra.ProjectRenderContext],
+        render_inputs: m.Infra.CodegenRenderInputs,
+        context: m.Infra.ProjectRenderContext,
         scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[
-        t.Pair[t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenRenderInputs]
-    ]:
-        """Plan scaffold entries in dependency order, retaining render inputs.
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Plan scaffold entries in dependency order using the owned render state.
 
         Returns:
-            The ordered plans and final inputs, or the first entry failure.
+            The ordered plans, or the first entry failure.
 
         """
-        result_type = r[
-            t.Pair[
-                t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenRenderInputs
-            ]
-        ]
-        render_inputs, context = prepared
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
         # The pyproject plans first: renders that derive from its requirements
         # (the dependabot cooldown exclusion) read the planned bytes.
@@ -183,50 +204,29 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             entry_plan = self._scaffold_entry_plan(
                 entry=entry,
                 destination=destination,
-                workspace=workspace,
                 render_inputs=render_inputs,
                 context=context,
             )
             if entry_plan.failure:
                 return result_type.from_failure(entry_plan)
-            file_plan, render_inputs = entry_plan.value
+            file_plan = entry_plan.value
+            metadata = render_inputs.target.root / c.PYPROJECT_FILENAME
+            if file_plan.path != metadata and any(
+                item.path == metadata for item in planned
+            ):
+                file_plan = file_plan.model_copy(
+                    update={
+                        "tracking_dependencies": tuple(
+                            dict.fromkeys((*file_plan.tracking_dependencies, metadata))
+                        ),
+                    },
+                )
             planned.append(file_plan)
-        return result_type.ok((tuple(planned), render_inputs))
-
-    def _scaffold_render_setup(
-        self,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
-        tooling_runtime: m.Infra.ToolingRuntimeContext,
-    ) -> p.Result[t.Pair[m.Infra.CodegenRenderInputs, m.Infra.ProjectRenderContext]]:
-        """Resolve render inputs and the project render context for a scaffold.
-
-        Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenRenderInputs,
-                m.Infra.ProjectRenderContext]]``.
-
-        """
-        result_type = r[
-            t.Pair[m.Infra.CodegenRenderInputs, m.Infra.ProjectRenderContext]
-        ]
-        render_inputs = self.resolve_render_inputs(
-            target=target,
-            workspace=workspace,
-            codegen=codegen,
-            tooling_runtime=tooling_runtime,
-            managed_artifacts=u.Infra.empty_snapshot(),
+        return self._artifact_dependency_plans(
+            render_inputs.codegen,
+            render_inputs.target.root,
+            planned,
         )
-        context_result = self._project_render_context(
-            render_inputs,
-            planned_data_files=tuple(
-                destination for _, destination in scaffold_entries
-            ),
-        )
-        if context_result.failure:
-            return result_type.from_failure(context_result)
-        return result_type.ok((render_inputs, context_result.value))
 
     def _validated_scaffold_targets(
         self,
@@ -243,17 +243,15 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
 
         """
         result_type = r[bool]
-        templates_root = u.Infra.codegen_templates_root(codegen)
         seen_destinations: set[str] = set()
         for entry, destination in scaffold_entries:
-            if entry.delegate == c.Infra.TemplateDelegate.RENDER:
-                source = self._validated_template_source(
-                    templates_root,
-                    entry,
-                    destination,
-                )
-                if source.failure:
-                    return result_type.from_failure(source)
+            source = self._validated_template_source(
+                codegen,
+                entry,
+                destination,
+            )
+            if source.failure:
+                return result_type.from_failure(source)
             destination_check = self._validated_destination(
                 root,
                 destination,
@@ -266,7 +264,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
 
     @staticmethod
     def _validated_template_source(
-        templates_root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
         entry: m.Infra.TemplateEntrySpec,
         destination: str,
     ) -> p.Result[bool]:
@@ -281,10 +279,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             return result_type.fail(
                 f"render entry has no template source: {destination}",
             )
-        source = (templates_root / entry.source).resolve()
-        if not source.is_relative_to(templates_root) or not source.is_file():
+        source = u.Infra.codegen_artifact_source(codegen, entry)
+        if not source.is_file():
             return result_type.fail(
-                f"template source is missing or escapes its root: {entry.source}",
+                f"artifact source is missing: {entry.source}",
             )
         return result_type.ok(value=True)
 
@@ -329,9 +327,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         *,
         planned: t.VariadicTuple[m.Infra.CodegenFilePlan],
         scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
-        workspace: m.Infra.WorkspaceSpec,
         render_inputs: m.Infra.CodegenRenderInputs,
-        contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the final pyproject over the sources the scaffold plans.
 
@@ -361,181 +357,110 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         root = render_inputs.target.root
         projected = {plan.path: plan for plan in planned}
         with self._source_view(
-            root, declared_files=tuple(projected.values())
+            root,
+            declared_files=tuple(projected.values()),
         ) as binding:
             exports = FlextInfraCodegenLazyInit(
                 repository_root=root, project_scope_roots=(root,)
             ).plan_files(source_project=binding[0])
-            if exports.failure:
-                return result_type.from_failure(exports)
-            self._retain_diagnostics(
-                exports.value.exception, issues=exports.value.issues
-            )
-            inputs = u.Infra.unique_states((
-                *binding[1]()[0],
-                *(
-                    state
-                    for plan in exports.value.files
-                    for state in plan.source_states
-                ),
-            ))
-            if inputs.failure:
-                return result_type.from_failure(inputs)
-        projected.update((plan.path, plan) for plan in exports.value.files)
-        source_states = inputs.value
+        if exports.failure:
+            return result_type.from_failure(exports)
+        projected.update((plan.path, plan) for plan in exports.value)
         planned = tuple(projected.values())
-        with self._source_view(
-            root, source_states=source_states, declared_files=planned
-        ) as binding:
-            final_inputs = self.planned_source_render_inputs(
+        with self._source_view(root, declared_files=planned) as binding:
+            tooling = render_inputs.tooling_runtime
+            render_inputs.tooling_runtime = self.planned_source_tooling(
                 render_inputs, planned, source_project=binding[0]
             )
-            evidence = binding[1]()
-        if final_inputs is render_inputs:
-            return self._qualified_existing_tooling(
-                render_inputs, contract, planned, evidence
-            )
-        context = self._project_render_context(
-            final_inputs,
-            planned_data_files=tuple(
-                destination for _, destination in scaffold_entries
-            ),
-        )
-        if context.failure:
-            return result_type.from_failure(context)
-        final = self._scaffold_entry_plan(
-            entry=pyproject_entry,
-            destination=c.PYPROJECT_FILENAME,
-            workspace=workspace,
-            render_inputs=final_inputs,
-            context=context.value,
-        )
-        return final.flat_map(
-            lambda rendered: self._qualified_existing_tooling(
-                final_inputs,
-                contract,
-                tuple(
-                    rendered[0] if plan.path == rendered[0].path else plan
-                    for plan in planned
+            if render_inputs.tooling_runtime is tooling:
+                return result_type.ok(planned)
+            context = self._project_render_context(
+                render_inputs,
+                planned_data_files=tuple(
+                    destination for _, destination in scaffold_entries
                 ),
-                evidence,
             )
-        )
+            if context.failure:
+                return result_type.from_failure(context)
+            final = self._scaffold_entry_plan(
+                entry=pyproject_entry,
+                destination=c.PYPROJECT_FILENAME,
+                render_inputs=render_inputs,
+                context=context.value,
+            )
+            return final.map(
+                lambda rendered: tuple(
+                    rendered if plan.path == rendered.path else plan for plan in planned
+                )
+            )
 
     def _scaffold_entry_plan(
         self,
         *,
         entry: m.Infra.TemplateEntrySpec,
         destination: str,
-        workspace: m.Infra.WorkspaceSpec,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
-    ) -> p.Result[t.Pair[m.Infra.CodegenFilePlan, m.Infra.CodegenRenderInputs]]:
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render one scaffold entry into its file plan.
 
-        A rendered pyproject is recorded on the returned render inputs, which
-        later renders read.
+        A rendered pyproject advances this operation's existing render state.
 
         Returns:
-            The entry's file plan and the render inputs later renders read.
+            The finalized entry's file plan.
 
         """
-        result_type = r[t.Pair[m.Infra.CodegenFilePlan, m.Infra.CodegenRenderInputs]]
+        result_type = r[m.Infra.CodegenFilePlan]
         root = render_inputs.target.root
-        rendered = self._scaffold_rendered_source(
-            entry,
-            destination,
-            workspace,
+        if entry.source is None:
+            return result_type.fail(
+                f"render entry has no template source: {destination}",
+            )
+        rendered = self._rendered_artifact_source(
             render_inputs,
-            context,
+            destination=destination,
+            failure_prefix=(
+                f"stage=templates repository={render_inputs.target.repository.name} "
+            ),
+            project_context=context,
+            entry=entry,
         )
         if rendered.failure:
             return result_type.from_failure(rendered)
-        rendered_content = self.compose_project_artifact(
-            root,
-            destination,
-            rendered.value.rendered,
-            render_inputs=render_inputs,
-            source_states=rendered.value.source_states,
+        rendered_content = (
+            rendered
+            if entry.source_kind == "resource"
+            else self.compose_project_artifact(
+                root,
+                destination,
+                rendered.value,
+                render_inputs=render_inputs,
+            )
         )
         if rendered_content.failure:
             return result_type.from_failure(rendered_content)
+        names = None
         if destination == c.PYPROJECT_FILENAME:
-            recorded = self.with_planned_pyproject(
+            names = self.direct_sources(
                 render_inputs,
-                rendered_content.value.rendered,
+                composed=rendered_content.value,
             )
-            if recorded.failure:
-                return result_type.from_failure(recorded)
-            render_inputs = recorded.value
-        file_plan = self.file_plan(
+            if names.failure:
+                return result_type.from_failure(names)
+        planned = self.file_plan(
             root,
             destination,
-            rendered_content.value.rendered,
-            source_states=rendered_content.value.source_states,
-        )
-        if file_plan.failure:
-            return result_type.from_failure(file_plan)
-        return result_type.ok((file_plan.value, render_inputs))
-
-    def _scaffold_rendered_source(
-        self,
-        entry: m.Infra.TemplateEntrySpec,
-        destination: str,
-        workspace: m.Infra.WorkspaceSpec,
-        render_inputs: m.Infra.CodegenRenderInputs,
-        context: m.Infra.ProjectRenderContext,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
-        """Render one scaffold entry's source bytes.
-
-        Returns:
-            Rendered artifact and its captured template sources.
-
-        """
-        project = workspace.project
-        if project is None:
-            return r[m.Infra.CodegenArtifactComposition].fail(
-                f"scaffold workspace has no project metadata: {workspace.name}",
-            )
-        if entry.delegate != c.Infra.TemplateDelegate.MANIFEST:
-            if entry.source is None:
-                return r[m.Infra.CodegenArtifactComposition].fail(
-                    f"render entry has no template source: {destination}",
-                )
-            return self._rendered_artifact_source(
-                render_inputs,
-                template_relpath=entry.source,
-                destination=destination,
-                failure_prefix=(
-                    f"stage=templates "
-                    f"repository={render_inputs.target.repository.name} "
-                ),
-                project_context=context,
-            )
-        manifest_path = Path(c.CONFIG_DIR_NAME) / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        if Path(destination) != manifest_path:
-            return r[m.Infra.CodegenArtifactComposition].fail(
-                f"manifest delegate has an invalid destination: {destination}",
-            )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=workspace.name,
-            namespace_scan_dirs=workspace.namespace_scan_dirs,
-            repository=workspace.repository,
-            project=project,
-            members=workspace.subprojects,
-            external_dependency_paths=workspace.external_dependency_paths,
-            integration=workspace.integration,
-        )
-        return u.Cli.yaml_roundtrip_dump_text(
-            u.Cli.yaml_deep_to_commented(
-                manifest.model_dump(
-                    mode="json",
-                    exclude_none=True,
-                    exclude_computed_fields=True,
-                ),
+            rendered_content.value,
+            mode=(
+                entry.ownership.mode
+                if entry.ownership is not None
+                else render_inputs.codegen.modes.file_default
             ),
-        ).map(lambda content: m.Infra.CodegenArtifactComposition(rendered=content))
+            ownership=entry.ownership,
+        )
+        if planned.success and names is not None:
+            render_inputs.planned_direct_sources = names.value
+        return planned
 
 
 __all__: list[str] = ["FlextInfraCodegenConformScaffoldPlan"]

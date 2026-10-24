@@ -39,7 +39,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 tm.ok(u.Cli.run((sys.executable, str(self.sample))))
                 self.validated = True
 
-        def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+        @staticmethod
+        def emit_rename(report: m.Infra.ApplyRenamesReport) -> None:
             """Accept the public campaign progress contract."""
             _ = report
 
@@ -52,6 +53,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
     def test_census_publishes_joint_factory_and_constants_candidate(
         tmp_path: Path,
         entry: str,
+        *,
         broken: bool,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
@@ -103,7 +105,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                     f"{owner}Base as upstream_c\n"
                     "value = t.scalar_mapping_adapter().validate_python("
                     "{'name': 'value'})\n"
-                    "constant = upstream_c.JOINT_VALUE\n"
+                    "constant = c.JOINT_VALUE\n"
                     "local = c.JOINT_VALUE\n"
                 )
                 + ("broken: str = 1\n" if broken else "")
@@ -145,7 +147,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                     root,
                     rope,
                     apply=True,
-                    source_preview=infra.source_preview(root),
                     workspace_factory=infra.rope_workspace,
                 )
             if broken:
@@ -174,7 +175,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
-                        source_preview=infra.source_preview(root),
                         workspace_factory=infra.rope_workspace,
                     ),
                 )
@@ -187,7 +187,6 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                         root,
                         rope,
                         apply=True,
-                        source_preview=infra.source_preview(root),
                         workspace_factory=infra.rope_workspace,
                     ),
                     has="quality",
@@ -292,7 +291,11 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         final = (
             "2"
             if outcome == "converged"
-            else ("0" if outcome == "cycle" else "missing_candidate_binding")
+            else (
+                c.ParserBooleanToken.ZERO
+                if outcome == "cycle"
+                else "missing_candidate_binding"
+            )
         )
         u.Tests.declare_codemod_rules(
             mod_workspace,

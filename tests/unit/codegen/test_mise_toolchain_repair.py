@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import settings
+from flext_infra import config, settings
 from tests import c, m, tm, u
 
 
@@ -26,6 +26,29 @@ class TestsFlextInfraMiseToolchainRepair:
                 m.Infra.GitRepoRequest(repo_root=Path(__file__).parent),
             ),
         ).repository_root
+        reader = tm.ok(u.Infra.managed_mise_self(root))
+        for entry in config.Infra.codegen.toolchain.tools:
+            executable = tm.ok(u.Infra.managed_mise_binary(entry.name, root))
+            installation = tm.ok(
+                u.Cli.run_raw(
+                    (
+                        str(reader),
+                        "-C",
+                        str(root),
+                        "where",
+                        entry.selector or entry.name,
+                    ),
+                    cwd=root,
+                    timeout=c.Infra.TIMEOUT_SHORT,
+                ),
+            )
+            tm.ok(u.Cli.process_succeeded(installation.outcome))
+            tm.that(installation.stderr, eq="")
+            tm.ok(
+                executable.is_relative_to(
+                    Path(installation.stdout.strip()).resolve(),
+                ),
+            )
         binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
         before = tm.ok(u.Cli.atomic_inventory_physical_directory(binary.parent))
         name = u.type_adapter(str).validate_python(

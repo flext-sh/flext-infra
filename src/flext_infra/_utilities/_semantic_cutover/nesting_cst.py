@@ -9,6 +9,15 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import libcst as cst
+from libcst.codemod import CodemodContext
+from libcst.codemod.visitors import AddImportsVisitor, ImportItem
+from libcst.metadata import (
+    MetadataWrapper,
+    PositionProvider,
+    WhitespaceInclusivePositionProvider,
+)
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
@@ -99,7 +108,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         item: m.Infra.LogicalStatement,
         body: str,
         native: t.Pair[p.Infra.RopePyModule, p.Infra.RopeSemanticModule],
-        classvar_name: str,
+        rendering: t.Triple[str, t.StrMapping, int],
     ) -> str:
         """Render the original member category through its real native annotation.
 
@@ -111,11 +120,25 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             return "@staticmethod\n" + body
         members = cls._nesting_statement_parts(item)
         if len(members) > 1:
+            if any(
+                "." in rendering[1][cls._native_member_name(part)] for part in members
+            ):
+                return "\n".join(
+                    cls._nested_member_body(
+                        part,
+                        FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
+                            part.text + "\n", 0
+                        ),
+                        native,
+                        rendering,
+                    )
+                    for part in members
+                )
             for part in reversed(members):
                 first = part.start_offset - item.start_offset
                 last = part.end_offset - item.start_offset
                 rendered = cls._nested_member_body(
-                    part, part.text, native, classvar_name
+                    part, part.text, native, rendering
                 ).rstrip("\n")
                 body = body[:first] + rendered + body[last:]
             return body
@@ -127,7 +150,26 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             value = item.text[parts[-1][0] : parts[-1][1]]
             return (
                 f"{cls._native_member_name(item)}: "
-                f"{classvar_name}[{annotation}] = {value}\n"
+                f"{rendering[0]}[{annotation}] = {value}\n"
+            )
+        return cls._nested_declaration_scope(
+            body, rendering[1][cls._native_member_name(item)], rendering[2]
+        )
+
+    @staticmethod
+    def _nested_declaration_scope(body: str, destination: str, indentation: int) -> str:
+        """Place a declaration directly in its elected lexical class scope.
+
+        Returns:
+            The original declaration body inside its real destination hierarchy.
+
+        """
+        for name in reversed(destination.split(".")[1:]):
+            body = f"class {name}:\n" + (
+                FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
+                    '"""Native generic declaration scope."""\n' + body,
+                    indentation,
+                )
             )
         return body
 
@@ -135,11 +177,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     def _nested_member_edits(
         cls,
         source: str,
-        module: p.Infra.RopePyModule,
+        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
         typing: p.Infra.RopeSemanticModule,
         selection: t.Triple[
             t.SequenceOf[m.Infra.LogicalStatement],
-            t.MappingKV[str, p.Infra.RopeScope],
+            t.StrMapping,
             str,
         ],
         indentation: int,
@@ -150,31 +192,34 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             Actual source-removal edits and their ordered reindented member bodies.
 
         """
-        selected, scopes = selection[0], selection[1]
+        module, wrapper = native
+        selected = selection[0]
         edits: list[m.Infra.SourceRewrite] = []
         members: list[str] = []
-        decorated = {
-            node.name: min(decorator.lineno for decorator in node.decorator_list)
-            for node in ast.parse(source).body
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
-            and node.decorator_list
-        }
+        positions = wrapper.resolve(PositionProvider)
+        inclusive = wrapper.resolve(WhitespaceInclusivePositionProvider)
+        statements = {positions[node].start.line: node for node in wrapper.module.body}
         for item in selected:
-            name = cls._native_member_name(item)
-            scope = scopes.get(name)
-            begin = item.start_offset
-            end = min(item.end_offset + 1, len(source))
-            if scope is not None:
-                begin = module.lines.get_line_start(
-                    module.lines.get_line_number(scope.get_region()[0])
-                )
-                end = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
-            if name in decorated:
-                begin = min(begin, module.lines.get_line_start(decorated[name]))
+            node = statements[item.line]
+            region = inclusive[node]
+            begin = module.lines.get_line_start(region.start.line) + region.start.column
+            end = module.lines.get_line_start(region.end.line) + region.end.column
+            code = (
+                node.decorators[0]
+                if isinstance(node, cst.FunctionDef | cst.ClassDef) and node.decorators
+                else node
+            )
+            code_start = module.lines.get_line_start(positions[code].start.line)
             members.append(
                 FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
-                    cls._nested_member_body(
-                        item, source[begin:end], (module, typing), selection[2]
+                    (
+                        source[begin:code_start]
+                        + cls._nested_member_body(
+                            item,
+                            source[code_start:end],
+                            (module, typing),
+                            (selection[2], selection[1], indentation),
+                        )
                     ).rstrip()
                     + "\n",
                     indentation,
@@ -198,10 +243,20 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         owner_name, nested, indentation = owner
         doc = module.get_doc()
         summary = doc.splitlines()[0].strip() if doc else ""
+        docstring = (
+            ast.unparse(
+                ast.Module(
+                    body=[ast.Expr(value=ast.Constant(value=summary))],
+                    type_ignores=[],
+                )
+            )
+            if summary
+            else ""
+        )
         position = min(edit.start for edit in edits)
         replacement = (
             f"class {owner_name}:\n"
-            + (" " * indentation + repr(summary) + "\n\n" if summary else "")
+            + (" " * indentation + docstring + "\n\n" if docstring else "")
             + nested
         )
         return [
@@ -212,9 +267,43 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         ]
 
     @staticmethod
+    def _owner_body_start(
+        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
+        owner: p.Infra.RopeScope,
+    ) -> t.Pair[int, int]:
+        """Elect the first owned member, including its native decorator region.
+
+        Returns:
+            The complete owned prefix and code line offsets of the first member.
+
+        Raises:
+            ValueError: The elected owner is not a nonempty source class.
+
+        """
+        module, wrapper = native
+        node = owner.pyobject.get_ast()
+        if not isinstance(node, ast.ClassDef) or not node.body:
+            msg = "native nesting owner is not a nonempty source class"
+            raise ValueError(msg)
+        positions = wrapper.resolve(PositionProvider)
+        declaration = next(
+            item
+            for item in wrapper.module.body
+            if isinstance(item, cst.ClassDef)
+            and positions[item].start.line == node.lineno
+        )
+        member = declaration.body.body[0]
+        region = wrapper.resolve(WhitespaceInclusivePositionProvider)[member]
+        return (
+            module.lines.get_line_start(region.start.line) + region.start.column,
+            module.lines.get_line_start(positions[member].start.line),
+        )
+
+    @classmethod
     def _existing_owner_edits(
+        cls,
         source: str,
-        module: p.Infra.RopePyModule,
+        native: t.Pair[p.Infra.RopePyModule, MetadataWrapper],
         facts: t.SequenceOf[m.Infra.LogicalStatement],
         owner: p.Infra.RopeScope,
         contents: t.Pair[str, int],
@@ -229,8 +318,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
 
         """
         nested, indentation = contents
+        module = native[0]
         header = next(item for item in facts if item.line == owner.get_start())
-        first = module.lines.get_line_start(owner.get_body_start())
+        first, code_start = cls._owner_body_start(native, owner)
         last = min(module.lines.get_line_end(owner.get_end()) + 1, len(source))
         if owner.get_body_start() == owner.get_start():
             regions = (
@@ -263,14 +353,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             if owner.get_body_start() <= item.line <= owner.get_end()
         ]
         if len(own_body) == 1 and own_body[0].text.strip() == "pass":
-            return (m.Infra.SourceRewrite(start=first, end=last, text=nested),)
-        if (
-            own_body
-            and FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
-                own_body[0].text.strip()
+            return (
+                m.Infra.SourceRewrite(
+                    start=first, end=last, text=source[first:code_start] + nested
+                ),
             )
-            is not None
-        ):
+        if own_body and owner.pyobject.get_doc() is not None:
             first = min(own_body[0].end_offset + 1, len(source))
         return (
             m.Infra.SourceRewrite(start=first, end=first, text="\n" + nested + "\n"),
@@ -281,9 +369,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         module: p.Infra.RopePyModule,
-        structure: t.Pair[
+        structure: t.Triple[
             t.SequenceOf[m.Infra.LogicalStatement],
             t.MappingKV[str, p.Infra.RopeScope],
+            MetadataWrapper,
         ],
         contents: t.Triple[str, str, int],
         edits: t.SequenceOf[m.Infra.SourceRewrite],
@@ -300,7 +389,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         return [
             *edits,
             *cls._existing_owner_edits(
-                source, module, structure[0], owner, (contents[1], contents[2])
+                source,
+                (module, structure[2]),
+                structure[0],
+                owner,
+                (contents[1], contents[2]),
             ),
         ]
 
@@ -400,15 +493,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     ) -> str:
         if not definitions:
             return source
-        owners = frozenset(definitions.values())
+        owners = frozenset(
+            destination.partition(".")[0] for destination in definitions.values()
+        )
         if len(owners) != 1:
             msg = f"class-nesting file has multiple owners: {sorted(owners)}"
             raise ValueError(msg)
         owner_name = next(iter(owners))
-        composition = is_pytest and not any(
-            isinstance(node, ast.ClassDef) and node.name == owner_name
-            for node in ast.parse(source).body
-        )
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
@@ -417,6 +508,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             project.get_module("typing")
         )
         selection = cls._nesting_selection(module, facts, definitions)
+        wrapper = MetadataWrapper(cst.parse_module(source), unsafe_skip_copy=True)
         if any(
             item.category
             in {c.Infra.StatementCategory.ASSIGN, c.Infra.StatementCategory.ANN_ASSIGN}
@@ -424,11 +516,21 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             for selected in selection[0]
             for item in cls._nesting_statement_parts(selected)
         ):
-            source, classvar_name = (
-                FlextInfraUtilitiesRopeRuntimeModules.import_binding(
-                    project, module, "typing", "ClassVar"
-                )
+            classvar_name = FlextInfraUtilitiesRopeRuntimeModules.import_binding(
+                project, module, "typing", "ClassVar"
+            )[1]
+            wrapper = MetadataWrapper(
+                AddImportsVisitor(
+                    CodemodContext(),
+                    imports=(
+                        ImportItem(
+                            "typing", None if "." in classvar_name else "ClassVar"
+                        ),
+                    ),
+                ).transform_module(wrapper.module),
+                unsafe_skip_copy=True,
             )
+            source = wrapper.module.code
             module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project, source, resource=resource
             )
@@ -454,12 +556,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = "native Rope project has no positive indentation policy"
             raise TypeError(msg)
         edits, nested = cls._nested_member_edits(
-            source, module, typing, (*selection, classvar_name), indentation
+            source,
+            (module, wrapper),
+            typing,
+            (selection[0], definitions, classvar_name),
+            indentation,
         )
         edits = cls._owner_nesting_edits(
             source,
             module,
-            (facts, selection[1]),
+            (facts, selection[1], wrapper),
             (owner_name, nested, indentation),
             edits,
         )
@@ -480,7 +586,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             original_bindings=None
             if Path(resource.real_path).name == "conftest.py"
             else frozenset(definitions),
-            composition=composition,
+            composition=not any(
+                isinstance(node, cst.ClassDef) and node.name.value == owner_name
+                for node in wrapper.module.body
+            ),
         )
 
     @classmethod

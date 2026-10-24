@@ -9,18 +9,14 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-from collections.abc import Callable
 from pathlib import Path
 from shlex import quote
 
 import pytest
 
-from flext_infra import config, settings
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
-from tests.unit.codegen.test_mise_pin_bootstrap import (
-    TestsFlextInfraMisePinBootstrap as MisePinBootstrapFixture,
-)
+from flext_infra import config, workspace
+from tests import c, m, t, tm, u
+from tests.unit.codegen import test_mise_pin_bootstrap
 
 
 class TestsFlextInfraMakefileBootstrapSoundness:
@@ -28,25 +24,15 @@ class TestsFlextInfraMakefileBootstrapSoundness:
 
     @staticmethod
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
-    @pytest.mark.parametrize("supplier", [False, True])
     def test_install_recipe_survives_template_conditionals(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
-        editable_supplier: Callable[[Path | None], None],
-        *,
-        supplier: bool,
     ) -> None:
         """Public help parses both branches without truncating provisioning."""
         root, _ = u.Tests.render_make_environment(tmp_path, profile)
-        if supplier:
-            supplier_root = tmp_path / "supplier"
-            supplier_root.mkdir()
-            editable_supplier(supplier_root)
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        policy = inputs.spec.make.uv_resolution
-        tm.that(settings.Infra.editable_supplier_root is not None, eq=supplier)
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        rendered = u.Tests.conform_makefile_text(root, workspace)
+        spec = tm.ok(workspace.FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        rendered = u.Tests.conform_makefile_text(root, spec)
         tm.ok(u.Cli.atomic_write_text_file(root / c.Infra.MAKEFILE_FILENAME, rendered))
         (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             "$(info install-runtime-recipe=$(value INSTALL_RUNTIME_RECIPE))\n",
@@ -57,10 +43,6 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 ["help", "OPTIONS=Y"],
                 cwd=root,
                 env={
-                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: (
-                        str(settings.Infra.editable_supplier_root) if supplier else ""
-                    ),
-                    policy.hosted_variable: "",
                     inputs.spec.make.ci.variable: inputs.spec.make.ci.local_value,
                 },
             )
@@ -75,16 +57,13 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             for line in process.stdout.splitlines()
             if line.startswith("install-runtime-recipe=")
         )
-        sync = '$$credential_env $(UV) sync --project "$(UV_PROJECT)"'
+        sync = '$(UV) sync --frozen --project "$(RUNTIME_ROOT)"'
         tm.that(recipe, has=sync)
-        tm.that(
-            recipe,
-            has='$(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"',
-        )
-        tm.ok(recipe.index("config ls --json") < recipe.index(sync))
-        tm.that(recipe, has="$(UV) lock --check")
-        tm.ok(recipe.index("$(UV) lock --check") < recipe.index(sync))
-        tm.that(rendered, lacks=str(tmp_path / "supplier"))
+        tm.that(recipe, has="--no-python-downloads $(SETUP_SYNC_ARGS)")
+        tm.that(recipe, lacks="$(UV) lock")
+        tm.that(recipe, lacks="--locked")
+        resolver = '$(MISE) -C "$(RUNTIME_ROOT)" which python'
+        tm.ok(recipe.index(resolver) < recipe.index(sync))
         for verb in ("fmt", "fix"):
             body = rendered.split(
                 f"_builtin_{verb}_all: _builtin_require_environment\n", 1
@@ -102,133 +81,6 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             tm.ok(body.index("--apply") < capture < conform)
             tm.that(body[capture:conform], has='--gates "$$gates"')
             tm.that(body[capture:], lacks="--apply")
-
-    @staticmethod
-    @pytest.mark.parametrize("scenario", ["hosted", "missing-manifest"])
-    def test_editable_upgrade_preflight_preserves_hooks_and_locks(
-        tmp_path: Path,
-        scenario: str,
-        editable_supplier: Callable[[Path | None], None],
-    ) -> None:
-        """A selected dev supplier never changes hosted provisioning policy."""
-        root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-            bootstrap=True,
-        )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        supplier_root = tmp_path / "supplier"
-        supplier_root.mkdir()
-        editable_supplier(supplier_root)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.MAKEFILE_FILENAME,
-                u.Tests.conform_makefile_text(root, workspace),
-            )
-        )
-        marker = root / "pre-upg-ran"
-        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
-            f".PHONY: pre-upg\npre-upg:\n\t@touch {quote(str(marker))}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
-        paths = (
-            root / c.Infra.UV_LOCK_FILENAME,
-            root / c.Infra.MISE_LOCK_FILENAME,
-            *(
-                root / directory / c.Infra.UV_LOCK_FILENAME
-                for directory in (
-                    policy.local_directory,
-                    policy.standalone_directory,
-                    policy.editable_directory,
-                )
-            ),
-        )
-        before = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
-        )
-        process = tm.ok(
-            u.Tests.run_isolated_make(
-                ["upg"],
-                cwd=root,
-                env={
-                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(
-                        supplier_root
-                    ),
-                    policy.hosted_variable: policy.hosted_value
-                    if scenario == "hosted"
-                    else "",
-                },
-            )
-        )
-        tm.that(process.outcome.raw_return_code, eq=2)
-        tm.that(
-            process.stderr,
-            has=(
-                "Resolution and member propagation are forbidden in hosted CI"
-                if scenario == "hosted"
-                else "selected supplier has no native bootstrap lock"
-            ),
-        )
-        tm.fail(marker.exists())
-        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
-        tm.that(
-            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
-            eq=before,
-        )
-
-    @staticmethod
-    def test_member_supplier_uses_the_physical_workspace_resolution(
-        tmp_path: Path,
-        editable_supplier: Callable[[Path | None], None],
-    ) -> None:
-        """The process setting selects only the physical owner's dev lock."""
-        root, member, _, _ = (
-            TestsFlextInfraMakefileBootstrapSoundness._reader_workspace_checkout(
-                tmp_path,
-                associated=True,
-            )
-        )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
-        supplier_root = tmp_path / "supplier"
-        supplier_root.mkdir()
-        editable_supplier(supplier_root)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                member / c.Infra.MAKEFILE_FILENAME,
-                u.Tests.conform_makefile_text(member, workspace),
-            )
-        )
-        policy = config.Infra.codegen.make.uv_resolution
-        paths = tuple(
-            root / directory / c.Infra.UV_LOCK_FILENAME
-            for directory in (
-                Path(),
-                policy.local_directory,
-                policy.standalone_directory,
-            )
-        )
-        before = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
-        )
-        process = tm.ok(
-            u.Tests.run_isolated_make(
-                ["upg"],
-                cwd=member,
-                env={
-                    policy.hosted_variable: "",
-                    type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(
-                        supplier_root
-                    ),
-                },
-            )
-        )
-        tm.that(process.outcome.raw_return_code, eq=2)
-        tm.that(process.stderr, has="selected supplier has no native bootstrap lock")
-        tm.that(
-            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
-            eq=before,
-        )
 
     @staticmethod
     def _reader_workspace_checkout(
@@ -265,7 +117,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             member,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         relative = member.relative_to(root).as_posix()
         document = u.Tests.toml_doc(
@@ -312,7 +166,11 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         isolation = tmp_path / "native-tools"
         (isolation / "home").mkdir(parents=True)
-        native_env = MisePinBootstrapFixture.environment(isolation)
+        native_env = (
+            test_mise_pin_bootstrap.TestsFlextInfraMisePinBootstrap.environment(
+                isolation
+            )
+        )
         for project in (root, member):
             tm.ok(
                 u.Cli.run_checked(
@@ -320,21 +178,20 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                     options=m.Cli.ProcessOptions(env=native_env),
                 ),
             )
-        policy = config.Infra.codegen.make.uv_resolution
         lock_paths = tuple(
             project / relative
             for project in (root, member)
             for relative in (
                 Path(c.Infra.MISE_LOCK_FILENAME),
                 Path(c.Infra.UV_LOCK_FILENAME),
-                policy.local_directory / c.Infra.UV_LOCK_FILENAME,
-                policy.standalone_directory / c.Infra.UV_LOCK_FILENAME,
             )
         )
         locks = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in lock_paths
         )
-        system_tools = MisePinBootstrapFixture.system_path_without_mise(isolation)
+        system_tools = (
+            test_mise_pin_bootstrap.TestsFlextInfraMisePinBootstrap
+        ).system_path_without_mise(isolation)
         optional_credential_provider = system_tools / "gh"
         if optional_credential_provider.is_symlink():
             optional_credential_provider.unlink()
@@ -346,7 +203,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
                 env={
                     **native_env,
                     "PATH": str(system_tools),
-                    policy.hosted_variable: "",
+                    c.Infra.ENV_VAR_GITHUB_ACTIONS: "",
                     config.Infra.codegen.make.ci.variable: (
                         config.Infra.codegen.make.ci.local_value
                     ),
@@ -394,8 +251,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         "entry",
         ["spaced", "symlink", "outside-spaced", "outside-symlink"],
     )
+    @staticmethod
     def test_public_make_paths_keep_the_physical_runtime_owner(
-        self,
         tmp_path: Path,
         entry: str,
     ) -> None:
@@ -413,8 +270,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             "$(info physical-runtime-root=$(RUNTIME_ROOT))\n"
-            "$(info physical-runtime-environment=$(RUNTIME_VENV))\n"
-            "$(info physical-runtime-resolution=$(UV_PROJECT))\n",
+            "$(info physical-runtime-environment=$(RUNTIME_VENV))\n",
             encoding=c.DEFAULT_ENCODING,
         )
         invoked = project
@@ -427,10 +283,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             caller = tmp_path / "outside-caller"
             caller.mkdir()
             arguments = ["-f", str(invoked / c.Infra.MAKEFILE_FILENAME), "help"]
-        policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci
         context_env = {
-            policy.hosted_variable: "",
+            c.Infra.ENV_VAR_GITHUB_ACTIONS: "",
             ci.variable: ci.local_value,
         }
         observed = tm.ok(
@@ -466,7 +321,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         context = m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
         physical = project.resolve()
         environment = physical / c.Infra.ENVIRONMENT_DIRECTORY
-        resolution = physical / policy.local_directory
+        resolution = physical
         u.Cli.emit_raw(
             f"path context entry={entry} submitted={invoked} "
             f"caller={caller} runtime={context.runtime_root}\n",
@@ -485,7 +340,6 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             process.stdout,
             has=f"physical-runtime-environment={environment}\n",
         )
-        tm.that(process.stdout, has=f"physical-runtime-resolution={resolution}\n")
         tm.fail(environment.exists())
         tm.fail((caller / c.Infra.ENVIRONMENT_DIRECTORY).exists())
         tm.fail((caller / c.Infra.UV_LOCK_FILENAME).exists())
@@ -520,7 +374,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     @staticmethod
     def _runtime_context_probe(
         project: Path,
-        env: dict[str, str],
+        env: t.StrMapping,
         *,
         cwd: Path,
     ) -> m.Infra.WorkspaceRuntimeContext:
@@ -565,12 +419,14 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         return m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
 
     @pytest.mark.parametrize("invocation", ["root", "member"])
+    @pytest.mark.parametrize("excluded", [False, True])
     @pytest.mark.parametrize("hosted", [False, True])
     def test_hosted_runtime_is_independent_of_local_ci_partition(
         self,
         tmp_path: Path,
         invocation: str,
         *,
+        excluded: bool,
         hosted: bool,
     ) -> None:
         """Make and the runtime API distinguish hosted isolation from local CI.
@@ -585,11 +441,12 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             shape=u.Tests.MakeEnvironmentShape(project_name="hosted-owner-root"),
         )
         member, _ = u.Tests.render_make_environment(
-            root,
+            tmp_path / "hosted-member-seed",
             c.Infra.MakeProfile.STANDALONE,
             bootstrap=True,
             shape=u.Tests.MakeEnvironmentShape(project_name="hosted-owner-member"),
         )
+        member = member.rename(root / member.name)
         u.Tests.WorktreeFixture.attach_submodule(
             root,
             member,
@@ -597,12 +454,28 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             relative_path=member.relative_to(root).as_posix(),
         )
         u.Tests.git_run(root, "submodule", "absorbgitdirs")
-        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        if excluded:
+            document = u.Tests.toml_doc(
+                (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+            )
+            u.Cli.toml_ensure_table(u.Cli.toml_ensure_table(document, "tool"), "uv")[
+                "workspace"
+            ] = {
+                "members": [],
+                "exclude": [member.relative_to(root).as_posix()],
+            }
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / c.PYPROJECT_FILENAME,
+                    u.Cli.toml_dumps(document),
+                ),
+            )
         environment = root / c.Infra.ENVIRONMENT_DIRECTORY
-        native_options = m.Cli.ProcessOptions(
-            remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+        self._provisioned_native_venv(
+            tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root)),
+            environment,
+            m.Cli.ProcessOptions(remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS),
         )
-        self._provisioned_native_venv(binary, environment, native_options)
         tm.fail(environment.is_symlink())
         tm.ok((environment / "pyvenv.cfg").is_file())
         member_environment = member / c.Infra.ENVIRONMENT_DIRECTORY
@@ -610,20 +483,18 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         project = root if invocation == "root" else member
         (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             "$(info elected-root=$(RUNTIME_ROOT))\n"
-            "$(info elected-environment=$(RUNTIME_VENV))\n"
-            "$(info elected-resolution=$(UV_PROJECT))\n",
+            "$(info elected-environment=$(RUNTIME_VENV))\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci
         context_env = {
             ci.variable: ci.value,
-            policy.hosted_variable: policy.hosted_value if hosted else "",
+            c.Infra.ENV_VAR_GITHUB_ACTIONS: (
+                c.ParserBooleanToken.TRUE.value if hosted else ""
+            ),
         }
-        elected = project if hosted else root
-        resolution = elected / (
-            policy.standalone_directory if hosted else policy.local_directory
-        )
+        elected = root
+        resolution = elected
         process = tm.ok(
             u.Tests.run_isolated_make(["help"], cwd=project, env=context_env),
         )
@@ -643,7 +514,6 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             process.stdout,
             has=f"elected-environment={elected / c.Infra.ENVIRONMENT_DIRECTORY}\n",
         )
-        tm.that(process.stdout, has=f"elected-resolution={resolution}\n")
         tm.that(context.project_root, eq=project.resolve())
         tm.that(context.runtime_root, eq=elected.resolve())
         tm.that(
@@ -654,8 +524,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(context.standalone, eq=hosted)
         tm.fail(member_environment.exists())
 
+    @staticmethod
     def test_python_project_without_python_ancestor_owns_its_runtime(
-        self,
         tmp_path: Path,
     ) -> None:
         """A Git-only container supplies no Python composition or tool manifest."""
@@ -676,7 +546,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             project,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, seed))
         native_options = m.Cli.ProcessOptions(
@@ -724,7 +596,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             process.stdout,
             has=f"independent-environment={environment.resolve()}\n",
         )
-        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
+        context = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.resolution_context(project)
+        )
         tm.that(context.runtime_root, eq=project.resolve())
         tm.that(context.environment_path, eq=environment.resolve())
         for path in (
@@ -735,8 +609,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         ):
             tm.fail(path.exists())
 
+    @staticmethod
     def test_dangling_git_marker_rejects_ancestor_discovery(
-        self,
         tmp_path: Path,
     ) -> None:
         """A malformed declared Git boundary cannot become an absent boundary."""
@@ -759,7 +633,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             project,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         u.Tests.initialize_git_repo(
             project,
@@ -800,7 +676,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.ok(process.outcome.raw_return_code != 0)
         tm.that(process.stderr, has=native_error.stderr.strip())
         tm.that(process.stdout, lacks="nested-help-executed")
-        context = FlextInfraWorkspaceDetector.resolution_context(project)
+        context = workspace.FlextInfraWorkspaceDetector.resolution_context(project)
         tm.ok(context.failure)
         tm.ok(marker.is_symlink())
         tm.fail(marker.exists())
@@ -840,7 +716,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             seed,
             member,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".git", c.Infra.ENVIRONMENT_DIRECTORY),
+            ignore=shutil.ignore_patterns(
+                c.GIT_DIR_NAME, c.Infra.ENVIRONMENT_DIRECTORY
+            ),
         )
         if associated_clone:
             u.Tests.initialize_git_repo(
@@ -949,8 +827,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             eq=metadata_before,
         )
 
+    @staticmethod
     def test_public_make_preserves_native_project_mise_lock_scope(
-        self,
         tmp_path: Path,
     ) -> None:
         """The complete Make environment cannot reclassify project tools as global."""
@@ -999,9 +877,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             "MISE_TRUSTED_CONFIG_PATHS": str(project),
             "GIT_CONFIG_GLOBAL": str(home / ".gitconfig"),
             "GIT_CONFIG_SYSTEM": os.devnull,
-            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
             "GIT_CONFIG_PARAMETERS": "",
-            "GIT_CONFIG_COUNT": "0",
+            "GIT_CONFIG_COUNT": c.ParserBooleanToken.ZERO,
         }
 
         process = tm.ok(
@@ -1039,8 +917,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
     @pytest.mark.parametrize("scenario", ["relative-link", "link-cycle"])
+    @staticmethod
     def test_public_make_authenticates_file_aliases_without_replacing_the_invoker(
-        self,
         tmp_path: Path,
         scenario: str,
     ) -> None:
@@ -1097,8 +975,8 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     @pytest.mark.parametrize("verb", ["setup", "upg"])
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     @pytest.mark.parametrize("broken", [False, True])
+    @staticmethod
     def test_borrowed_environment_blocks_bootstrap_before_effects(
-        self,
         tmp_path: Path,
         verb: str,
         profile: c.Infra.MakeProfile,

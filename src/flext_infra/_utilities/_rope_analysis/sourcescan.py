@@ -11,8 +11,8 @@ from collections.abc import MutableMapping
 from functools import cache
 from typing import ClassVar
 
-from flext_infra import t
-from flext_infra._utilities._rope_analysis.asthelpers import (
+from flext_infra import c, t
+from flext_infra._utilities._rope_analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         if (
             isinstance(value, ast.Call)
             and isinstance(value.func, ast.Name)
-            and value.func.id in {"tuple", "list", "frozenset", "set"}
+            and value.func.id in {"tuple", c.Action.LIST, "frozenset", "set"}
             and len(value.args) == 1
             and not value.keywords
         ):

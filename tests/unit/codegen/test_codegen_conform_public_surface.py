@@ -15,10 +15,8 @@ import pytest
 
 from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import (
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenMakeBootstrap,
-    FlextInfraMiseArtifactsVerification,
-    FlextInfraStagedPackage,
 )
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
@@ -31,11 +29,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
 
     @staticmethod
-    def test_complete_bootstrap_stages_planned_initializers_without_facades(
+    def test_complete_bootstrap_plans_initializers_without_removed_owners(
         infra_git_repo: Path,
-        tmp_path: Path,
     ) -> None:
-        """Admission sees new exports, not removed owners in an old projection."""
+        """The planned initializer exports new owners, never removed ones."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         package = root / c.Infra.DEFAULT_SRC_DIR / config.Infra.name.replace("-", "_")
@@ -63,54 +60,27 @@ class TestsFlextInfraCodegenConformPublicSurface:
             what=c.Infra.CodegenConformSurface.ALL,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        plan = tm.ok(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
+        )
         tm.that(plan.issues, eq=())
         tm.that(plan.exception, eq=None)
         projected = next(file for file in plan.files if file.path == initializer)
-        metadata = next(
-            file for file in plan.files if file.path == root / c.PYPROJECT_FILENAME
-        )
-        group = tm.not_none(projected.dependency_group)
-        tm.that(metadata.dependency_group, eq=group)
         tm.that(projected.before, eq=before)
         tm.fail(b".removed" in tm.not_none(projected.desired_content))
-        cohort = tuple(file for file in plan.files if file.dependency_group == group)
-        candidate = tm.ok(
-            FlextInfraStagedPackage.plan_sources(
-                root,
-                {
-                    file.path: (
-                        None
-                        if file.desired_content is None
-                        else file.desired_content.decode(c.DEFAULT_ENCODING)
-                    )
-                    for file in cohort
-                },
-                options=m.Infra.StageSourceOptions(
-                    inputs=(before,),
-                    declared_files=cohort,
-                ),
-            )
-        )
-        view = tmp_path / "admission-view"
-        view.mkdir()
-        tm.ok(FlextInfraStagedPackage.materialize_sources(candidate, view))
         tm.that(
-            (view / initializer.relative_to(root)).read_bytes(),
-            eq=projected.desired_content,
+            tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True)),
+            eq=before,
         )
+        tm.ok(u.Infra.publish_codegen_plans(root, (projected,)))
         tm.that(
             u.Tests.run_lazy_init_probe(
                 f"from {package.name}.{auxiliary.name} import Replacement\n"
                 "print(Replacement.__name__)\n",
-                python_paths=(str(view / c.Infra.DEFAULT_SRC_DIR),),
-                cwd=view,
+                python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
+                cwd=root,
             ),
             eq=["Replacement"],
-        )
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True)),
-            eq=before,
         )
 
     @staticmethod
@@ -206,32 +176,23 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(own.read_bytes(), eq=before)
 
     @staticmethod
-    def test_make_bootstrap_publishes_only_its_actual_surface_receipt(
+    def test_make_bootstrap_check_is_repeatable_and_read_only(
         infra_git_repo: Path,
     ) -> None:
-        """Init qualifies changed and unchanged Make output without full gen."""
+        """Init qualifies unchanged Make output without full gen or effects."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
+        makefile = root / c.Infra.MAKEFILE_FILENAME
         for _ in range(2):
-            before = tm.ok(
-                u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-            )
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(makefile, required=True))
             tm.ok(
                 FlextInfraCodegenMakeBootstrap(
                     repository_root=root,
                     check_only=True,
                 ).execute(),
             )
-            tm.that(
-                tm.ok(
-                    u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-                ),
-                eq=before,
-            )
+            tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
             rejected = infra.codegen_conform(
                 u.Tests.conform_request(
                     root,
@@ -244,149 +205,30 @@ class TestsFlextInfraCodegenConformPublicSurface:
             tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
 
     @staticmethod
-    @pytest.mark.parametrize("drift", ["output", "source"])
-    def test_bootstrap_check_rejects_drift_without_republishing(
+    def test_bootstrap_check_rejects_output_drift_without_republishing(
         infra_git_repo: Path,
-        drift: str,
     ) -> None:
-        """Observational bootstrap rejects changed source and destination states."""
+        """Observational bootstrap rejects a drifted destination and keeps it."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        _, project_layer, _ = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        if drift == "source":
-            project_layer.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.yaml_dump(project_layer, {"Infra": {"codegen": {}}}))
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        if drift == "output":
-            target = root / c.Infra.MAKEFILE_FILENAME
-            content = target.read_bytes()
-        else:
-            captured = tuple(
-                source
-                for source in tm.ok(u.Infra.load_codegen_inputs(root)).sources
-                if source.path == project_layer
-            )
-            tm.that(len(captured), eq=1)
-            source = captured[0]
-            target = source.path
-            content = tm.not_none(source.content)
-        target.write_bytes(content + b"\n# publication drift\n")
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
+        target = root / c.Infra.MAKEFILE_FILENAME
+        target.write_bytes(target.read_bytes() + b"\n# publication drift\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         result = FlextInfraCodegenMakeBootstrap(
             repository_root=root,
             check_only=True,
         ).execute()
         tm.ok(result.failure)
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
 
     @staticmethod
-    def test_bootstrap_check_rejects_a_newly_created_optional_layer(
-        infra_git_repo: Path,
-    ) -> None:
-        """A declared absent layer becoming valid input invalidates publication."""
-        root = infra_git_repo
-        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        tm.fail(local_layer.exists())
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        local_layer.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
-
-        observed = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
-        tm.ok(observed.failure)
-
-    @staticmethod
-    def test_bootstrap_check_authenticates_imported_template_resources(
-        infra_git_repo: Path,
-        tmp_path: Path,
-    ) -> None:
-        """A consumed private Jinja import invalidates its read-only receipt."""
-        root = infra_git_repo
-        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        entry = next(
-            entry
-            for entry in codegen.templates.entries
-            if entry.destination == c.Infra.MAKEFILE_FILENAME
-        )
-        templates = tmp_path / "private-templates"
-        shutil.copytree(u.Infra.codegen_templates_root(codegen), templates)
-        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        local_layer.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(
-            u.Cli.yaml_dump(
-                local_layer,
-                {"Infra": {"codegen": {"templates": {"root": str(templates)}}}},
-            ),
-        )
-        source = templates / tm.not_none(entry.source)
-        imported = tuple(
-            state
-            for state in tm.ok(u.Cli.template_capture_sources((source,)))
-            if state.path != source
-        )
-        tm.ok(bool(imported))
-        resource = imported[0]
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        resource.path.write_bytes(
-            tm.not_none(resource.content) + b"\n{# imported resource drift #}\n",
-        )
-
-        observed = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
-        tm.ok(observed.failure)
-
-    @staticmethod
-    def test_complete_fleet_receipt_covers_the_observed_root_subset(
+    def test_complete_fleet_apply_reaches_a_check_fixed_point(
         installed_artifact_consumer: Path,
     ) -> None:
-        """Complete ALL publication proves SELF without re-planning or effects."""
+        """Complete ALL publication leaves ALL and SELF checks without effects."""
         root = installed_artifact_consumer
-        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.standalone_workspace(root)
         declared = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.ALL,
@@ -396,45 +238,13 @@ class TestsFlextInfraCodegenConformPublicSurface:
         request = m.Infra.CodegenConformRequest.model_validate_json(
             declared.model_dump_json(),
         )
-        tm.ok(
-            infra.codegen_conform(
-                request,
-                initial_workspace=workspace,
-            ),
-        )
-        repeated = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    request=request,
-                    initial_workspace=workspace,
-                ),
-            ).plan(request),
-        )
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        for relative in policy.uv_resolution_pyprojects:
-            matches = tuple(
-                file for file in repeated.files if file.path == root / relative
-            )
-            tm.that(len(matches), eq=1)
-            tm.ok(matches[0].desired_content is not None)
-        receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
-            tm.not_none(before.content),
-        )
-        tm.that(
-            tuple(output.path for batch in receipt.batches for output in batch.outputs),
-            has=root / c.Infra.MAKEFILE_FILENAME,
-        )
+        tm.ok(infra.codegen_conform(request))
+        before = TestsFlextInfraConformSupport.project_tree(root)
         for scope in (
             c.Infra.CodegenConformScope.ALL,
             c.Infra.CodegenConformScope.SELF,
         ):
-            tm.ok(
+            checked = tm.ok(
                 infra.codegen_conform(
                     u.Tests.conform_request(
                         root,
@@ -444,10 +254,8 @@ class TestsFlextInfraCodegenConformPublicSurface:
                     ),
                 ),
             )
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
-        )
+            tm.that(checked.written_files, eq=())
+        tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
 
     @staticmethod
     @pytest.mark.parametrize("marker", ["<<<<<<< HEAD", "=======", ">>>>>>> incoming"])
@@ -510,7 +318,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         destination = root / c.Infra.MISE_TOML_FILENAME
         desired_mode = next(
             item.mode
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path == Path(destination.name)
         )
         request = u.Tests.conform_request(
@@ -647,7 +455,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         planned = service.plan(request)
         plan = tm.ok(planned)
-        evidence_text = (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_text(
+        evidence_text = (
+            tm.ok(u.Infra.refactor_report_evidence_root(root))
+            / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
+        ).read_text(
             encoding="utf-8",
         )
         evidence = m.Infra.CodegenPlanningReport.model_validate_json(evidence_text)
@@ -687,66 +498,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 config=config.Infra.codegen,
             ),
         )
-        TestsFlextInfraCodegenConformPublicSurface._verified_uv_resolution_views(
-            root, workspace, plan
-        )
-
-    @staticmethod
-    def _verified_uv_resolution_views(
-        root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        plan: m.Infra.CodegenPlan,
-    ) -> None:
-        """Verify both native resolution views' sources and member lines.
-
-        Args:
-            root: The governed workspace root.
-            workspace: The loaded workspace specification.
-            plan: The completed conform plan.
-
-        """
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
-        views = (
-            (policy.local_directory, (workspace.repository, *workspace.subprojects)),
-            (policy.standalone_directory, (workspace.repository,)),
-        )
-        for relative, repositories in views:
-            directory = (root / relative).resolve()
-            document = u.Tests.codegen_file_text(
-                next(
-                    file
-                    for file in plan.files
-                    if file.path == directory / c.PYPROJECT_FILENAME
-                ),
-            )
-            tm.that(
-                u.Tests.toml_table_at(document, "tool", "uv", "sources"),
-                eq={
-                    repository.distribution: {
-                        "path": (root / repository.path)
-                        .resolve()
-                        .relative_to(directory, walk_up=True)
-                        .as_posix(),
-                        "editable": repository.editable,
-                    }
-                    for repository in repositories
-                    if repository.package
-                },
-            )
-            if relative == policy.standalone_directory:
-                parsed = tm.not_none(u.Cli.toml_parse_text(document))
-                declared = tm.not_none(tm.not_none(workspace.project).flext_source)
-                selected = tuple(
-                    requirement
-                    for requirement in tm.ok(u.Infra.document_requirement_lines(parsed))
-                    if u.Infra.dep_name(requirement) == u.Infra.dep_name(declared)
-                )
-                tm.ok(bool(selected))
-                for requirement in selected:
-                    tm.that(
-                        tm.ok(u.Infra.declared_git_source(requirement)),
-                        eq=tm.ok(u.Infra.declared_git_source(declared)),
-                    )
 
     @staticmethod
     def test_docs_config_apply_materializes_an_absent_docs_parent(
@@ -783,17 +534,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
             c.Infra.CodegenConformSurface.MAKEFILE,
         )
         before = TestsFlextInfraConformSupport.project_tree(root)
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        receipt_before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
         route = next(
             route
-            for route in FlextInfraCodegenRoutes.codegen_routes[
-                c.Infra.CLI_GROUP_CODEGEN
-            ]
+            for route in FlextInfraCodegenRoutes.codegen_routes()
             if route.name == "conform"
         )
         request = u.Tests.conform_request(
@@ -804,11 +547,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         tm.ok(route.handler(request))
         tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
-        if mode is c.Infra.CodegenConformMode.CHECK:
-            tm.that(
-                tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-                eq=receipt_before,
-            )
 
     @staticmethod
     def test_unchanged_pyproject_apply_uses_the_authenticated_noop_path(
@@ -827,16 +565,16 @@ class TestsFlextInfraCodegenConformPublicSurface:
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in sorted(package.iterdir())
         )
-        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.standalone_workspace(root)
         request = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.ok(infra.codegen_conform(request))
         before = (root / c.PYPROJECT_FILENAME).read_bytes()
-        tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.ok(infra.codegen_conform(request))
         tm.that((root / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
         tm.ok(u.Cli.atomic_verify_binary_file_states(python_inputs))
         tm.that(
@@ -876,18 +614,14 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = FlextInfraCodegenConform(
+        planned = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(repository_root=root, request=request),
         ).plan(
             request,
         )
         tm.ok(planned)
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        expected = (
-            root / c.PYPROJECT_FILENAME,
-            *(root / relative for relative in policy.uv_resolution_pyprojects),
-        )
+        expected = (root / c.PYPROJECT_FILENAME,)
         tm.that(tuple(file.path for file in planned.value.files), eq=expected)
         tm.that(
             tuple(

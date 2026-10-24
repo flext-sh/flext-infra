@@ -56,7 +56,9 @@ class FlextInfraLayoutGate(FlextInfraGate):
             project_dir,
             passed=passed,
             issues=issues,
-            raw_output="\n".join(issue.formatted for issue in issues),
+            evidence=self._publish_raw_receipt(
+                ctx, "\n".join(issue.formatted for issue in issues)
+            ),
             started=started,
         )
 

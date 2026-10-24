@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, main, u
+from flext_infra import main, u
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import tm
+from tests import c, tm
 
 
 @pytest.mark.slow
@@ -50,7 +50,7 @@ class TestsFlextInfraJointModFixedPoint:
             "id: joint-ast\nlanguage: Python\nrule:\n"
             "  pattern: marker = dict()\nfix: marker = tuple()\nseverity: warning\n",
         ).unwrap()
-        source = "tuple" if cycle else "list"
+        source = "tuple" if cycle else c.Action.LIST
         u.Cli.atomic_write_text_file(
             root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
             "rules:\n  - id: joint-text\n"
@@ -200,7 +200,7 @@ class TestsFlextInfraJointModFixedPoint:
         sample = mod_workspace / "sample.py"
         unrelated = mod_workspace / "unrelated.py"
         for source in (sample, unrelated):
-            constructor = "list" if source == sample else "dict"
+            constructor = c.Action.LIST if source == sample else "dict"
             tm.ok(
                 u.Cli.atomic_write_text_file(
                     source,
@@ -239,6 +239,7 @@ class TestsFlextInfraJointModFixedPoint:
         tm.that(console, lacks="ast: apply sed-by-list cascade")
         tm.that(console, lacks="mechanical fixed point verified")
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("option", "value"),
         [
@@ -250,7 +251,6 @@ class TestsFlextInfraJointModFixedPoint:
         ],
     )
     def test_ast_unimplemented_request_fails_before_full_corpus_effects(
-        self,
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],
         option: str,

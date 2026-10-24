@@ -7,18 +7,42 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import c, t
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 
 class TestsFlextInfraExtraPathsSupport:
     """Factory helpers for validated extra-path manager instances."""
+
+    @staticmethod
+    def expected_pyrefly_paths(
+        project_dir: Path, generated_roots: t.StrSequence = ()
+    ) -> t.StrSequence:
+        """Derive expected import identities from the configured path contract.
+
+        Returns:
+            Configured local roots in source-first, project-last order.
+
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        available = {
+            root
+            for root in (rules.source_dir, *rules.project_shared_search_paths)
+            if (project_dir / root).is_dir() or root in generated_roots
+        }
+        return (
+            *((rules.source_dir,) if rules.source_dir in available else ()),
+            *sorted(available - {rules.source_dir, rules.project_root}),
+            *(
+                (rules.project_root,)
+                if (project_dir / rules.project_root).is_dir()
+                else ()
+            ),
+        )
 
     @staticmethod
     def manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:
@@ -44,9 +68,9 @@ class TestsFlextInfraExtraPathsSupport:
         (project / "src" / package).mkdir(parents=True)
         (project / "src" / package / "__init__.py").write_text("", encoding="utf-8")
         if with_git:
-            (project / ".git").mkdir()
+            (project / c.GIT_DIR_NAME).mkdir()
         (project / "Makefile").write_text("", encoding="utf-8")
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             f"[project]\nname = '{name}'\n",
             encoding="utf-8",
         )
@@ -65,11 +89,11 @@ class TestsFlextInfraExtraPathsSupport:
             The resulting ``t.Pair[Path, Path]``.
 
         """
-        (root / ".git").mkdir()
+        (root / c.GIT_DIR_NAME).mkdir()
         (root / "src").mkdir()
         pyproject = "[project]\nname = 'flext'\ndependencies = ['flext-core']\n"
         if uv_workspace:
             pyproject += "[tool.uv.workspace]\nmembers = ['flext-core']\n"
-        (root / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+        (root / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
         dep_root = cls.project(root, "flext-core", "flext_core")
         return root, dep_root

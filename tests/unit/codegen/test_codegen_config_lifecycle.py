@@ -6,90 +6,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import cProfile
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from jinja2 import Template
 
 from flext_infra import config, infra, settings
-from flext_infra.codegen import (
-    FlextInfraMiseArtifactsFiles,
-    FlextInfraMiseArtifactsVerification,
-)
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
 
 
 class TestsFlextInfraCodegenConfigLifecycle:
     """Exercise the generated public config rather than inspect source spelling."""
-
-    @staticmethod
-    def test_check_consumes_completed_generation_without_rendering(
-        infra_git_repo: Path,
-    ) -> None:
-        """Apply and no-op publication both support a read-only public observation."""
-        root = infra_git_repo
-        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        request = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.ENVRC,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        generation = cProfile.Profile()
-        result = tm.ok(generation.runcall(infra.codegen_conform, request))
-        tm.that(
-            any(
-                entry.code is Template.render.__code__
-                for entry in generation.getstats()
-            ),
-            eq=True,
-        )
-        tm.ok(result.plan is not None)
-        if result.plan is None:
-            pytest.fail("generation did not return its actual plan")
-        destinations = tuple(file.path for file in result.plan.files)
-        no_op = tm.ok(infra.codegen_conform(request))
-        tm.that(no_op.written_files, eq=())
-        paths = (
-            *destinations,
-            root
-            / FlextInfraMiseArtifactsVerification.publication_receipt(
-                c.Infra.CodegenConformSurface.ENVRC,
-            ),
-        )
-        before = tuple(
-            tm.ok(FlextInfraMiseArtifactsFiles.read_state(path, required=True))
-            for path in paths
-        )
-        observation = cProfile.Profile()
-        checked = tm.ok(
-            observation.runcall(
-                infra.codegen_conform,
-                request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
-            ),
-        )
-        tm.that(checked.plan, eq=None)
-        tm.ok(checked.verified_publication is not None)
-        tm.that(checked.written_files, eq=())
-        tm.that(
-            any(
-                entry.code is Template.render.__code__
-                for entry in observation.getstats()
-            ),
-            eq=False,
-        )
-        after = tuple(
-            tm.ok(FlextInfraMiseArtifactsFiles.read_state(path, required=True))
-            for path in paths
-        )
-        tm.that(after, eq=before)
 
     @staticmethod
     def test_generated_config_keeps_settings_independent(
@@ -106,13 +38,13 @@ class TestsFlextInfraCodegenConfigLifecycle:
                     config.Infra.tooling,
                     "pytest.ini_options",
                     "testpaths",
-                    t.StrSequence,
+                    Sequence[str],
                 )
                 for pattern in u.Infra.native_tool_setting(
                     config.Infra.tooling,
                     "pytest.ini_options",
                     "python_files",
-                    t.StrSequence,
+                    Sequence[str],
                 )
                 for path in (root / directory).rglob(pattern)
                 if path.is_file()
@@ -147,10 +79,8 @@ class TestsFlextInfraCodegenConfigLifecycle:
                         config.Infra.codegen.make.ci.variable: (
                             "" if verb == "upg" else config.Infra.codegen.make.ci.value
                         ),
-                        config.Infra.codegen.make.uv_resolution.hosted_variable: (
-                            ""
-                            if verb == "upg"
-                            else config.Infra.codegen.make.uv_resolution.hosted_value
+                        c.Infra.ENV_VAR_GITHUB_ACTIONS: (
+                            "" if verb == "upg" else c.ParserBooleanToken.TRUE.value
                         ),
                     },
                 ),
@@ -176,6 +106,7 @@ from typing import get_protocol_members, get_type_hints, is_protocol
 from flext_cli import FlextCliConfig, u
 from flext_core import c
 from flext_demo import FlextDemo, FlextDemoConfig, config, m, p, settings
+from flext_tests import tm
 
 assert FlextDemoConfig.fetch_global() is config
 assert FlextCliConfig.fetch_global() is not config
@@ -200,7 +131,7 @@ try:
 except m.ValidationError as error:
     assert all(item["type"] == "frozen_instance" for item in error.errors())
 else:
-    raise AssertionError("Generated config is mutable")
+    tm.reject("Generated config is mutable")
 adjusted = settings.clone(debug=not settings.debug)
 assert adjusted.debug != settings.debug
 assert config.model_dump() == before
@@ -224,7 +155,7 @@ try:
 except m.ValidationError as error:
     assert all(item["type"] == "missing" for item in error.errors())
 else:
-    raise AssertionError("Generated service accepts missing dependency ports")
+    tm.reject("Generated service accepts missing dependency ports")
 message = f"  {config.Demo.ping_reply}\\n"
 reply = m.Demo.PingResult(message=message)
 assert reply.message == message
@@ -241,17 +172,17 @@ for schema, payload in (
     except m.ValidationError as error:
         assert all(item["type"] == "extra_forbidden" for item in error.errors())
     else:
-        raise AssertionError(f"Generated schema accepts undeclared input: {schema}")
+        tm.reject(f"Generated schema accepts undeclared input: {schema}")
 for schema, payload, error_type in (
     (m.Demo.PingResult, {"message": message.encode()}, "string_type"),
-    (m.Demo.SettingsNamespace, {"enabled": "false"}, "bool_type"),
+    (m.Demo.SettingsNamespace, {"enabled": c.ParserBooleanToken.FALSE}, "bool_type"),
 ):
     try:
         schema.model_validate(payload)
     except m.ValidationError as error:
         assert all(item["type"] == error_type for item in error.errors())
     else:
-        raise AssertionError(
+        tm.reject(
             f"Generated schema coerces an incompatible input: {schema}"
         )
 enabled = not settings.Demo.enabled
@@ -356,8 +287,8 @@ print(
                         config.Infra.codegen.make.ci.variable: (
                             config.Infra.codegen.make.ci.value if verb == "gen" else ""
                         ),
-                        config.Infra.codegen.make.uv_resolution.hosted_variable: (
-                            config.Infra.codegen.make.uv_resolution.hosted_value
+                        c.Infra.ENV_VAR_GITHUB_ACTIONS: (
+                            c.ParserBooleanToken.TRUE.value
                         ),
                     },
                 ),
@@ -429,21 +360,16 @@ print(
         tm.ok(u.Cli.atomic_verify_binary_file_states(authored))
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
         tm.ok(u.Cli.atomic_verify_binary_file_states(authored))
-        report = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.LAZY_INIT,
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(file.path)) for file in plan.files
         )
-        before = tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True))
         checked = tm.ok(
             infra.codegen_conform(
                 request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
             ),
         )
-        tm.ok(checked.verified_publication is not None)
         tm.that(checked.written_files, eq=())
-        tm.that(
-            tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=True)),
-            eq=before,
-        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(before))
 
     @staticmethod
     @pytest.mark.parametrize("target_exists", [False, True])

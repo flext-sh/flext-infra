@@ -1,0 +1,28 @@
+id: retire-publication-stack-consumption-scope
+snapshots:
+  ? |
+    def run(project):
+        with binding[0].source_consumption():
+            return build()
+  : fixed: |
+      def run(project):
+          return build()
+    labels:
+    - source: |-
+        with binding[0].source_consumption():
+                return build()
+      style: primary
+      start: 22
+      end: 82
+  ? |
+    with project.source_consumption() as consumption:
+        planned = build(files)
+  : fixed: |
+      planned = build(files)
+    labels:
+    - source: |-
+        with project.source_consumption() as consumption:
+            planned = build(files)
+      style: primary
+      start: 0
+      end: 76

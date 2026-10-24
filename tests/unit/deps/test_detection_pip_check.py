@@ -22,6 +22,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
     @pytest.mark.parametrize("conflict", [False, True])
     def test_installed_package_requirements_determine_the_verdict(
         tmp_path: Path,
+        *,
         conflict: bool,
     ) -> None:
         """Real installed metadata produces clean and missing-provider verdicts."""

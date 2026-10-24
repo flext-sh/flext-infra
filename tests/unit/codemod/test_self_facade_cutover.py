@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
+from flext_infra.codegen import FlextInfraCodegenGeneration
+from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -21,6 +23,160 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSelfFacadeCutover:
     """Preserve eager execution, lexical bindings and standalone consumers."""
+
+    @staticmethod
+    @pytest.mark.parametrize("auxiliary", ["scripts", "examples"])
+    @pytest.mark.parametrize("alias", ["u", "parent_tools"])
+    def test_census_keeps_only_proven_forwarded_composition(
+        tmp_path: Path, auxiliary: str, alias: str
+    ) -> None:
+        """A generated parent forwarder keeps class identity and lexical shadows."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        context = root / auxiliary
+        context.mkdir()
+        primary_class = "PrimaryUtilities"
+        child_class = "AuxiliaryUtilities"
+        sources = {
+            package / c.Infra.INIT_PY: (
+                f"from .utilities import {primary_class} as u\n__all__ = ['u']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"class {primary_class}:\n"
+                '    """Public parent without local callable members."""\n'
+                f"__all__ = ['{primary_class}']\n"
+            ),
+            context / c.Infra.INIT_PY: "",
+            context / c.Infra.UTILITIES_PY: (
+                f"from {auxiliary} import u as {alias}\n"
+                f"class {child_class}({alias}):\n"
+                '    """Compose the public parent, not this local class."""\n'
+                f"def shadow({alias}: str) -> str:\n"
+                f"    return {alias}.upper()\n"
+                f"__all__ = ['{child_class}', 'shadow']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=context,
+                init_path=context / c.Infra.INIT_PY,
+                current_pkg=auxiliary,
+                surface=auxiliary,
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("u", child_class),
+            lazy_map={
+                "u": (package.name, "u"),
+                child_class: (f"{auxiliary}.utilities", child_class),
+            },
+            eager_dunders={},
+        )
+        with u.Infra.facade_source_project(root, project_roots=(root,)) as (
+            project,
+            _,
+        ):
+            sources[context / c.Infra.INIT_PY] = (
+                FlextInfraCodegenGeneration.render_init(plan, source_project=project)
+            )
+        (context / c.Infra.INIT_PY).write_text(
+            sources[context / c.Infra.INIT_PY], encoding=c.DEFAULT_ENCODING
+        )
+        for _ in range(2):
+            with infra.rope_workspace(root) as workspace:
+                edits = tm.ok(
+                    FlextInfraCodemodSemanticApply.census_constants(
+                        root,
+                        workspace,
+                        apply=False,
+                        workspace_factory=infra.rope_workspace,
+                    )
+                )
+            tm.that(edits, empty=True)
+            evidence = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-I",
+                        "-c",
+                        (
+                            "import sys; sys.path[:0] = sys.argv[1:]; "
+                            f"from {package.name} import u as parent; "
+                            f"from {auxiliary} import u as forwarded, {child_class}; "
+                            f"from {auxiliary}.utilities import shadow; "
+                            "assert forwarded is parent; "
+                            f"assert {child_class}.__bases__ == (parent,); "
+                            "assert shadow('local shadow') == 'LOCAL SHADOW'; "
+                            "print('forwarded composition accepted')"
+                        ),
+                        str(package.parent),
+                        str(root),
+                    ),
+                    cwd=root,
+                )
+            )
+            tm.that(evidence.stdout.strip(), eq="forwarded composition accepted")
+
+    @staticmethod
+    @pytest.mark.parametrize("failure", ["call", "escape", "unknown", "cycle"])
+    def test_census_rejects_unresolved_uses_beside_a_composition_base(
+        tmp_path: Path, failure: str
+    ) -> None:
+        """A valid base cannot authorize calls or an unproved/cyclic parent."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        context = root / "examples"
+        context.mkdir()
+        consumer = context / c.Infra.UTILITIES_PY
+        sources = {
+            package / c.Infra.INIT_PY: (
+                "from .utilities import PrimaryUtilities as u\n__all__ = ['u']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                "class PrimaryUtilities:\n"
+                '    """Public parent without callable members."""\n'
+                "__all__ = ['PrimaryUtilities']\n"
+            ),
+            context / c.Infra.INIT_PY: (
+                f"from {package.name} import u\n__all__ = ['u']\n"
+            ),
+            consumer: (
+                "from examples import u\n"
+                "class AuxiliaryUtilities(u):\n"
+                '    """A real composition does not excuse unrelated uses."""\n'
+                + (
+                    "VALUE = u.bad_call()\n"
+                    if failure == "call"
+                    else "escaped = u\nVALUE = escaped.bad_call()\n"
+                    if failure == "escape"
+                    else ""
+                )
+                + "__all__ = ['AuxiliaryUtilities']\n"
+            ),
+        }
+        if failure == "unknown":
+            sources[package / c.Infra.UTILITIES_PY] = "u = None\n__all__ = ['u']\n"
+            sources[package / c.Infra.INIT_PY] = (
+                "from .utilities import u\n__all__ = ['u']\n"
+            )
+        elif failure == "cycle":
+            sources[context / c.Infra.INIT_PY] = (
+                "from .utilities import AuxiliaryUtilities as u\n__all__ = ['u']\n"
+            )
+        for path, source in sources.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            infra.rope_workspace(root) as workspace,
+            pytest.raises(ValueError, match=r"self-facade|cyclic facade"),
+        ):
+            FlextInfraCodemodSemanticApply.census_constants(
+                root,
+                workspace,
+                apply=True,
+                workspace_factory=infra.rope_workspace,
+            )
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
     def test_external_declaration_import_survives_a_local_model_mask(
@@ -358,6 +514,7 @@ class TestsFlextInfraSelfFacadeCutover:
                     (
                         f"from {package.name}.models import Outer\n"
                         "from pydantic import ValidationError\n"
+                        "from flext_tests import tm\n"
                         "first, second = Outer.Consumer(), Outer.Consumer()\n"
                         "assert isinstance(first.children, list)\n"
                         "first.children.append(Outer.Child(value='child'))\n"
@@ -368,7 +525,7 @@ class TestsFlextInfraSelfFacadeCutover:
                         "assert isinstance(restored.children[0], Outer.Child)\n"
                         "try: Outer.Consumer(children=[{'value': []}])\n"
                         "except ValidationError: pass\n"
-                        "else: raise AssertionError("
+                        "else: tm.reject("
                         "'native child validation missing')\n"
                         "print('native-factory-proven')\n"
                     ),

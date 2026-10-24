@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 @pytest.mark.slow
@@ -49,7 +49,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         project_root = tmp_path / "flext-demo"
         package_root = project_root / "src" / "demo_pkg"
         cls._write_file(
-            project_root / "pyproject.toml",
+            project_root / c.PYPROJECT_FILENAME,
             '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
         )
         cls._write_file(project_root / "Makefile", "check:\n\t@true\n")

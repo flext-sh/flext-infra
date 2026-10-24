@@ -180,7 +180,10 @@ contents and can create the destination's semantic package through canonical
 projection planning. From the SDK's owning workspace environment:
 
 ```bash
-flext-infra refactor move-module --repository-root /path/to/member --source-file src/package/_utilities/_json/_core.py --destination-file src/package/_utilities/_json/core.py
+flext-infra refactor move-module \
+  --repository-root /path/to/member \
+  --source-file src/package/_utilities/_json/_core.py \
+  --destination-file src/package/_utilities/_json/core.py
 ```
 
 The typed `ModuleMoveCommand` rejects both destination facts together, or neither;
@@ -262,8 +265,12 @@ Two surfaces compose the per-repository verbs into fleet-scale loops. Both are
   raw process outcome, audit snapshots and failed/unexecuted verdicts. Introduced
   occurrences, increased totals, operation failures and audit mutations remain
   failures, with the first cause preserved after inspection/publication failure.
-  The latest receipt is `.reports/refactor/violations-sweep.json`; full
-  invocation-local before/after evidence remains preserved alongside it. Root
+  The latest receipt is `.reports/refactor/violations-sweep.json` relative to the
+  verified worktree Git directory, resolved by
+  `u.Infra.refactor_report_evidence_root`; full invocation-local before/after
+  evidence remains preserved under the declared scan evidence owner. Persisted AST
+  observations use `ModScanEvidence` and its normalized source, binding, and
+  native-artifact references, never live operational scan handles. Root
   audit success or unchanged totals alone never prove every project green.
 
   The default is an independent ordered sweep policy, not a second public-verb

@@ -1,0 +1,66 @@
+id: rewire-raw-model-config-dict
+snapshots:
+  ? |
+    from flext_core import m
+    class Spec(m.FrozenModel):
+        model_config = {"frozen": False}
+  : fixed: |
+      from flext_core import m
+      class Spec(m.FrozenModel):
+          model_config = m.ConfigDict(frozen=False)
+    labels:
+    - source: 'model_config = {"frozen": False}'
+      style: primary
+      start: 56
+      end: 88
+    - source: model_config
+      style: secondary
+      start: 56
+      end: 68
+    - source: '{"frozen": False}'
+      style: secondary
+      start: 71
+      end: 88
+    - source: from flext_core import m
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import m
+        class Spec(m.FrozenModel):
+            model_config = {"frozen": False}
+      style: secondary
+      start: 0
+      end: 89
+  ? |
+    from flext_core import m
+    class Spec(m.FrozenModel):
+        model_config: ClassVar = {"populate_by_name": True, "extra": "forbid"}
+  : fixed: |
+      from flext_core import m
+      class Spec(m.FrozenModel):
+          model_config = m.ConfigDict(populate_by_name=True, extra="forbid")
+    labels:
+    - source: 'model_config: ClassVar = {"populate_by_name": True, "extra": "forbid"}'
+      style: primary
+      start: 56
+      end: 126
+    - source: model_config
+      style: secondary
+      start: 56
+      end: 68
+    - source: '{"populate_by_name": True, "extra": "forbid"}'
+      style: secondary
+      start: 81
+      end: 126
+    - source: from flext_core import m
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import m
+        class Spec(m.FrozenModel):
+            model_config: ClassVar = {"populate_by_name": True, "extra": "forbid"}
+      style: secondary
+      start: 0
+      end: 127

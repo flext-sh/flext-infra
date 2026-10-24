@@ -33,14 +33,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext,
         target: m.Infra.CheckProjectTarget,
     ) -> m.Infra.GateContext:
-        """Create a fresh GateContext scoped to a single project.
+        """Create a fresh GateContext scoped to a physical project path.
 
         Returns:
             The resulting ``m.Infra.GateContext``.
 
         Raises:
             ValueError: If the context carries runtime dependency inputs
-                that belong to a different project target.
+                that belong to a different project target, or the project
+                is outside the invoked repository.
 
         """
         if (
@@ -49,7 +50,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ):
             msg = "dependency provenance belongs to another project"
             raise ValueError(msg)
-        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / target.name})
+        root = ctx.repository_root.resolve()
+        relative = target.path.resolve().relative_to(root)
+        receipt_path = Path(root.name) / relative
+        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / receipt_path})
 
     def _run_single_project(
         self,
@@ -91,6 +95,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing.
 
+        Retain the interrupted project's result before stopping the invocation.
+        Ordinary failed verdicts keep the caller's fail-fast policy.
+
         Returns:
             The resulting ``m.Infra.LoopOutcome``.
 
@@ -103,11 +110,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
             u.Cli.progress(index, total, target.name, c.Infra.VERB_CHECK)
             project_result = self._run_single_project(target, resolved_gates, ctx)
             results.append(project_result)
+            if not project_result.gates and ctx.check_progress is not None:
+                ctx.check_progress(target.path, project_result)
             project_passed: bool = project_result.passed
             if not project_passed:
                 failed += 1
-                if fail_fast:
-                    break
+            if any(
+                execution.interrupted for execution in project_result.gates.values()
+            ) or (not project_passed and fail_fast):
+                break
         return m.Infra.LoopOutcome(
             results=tuple(results),
             failed=failed,
@@ -142,16 +153,23 @@ class FlextInfraWorkspaceCheckGatesMixin:
         """
         gate = self._registry.create(gate_id, self._repository_root)
         if gate is None:
+            gate_ctx = ctx or self._gate_ctx(reports_dir)
+            message = f"{gate_id} gate not registered"
+            receipt = gate_ctx.reports_dir / (
+                f"{gate_id}{config.Infra.tooling.raw_check_receipt_suffix}"
+            )
+            u.Cli.atomic_write_text_file(receipt, message).unwrap()
             return m.Infra.GateExecution(
                 result=m.Infra.GateResult(
                     gate=gate_id,
                     project=project_dir.name,
                     passed=False,
-                    errors=[f"{gate_id} gate not registered"],
+                    errors=[message],
                     duration=0.0,
                 ),
                 issues=(),
-                raw_output=f"{gate_id} gate not registered",
+                raw_output=message,
+                raw_receipt=receipt,
                 outcome=c.Infra.ToolOutcome.ERROR,
             )
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
@@ -166,14 +184,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         Every gate runs serially through the public CLI pipeline. Whole-program
         checkers must not compete for memory, and fixers share mutable files.
-        Read-only checks retain every verdict; fail-fast and mutating runs stop
-        at the first failed gate without fabricating unexecuted results.
+        Every independent operation retains its verdict. Native interruption
+        stops after its progress and status are published; ordinary project
+        findings retain the explicit fail-fast policy.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
 
         Raises:
-            ValueError: If ``gate_instance is None``.
+            ValueError: If a gate is unregistered or a selected repair is unsupported.
 
         """
         project_name = project_dir.name
@@ -189,6 +208,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 raise ValueError(msg)
             if not ctx.selected_files and not gate_instance.selected_for(project_dir):
                 continue
+            if mutating and not gate_instance.can_fix:
+                msg = f"Gate {gate_id} does not support repair"
+                raise ValueError(msg)
             stages.append(
                 m.Cli.PipelineStageSpec(
                     stage_id=gate_id,
@@ -211,22 +233,23 @@ class FlextInfraWorkspaceCheckGatesMixin:
             if execution.result.passed:
                 pipeline_result.unwrap()
             result.gates[stage.stage_id] = execution
+            if ctx.check_progress is not None:
+                ctx.check_progress(project_dir, result)
             u.Cli.gate_result(
                 stage.stage_id,
                 execution.finding_count,
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
-            if execution.issues or not execution.result.passed:
-                for issue in execution.issues:
-                    u.Cli.info(issue.formatted)
-                if execution.raw_receipt is not None:
-                    u.Cli.info(
-                        f"{stage.stage_id}: {execution.outcome.value}; "
-                        f"Native output receipt: {execution.raw_receipt}",
-                    )
-                if not execution.result.passed and (ctx.fail_fast or mutating):
-                    break
+            if (
+                execution.issues or not execution.result.passed
+            ) and execution.raw_receipt is not None:
+                u.Cli.info(
+                    f"{stage.stage_id}: {execution.outcome.value}; "
+                    f"Native output receipt: {execution.raw_receipt}",
+                )
+            if execution.interrupted or (not execution.result.passed and ctx.fail_fast):
+                break
         return result
 
     # ------------------------------------------------------------------
@@ -265,14 +288,6 @@ class FlextInfraWorkspaceCheckGatesMixin:
             del _pipeline_ctx
             gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
-            raw_receipt = gate_ctx.reports_dir / (
-                f"{gate_id}{config.Infra.tooling.raw_check_receipt_suffix}"
-            )
-            u.Cli.atomic_write_text_file(
-                raw_receipt,
-                execution.raw_output,
-            ).unwrap()
-            execution = execution.model_copy(update={"raw_receipt": raw_receipt})
             gates_sink[gate_id] = execution
             self._gate_logger.info(
                 "gate_executed",
@@ -302,17 +317,21 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Dispatch repair with native verification, or a read-only check.
+        """Dispatch exactly the requested repair or read-only operation.
 
-        The gate owns repair and same-scope read-only confirmation, including
-        literal file selections. Check-only contexts never mutate; gates without
-        a repair contract still execute their read-only check.
+        A gate without a repair contract cannot substitute a read-only check.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
+        Raises:
+            ValueError: If a repair selects a gate without a repair contract.
+
         """
-        if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
+        if ctx.apply_fixes and not ctx.check_only:
+            if not gate_instance.can_fix:
+                msg = f"Gate {gate_instance.gate_id} does not support repair"
+                raise ValueError(msg)
             return gate_instance.fix(project_dir, ctx)
         if ctx.selected_files:
             return gate_instance.check_files(ctx.selected_files, project_dir, ctx)

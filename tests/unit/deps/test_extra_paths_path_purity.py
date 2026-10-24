@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import tm
+from tests import c, tm
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -33,9 +33,12 @@ class TestsFlextInfraExtraPathsArePure:
         _ = TestsFlextInfraExtraPathsSupport.workspace_with_dependency(tmp_path)
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(tmp_path),
+        )
 
     @staticmethod
     def test_sibling_source_roots_are_not_emitted_for_a_member(
@@ -47,7 +50,7 @@ class TestsFlextInfraExtraPathsArePure:
             "flext-ldap",
             "flext_ldap",
         )
-        consumer.joinpath("pyproject.toml").write_text(
+        consumer.joinpath(c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'flext-ldap'\n"
@@ -64,8 +67,8 @@ class TestsFlextInfraExtraPathsArePure:
         )
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        search_paths = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
-        extra_paths = manager.pyright_extra_paths(project_dir=consumer, is_root=False)
+        search_paths = manager.pyrefly_search_paths(project_dir=consumer)
+        extra_paths = manager.pyright_extra_paths()
 
         for entry in (*search_paths, *extra_paths):
             tm.that(
@@ -73,7 +76,10 @@ class TestsFlextInfraExtraPathsArePure:
                 truth=False,
                 msg=f"generated search path leaves the project: {entry}",
             )
-        tm.that(search_paths, eq=("src", "."))
+        tm.that(
+            search_paths,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(consumer),
+        )
 
     @staticmethod
     def test_search_paths_survive_a_project_only_worktree(tmp_path: Path) -> None:
@@ -107,7 +113,6 @@ class TestsFlextInfraExtraPathsArePure:
         tm.that(
             workspace_manager.pyrefly_search_paths(
                 project_dir=with_siblings,
-                is_root=False,
             ),
-            eq=lane_manager.pyrefly_search_paths(project_dir=alone, is_root=False),
+            eq=lane_manager.pyrefly_search_paths(project_dir=alone),
         )

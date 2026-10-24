@@ -10,24 +10,85 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import config
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
-
-pytestmark = [pytest.mark.slow]
 
 
 class TestsFlextInfraCodegenMakeVerbContract:
     """The generated contract mode runs no prerequisite, hook or handler."""
 
+    pytestmark = pytest.mark.slow
+
+    @staticmethod
+    def test_catalog_help_and_contracts_preserve_files(
+        infra_git_repo: Path,
+    ) -> None:
+        """Real Make exposes every catalog input without running its handler."""
+        root = infra_git_repo
+        TestsFlextInfraCodegenMakeVerbContract._scaffold(root)
+        verbs = tuple(
+            verb
+            for verb in config.Infra.codegen.make.verbs
+            if c.Infra.MakeProfile.STANDALONE in verb.profiles
+        )
+        tm.that(bool(verbs), eq=True)
+        before = {
+            path.relative_to(root): path.read_bytes()
+            for path in root.rglob("*")
+            if path.is_file()
+        }
+        before_paths = sorted(path.relative_to(root) for path in root.rglob("*"))
+        for goals in (
+            ["help"],
+            [*(verb.name for verb in verbs), "OPTIONS=Y"],
+        ):
+            output = tm.ok(
+                u.Cli.run_raw(
+                    ["make", "--no-print-directory", "-C", str(root), *goals],
+                    options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
+                ),
+            )
+            tm.that(
+                u.Cli.process_succeeded(output.outcome),
+                eq=True,
+                msg=output.stdout + output.stderr,
+            )
+            lines = output.stdout.splitlines()
+            for verb in verbs:
+                description = " ".join(verb.description.splitlines()).strip()
+                heading = f"  {verb.name:<16} {description}"
+                tm.that(lines, has=heading)
+                if verb.arguments:
+                    tm.that(
+                        lines[lines.index(heading) + 1],
+                        eq=f"    Inputs: {' '.join(verb.arguments)}",
+                    )
+            tm.that(
+                sorted(path.relative_to(root) for path in root.rglob("*")),
+                eq=before_paths,
+            )
+            tm.that(
+                {
+                    path.relative_to(root): path.read_bytes()
+                    for path in root.rglob("*")
+                    if path.is_file()
+                },
+                eq=before,
+            )
+
     @staticmethod
     def _scaffold(root: Path) -> None:
         """Materialize the generated Makefile with a hook that marks execution."""
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        metadata = root / c.PYPROJECT_FILENAME
+        before = metadata.read_bytes()
         TestsFlextInfraConformSupport.apply_conform_surface(
             root,
             workspace,
             c.Infra.CodegenConformSurface.MAKEFILE,
         )
+        tm.that(metadata.read_bytes(), eq=before)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",

@@ -25,7 +25,7 @@ class TestsFlextInfraInfraTypings:
             "enabled": True,
         })
 
-        tm.ok(payload["enabled"])
+        tm.that(payload["enabled"], eq=True)
         tm.that(payload["tool"], eq={"name": "infra"})
 
     @staticmethod
@@ -62,7 +62,7 @@ class TestsFlextInfraInfraTypings:
 
         tm.that(payload["python"], eq={"version": python_version})
         tm.that(payload["paths"], eq=["src", "tests"])
-        tm.ok(payload["enabled"])
+        tm.that(payload["enabled"], eq=True)
 
     @staticmethod
     def test_str_seq_adapter_validates_project_name_sequences() -> None:
@@ -81,7 +81,7 @@ class TestsFlextInfraInfraTypings:
         })
 
         tm.that(payload["root"], eq=Path("/var/lib/flext"))
-        tm.ok(payload["enabled"])
+        tm.that(payload["enabled"], eq=True)
         tm.that(payload["retries"], eq=3)
 
     @staticmethod

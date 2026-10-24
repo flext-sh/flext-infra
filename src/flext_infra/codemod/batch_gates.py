@@ -13,14 +13,12 @@ import tempfile
 import time
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing
-from functools import partial
 from pathlib import Path
 from time import monotonic
 
 import flext_cli
 
 from flext_infra import c, m, p, r, settings, t, u
-from flext_infra._config import FlextInfraConfig
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
     FlextInfraModReplacements,
@@ -643,7 +641,6 @@ class FlextInfraModGateEngine:
                 )
         return FlextInfraModGateEngine.recounted(
             tuple(admitted),
-            source_states=report.source_states,
             native_artifacts=report.native_artifacts,
         )
 
@@ -738,7 +735,6 @@ class FlextInfraModGateEngine:
             return report
         return FlextInfraModGateEngine.recounted(
             entries,
-            source_states=report.source_states,
             native_artifacts=report.native_artifacts,
         )
 
@@ -746,7 +742,6 @@ class FlextInfraModGateEngine:
     def recounted(
         entries: t.VariadicTuple[m.Infra.ModScanFinding],
         *,
-        source_states: tuple[m.Cli.AtomicFileState, ...] | None = None,
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] | None = None,
     ) -> m.Infra.ModScanReport:
         """Return the scan report of exactly these findings, classes recounted.
@@ -758,7 +753,6 @@ class FlextInfraModGateEngine:
         return m.Infra.ModScanReport(
             files=frozenset(entry.file for entry in entries),
             entries=entries,
-            source_states=source_states,
             native_artifacts=(
                 tuple(
                     {
@@ -875,42 +869,22 @@ class FlextInfraModGateEngine:
     def _authenticated_snapshot(
         root: Path,
         file: str,
-        source_states: Mapping[Path, m.Cli.AtomicFileState],
     ) -> p.Result[t.Pair[Path, m.Cli.AtomicFileState]]:
-        """Associate a finding with the scan's already authenticated source state.
-
-        Complete input verification brackets parsing and admission; individual
-        findings retain the captured bytes without repeating physical reads.
+        """Associate a finding with its source's current state.
 
         Returns:
-            The resulting ``(file_path, snapshot)`` pair for the unchanged source.
+            The resulting ``(file_path, state)`` pair, or the drift failure.
 
         """
         file_path = Path(file)
         resolved_file = (root / file_path).resolve()
-        snapshot = source_states.get(resolved_file)
-        if snapshot is None or snapshot.content is None:
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
-                f"finding has no authenticated source snapshot: {resolved_file}",
-            )
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
-        if observed.failure:
-            if not resolved_file.exists():
-                return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
-                    f"finding source vanished during scanning: {resolved_file}",
-                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
-                )
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].from_failure(observed)
-        if observed.value.content != snapshot.content:
+        if observed.failure and not resolved_file.exists():
             return r[t.Pair[Path, m.Cli.AtomicFileState]].fail(
-                f"finding source changed during scanning: {resolved_file}",
+                f"finding source vanished during scanning: {resolved_file}",
                 error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
             )
-        if observed.value != snapshot:
-            return r[t.Pair[Path, m.Cli.AtomicFileState]].ok(
-                (file_path, observed.value),
-            )
-        return r[t.Pair[Path, m.Cli.AtomicFileState]].ok((file_path, snapshot))
+        return observed.map(lambda state: (file_path, state))
 
     @staticmethod
     def _classified_finding(
@@ -997,7 +971,7 @@ class FlextInfraModGateEngine:
         native_file = str(finding.get("file"))
         if native_file not in context.authenticated:
             context.authenticated[native_file] = cls._authenticated_snapshot(
-                root, native_file, context.source_states
+                root, native_file
             )
         authenticated = context.authenticated[native_file]
         file_path = Path(native_file)
@@ -1137,46 +1111,9 @@ class FlextInfraModGateEngine:
                 if entry.failure:
                     return r[m.Infra.ModScanReport].from_failure(entry)
                 entries.append(entry.value)
-        authenticated_states = dict(context.source_states)
-        for authenticated in context.authenticated.values():
-            if authenticated.failure:
-                continue
-            state = authenticated.value[1]
-            observed = u.Cli.atomic_read_binary_file_state(
-                state.path, required=True
-            ).unwrap()
-            if observed != state:
-                return r[m.Infra.ModScanReport].fail(
-                    f"finding source changed during admission: {state.path}",
-                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
-                    error_data={
-                        "same_content": observed.content == state.content,
-                        "same_path": observed.path == state.path,
-                        "same_parent": (
-                            observed.parent_device,
-                            observed.parent_inode,
-                        )
-                        == (state.parent_device, state.parent_inode),
-                        "same_leaf": (
-                            observed.device,
-                            observed.inode,
-                            observed.link_count,
-                        )
-                        == (state.device, state.inode, state.link_count),
-                        "same_permissions": (
-                            observed.mode,
-                            observed.file_attributes,
-                            observed.reparse_tag,
-                        )
-                        == (state.mode, state.file_attributes, state.reparse_tag),
-                        "same_model_type": type(observed) is type(state),
-                    },
-                )
-            authenticated_states[state.path] = state
         return r.ok(
             cls.recounted(
                 tuple(entries),
-                source_states=tuple(authenticated_states.values()),
                 native_artifacts=(native_receipt,),
             ),
         )
@@ -1266,7 +1203,6 @@ class FlextInfraModGateEngine:
                 cls._validate_finding_receipt(stderr, error_findings).unwrap()
             report = cls.recounted(
                 report.entries,
-                source_states=report.source_states,
                 native_artifacts=tuple(
                     {
                         receipt.path: receipt
@@ -1285,126 +1221,18 @@ class FlextInfraModGateEngine:
             targets: The sequence of target paths to enumerate.
 
         Returns:
-            A frozenset of resolved Python file paths within the target directories.
+            Resolved Python paths, retaining prohibited lexical stub leaves.
 
         """
         return frozenset(
-            path.resolve()
+            path.absolute() if path.suffix == ".pyi" else path.resolve()
             for target in targets
             for path in (
                 u.Infra.iter_directory_python_files(root / target)
-                if (root / target).is_dir()
+                if (root / target).suffix != ".pyi" and (root / target).is_dir()
                 else (root / target,)
             )
         )
-
-    @staticmethod
-    def _catalog_paths(
-        root: Path,
-        plan: m.Infra.CodemodRulePlan,
-    ) -> tuple[Path, ...]:
-        """Name the elected catalog and configuration inputs without scanning code.
-
-        Returns:
-            Canonical rule resources, configuration layers and project declarations.
-
-        """
-        paths = {rule.resource.resolve() for rule in plan.rules}
-        paths.update(FlextInfraConfig.ssot_config_dir().glob("*.yaml"))
-        for ruleset in plan.rulesets:
-            paths.add(ruleset.config.resolve())
-            directories = FlextInfraCodemodSnapshotReconciler.scanner_directories(
-                ruleset.config.parent
-            )
-            for directory in (*directories.rule_dirs, *directories.util_dirs):
-                paths.update(
-                    path.resolve() for path in directory.rglob("*") if path.is_file()
-                )
-        for project in plan.project_rule_ids:
-            paths.add(project / c.PYPROJECT_FILENAME)
-            paths.add(project / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME)
-            paths.update(
-                state.path
-                for state in u.Infra.load_codegen_inputs(project).unwrap().sources
-            )
-        paths.add(root / c.Infra.GITMODULES)
-        return tuple(sorted(paths))
-
-    @classmethod
-    def _verify_scan_membership(
-        cls,
-        root: Path,
-        report: m.Infra.ModScanReport,
-        _candidate_root: Path,
-    ) -> p.Result[bool]:
-        """Verify the original selection and catalog before or after owned effects.
-
-        Returns:
-            Current membership and catalog proof, without requiring old output bytes.
-
-        """
-        del _candidate_root
-        plan = report.rule_plan
-        if (
-            report.repository_root != root.resolve()
-            or report.source_states is None
-            or report.catalog_states is None
-            or plan is None
-        ):
-            return r[bool].fail("native scan report lacks authenticated inputs")
-        targets = u.Infra.ast_grep_scan_targets(root, source_files=report.source_files)
-        if cls._scan_source_paths(root, targets) != frozenset(
-            state.path for state in report.source_states
-        ):
-            return r[bool].fail("native scan source membership changed")
-        current: t.MutableMappingKV[t.StrPair, m.Infra.CodemodRule] = {}
-        for ruleset in plan.rulesets:
-            catalog = u.Infra.codemod_catalog_rules(ruleset.provider, ruleset.config)
-            if catalog.failure:
-                return r[bool].from_failure(catalog)
-            for rule in catalog.value:
-                if rule.id not in ruleset.rule_ids:
-                    continue
-                key = (rule.provider, rule.id)
-                if key in current and current[key] != rule:
-                    return r[bool].fail("native scan catalog membership changed")
-                current[key] = rule
-        if (
-            len(current) != len(plan.rules)
-            or any(current.get((rule.provider, rule.id)) != rule for rule in plan.rules)
-            or cls._catalog_paths(root, plan)
-            != tuple(state.path for state in report.catalog_states)
-        ):
-            return r[bool].fail("native scan catalog membership changed")
-        return u.Cli.atomic_verify_binary_file_states(report.catalog_states)
-
-    @classmethod
-    def _verify_scan_inputs(
-        cls,
-        root: Path,
-        report: m.Infra.ModScanReport,
-    ) -> p.Result[bool]:
-        """Authenticate exact original scan and binding bytes before publication.
-
-        Returns:
-            The first input failure or the complete current report proof.
-
-        """
-        membership = cls._verify_scan_membership(root, report, root)
-        if membership.failure:
-            return membership
-        if report.source_states is None:
-            return r[bool].fail("native scan report lacks authenticated source inputs")
-        verified = u.Cli.atomic_verify_binary_file_states((
-            *report.source_states,
-            *(state for entry in report.entries for state in entry.binding_states),
-        ))
-        if verified.failure:
-            return verified
-        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
-            for entry in report.entries:
-                u.Infra.mod_native_payload(entry, readers)
-        return r[bool].ok(value=True)
 
     @classmethod
     def apply_report(
@@ -1413,7 +1241,6 @@ class FlextInfraModGateEngine:
         report: m.Infra.ModOccurrenceReport[m.Infra.ModScanFinding],
         *,
         exact_replacements: bool = False,
-        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[bool]:
         """Publish the admitted native report only under its original input CAS.
 
@@ -1425,18 +1252,8 @@ class FlextInfraModGateEngine:
             return r[bool].fail(
                 "publication requires an authenticated native scan report"
             )
-        verified = cls._verify_scan_inputs(root, report)
-        if verified.failure:
-            return verified
         return FlextInfraModReplacements.publish(
-            root,
-            cls.authored(report),
-            exact_replacements=exact_replacements,
-            published_plans=published_plans,
-            verification=(
-                partial(cls._verify_scan_inputs, root, report),
-                partial(cls._verify_scan_membership, root, report),
-            ),
+            root, cls.authored(report), exact_replacements=exact_replacements
         )
 
     @classmethod
@@ -1456,6 +1273,7 @@ class FlextInfraModGateEngine:
             plan: The codemod rule plan containing rules and rulesets.
             targets: The sequence of target paths to scan.
             context: The source context for the scan.
+            artifact_root: Native scan artifact owner, defaulting to the project root.
 
         Returns:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
@@ -1487,24 +1305,21 @@ class FlextInfraModGateEngine:
                 if native_targets
                 else r[m.Infra.ModScanReport].ok(
                     cls.recounted(
-                        (), source_states=tuple(context.source_states.values())
+                        (),
                     )
                 )
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)
             path_findings = u.Infra.codemod_path_findings(
-                root, tuple(context.source_states), plan.rules
+                root, tuple(context.inventory), plan.rules
             )
             if not path_findings:
                 return scanned
             path_report = Path(directory) / "owned-path.jsonl"
             u.Cli.atomic_write_text_file(
                 path_report,
-                "".join(
-                    u.Cli.json_dumps(finding).unwrap() + "\n"
-                    for finding in path_findings
-                ),
+                "".join(finding.model_dump_json() + "\n" for finding in path_findings),
             ).unwrap()
             artifact = u.Infra.publish_mod_native_artifact(artifact_root, path_report)
             admitted_paths = cls._parse_findings(
@@ -1519,7 +1334,6 @@ class FlextInfraModGateEngine:
             return r[m.Infra.ModScanReport].ok(
                 cls.recounted(
                     (*scanned.value.entries, *admitted_paths.value.entries),
-                    source_states=admitted_paths.value.source_states,
                     native_artifacts=(*scanned.value.native_artifacts, artifact),
                 )
             )
@@ -1595,19 +1409,14 @@ class FlextInfraModGateEngine:
             plan = planned.value
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
-        source_states = {
-            path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            for path in sorted(cls._scan_source_paths(root, targets))
-        }
         context = m.Infra.ModScanSourceContext(
-            source_states=source_states,
+            inventory={
+                path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in sorted(cls._scan_source_paths(root, targets))
+            },
             repository_roots=tuple(
                 sorted(plan.project_rule_ids, key=cls._path_depth, reverse=True)
             ),
-        )
-        catalog_states = tuple(
-            u.Cli.atomic_read_binary_file_state(path).unwrap()
-            for path in cls._catalog_paths(root.resolve(), plan)
         )
         sys.stderr.write(
             f"mod: ast-grep {'apply' if fix else 'scan'} "
@@ -1632,12 +1441,8 @@ class FlextInfraModGateEngine:
                     else None
                 ),
                 "rule_plan": plan,
-                "catalog_states": catalog_states,
             }
         )
-        current = cls._verify_scan_inputs(root, complete_report)
-        if current.failure:
-            return r[m.Infra.ModScanReport].from_failure(current)
         declared = cls._validate_expected_receipts(plan.rules, complete_report)
         if declared.failure:
             return r[m.Infra.ModScanReport].from_failure(declared)
@@ -1657,24 +1462,62 @@ class FlextInfraModGateEngine:
         )
 
     @staticmethod
-    def _candidate_scan_updates(
+    def _candidate_scan_states(
         candidate: m.Infra.StageSourcePlan,
-    ) -> p.Result[t.MappingKV[Path, bytes]]:
-        """Validate candidate updates without dropping source retirements.
+        view_root: Path,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Authenticate each staged effect against its declared original witness.
 
         Returns:
-            The encoded updates or the original invalid retirement.
+            Actual staged receipts rebound to logical paths for binding analysis.
 
         """
-        result_type = r[t.MappingKV[Path, bytes]]
-        updates: dict[Path, bytes] = {}
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        declared = {file.path: file for file in candidate.declared_files}
+        originals = {state.path: state for state in candidate.inputs}
+        if len(declared) != len(candidate.declared_files) or set(declared) != set(
+            candidate.updates
+        ):
+            return result_type.fail("semantic scan candidate effects are not declared")
         for path, source in candidate.updates.items():
-            if source is None:
+            effect = declared[path]
+            original = originals.get(path)
+            content = None if source is None else source.encode(c.DEFAULT_ENCODING)
+            if (
+                effect.desired_content != content
+                or original is None
+                or effect.before != original
+            ):
                 return result_type.fail(
-                    f"semantic scan candidate cannot retire a source: {path}"
+                    "semantic scan candidate effect differs from its declaration: "
+                    f"{path}"
                 )
-            updates[path] = source.encode(c.DEFAULT_ENCODING)
-        return result_type.ok(updates)
+        states: list[m.Cli.AtomicFileState] = []
+        for original in candidate.inputs:
+            if not original.path.is_relative_to(candidate.workspace):
+                states.append(original)
+                continue
+            effect = declared.get(original.path)
+            staged = u.Cli.atomic_read_binary_file_state(
+                view_root / original.path.relative_to(candidate.workspace)
+            )
+            if (
+                staged.failure
+                or staged.value.content
+                != (original.content if effect is None else effect.desired_content)
+                or staged.value.mode
+                != (original.mode if effect is None else effect.desired_mode)
+            ):
+                return (
+                    result_type.from_failure(staged)
+                    if staged.failure
+                    else result_type.fail(
+                        "semantic scan staged effect differs from its declaration: "
+                        f"{original.path}"
+                    )
+                )
+            states.append(staged.value.model_copy(update={"path": original.path}))
+        return result_type.ok(tuple(states))
 
     @classmethod
     def scan_candidate(
@@ -1690,27 +1533,16 @@ class FlextInfraModGateEngine:
 
         """
         root = root.resolve()
+        captured = cls._candidate_scan_states(candidate, view_root)
+        if captured.failure:
+            return r[m.Infra.ModScanReport].from_failure(captured)
         view_root /= root.relative_to(candidate.workspace)
         plan = u.Infra.codemod_rule_plan(root).unwrap()
-        rules_by_id = {rule.id: rule for rule in plan.rules}
-        updates = cls._candidate_scan_updates(candidate)
-        if updates.failure:
-            return r[m.Infra.ModScanReport].from_failure(updates)
-        states = tuple(
-            state.model_copy(
-                update={"content": updates.value.get(state.path, state.content)}
-            )
-            for state in candidate.inputs
-        )
+        states = captured.value
         owned_sources = u.Infra.facade_original_sources(root, states)
-        source_states = tuple(state for state in states if state.path in owned_sources)
         context = m.Infra.ModScanSourceContext(
-            source_states={
-                view_root
-                / state.path.relative_to(root): u.Cli.atomic_read_binary_file_state(
-                    view_root / state.path.relative_to(root), required=True
-                ).unwrap()
-                for state in source_states
+            inventory={
+                state.path: state for state in states if state.path in owned_sources
             },
             repository_roots=tuple(
                 sorted(
@@ -1725,13 +1557,23 @@ class FlextInfraModGateEngine:
         scanned = cls._native_scan_report(
             view_root,
             plan,
-            u.Infra.ast_grep_scan_targets(root),
+            u.Infra.ast_grep_scan_targets(view_root),
             context,
             artifact_root=root,
         )
         if scanned.failure:
             return r[m.Infra.ModScanReport].from_failure(scanned)
-        for entry in scanned.value.entries:
+        report = cls._admitted(
+            view_root,
+            scanned.value,
+            {rule.id: rule for rule in plan.rules},
+            {
+                view_root / project.relative_to(root): rule_ids
+                for project, rule_ids in plan.project_rule_ids.items()
+            },
+            tuple(context.inventory.values()),
+        )
+        for entry in report.entries:
             relative = (
                 entry.file.relative_to(view_root)
                 if entry.file.is_absolute()
@@ -1742,24 +1584,29 @@ class FlextInfraModGateEngine:
                     update={
                         "file": relative,
                         "source_state": logical[(root / relative).resolve()],
+                        "binding_states": tuple(
+                            state.model_copy(
+                                update={
+                                    "path": root / state.path.relative_to(view_root)
+                                }
+                            )
+                            if state.path.is_relative_to(view_root)
+                            else state
+                            for state in entry.binding_states
+                        ),
                     }
                 )
             )
-        report = cls._admitted(
-            root,
-            cls.recounted(
-                tuple(entries),
-                source_states=source_states,
-                native_artifacts=scanned.value.native_artifacts,
-            ),
-            rules_by_id,
-            plan.project_rule_ids,
-            source_states,
+        report = cls.recounted(
+            tuple(entries),
+            native_artifacts=report.native_artifacts,
         )
-        declared = cls._validate_expected_receipts(plan.rules, report)
-        if declared.failure:
-            return r[m.Infra.ModScanReport].from_failure(declared)
-        return r[m.Infra.ModScanReport].ok(report)
+        current = cls._validate_expected_receipts(plan.rules, report)
+        if current.failure:
+            return r[m.Infra.ModScanReport].from_failure(current)
+        return u.Cli.atomic_verify_binary_file_states(candidate.inputs).map(
+            lambda _: report
+        )
 
 
 __all__: list[str] = ["FlextInfraModGateEngine"]

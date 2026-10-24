@@ -2,8 +2,10 @@ id: rewire-test-assert-message
 snapshots:
   assert self.value is not None, "A value is required":
     fixed: |-
-      if not (self.value is not None):
-          raise AssertionError("A value is required")
+      if self.value is not None:
+          pass
+      else:
+          tm.reject("A value is required")
     labels:
     - source: assert self.value is not None, "A value is required"
       style: primary
@@ -15,8 +17,10 @@ snapshots:
       end: 29
   assert value is None, "No value is expected":
     fixed: |-
-      if not (value is None):
-          raise AssertionError("No value is expected")
+      if value is None:
+          pass
+      else:
+          tm.reject("No value is expected")
     labels:
     - source: assert value is None, "No value is expected"
       style: primary

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +25,7 @@ class TestsFlextInfraAuditorStaleSymbols:
     def _write_demo_pyproject(self, root: Path) -> None:
         """Declare the demo distribution the public-contract reader resolves."""
         self._write(
-            root / "pyproject.toml",
+            root / c.PYPROJECT_FILENAME,
             (
                 "[project]\n"
                 'name = "demo-pkg"\n'
@@ -69,7 +69,7 @@ class TestsFlextInfraAuditorStaleSymbols:
             ),
         )
         self._write(
-            project / "pyproject.toml",
+            project / c.PYPROJECT_FILENAME,
             (
                 "[project]\n"
                 'name = "flext-demo"\n'
@@ -149,7 +149,7 @@ class TestsFlextInfraAuditorStaleSymbols:
         """Generated ABI ``__all__ = tuple(_PUBLIC_EXPORTS)`` must yield a contract."""
         package_root = tmp_path / "src" / "demo_pkg"
         self._write(
-            tmp_path / "pyproject.toml",
+            tmp_path / c.PYPROJECT_FILENAME,
             (
                 "[project]\n"
                 'name = "demo-pkg"\n'

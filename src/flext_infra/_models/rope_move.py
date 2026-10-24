@@ -53,7 +53,7 @@ class FlextInfraModelsRopeMove:
             m.Field(description="Prevalidated class-move request being planned"),
         ]
         declaration: Annotated[
-            t.Infra.RopePyName,
+            t.Port[t.Infra.RopePyName],
             m.Field(description="Original Rope identity of the moved declaration"),
         ]
         origin_module: Annotated[

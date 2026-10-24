@@ -1,0 +1,105 @@
+id: retire-publication-stack-cached-source-query
+snapshots:
+  ? |
+    def context(owner):
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+            source_project, contexts, owner, receipts, str(owner)
+        ) as cached:
+            if not cached:
+                contexts[owner] = build(owner)
+            return contexts[owner]
+  : fixed: |
+      def context(owner):
+          cached = owner in contexts
+          if not cached:
+              contexts[owner] = build(owner)
+          return contexts[owner]
+    labels:
+    - source: |-
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+                source_project, contexts, owner, receipts, str(owner)
+            ) as cached:
+                if not cached:
+                    contexts[owner] = build(owner)
+                return contexts[owner]
+      style: primary
+      start: 24
+      end: 260
+  ? |
+    def names(self, key):
+        with u.Infra.cached_source_query(
+            self.project, self._cache, key, self._receipts, f"k:{key}"
+        ) as cached:
+            if cached:
+                return self._cache[key]
+            value = build(key)
+            self._cache[key] = value
+            return value
+  : fixed: |
+      def names(self, key):
+          cached = key in self._cache
+          if cached:
+              return self._cache[key]
+          value = build(key)
+          self._cache[key] = value
+          return value
+    labels:
+    - source: |-
+        with u.Infra.cached_source_query(
+                self.project, self._cache, key, self._receipts, f"k:{key}"
+            ) as cached:
+                if cached:
+                    return self._cache[key]
+                value = build(key)
+                self._cache[key] = value
+                return value
+      style: primary
+      start: 26
+      end: 279
+  ? |
+    def query(cls, key):
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+            project, cache, key, receipts, key
+        ) as hit:
+            if hit:
+                return r[int].ok(cache[key])
+            loaded = load(key)
+        return loaded
+  : fixed: |
+      def query(cls, key):
+          hit = key in cache
+          if hit:
+              return r[int].ok(cache[key])
+          loaded = load(key)
+          return loaded
+    labels:
+    - source: |-
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+                project, cache, key, receipts, key
+            ) as hit:
+                if hit:
+                    return r[int].ok(cache[key])
+                loaded = load(key)
+      style: primary
+      start: 25
+      end: 226
+  ? |
+    def query(self, key):
+        with u.Infra.cached_source_query(project, cache, key, receipts, key) as cached:
+            if not cached:
+                cache[key] = build(key)
+        return cache[key]
+  : fixed: |
+      def query(self, key):
+          cached = key in cache
+          if not cached:
+              cache[key] = build(key)
+          return cache[key]
+    labels:
+    - source: |-
+        with u.Infra.cached_source_query(project, cache, key, receipts, key) as cached:
+                if not cached:
+                    cache[key] = build(key)
+      style: primary
+      start: 26
+      end: 164

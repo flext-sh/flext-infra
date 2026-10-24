@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -87,10 +87,10 @@ class FlextInfraModelsCodemod:
         snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
             description="Authenticated binding snapshot defining this source epoch"
         )
-        sources: MappingProxyType[Path, str] = m.Field(
+        sources: t.Port[MappingProxyType[Path, str]] = m.Field(
             description="Immutable decoded text for every present captured input"
         )
-        contents: MappingProxyType[Path, bytes] = m.Field(
+        contents: t.Port[MappingProxyType[Path, bytes]] = m.Field(
             description="Immutable original bytes for every present captured input"
         )
 
@@ -215,6 +215,36 @@ class FlextInfraModelsCodemod:
             ),
         ]
 
+    class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
+        """A validated owned-path finding in the native scanner wire format."""
+
+        origin: Literal["owned-path"] = m.Field(
+            default="owned-path", description="Native owned-path rule provenance"
+        )
+
+        @m.model_serializer
+        def _serialize(self) -> t.JsonMapping:
+            """Preserve the complete native record consumed by both scan routes.
+
+            Returns:
+                The native diagnostic with its original nested source range.
+
+            """
+            return {
+                "file": self.file,
+                "ruleId": self.rule_id,
+                "severity": self.severity,
+                "message": self.message,
+                "origin": self.origin,
+                "text": self.text,
+                "lines": self.lines,
+                "range": {
+                    "start": {"line": self.line, "column": self.column},
+                    "end": {"line": self.end_line, "column": self.end_column},
+                    "byteOffset": {"start": self.start_byte, "end": self.end_byte},
+                },
+            }
+
     class AstGrepReport(m.RootModel[tuple[AstGrepDiagnostic, ...]]):
         """Complete ``ast-grep scan --json=compact`` array; malformed input raises."""
 
@@ -234,14 +264,20 @@ class FlextInfraModelsCodemod:
     class RopeContractRule(m.ContractModel):
         """Identity-constrained native Rope restructuring of a Python contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True
-        )
-        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
-            default=(), exclude=True, description="Original recipe input receipts"
+        owner_root: Path | None = m.Field(
+            default=None,
+            exclude=True,
+            description=(
+                "Project root whose catalogue declares this rule; None for the "
+                "packaged universal policy"
+            ),
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
+        operation: Literal["restructure", "materialize-delegations"] = m.Field(
+            default="restructure",
+            description="Native contract operation executed in the shared source epoch",
+        )
         phase: c.Infra.SemanticCutoverPhase = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
             strict=False,

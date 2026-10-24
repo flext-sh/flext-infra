@@ -6,29 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, u
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, t, u
 
 
 class FlextInfraProjectClassifierDepsMixin:
     """Collect + normalize a project's declared dependency names.
 
-    Composed into FlextInfraProjectClassifier via inheritance; borrows
-    ``_as_mapping`` from the facade via FLEXT.
+    Composed into FlextInfraProjectClassifier via inheritance; owns the
+    mapping boundary shared by metadata and dependency parsing.
     """
-
-    if TYPE_CHECKING:
-
-        def _as_mapping(
-            self,
-            raw_value: t.JsonValue | None,
-        ) -> t.MappingKV[str, t.JsonValue]:
-            del raw_value
 
     def _append_project_dependencies(
         self,
@@ -66,6 +55,23 @@ class FlextInfraProjectClassifierDepsMixin:
             raw_mapping=self._as_mapping(raw_test_group.get(c.Infra.DEPENDENCIES)),
             dependencies=dependencies,
         )
+
+    @staticmethod
+    def _as_mapping(
+        raw_value: t.JsonValue | None,
+    ) -> t.MappingKV[str, t.JsonValue]:
+        """Validate one metadata mapping at the shared parsing boundary.
+
+        Returns:
+            The validated mapping, or an empty mapping for a non-mapping value.
+
+        """
+        if isinstance(raw_value, Mapping):
+            validated: t.MappingKV[str, t.JsonValue] = (
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
+            )
+            return validated
+        return {}
 
     def _append_poetry_dependency_mapping(
         self,

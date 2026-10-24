@@ -2,6 +2,7 @@
           persist-credentials: {{ persist_private_checkout_credentials | default(false) | lower }}
 
       - name: Init private workspace projects
+        shell: bash
         env:
 {% for key in private_submodules.deploy_keys %}
           {{ key.secret }}: {% raw %}${{ secrets.{% endraw %}{{ key.secret }}{% raw %} }}{% endraw %}

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import os
 import sysconfig
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from typing_extensions import TypeForm
@@ -17,12 +18,21 @@ from typing_extensions import TypeForm
 from flext_infra import FlextInfraConfig, check, config, deps
 from tests import c, m, t, tm, u
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for the Ruff phase and analyzer surface policy."""
+
+    @staticmethod
+    def _pairs(
+        entries: Sequence[tuple[str, t.JsonValue]],
+    ) -> list[t.JsonValue]:
+        """Render native option pairs as YAML sequences.
+
+        Returns:
+            One two-element sequence per option pair.
+
+        """
+        return [[key, value] for key, value in entries]
 
     @staticmethod
     def _yaml_settings_payload(
@@ -109,69 +119,69 @@ class TestsFlextInfraDepsModernizerTooling:
         "path", ["typings/vendor", "vendor-stubs", "stubs", "src/site-packages/stubs"]
     )
     def test_topology_cannot_reintroduce_local_stub_paths(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tmp_path: Path,
         path: str,
     ) -> None:
         """Derived native search paths obey the same law as native option pairs."""
-        tools = tool_config_document.tools
-        payload = {
-            **tool_config_document.model_dump(
-                by_alias=True, exclude_computed_fields=True
-            ),
-            "tools": {
-                **tools.model_dump(by_alias=True, exclude_computed_fields=True),
-                "pyrefly": {
-                    **tools.pyrefly.model_dump(
-                        by_alias=True, exclude_computed_fields=True
-                    ),
-                    "path-rules": {
-                        **tools.pyrefly.path_rules.model_dump(by_alias=True),
-                        "project-shared-search-paths": (path,),
+        root = u.Tests.git_repository(tmp_path, "path-policy")
+        declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
+        declaration.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                declaration,
+                {
+                    "Infra": {
+                        "tooling": {
+                            "tools": {
+                                "pyrefly": {
+                                    "path-rules": {
+                                        "project-shared-search-paths": [path]
+                                    },
+                                }
+                            }
+                        }
                     },
                 },
-            },
-        }
-        with pytest.raises(m.ValidationError, match="Local stub search roots"):
-            m.Infra.ToolConfigDocument.model_validate(payload)
+            )
+        )
+        tm.fail(u.Infra.load_tooling_inputs(root), has="Local stub search roots")
 
     @staticmethod
     def test_source_paths_and_installed_dependency_typing_are_preserved(
+        tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """Search-path option names are not banned, nor are installed third-party stubs."""
-        paths = [
+        """Search-path option names and installed third-party stubs stay legal."""
+        paths: list[t.JsonValue] = [
             "src",
             "../member/src",
             "src/pkg/_typings",
             f"{sysconfig.get_path('purelib')}/vendor-stubs",
         ]
-        payload = {
-            **tool_config_document.model_dump(
-                by_alias=True, exclude_computed_fields=True
-            ),
-            "derived-settings": {
-                **tool_config_document.derived_settings,
-                "mypy": tuple(
-                    key
-                    for key in tool_config_document.derived_settings["mypy"]
-                    if key != "mypy_path"
-                ),
-                "pyright": tuple(
-                    key
-                    for key in tool_config_document.derived_settings["pyright"]
-                    if key != "extraPaths"
-                ),
-            },
-            "settings": {
-                **tool_config_document.settings,
-                "mypy": (*tool_config_document.settings["mypy"], ("mypy_path", paths)),
-                "pyright": (
-                    *tool_config_document.settings["pyright"],
-                    ("extraPaths", paths),
-                ),
-            },
+        document = tool_config_document
+        payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(document)
+        removed_options = {("mypy", "mypy_path"), ("pyright", "extraPaths")}
+        derived: t.JsonDict = {
+            table: [key for key in keys if (table, key) not in removed_options]
+            for table, keys in document.derived_settings.items()
         }
-        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        extra: Mapping[str, tuple[str, t.JsonValue]] = {
+            "mypy": ("mypy_path", paths),
+            "pyright": ("extraPaths", paths),
+        }
+        settings: t.JsonDict = {
+            table: TestsFlextInfraDepsModernizerTooling._pairs(
+                (*entries, extra[table]) if table in extra else entries,
+            )
+            for table, entries in document.settings.items()
+        }
+        payload["derived-settings"] = derived
+        payload["settings"] = settings
+        root = u.Tests.git_repository(tmp_path, "source-policy")
+        declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
+        declaration.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.yaml_dump(declaration, {"Infra": {"tooling": payload}}))
+        validated = tm.ok(u.Infra.load_tooling_inputs(root)).document
         for table, key in (("mypy", "mypy_path"), ("pyright", "extraPaths")):
             tm.that(dict(validated.settings[table])[key], eq=paths)
 
@@ -186,7 +196,7 @@ class TestsFlextInfraDepsModernizerTooling:
         root = u.Tests.git_repository(tmp_path, "member-policy")
         path = os.path.relpath(
             f"{sysconfig.get_path('purelib')}/vendor-stubs",
-            start=root if relative_to_project else os.getcwd(),
+            start=root if relative_to_project else Path.cwd(),
         )
         declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
         declaration.parent.mkdir(parents=True, exist_ok=True)
@@ -476,7 +486,7 @@ class TestsFlextInfraDepsModernizerTooling:
         phase = deps.FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
         )
-        path = project_dir / "pyproject.toml"
+        path = project_dir / c.PYPROJECT_FILENAME
         _ = phase.apply_payload(payload, path=path)
         tm.that(phase.apply_payload(payload, path=path), empty=True)
         return payload, u.Tests.toml_mapping(
@@ -686,7 +696,7 @@ class TestsFlextInfraDepsModernizerTooling:
             "",
             encoding="utf-8",
         )
-        (project_dir / "pyproject.toml").write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "demo-migration-tool"\nversion = "0.1.0"\n'
             'dependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",

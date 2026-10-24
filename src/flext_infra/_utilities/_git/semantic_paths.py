@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
 from gitdb.util import LockedFD
 
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         """
         result_type = r[m.Infra.GitBoolReport]
         relative = cls._retirable_relative_path(request)
-        index_path = Path(cls._repo(request.repo_root).index.path)
+        index_path = cls._git_index_path(request.repo_root)
         entries = FlextInfraUtilitiesGitStateTreesMixin.state_snapshot_index(
             request.repo_root,
             (relative,),
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         if len(entries) != 1 or entries[0] != request.entry:
             msg = f"index artifact changed after planning: {relative}"
             raise ValueError(msg)
-        captured = cli_u.Cli.atomic_read_binary_file_state(index_path, required=True)
+        captured = u.Cli.atomic_read_binary_file_state(index_path, required=True)
         if captured.failure:
             return result_type.from_failure(captured)
         if captured.value.content is None:
@@ -329,6 +329,34 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             )
         return r[m.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(value=bool(listed.strip())),
+        )
+
+    @classmethod
+    def git_path_has_history(
+        cls,
+        request: m.Infra.GitRelativePathRequest,
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Report whether any native repository ref contains the declared path.
+
+        Returns:
+            The native history observation, or its original Git failure.
+
+        """
+        try:
+            with cls._repo(request.repo_root) as repo:
+                history = repo.iter_commits(
+                    "--all",
+                    paths=request.relative_path,
+                    max_count=1,
+                )
+                present = next(history, None) is not None
+        except (GitCommandError, OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to inspect path history: {exc}",
+                exception=exc,
+            )
+        return r[m.Infra.GitBoolReport].ok(
+            m.Infra.GitBoolReport(value=present),
         )
 
     @classmethod

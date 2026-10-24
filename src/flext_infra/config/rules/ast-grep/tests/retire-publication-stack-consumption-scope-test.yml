@@ -1,0 +1,15 @@
+id: retire-publication-stack-consumption-scope
+valid:
+  - |
+    with project.source_view() as view:
+        plan(view)
+  - |
+    planned = build(files)
+invalid:
+  - |
+    with project.source_consumption() as consumption:
+        planned = build(files)
+  - |
+    def run(project):
+        with binding[0].source_consumption():
+            return build()

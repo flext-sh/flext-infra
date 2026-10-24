@@ -9,6 +9,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
@@ -223,6 +225,8 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     TRANSACTION_STATE_DIRNAME: ClassVar[str] = ".state"
     "Root of regenerable codegen transaction state; never repository content."
+    MUTATION_LOCK_NAME: ClassVar[str] = "flext-infra.lock"
+    "Exclusive lock serializing every writer of one mutation scope."
     RELEASE_GITLEAKS_CONFIG_PATH: ClassVar[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
     PYPI_SIMPLE_INDEX_URL: ClassVar[str] = "https://pypi.org/simple"
@@ -297,7 +301,7 @@ class FlextInfraConstantsBase(
     class TomlMergeMode(StrEnum):
         """SSOT merge strategies for TOML list synchronization."""
 
-        REPLACE = "replace"
+        REPLACE = c.MergeStrategy.REPLACE
         ADDITIVE = "additive"
         MERGE = "merge"
 
@@ -331,7 +335,7 @@ class FlextInfraConstantsBase(
         """SSOT TOML phase operation kinds."""
 
         SET = "set"
-        LIST = "list"
+        LIST = c.Action.LIST
         REMOVE = "remove"
 
     @unique
@@ -357,7 +361,7 @@ class FlextInfraConstantsBase(
     RK_STATUS: ClassVar[str] = "status"
     RK_FILE: ClassVar[str] = "file"
     RK_MESSAGE: ClassVar[str] = "message"
-    RK_SUMMARY: ClassVar[str] = "summary"
+    RK_SUMMARY: ClassVar[str] = c.MetricType.SUMMARY
     RK_TOTAL: ClassVar[str] = "total"
     RK_RULES: ClassVar[str] = "rules"
     RK_RELEASE: ClassVar[str] = "release"

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ast
 from contextvars import ContextVar
+from importlib import import_module
 from pathlib import Path
 from typing import ClassVar
 
@@ -39,6 +40,7 @@ from flext_infra._utilities._rope_source_bases_runtime import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
 
 
 class FlextInfraUtilitiesCodemodBindingChain:
@@ -98,6 +100,13 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
+            if (
+                condition.predicate
+                is c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR
+            ):
+                return cls._declaration_decorator_holds(
+                    (project, module, scope), condition, sources
+                )
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
                 c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
@@ -163,19 +172,113 @@ class FlextInfraUtilitiesCodemodBindingChain:
                         else None
                     ),
                 )
-            if condition.predicate in {
-                c.Infra.CodemodContextPredicate.SAME_BINDING,
-                c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
-            } and not cls._subscript_bindings_stable(
-                project, module, text, (start, end), sources
-            ):
+            return (
+                condition.predicate
+                not in {
+                    c.Infra.CodemodContextPredicate.SAME_BINDING,
+                    c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
+                }
+                or cls._subscript_bindings_stable(
+                    project, module, text, (start, end), sources
+                )
+            ) and (
+                resolved_symbol
+                or cls._predicate_binding_verdict(
+                    (project, module, scope),
+                    condition,
+                    capture.text,
+                    start,
+                    sources,
+                )
+            )
+
+        @classmethod
+        def _declaration_decorator_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Resolve decorators of the captured native function, including aliases.
+
+            Returns:
+                Whether the declaration uses the configured decorator identity.
+
+            Raises:
+                TypeError: If the captured native function has no source definition.
+                ValueError: If the function has no declaring scope.
+
+            """
+            project, module, scope = frame
+            if scope.get_kind() != c.Infra.RopeScopeKind.FUNCTION:
                 return False
-            return resolved_symbol or cls._predicate_binding_verdict(
-                (project, module, scope),
-                condition,
-                capture.text,
-                start,
-                sources,
+            definition = scope.pyobject
+            node = definition.get_ast()
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                msg = "captured native function has no function syntax"
+                raise TypeError(msg)
+            declaring = scope.parent
+            if declaring is None:
+                msg = "captured native function has no declaring scope"
+                raise ValueError(msg)
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            return any(
+                cls._resolved_symbol_matches(
+                    project, condition, runtime.resolve_symbol(declaring, decorator)
+                )
+                and cls.stable_binding_chain(
+                    (project, module, declaring),
+                    ast.unparse(decorator),
+                    runtime.source_offset(module.source_code, decorator),
+                    sources,
+                )
+                for decorator in node.decorator_list
+            )
+
+        @staticmethod
+        def _facade_member_relocation(
+            condition: m.Infra.CodemodContextCondition,
+            captures: t.JsonMapping,
+        ) -> m.Infra.CodemodContextCondition | None:
+            """Derive the member relocation an owner policy implies.
+
+            The core package provides the facade families. When the target
+            letter owns the captured member by its runtime kind, the occurrence
+            needs exactly the native member-relocation proof from the
+            receiver letter to the owner; otherwise no relocation is implied.
+
+            Returns:
+                The member-relocation condition, or ``None`` when the target
+                letter does not own the member.
+
+            """
+            if condition.of is None or condition.of not in captures:
+                return None
+            receiver = m.Infra.AstGrepCapture.model_validate(
+                captures[condition.variable]
+            ).text
+            member = m.Infra.AstGrepCapture.model_validate(captures[condition.of]).text
+            target = condition.arg[0]
+            core = c.Infra.PKG_CORE_UNDERSCORE
+            facade = getattr(import_module(core), target, None)
+            if (
+                receiver == target
+                or not isinstance(facade, type)
+                or member not in dir(facade)
+                or FlextInfraUtilitiesFacadeMembers.facade_member_owner(
+                    getattr(facade, member)
+                )
+                != target
+            ):
+                return None
+            emitted = f"{target}.{member}"
+            return condition.model_copy(
+                update={
+                    "predicate": c.Infra.CodemodContextPredicate.MEMBER_RELOCATION,
+                    "arg": (core, receiver, emitted, core, emitted),
+                }
             )
 
         @classmethod
@@ -254,18 +357,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             project, module, scope = frame
+            target, _, emitted = condition.arg[2].partition(".")
             if (
-                condition.arg[2] != f"m.{reference[1]}"
+                emitted != reference[1]
+                or target == reference[0]
                 or condition.arg[4] != condition.arg[2]
             ):
                 return False
             if not (
-                cls.stable_binding_chain(frame, "m", start, sources)
+                cls.stable_binding_chain(frame, target, start, sources)
                 and cls.single_reaching_binding(module, scope, condition.arg[2], start)
             ):
                 return False
             actual = tuple(
-                runtime.expression_name(scope, name) for name in (reference[0], "m")
+                runtime.expression_name(scope, name) for name in (reference[0], target)
             )
             if actual[0] is None or actual[1] is None:
                 return False
@@ -273,7 +378,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 runtime.qualified_name(
                     project, condition.arg[1], module_name=condition.arg[0]
                 ),
-                runtime.qualified_name(project, "m", module_name=condition.arg[3]),
+                runtime.qualified_name(project, target, module_name=condition.arg[3]),
             )
             if not all(
                 FlextInfraUtilitiesRopeRuntime.abstract_class(binding.get_object())
@@ -347,13 +452,18 @@ class FlextInfraUtilitiesCodemodBindingChain:
             condition: m.Infra.CodemodContextCondition,
             occurrence: t.Triple[str, int, int],
         ) -> bool:
-            """Permit only a complete canonical BeforeValidator metadata call.
+            """Permit an executable reference or a complete metadata call.
+
+            Inside ``Annotated`` metadata the relocated member must be the
+            callable of a complete call (``m.BeforeValidator(...)``); bare type
+            data stays protected.
 
             Returns:
                 Whether the reference is executable outside protected type data.
 
             """
             text, start, end = occurrence
+            member = condition.arg[4].partition(".")[2]
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
             for match in finder.get_matches(
                 "${relocation_literal}[${relocation_values}]",
@@ -379,11 +489,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 if not left <= start < end <= right:
                     continue
                 annotated = True
-                if (
-                    condition.arg[3] != "flext_core"
-                    or condition.arg[4] != "m.BeforeValidator"
-                ):
-                    return False
                 metadata = (
                     FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
                         text, left, right, ","
@@ -394,11 +499,12 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     and FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
                         call, "relocation_callable"
                     )
-                    == (start, end + len(".BeforeValidator"))
-                    for call in finder.get_matches(
+                    == (start, end + len(f".{member}"))
+                    for pattern in (
                         "${relocation_callable}(${relocation_call_arguments})",
-                        {},
+                        "${relocation_callable}()",
                     )
+                    for call in finder.get_matches(pattern, {})
                 ):
                     return False
             if annotated:

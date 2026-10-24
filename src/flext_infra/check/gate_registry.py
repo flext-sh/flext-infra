@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,
@@ -35,6 +35,8 @@ from flext_infra.gates import (
     FlextInfraSmellsGate,
 )
 from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.project_module import FlextInfraProjectModuleGate
+from flext_infra.gates.runtime_integrity import FlextInfraRuntimeIntegrityGate
 
 if TYPE_CHECKING:
     from flext_infra.gates import FlextInfraGate
@@ -47,14 +49,13 @@ class FlextInfraGateRegistry:
         self,
         *,
         runners: t.MappingKV[str, p.Cli.CommandRunner] | None = None,
+        project_gates: t.SequenceOf[m.Infra.MakeProjectCheckGateSpec] = (),
     ) -> None:
         """Build the gate-id to gate-class mapping used by check execution.
 
-        ``c.Infra.GATE_TOOLS_BY_KIND`` is the sole gate vocabulary: every
-        registered class declares its ``gate_id`` from those same constants,
-        and the SARIF tool identity, the allowed gate set, and the fixable
-        vocabulary are all derived from that one declaration, so the
-        registry and the vocabulary cannot name different gates. Two classes
+        ``c.Infra.GATE_TOOLS_BY_KIND`` owns built-in vocabulary; the repository's
+        typed ``project_check_gates`` owns its native module extensions. The
+        registry is their exact union and rejects collisions. Two classes
         claiming one id remain a registration defect that fails the registry
         before a single gate can run, never a gate that silently cannot be
         reached through ``make check``.
@@ -70,7 +71,44 @@ class FlextInfraGateRegistry:
         if len(self._gates) != len(classes):
             msg = "gate registry declares duplicate gate ids"
             raise ValueError(msg)
+        for declaration in project_gates:
+            if declaration.name in self._gates:
+                msg = f"gate registry declares duplicate gate id: {declaration.name}"
+                raise ValueError(msg)
+            self._gates[declaration.name] = type(
+                declaration.name,
+                (FlextInfraProjectModuleGate,),
+                {
+                    "gate_id": declaration.name,
+                    "gate_name": declaration.name,
+                    "check_module_command_prefix": (
+                        declaration.module,
+                        *declaration.arguments,
+                    ),
+                    "check_timeout": declaration.timeout_seconds,
+                },
+            )
         self._runners = dict(runners or {})
+
+    @property
+    def gate_ids(self) -> t.StrTuple:
+        """Exact built-in and repository-declared gate vocabulary."""
+        return tuple(self._gates)
+
+    def applicable_gate_ids(
+        self, gate_ids: t.StrSequence, project_dir: Path
+    ) -> t.StrTuple:
+        """Elect applicability through each registered gate's existing owner.
+
+        Returns:
+            The gate identifiers selected for the project directory.
+
+        """
+        return tuple(
+            gate_id
+            for gate_id in gate_ids
+            if self._gates[gate_id](project_dir).selected_for(project_dir)
+        )
 
     @staticmethod
     def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:
@@ -81,6 +119,7 @@ class FlextInfraGateRegistry:
 
         """
         return (
+            FlextInfraRuntimeIntegrityGate,
             FlextInfraRuffLintGate,
             FlextInfraConflictMarkersGate,
             FlextInfraDepsGate,

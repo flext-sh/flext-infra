@@ -7,16 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import tm
-
-if TYPE_CHECKING:
-    from tests import t
+from flext_infra import config, m, u
+from flext_infra.codegen import FlextInfraCodegenConformExecute
+from tests import c, t, tm
 
 
 class TestsFlextInfraProjectGitignorePatterns:
@@ -108,8 +104,10 @@ class TestsFlextInfraProjectGitignorePatterns:
             {"tooling.yaml": "ManagedArtifacts:\n  Gitignore:\n    patterns: ['']\n"},
         )
 
-        with pytest.raises(m.ValidationError):
-            u.Infra.load_project_managed_artifacts(root)
+        loaded = u.Infra.load_project_managed_artifacts(root)
+
+        tm.fail(loaded)
+        tm.that(loaded.error or "", has="at least 1 character")
 
     @staticmethod
     def _external_project(root: Path) -> Path:
@@ -160,13 +158,13 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
         planned = tm.ok(
-            FlextInfraCodegenConform.compose_project_artifact(
+            FlextInfraCodegenConformExecute.compose_project_artifact(
                 root,
                 c.Infra.GITIGNORE,
                 template,
             ),
         )
-        tm.that(planned.rendered == first, truth=True)
+        tm.that(planned == first, truth=True)
         tm.that(external in first, truth=True)
         tm.that("old policy" not in first, truth=True)
         (root / ".gitignore").write_bytes(first.encode())
@@ -185,14 +183,25 @@ class TestsFlextInfraProjectGitignorePatterns:
         root = self._external_project(tmp_path / "project")
         tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         relative = Path("runtime-binding.json")
-        artifact = m.Infra.ManagedFileSpec(
-            path=relative,
-            owner=c.Infra.CODEGEN_OWNER_VSCODE,
-            policy="merge",
-            tracking="runtime-local",
+        artifact = m.Infra.TemplateDeclarationSpec(
+            profiles=(c.Infra.MakeProfile.STANDALONE,),
+            ownership=m.Infra.ManagedFileOwnership(
+                owner=c.Infra.CODEGEN_OWNER_VSCODE,
+                policy="merge",
+                tracking="runtime-local",
+            ),
+        )
+        templates = m.Infra.TemplatesSpec.model_validate(
+            {
+                "root": config.Infra.codegen.templates.root,
+                "entries": {
+                    **config.Infra.codegen.templates.catalog,
+                    relative.as_posix(): artifact,
+                },
+            },
         )
         codegen = config.Infra.codegen.model_copy(
-            update={"managed_files": (artifact,)},
+            update={"templates": templates},
         )
         external = (
             "# BEGIN external projection\n"

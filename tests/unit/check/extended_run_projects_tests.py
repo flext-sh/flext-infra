@@ -88,8 +88,7 @@ class TestsFlextInfraRunProjects:
 
         tm.ok(result)
         tm.that(tuple(result.value[0].gates), eq=("lint",))
-        receipt = result.value[0].gates["lint"].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(result.value[0].gates["lint"].raw_receipt)
         tm.that(receipt.parent.name, eq="p1")
         tm.ok((receipt.parent.parent / report_name).exists())
         tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")

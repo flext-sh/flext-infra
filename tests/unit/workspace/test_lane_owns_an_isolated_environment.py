@@ -152,8 +152,8 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
 
         tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
-        tm.that((lane / "member" / ".git").exists(), truth=True)
-        tm.that((repository / "member" / ".git").exists(), truth=False)
+        tm.that((lane / "member" / c.GIT_DIR_NAME).exists(), truth=True)
+        tm.that((repository / "member" / c.GIT_DIR_NAME).exists(), truth=False)
 
     def test_existing_real_lane_environment_is_preserved(self, tmp_path: Path) -> None:
         """Test existing real lane environment is preserved."""

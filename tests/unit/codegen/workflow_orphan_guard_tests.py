@@ -6,13 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_infra import config
-from tests import tm
-
-if TYPE_CHECKING:
-    from tests import t
+from tests import t, tm
 
 
 class TestsFlextInfraWorkflowOrphanGuard:
@@ -46,7 +41,7 @@ class TestsFlextInfraWorkflowOrphanGuard:
             destination = entry.destination
             if destination.startswith(self._WORKFLOW_PREFIX):
                 declared.add(destination.removeprefix(self._WORKFLOW_PREFIX))
-        for managed in config.Infra.codegen.managed_files:
+        for managed in config.Infra.codegen.managed_file_specs:
             destination = managed.path.as_posix()
             if destination.startswith(self._WORKFLOW_PREFIX):
                 declared.add(destination.removeprefix(self._WORKFLOW_PREFIX))

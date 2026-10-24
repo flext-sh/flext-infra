@@ -15,9 +15,6 @@ from flext_core.lazy import install_lazy_exports
 if TYPE_CHECKING:
     from flext_infra._models._codegen.base import FlextInfraCodegen
     from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-    from flext_infra._models._codegen.journal import (
-        FlextInfraModelsCodegenJournalModels,
-    )
     from flext_infra._models._codegen.lazy_init import (
         FlextInfraModelsCodegenLazyInitModels,
     )
@@ -35,7 +32,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraCodegen",
     "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",
     "FlextInfraModelsCodegenPipelineModels",
     "FlextInfraModelsCodegenScaffoldModels",
@@ -48,7 +44,6 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodegen": ".base",
         "FlextInfraModelsCodegenFixModels": ".fix",
-        "FlextInfraModelsCodegenJournalModels": ".journal",
         "FlextInfraModelsCodegenLazyInitModels": ".lazy_init",
         "FlextInfraModelsCodegenPipelineModels": ".pipeline",
         "FlextInfraModelsCodegenScaffoldModels": ".scaffold",

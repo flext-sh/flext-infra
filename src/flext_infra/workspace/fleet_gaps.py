@@ -182,7 +182,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             (
                 c.Infra.GH,
                 "pr",
-                "list",
+                c.Action.LIST,
                 "--state",
                 "open",
                 "--json",

@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, p, t, tm, u
 
 
@@ -60,7 +60,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(
+        service = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,
@@ -108,7 +108,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -560,7 +560,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan: m.Infra.CodegenPlan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=repository_root,
                 state=m.Infra.CodegenConformState(
                     repository_root=repository_root,

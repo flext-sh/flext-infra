@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
-from tests import tm
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,8 +25,8 @@ class TestsFlextInfraImportDag:
     @staticmethod
     def _project(tmp_path: Path, files: t.MappingKV[str, str]) -> Path:
         project = tmp_path / "sample"
-        (project / "pyproject.toml").parent.mkdir(parents=True, exist_ok=True)
-        (project / "pyproject.toml").write_text(
+        (project / c.PYPROJECT_FILENAME).parent.mkdir(parents=True, exist_ok=True)
+        (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "sample"\nversion = "0.0.1"\n',
             encoding="utf-8",
         )
@@ -43,10 +43,10 @@ class TestsFlextInfraImportDag:
             ("tests/protocols.py", "from tests.typings import T\n"),
             ("tests/models.py", "from tests.protocols import P\n"),
             ("tests/utilities.py", "from tests.models import M\n"),
-            ("tests/constants.py", "from tests import c\n"),
+            ("tests/constants.py", "from tests import c, r\n"),
             ("tests/models.py", "from tests.fixtures.users import user\n"),
             ("tests/__init__.py", "from tests.conftest import fixture\n"),
-            ("src/sample/api.py", "from tests import u\n"),
+            ("src/sample/api.py", "from tests import c, r, u\n"),
         ],
     )
     def test_forbidden_edges_fail(

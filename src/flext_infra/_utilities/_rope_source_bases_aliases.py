@@ -10,13 +10,11 @@ import ast
 import importlib.util
 from pathlib import Path
 
-from flext_core import build_lazy_import_map, u as core_u
+from flext_cli import u
+from flext_core import build_lazy_import_map
 from typing_extensions import TypeForm
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
 from flext_infra._utilities.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -208,8 +206,6 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                     argument = positional_mapping
                 case _:
                     return None
-        if argument is None:
-            return None
         mapping = ast.get_source_segment(call_source, argument)
         if mapping is None:
             message = "Lazy export mapping argument has no native source span"
@@ -239,11 +235,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         visited = set(ancestors)
         while True:
             if isinstance(node, ast.Dict):
-                literal = ast.get_source_segment(expression, node)
-                if literal is None:
-                    message = "Lazy alias mapping has no native source span"
-                    raise ValueError(message)
-                return literal
+                return cls._alias_literal_source(expression, node)
             if isinstance(node, ast.Call):
                 if cls._native_alias_callable(
                     node.func,
@@ -293,6 +285,23 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             module = provider
             expression = provider.source_code
             scope = provider.get_scope()
+
+    @staticmethod
+    def _alias_literal_source(source: str, node: ast.Dict) -> str:
+        """Read the authenticated mapping's native source span.
+
+        Returns:
+            The complete dictionary expression.
+
+        Raises:
+            ValueError: The native mapping has no source span.
+
+        """
+        literal = ast.get_source_segment(source, node)
+        if literal is None:
+            message = "Lazy alias mapping has no native source span"
+            raise ValueError(message)
+        return literal
 
     @staticmethod
     def _native_alias_callable(
@@ -375,19 +384,24 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 cls._declared_alias_mapping_source(expression, module, ancestors)
             )
             if name == "module_groups":
-                modules = core_u.type_adapter(
+                modules = u.type_adapter(
                     TypeForm(t.MappingKV[str, t.StrSequence])
                 ).validate_python(literal, strict=True)
             else:
-                aliases = core_u.type_adapter(
+                aliases = u.type_adapter(
                     TypeForm(t.MappingKV[str, t.SequenceOf[t.StrPair]])
                 ).validate_python(literal, strict=True)
         sort = arguments.get("sort_keys", ast.Constant(value=True))
-        if not isinstance(sort, ast.Constant) or not isinstance(sort.value, bool):
-            message = "Lazy builder ordering requires a literal boolean"
-            raise ValueError(message)
+        match sort:
+            case ast.Constant(value=True):
+                sort_keys = True
+            case ast.Constant(value=False):
+                sort_keys = False
+            case _:
+                message = "Lazy builder ordering requires a literal boolean"
+                raise ValueError(message)
         return repr(
-            build_lazy_import_map(modules, alias_groups=aliases, sort_keys=sort.value)
+            build_lazy_import_map(modules, alias_groups=aliases, sort_keys=sort_keys)
         )
 
     @staticmethod
@@ -414,7 +428,23 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         return ".".join(part for part in (base, remainder) if part)
 
     @staticmethod
-    def _literal_exports(source: str) -> t.LazyAliasMap:
+    def _alias_literal_string(node: ast.expr) -> str | None:
+        """Decode one native string constant without executing its expression.
+
+        Returns:
+            The sole primitive string constant, or None for another expression.
+
+        """
+        code = compile(
+            ast.Expression(body=node), "<native constant>", "eval", dont_inherit=True
+        )
+        if code.co_names or code.co_freevars or len(code.co_consts) != 1:
+            return None
+        value = code.co_consts[0]
+        return value if isinstance(value, str) else None
+
+    @classmethod
+    def _literal_exports(cls, source: str) -> t.LazyAliasMap:
         """Read the current native lazy export encodings from source regions.
 
         Returns:
@@ -425,33 +455,27 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 or a provider/attribute pair.
 
         """
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         source = source.strip()
         if not (source.startswith("{") and source.endswith("}")):
             return {}
         result: t.MutableMappingKV[str, t.StrPair] = {}
-        split = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments
-        for begin, end in split(source, 1, len(source) - 1, ","):
-            match split(source, begin, end, ":"):
-                case [(key_start, key_end), (value_start, value_end)]:
-                    pass
-                case _:
-                    return {}
-            key = refactors.literal_string(source[key_start:key_end])
+        mapping = ast.parse(source, mode="eval").body
+        if not isinstance(mapping, ast.Dict):
+            return {}
+        for key_node, value_node in zip(mapping.keys, mapping.values, strict=True):
+            if key_node is None:
+                return {}
+            key = cls._alias_literal_string(key_node)
             if key is None:
                 message = "Lazy export names require literal strings"
                 raise ValueError(message)
-            expression = source[value_start:value_end].strip()
-            provider = refactors.literal_string(expression)
+            provider = cls._alias_literal_string(value_node)
             if provider is not None:
                 result[key] = (provider, key)
                 continue
             pair = (
-                tuple(
-                    refactors.literal_string(expression[start:stop])
-                    for start, stop in split(expression, 1, len(expression) - 1, ",")
-                )
-                if expression.startswith("(") and expression.endswith(")")
+                tuple(cls._alias_literal_string(element) for element in value_node.elts)
+                if isinstance(value_node, ast.Tuple)
                 else ()
             )
             match pair:

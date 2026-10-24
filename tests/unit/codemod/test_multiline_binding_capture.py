@@ -16,7 +16,7 @@ from tests import c, m, t, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import p
+from tests import p
 
 
 class TestsFlextInfraMultilineBindingCapture:

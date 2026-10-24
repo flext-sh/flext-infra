@@ -202,16 +202,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin:
             return r[c.Infra.ToolOutcome].fail(
                 "check report has no completed target inventory"
             )
-        if (
-            len(summary.targets) != len(summary.results)
-            or tuple(target.name for target in summary.targets)
-            != tuple(result.project for result in summary.results)
-            or not summary.requested_gates
-            or any(
-                set(result.gates) != set(summary.requested_gates)
-                for result in summary.results
-            )
-        ):
+        if not summary.complete:
             return r[c.Infra.ToolOutcome].fail(
                 "check report target accounting is incomplete"
             )

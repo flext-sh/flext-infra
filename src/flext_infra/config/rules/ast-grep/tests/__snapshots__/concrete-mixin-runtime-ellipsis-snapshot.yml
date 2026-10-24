@@ -1,12 +1,331 @@
 id: concrete-mixin-runtime-ellipsis
 snapshots:
   ? |
+    # AUTO-GENERATED FILE
+    class Runtime:
+        if TYPE_CHECKING:
+            @classmethod
+            def process(cls, value: str) -> str:
+                del value
+  : labels:
+    - source: |-
+        def process(cls, value: str) -> str:
+                    del value
+      style: primary
+      start: 88
+      end: 146
+    - source: process
+      style: secondary
+      start: 92
+      end: 99
+    - source: del value
+      style: secondary
+      start: 137
+      end: 146
+    - source: del value
+      style: secondary
+      start: 137
+      end: 146
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 44
+      end: 57
+    - source: |-
+        if TYPE_CHECKING:
+                @classmethod
+                def process(cls, value: str) -> str:
+                    del value
+      style: secondary
+      start: 41
+      end: 146
+    - source: Runtime
+      style: secondary
+      start: 28
+      end: 35
+    - source: |-
+        class Runtime:
+            if TYPE_CHECKING:
+                @classmethod
+                def process(cls, value: str) -> str:
+                    del value
+      style: secondary
+      start: 22
+      end: 146
+  ? |
+    class Runtime:
+        if TYPE_CHECKING:
+            @property
+            def source_project(self) -> Project: ...
+  : labels:
+    - source: 'def source_project(self) -> Project: ...'
+      style: primary
+      start: 63
+      end: 103
+    - source: source_project
+      style: secondary
+      start: 67
+      end: 81
+    - source: '...'
+      style: secondary
+      start: 100
+      end: 103
+    - source: '...'
+      style: secondary
+      start: 100
+      end: 103
+    - source: '...'
+      style: secondary
+      start: 100
+      end: 103
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 22
+      end: 35
+    - source: |-
+        if TYPE_CHECKING:
+                @property
+                def source_project(self) -> Project: ...
+      style: secondary
+      start: 19
+      end: 103
+    - source: Runtime
+      style: secondary
+      start: 6
+      end: 13
+    - source: |-
+        class Runtime:
+            if TYPE_CHECKING:
+                @property
+                def source_project(self) -> Project: ...
+      style: secondary
+      start: 0
+      end: 103
+  ? |
+    class Runtime:
+        if TYPE_CHECKING:
+            async def process(self, value: str) -> str:
+                del value
+  : labels:
+    - source: |-
+        async def process(self, value: str) -> str:
+                    del value
+      style: primary
+      start: 45
+      end: 110
+    - source: process
+      style: secondary
+      start: 55
+      end: 62
+    - source: del value
+      style: secondary
+      start: 101
+      end: 110
+    - source: del value
+      style: secondary
+      start: 101
+      end: 110
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 22
+      end: 35
+    - source: |-
+        if TYPE_CHECKING:
+                async def process(self, value: str) -> str:
+                    del value
+      style: secondary
+      start: 19
+      end: 110
+    - source: Runtime
+      style: secondary
+      start: 6
+      end: 13
+    - source: |-
+        class Runtime:
+            if TYPE_CHECKING:
+                async def process(self, value: str) -> str:
+                    del value
+      style: secondary
+      start: 0
+      end: 110
+  ? |
+    class Runtime:
+        if TYPE_CHECKING:
+            def cleanup(self, plan: Plan) -> Result:
+                del plan
+                raise NotImplementedError(type(self).__qualname__)
+  : labels:
+    - source: |-
+        def cleanup(self, plan: Plan) -> Result:
+                    del plan
+                    raise NotImplementedError(type(self).__qualname__)
+      style: primary
+      start: 45
+      end: 169
+    - source: cleanup
+      style: secondary
+      start: 49
+      end: 56
+    - source: del plan
+      style: secondary
+      start: 98
+      end: 106
+    - source: |-
+        del plan
+                    raise NotImplementedError(type(self).__qualname__)
+      style: secondary
+      start: 98
+      end: 169
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 22
+      end: 35
+    - source: |-
+        if TYPE_CHECKING:
+                def cleanup(self, plan: Plan) -> Result:
+                    del plan
+                    raise NotImplementedError(type(self).__qualname__)
+      style: secondary
+      start: 19
+      end: 169
+    - source: Runtime
+      style: secondary
+      start: 6
+      end: 13
+    - source: |-
+        class Runtime:
+            if TYPE_CHECKING:
+                def cleanup(self, plan: Plan) -> Result:
+                    del plan
+                    raise NotImplementedError(type(self).__qualname__)
+      style: secondary
+      start: 0
+      end: 169
+  ? |
+    class Runtime:
+        if TYPE_CHECKING:
+            def process(self, value: str) -> str:
+                """A copied signature is still a shell."""
+                del value
+  : labels:
+    - source: |-
+        def process(self, value: str) -> str:
+                    """A copied signature is still a shell."""
+                    del value
+      style: primary
+      start: 45
+      end: 159
+    - source: process
+      style: secondary
+      start: 49
+      end: 56
+    - source: del value
+      style: secondary
+      start: 150
+      end: 159
+    - source: |-
+        """A copied signature is still a shell."""
+                    del value
+      style: secondary
+      start: 95
+      end: 159
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 22
+      end: 35
+    - source: |-
+        if TYPE_CHECKING:
+                def process(self, value: str) -> str:
+                    """A copied signature is still a shell."""
+                    del value
+      style: secondary
+      start: 19
+      end: 159
+    - source: Runtime
+      style: secondary
+      start: 6
+      end: 13
+    - source: |-
+        class Runtime:
+            if TYPE_CHECKING:
+                def process(self, value: str) -> str:
+                    """A copied signature is still a shell."""
+                    del value
+      style: secondary
+      start: 0
+      end: 159
+  ? |
+    class Runtime:
+        if typing.TYPE_CHECKING:
+            @staticmethod
+            def generated(content: bytes | None) -> bool:
+                del content
+  : labels:
+    - source: |-
+        def generated(content: bytes | None) -> bool:
+                    del content
+      style: primary
+      start: 74
+      end: 143
+    - source: generated
+      style: secondary
+      start: 78
+      end: 87
+    - source: del content
+      style: secondary
+      start: 132
+      end: 143
+    - source: del content
+      style: secondary
+      start: 132
+      end: 143
+    - source: typing.TYPE_CHECKING
+      style: secondary
+      start: 22
+      end: 42
+    - source: |-
+        if typing.TYPE_CHECKING:
+                @staticmethod
+                def generated(content: bytes | None) -> bool:
+                    del content
+      style: secondary
+      start: 19
+      end: 143
+    - source: Runtime
+      style: secondary
+      start: 6
+      end: 13
+    - source: |-
+        class Runtime:
+            if typing.TYPE_CHECKING:
+                @staticmethod
+                def generated(content: bytes | None) -> bool:
+                    del content
+      style: secondary
+      start: 0
+      end: 143
+  ? |
     class RuntimeMixin:
         def run(self) -> int: ...
   : labels:
     - source: 'def run(self) -> int: ...'
       style: primary
       start: 24
+      end: 49
+    - source: run
+      style: secondary
+      start: 28
+      end: 31
+    - source: '...'
+      style: secondary
+      start: 46
+      end: 49
+    - source: '...'
+      style: secondary
+      start: 46
+      end: 49
+    - source: '...'
+      style: secondary
+      start: 46
       end: 49
     - source: RuntimeMixin
       style: secondary
@@ -18,7 +337,229 @@ snapshots:
       style: secondary
       start: 0
       end: 49
-    - source: 'def run(self) -> int: ...'
+  ? |
+    from abc import ABC, abstractmethod as required
+    class ReaderMixin(ABC):
+        @required
+        def read(self) -> str: ...
+  : labels:
+    - source: 'def read(self) -> str: ...'
+      style: primary
+      start: 90
+      end: 116
+    - source: read
       style: secondary
-      start: 24
-      end: 49
+      start: 94
+      end: 98
+    - source: '...'
+      style: secondary
+      start: 113
+      end: 116
+    - source: '...'
+      style: secondary
+      start: 113
+      end: 116
+    - source: '...'
+      style: secondary
+      start: 113
+      end: 116
+    - source: ReaderMixin
+      style: secondary
+      start: 54
+      end: 65
+    - source: |-
+        class ReaderMixin(ABC):
+            @required
+            def read(self) -> str: ...
+      style: secondary
+      start: 48
+      end: 116
+  ? |
+    from typing import Protocol as Contract
+    class ReaderMixin(Contract):
+        def read(self) -> str: ...
+  : labels:
+    - source: 'def read(self) -> str: ...'
+      style: primary
+      start: 73
+      end: 99
+    - source: read
+      style: secondary
+      start: 77
+      end: 81
+    - source: '...'
+      style: secondary
+      start: 96
+      end: 99
+    - source: '...'
+      style: secondary
+      start: 96
+      end: 99
+    - source: '...'
+      style: secondary
+      start: 96
+      end: 99
+    - source: ReaderMixin
+      style: secondary
+      start: 46
+      end: 57
+    - source: |-
+        class ReaderMixin(Contract):
+            def read(self) -> str: ...
+      style: secondary
+      start: 40
+      end: 99
+  ? |
+    from typing import TYPE_CHECKING as types_only
+    class Runtime:
+        if types_only:
+            def process(self, state, *, dry_run):
+                del state, dry_run
+  : labels:
+    - source: |-
+        def process(self, state, *, dry_run):
+                    del state, dry_run
+      style: primary
+      start: 89
+      end: 157
+    - source: process
+      style: secondary
+      start: 93
+      end: 100
+    - source: del state, dry_run
+      style: secondary
+      start: 139
+      end: 157
+    - source: del state, dry_run
+      style: secondary
+      start: 139
+      end: 157
+    - source: types_only
+      style: secondary
+      start: 69
+      end: 79
+    - source: |-
+        if types_only:
+                def process(self, state, *, dry_run):
+                    del state, dry_run
+      style: secondary
+      start: 66
+      end: 157
+    - source: Runtime
+      style: secondary
+      start: 53
+      end: 60
+    - source: |-
+        class Runtime:
+            if types_only:
+                def process(self, state, *, dry_run):
+                    del state, dry_run
+      style: secondary
+      start: 47
+      end: 157
+  ? |
+    from typing import overload as signature
+    class Runtime:
+        if TYPE_CHECKING:
+            @signature
+            def select(self, value: int) -> int: ...
+            @signature
+            def select(self, value: str) -> str: ...
+        def select(self, value: int | str) -> int | str:
+            return value
+  : labels:
+    - source: 'def select(self, value: int) -> int: ...'
+      style: primary
+      start: 105
+      end: 145
+    - source: select
+      style: secondary
+      start: 109
+      end: 115
+    - source: '...'
+      style: secondary
+      start: 142
+      end: 145
+    - source: '...'
+      style: secondary
+      start: 142
+      end: 145
+    - source: '...'
+      style: secondary
+      start: 142
+      end: 145
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 63
+      end: 76
+    - source: |-
+        if TYPE_CHECKING:
+                @signature
+                def select(self, value: int) -> int: ...
+                @signature
+                def select(self, value: str) -> str: ...
+      style: secondary
+      start: 60
+      end: 213
+    - source: Runtime
+      style: secondary
+      start: 47
+      end: 54
+    - source: |-
+        class Runtime:
+            if TYPE_CHECKING:
+                @signature
+                def select(self, value: int) -> int: ...
+                @signature
+                def select(self, value: str) -> str: ...
+            def select(self, value: int | str) -> int | str:
+                return value
+      style: secondary
+      start: 41
+      end: 287
+  ? |
+    if TYPE_CHECKING:
+        class Runtime:
+            def run(self) -> int: ...
+  : labels:
+    - source: 'def run(self) -> int: ...'
+      style: primary
+      start: 45
+      end: 70
+    - source: run
+      style: secondary
+      start: 49
+      end: 52
+    - source: '...'
+      style: secondary
+      start: 67
+      end: 70
+    - source: '...'
+      style: secondary
+      start: 67
+      end: 70
+    - source: '...'
+      style: secondary
+      start: 67
+      end: 70
+    - source: TYPE_CHECKING
+      style: secondary
+      start: 3
+      end: 16
+    - source: |-
+        if TYPE_CHECKING:
+            class Runtime:
+                def run(self) -> int: ...
+      style: secondary
+      start: 0
+      end: 70
+    - source: Runtime
+      style: secondary
+      start: 28
+      end: 35
+    - source: |-
+        class Runtime:
+                def run(self) -> int: ...
+      style: secondary
+      start: 22
+      end: 70

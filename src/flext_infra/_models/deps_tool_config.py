@@ -6,14 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sysconfig
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,
@@ -132,18 +130,12 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(
                 alias="run-timeout-seconds",
                 gt=0,
+                le=120,
                 description=(
                     "Fleet-default wall-clock maximum for one testmon runner operation."
                 ),
             ),
         ]
-        run_timeout_overrides: Annotated[
-            Mapping[str, Annotated[int, m.Field(gt=0)]],
-            m.Field(
-                alias="run-timeout-overrides",
-                description="Per-project hard wall for one testmon runner operation.",
-            ),
-        ] = {}
         termination_grace_seconds: Annotated[
             int,
             m.Field(
@@ -347,21 +339,17 @@ class FlextInfraModelsDepsToolConfig(
         @property
         def parallel_arguments(self) -> t.StrTuple:
             """Native scheduler arguments derived from the typed policy."""
-            scheduling = (
+            reorder = (
+                "--loadscope-reorder"
+                if self.loadscope_reorder
+                else "--no-loadscope-reorder"
+            )
+            scheduling: t.StrTuple = (
                 ("--maxschedchunk", str(self.parallel_schedule_chunk))
                 if self.parallel_distribution == "load"
-                else (
-                    "--loadscope-reorder"
-                    if self.loadscope_reorder
-                    else "--no-loadscope-reorder",
-                )
+                else (reorder,)
             )
             return ("--dist", self.parallel_distribution, *scheduling)
-
-        @property
-        def process_timeout_seconds(self) -> int:
-            """Derive the fleet-default outer wall without a second config field."""
-            return self.run_timeout_seconds + (self.termination_grace_seconds * 2)
 
         @property
         def slow_suite_stop_reserve_seconds(self) -> int:
@@ -411,13 +399,7 @@ class FlextInfraModelsDepsToolConfig(
             # Only the slow phase has a bounded item drain. Ordinary items are
             # stopped by the aggregate process wall, not a synthetic item cap.
             reserve = self.slow_suite_stop_reserve_seconds
-            if any(
-                timeout <= reserve
-                for timeout in (
-                    self.run_timeout_seconds,
-                    *self.run_timeout_overrides.values(),
-                )
-            ):
+            if self.run_timeout_seconds <= reserve:
                 msg = "pytest run timeout must exceed the suite stop reserve"
                 raise ValueError(msg)
             if "--verbose" not in self.progress_args:
@@ -579,6 +561,19 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+        layer_aliases: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                alias="layer-aliases",
+                description=(
+                    "Runtime aliases of the core package that rank inside a "
+                    "declared layer instead of forming their own: the alias "
+                    "and the module the core package binds it to share that "
+                    "layer's rank. Same-rank imports are runtime-legal; the "
+                    "import-cycle law keeps them acyclic."
+                ),
+            ),
+        ]
         reverse_import_mode: Annotated[
             Literal["type_checking"],
             m.Field(
@@ -603,6 +598,79 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+
+        @m.model_validator(mode="after")
+        def _validate_layer_aliases(self) -> Self:
+            """Bind every alias to a declared layer and keep it out of the order.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If an alias is itself a layer or names an
+                    undeclared layer.
+
+            """
+            for alias, layer in self.layer_aliases.items():
+                if alias in self.import_layer_order:
+                    msg = f"layer alias is already a declared layer: {alias}"
+                    raise ValueError(msg)
+                if layer not in self.import_layer_order:
+                    msg = f"layer alias {alias} names an undeclared layer: {layer}"
+                    raise ValueError(msg)
+            return self
+
+    class FacadeMembersConfig(m.ArbitraryTypesModel):
+        """Single owner of every facade member, derived from its runtime object."""
+
+        owners: Annotated[
+            t.MappingKV[c.Infra.FacadeMemberKind, t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Facade letter that owns each member kind. A member bound "
+                    "by another facade letter is a duplicate retired there and "
+                    "consumed through its owner."
+                ),
+            ),
+        ]
+        model_declaration_modules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="model-declaration-modules",
+                description=(
+                    "Modules of the model library whose callables declare "
+                    "models (field specifiers, validators, serializers)."
+                ),
+            ),
+        ]
+        type_constructor_modules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="type-constructor-modules",
+                description=(
+                    "Modules of the model library whose callables build "
+                    "constrained types (``constr``, ``conint``) used in "
+                    "annotations."
+                ),
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_owner_kinds(self) -> Self:
+            """Require one owner for every member kind.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If a member kind has no declared owner.
+
+            """
+            missing = set(c.Infra.FacadeMemberKind) - set(self.owners)
+            if missing:
+                msg = f"facade member kinds without owner: {sorted(missing)}"
+                raise ValueError(msg)
+            return self
 
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
@@ -656,6 +724,10 @@ class FlextInfraModelsDepsToolConfig(
         lazy_init: FlextInfraModelsDepsToolConfig.LazyInitConfig = m.Field(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
+        )
+        facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
+            alias="facade-members",
+            description="Declarative single-owner policy for facade members.",
         )
 
         mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(
@@ -821,14 +893,14 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         @m.model_validator(mode="after")
-        def validate_no_local_stubs(self, info: m.ValidationInfo) -> Self:
-            """Reject local stub resolution and producer options in every typed layer.
+        def validate_no_local_stubs(self) -> Self:
+            """Reject stub option and producer structure in every typed layer.
+
+            The name and nested-value checks raise ``ValueError`` when an option
+            restores a local stub root or producer.
 
             Returns:
                 Source import paths and installed dependency typing unchanged.
-
-            Raises:
-                ValueError: If an option restores a local stub root or producer.
 
             """
             forbidden = {
@@ -843,36 +915,22 @@ class FlextInfraModelsDepsToolConfig(
                 "stubgen",
                 "generatestubs",
             }
+            self._reject_stub_option_names(forbidden)
+            self._reject_stub_option_values(forbidden)
+            return self
+
+        def _reject_stub_option_names(self, forbidden: t.Infra.StrSet) -> None:
+            """Reject declared table and option names that restore local stubs.
+
+            Raises:
+                ValueError: If a declared name segment matches a forbidden option.
+
+            """
             declared_names = (
                 *self.settings,
                 *self.derived_tool_roots,
                 *self.derived_settings,
                 *(key for keys in self.derived_settings.values() for key in keys),
-            )
-            pending: list[tuple[str, t.JsonValue]] = [
-                (key, value) for pairs in self.settings.values() for key, value in pairs
-            ]
-            pending.extend(
-                (key, value)
-                for override in self.tools.mypy.overrides
-                for key, value in override.settings
-            )
-            pyright = self.tools.pyright.path_rules
-            pyrefly = self.tools.pyrefly.path_rules
-            pending.extend(
-                ("search-path", path)
-                for path in (
-                    pyright.source_dir,
-                    pyright.project_root,
-                    *pyright.env_dirs,
-                    *pyright.test_like_dirs,
-                    *(override.root for override in pyright.diagnostic_path_overrides),
-                    pyrefly.source_dir,
-                    pyrefly.project_root,
-                    *pyrefly.env_dirs,
-                    *pyrefly.workspace_include_child_env_dirs,
-                    *pyrefly.project_shared_search_paths,
-                )
             )
             for name in declared_names:
                 if any(
@@ -881,19 +939,22 @@ class FlextInfraModelsDepsToolConfig(
                 ):
                     msg = f"Local stub options and producers are forbidden: {name}"
                     raise ValueError(msg)
-            installed_roots = tuple(
-                Path(sysconfig.get_path(key)).resolve()
-                for key in ("purelib", "platlib")
+
+        def _reject_stub_option_values(self, forbidden: t.Infra.StrSet) -> None:
+            """Reject nested setting keys that restore local stub roots or producers.
+
+            Raises:
+                ValueError: If any nested setting key matches a forbidden option.
+
+            """
+            pending: list[tuple[str, t.JsonValue]] = [
+                (key, value) for pairs in self.settings.values() for key, value in pairs
+            ]
+            pending.extend(
+                (key, value)
+                for override in self.tools.mypy.overrides
+                for key, value in override.settings
             )
-            context = info.context
-            project_root = (
-                context.get("project_root") if isinstance(context, Mapping) else None
-            )
-            if project_root is not None and (
-                not isinstance(project_root, Path) or not project_root.is_absolute()
-            ):
-                msg = "tooling validation requires an absolute elected project root"
-                raise ValueError(msg)
             while pending:
                 key, value = pending.pop()
                 option = (
@@ -906,34 +967,6 @@ class FlextInfraModelsDepsToolConfig(
                     pending.extend(value.items())
                 elif isinstance(value, list):
                     pending.extend((key, item) for item in value)
-                elif isinstance(value, str) and (
-                    "path" in option
-                    or option in {"root", "sourcedir", "envdirs", "projectincludes"}
-                ):
-                    for entry in value.replace("\\", "/").split(":"):
-                        path = Path(entry).expanduser()
-                        resolved = (
-                            path.resolve()
-                            if path.is_absolute()
-                            else (project_root / path).resolve()
-                            if isinstance(project_root, Path)
-                            else None
-                        )
-                        if resolved is not None and any(
-                            resolved.is_relative_to(root) for root in installed_roots
-                        ):
-                            continue
-                        if any(
-                            part in {"typings", "stubs"}
-                            or part.endswith((".pyi", "-stubs"))
-                            or "-stubs-" in part
-                            for part in path.parts
-                        ):
-                            msg = (
-                                f"Local stub search roots are forbidden: {key}={value}"
-                            )
-                            raise ValueError(msg)
-            return self
 
         @m.model_validator(mode="after")
         def validate_pyright_options(self) -> Self:

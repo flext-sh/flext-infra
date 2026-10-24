@@ -98,7 +98,9 @@ class FlextInfraConfigModelsWorkspace:
 
         @m.model_validator(mode="after")
         def _validate_source(self) -> Self:
-            if not self.url.startswith("https://") or not self.url.endswith(".git"):
+            if not self.url.startswith("https://") or not self.url.endswith(
+                c.GIT_DIR_NAME
+            ):
                 msg = "dependency commit source URL must be canonical HTTPS Git"
                 raise ValueError(msg)
             if c.Infra.GIT_COMMIT_OID_RE.fullmatch(self.commit) is None:
@@ -300,7 +302,9 @@ class FlextInfraConfigModelsWorkspace:
 
         @m.model_validator(mode="before")
         @classmethod
-        def toml_array(cls, value: t.JsonValue) -> t.JsonPayload:
+        def toml_array(
+            cls, value: t.JsonValue
+        ) -> t.JsonValue | t.VariadicTuple[t.JsonValue]:
             """Freeze an array while retaining each native inclusion table.
 
             Returns:
@@ -328,7 +332,9 @@ class FlextInfraConfigModelsWorkspace:
 
         @m.field_validator("dependency_groups", mode="before")
         @classmethod
-        def toml_group_arrays(cls, value: t.JsonValue) -> t.JsonPayload:
+        def toml_group_arrays(
+            cls, value: t.JsonValue
+        ) -> t.JsonValue | t.MappingKV[str, t.JsonValue | t.VariadicTuple[t.JsonValue]]:
             """Freeze TOML containers without converting inclusion tables to strings.
 
             Returns:

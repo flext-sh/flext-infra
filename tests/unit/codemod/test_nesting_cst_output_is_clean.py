@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import flext_infra
 from tests import c, tm, u
 
@@ -114,3 +116,110 @@ class TestsFlextInfraNestingCutoverOutput:
         ])
 
         tm.ok(linted)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("existing_owner", "documented"), [(False, False), (True, False), (True, True)]
+    )
+    def test_member_trivia_moves_with_code_not_classvar_payload(
+        tmp_path: Path, *, existing_owner: bool, documented: bool
+    ) -> None:
+        """CST-owned prefixes stay attached without rewriting source payloads."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        policy = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        module = package / policy.directory / "trivia_helpers.py"
+        tm.ok(u.Cli.ensure_dir(module.parent))
+        tm.ok(u.Cli.atomic_write_text_file(module.parent / "__init__.py", ""))
+        owner = (
+            f"{u.derive_class_stem(root.name)}{policy.suffix}"
+            f"{u.derive_class_stem(module.stem)}"
+        )
+        header = '# Copyright: retained at module scope.\n"""Owned trivia."""\n'
+        source = (
+            header
+            + "from __future__ import annotations\n"
+            + "# Import-only contract.\n"
+            + "from functools import cache, lru_cache\n"
+            + "from typing import Annotated\n\n"
+            + "# Owner-only permission bits.\n"
+            + '_MODE: Annotated[int, "permission: # unchanged"] = 0o640\n\n'
+            + "# Original helper contract.\n"
+            + "@cache\n"
+            + "# Inner decorator contract.\n"
+            + "@lru_cache(maxsize=1)\n"
+            + "def payload() -> bytes:\n"
+            + '    return b"\\x00:#\\xff"\n\n'
+            + (
+                f"class {owner}:\n"
+                + ('    """Existing owner documentation."""\n' if documented else "")
+                + "    # Existing member contract.\n"
+                "    @staticmethod\n"
+                "    def retained() -> int:\n"
+                "        return 1\n\n"
+                if existing_owner
+                else ""
+            )
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+        with flext_infra.infra.rope_workspace(root) as rope:
+            planned = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                    rope_workspace=rope,
+                    sources={module: source},
+                )
+            )
+        emitted = next(
+            edit.updated_source for edit in planned if edit.file_path == module
+        )
+        tm.that(module.read_text(encoding="utf-8"), eq=source)
+        tm.that(emitted, starts=header)
+        tm.that(emitted, has="    # Owner-only permission bits.\n    _MODE:")
+        tm.that(emitted, has='Annotated[int, "permission: # unchanged"]')
+        tm.that(emitted, has='return b"\\x00:#\\xff"')
+        tm.that(
+            emitted,
+            has=(
+                "    # Original helper contract.\n    @staticmethod\n    @cache\n"
+                "    # Inner decorator contract.\n    @lru_cache(maxsize=1)\n"
+                "    def payload()"
+            ),
+        )
+        if existing_owner:
+            tm.that(
+                emitted,
+                has=(
+                    "    # Existing member contract.\n    @staticmethod\n"
+                    "    def retained()"
+                ),
+            )
+        compile(emitted, str(module), "exec")
+        tm.that(emitted, has="# Import-only contract.\nfrom functools")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("declaration", "owner_body"),
+        [
+            ("type Self[Self] = tuple[Self]\n", "    pass\n"),
+            (
+                "type Item = int\ntype conflict[*Item] = tuple[*Item]\n",
+                "    class Conflict:\n        pass\n",
+            ),
+        ],
+    )
+    def test_ambiguous_generic_declaration_scope_fails_before_source_effects(
+        tmp_path: Path, declaration: str, owner_body: str
+    ) -> None:
+        """Never guess a replacement namespace or shadow an alias parameter."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / "generic_scopes.py"
+        source = declaration + "\nclass Holder:\n" + owner_body
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+        with flext_infra.infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module: source},
+            )
+        tm.fail(planned, has="cannot preserve native type parameter scope")
+        tm.that(module.read_text(encoding="utf-8"), eq=source)

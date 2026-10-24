@@ -16,7 +16,10 @@ import pytest
 from flext_cli import u
 
 from flext_infra import p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,6 +35,75 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     Functions (including entry points), values and helper classes become members;
     definition-time dependencies remain subject to the same safety checks.
     """
+
+    @staticmethod
+    def _nesting_declaration_destinations(
+        module: p.Infra.RopePyModule,
+        definitions: t.StrMapping,
+    ) -> t.StrMapping:
+        """Elect real declaration scopes when class locals shadow type parameters.
+
+        Python annotation scopes consult their containing class dictionary.
+        Moving an alias whose parameter collides with that dictionary therefore
+        requires a separate declaration class, not a re-export or a new alias.
+        Native declaration names supply the existing class-stem naming owner.
+
+        Returns:
+            Original destinations, or the elected hierarchical declaration paths.
+
+        Raises:
+            TypeError: The provider lacks a native module AST.
+            ValueError: An isolated declaration scope cannot preserve its bindings.
+
+        """
+        if not definitions:
+            return definitions
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = "class-nesting declarations require a native module AST"
+            raise TypeError(msg)
+        owner = next(iter(definitions.values()))
+        binding = module.get_scope().get_defined_names().get(owner)
+        scope = (
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+                binding.get_object(), owner
+            ).get_scope()
+            if binding is not None
+            else None
+        )
+        occupied = set(definitions)
+        if scope is not None:
+            occupied.update(scope.get_defined_names())
+        isolated: t.MutableMappingKV[str, str] = {}
+        for node in tree.body:
+            if not isinstance(node, ast.TypeAlias) or node.name.id not in definitions:
+                continue
+            parameters = frozenset(
+                parameter.name
+                for parameter in node.type_params
+                if isinstance(parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec)
+            )
+            if not parameters.intersection(occupied):
+                continue
+            namespace = u.derive_class_stem(node.name.id)
+            if (
+                node.name.id in parameters
+                or not namespace.isidentifier()
+                or namespace in occupied - {node.name.id}
+                or namespace in isolated.values()
+            ):
+                msg = (
+                    "class-nesting cannot preserve native type parameter scope: "
+                    f"{module.get_name()}.{node.name.id} under {owner}.{namespace}"
+                )
+                raise ValueError(msg)
+            isolated[node.name.id] = namespace
+        if not isolated:
+            return definitions
+        return {
+            name: f"{destination}.{isolated[name]}" if name in isolated else destination
+            for name, destination in definitions.items()
+        }
 
     @staticmethod
     def _pytest_collection_patterns(
@@ -74,9 +146,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         configured.parse(arguments, addopts=False)
 
         def patterns(key: str) -> t.StrTuple:
-            value = configured.getini(key)
-            if isinstance(value, list) and all(isinstance(item, str) for item in value):
-                return tuple(item for item in value if isinstance(item, str))
+            value: p.AttributeProbe = configured.getini(key)
+            if isinstance(value, p.Infra.RopeRuntimeSequence):
+                iterate = value.__iter__
+                if isinstance(value, list) and all(
+                    isinstance(item, str) for item in iterate()
+                ):
+                    return tuple(item for item in iterate() if isinstance(item, str))
             msg = f"pytest collection setting {key} must contain strings"
             raise TypeError(msg)
 
@@ -123,8 +199,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         if not cls._pytest_name_matches(name, patterns):
             return False
         definition = binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(definition):
+            return False
         scope = definition.get_scope()
-        if scope is None or scope.get_kind() != "Class":
+        if scope.get_kind() != "Class":
             return False
         flag = definition.get_attributes().get("__test__")
         if flag is None:

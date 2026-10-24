@@ -16,7 +16,7 @@ from tests import m, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraBuilder:
@@ -45,7 +45,7 @@ class TestsFlextInfraBuilder:
     @staticmethod
     def test_build_report_frozen() -> None:
         """Test BuildReport is frozen (immutable)."""
-        tm.ok(m.Infra.DocsPhaseReport.model_config.get("frozen"))
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize(

@@ -10,11 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.smells import FlextInfraSmellsGate
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 @pytest.fixture
@@ -346,10 +345,8 @@ class TestsFlextInfraSmellsGate:
         )
         execution = projects[0].gates[c.Infra.SMELLS]
         native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(execution.raw_output)))
-        tm.that(execution.raw_receipt, none=False)
-        report_path = (
-            execution.raw_receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
-        )
+        raw_receipt = tm.not_none(execution.raw_receipt)
+        report_path = raw_receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
         report_text = report_path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )

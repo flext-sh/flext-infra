@@ -66,6 +66,30 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
             The live tip only when the existing ownership receipt proves closure.
 
         """
+        retained = cls._git_lane_retained_ownership(request, tip)
+        if retained.failure:
+            return retained
+        receipt = request.ownership
+        if receipt is None or receipt.checkpoint.snapshot.branch is None:
+            return r[m.Infra.GitOidReport].fail("owned branch receipt is required")
+        return cls._git_lane_clean_owned_branch(
+            request,
+            receipt.checkpoint.snapshot.branch,
+            tip,
+        )
+
+    @classmethod
+    def _git_lane_retained_ownership(
+        cls,
+        request: m.Infra.GitLaneVerificationRequest,
+        tip: str,
+    ) -> p.Result[m.Infra.GitOidReport]:
+        """Verify prior retained state independently of the current working layers.
+
+        Returns:
+            The integration tip containing the independently published checkpoint.
+
+        """
         receipt = request.ownership
         if receipt is None:
             return r[m.Infra.GitOidReport].fail(
@@ -102,7 +126,87 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
             return r[m.Infra.GitOidReport].fail(
                 "prior owned checkpoint has not landed on the latest integration tip",
             )
-        return cls._git_lane_clean_owned_branch(request, snapshot.branch, tip)
+        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
+
+    @classmethod
+    def _git_lane_checkpoint_receipt(
+        cls,
+        request: m.Infra.GitLaneOwnershipRequest,
+    ) -> m.Infra.GitLaneOwnershipReceipt:
+        reference = request.checkpoint_ref
+        repo = cls._repo(request.repo_root)
+        repo.git.check_ref_format(reference)
+        commit = repo.commit(reference)
+        match commit.parents:
+            case [_, indexed, *_]:
+                return m.Infra.GitLaneOwnershipReceipt(
+                    checkpoint=m.Infra.GitWorktreeStateCheckpoint(
+                        snapshot=m.Infra.GitWorktreeStateSnapshot.model_validate_json(
+                            commit.message,
+                        ),
+                        checkpoint_ref=reference,
+                        index_commit=indexed.hexsha,
+                        worktree_commit=commit.hexsha,
+                    ),
+                    publication=m.Infra.GitWorktreeCheckpointPublication(
+                        remote_name=request.remote,
+                        remote_url=cls._state_remote_url(
+                            request.repo_root,
+                            request.remote,
+                        ),
+                        checkpoint_ref=reference,
+                        checkpoint_oid=commit.hexsha,
+                    ),
+                )
+            case _:
+                msg = "checkpoint must retain both original layers"
+                raise ValueError(msg)
+
+    @classmethod
+    def git_lane_ownership(
+        cls,
+        request: m.Infra.GitLaneOwnershipRequest,
+    ) -> p.Result[m.Infra.GitLaneOwnershipReceipt]:
+        """Produce ownership evidence from native retained history, never caller JSON.
+
+        This reads existing Git objects and the live remote only. It does not
+        capture, publish, integrate, switch branches, or modify either Git layer.
+
+        Returns:
+            Authenticated prior-state evidence, or the original proof failure.
+
+        """
+        result = r[m.Infra.GitLaneOwnershipReceipt]
+        reference = request.checkpoint_ref
+        if not reference.startswith("refs/") or reference.startswith((
+            c.Infra.GIT_REFS_HEADS,
+            c.Infra.GIT_REFS_TAGS,
+            c.Infra.GIT_REFS_REMOTES,
+        )):
+            return result.fail("ownership requires a dedicated checkpoint reference")
+        try:
+            receipt = cls._git_lane_checkpoint_receipt(request)
+        except (BadName, GitCommandError, OSError, ValueError) as exc:
+            return result.fail(str(exc), exception=exc)
+        verification = m.Infra.GitLaneVerificationRequest(
+            repo_root=request.repo_root,
+            remote=request.remote,
+            expected_tip=request.expected_tip,
+            ownership=receipt,
+        )
+        tip = cls.git_verify_lane(verification)
+        if tip.failure:
+            return result.from_failure(tip)
+        retained = cls._git_lane_retained_ownership(verification, tip.value.oid)
+        if retained.failure:
+            return result.from_failure(retained)
+        return cls.git_verify_lane(
+            m.Infra.GitLaneVerificationRequest(
+                repo_root=request.repo_root,
+                remote=request.remote,
+                expected_tip=tip.value.oid,
+            ),
+        ).map(lambda _tip: receipt)
 
     @classmethod
     def _git_lane_clean_owned_branch(
@@ -357,7 +461,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
         repo_root = request.repo_root.expanduser().resolve()
         try:
             repo = cls._repo(repo_root)
-            porcelain = repo.git.worktree("list", "--porcelain")
+            porcelain = repo.git.worktree(c.Action.LIST, "--porcelain")
             entries = cls._worktree_registry(repo, porcelain)
         except GitCommandError as exc:
             return r[m.Infra.GitWorktreeListReport].fail(str(exc), exception=exc)
@@ -631,7 +735,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            text = repo.git.stash("list", "--format=%H")
+            text = repo.git.stash(c.Action.LIST, "--format=%H")
         except GitCommandError as exc:
             return r[m.Infra.GitOidListReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

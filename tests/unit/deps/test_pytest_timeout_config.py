@@ -43,7 +43,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         """A text flag cannot silently become an execution policy boolean."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        payload["loadscope-reorder"] = "false"
+        payload["loadscope-reorder"] = c.ParserBooleanToken.FALSE
 
         with pytest.raises(c.ValidationError, match="valid boolean"):
             type(policy).model_validate(payload)
@@ -114,7 +114,7 @@ class TestsFlextInfraPytestTimeoutConfig:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "override",
+        c.MergeStrategy.OVERRIDE,
         [
             "-o",
             "-o=addopts=",
@@ -173,26 +173,17 @@ class TestsFlextInfraPytestTimeoutConfig:
             type(policy).model_validate(payload)
 
     @staticmethod
-    def test_process_budget_is_derived_from_run_and_termination_windows() -> None:
-        """Test process budget is derived from run and termination windows."""
-        policy = config.Infra.tooling.tools.pytest
-        expected = policy.run_timeout_seconds + (policy.termination_grace_seconds * 2)
-
-        tm.that(policy.process_timeout_seconds, eq=expected)
-        tm.fail("process-timeout-seconds" in policy.model_dump(by_alias=True))
-
-    @staticmethod
-    def test_project_run_budget_exceeds_the_derived_suite_stop_reserve() -> None:
-        """Test project run budget exceeds the derived suite stop reserve."""
+    def test_project_run_budget_overrides_are_rejected() -> None:
+        """A project cannot replace the single declared invocation budget."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["run-timeout-overrides"] = {
-            config.Infra.name: policy.slow_suite_stop_reserve_seconds,
+            config.Infra.name: policy.run_timeout_seconds,
         }
 
         with pytest.raises(
             c.ValidationError,
-            match="pytest run timeout must exceed the suite stop reserve",
+            match="run-timeout-overrides",
         ):
             type(policy).model_validate(payload)
 

@@ -7,13 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
-from tests import tm
-
-if TYPE_CHECKING:
-    from tests import t
+from flext_infra import m, u
+from tests import c, t, tm
 
 
 class TestsFlextInfraRopeStructure:

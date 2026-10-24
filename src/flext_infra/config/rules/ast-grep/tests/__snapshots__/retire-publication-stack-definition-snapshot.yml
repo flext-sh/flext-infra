@@ -1,0 +1,71 @@
+id: retire-publication-stack-definition
+snapshots:
+  ? |
+    class Project:
+        @contextmanager
+        def source_capture(self):
+            yield
+  : fixed: "class Project:\n    \n"
+    labels:
+    - source: |-
+        @contextmanager
+            def source_capture(self):
+                yield
+      style: primary
+      start: 19
+      end: 78
+    - source: source_capture
+      style: secondary
+      start: 43
+      end: 57
+    - source: |-
+        def source_capture(self):
+                yield
+      style: secondary
+      start: 39
+      end: 78
+  ? |
+    class Project:
+        def source_consumption(self):
+            return self._consumption
+  : fixed: "class Project:\n    \n"
+    labels:
+    - source: |-
+        def source_consumption(self):
+                return self._consumption
+      style: primary
+      start: 19
+      end: 81
+    - source: source_consumption
+      style: secondary
+      start: 23
+      end: 41
+  ? |
+    class SourceConsumption:
+        pass
+  : fixed: |2+
+
+    labels:
+    - source: |-
+        class SourceConsumption:
+            pass
+      style: primary
+      start: 0
+      end: 33
+    - source: SourceConsumption
+      style: secondary
+      start: 6
+      end: 23
+  ? |
+    def publication_current(request): ...
+  : fixed: |2+
+
+    labels:
+    - source: 'def publication_current(request): ...'
+      style: primary
+      start: 0
+      end: 37
+    - source: publication_current
+      style: secondary
+      start: 4
+      end: 23

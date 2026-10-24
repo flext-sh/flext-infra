@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, r
+from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
-from tests import tm
+from tests import c, r, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -68,7 +68,9 @@ class TestsFlextInfraIntegrationDocsServeE2e:
             response = connection.getresponse()
             if response.status != _HTTP_OK:
                 return r[str].fail(f"server responded HTTP {response.status}")
-            return r[str].ok(response.read().decode("utf-8", errors="replace"))
+            return r[str].ok(
+                response.read().decode("utf-8", errors=c.MergeStrategy.REPLACE)
+            )
         except (OSError, http.client.HTTPException) as exc:
             return r[str].fail(f"GET {host}:{port} failed: {exc}", exception=exc)
         finally:

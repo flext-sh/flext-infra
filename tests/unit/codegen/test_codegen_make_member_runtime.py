@@ -55,8 +55,10 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         )
 
     @staticmethod
-    def _workspace_with_member(tmp_path: Path, member_source: Path) -> Path:
-        """Check the rendered member out as a submodule of a real superproject.
+    def _workspace_with_member(
+        tmp_path: Path, member_source: Path, *, included: bool = True
+    ) -> Path:
+        """Declare and prove native UV membership of a real Git submodule.
 
         Returns:
             The resulting ``Path``.
@@ -86,6 +88,36 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
                 ],
                 cwd=workspace,
             ),
+        )
+        (workspace / c.PYPROJECT_FILENAME).write_text(
+            "[tool.uv.workspace]\n"
+            + (
+                f'members = ["{member_source.name}"]\n'
+                if included
+                else f'members = []\nexclude = ["{member_source.name}"]\n'
+            ),
+            encoding="utf-8",
+        )
+        u.Tests.copy_tracked_mise_seeds(workspace)
+        member = workspace / member_source.name
+        native = tm.ok(
+            u.Cli.run_raw(
+                (u.Tests.managed_uv(), "workspace", "dir", "--project", str(member)),
+                cwd=member,
+                options=m.Cli.ProcessOptions(
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(native.outcome),
+            eq=True,
+            msg=native.stdout + native.stderr,
+        )
+        tm.that(native.stdout.strip(), eq=str(workspace if included else member))
+        tm.that(
+            tm.ok(u.Infra.runtime_owner_root(member)),
+            eq=workspace if included else member,
         )
         return workspace.resolve()
 
@@ -166,13 +198,34 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         values = self._runtime_values(member)
 
         tm.that(values["PROJECT_ROOT"], eq=str(member))
-        for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT", "UV_PROJECT"):
+        for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT"):
             tm.that(values[name], eq=str(workspace))
+        tm.that(
+            values["UV_PROJECT"],
+            eq=str(workspace),
+        )
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT"):
             tm.that(
                 values[name],
                 eq=str(u.Infra.runtime_environment_dir(member, runtime_root=workspace)),
             )
+
+    def test_excluded_submodule_keeps_its_own_runtime(self, tmp_path: Path) -> None:
+        """Git attachment cannot override UV's explicit workspace exclusion."""
+        member_source, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        workspace = self._workspace_with_member(tmp_path, member_source, included=False)
+        member = workspace / member_source.name
+
+        values = self._runtime_values(member)
+
+        for name in ("PROJECT_ROOT", "REPOSITORY_ROOT", "RUNTIME_ROOT"):
+            tm.that(values[name], eq=str(member))
+        tm.that(
+            values["RUNTIME_VENV"],
+            eq=str(u.Infra.runtime_environment_dir(member, runtime_root=member)),
+        )
 
     def test_attached_member_upg_delegates_to_the_runtime_root(
         self,
@@ -201,7 +254,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "upg"],
                 cwd=workspace / member_source.name,
-                env={"GITHUB_ACTIONS": "false"},
+                env={"GITHUB_ACTIONS": c.ParserBooleanToken.FALSE},
             ),
         )
 
@@ -235,8 +288,6 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         member = owner
         if attached:
             owner = self._workspace_with_member(tmp_path, project_root)
-            # The member's activation reads the runtime pin of its superproject.
-            u.Tests.copy_tracked_mise_seeds(owner)
             member = owner / project_root.name
         entry = member
         if linked:

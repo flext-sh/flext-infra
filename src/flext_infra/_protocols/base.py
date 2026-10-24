@@ -6,13 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import c, m, p, t
+    from flext_cli import p
+
+    from flext_infra import c, m, t
+    from flext_infra._protocols.check import FlextInfraProtocolsCheck
+    from flext_infra._protocols.rope import FlextInfraProtocolsRope
+    from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
 
 @runtime_checkable
@@ -66,11 +71,6 @@ class FlextInfraProtocolsBase(Protocol):
             self,
         ) -> FlextInfraProtocolsBase.DocsArtifactPlannerFactory: ...
 
-        @property
-        def participant_policy(
-            self,
-        ) -> FlextInfraProtocolsBase.CodegenParticipantPolicyFactory: ...
-
     @runtime_checkable
     class CodegenGenerateRequest(Protocol):
         """Read-only selectors consumed by the projection execution boundary."""
@@ -108,50 +108,6 @@ class FlextInfraProtocolsBase(Protocol):
         def desired_content(self) -> bytes | None: ...
 
     @runtime_checkable
-    class StageSourceReceipt(Protocol):
-        """Closed prepared-source evidence carried without a model dependency cycle."""
-
-        @property
-        def version(self) -> Literal[1]: ...
-
-        @property
-        def workspace(self) -> Path: ...
-
-        @property
-        def workspaces(self) -> t.VariadicTuple[Path]: ...
-
-        @property
-        def roots(self) -> t.VariadicTuple[Path]: ...
-
-        @property
-        def inputs(self) -> t.VariadicTuple[m.Cli.AtomicFileState]: ...
-
-        @property
-        def source_directories(
-            self,
-        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryInventory]: ...
-
-        @property
-        def source_query_topology(
-            self,
-        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]: ...
-
-        @property
-        def updates(self) -> t.MappingKV[Path, str | None]: ...
-
-        @property
-        def modes(self) -> t.MappingKV[Path, int]: ...
-
-        @property
-        def prepared_hashes(self) -> t.VariadicTuple[t.Pair[Path, str | None]]: ...
-
-        @property
-        def layouts(self) -> t.VariadicTuple[m.Infra.RopeProjectLayout]: ...
-
-        @property
-        def workspace_packages(self) -> t.VariadicTuple[str]: ...
-
-    @runtime_checkable
     class CodegenPlanOutcome(Protocol):
         """Public plan membership, separate from the internal publication schema."""
 
@@ -164,37 +120,11 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]: ...
 
     @runtime_checkable
-    class CodegenPublicationOutcome(Protocol):
-        """Physical scopes covered by an actual generation publication receipt."""
-
-        @property
-        def scope_roots(self) -> t.VariadicTuple[Path]: ...
-
-        @property
-        def completed(self) -> bool: ...
-
-        @property
-        def issues(self) -> t.VariadicTuple[p.Infra.Issue]: ...
-
-        @property
-        def exception(self) -> BaseException | None: ...
-
-    @runtime_checkable
     class CodegenResult(Protocol):
         """Generation or observation facts consumed by public callers."""
 
         @property
-        def plan(self) -> FlextInfraProtocolsBase.CodegenPlanOutcome | None: ...
-
-        @property
-        def verified_publication(
-            self,
-        ) -> FlextInfraProtocolsBase.CodegenPublicationOutcome | None: ...
-
-        @property
-        def publication_receipt(
-            self,
-        ) -> FlextInfraProtocolsBase.CodegenPublicationOutcome | None: ...
+        def plan(self) -> FlextInfraProtocolsBase.CodegenPlanOutcome: ...
 
         @property
         def written_files(self) -> t.VariadicTuple[Path]: ...
@@ -292,6 +222,13 @@ class FlextInfraProtocolsBase(Protocol):
         shouldstop: bool | str
 
     @runtime_checkable
+    class PytestWorkerConfig(Protocol):
+        """Native xdist config's output channel for plugin-owned JSON payloads."""
+
+        @property
+        def workeroutput(self) -> MutableMapping[str, object]: ...
+
+    @runtime_checkable
     class SupervisedProcess(Protocol):
         """Process lifecycle consumed by the infrastructure resource supervisor."""
 
@@ -363,20 +300,15 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def projects(self) -> t.SequenceOf[Path]: ...
 
-        @property
-        def publication_chain(
-            self,
-        ) -> t.VariadicTuple[m.Infra.CodegenStagedFile] | None: ...
-
     @runtime_checkable
     class ChainDeclarationSpec(Protocol):
         """Read-only structural contract for binding-chain declaration inputs."""
 
         @property
-        def project(self) -> p.Infra.RopeProject: ...
+        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @property
-        def holder(self) -> p.Infra.RopePyModule: ...
+        def holder(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         @property
         def holder_text(self) -> str: ...
@@ -388,7 +320,7 @@ class FlextInfraProtocolsBase(Protocol):
         def holder_offset(self) -> int: ...
 
         @property
-        def holder_scope(self) -> p.Infra.RopeScope: ...
+        def holder_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         @property
         def expression(self) -> str: ...
@@ -412,10 +344,12 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             repository_root: Path | None = None,
             rope_repository_root: Path | None = None,
-        ) -> p.Infra.RopeWorkspaceDsl: ...
+        ) -> FlextInfraProtocolsRope.RopeWorkspaceDsl: ...
 
         @staticmethod
-        def source_preview(repository_root: Path) -> p.Infra.SourcePreview: ...
+        def source_preview(
+            repository_root: Path,
+        ) -> FlextInfraProtocolsBase.SourcePreview: ...
 
     @runtime_checkable
     class ModLoopPhase(Protocol):
@@ -433,17 +367,16 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             preflight: m.Infra.ModScanReport,
-            rope_workspace: p.Infra.RopeWorkspaceDsl,
+            rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
             *,
             sources: t.MappingKV[Path, str],
-            receipt: m.Infra.CodegenPhaseAnalysis,
-        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
         def apply(
             self,
             root: Path,
             preflight: m.Infra.ModScanReport,
-            rope_workspace: p.Infra.RopeWorkspaceDsl,
+            rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
         ) -> p.Result[bool]: ...
 
     @runtime_checkable
@@ -522,99 +455,8 @@ class FlextInfraProtocolsBase(Protocol):
         def namespace(self) -> str: ...
 
     @runtime_checkable
-    class MiseArtifactsOwner(Protocol):
-        """Owner contract consumed by the atomic generation transaction."""
-
-        @property
-        def repository_root(self) -> Path:
-            """Repository whose generated Mise surfaces are transacted."""
-            ...
-
-        def validate_artifacts(
-            self,
-            project_root: Path,
-            runtime_root: Path,
-        ) -> p.Result[bool]:
-            """Validate one project's generated Mise declaration."""
-            ...
-
-    @runtime_checkable
-    class CodegenPendingPhase(Protocol):
-        """Read-only pending-phase contract across the transaction mixins."""
-
-        @property
-        def phase(self) -> str: ...
-
-        @property
-        def changed(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @property
-        def all_plans(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @property
-        def staged_validator(
-            self,
-        ) -> (
-            Callable[
-                [
-                    m.Infra.CodegenTransactionSession,
-                    t.VariadicTuple[m.Infra.CodegenStagedFile],
-                ],
-                p.Result[m.Infra.CodegenTransactionSession],
-            ]
-            | None
-        ): ...
-
-        @property
-        def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
-
-    @runtime_checkable
-    class CodegenParticipantRoot(Protocol):
-        """Physical root selector retaining the producer's native proof value."""
-
-        @property
-        def target(self) -> Path: ...
-
-    @runtime_checkable
-    class CodegenParticipantPolicy(Protocol):
-        """Read-only physical authority consumed by generation transactions."""
-
-        @property
-        def scope_root(self) -> Path: ...
-
-        @property
-        def roots(
-            self,
-        ) -> t.VariadicTuple[FlextInfraProtocolsBase.CodegenParticipantRoot]: ...
-
-    @runtime_checkable
-    class CodegenParticipantPolicyFactory(Protocol):
-        """Composition-root authorization for one generation request."""
-
-        def __call__(
-            self,
-            root: Path,
-            *,
-            initial_workspace: FlextInfraProtocolsBase.WorkspaceSpec | None,
-        ) -> p.Result[FlextInfraProtocolsBase.CodegenParticipantPolicy]:
-            """Read the request's physical topology without acquiring a lease.
-
-            ``initial_workspace`` is the declared topology of a scaffold whose
-            own workspace configuration is not rendered yet; ``None`` reads
-            the repository's committed declaration.
-            """
-            ...
-
-    @runtime_checkable
     class CandidateBootstrapPlanner(Protocol):
         """Conform plan boundary consumed by the candidate campaign."""
-
-        def continue_after_publication(
-            self,
-            receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        ) -> p.Result[bool]:
-            """Continue planning through the invocation's verified effects."""
-            ...
 
         def surface_contract(
             self,
@@ -627,7 +469,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def plan_repositories(
             self,
-            request: m.Infra.CodegenConformRequest,
+            request: FlextInfraProtocolsBase.CodegenGenerateRequest,
             inputs: m.Infra.CodegenInputs,
         ) -> p.Result[m.Infra.CodegenPlan]:
             """Plan one declared target from its captured inputs without publishing."""
@@ -635,43 +477,17 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class DocsArtifactPlanner(Protocol):
-        """Captured scope batches published by the owning docs service."""
-
-        def prepare_batches(
-            self,
-            *,
-            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-            | None = None,
-        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-            """Capture each scope after the preceding publication settles."""
-            ...
-
-        def publish_batch(
-            self,
-            bundle: m.Infra.DocsGenerationBundle,
-            *,
-            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-            | None = None,
-        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-            """Admit, publish and settle one captured scope batch."""
-            ...
+        """Docs render planned as file changes for the shared publisher."""
 
         def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze one configured inventory and its consumed inputs."""
-            ...
-
-        def required_directories(
-            self,
-            bundle: m.Infra.DocsGenerationBundle,
-        ) -> p.Result[t.VariadicTuple[Path]]:
-            """Derive the parent directories the render needs."""
             ...
 
         def plan_files(
             self,
             bundle: m.Infra.DocsGenerationBundle,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-            """Bind the render to exact live destination states."""
+            """Plan the rendered documentation as file changes."""
             ...
 
     @runtime_checkable
@@ -708,7 +524,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def issues(self) -> t.SequenceOf[p.Infra.Issue]:
+        def issues(self) -> t.SequenceOf[FlextInfraProtocolsCheck.Issue]:
             """Complete native diagnostics."""
             ...
 
@@ -751,39 +567,6 @@ class FlextInfraProtocolsBase(Protocol):
             repository_root: Path,
         ) -> FlextInfraProtocolsBase.MarkdownFormatGate:
             """Bind the gate to the scope root."""
-            ...
-
-    @runtime_checkable
-    class CandidateBootstrapTransaction(Protocol):
-        """Atomic multi-root file publisher consumed by the campaign."""
-
-        def capability_roots(
-            self,
-            label: str,
-            paths: t.SequenceOf[Path],
-        ) -> t.MappingKV[str, Path]:
-            """Key physical roots by their file capability selector."""
-            ...
-
-        def run_files_locked[T](
-            self,
-            roots: t.MappingKV[str, Path],
-            operation: Callable[[Path], p.Result[T]],
-        ) -> p.Result[T]:
-            """Hold destination leases while the campaign plans and publishes."""
-            ...
-
-        def publish_file_phase_locked(
-            self,
-            scope_root: Path,
-            roots: t.MappingKV[str, Path],
-            analysis: m.Infra.CodegenPhaseAnalysis,
-            policy: m.Infra.CodegenPhasePublicationPolicy,
-            *,
-            publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
-            | None = None,
-        ) -> p.Result[t.VariadicTuple[Path]]:
-            """Publish one recoverable multi-root phase and verify before commit."""
             ...
 
     # These declaration-only
@@ -1060,8 +843,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def delegate(self) -> str:
-            """Canonical template rendering delegate."""
+        def source(self) -> Path | None:
+            """Catalog template source, absent for a specialized owner."""
             ...
 
     @runtime_checkable
@@ -1253,6 +1036,34 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class CensusObjectRules(Protocol):
+        """Object classification operations consumed by project reporting."""
+
+        @staticmethod
+        def _include_rule(
+            rule: str,
+            *,
+            rule_names: t.StrSequence | None,
+            selected_rules: frozenset[str] | None = None,
+        ) -> bool: ...
+
+        @staticmethod
+        def unused(item: m.Infra.Object) -> bool: ...
+
+        @staticmethod
+        def _object_key(item: m.Infra.Object) -> str: ...
+
+        @staticmethod
+        def _violation(
+            item: m.Infra.Object, *, kind: str, description: str
+        ) -> m.Infra.Violation: ...
+
+        @classmethod
+        def _removal_candidate(
+            cls, item: m.Infra.Object, *, include_unused: bool
+        ) -> m.Infra.RemovalCandidate | None: ...
+
+    @runtime_checkable
     class ReleaseOrchestrator(Protocol):
         """Protocol for release orchestration services."""
 
@@ -1303,51 +1114,6 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
-
-    @runtime_checkable
-    class MiseRoleRequest(Protocol):
-        """Authenticated native role inputs and the isolated installation scope."""
-
-        @property
-        def declaration(self) -> p.Cli.AtomicFileReceipt: ...
-
-        @property
-        def reader(self) -> p.Cli.AtomicFileReceipt: ...
-
-        @property
-        def reader_manifest(self) -> p.Cli.AtomicFileReceipt: ...
-
-        @property
-        def reader_lock(self) -> p.Cli.AtomicFileReceipt: ...
-
-        @property
-        def scope_root(self) -> Path: ...
-
-        @property
-        def target_root(self) -> Path: ...
-
-    @runtime_checkable
-    class MiseRolePlan(Protocol):
-        """Role projection and lock accepted before native installation."""
-
-        @property
-        def request(self) -> FlextInfraProtocolsBase.MiseRoleRequest: ...
-
-        @property
-        def manifest(self) -> p.Cli.AtomicFileReceipt: ...
-
-        @property
-        def lock(self) -> p.Cli.AtomicFileReceipt: ...
-
-    @runtime_checkable
-    class MiseRoleInstallation(Protocol):
-        """Installed binaries pinned to the declaration and native lock."""
-
-        @property
-        def plan(self) -> FlextInfraProtocolsBase.MiseRolePlan: ...
-
-        @property
-        def executables(self) -> Mapping[str, p.Cli.AtomicFileReceipt]: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsBase"]

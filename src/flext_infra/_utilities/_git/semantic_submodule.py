@@ -42,7 +42,9 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            repo.git.submodule("update", "--init", "--", request.reference)
+            repo.git.submodule(
+                c.MergeStrategy.UPDATE, "--init", "--", request.reference
+            )
         except (GitCommandError, OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(
                 f"could not initialize the governed gitlink {request.reference}: {exc}",

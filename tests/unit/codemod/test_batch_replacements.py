@@ -11,10 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, main, t
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import tm, u
+from flext_infra import codemod, m, main, t
+from tests import c, tm, u
 
 
 class TestsFlextInfraBatchReplacements:
@@ -23,11 +21,11 @@ class TestsFlextInfraBatchReplacements:
     @staticmethod
     def _scanned_consumer(
         root: Path,
-    ) -> t.Quad[m.Infra.ModScanReport, Path, Path, Path]:
+    ) -> t.Pair[m.Infra.ModScanReport, Path]:
         """Scan a real public consumer against a locally declared rewrite.
 
         Returns:
-            The admitted report and its consumer, rule and config paths.
+            The admitted report and its consumer path.
 
         """
         rule_name = "publish-consumer-value"
@@ -57,30 +55,35 @@ class TestsFlextInfraBatchReplacements:
             f'__all__ = ["{stem}Consumer"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        config_path = root / c.Infra.CODEMOD_CONFIG_RELPATH
-        rule_path = config_path.parent / c.Cli.RULES_DIR_NAME / f"{rule_name}.yml"
-        report = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
-        return report, consumer, rule_path, config_path
+        report = tm.ok(
+            codemod.FlextInfraModGateEngine.scan(
+                root,
+                fix=False,
+                selection=(rule_name,),
+            )
+        )
+        return report, consumer
 
     @staticmethod
     @pytest.mark.slow
     def test_admitted_report_publishes_the_real_consumer(mod_workspace: Path) -> None:
         """Reuse admitted bytes through the same public CAS publisher."""
-        report, consumer, _, _ = TestsFlextInfraBatchReplacements._scanned_consumer(
+        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
             mod_workspace
         )
-        tm.ok(FlextInfraModGateEngine.apply_report(mod_workspace, report))
+        tm.ok(codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report))
         output = tm.ok(u.Cli.run_raw((sys.executable, "-I", str(consumer))))
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq="after")
         published = consumer.read_bytes()
-        tm.fail(FlextInfraModGateEngine.apply_report(mod_workspace, report))
+        tm.fail(codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report))
         tm.that(consumer.read_bytes(), eq=published)
 
     @staticmethod
     @pytest.mark.slow
     def test_changed_companion_input_prevents_consumer_publication(
         mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """A changed captured companion rejects the entire unchanged scan report."""
         companion = mod_workspace / "companion.py"
@@ -89,77 +92,49 @@ class TestsFlextInfraBatchReplacements:
             "from __future__ import annotations\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        report, consumer, _, _ = TestsFlextInfraBatchReplacements._scanned_consumer(
+        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
             mod_workspace
         )
         original = consumer.read_bytes()
-        concurrent = companion.read_bytes() + b"\n# concurrent input edit\n"
+        captured = companion.read_bytes()
+        concurrent = captured + b"\n# concurrent input edit\n"
         companion.write_bytes(concurrent)
+        capsys.readouterr()
 
+        failed = codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report)
+        tm.fail(failed, has=str(companion))
         tm.fail(
-            FlextInfraModGateEngine.apply_report(mod_workspace, report),
-            has=str(companion),
+            failed,
+            has=f"expected_content_sha256={u.Cli.sha256_bytes(captured)}",
         )
+        tm.fail(
+            failed,
+            has=f"observed_content_sha256={u.Cli.sha256_bytes(concurrent)}",
+        )
+        progress = capsys.readouterr().err
+        tm.that(progress, has="verify stage=target-inventory")
+        tm.that(progress, lacks="verify stage=original-snapshot")
         tm.that(consumer.read_bytes(), eq=original)
         tm.that(companion.read_bytes(), eq=concurrent)
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize(
-        "mutation",
-        [
-            "missing-proof",
-            "source-change",
-            "source-add",
-            "source-remove",
-            "rule-change",
-            "rule-add",
-            "rule-remove",
-            "config-change",
-        ],
-    )
-    def test_admitted_report_rejects_changed_inputs(
+    @pytest.mark.parametrize("mutation", ["source-change", "source-remove"])
+    def test_admitted_report_rejects_changed_destination(
         mod_workspace: Path,
         mutation: str,
     ) -> None:
-        """Changed ownership or physical inputs never publish stale replacements."""
-        report, consumer, rule_path, config_path = (
-            TestsFlextInfraBatchReplacements._scanned_consumer(mod_workspace)
+        """A destination changed after scanning never receives stale replacements."""
+        report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
+            mod_workspace
         )
         original = consumer.read_bytes()
-        if mutation == "missing-proof":
-            report = report.model_copy(update={"source_states": None})
-        elif mutation == "source-change":
+        if mutation == "source-change":
             consumer.write_bytes(original + b"\n# changed consumer\n")
-        elif mutation == "source-add":
-            (mod_workspace / "new_consumer.py").write_text(
-                '"""New scanner input."""\n',
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif mutation == "source-remove":
-            consumer.unlink()
-        elif mutation == "rule-change":
-            rule_path.write_text(
-                rule_path.read_text(encoding=c.DEFAULT_ENCODING) + "\n# changed rule\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif mutation == "rule-add":
-            added = rule_path.with_name("new-consumer-rule.yml")
-            added.write_text(
-                "id: new-consumer-rule\nlanguage: Python\n"
-                "severity: warning\nrule:\n  pattern: NEVER_MATCHED\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif mutation == "rule-remove":
-            rule_path.unlink()
         else:
-            config_path.write_text(
-                config_path.read_text(encoding=c.DEFAULT_ENCODING)
-                + "\n# changed scanner configuration\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
+            consumer.unlink()
         before = consumer.read_bytes() if consumer.exists() else None
-        tm.fail(FlextInfraModGateEngine.apply_report(mod_workspace, report))
+        tm.fail(codemod.FlextInfraModGateEngine.apply_report(mod_workspace, report))
         tm.that(
             consumer.read_bytes() if consumer.exists() else None,
             eq=before,
@@ -174,7 +149,7 @@ class TestsFlextInfraBatchReplacements:
         replacement: bytes = b"after",
         matched: bytes = b"before",
     ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
-        policy = path.parent / "pyproject.toml"
+        policy = path.parent / c.PYPROJECT_FILENAME
         if not policy.exists():
             policy.write_text(
                 "[project]\nname = 'sample'\nversion = '1.0.0'\n"
@@ -209,7 +184,7 @@ class TestsFlextInfraBatchReplacements:
         path = root / "subject.py"
         original = '# ação\nvalue = "before"\n'.encode()
         report = self._report(path, original)
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(codemod.FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_bytes(), eq=original.replace(b"before", b"after"))
 
     def test_removed_references_leave_no_type_only_import_scaffold(
@@ -240,7 +215,7 @@ class TestsFlextInfraBatchReplacements:
             }
         )
         report = report.model_copy(update={"entries": (finding,)})
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(codemod.FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_text(), lacks="TYPE_CHECKING")
         tm.that(path.read_text(), lacks="from pathlib import Path")
         tm.that(path.read_text(), has='value = "after"')
@@ -254,7 +229,12 @@ class TestsFlextInfraBatchReplacements:
         root = u.Tests.git_repository(tmp_path)
         path = root / "subject.py"
         original = b'from pathlib import Path\nimport os\nvalue = "before"\n'
-        tm.ok(FlextInfraModReplacements.publish(root, self._report(path, original)))
+        tm.ok(
+            codemod.FlextInfraModReplacements.publish(
+                root,
+                self._report(path, original),
+            )
+        )
         output = tm.ok(
             u.Cli.run([
                 sys.executable,
@@ -278,16 +258,16 @@ class TestsFlextInfraBatchReplacements:
         path = root / "generated.py"
         original = b'value = "before"\n'
         report = self._report(path, original, generated=True)
-        result = FlextInfraModReplacements.publish(root, report)
+        result = codemod.FlextInfraModReplacements.publish(root, report)
         tm.fail(result)
         tm.that(result.error, has=f"generator:{path}:fixture-rewrite")
         tm.that(report.findings, eq=1)
         tm.that(path.read_bytes(), eq=original)
 
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("selected", [False, True])
     def test_generator_evidence_never_blocks_authored_rewrites(
-        self,
         mod_workspace: Path,
         capsys: pytest.CaptureFixture[str],
         *,
@@ -321,7 +301,7 @@ class TestsFlextInfraBatchReplacements:
         for label, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(mod_workspace / f"{label}.py", source))
         applied = tm.ok(
-            FlextInfraModGateEngine.scan(
+            codemod.FlextInfraModGateEngine.scan(
                 mod_workspace,
                 fix=True,
                 selection=(rule_id,) if selected else None,
@@ -410,7 +390,7 @@ class TestsFlextInfraBatchReplacements:
         path = root / "subject.py"
         report = self._report(path, b'value = "before"\n')
         path.write_bytes(changed)
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(codemod.FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_bytes(), eq=changed)
 
     def test_missing_actionable_snapshot_is_rejected(self, tmp_path: Path) -> None:
@@ -420,12 +400,12 @@ class TestsFlextInfraBatchReplacements:
         report = self._report(path, b'value = "before"\n')
         finding = report.entries[0].model_copy(update={"source_state": None})
         invalid = report.model_copy(update={"entries": (finding,)})
-        tm.fail(FlextInfraModReplacements.publish(root, invalid))
+        tm.fail(codemod.FlextInfraModReplacements.publish(root, invalid))
 
     @pytest.mark.parametrize(
         ("original", "replacement", "accepted"),
         [
-            (b"value = before\n", "1", True),
+            (b"value = before\n", c.ParserBooleanToken.ONE, True),
             (b"before = 1\nvalue = before\n", "after", False),
             (b"value = before\nvalue = missing\n", "1\n\n# shifted", True),
             (b"value = before\nvalue = before\n", "another_missing", False),
@@ -442,13 +422,13 @@ class TestsFlextInfraBatchReplacements:
     ) -> None:
         """Rule reductions and line shifts pass; new occurrence identities fail."""
         root = u.Tests.git_repository(tmp_path)
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             "[tool.ruff.lint]\nselect = ['F821']\n",
         )
         path = root / "subject.py"
         report = self._report(path, original)
         finding = report.entries[0].model_copy(update={"replacement": replacement})
-        result = FlextInfraModReplacements.publish(
+        result = codemod.FlextInfraModReplacements.publish(
             root,
             report.model_copy(update={"entries": (finding,)}),
         )
@@ -470,7 +450,7 @@ class TestsFlextInfraBatchReplacements:
         bad_before = b"before = 1\nvalue = before\n"
         accepted = self._report(good, good_before).entries[0]
         rejected = self._report(bad, bad_before).entries[0]
-        result = FlextInfraModReplacements.publish(
+        result = codemod.FlextInfraModReplacements.publish(
             root,
             m.Infra.ModOccurrenceReport(
                 entries=(accepted, rejected),
@@ -494,7 +474,7 @@ class TestsFlextInfraBatchReplacements:
         """
         root = u.Tests.git_repository(tmp_path)
         path = root / "tests" / "unit" / "test_demo.py"
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'sample'\nversion = '1.0.0'\n"
             "[tool.ruff.lint]\nselect = ['F401', 'F821']\n",
         )
@@ -525,7 +505,7 @@ class TestsFlextInfraBatchReplacements:
             files=frozenset({path}),
             entries=(finding,),
         )
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(codemod.FlextInfraModReplacements.publish(root, report))
         tm.that(
             path.read_bytes(),
             eq=b'"""Demo."""\n\n\ndef t() -> None:\n    assert True\n',
@@ -548,7 +528,7 @@ class TestsFlextInfraBatchReplacements:
         report = self._report(
             path, original, matched=original.strip(), replacement=replacement
         )
-        result = FlextInfraModReplacements.publish(root, report)
+        result = codemod.FlextInfraModReplacements.publish(root, report)
         tm.that(result.success, eq=accepted)
         if not accepted:
             tm.that(result.error, has="F821")
@@ -557,5 +537,5 @@ class TestsFlextInfraBatchReplacements:
         published = path.read_bytes()
         tm.that(published.count(b"from pathlib import Path"), eq=1)
         tm.ok(u.Cli.run([sys.executable, "-I", str(path)]))
-        tm.ok(FlextInfraModReplacements.publish(root, report))
+        tm.ok(codemod.FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_bytes(), eq=published)

@@ -18,8 +18,8 @@ from urllib.parse import urlsplit
 import pytest
 from packaging.version import Version
 
-from flext_infra import c, config, m
-from tests import t, tm, u
+from flext_infra import config, m
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -180,7 +180,7 @@ class TestsFlextInfraMisePinBootstrap:
         receipt = report.receipts[0]
         tm.that(receipt.root, eq=Path())
         tm.ok(receipt.executed)
-        tm.fail(receipt.completed)
+        tm.that(receipt.completed, eq=False)
         tm.that(receipt.native_exit_code, eq=2)
         tm.that(receipt.stage, eq="lock-pin")
         tm.that(receipt.files, eq=())
@@ -562,7 +562,7 @@ class TestsFlextInfraMisePinBootstrap:
         """Read each locked Git commit back from the locally provisioned mirror."""
         project = Path(__file__).resolve().parents[3]
         sources = u.Tests.locked_git_sources(project)
-        mirrored = u.Tests.build_git_mirrors(project, tmp_path)
+        mirrored = u.Tests.build_git_mirrors(project, tmp_path, sources)
         tm.that(len(mirrored), eq=len(sources))
         for url, revision, commit in sources:
             parsed = urlsplit(url)

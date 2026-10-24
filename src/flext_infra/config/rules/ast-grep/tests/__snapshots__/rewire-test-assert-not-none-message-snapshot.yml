@@ -1,11 +1,40 @@
 id: rewire-test-assert-not-none-message
 snapshots:
   ? |
+    from flext_tests import tm
+    value = 1
+    def check():
+        assert value is not None, explain()
+  : fixed: |
+      from flext_tests import tm
+      value = 1
+      def check():
+          if value is None:
+              tm.reject(explain())
+    labels:
+    - source: assert value is not None, explain()
+      style: primary
+      start: 54
+      end: 89
+    - source: from flext_tests import tm
+      style: secondary
+      start: 0
+      end: 26
+    - source: |
+        from flext_tests import tm
+        value = 1
+        def check():
+            assert value is not None, explain()
+      style: secondary
+      start: 0
+      end: 90
+  ? |
     from tests import tm
     assert value is not None, "A value is required"
   : fixed: |
       from tests import tm
-      value = tm.not_none(value, msg="A value is required")
+      if value is None:
+          tm.reject("A value is required")
     labels:
     - source: assert value is not None, "A value is required"
       style: primary
@@ -27,7 +56,8 @@ snapshots:
         raise AssertionError(report)
   : fixed: |
       from tests import tm
-      value = tm.not_none(value, msg=report)
+      if value is None:
+          tm.reject(report)
     labels:
     - source: |-
         if not (value is not None):

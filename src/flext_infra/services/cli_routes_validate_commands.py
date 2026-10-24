@@ -45,7 +45,7 @@ class FlextInfraValidationCommandRoutes:
         return r[m.Infra.ValidationReport].fail(details)
 
     validate_command_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
-        tuple(
+        *tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,
                 help_text=help_text,
@@ -114,7 +114,7 @@ class FlextInfraValidationCommandRoutes:
                     _validate_namespace_command,
                 ),
             )
-        )
+        ),
     )
 
 

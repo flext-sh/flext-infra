@@ -25,15 +25,15 @@ class TestsFlextInfraGitFixtureIsolation:
         target = tmp_path / "target"
         target.mkdir()
         poisoned_environment = {
-            "GIT_DIR": str(poison / ".git"),
+            "GIT_DIR": str(poison / c.GIT_DIR_NAME),
             "GIT_WORK_TREE": str(poison),
-            "GIT_INDEX_FILE": str(poison / ".git" / "index"),
-            "GIT_COMMON_DIR": str(poison / ".git"),
+            "GIT_INDEX_FILE": str(poison / c.GIT_DIR_NAME / "index"),
+            "GIT_COMMON_DIR": str(poison / c.GIT_DIR_NAME),
         }
         with tm.scope(env=poisoned_environment):
             u.Tests.initialize_git_repo(target)
 
-        tm.ok((target / ".git").is_dir())
+        tm.ok((target / c.GIT_DIR_NAME).is_dir())
         resolved = tm.ok(
             u.Cli.capture(
                 ["git", "rev-parse", "--show-toplevel"],

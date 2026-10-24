@@ -6,6 +6,11 @@ valid:
     assert self.value is not None, "A value is required"
 invalid:
   - |
+    from flext_tests import tm
+    value = 1
+    def check():
+        assert value is not None, explain()
+  - |
     from tests import tm
     assert value is not None, "A value is required"
   - |

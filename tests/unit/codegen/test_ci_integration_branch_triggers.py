@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
-from flext_infra.codegen import FlextInfraCodegenConform
-from tests import t, tm, u
+from flext_infra import config, m
+from flext_infra.codegen import FlextInfraCodegenConformExecute
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCiIntegrationBranchTriggers:
@@ -70,7 +69,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def _trigger_section(rendered: str) -> str:
-        return rendered.split('"on":', maxsplit=1)[1].split(
+        return rendered.split("c.ParserBooleanToken.ON:", maxsplit=1)[1].split(
             "# End SECTION: triggers",
             maxsplit=1,
         )[0]
@@ -100,12 +99,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_pull_request_title_edits_revalidate_release_metadata(self) -> None:
         """GitHub dispatches the workflow when release-plan's PR title changes."""
         workflow = tm.ok(u.Cli.yaml_parse(self.render_ci(repository_branch="develop")))
-        events = workflow["on"]
-        tm.that(isinstance(events, Mapping), truth=True)
-        pull_request = events["pull_request"]
-        tm.that(isinstance(pull_request, Mapping), truth=True)
-        activities = pull_request["types"]
-        tm.that(isinstance(activities, list), truth=True)
+        events = u.Cli.json_as_mapping(workflow[c.ParserBooleanToken.ON])
+        pull_request = u.Cli.json_as_mapping(events["pull_request"])
+        activities = u.Cli.json_as_sequence(pull_request["types"])
+        tm.that(activities, empty=False)
 
         tm.that(activities, has="edited")
 
@@ -136,7 +133,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         template = template_root / template_source
         rendered = tm.ok(u.Cli.template_render(template, spec))
         document = tm.ok(u.Cli.yaml_parse(rendered))
-        events = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        events = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document[c.ParserBooleanToken.ON]
+        )
 
         tm.that(
             "github.event.pull_request" in rendered and "pull_request" not in events,
@@ -147,7 +146,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_workflow_projection_uses_only_manifest_workflows() -> None:
         """Scoped recovery retains every non-workflow destination."""
         codegen = config.Infra.codegen
-        contract = FlextInfraCodegenConform.surface_contract(
+        contract = FlextInfraCodegenConformExecute.surface_contract(
             c.Infra.CodegenConformSurface.WORKFLOWS,
             codegen=codegen,
         )
@@ -251,7 +250,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(upload["if"], eq="${{ always() }}")
         inputs = u.Cli.json_as_mapping(upload["with"])
         tm.that(inputs["if-no-files-found"], eq="error")
-        tm.ok(inputs["include-hidden-files"])
+        tm.that(inputs["include-hidden-files"], eq=True)
         paths = str(inputs["path"]).splitlines()
         for filename in (
             "suite-outcome.json",
@@ -315,10 +314,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         save = next(step for step in steps if step.get("name") == "Save tool caches")
         restore_inputs = u.Cli.json_as_mapping(restore["with"])
         save_inputs = u.Cli.json_as_mapping(save["with"])
-        primary_key = restore_inputs["key"]
-        prefixes_text = restore_inputs["restore-keys"]
-        tm.that(isinstance(primary_key, str), truth=True)
-        tm.that(isinstance(prefixes_text, str), truth=True)
+        primary_key = u.Cli.json_pick_str(restore_inputs, "key")
+        prefixes_text = u.Cli.json_pick_str(restore_inputs, "restore-keys")
+        tm.that(primary_key, empty=False)
+        tm.that(prefixes_text, empty=False)
         prefixes = prefixes_text.splitlines()
         tm.that(len(prefixes), eq=2)
         tm.ok(primary_key.startswith(prefixes[0]))
@@ -466,7 +465,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                         env={
                             "CACHE_BRANCH": branch,
                             "CACHE_SEED_BRANCH": spec.repository_branch,
-                            "CACHE_WRITE_ALLOWED": "true",
+                            "CACHE_WRITE_ALLOWED": c.ParserBooleanToken.TRUE,
                             "CACHE_INPUTS": inputs,
                             "CACHE_PLATFORM": "fixture-platform",
                             "CACHE_GENERATION": str(index),

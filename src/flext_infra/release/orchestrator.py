@@ -10,31 +10,19 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.release import FlextInfraReleasePlanMixin
 
 
-class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
+class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseOptions):
     """Run one phase of the release protocol against the repository root.
 
     The version lives only in ``pyproject.toml``; the protocol derives every
     change from merged pull-request titles and is its sole writer.
     """
 
-    phase: Annotated[
-        c.Infra.ReleasePhase,
-        m.Field(description="Release phase to execute"),
-    ] = c.Infra.ReleasePhase.PLAN
-    index: Annotated[
-        bool,
-        m.Field(description="Publish receipt-verified artifacts to the package index"),
-    ] = False
-    pr_title: Annotated[
-        str,
-        m.Field(description="Pull-request title to validate against the protocol"),
-    ] = ""
     conform_collaborators: Annotated[
-        m.Infra.CodegenConformPorts | None,
+        p.Infra.CodegenConformPorts | None,
         m.Field(
             exclude=True,
             description=(
@@ -122,6 +110,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
                 subject=c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.value.next),
                 body_file=self._release_dir(root, plan.value.tag)
                 / c.Infra.RELEASE_NOTES_FILENAME,
+                ownership=self.ownership,
             ),
             lambda: self._stamp_release(ctx, plan.value),
         )
@@ -136,8 +125,8 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
     ) -> p.Result[bool]:
         """Write the version SSOT, settle its projections, then the release notes.
 
-        Ordering version -> conform -> notes makes each step a pure
-        function of the SSOT already on disk: conform settles pyproject.toml's
+        Ordering version -> generation -> notes makes each step a pure
+        function of the SSOT already on disk: generation settles pyproject.toml's
         dependencies and every rendered projection (docs render the version),
         and the packaged-project list the notes name is the settled tree's.
         Locks remain unchanged; explicit ``make upg`` owns their resolution.
@@ -151,11 +140,10 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
-        settled = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
+        settled = FlextInfraCodegenConformExecute.execute_request(
+            m.Infra.CodegenGenerateRequest(
                 root=root,
                 scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.APPLY,
             ),
             execution_context=self,
         )
@@ -199,7 +187,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
         if ctx.dry_run:
             return r[bool].ok(value=True)
         existing = u.Cli.capture(
-            [c.Infra.GIT, "rev-list", "-n", "1", ctx.tag],
+            [c.Infra.GIT, "rev-list", "-n", c.ParserBooleanToken.ONE, ctx.tag],
             cwd=root,
         )
         if existing.success and existing.value.strip():
@@ -255,7 +243,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
                 "log",
                 f"--grep={expected}",
                 "-n",
-                "1",
+                c.ParserBooleanToken.ONE,
                 "--format=%H",
                 c.Infra.GIT_HEAD,
             ],

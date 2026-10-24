@@ -13,8 +13,10 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitWorktreeIO,
+)
 
 
 class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
@@ -23,7 +25,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
     @staticmethod
     def _state_pathspecs(paths: t.SequenceOf[Path]) -> t.VariadicTuple[str]:
         if not paths or any(
-            path.is_absolute() or ".." in path.parts or ".git" in path.parts
+            path.is_absolute() or ".." in path.parts or c.GIT_DIR_NAME in path.parts
             for path in paths
         ):
             msg = "capture requires nonempty literal repository-relative paths"
@@ -65,6 +67,8 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         paths: t.SequenceOf[Path],
+        *,
+        index_file: Path | None = None,
     ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
         """Read the exact stage-zero index entries for the requested paths.
 
@@ -77,6 +81,8 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
 
         """
         repo = cls._repo(root)
+        if index_file is not None:
+            repo.git.update_environment(GIT_INDEX_FILE=str(index_file))
         pathspecs = cls._state_pathspecs(paths)
         for row in repo.git.ls_files("-v", "-z", "--", *pathspecs).split("\0"):
             if row and (row[0].islower() or row[0] == "S"):
@@ -91,7 +97,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
                 continue
             metadata, raw_path = row.split("\t", 1)
             mode, oid, stage = metadata.split()
-            if stage != "0":
+            if stage != c.ParserBooleanToken.ZERO:
                 msg = f"capture requires resolved index entries: {raw_path}"
                 raise ValueError(msg)
             entries.append(
@@ -182,7 +188,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
             if any((root / parent).is_symlink() for parent in path.parents):
                 continue
             if path in gitlinks and (
-                (candidate / ".git").exists() or path in indexed_gitlinks
+                (candidate / c.GIT_DIR_NAME).exists() or path in indexed_gitlinks
             ):
                 files.append(
                     m.Infra.GitWorktreeFileState(
@@ -190,12 +196,12 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
                         mode=c.Infra.GIT_GITLINK_MODE_TEXT,
                         permissions=0,
                         oid=cls._repo(candidate).head.commit.hexsha
-                        if (candidate / ".git").exists()
+                        if (candidate / c.GIT_DIR_NAME).exists()
                         else gitlinks[path],
                     ),
                 )
             elif candidate.is_dir() and not candidate.is_symlink():
-                if (candidate / ".git").exists():
+                if (candidate / c.GIT_DIR_NAME).exists():
                     msg = f"nested repository requires independent capture: {path}"
                     raise ValueError(msg)
                 # A former HEAD file can now be a directory; its descendants

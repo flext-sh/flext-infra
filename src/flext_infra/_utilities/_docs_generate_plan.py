@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import m, p, r, t
 from flext_infra._utilities import (
@@ -21,16 +21,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
     FlextInfraUtilitiesDocsGenerateSourcesMixin,
 ):
     """Normalize rendered artifacts and bind them to exact destination states."""
-
-    @staticmethod
-    def _directory_sort_key(path: Path) -> t.Pair[int, str]:
-        """Return the stable parent-first ordering key for a directory.
-
-        Returns:
-            The stable parent-first ordering key for a directory.
-
-        """
-        return len(path.parts), path.as_posix()
 
     @staticmethod
     def docs_normalize_artifacts(
@@ -70,34 +60,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         )
 
     @staticmethod
-    def docs_required_directories(
-        bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Return unique target directories ordered parent before child.
-
-        Returns:
-            Unique target directories ordered parent before child.
-
-        """
-        required: set[Path] = set()
-        for scoped in bundle.scopes:
-            for artifact in scoped.artifacts:
-                if artifact.desired_content is None:
-                    continue
-                parent = scoped.scope.path
-                for part in artifact.relative_path.parent.parts:
-                    parent /= part
-                    required.add(parent)
-        return r[t.VariadicTuple[Path]].ok(
-            tuple(
-                sorted(
-                    required,
-                    key=FlextInfraUtilitiesDocsGeneratePlanMixin._directory_sort_key,
-                ),
-            ),
-        )
-
-    @staticmethod
     def docs_file_plans(
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
@@ -107,8 +69,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        # Each plan carries its batch inputs to the guarded publication owner.
-        # Planning never revalidates the complete fleet or rerenders its sources.
         plans: list[m.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
             for artifact in scoped.artifacts:
@@ -117,17 +77,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                     scoped.scope.path / artifact.relative_path,
                     artifact.desired_content,
                     desired_mode=artifact.desired_mode,
-                    source_states=bundle.source_states,
                 )
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
-                plans.append(
-                    planned.value.model_copy(
-                        update={
-                            "dependency_group": scoped.scope.path.as_posix(),
-                        }
-                    )
-                )
+                plans.append(planned.value)
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
             *plans,
             *bundle.metadata_files,
@@ -146,14 +99,14 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
 
         """
-        planned = cli_u.Cli.atomic_plan_directory_chain(root)
+        planned = u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 planned,
             )
         if planned.value.directories:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].ok(())
-        inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+        inventory = u.Cli.atomic_inventory_physical_tree(root)
         if inventory.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 inventory,

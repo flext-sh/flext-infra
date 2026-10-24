@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import m, t
 
@@ -57,14 +57,14 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
         """
         selected = cls.collection_source_root(root, source)
-        chain = cli_u.Cli.atomic_plan_directory_chain(selected).unwrap()
+        chain = u.Cli.atomic_plan_directory_chain(selected).unwrap()
         if chain.directories:
             raise FileNotFoundError(selected)
         for pattern in (*source.plan_globs, *source.exclude_globs):
             if Path(pattern).is_absolute() or ".." in Path(pattern).parts:
                 msg = f"unsafe collection pattern: {pattern}"
                 raise ValueError(msg)
-        inventory = cli_u.Cli.atomic_inventory_physical_tree(selected).unwrap()
+        inventory = u.Cli.atomic_inventory_physical_tree(selected).unwrap()
         for entry in inventory.entries:
             if entry.kind == "symlink" and any(
                 entry.path.relative_to(selected).full_match(pattern)
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
             ValueError: If collection source disappeared.
 
         """
-        state = cli_u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
         if state.content is None:
             msg = f"collection source disappeared: {path}"
             raise ValueError(msg)
@@ -130,7 +130,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
             ValueError: If collection input changed between reads.
 
         """
-        state = cli_u.Cli.atomic_read_binary_file_state(path, required=False).unwrap()
+        state = u.Cli.atomic_read_binary_file_state(path, required=False).unwrap()
         previous = states.get(path)
         if previous is not None and previous != state:
             msg = f"collection input changed between reads: {path}"
@@ -151,16 +151,15 @@ class FlextInfraUtilitiesDocsCollectionSources:
             The resulting ``t.VariadicTuple[m.Cli.AtomicFileState]``.
 
         Raises:
-            from flext_cli import u as cli_u
             ValueError: If plan companion is a symlink.
 
         """
         states = [cls.collection_read(path)]
         if source.companion_directory:
             companion = path.with_suffix("")
-            chain = cli_u.Cli.atomic_plan_directory_chain(companion).unwrap()
+            chain = u.Cli.atomic_plan_directory_chain(companion).unwrap()
             if not chain.directories:
-                inventory = cli_u.Cli.atomic_inventory_physical_tree(companion).unwrap()
+                inventory = u.Cli.atomic_inventory_physical_tree(companion).unwrap()
                 for entry in inventory.entries:
                     if entry.kind == "symlink":
                         msg = f"plan companion is a symlink: {entry.path}"
@@ -183,7 +182,6 @@ class FlextInfraUtilitiesDocsCollectionSources:
             The resulting ``t.Pair[str | None, str | None]``.
 
         Raises:
-            from flext_cli import u as cli_u
             ValueError: If plan frontmatter has no closing delimiter.
 
         """
@@ -198,7 +196,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
             msg = "plan frontmatter has no closing delimiter"
             raise ValueError(msg)
         metadata = "\n".join(lines[1:closing])
-        parsed = cli_u.Cli.yaml_roundtrip_load_map_text(metadata).unwrap()
+        parsed = u.Cli.yaml_roundtrip_load_map_text(metadata).unwrap()
         selected = next((field for field in fields if field in parsed), None)
         updated = m.Infra.PlanCollectionTimestamp.model_validate(
             {"value": parsed[selected] if selected is not None else None},

@@ -198,10 +198,6 @@ class TestsFlextInfraDocsMainCommands:
 
         first_bundle = generator.prepare_bundle()
         tm.ok(first_bundle)
-        required = generator.required_directories(first_bundle.value)
-        tm.ok(required)
-        for directory in required.value:
-            directory.mkdir(parents=True, exist_ok=True)
         tm.ok(
             u.Tests.materialize_codegen_plans(generator.plan_files(first_bundle.value)),
         )

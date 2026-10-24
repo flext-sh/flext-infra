@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from flext_infra.deps._detector_runtime_steps import (
         FlextInfraDependencyDetectorRuntimeSteps,
     )
-    from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
     from flext_infra.deps._modernizer import (
         FlextInfraPyprojectModernizerBase,
         FlextInfraPyprojectModernizerDocument,
@@ -59,7 +58,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraEnsurePyrightConfigPhase",
     "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraExtraPathsManager",
-    "FlextInfraExtraPathsSyncMixin",
     "FlextInfraInjectCommentsPhase",
     "FlextInfraLockIntegrityVerifier",
     "FlextInfraPyprojectModernizer",
@@ -89,7 +87,6 @@ install_lazy_exports(
         "FlextInfraEnsurePyrightConfigPhase": ".phases.ensure_pyright",
         "FlextInfraEnsureRuffConfigPhase": ".phases.ensure_ruff",
         "FlextInfraExtraPathsManager": ".extra_paths",
-        "FlextInfraExtraPathsSyncMixin": "._extra_paths_sync",
         "FlextInfraInjectCommentsPhase": ".phases.inject_comments",
         "FlextInfraLockIntegrityVerifier": ".lock_integrity",
         "FlextInfraPyprojectModernizer": ".modernizer",

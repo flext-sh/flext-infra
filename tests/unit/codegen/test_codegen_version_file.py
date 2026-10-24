@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
+from flext_infra.codegen import FlextInfraCodegenVersionFile
 from tests import c, t, tm, u
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class TestsFlextInfraCodegenVersionFile:
         """
         ws = tmp_path / "workspace"
         ws.mkdir()
-        (ws / "pyproject.toml").write_text(
+        (ws / c.PYPROJECT_FILENAME).write_text(
             _WORKSPACE_PYPROJECT.format(
                 workspace_name=c.Tests.WORKSPACE_PROJECT_NAME,
                 project_version=c.Tests.RELEASE_VERSION_BASE,
@@ -56,7 +56,7 @@ class TestsFlextInfraCodegenVersionFile:
         )
         proj = ws / project_name
         proj.mkdir()
-        (proj / "pyproject.toml").write_text(
+        (proj / c.PYPROJECT_FILENAME).write_text(
             _PROJECT_PYPROJECT.format(
                 project_name=project_name,
                 project_version=c.Tests.RELEASE_VERSION_BASE,
@@ -146,7 +146,7 @@ class TestsFlextInfraCodegenVersionFile:
         """Test project filter only generates for matching project."""
         ws = tmp_path / "workspace"
         ws.mkdir()
-        (ws / "pyproject.toml").write_text(
+        (ws / c.PYPROJECT_FILENAME).write_text(
             _WORKSPACE_PYPROJECT.format(
                 workspace_name=c.Tests.WORKSPACE_PROJECT_NAME,
                 project_version=c.Tests.RELEASE_VERSION_BASE,
@@ -160,7 +160,7 @@ class TestsFlextInfraCodegenVersionFile:
         for name in c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"]:
             proj = ws / name
             proj.mkdir()
-            (proj / "pyproject.toml").write_text(
+            (proj / c.PYPROJECT_FILENAME).write_text(
                 _PROJECT_PYPROJECT.format(
                     project_name=name,
                     project_version=c.Tests.RELEASE_VERSION_BASE,
@@ -207,7 +207,7 @@ class TestsFlextInfraCodegenVersionFile:
         """Test skips project without src pkg dir."""
         ws = tmp_path / "workspace"
         ws.mkdir()
-        (ws / "pyproject.toml").write_text(
+        (ws / c.PYPROJECT_FILENAME).write_text(
             _WORKSPACE_PYPROJECT.format(
                 workspace_name=c.Tests.WORKSPACE_PROJECT_NAME,
                 project_version=c.Tests.RELEASE_VERSION_BASE,
@@ -222,7 +222,7 @@ class TestsFlextInfraCodegenVersionFile:
         )
         no_src = ws / c.Tests.PROJECT_NO_SRC_NAME
         no_src.mkdir()
-        (no_src / "pyproject.toml").write_text(
+        (no_src / c.PYPROJECT_FILENAME).write_text(
             _PROJECT_PYPROJECT.format(
                 project_name=c.Tests.PROJECT_NO_SRC_NAME,
                 project_version=c.Tests.RELEASE_VERSION_BASE,

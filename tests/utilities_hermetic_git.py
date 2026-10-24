@@ -99,7 +99,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                 env={
                     **(git_environment or {}),
                     "GIT_ALLOW_PROTOCOL": "file",
-                    "UV_NO_GITHUB_FAST_PATH": "1",
+                    "UV_NO_GITHUB_FAST_PATH": c.ParserBooleanToken.ONE,
                 },
                 remove_env_keys=(*c.Tests.MAKE_ISOLATION_ENV_KEYS, "UV_OFFLINE"),
             ),
@@ -174,8 +174,15 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         return tuple(sources.values())
 
     @staticmethod
-    def build_git_mirrors(project_root: Path, mirrors: Path) -> t.StrSequence:
+    def build_git_mirrors(
+        project_root: Path,
+        mirrors: Path,
+        sources: t.SequenceOf[t.Triple[str, str, str]],
+    ) -> t.StrSequence:
         """Mirror each locked source's exact commit under its host and path.
+
+        ``sources`` is the caller's ``locked_git_sources`` result, read once:
+        every caller already holds it to key or verify its mirrors.
 
         Objects come from this checkout or from the Git databases ``make setup``
         and ``make upg`` fetched into the native uv cache selected by the
@@ -209,27 +216,31 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             *(context.runtime_root / member.path for member in workspace.subprojects),
             *sorted(cache.glob("git-v*/db/*")),
         )
-        mirrored: list[str] = []
-        for (
-            url,
-            rev,
-            sha,
-        ) in TestsFlextInfraUtilitiesHermeticGitMixin.locked_git_sources(project_root):
-            origin = next(
-                (
-                    database
-                    for database in databases
-                    if u.Cli.process_succeeded(
-                        tm.ok(
-                            u.Cli.run_raw(
-                                [c.Infra.GIT, "cat-file", "-e", f"{sha}^{{commit}}"],
-                                cwd=database,
-                            ),
-                        ).outcome,
-                    )
+        # One batched object query per database replaces one process per
+        # source and database; the first database holding a commit owns it.
+        origins: t.MutableMappingKV[str, Path] = {}
+        for database in databases:
+            pending = tuple(sha for _, _, sha in sources if sha not in origins)
+            if not pending:
+                break
+            probe = tm.ok(
+                u.Cli.run_raw(
+                    [c.Infra.GIT, "cat-file", "--batch-check"],
+                    cwd=database,
+                    options=m.Cli.ProcessOptions(
+                        input_data="".join(f"{sha}^{{commit}}\n" for sha in pending),
+                    ),
                 ),
-                None,
             )
+            if not u.Cli.process_succeeded(probe.outcome):
+                continue
+            for line in probe.stdout.splitlines():
+                oid, _, kind = line.partition(" ")
+                if kind.startswith("commit ") and oid in pending:
+                    origins.setdefault(oid, database)
+        mirrored: list[str] = []
+        for url, rev, sha in sources:
+            origin = origins.get(sha)
             if origin is None:
                 msg = f"locked Git source is not held locally: {url}@{sha}"
                 raise FileNotFoundError(msg)
@@ -288,12 +299,12 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         environment = {
             "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_CONFIG_SYSTEM": os.devnull,
-            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
             "GIT_CONFIG_PARAMETERS": "",
             "GIT_CONFIG_COUNT": str(len(hosts)),
             "GIT_ALLOW_PROTOCOL": "file",
-            "UV_OFFLINE": "1",
-            "UV_NO_GITHUB_FAST_PATH": "1",
+            "UV_OFFLINE": c.ParserBooleanToken.ONE,
+            "UV_NO_GITHUB_FAST_PATH": c.ParserBooleanToken.ONE,
         }
         for index, host in enumerate(hosts):
             environment[f"GIT_CONFIG_KEY_{index}"] = (

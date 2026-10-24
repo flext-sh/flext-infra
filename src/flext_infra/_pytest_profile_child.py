@@ -35,7 +35,7 @@ class FlextInfraPytestProfileChild:
     declares no names of its own.
     """
 
-    _startup_retire: ClassVar[Callable[[], None] | None] = None
+    _startup_retirements: ClassVar[list[Callable[[], None]]] = []
 
     @staticmethod
     def load_clock(clock_module: str) -> ModuleType:
@@ -100,7 +100,7 @@ class FlextInfraPytestProfileChild:
             and sys.orig_argv[entry_index - 1 : entry_index + 1] == ["-m", "cProfile"]
         )
         if not native_profile:
-            cls._startup_retire = (
+            cls._startup_retirements.append(
                 clock.FlextInfraPytestClock.register_signal_checkpoint(
                     profile,
                     profile_output,
@@ -122,7 +122,6 @@ class FlextInfraPytestProfileChild:
             original.loader.exec_module(module)
         if native_profile:
             clock.FlextInfraPytestClock.publish_profile(profile, profile_output)
-            profile.disable()
 
     @classmethod
     def launcher(
@@ -144,10 +143,11 @@ class FlextInfraPytestProfileChild:
         """
         clock, profile = cls.bootstrap(clock_module)
         output = Path(sys.argv.pop(1))
-        if cls._startup_retire is not None:
+        if cls._startup_retirements:
             atexit.unregister(clock.FlextInfraPytestClock.publish_profile)
-            cls._startup_retire()
-            cls._startup_retire = None
+            for startup_retire in cls._startup_retirements:
+                startup_retire()
+            cls._startup_retirements.clear()
         retire = clock.FlextInfraPytestClock.register_signal_checkpoint(profile, output)
         try:
             directory = os.environ.get(process_directory_env)

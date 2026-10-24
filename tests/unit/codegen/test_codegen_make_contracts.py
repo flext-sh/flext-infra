@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -27,14 +27,14 @@ def _apply_custom_make_and_assert_clean(
     """Write custom.mk, apply the MAKEFILE surface, and assert a clean outcome."""
     custom = root / "custom.mk"
     tm.ok(u.Cli.atomic_write_text_file(custom, custom_content))
-    result = infra.codegen_conform(
+    result = TestsFlextInfraConformSupport.conform_in_workspace(
         u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         ),
-        initial_workspace=workspace,
+        workspace,
     )
     tm.ok(result)
     tm.fail("WARN:" in captured.readouterr().out)
@@ -58,7 +58,7 @@ class TestsFlextInfraCodegenMakeContracts:
                 c.Infra.MakeProfile.STANDALONE
             ]
         )
-        result = FlextInfraCodegenConform.validate_custom_make(
+        result = FlextInfraCodegenConformExecute.validate_custom_make(
             tm.ok(u.Cli.files_read_text(custom)),
             policy,
         )
@@ -102,7 +102,7 @@ class TestsFlextInfraCodegenMakeContracts:
             ]
         )
 
-        result = FlextInfraCodegenConform.validate_custom_make(
+        result = FlextInfraCodegenConformExecute.validate_custom_make(
             ".PHONY: \\\n\t_custom_check_demo \\",
             policy,
         )
@@ -216,13 +216,13 @@ class TestsFlextInfraCodegenMakeContracts:
         )
         tm.ok(u.Cli.files_delete(root / "custom.mk"))
         (root / "custom.mk").mkdir()
-        result = infra.codegen_conform(
+        result = TestsFlextInfraConformSupport.conform_in_workspace(
             u.Tests.conform_request(
                 root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             ),
-            initial_workspace=workspace,
+            workspace,
         )
         tm.fail(result)
         tm.that(result.error, has="not a regular file")

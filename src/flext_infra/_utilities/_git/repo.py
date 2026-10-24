@@ -12,7 +12,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+from contextvars import ContextVar
 from pathlib import Path
+from typing import ClassVar
 
 from git import (
     Git,
@@ -28,6 +30,21 @@ from flext_infra import c, m, p, r, t
 
 class FlextInfraUtilitiesGitRepo:
     """Git repository opener with GitPython native OO API."""
+
+    _publication_index: ClassVar[ContextVar[m.Infra.GitIndexScope | None]] = ContextVar(
+        "flext_infra_git_publication_index", default=None
+    )
+
+    @classmethod
+    def _git_index_path(cls, root: Path) -> Path:
+        scope = cls._publication_index.get()
+        repo = cls._repo(root)
+        if scope is None:
+            return Path(repo.index.path)
+        if Path(repo.working_dir).resolve() != scope.repo_root:
+            msg = f"index write is outside the admitted publication repository: {root}"
+            raise ValueError(msg)
+        return scope.index_file
 
     @staticmethod
     def _registered_worktree_entries(
@@ -223,7 +240,8 @@ class FlextInfraUtilitiesGitRepo:
         return (
             primary_backpointer != common_dir
             or (configured_primary is not None and checkout != configured_primary)
-            or primary_repo.git.rev_parse("--is-inside-work-tree").strip() != "true"
+            or primary_repo.git.rev_parse("--is-inside-work-tree").strip()
+            != c.ParserBooleanToken.TRUE
         )
 
     @classmethod
@@ -276,6 +294,11 @@ class FlextInfraUtilitiesGitRepo:
             return r[Repo].fail(f"cannot open git repository at {resolved}: {exc}")
         if repo.bare or repo.working_tree_dir is None:
             return r[Repo].fail(f"bare or worktree-less repository at {resolved}")
+        scope = cls._publication_index.get()
+        if scope is not None:
+            repo.git.update_environment(GIT_OPTIONAL_LOCKS=c.ParserBooleanToken.ZERO)
+            if Path(repo.working_tree_dir).resolve() == scope.repo_root:
+                repo.git.update_environment(GIT_INDEX_FILE=str(scope.index_file))
         return r[Repo].ok(repo)
 
     @classmethod
@@ -341,7 +364,7 @@ class FlextInfraUtilitiesGitRepo:
                 ()
                 if git_dir == common_dir
                 else cls._registered_worktree_entries(
-                    repo.git.worktree("list", "--porcelain"),
+                    repo.git.worktree(c.Action.LIST, "--porcelain"),
                 )
             )
         except GitCommandError as exc:

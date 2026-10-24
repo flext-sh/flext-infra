@@ -25,7 +25,7 @@ class FlextInfraDocFormatter(FlextInfraDocServiceBase):
     with ``--apply``, the read-only ``rumdl fmt --check`` preview without it.
     """
 
-    format_gate: t.Port[p.Infra.MarkdownFormatGateFactory | None] = m.Field(
+    format_gate: t.Port[p.Infra.MarkdownFormatGateFactory] | None = m.Field(
         default=None,
         exclude=True,
         description=(

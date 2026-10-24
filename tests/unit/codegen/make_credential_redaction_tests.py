@@ -33,11 +33,12 @@ class TestsFlextInfraMakeCredentialRedaction:
         global_config = tmp_path / "fixture-global.gitconfig"
         credential = "fixture-only-password-for-redaction"
         username = "fixture-only-git-user"
+        explicit = "fixture-only-explicit-token"
         credential_url = f"https://{username}:{credential}@github.com/"
         environment = {
             "GIT_CONFIG_GLOBAL": str(global_config),
-            "GIT_CONFIG_NOSYSTEM": "1",
-            "GITHUB_TOKEN": "fixture-only-explicit-token",
+            "GIT_CONFIG_NOSYSTEM": c.ParserBooleanToken.ONE,
+            "GITHUB_TOKEN": explicit,
         }
         configured = tm.ok(
             u.Cli.run_raw(

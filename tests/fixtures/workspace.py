@@ -138,7 +138,7 @@ def infra_test_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     src_pkg = workspace / "src" / "infra_pkg"
     src_pkg.mkdir(parents=True, exist_ok=True)
-    (workspace / "pyproject.toml").write_text(
+    (workspace / c.PYPROJECT_FILENAME).write_text(
         "[project]\nname='infra-pkg'\nversion='0.0.0'\n",
         encoding="utf-8",
     )

@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from flext_infra._models._codegen import (
         FlextInfraCodegen,
         FlextInfraModelsCodegenFixModels,
-        FlextInfraModelsCodegenJournalModels,
         FlextInfraModelsCodegenLazyInitModels,
         FlextInfraModelsCodegenPipelineModels,
         FlextInfraModelsCodegenScaffoldModels,
@@ -143,7 +142,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",
     "FlextInfraModelsCodegenPipelineModels",
     "FlextInfraModelsCodegenRender",
@@ -225,7 +223,6 @@ install_lazy_exports(
         "FlextInfraModelsCensus": ".census",
         "FlextInfraModelsCheck": ".check",
         "FlextInfraModelsCodegenFixModels": "._codegen.fix",
-        "FlextInfraModelsCodegenJournalModels": "._codegen.journal",
         "FlextInfraModelsCodegenLazyInitModels": "._codegen.lazy_init",
         "FlextInfraModelsCodegenPipelineModels": "._codegen.pipeline",
         "FlextInfraModelsCodegenRender": ".codegen_render",

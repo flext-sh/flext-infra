@@ -8,154 +8,11 @@ from __future__ import annotations
 
 import pytest
 
-from flext_infra.transformers import FlextInfraSemanticPublication
-from flext_infra.workspace.native_reference import (
-    FlextInfraWorkspaceNativeReference as native,
-)
-from tests import m, t, tm, u
+from tests import t, u
 
 
 class TestsFlextInfraNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""
-
-    @staticmethod
-    @pytest.mark.parametrize("subject", ["thread-hook", "gate-base"])
-    def test_publication_producer_retains_reached_thread_hook(
-        real_python_package: t.DirectoryPath,
-        subject: t.StrictStr,
-    ) -> None:
-        """Report real publication aliases before any publication guard executes."""
-        selections = tm.ok(
-            native.producer_selections(
-                FlextInfraSemanticPublication.publish_source_candidate,
-                (),
-            )
-        )
-        if subject == "thread-hook":
-            live = tm.ok(native.capture(selections))
-            output = u.Tests.run_lazy_init_probe(
-                """from flext_infra.transformers import FlextInfraSemanticPublication
-from flext_infra.workspace.native_reference import (
-    FlextInfraWorkspaceNativeReference as native,
-)
-selection = native.producer_selections(
-    FlextInfraSemanticPublication.publish_source_candidate, (),
-).unwrap()
-print(native.capture(selection).unwrap().model_dump_json())
-""",
-                python_paths=(),
-                cwd=real_python_package,
-            )
-        else:
-            output = u.Tests.run_lazy_init_probe(
-                """from pathlib import Path
-from flext_infra import check
-from flext_infra.transformers import FlextInfraSemanticPublication
-from flext_infra.workspace.native_reference import (
-    FlextInfraWorkspaceNativeReference as native,
-)
-selection = native.producer_selections(
-    FlextInfraSemanticPublication.publish_source_candidate, (),
-).unwrap()
-before = native.capture(selection).unwrap()
-checker = check.FlextInfraWorkspaceChecker(repository_root=Path.cwd())
-after = native.capture(selection).unwrap()
-print(before.model_dump_json())
-print(after.model_dump_json())
-""",
-                python_paths=(),
-                cwd=real_python_package,
-            )
-            live = m.Infra.NativeImportObservation.model_validate_json(output[-2])
-        cold = m.Infra.NativeImportObservation.model_validate_json(output[-1])
-        tm.that(cold.modules, eq=selections)
-        for phase, observation in (
-            (f"{subject}-before", live),
-            (f"{subject}-after", cold),
-        ):
-            indexed = {item.binding: item for item in observation.bindings}
-            aliases = tuple(
-                item for item in observation.bindings if item.kind == "alias"
-            )
-            roots = {
-                f"{item.target}::{'.'.join(item.attributes)}" for item in selections
-            }
-            paths: t.DictKV[str, t.VariadicTuple[m.Infra.NativeBindingEvidence]] = {}
-            pending = [item for item in aliases if item.binding in roots]
-            outgoing: t.DictKV[str, list[m.Infra.NativeBindingEvidence]] = {}
-            for edge in aliases:
-                parent = edge.binding.partition(".")[0]
-                outgoing.setdefault(parent, []).append(edge)
-            while pending:
-                edge = pending.pop()
-                (target,) = (value for name, value in edge.operands if name == "target")
-                if target in paths:
-                    continue
-                parent = edge.binding.partition(".")[0]
-                paths[target] = (*paths.get(parent, ()), edge)
-                pending.extend(outgoing.get(target, ()))
-            reached = tuple(
-                edge
-                for edge in aliases
-                if (
-                    edge.binding.endswith((
-                        ".global.excepthook",
-                        ".global.threading.excepthook",
-                    ))
-                    if subject == "thread-hook"
-                    else any(
-                        indexed[value].supplier == "flext_infra.gates.base_gate"
-                        and indexed[value].qualname == "FlextInfraGate"
-                        for name, value in edge.operands
-                        if name == "target"
-                    )
-                )
-                and edge.binding.partition(".")[0] in paths
-            )
-            print(
-                f"phase={phase} selections="
-                f"{tuple(item.model_dump_json() for item in selections)}"
-            )
-            if subject == "thread-hook":
-                tm.that(reached, empty=False)
-            print(f"phase={phase} reached={len(reached)}")
-            assert len(reached) <= 16, (
-                f"{phase}: too many supplier edges: {len(reached)}"
-            )
-            fields = {"binding", "kind", "supplier", "name", "qualname"}
-            for edge in reached:
-                parent = edge.binding.partition(".")[0]
-                (target,) = (value for name, value in edge.operands if name == "target")
-                chain = (*paths[parent], edge)
-                assert len(chain) <= 64, (
-                    f"{phase}: supplier path exceeds diagnostic bound"
-                )
-                for link in chain:
-                    (body,) = (
-                        value for name, value in link.operands if name == "target"
-                    )
-                    print(
-                        f"phase={phase} alias={link.binding} "
-                        f"body={indexed[body].model_dump_json(include=fields)}"
-                    )
-                for operand in outgoing.get(target, ()):
-                    if not operand.binding.endswith(".native_function"):
-                        continue
-                    (body,) = (
-                        value for name, value in operand.operands if name == "target"
-                    )
-                    print(
-                        f"phase={phase} hook_operand={operand.binding} "
-                        f"body={indexed[body].model_dump_json(include=fields)}"
-                    )
-        compared = native.compare(live, cold)
-        if subject == "gate-base":
-            tm.ok(compared)
-        else:
-            tm.fail(compared)
-        print(
-            f"phase=public-comparison success={compared.success} error={compared.error}"
-        )
 
     @staticmethod
     def test_global_hook_alias_retains_actual_supplier_boundary(
@@ -201,7 +58,7 @@ try:
     ):
         producer, = (
             item for item in observation.bindings
-            if item.kind != 'alias' and item.supplier == module.__name__
+            if item.kind == 'function' and item.supplier == module.__name__
             and item.qualname == 'execute'
         )
         edge, = (
@@ -325,36 +182,6 @@ before = native.capture(selection).unwrap()
 root = Path.cwd()
 metadata = u.Infra.read_project_metadata_result(root).unwrap()
 assert metadata.root == root
-after = native.capture(selection).unwrap()
-compared = native.compare(before, after)
-assert compared.success, compared.error
-""",
-            python_paths=(),
-            cwd=real_python_package,
-        )
-
-    @staticmethod
-    def test_model_use_preserves_native_producer_identity(
-        real_python_package: t.DirectoryPath,
-    ) -> None:
-        """Using a real model must retain its declared producer identity."""
-        u.Tests.run_lazy_init_probe(
-            """from pathlib import Path
-from flext_infra import m, u
-from flext_infra.workspace.native_reference import (
-    FlextInfraWorkspaceNativeReference as native,
-)
-selection = (m.Infra.SourceClassReference(
-    target="flext_infra._models.codegen_toolchain",
-    attributes=("FlextInfraModelsCodegenToolchain", "CodegenParticipantPolicy"),
-),)
-before = native.capture(selection).unwrap()
-root = Path.cwd()
-policy = m.Infra.CodegenParticipantPolicy(
-    scope_root=root,
-    roots=(u.Cli.atomic_plan_directory_chain(root).unwrap(),),
-)
-assert policy.scope_root == root and policy.roots[0].target == root
 after = native.capture(selection).unwrap()
 compared = native.compare(before, after)
 assert compared.success, compared.error

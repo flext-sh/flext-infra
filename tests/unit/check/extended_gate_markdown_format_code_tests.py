@@ -10,11 +10,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -58,7 +58,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         )
         return project_dir
 
-    @pytest.mark.parametrize("force_color", ["0", "1"])
+    @pytest.mark.parametrize(
+        "force_color", [c.ParserBooleanToken.ZERO, c.ParserBooleanToken.ONE]
+    )
     def test_format_gate_reports_unformatted_markdown(
         self,
         tmp_path: Path,
@@ -304,7 +306,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             ),
         )
         tm.that(result.finding_count > 0, eq=unformatted)
-        tm.that(result.raw_output.strip() != "", eq=unformatted)
+        tm.that(bool(result.raw_output.strip()), eq=unformatted)
         tm.that(source.read_text(encoding="utf-8"), eq=original)
 
     @staticmethod

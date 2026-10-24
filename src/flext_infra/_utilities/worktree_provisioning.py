@@ -13,12 +13,12 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r
-from flext_infra._utilities import (
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
     FlextInfraUtilitiesGitSemanticIndexMixin,
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
     FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
-    FlextInfraUtilitiesProjectDiscovery,
 )
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class FlextInfraWorktreeProvisioning:
     def _ensure_gitlink_checkout(lane: Path, member_path: Path) -> p.Result[bool]:
 
         reference = member_path.as_posix()
-        git_marker = lane / member_path / ".git"
+        git_marker = lane / member_path / c.GIT_DIR_NAME
         if git_marker.is_symlink() or (
             git_marker.exists() and not git_marker.is_file()
         ):

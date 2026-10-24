@@ -14,7 +14,7 @@ from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesIterationDirectory
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         )
         if published.failure:
             if first_failure is not None:
-                cli_u.Cli.error(
+                u.Cli.error(
                     f"{operation} receipt publication failed: {published.error}",
                 )
                 return r[t.SequenceOf[Path]].from_failure(first_failure)
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             )
         )
         if applicability.success and not applicability.value.applicable:
-            cli_u.Cli.info(
+            u.Cli.info(
                 f"{operation} {repository_root}: NOT APPLICABLE: "
                 f"{applicability.value.reason}",
             )
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         else:
             issues = ()
         observed = () if result.failure else tuple(result.value)
-        cli_u.Cli.status(
+        u.Cli.status(
             operation,
             repository_root.name,
             result=result.success,
@@ -287,7 +287,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             results = tuple(pool.map(task, payloads))
             mapped = time.monotonic()
         finished = time.monotonic()
-        cli_u.Cli.info(
+        u.Cli.info(
             f"stage=fleet-map payloads={len(payloads)} workers={workers} "
             f"map_elapsed={mapped - started:.3f}s "
             f"shutdown_elapsed={finished - mapped:.3f}s",

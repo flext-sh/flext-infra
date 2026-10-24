@@ -1,21 +1,16 @@
 # ``model_rebuild`` patches annotations that failed to resolve.
 #
-# OPERATOR RULING 2026-10-06 (global disable): the rule's premise — "every
-# declaration namespace is importable at class creation" — is empirically
-# false for the fleet's namespace-class models under pydantic 2.13. Nested
-# sibling models referenced through the enclosing class path cannot resolve
-# while the enclosing class body is still executing, and pydantic never
-# re-resolves them from module globals at first use. The one completion
-# mechanism that is clean for consumers and checkers alike is the documented
-# per-module completion tail (``model_rebuild(_types_namespace=globals())``).
-# The alternatives were all proven worse in the flext-tests matchers/base
-# case: full-path annotations alone stay incomplete, sibling-frame name pins
-# are non-canonical hacks, and hoisting models to module level violates the
-# namespace-class convention. Per operator directive, the check is disabled
-# globally instead of forcing those patterns project-wide.
+# OPERATOR RULING 2026-10-24 (supersedes the 2026-10-06 severity-off ruling):
+# banned without exception; fix the cause. Measured on pydantic 2.14.1 for
+# models nested in a namespace class: an earlier sibling referenced by bare
+# name completes at class creation; an ``Outer.Name`` path resolves lazily on
+# first use through module globals; only a later sibling by bare name fails
+# (``class-not-fully-defined``). The cure is declaration order: reference
+# earlier siblings by bare name (pydantic-development skill, declaration.md
+# section 1). The fleet had zero real calls when the rule was re-enabled.
 id: ban-model-rebuild
 language: python
-severity: off
+severity: error
 files:
   - "**/*.py"
 ignores:
@@ -29,6 +24,7 @@ ignores:
 rule:
   pattern: $$$TARGET.model_rebuild($$$ARGS)
 message: >-
-  `model_rebuild()` is a declaration defect: export the symbol through its
-  facade, break the import cycle at its owner, or hoist the model out of the
-  function scope. A strict fleet never calls `model_rebuild`.
+  `model_rebuild()` is a declaration defect: declare nested models in
+  dependency order and reference earlier siblings by bare name, export the
+  symbol through its facade, break the import cycle at its owner, or hoist the
+  model out of the function scope. A strict fleet never calls `model_rebuild`.

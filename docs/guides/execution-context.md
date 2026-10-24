@@ -3,6 +3,7 @@
 <!-- TOC START -->
 
 - [Runtime is the authority](#runtime-is-the-authority)
+  - [Native-bootstrap task route: flext-0029c](#native-bootstrap-task-route-flext-0029c)
 - [Canonical architecture checkpoints](#canonical-architecture-checkpoints)
 - [Namespace migration](#namespace-migration)
 - [New projects](#new-projects)
@@ -24,35 +25,311 @@
 
 ## Runtime is the authority
 
-External editable suppliers are a runtime setting, not frozen project policy.
-`FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT` supplies an absolute workspace root
-to the typed `settings.Infra.editable_supplier_root` boundary. Leave it unset for
-ordinary local resolution. There is no sibling-directory or home-directory
-fallback. The supplier workspace itself retains its own local resolution; an
-external consumer owns its own physical `.venv` and generated editable resolver
-view. Hosted execution still selects the standalone view.
+### Post-install cold atomic resource ownership
 
-Export the setting in the invoking shell before the public `make setup`,
-`make gen`, and `make upg` lifecycle. Do not put the host choice in project YAML,
-application settings, generated Makefiles, or secret environment files. Generated
-dispatchers retain the environment contract, never the selected host path.
+The SDK CLI owns atomic IO. The post-install authenticated import guard consumes
+its existing native `atomic_file_state` implementation before framework imports,
+not an Infra-local reader. The declared stdlib closure comprises `atomic_file_state`,
+`atomic_file_read`, `atomic_file_descriptor`, `atomic_parent_descriptor`,
+`atomic_parent_failure` and `atomic_file_path`. Public SDK wrappers construct typed
+states and receipts from the original native capture without rereading it.
+
+Resource declarations explicitly identify their package owner and source closure.
+Resolve that package through the existing `declared_package_dir` source boundary,
+without importing package initializers, parent-root traversal or checkout discovery.
+Rendering captures every original source state, and publication retains the closure
+beside the primary resource witness. A cold projection may use its own explicit
+bootstrap namespace and the original relative-import sources; it must not fabricate
+an initialized SDK package or duplicate the IO implementation. Ordinary SDK import
+semantics and backend descriptor identity remain unchanged.
+
+The approved `flext-0029c` cutover below supersedes the `flext-2e7wy.1`
+pre-install resource proposal and its HOLD. Do not enroll
+`validate/native_bootstrap.py`, a copied bootstrap destination or supplemental
+setup dependency group to restore that admission path. Original captured bytes,
+source currentness and atomic-reader handoff remain obligations of the actual
+post-install guard and its consumer. They do not authorize an authored operation
+before native provisioning or authenticate a preceding installation. This ownership
+contract is not implementation or runtime acceptance evidence.
+
+### Native-bootstrap task route: flext-0029c
+
+For `flext-0029c` only, diagnosis, real runtime, refactoring and applicable gates
+use the **direct public `flext-infra` CLI**. Make integration comes **last**, after
+the native public path is proven. This overrides older Make-only instructions for
+this task, not the command policy for other projects or work. The
+[local FLEXT law](../../../.agents/skills/flext-law/SKILL.md#sources-generation-and-commands)
+records this bounded exception; [parent ADR-010](../../../docs/architecture/adr/010-unified-project-standardization-via-codegen.md#2-common-verb-surface-for-every-project)
+retains the common lifecycle contract. Reuse existing public operations and their
+typed owners, not raw tools, private-module execution or a second dispatcher.
+
+The direct native lock-writing operation is
+`flext-infra deps upgrade-lock --repository-root <root>` at the dependency composition
+root. It delegates to managed uv without generation, installation or another resolver.
+Installed `workspace verify-lock` delegates freshness and closure checks to native
+`uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
+inherited project/interpreter selectors through `make.native_environment_unset` and
+pass the elected root and interpreter explicitly. Verification does not rewrite locks.
+The new upgrade route remains a target until native help and execution prove it.
+
+Bootstrap rollout uses the existing declared `codegen generate` surfaces for makefile,
+pyproject, mise-config, envrc and workflows. Each retains normal native admission and
+publication. Component publication does not replace full generation acceptance or
+justify a speed claim against a larger workload. The input-stage log includes its
+native PID so profile/process evidence is bound to that invocation, not a shared
+latest-artifact filename.
+
+The operator approved one narrow pre-proof QA change: expose a named prerequisite-only
+stage at the existing Docker proof template owner. It contains the declared operating
+system packages and runtime user, without Python, Mise, uv or warmed project caches.
+Native Docker may select that stage to run the real generated Makefile against an
+isolated candidate. Do not change test cases, assertions or expected results until the
+direct subsystem and cold-bootstrap executions have succeeded. This stage is a host
+prerequisite, not a second installer or an exception to runtime-first acceptance.
+
+Before worker coding, align the affected authored documentation and local route
+with canonical `~/agents/rules/architecture/engineering-core.md`,
+`~/agents/rules/testing/observable-runtime.md` and the canonical `make-check` and
+`verification-loop` skill sources. Do not edit installed `~/.agents/` copies or
+duplicate universal rule bodies. Establish the actual public runtime contract,
+repair its existing owner and prove the real consumer before changing tests;
+tests and gates confirm behavior rather than define it.
+
+**Approved native cutover (`flext-0029c`).** Provisioning uses native Mise and uv,
+not a custom Python bootstrap or its translation into AWK, shell, Taplo or another
+lock/installer parser. Acquire Mise through its official installation mechanism;
+Mise interprets its own configuration and lock and provisions Python and uv.
+Native uv project/workspace discovery then runs `uv sync --frozen` into the
+runtime owner's physical `.venv`. No authored Python script, inline admission,
+copied bootstrap resource or installed FLEXT operation runs before provisioning
+succeeds. Python executed by uv's native build backend is package installation,
+not an authored bootstrap. Make sequences native operations and preserves failures.
+`mise exec` owns the lifecycle's tool environment and `PATH`; Make must not replace
+that result with the caller's pre-execution path. UV owns creation of `.venv`.
+The shared native environment boundary removes an inherited
+`MISE_PYTHON_UV_VENV_AUTO` request so executable discovery cannot start a second
+environment creator. Acquisition passes only options supported by the official
+installer; its native temporary-file defaults remain tool-owned.
+
+Native executable discovery uses `mise which <binary>` in the authenticated
+configuration root with locked mode retained. It must not turn the resolved active
+version into `--tool <selector>@<version>`: that is a new command-line request,
+not the original configured request and its lock binding. In particular, a tool
+declared `latest` and already installed from its lock must remain discoverable
+before upgrade advances that lock. Make, its shared runtime reader, setup and
+direnv consume the same configured native selection without a host-PATH fallback,
+custom lock parser or second resolver. Setup always bootstraps and never fails on
+lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committed
+`uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
+every `mise.lock` entry and records only missing ones. Check reports drift through
+`uv lock --check`; upgrade alone advances versions and writes the native locks.
+The upgrade Make owner uses native `mise lock --bump` for its declared platforms;
+plain `mise lock` refreshes the existing resolution and is not an upgrade of
+moving requests. Neither command installs tools; setup consumes the resulting lock.
+An owning facade composes a declared component from its source module, not a stale
+generated package export that prevents the generator itself from importing. Keep
+the public facade and component behavior unchanged; regenerate package exports
+through their owner rather than hand-editing a generated initializer.
+
+The root has one native uv workspace and lock. Root CI checks out its declared
+submodules and installs that same workspace noneditable; `--no-editable` changes
+installation mode, not dependency origins. Independent checkouts retain their own
+native project contracts. External suppliers are explicit native pyproject sources,
+not `FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT`, persisted supplier selection or a synthetic
+local/standalone/editable resolver. Those superseded producers and consumers are
+retired together, without a compatibility route or guessed host paths.
+
+Native source declarations and locked consistency are the approved provisioning
+trust boundary. The stronger independently selected-supplier pre-install admission
+is explicitly retired, not claimed equivalent to uv's lock check. Ordinary installed
+Infra environment, lock and provenance checks run only after provision; they cannot
+retroactively authenticate the preceding installation. Keep the real authenticated
+import guard as a separate runtime concern: preserve original captured source bytes,
+stale-pyc rejection, changed-source refusal, atomic-reader handoff and original
+tracebacks through its actual producer consumer, not a warm import smoke alone.
+
+The independently consumed post-install stdlib guard hands off as soon as safe to
+the existing typed `workspace/environment_provenance`, `lock_completeness`,
+`detector` and `environment` owners. Coordinate wider generated Make/direnv
+installer integration with `flext-itpd1.4.13`. Repeat bounded native runtime QA
+after causal repairs and for convergence; never retry an unchanged failure.
+Prove real subsystem behavior and cold native bootstrap before changing tests,
+then run applicable gates and revalidate final Make integration on that candidate.
+No mocks, fakes, tautologies, policy hardcodes, fallback or duplicate owner are
+admitted. Splitting a god component into files alone does not repair ownership.
+
+**Approved public QA target — not yet runtime-proven:**
+`flext-infra validate producer --repository-root ROOT` is a thin read-only
+diagnostic that calls the existing `FlextInfraValidateFreshImport.capture_producer`
+with the real bound `FlextInfraSemanticPublication.publish_semantic_analyses` as
+data; it never invokes publication. Reuse `WorkspaceRequest`,
+`CodegenPhaseAnalysis` and their existing capture, currentness and native original
+payload contracts. Exercise isolated bootstrap, producer capture, original-source
+receipts and JSON, the cold worker and `producer_current`, preserving authenticated
+original bytes and letting original failures escape. Accept no caller-authored
+receipts or maps, synthetic rename, fake candidate or new proof algorithm. This
+target is not a warm-import smoke, setup or native Mise/uv installation, lock
+resolution, actual publication, race coverage or full-fleet proof. It remains an
+approved target until the parent executes the real public command successfully;
+documentation alignment alone claims neither implementation nor diagnostic success.
+Native receiver admission failures may add a callback-free ownership breadcrumb from
+the already recorded incoming edge, binding, supplier, source and first-visit alias
+chain. This diagnostic metadata is not source authority or native-state admission.
+An exception note preserves the original exception type, arguments, cause and
+traceback; it never renders the receiver or invokes its callbacks.
+
+Implementation is approved, with documentation aligned before worker code and real
+public runtime before test changes. This documentation slice changes no production
+Python, templates, configuration or tests and executes no Make, runtime or publisher.
+The coordinator owns serialized runtime/gates and final Make integration. Generated
+README and installed governance projections remain unchanged here; their owners are
+identified below. Historical plan reconciliation remains a later serial activity;
+this slice deletes no plan. This contract records the target, not implemented or
+validated provisioning, delivered governance, or Bead closure.
+
 Shared defaults own ordinary FLEXT dependency declarations; a project's codegen
 input retains only its identity and genuine dependency/tool deltas. Live editable
 source selection does not require clean, committed, or stationary worktrees.
-Generation publishes resolver manifests; only `make upg` writes their UV locks.
-Before installation, an isolated UV bootstrap consumes the supplier's native
-local resolver lock and live editable sources, never its `.venv`. It refreshes
-the consumer resolver through the existing metadata generator before consuming
-any previously selected supplier paths. Editable setup delegates reconciliation
-to public `make upg`, the exclusive lock writer, and then installs and verifies
-the selected lock. A missing supplier or its bootstrap lock fails before
-installation; it never falls back to Git. Run these lifecycle verbs sequentially for one
-physical runtime, without suspending unrelated authored work.
+Release builds instead resolve the selected project's committed `HEAD` once and
+extract that exact SHA through `git archive`; the build receipt records the SHA
+and commit epoch. Shared working-tree, index, and untracked changes remain in place
+and never become source inputs. In particular, checkout `dist/` files are not
+copied into the audited stage. Required build assets must belong to the committed
+source or be produced by its build backend inside the isolated build, not injected
+from unauthenticated checkout outputs. Release metadata and snapshotted build
+policy retain their existing explicit rendering and attestation boundaries.
+Release-version ownership is selected by `LANE_CHECKPOINT_REF`, an existing
+dedicated Git checkpoint reference, not caller-authored receipt JSON. The public
+`workspace lane-ownership` command reconstructs its original metadata and index
+parent, verifies the full repository scope, live remote retention, and inclusion
+in the current integration tip, then emits the typed receipt. The generated Make
+recipe passes only the checkpoint selector to the release API composition root,
+which resolves that same producer and passes its validated receipt by reference;
+complete checkpoint metadata never travels in a command-line argument.
+It never captures, publishes, integrates, switches branches, or modifies current
+staged, unstaged, or untracked work. A checkpoint from a different repository
+identity, an unpublished capture, or an unintegrated capture is refused. Receipt
+production does not waive the separate lane-creation or produced-path admission
+contracts; shared-WIP publication still requires authenticated producer outputs.
+The scoped Git API separates `prepare_publication`, `publication_scope`, and
+`commit_publications`. Its live admission binds the prior ownership, integration
+tip, caller ref and exact original index. Native producers retain their original
+`CodegenPhaseOutcome` objects; the existing publication authority verifies their
+before/after lineage before the Git owner consumes any output. Only declared
+effects enter the alternate index. A versioned target whose original file or
+staged entry differs from the selected base is an affected-path conflict, not
+permission to publish the whole pre-existing file. Runtime-local index retirement
+also uses the scoped index and an explicit native `index_before` witness; it does
+not ignore a path by name or modify the shared index. The owned ref is published
+through a native ref transaction after hook, original-index and fresh-tip checks,
+without switching the caller's checkout. New or copied admission/receipt models
+cannot replace the original live authority.
+The release workflow dispatch selects exactly one `tag` or `checkpoint_ref`.
+Tag dispatch retains the existing publication path. Checkpoint dispatch validates
+the event's exact SHA through canonical CI, then runs versioning only, with the
+selector transported as environment data. Push versioning selects an explicit
+repository `LANE_CHECKPOINT_REF` variable; a no-op needs no ownership mutation.
+The lifecycle separates three explicit operations: generation projects native
+declarations from their owners, explicit upgrade resolves and writes locks, and
+setup installs them without rewriting manifests, locks, source pins or versions.
+Ship the native declarations and locks required by a fresh checkout: setup must
+not require Python generation of a copied admission resource or synthetic resolver.
+It neither generates missing inputs nor relocks stale ones. Missing members,
+invalid sources, stale locks and native acquisition failures retain their original
+cause and stop the operation without source substitution, retry or later success.
+Direnv activates the provisioned native environment; it does not decode or persist
+an external supplier selection or run setup admission.
 
-An executable consumer interpreter does not establish native lock provenance.
-Editable bootstrap projects the resolver inputs first; `make upg` then resolves
-and installs that lock before dependency and typing detection reads it. This
-ordering also applies when an interrupted bootstrap left a partial `.venv`.
+Generation retains the first failed native phase even when that failure is a
+structured diagnostic rather than a raised exception. A later docs or receipt
+exception cannot replace it. Documentation for a newly admitted project depends
+on its authenticated published metadata: when that metadata was not published,
+the docs node is blocked by the original failure, not executed against an absent
+project and reported as an unrelated selector error.
+Each independent consumer keeps its own physical `.venv`; attached members share
+their containing workspace's environment. Native source declarations never lend a
+supplier's environment. Refuse symlinked or foreign environments and serialize
+effects on the same physical runtime without requiring unrelated WIP to stop.
+
+Required consumer TOML is read through the canonical typed document reader. A
+syntax failure retains the native parser exception and exact declaration path;
+it never becomes an optional missing document, an empty mapping or a generic
+pathless validation message. Diagnostics identify the physical failing input
+before attributing it to a merge, source epoch or supplier. Never repair an
+unrelated active merge or select another parser to make that observation pass.
+
+These are the required boundaries for the in-progress lifecycle cutover; the active
+Bead owns current implementation and acceptance receipts. Their documentation is
+not a claim that every existing generated consumer already enforces them. Consult
+and reconcile the applicable guide, ADR, instructions and canonical skills before
+each code change. Only after implementing the real runtime behavior are tests
+updated and run to validate it, without mocks, tautologies or policy hardcodes.
+
+Resolve the test entry from the selected repository's current native help. The
+current generated catalog declares `make tests`, without file or match inputs;
+it executes its applicable persistent-testmon selection once. Historical commands
+are receipts for their own source epochs, not aliases or executable instructions
+for this catalog. An undeclared old target is corrected at the documentation
+owner, never bypassed through raw pytest or another dispatcher.
+
+The Make catalog owns public builtin names, descriptions, profile applicability and
+named inputs. General help and builtin `OPTIONS=Y`/`HELP=Y` views project those inputs
+without invoking the operation. Profiling and reports belong to their existing
+operation engines, not additional public lifecycle aliases. Domain selectors remain
+supported only where explicitly declared by the domain command registry.
+The catalog/help cutover is tracked in `algar-723.1.3`; runtime and gate receipts,
+not this required contract, establish which generated consumers have adopted it.
+
+Generated README quality guidance is owned by `DocumentationText.QUALITY_BODY`
+in `src/flext_infra/_constants/docs.py`, consumed by `_quality_gates_lines` in
+`_utilities/docs_render.py`. Both languages point to `make help` for the current
+command surface rather than copying a verb list. Each verb performs only its
+declared operation; `make check` validates without applying repairs. Change this
+authored contract before its presentation text, then publish through the docs owner,
+never by editing a generated README.
+
+The public `FlextInfraDocGenerator.prepare_bundle()` and `plan_files(bundle)`
+surfaces expose the captured render and destination plans before publication.
+Inspect the entire inventory: `docs generate` also plans documentation indexes,
+guides, MkDocs configuration, presentation metadata and stale generated API removal;
+`--output-dir` is not a README destination filter. A README-only authorization does
+not admit that complete bundle. If the declared public operation cannot isolate
+the authorized destinations, leave projections unchanged and return the planned
+scope for an owner-level decision; do not invent a CLI selector or another renderer.
+
+Workflow admission errors report the rejected rows' declared input names and
+profile coverage against the typed required profile universe. A verb name alone
+does not identify an operation selector or a missing profile. Preserve the strict
+predicate and inspect its actual inputs rather than disabling admission to proceed.
+
+For a declared script dispatcher, Make transports `WHAT` as literal environment
+data and invokes that dispatcher exactly once. The dispatcher owns discovery,
+selection, validation and its original exit status. Make does not interpolate the
+selector into shell source, scan script roots, select an `all.sh` substitute or
+probe selector-named private targets. Explicit verb-level custom handlers retain
+their declared hook contract; they are not a second selector registry.
+
+Facade planning preserves the complete import identity elected by the project
+discovery owner, including nested and namespace packages. A directory basename is
+not a module identity: declarations, proposed imports, C3 references and codemod
+contexts must use the same qualified package. Generation must not create package
+initializers or relax Rope's class boundary to compensate for a truncated name.
+
+Type-facade admission evaluates the class, exports and alias bindings from one
+parsed view of the planned source. Node identity from a different parse cannot
+establish that the owner class is an unsupported declaration. Rebinding imports
+must keep both the source text and its syntax-node offsets consistent.
+
+Generation, structural modification, dependency resolution and authored repairs
+have separate operation owners. The retired `codegen pipeline` route must not
+combine those operations. `gen` and `mod` use the existing semantic planners and
+publisher for their own complete changes, including dependent generated exports;
+neither invokes another public lifecycle verb. Their canonical components remain
+available through their respective owners, without a second orchestration route.
+All declared checking gates belong to `check`; a separate public-verb exclusion
+map must not remove gates from that operation. Pytest's existing typed runner owns
+its process deadline. The Make projection passes that policy once, without an
+additional outer timeout or independent profiling-report location.
 
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
@@ -153,8 +430,9 @@ their expectations. A test result alone does not certify setup, generation, or
 consumption at the integrated revision.
 
 Before repeating a broad search, confirm branch, HEAD, local changes, PR, and declared
-base. Check the runtime with `make status`: the execution path and installed version
-must match the code under validation. An earlier log or an installation from a parent
+base. Verify the selected executable and installed identity through the documented
+workspace runtime operations; both must match the code under validation. An earlier
+log or an installation from a parent
 workspace does not certify a standalone checkout. Work on the freshly fetched
 integration tip of every repository involved.
 
@@ -172,6 +450,25 @@ their logical roots and teardown isolated, even when they read one structural
 workspace. Borrowed projects remain owned by their caller. Content snapshots
 and their authenticated indexes retain their source epoch; a process-global
 registry is not a substitute for the existing invocation-scoped DI.
+
+Publication verification admits the complete cohort of original receipt identities
+at its authenticated Rope read owner before observing current sources. Only that
+owner allocates fresh directory and topology observations for one verification
+boundary. Each receipt retains its full input, negative-query, membership, ancestry
+and consumed-effect comparisons, in native file-CAS/query/declaration order.
+Caller-supplied observations, copied receipts, foreign issuers and reuse across
+proposed overlays or verification boundaries are not admitted. Replay attributes
+the same issuer's original closure; verification does not reseal or copy receipts.
+
+A successfully completed consumption scope that only replays one identical, already
+admitted original receipt may retain that receipt and its unchanged effect closure
+by reference. It does not rebuild snapshots, revalidate the same model graph, or issue
+that identity again. Admission still precedes attribution, and an active consumer is
+required. Any independent observation, different receipt, added effect, changed overlay
+or changed issuance context uses the existing complete accumulation/sealing path.
+Failed scopes publish no successful receipt, and physical freshness verification at
+publication remains mandatory. This removes duplicate materialization, not validation
+at an untrusted boundary or the source/negative-query checks.
 
 Persisted semantic plans use the Core contract preset's matching byte encoder
 and decoder. Re-derivation compares every persisted field, including exact
@@ -323,8 +620,9 @@ Rule definitions and their generated baselines ship in the same producer artifac
 Refresh them with `make mod-snapshots`; a source-checkout receipt does not validate a
 wheel that still contains older baselines. After adopting a new plugin declaration,
 reconcile installed metadata through `make setup` before running its consumer tests.
-`make test-file` runs incremental and complete selection for the requested file using
-the same native testmon owner, without the ordinary incremental invocation deadline.
+`make tests` runs the complete applicable population once through the persistent
+Testmon owner. It has an aggregate deadline and no incremental prepass. The common
+catalog has no file selector or separate complete-suite alias.
 
 ## New projects
 
@@ -357,9 +655,15 @@ The `make setup` contract includes approving the `.envrc` with `direnv allow`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
 required by default before handlers and hooks. Generation and its footprint
 inspection consume the declared physical interpreter and verify its environment
-directly, so they can repair generated activation inputs. The `gen` handler
-delegates to the existing `codegen generate` projection owner, including its
-guarded `.envrc` publication. A declared `_custom-gen` replaces that handler.
+directly, so they can repair generated activation inputs. The `gen` contract requires
+passing its validated `CodegenGenerateRequest` by reference directly to the single
+projection executor, including guarded `.envrc` publication. It must not construct
+a `CodegenConformRequest` in `APPLY` mode or use a `generation_only` flag. Planning,
+publication, physical CAS and staged validation retain one shared implementation.
+Only Conform owns mode, declaration migration, conformance observation, Beads
+identity seeding and routes, and direnv authorization. Preserve the existing family
+names; this contract does not establish implementation or runtime acceptance.
+A declared `_custom-gen` replaces the generation handler.
 Each invocation runs its pre hook, handler and post hook once, and a failure
 prevents later effects. Initial provisioning remains the responsibility of
 `make setup`. Public Make commands own the activation boundary and can be
@@ -377,6 +681,27 @@ searches are not default owners. Missing required defaults retain their native f
 Installed-wheel acceptance must identify and exercise the actual distributed artifact;
 an editable source read or a prior editable pass cannot retroactively prove wheel
 resources, template identity or consumer behavior.
+
+The packaging owner force-includes the declared package's existing or planned
+`config/` source directory at its installed package-relative destination. Hatch's
+editable builder records forced resources but does not archive data selected only
+through Python source directories. The same mapping applies to standard wheels;
+the manifest excludes that source from ordinary wheel selection, so each resource
+ships once. The sdist retains the original package source. Configuration values
+remain owned by the YAML sources, not by the manifest.
+
+Modernization preserves authored Hatch `include`, `exclude`, `only-include`,
+source mappings and forced resources while adding declared distribution inputs.
+Migration validates these inputs before publishing its declaration. A legacy
+manifest explicitly selected as distribution data retains its original bytes;
+retaining that resource does not make it a runtime configuration source again.
+Scaffold directory preparation applies only before a project's `pyproject.toml`
+exists, never to an existing repository's prospective template directories.
+
+Rope qualification reads a receipt only after its consumption context closes,
+while the source view remains open. Publication effects use the same configured
+source-election exclusions as the captured membership query; explicit path reads
+and original input states remain authenticated by the unchanged native observer.
 
 Editable Hatch declarations retain explicit package directories and package remappings
 from `tool.hatch.build.targets.wheel.sources`. Every installed `.pth` entry must expose
@@ -403,9 +728,26 @@ agree. The retained native file states and physical tree manifests include provi
 code, package resources, distribution metadata, editable pointer files, and project
 metadata read during ownership election. Distribution names and namespace names are
 separate identities; ambiguous ownership is a failure. Lexical entrypoints retain
-the physical executable sources they consume and the metadata proving their elected
-providers. Explicit module inventories and declared resource trees retain their
-membership checks; unrelated files do not become lexical producer inputs.
+consumed executable sources and provider metadata. Namespace-only class globals retain
+storage-type identity; instruction-selected constructor, call and member edges elect execution.
+Explicit inventories and resource trees retain membership checks; unrelated files are excluded.
+
+Rope source-query ownership comes from the original declared source folders and
+native dependency import roots, with the most specific elected owner taking
+precedence. Explicit managed effects retain their original destination witnesses.
+A dependency runtime nested below the checkout root has the same ownership as an
+external dependency runtime; lexical containment alone does not make its module
+probes project-source elections. Actual dependency payload reads still retain
+immutable file receipts, including metadata, and changed consumed bytes fail
+verification in either layout. Physical ancestry and symlink guards for declared
+sources remain unchanged.
+
+The project composes the native resource/module/layout interface through MRO;
+its authenticated source epoch remains the public consumer boundary. Native
+initialization uses the exact upstream class descriptor through the consumed
+initializer protocol, including Rope's documented `ropefolder=None` contract.
+The physical root and injected filesystem identity are checked after initialization;
+the protocol alone is not evidence of the vendor's signature or runtime behavior.
 
 The captured cold module election is retained with the same native manifests in
 phase inputs, journal transitions, and publication receipts. Revalidation uses the
@@ -670,11 +1012,12 @@ to each tool's native spelling. Project layers declare only their differences.
 Publication retains the original configuration snapshots, including absent local
 layers, and rejects a changed source before publishing its projections.
 
-Upgrade projects the declared Python requirements before resolving dependency
-locks. This keeps workspace members on one declared source identity when a Git
-dependency changes; installing from conflicting stale projections is a failure.
-`make initialize` publishes the canonical Make bootstrap when the checked-in
-dispatcher predates that lifecycle.
+Generation projects the declared Python requirements before upgrade resolves
+dependency locks. This keeps workspace members on one declared source identity
+when a Git dependency changes; installing from conflicting stale projections is
+a failure. The internal `codegen init` adapter publishes the canonical Make
+bootstrap when an existing project's dispatcher predates that lifecycle. It
+does not add an `initialize` Make verb.
 
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
@@ -690,19 +1033,20 @@ write locks. The `.envrc` watches `.mise.toml` and `mise.lock` to reload after
 `make upg`. Audit reports a missing pin; only `make upg` may resolve and write it.
 A runtime that is not yet installed requires `make setup`, whose provisioning
 happens before activation.
-Both setup and upgrade resolve the executable through `mise which python` at the
-shared environment-sync boundary and pass that exact path to uv. Recursive Make
-calls do not require a caller-provided `SETUP_PYTHON` environment variable.
+Setup resolves the executable through `mise which python` at the environment-sync
+boundary and passes that exact path to uv. Upgrade consumes the declared resolver
+runtime without synchronizing the physical environment. Recursive Make calls do
+not require a caller-provided `SETUP_PYTHON` environment variable.
 Make provisioning and the shared workspace reader restrict global and system
 configuration discovery to the elected runtime's `.mise` directory; unrelated
 host tool declarations never belong to project provisioning. Direnv activation
 also exposes operator-owned host tools, without installing or resolving them.
 
 Setup provisions the available frozen toolchain without writing `mise.lock`;
-audit owns its pin and completeness verdicts. `make upg` resolves the declared
-manifest, provisions the recorded release from its verified asset and requalifies
-Mise before continuing. `mise-config` conformance repairs the generated tool
-declaration without resolving a lock or regenerating unrelated project files.
+check owns its pin and completeness verdicts. `make upg` resolves the declared
+manifest and writes its lock. Installing the recorded release belongs to setup.
+Generation projects the declared Mise configuration without resolving a lock or
+regenerating unrelated project files.
 
 When Beads tracking is configured, the generated `.envrc.local` carries its environment:
 `AGENTS_GAS_CITY_ROOT` selects the Gas City root, the Gas City runtime publication
@@ -722,39 +1066,31 @@ reading a gate identity does not load the pytest execution or collection owners.
 The producer declares the Markdown collection plugin as a runtime dependency
 because its shipped pytest collection implementation imports that plugin.
 
-An associated project inherits the locks and physical environment of its
-authenticated Git or native UV workspace. Its `make setup` and `make upg`
+An associated project inherits the locks and physical environment of its native
+UV workspace within the authenticated Git scope. Its `make setup` and `make upg`
 delegate full toolchain provisioning and dependency resolution to that root.
-A standalone checkout owns those
-operations itself. Only `upg` resolves moving Git branches; `setup` installs the
+A standalone checkout owns those operations itself. Only `upg` resolves moving
+Git branches; `setup` installs the
 exact committed lock without changing it.
 
-`help` and `.envrc` only observe association and never install its reader.
-Before native association is known, public `setup` and `upg` may provision
-exclusively the UV reader from the existing lock of the authenticated containing
-Git scope. This uses the same Mise release qualifier, checksum verification and
-staging cleanup as full bootstrap. It neither resolves nor upgrades an ancestral
-lock. Native UV then elects the runtime owner before normal delegation proceeds.
-The hosted-provider branch selects standalone execution before this reader
-provisioning or ancestor discovery.
+`help` and its catalog submake require no provisioned runtime; `.envrc` only observes
+the runtime association. Setup owns official Mise acquisition and locked native
+tool provisioning in the authenticated bootstrap scope. Provisioned native UV
+then elects the runtime owner before normal delegation. Upgrade requires those
+tools and never installs its workspace reader. CI retains native workspace
+election rather than selecting standalone execution from a hosted-provider flag.
 
-Every repository runs independently in remote CI, including a superproject.
-Remote checkout never initializes members. The CI gate token does not change
-physical Git attachment or local hook environment ownership.
-`Infra.codegen.make.uv_resolution` declares the local and standalone native UV
-project directories relative to the physical runtime owner. Its hosted runner
-variable selects the standalone view; the gate partition never selects a view
-or a different environment. Both views use the runtime owner's physical `.venv`.
-`FlextInfraWorkspaceDetector.resolution_context` exposes that single election to
-bootstrap consumers without loading member metadata, and the public project
-context carries the same typed runtime context.
-The existing native editable policy remains unchanged: local workspace source
-entries retain each member's declared `path` and `editable` values; CI installs
-with `--no-editable`. There is no second installer or post-install editable
-overlay. Shared lock ownership does not change those source declarations.
+The approved native flow uses one root uv workspace and lock in local execution
+and root CI. CI checks out declared submodules and installs noneditably; it does
+not select a checkout-free standalone resolver. Independent repositories keep
+their own native contracts. Retire synthetic `make.uv_resolution` views and their
+hosted-selection consumers rather than maintaining both routes. Native uv owns
+workspace election; the existing installed detector exposes the resulting typed
+context without duplicating uv's resolver. Each runtime root owns its physical
+`.venv`; no second installer or post-install editable overlay is introduced.
 
 The project's authored dependency categories retain their identity. Native
-resolver views derive from those declarations without promoting dev or examples
+resolution consumes those declarations without promoting dev or examples
 requirements to runtime dependencies. Sources, overrides and Make routing come
 from the generator and are never repaired in their projections.
 In particular, Infra consumes Tests through its development requirements; Core
@@ -786,32 +1122,26 @@ executable suffix. The `latest` selector, release cooldown and platform matrix
 remain declared by the same toolchain owner. Qualify changes through native
 generation, `make upg` and the locked-install checks.
 
-One `make upg` run provisions the frozen producer before corrective pyproject
-projection, without requiring final runtime admission. The elected runtime
-owner resolves both native views; attached members delegate that operation
-to their workspace. After projecting the declared pyprojects, Mise configurations
-and Makefiles, the same upgrade owner resolves each writable FLEXT member's tool
-lock and both UV view locks serially. Each member's own Makefile supplies its
-configured view paths while the workspace supplies the UV binary and Python
-runtime. Final convergence reconciles those locks without advancing dependency
-references again. Only the elected workspace runtime receives an installation;
-member runtimes are not provisioned separately.
-Editable-supplier upgrades use that same member-lock stage without bumping or
-provisioning the root supplier's tools. Preserving the shared runtime's pins does
-not exempt a writable member's standalone lock from its declared tool manifest.
-It runs generation's producer half, relocks the projected manifests, reinstalls
-and verifies the resulting runtime before generation's activation half. A
-requirement or Mise self-management release that only the upgraded generator
-declares therefore reaches the lock and environment in the same run. The declared
-lock platforms and release cooldown come from the typed toolchain; never edit
-native lock payloads or substitute manual installation commands.
+One `make upg` resolves the declared native project/workspace and tool manifests.
+Attached members delegate resolution to their elected workspace; standalone
+repositories own their own locks. Each owner supplies its declared paths and
+source identities. An editable supplier supplies sources, never its physical
+environment. Upgrade does not generate manifests or Makefiles, install tools,
+synchronize an environment or invoke another lifecycle operation.
+
+When declarations change, explicitly generate their projections, resolve their
+locks and install the frozen resolution through their respective verbs. A missing
+generation input fails its prerequisite instead of triggering corrective generation
+inside upgrade. The declared lock platforms and release cooldown remain owned by
+the typed toolchain. Consumer convergence and runtime acceptance are tracked
+separately in `algar-723.1`; this contract is not a publication receipt.
 
 `codegen.scaffold.project.retired_dev` declares development distributions that
 must no longer reach managed `dev` or `codegen` groups. Conformance filters them
 from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
-regenerate and run `make upg` to reconcile locks and the installed environment.
+regenerate, run `make upg` to resolve locks, and run setup to install that resolution.
 Member contributions include the requirements parsed from captured declarations;
 the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
@@ -846,52 +1176,37 @@ When the projection carries no line, a hand-written `project.flext_source` in th
 manifest declares it, and a commit in a hand-written source fails. Fix the setup or
 `upg` owner and regenerate through `make gen`; manual installs do not replace the cycle.
 
-A workspace root preserves declared Git requirements and binds its package members
-through `[tool.uv.sources]` entries containing their declared local `path` and
-`editable` values. No repository declares a native `[tool.uv.workspace]`: each
-repository owns its lock independently. Publishable members retain the same inline
-Git provenance whether attached or standalone; only the containing root owns the
-local source overlay and the shared runtime environment. Regenerate that root with
-`make gen` and reconcile its lock with `make upg` when the local binding changes.
-Every package checkout also overrides transitive requirements for its own
-distribution with its local project identity. A dependency that refers back to
-the checkout through Git must resolve to that checkout rather than introduce a
-second source for the same distribution. Generation derives this identity from
-the repository declaration in both workspace and standalone contexts.
+A workspace root preserves declared Git requirements and publishes its declared
+package members in `[tool.uv.workspace].members`. Its `[tool.uv.sources]` entries
+bind the root package, when present, and members through `workspace = true`.
+Native UV owns source lowering and dependency resolution against one workspace
+lock. Conflicting authored sources for a declared member fail explicitly.
+Publishable members retain their package requirements for independent checkouts,
+which own their native project declarations, lock and physical environment.
 
-A package preserves its declared Git requirements and authored native UV policy.
-Generation places local package bindings in the configured resolution views.
-Each view has a distinct non-package identity; the real root's runtime requirements
-come from its package, while development groups, included groups, extras and
-markers remain represented from their declarations. Workspace package selection
-has its own binding group and does not turn those packages into runtime dependencies
-of the actual root.
+Development groups, included groups, extras and markers retain their declared
+categories. Workspace membership does not promote packages or reciprocal development
+requirements into the root's runtime dependencies. Native UV consumes these inputs
+directly; generation creates no synthetic non-package identity or
+local/standalone/editable resolution view.
 
-This distinction is required when a development dependency refers back to the
-root package. Replacing UV's synthetic root requirement with a global self
-override loses that requirement's groups and extras. The non-package resolution
-owner binds the actual root and its Git backedges without replacing a synthetic
-requirement for that root's group selection. For example, Infra's development
-dependency on Tests remains development-only even though Tests consumes Infra at
-runtime. Core's development and example dependencies remain in their declared
-categories as well.
-
-Both manifests are generated transactionally; their native locks are written
-only by `make upg`. The standalone view resolves Git dependencies without
-materialized workspace members. The local view binds declared package members
-with their existing editable policy. Authored native workspace declarations and
-custom sources are preserved rather than erased by a generic FLEXT rewrite.
-Regenerate the owner with `make gen` and update its locks with `make upg` when
-the declared composition changes.
+Generation publishes the native declarations transactionally; upgrade alone resolves
+their lock, and setup installs the frozen resolution into the runtime owner's
+physical `.venv`. Root CI obtains the declared members and installs that same
+workspace and lock noneditably. An independent checkout resolves its own declared
+sources without discovering neighboring repositories or borrowing their environment.
+When composition changes, regenerate its declaring owner, upgrade its lock and
+install that resolution through the separate lifecycle operations.
 
 Resolver-wide source election is explicit policy in
 `Infra.codegen.toolchain.uv_override_dependencies`, not inferred from an installed
 SDK or a direct requirement. The strict library, project and local config layers
 append their declarations in that order. Rendering elects the last global override
 for each normalized distribution and marker, preserving other marker variants and
-native scoped tables. An editable supplier cannot replace the resolution root's
-global policy for a distribution. The same elected policy reaches package metadata
-and every native resolution view; no repository-specific resolver branch is needed.
+native scoped tables. A supplier cannot replace the resolution root's global policy
+for a distribution through an environment selector. The same elected policy reaches
+the selected native project metadata; the workspace root owns workspace-wide UV
+policy, while independent checkouts retain their own native project policy.
 Unconfigured conflicting direct and transitive sources remain native UV failures.
 
 Dependency-family provenance validates sources per normalized distribution and
@@ -937,17 +1252,31 @@ production import requires a consumer rewire instead of a runtime declaration.
 
 Deptry's generated optional-group setting uses `optional_dependencies_dev_groups`;
 the deprecated key is removed by the declaration phase in the same projection.
-The fixer holds the repository mutation lease, revalidates every metadata, source,
-lock and report input, publishes only `project.dependencies` through the guarded
-TOML owner, then scans again. A residual `FINDINGS` repair receipt describes the
-operation; the subsequent check remains red and provides no green acceptance.
-`make initialize KIND=internal_flext` supplies a declaration value to the native
-`codegen init` owner for that Makefile's target only. The owner plans the target's
-`config/codegen.yaml` through the existing guarded declaration transaction before
-rendering its Makefile. It rejects a conflicting existing kind and never broadcasts
-the root's value to members. Each member receives a separate explicit request from
-the invoking root. Omitting `KIND` consumes the target's own declaration; it never
-authorizes classification by project name or installed dependencies.
+The fixer holds the repository mutation lease, captures native repair inputs once,
+revalidates every metadata, source, lock and report input, and publishes only
+`project.dependencies` through the guarded TOML owner. Its receipt retains the
+pre-repair diagnostic and whether publication changed the declaration. Completion
+describes that repair operation, not a subsequent dependency scan or project
+acceptance; independent verification runs only through an explicit check.
+Unresolved plans and publication failures retain their original failure. A repair
+request with a read-only context fails before scanning or writing; it never
+dispatches a different operation.
+The native `codegen init` adapter acts on its explicitly selected target only.
+An existing project uses the bounded Makefile recovery surface and its declared
+artifact dependencies. An explicit kind may author that target's declaration
+through the existing guarded transaction; a conflicting kind fails.
+A target without project metadata must instead pass the workspace detector's
+positive new-tree admission using its own complete project, integration, kind
+and dependency-provenance declarations and prepared Git checkout. That case uses
+the same complete generation planner and publisher as `make gen`, with bound
+collaborators from the adapter's actual tool runtime. No kind, Beads identity or
+dependency provenance is synthesized. A declared new workspace member should
+normally be materialized by the workspace's `make gen`.
+For a standalone target without a Makefile, a preinstalled generation tool
+runtime invokes `codegen init`; then the destination runs `make upg`,
+`make setup` and `make gen`. Native Mise, Python and UV are prerequisites of
+the generation tool runtime. Only setup creates the destination's product
+environment; initialization and generation neither install nor resolve locks.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
 paths against that same topology; a frozen Git artifact is not a live local source.
 
@@ -960,7 +1289,7 @@ are parsed by Git's native boolean GET operation. A malformed value fails before
 provisioning and preserves Git's diagnostic; it never becomes an exclusion.
 Run runtime actions through the root Make dispatcher. Its recipes use the
 setup-owned interpreter without selecting a member's lock for synchronization. Only
-setup and upgrade provision dependencies. A stale Git binding requires canonical
+setup provisions dependencies. A stale Git binding requires canonical
 generation and `make upg`, then setup; never a manual installer or source override.
 
 ## Runtime environment
@@ -978,6 +1307,13 @@ worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environm
 from the primary checkout or Git common directory. The generated Makefile, generated
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
+
+Editable imports and force-included configuration resources have different delivery
+semantics. The generated native UV cache keys include the existing packaged config
+resource and declared build hook, retaining UV's ordinary project inputs. Configuration
+changes therefore rebuild copied package data during `make setup`, without a second
+installer, unconditional reinstall or a loader fallback to checkout data. A required
+configuration declaration stays required when stale installed data is detected.
 
 Authenticated source previews keep their staged source root separate from this runtime
 owner. Candidate validation uses the same typed `RUNTIME_ROOT` selection as fresh-import;
@@ -1003,10 +1339,15 @@ checkouts and worktrees own their physical environment.
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. Setup
 provisions its recorded release asset and verifies the checksum before entering
-the recursive Make lifecycle. A complete self-pin does not require a host Mise.
+the recursive Make lifecycle. The `_setup_lifecycle`, `_setup_activated` and
+`_upg_lifecycle` recipes call `SELF_MAKE` indirectly and must carry GNU Make's `+`
+recipe prefix so the native jobserver descriptors reach child Make processes.
+Preserve those descriptors and `MAKEFLAGS` through native Mise execution, without
+another wrapper or clearing the inherited jobserver contract.
+A complete self-pin does not require a host Mise.
 Without that pin, setup stops before provisioning; `make upg` can establish it
-using an available native Mise. Upgrade qualifies the final self-pin again
-before installing tools and entering the lifecycle. Every later `mise` resolved
+using an available native Mise. Setup qualifies the final self-pin before
+installing tools. Every later `mise` resolved
 through the release's own shims is the pinned release, and `make audit`
 (`codegen mise-proof`) fails when the running Mise differs from the lock.
 
@@ -1016,14 +1357,11 @@ runtime owner; its absence does not select the operator's global configuration.
 Project resolution writes the project lock in project scope. It never classifies
 the project manifest as global or updates unrelated host tools.
 
-`make upg` publishes the Makefile through the producer half of `gen`. When that
-publication changes the Makefile, the running recipe stops naming its own
-targets and hands off to a fresh `make upg` on the published file; a second
-change inside the hand-off fails loud as a `gen` fixed-point defect. A
-Makefile committed by an earlier generator still runs its own recipe once, so
-generate it with the current generator (`make gen`) before its first `make upg`.
-Separate `mise.version`, bootstrap launchers and staged lock-convergence scripts
-are not lifecycle owners.
+Only explicit generation publishes a changed Makefile. Upgrade consumes that
+projection and never regenerates it or reinvokes itself after publication.
+An older committed Makefile retains its old behavior until the canonical generator
+replaces it; invoking another verb is not a repair of that projection. Separate
+bootstrap launchers and lock-convergence scripts are not lifecycle owners.
 
 `toolchain.tools` in the packaged `config/codegen.yaml` owns native tool declarations;
 the toolchain model rejects a Mise `npm:` selector (ADR-025). A tool whose upstream
@@ -1034,7 +1372,7 @@ restore Mise npm backends or retire native Node wrappers where used. Source-owne
 implementation and real installed-consumer proof are required before claiming this
 cutover complete; the amendment itself is not a runtime receipt.
 
-`make setup` and `make upg` pass the explicit declared key list
+`make setup` passes the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
 provision every tool of the operator's global Mise registry, so no generated recipe
 runs one. After setup provisions the environment, `make audit` runs the reality proof
@@ -1052,12 +1390,17 @@ The proof has no fallback, retry, or warning-only mode.
 Executable resolution selects the declared tool explicitly. A binary bundled by
 another tool, such as UV inside a Python installation, cannot replace the declared
 producer. The proof also checks the executable the Make consumer actually invokes.
+Logical tool names select their typed `toolchain.tools` entry; its declared Mise
+selector is the exact key shared by the manifest, lock and executable request.
+When no selector is declared, that key is the logical name itself. Resolution never
+substitutes the logical name for an explicit provider key or searches alternate keys;
+the native pinned release and checksum authority remain unchanged.
 
 A project `bin/` never enters PATH (shell, `BASH_ENV`, or CI `GITHUB_PATH`): Mise binds
 the shared shims to the first `mise` on PATH. Caches and installations stay out of Git.
 
-Mise reaches GitHub to install a tool missing from its cache and to resolve
-releases during `make upg`. Only `make upg` writes `mise.lock` and `uv.lock`;
+Mise reaches GitHub during setup to install a declared tool missing from its cache,
+and during upgrade to resolve releases. Only `make upg` writes `mise.lock` and `uv.lock`;
 `make setup` never writes either. Setup provisions current committed locks without
 resolving them; audit owns missing, stale or incomplete lock verdicts, and CI runs
 audit after setup. Functional installation failures remain red with their original
@@ -1071,9 +1414,10 @@ The platforms declared by `toolchain.mise_lockfile_platforms` compose the lock
 together with the platform of the machine running the upgrade, which Mise always
 includes.
 
-The default `make gen` handler passes explicit `--scope all` to conform at
-`PROJECT_ROOT`: a workspace invocation covers its root and every declared member,
-while a standalone repository has only itself. The request model's default remains
+The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
+with `all` scope locally and `self` scope in its declared CI context. A local
+workspace invocation covers its root and declared members, while a standalone
+repository has only itself. The request model's default remains
 `SELF` for callers that do not select a scope, including file-only surfaces.
 Generation publishes ordinary projections, Mise artifacts, lazy exports and docs
 independently through the existing atomic file owner. Immediately before each write,
@@ -1088,6 +1432,14 @@ publication report, and the final error verdict retains the original causal exce
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
+
+File phases share each participant's already journaled transaction root. Flat,
+phase-qualified staging leaves replace intermediate phase directories; the existing
+manifest verifier authenticates the root and its residents before staging. Each leaf's
+absent-parent identity must match that original created-root receipt before its intent
+is durably persisted. Directory creation receipts, file intents, CAS writes and fsync
+remain required at their existing boundaries. Recovery consumes recorded paths, not
+the staging filename layout, including paths in previously prepared journals.
 
 Interrupted no-clobber staging can leave the atomic writer's temporary name and
 its intended staging leaf linked to one inode. Physical equivalence, matching
@@ -1111,15 +1463,17 @@ does not replace a later first native exception, and secondary failures do not
 replace an earlier native cause. Incomplete operation receipts retain planning and
 publication issues alongside successful batches and cannot qualify as complete.
 
-Input dependency evidence remains fail-closed. In particular, the current lazy-init
-binder retains a repository-wide source snapshot; the executor does not drop those
-guards or exempt `conftest.py` to tolerate concurrent edits. Narrower per-artifact
-provenance requires original-epoch read attribution, negative discovery witnesses
-and cache-dependency replay at the existing Rope capture owner. Until those are
-available, a rejected dependent component remains rejected, while authenticated
-independent components keep their published gains. A fresh canonical invocation
-after repairing the causal input renders from fresh inputs rather than retrying a
-stale candidate inside the failed invocation.
+Input dependency evidence remains fail-closed. A module-selected lazy-init invocation
+plans that package and its descendants, not every package in its source/test surface
+or its production sibling. The shared repository index still authenticates native
+namespace selection and negative discovery witnesses. Prefetched originals are not
+semantic consumption: each artifact retains its actual native reads, transitive
+ancestry and cache-dependency replay, including dependencies outside the target tree.
+The executor never drops those guards or exempts `conftest.py` to tolerate edits.
+A rejected dependent component remains rejected, while authenticated independent
+components keep their published gains. A fresh canonical invocation after repairing
+the causal input renders from fresh inputs rather than retrying a stale candidate
+inside the failed invocation.
 
 Dependency modernization and conformance both consume the project's typed
 `config/workspace.yaml` declaration for distribution roots and packaged data.
@@ -1127,6 +1481,21 @@ Modernization must retain those declarations when rebuilding Hatch targets;
 an empty topology cannot replace a declared one. Wheel and source-distribution
 templates use the same bounded `only-include` selection as modernization, with
 the declared wheel source mappings and explicit file inclusions.
+
+Analyzer search paths retain the precedence order derived by
+`FlextInfraExtraPathsManager`. The Pyright declaration phase and its later
+synchronization consume that same order; the declaration's list operation must
+not alphabetize it and create a competing change in the same pass. Generic TOML
+list operations keep their declared sorting behavior. Modernization acceptance
+requires a byte-identical second render and an audit that reports every remaining
+drift, including formatting-only drift; phase notes alone do not prove that
+contract.
+The ordinary renderer orders plain mappings through the shared JSON key-ordering
+owner before constructing TOML nodes, retaining configured leading sections and
+array order. It does not move existing TOML tables with order-dependent trivia.
+The separate Git-reference migration continues to preserve the original TOML
+tree. The audit compares the final bytes with the original bytes exactly and
+describes layout drift even when no semantic phase added a change note.
 
 ## SonarCloud exclusions
 
@@ -1181,13 +1550,14 @@ repository's unexecuted checks.
 
 The operation receipt separately records its requested surface, elected repository
 roots, and the actual completed transaction batches, including unchanged outputs.
-`initialize` qualifies only its Makefile bootstrap; its read-only verification does
-not require or certify complete generation. Complete generation qualifies its
-managed and documentation batches after each has settled. A complete `all` scope
-can verify the `self` subset only when that repository root is in its recorded
-coverage. Checks authenticate source, generator, output and physical identities
-without planning, rendering, repairing or replacing the receipt. Missing coverage
-and changed identities remain failures.
+The internal initialization adapter qualifies its elected surface: an existing
+project's Makefile bootstrap or an admitted new tree's complete generation. Its
+read-only verification requires that same recorded coverage. Complete generation
+qualifies its managed and documentation batches after each has settled. A
+complete `all` scope can verify the `self` subset only when that repository
+root is in its recorded coverage. Checks authenticate source, generator, output
+and physical identities without planning, rendering, repairing or replacing the
+receipt. Missing coverage and changed identities remain failures.
 
 Workspace Make bootstrap composes the root and eligible members' actual receipts
 after each has published once. A member failure prevents completed aggregate
@@ -1306,6 +1676,32 @@ memoized by their exact text as immutable JSON; each caller receives fresh mappi
 Current file reads and canonical rule digests still detect drift before publication.
 
 Generated facades compose declarations published by their current private family.
+Explicit class-owner recognition and rendering resolve each declaration through
+the physical path in the authenticated source map and its native Rope resource.
+The declaration's import spelling indexes that captured map; it is not a fresh
+global module election. Separate packages may share an import spelling without
+sharing a physical provider. Neither basename matching, reconstructed module paths
+nor fallback lookup may replace the captured resource identity.
+Namespace bases are read through the native source class's `get_superclasses()`
+on the authenticated candidate module. Rope evaluates its original header AST
+in the defining parent's lexical environment, before namespace-body bindings.
+A separately parsed AST has no native node-identity context and must not replace
+that lookup. Every declared base must resolve; an omitted native superclass is
+an error, not permission to drop a base. Same-name class publications inside the
+namespace remain authored bindings and do not change header lookup semantics.
+After completeness validation, each returned superclass is paired in declaration
+order with its AST base and admitted by the strict native-class guard before any
+ancestor traversal. A rejection names that exact expression, position, physical
+facade, namespace and Python SDK type without querying the rejected object.
+An ancestry admission failure retains its original exception and reports the
+rejected object's concrete SDK type through Python type metadata only. Diagnostics
+never call native name, module, type, attribute or ancestry APIs on that rejected
+object: those calls can trigger inference rather than observe stored metadata.
+The introducing class is already admitted; only its name and SDK type are queried.
+Uncaptured resources remain explicit `None`, without diagnostic module resolution.
+The physical facade and its declared AST base expressions supply source context.
+Diagnostics do not admit unknown objects, skip ancestors or widen the class
+contract without evidence from the real consumer.
 Rope resolves existing bases before composition: upstream bases remain, while an
 own provider moved outside that family leaves its MRO and unused imports.
 Unresolved providers fail before publication. Class-move previews and immutable
@@ -1382,6 +1778,183 @@ Builtin classes have no source scope and are traversed without a source-receipt
 cache key. A newly built package decision is not propagated as sealed evidence
 before its consumption receipt has been issued.
 
+Conform's initial lazy plan supplies the provider overlay consumed by facade
+composition. When that composition changes Python sources, the final lazy plan
+must observe those proposed facades, not reuse the baseline export decisions.
+Original-file currentness alone does not prove overlay equivalence. Receipt replay
+is restricted to its issuing source authority; changed-overlay reuse requires that
+owner to prove the complete consumed effects, negative queries and export decisions
+against the final candidate before retaining any package result. Until that proof
+exists, retain final planning and measure its index, snapshot, package-decision and
+receipt-verification costs through the existing generation profiling owner, without
+raising deadlines or sharing native caches across source authorities.
+
+Deriving candidate views must remain an operation of the existing authenticated
+read owner. One original authority owns its physical files, import election,
+directory inventories and negative witnesses. Each candidate owns immutable
+declared effects, its semantic graph and the receipts it issues. Opening candidate
+B must neither mutate candidate A's overlay nor reinterpret A's receipts under B.
+The original issuer must still reject copied or foreign receipts. Added and retired
+paths retain their original physical witnesses and candidate-specific query results.
+Import roots introduced by declared effects are derived virtually by this owner;
+their admission must preserve the same resolution as a fresh candidate binding.
+They do not re-elect the physical authority or admit unrelated roots. An ordinary
+same-effects consumer retains its existing election and source-folder preference.
+The orchestrator injects this authority; it does not copy a source inventory or
+merge a parallel path/text map. Final candidate planning, source-publication
+verification and physical CAS remain required. This is the derivation acceptance
+contract for the OUD generation repair tracked in `algar-723.1`, not evidence that
+the current API or generation already satisfies it.
+
+The ordinary generation handler admits `settings.Infra.profile` around its actual
+typed `codegen_generate` call. The shared profiler preserves the returned Result
+and classifies failure from `Result.failure`, not its truth value. Its output uses
+the existing Git report-evidence owner and publication-report path with a `.pstats`
+suffix; native termination checkpoints and atomic publication remain shared with
+command profiling. Disabled profiling performs the original direct call and creates
+no profile. Capture measures the generation operation, not CLI startup, and never
+certifies successful generation or replaces its first failure.
+A failed operation's return value also survives a secondary profile diagnostic
+write failure on closed or unavailable stderr. Profile finalization still fails an
+otherwise successful operation; missing evidence never becomes capture acceptance.
+Publication emits one stderr identity line containing the PID, owning thread and
+exact immutable raw path, without argv or credentials. Bind that line to the real
+command receipt; mutable latest paths and unassociated older captures are not
+performance evidence. Native temporary-file contexts own descriptors and staging
+cleanup for both raw and text publication, preserving captured inode checks and
+the original failure. Finalization also releases a successfully acquired profiler
+when signal registration fails; a cleanup diagnostic cannot replace that cause.
+
+The existing opt-in public CLI form is
+`FLEXT_INFRA_PROFILE=true flext-infra codegen generate ...`. Raw profiles,
+including the existing clock's immutable per-invocation versions, remain in the
+authenticated exact worktree Git control directory's report tree; they are not
+copied into the source repository. The report reader admits a selected native
+profile from that owned Git-control report root or the repository's `.reports`
+tree, never an arbitrary external path. Already admitted repository profiles do
+not require Git lookup; a selected Git-control profile requires the existing exact
+owner authentication, whose original failure escapes without fallback or guessing.
+Text output and pytest run receipts remain confined to the repository's `.reports`
+tree. This is capture-only plumbing correctness, not performance optimization:
+execution, deadlines, outcomes and gates remain unchanged. Report row limits affect
+display only; all raw statistics remain retained. The parent owns real capture,
+rendering and native-gate evidence; source alignment alone proves no timing gain.
+
+Profiling has one owner per synchronous execution context. When the Make launcher
+already profiles the CLI, the generation handler joins that capture instead of
+starting a second cProfile instance. The outer invocation owns its artifact and
+signal checkpoint; the nested operation keeps its exact return value and exception.
+Direct CLI generation still owns its operation capture when no launcher capture
+exists. This is profiling composition, not permission to skip generation work or
+reuse an earlier source observation.
+
+Selected capture measures only its owning thread. Other threads, logging and the
+productive workload continue unchanged; they are not disabled, serialized or
+filtered after collection. Owner waits measure owner wall time, not worker CPU.
+Native `pstats.Stats.total_tt` is not the operation's external elapsed time. A
+ContextVar joins a nested selected capture only on that same owning thread; an
+explicit capture on another thread must acquire its own native profiler and fail
+when `sys.monitoring.PROFILER_ID` is occupied, never join a foreign capture.
+
+The shared stdlib-only clock owns actual standard `cProfile.Profile` engines.
+After native `enable()` acquires the tool ID, it reads the actual monitoring event
+mask, pauses events and takes every enabled callback through public
+`sys.monitoring.register_callback`. Each displaced callback must be bound to that
+engine through its standard `__self__`; every event is gated by stdlib
+`threading.get_ident` before invoking that original callback with unchanged
+arguments and return value. Foreign-thread callbacks return `None`, never
+`sys.monitoring.DISABLE`, which would disable locations for the owner too. Only
+registration-window statistics are cleared while events are paused, before the
+productive operation starts. Restore the original event mask only after all gates
+are installed. No private upstream callback name, subclass access, custom timer,
+replacement profiler, version pin, SDK mirror or statistics filter is admitted.
+The public `CALL` group includes its ancillary `C_RETURN` and `C_RAISE` callbacks:
+gate those too, even when `get_events()` reports only the controlling `CALL` bit.
+CPython's native event storage omits those ancillary bits; iterating only the
+returned mask would leave C exits able to corrupt the owner stack. This follows
+the [public monitoring event groups](https://docs.python.org/3.13/library/sys.monitoring.html#ancillary-events)
+and the inspected CPython 3.13.15 `Python/instrumentation.c`, `Modules/_lsprof.c`,
+`Lib/cProfile.py` and `Lib/pstats.py`; it is not a runtime version constraint.
+
+Tool ownership is exclusive and cooperative, as native cProfile already requires.
+An occupied tool fails without cleaning up or mutating the foreign owner. This is
+not protection against uncooperative direct monitoring-registry hijacks. Exceptional
+partial acquisition preserves the first cause and reports any unrecovered native
+state explicitly; it must never report a clean release it could not establish.
+Disabled profiling does not probe monitoring capabilities.
+
+Use the actual native `cProfile.Profile` directly. Its public `snapshot_stats()`
+reads native `getstats()` into `Profile.stats` without disabling or flushing active
+frames (`cProfile.py:54-91` in the managed CPython 3.13.15 source). A signal
+checkpoint uses that primitive while capture continues unchanged: it is partial
+completed-entry evidence, not full operation duration or proof that active frames
+were flushed. Final publication disables the native engine first, then calls
+`snapshot_stats()` for the full captured window. No session controller, segment
+list, replay, aggregation, restart, re-enable or productive-stat clearing is needed.
+Publication serializes the actual native `Profile.stats`, never a mirrored SDK
+interface or manually populated Stats stub. Keep immutable invocation artifacts;
+the original `41ee` interpreter-wide thread capture remains invalid timing evidence,
+not a queue-to-Rope critical path. Only a new qualified owner-thread profile can
+support attribution. The parent must prove the actual `FLEXT_INFRA_PROFILE=true`
+operation and report at the same root-loop scope, plus occupied-tool capability QA.
+No Rope or staged-package optimization is authorized by this profiling repair.
+
+Diagnose slowness from the actual immutable cProfile artifact before changing the
+implementation. Queue or lock waiting in a parent identifies a native execution
+boundary, not the supplier algorithm's cost; obtain the supplier's own profile when
+that distinction matters. Follow measured callers to their canonical owner, preserve
+the full source/receipt/invalidation contract, and compare the same productive work
+after repair. Raising deadlines, dropping the final candidate pass, weakening source
+checks, adding cross-authority caches or replacing runtime with a smaller workload
+does not establish a performance correction.
+
+The packaged `Infra.codegen.toolchain.uv_override_dependencies` declaration owns
+the Rope revision consumed by generated project metadata. A supplier performance
+repair must be integrated and validated through that supplier's native lifecycle
+before this declaration advances. Generation projects the declaration, upgrade
+resolves its native lock and setup installs it; these operations remain separate.
+Confirm the installed Git provenance before attributing a new generation profile
+to the supplier repair.
+
+The cProfile report retains native callers for its bounded hot-function selection in
+addition to the selected repository's source callers. A workspace operation can spend
+its time inside a declared provider repository or the standard library; source-root
+filtering must not hide that caller chain from diagnosis. Both views use native pstats
+and the same complete immutable profile, without running or reconstructing the workload.
+
+The standard Make operations admit the same opt-in setting:
+`FLEXT_INFRA_PROFILE=true make gen` and `FLEXT_INFRA_PROFILE=true make mod`.
+`settings.Infra.profile` defaults to false; it never selects a different operation
+or changes source admission, target scope, publication or native failure handling.
+Both recipes use the existing shared CLI profiling transport. Their report paths
+come from `Infra.codegen.make.generation_profile_path` and
+`Infra.codegen.make.modification_profile_path`, bound to the selected `PROJECT_ROOT`,
+not the caller's working directory. Disabled capture retains the direct CLI call
+and creates no profile. There is no common profiling verb or legacy alias.
+
+Make transport capture starts after settings admission and transport imports; those
+startup costs and Make/environment preflight are outside its raw statistics. Child
+process waits are parent wall time, not child CPU or evidence of child hot functions.
+Retain the existing immutable raw captures and termination checkpoints, rendering
+them only through the public `validate cprofile-report` owner. Bind evidence to the
+actual source, runtime, configuration, command and selected scope; an interrupted
+capture is incomplete failure, never successful modification. The universal command
+deadline includes startup and children: request termination by 118 seconds and
+finish by 120 seconds, using an enclosing deadline when the native operation has no
+such bound. Capture repair alone proves neither a timing improvement nor a green
+generation, modification or gate result.
+
+The transport delegates directly to the single native capture owner. Existing
+run receipts remain with their producer; there is no separate command-context
+model, writer or receipt-admission branch. An older capture without a receipt
+remains unbound. Preserve its raw, native failure and declared installed source;
+neither inferred settings nor post-capture source hashes authenticate its epoch.
+
+Caller edges that attribute YAML parsing to queue waits or native locks contradict
+the actual call contracts and cannot justify a latency optimization. Preserve the
+raw and its native caller report, repair the collector owner, and obtain a new
+capture from the correctly delivered source before attributing causal costs.
+
 Within one package decision, module export policies receive the already elected
 package layout. An authenticated empty export inventory terminates that module's
 export planning before policy resolution; it does not synthesize aliases or omit
@@ -1394,15 +1967,47 @@ child-resource lookup fails before source verification can run. The physical
 directory-membership receipt remains strict: cache removal still invalidates that
 receipt and is handled as source-epoch drift, not silently accepted.
 
-Directory-query receipt unions retain the elected immutable observation when no
-selector is added. Identity, query, membership and physical-alias checks still
-precede this reuse. The optimization avoids replacement-model allocation; it does
-not extend the lifetime of physical observations or excuse a later conflicting
-fragment.
+Internal transport preserves existing typed instances, including immutable physical
+observations, by reference; consumer selectors do not clone them for every probe.
+The canonical receipt owner merges consumption once at the boundary, preserving
+identity, negative queries, membership, symlink and physical-alias checks. Construct
+the final model once, at the owner where all its real fields are available, rather
+than constructing a partial result for later completion. `model_copy(update=...)`,
+dumps followed by revalidation, `model_construct` and custom clones are not internal
+transport mechanisms and cannot replace that ownership. Reuse `c/t/p/m/u` with `r`
+and canonical defaults; closed domains use `c.StrEnum`, while free-form text stays
+open. Type narrowing and redundant conversions are not transport mechanisms.
+Conflicting observations still fail.
+
+Repository rendering owns one assignment-validated `CodegenRenderInputs` state
+per planning operation. Its static target, workspace, codegen policy, artifact
+snapshot and branch references are read-only; only planned requirements and the
+resolved tooling context advance. No state is shared between repository workers.
+An unchanged tooling derivation returns that same state and original tooling
+receipt, without a second template pass. Changed tooling replaces only that
+state's tooling reference. File plans retain their original source witnesses;
+configuration and durable publication receipts remain frozen. These are ownership
+contracts, not runtime acceptance.
 
 The census refreshes its Rope inventory after constant-consumer publication and
 declaration removal, before collecting the resulting report. Deleted or added
 initializer projections must be reflected in the source inventory it reads.
+
+Constant source discovery is separate from consumer orchestration. Native import
+provenance, facade publications, assignment identities and inert literal discovery
+belong to `FlextInfraUtilitiesSemanticConstantSources`, exposed only through the
+consumer facade's `ConstantSources` class binding. Project-owned native
+`ownership_transfer` contracts in the constant-consumer phase authenticate
+the existing method identities and all receivers before retiring their original
+declarations in the same candidate; there are no forwarding methods, manual cuts
+or module-cap exemptions. Consumer orchestration retains its shared consumption
+receipts. A flat facade constant can retire only at one explicitly published,
+equivalent authored component declaration; its complete value and native type
+identity must agree. Declaration retirement and consumer rewrites share one
+authenticated candidate. Layer-zero modules retain their configured runtime roles,
+and generation still rejects genuinely mixed scalar/class facades.
+The rule catalogue belongs to the elected repository root, not the physical Rope
+workspace root that an attached member shares with its containing workspace.
 
 Typing-alias relocation plans the declaration, destination and consumer changes
 before one protected publication. Explicit imports retain their lexical scopes
@@ -1469,6 +2074,28 @@ Every selected gate retains its native diagnostics and verdict; failures, missin
 tools/configuration and malformed reports remain blocking.
 Codemod uses its elected, staged provider configurations and native report owner.
 
+A project finding is an operation result, not an engine exception. Independent
+registered gates continue in declared order after a failed verdict, including
+repair operations; only an explicitly selected fail-fast contract stops that
+sequence. The combined result remains unsuccessful and retains each native
+diagnostic. A repair selection is validated for supported operations before its
+first effect. Unexpected engine exceptions retain their original traceback;
+continuation never catches or normalizes them into findings or success.
+
+The Make-engine stabilization scope covers dispatch, report fidelity, execution
+boundaries and measured performance. Local project violations are inputs to that
+engine validation, not an instruction to repair their application code or weaken
+their gates. A truthful nonzero project result can prove engine behavior while
+remaining a failed project acceptance result.
+
+Persistent analyzer caches are namespaced by the selected physical project root.
+Their allocation does not parse packaging metadata or require `[project].name`;
+Ruff also supports tool-only configuration, as its
+[native configuration contract](https://docs.astral.sh/ruff/configuration/) documents.
+The cache owner derives one deterministic digest from the resolved root, with no
+metadata-name route or fallback. Native tools retain responsibility for their input
+diagnostics. Packaging operations still require their own declared metadata.
+
 The former bare `typos` hook existed only in the Make recipe, help and tests,
 always under `|| true`. This branch declares no canonical typos runner,
 configuration or provisioned toolchain capability. Removing that ownerless
@@ -1520,17 +2147,20 @@ approval. The configured CI token selects the blocking CI gate partition. Audit 
 read-only conformance and installed-lock provenance, not generation or a dirty-tree
 check; legitimate staged changes are not rejected simply for being staged.
 
-CI setup always reconciles the owned physical environment through locked,
-noneditable installation, including an existing venv. It does not initialize,
-activate or operate on members, and uses root-declared topology rather than reading
-sibling manifests. Local setup without the CI token retains local source routing.
-Only local upgrade resolves or writes locks; setup preserves the first install error
-without retrying under a different lock mode.
+CI setup reconciles the owned physical environment through locked, noneditable
+installation, including an existing venv. Root CI checks out declared members
+before installing the same native workspace/lock as local execution; standalone
+CI retains its own project contract. The CI token does not replace native source
+declarations or select a synthetic resolver. Only explicit upgrade resolves or
+writes locks; setup preserves the first install error without another lock mode.
 
-After installation, setup validates Mise declarations and synchronizes environment
-files through two in-process batch calls. Local workspaces select `all`; attached
+After installation, local setup authorizes the published `.envrc` with native
+`direnv allow`; CI skips that authorization. Setup never renders, compares or
+repairs environment files: `make check` verifies environment provenance and
+projection drift, and `make gen` owns regeneration. Repository batch operations
+such as `codegen mise-artifacts` select `all` in local workspaces; attached
 members, standalone repositories and CI select `self`. Git declarations own discovery
-order, and each operation runs serially through its original validator or writer.
+order, and each operation runs serially through its original validator or consumer.
 Missing required roots remain failed inventory entries. Explicit Git management,
 repository code-generation and read-only policies determine applicability; inapplicable
 entries retain their reason and receive no successful native outcome. Independent roots
@@ -1795,7 +2425,15 @@ The project service foundation must preserve the local service and its canonical
 command-context inheritance through the public `s` export. Rebinding an imported
 type alias to another class can retain the upstream identity in static consumers.
 Command fields remain declared once in the canonical model owner; duplicate fields,
-casts and suppressed diagnostics are not repairs. The local service-import law is
+casts and suppressed diagnostics are not repairs. `ScopeMixin` owns repository,
+project and verbosity inputs. Module and namespace selection each have one
+narrow mixin, composed only by a request or service that consumes it. Namespace
+enforcement requests compose module selection; accessor migration requests
+compose both selections. Lazy initializer planning and runtime census services
+compose module selection, and accessor migration services compose both. The
+common command context and general read/write request mixins declare neither
+selector.
+The local service-import law is
 authoritative: a conflicting named-import candidate requires explicit contract
 resolution rather than silently substituting an import or inventing undeclared exports.
 
@@ -1936,8 +2574,9 @@ checkout and committed gitlink; unrelated worktree changes do not invalidate tha
 identity. Operation admission separately authenticates the content and epoch of its
 consumed sources and accepts changed inputs only through its actual publisher's
 effects. Persisted publication reports never authorize those changes. The final
-`verify-clean` gate still rejects staged, unstaged and untracked files, including
-generated artifacts, until their integration is complete.
+`verify-clean` reports staged, unstaged and untracked work without rejecting WIP.
+Its status observation does not authorize source changes or replace the scoped
+input checks above.
 Generation retains the setup-owned environment policy: local workspace setup binds
 the declared subprojects as editable, and local generation may publish their managed
 artifacts. CI setup installs its locked noneditable dependencies, and generation in
@@ -1960,12 +2599,28 @@ All profiler output paths use one stdlib-only atomic publisher: native marshal
 data is staged on the destination filesystem, flushed and replaced atomically.
 An interrupted write preserves the previous readable profile. Corruption still
 fails the report reader explicitly; neither profiling nor reporting skips it.
+The existing CLI route selector constructs a separate tuple for each of the
+codegen, check, dependency, release and workspace groups. These groups retain their
+current owners, which resolve service classes through the existing public barrels
+when constructing that group. Refactor resolves directly through its own owner;
+docs, maintenance and validate still share their existing eager table. The
+command models, handler bindings, messages and ordering remain unchanged. In
+particular, workspace propagation retains the facade that injects its conform
+collaborators. Shared facades, every command in the selected group and their real
+transitive dependencies remain available; this boundary does not promise lazy
+resolution per subcommand or measured startup gains. It does not combine native
+processes or replace their interpreter and outcome receipts.
+
 The infrastructure CLI profiler starts before importing its public CLI facade.
 Each completed invocation retains a uniquely named raw profile beside the latest
 profile through that same publisher. It also retains the previous completed
 artifact before replacing the latest path, including profiles from older launchers
 that did not yet retain per-invocation artifacts. Termination checkpoints have their own
 invocation-owned artifact and never overwrite the last completed profile.
+Each raw profile's text report records the publishing process ID and its monotonic
+capture timestamp. Bind that report to the invocation's process interval and consumed
+source identities before comparing captures; UUIDs and filesystem timestamps alone
+do not establish which concurrent invocation produced an artifact.
 Make parsing, guards, hooks and subprocess internals remain outside that Python
 window, so comparable generation measurements also record external elapsed time.
 
@@ -1990,3 +2645,54 @@ annotation does not replace an existing facade binding. Mypy's module-specific
 `import-untyped`; the typed tooling policy owns both template and dependency-modernizer
 projections. See the
 [Mypy option contract](https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports).
+
+The pytest deadline correction tracked by `algar-723.1` applies the same absolute
+entrypoint clock to complete, incremental, file, coverage and profiled operations.
+Selection mode cannot disable that clock. The typed tooling policy bounds the
+operation, including lock waits, collection and execution, within the 120-second
+command contract. One declared budget replaces project-specific wall exceptions.
+Termination grace stays inside that budget.
+Historical 300-, 600- and 1200-second exceptions are superseded by the current
+performance requirement, rather than retained as measurement modes.
+
+Run-context receipts must carry the absolute deadline even when collection fails.
+The existing process owner retains native timeout and signal outcomes; incomplete
+collection or execution remains red. Disabling a per-item timeout is independent of
+the aggregate operation deadline. This correction does not by itself prove a bound
+on Make activation or Python work outside supervised children. Until the complete
+native boundary is verified, the required outer command deadline still applies.
+Exercise the current public `make tests` operation before changing its regression
+tests; the retired common file and profiling targets are not validation routes.
+
+A failed native pytest collection is a failed project operation, not an exception
+of the runner. Preserve its raw exit, timeout and signal receipt and its original
+log unchanged. Publish the existing typed collection diagnostics and identify the
+unexecuted suite without fabricating JUnit or complete inventory accounting. The
+terminal identifies those receipts rather than embedding the entire collection
+log in another traceback. A startup failure can precede report-plugin
+configuration: record the missing native report paths as unavailable, retaining
+the failed process status and unknown diagnostic counts rather than manufacturing
+empty diagnostics. Existing malformed reports, filesystem errors and runner
+defects still escape unchanged; no catch or success normalization hides them.
+
+The check engine must retain its current aggregate reports before the first gate
+and after every completed gate, using its existing invocation report directory and
+report models. The optional external report destination does not enable this
+preservation. An interrupted run leaves the reached outcomes and marks required
+unreached work incomplete; it cannot publish a passing project or invocation.
+Results retain their declared target order, including real attempted projects
+without applicable gates. Such an attempt is published before advancing and
+remains incomplete; equal directory basenames never identify the same target.
+The existing progress callback and Markdown/SARIF owners implement this contract.
+No extra reporter, latest pointer or alternative acceptance path is introduced.
+
+Duplication assessment consumes every native scanner candidate. Within one
+assessment, its existing captured-source owner must parse and tokenize each
+physical Python source once and reuse that analysis across candidate spans.
+Classification, measurements, original scanner data and final source
+revalidation remain unchanged. This is invocation-owned analysis, not a
+persistent cache or a substitute scanner. The interrupted check at
+`20261023T222230.866234Z-2924444` retained the scanner's complete raw output but
+stopped during assessment; its timings do not quantify individual Python
+functions. Native before/after execution and current profiling must establish
+the performance result without reducing scope or raising deadlines.

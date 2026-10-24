@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
+from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerDocument
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
@@ -17,48 +18,8 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyprojectModernizerTooling:
+class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument):
     """Conform in-memory pyproject sources and derive template runtime values."""
-
-    if TYPE_CHECKING:
-        # Members supplied by the composed modernizer service.
-        @property
-        def root(self) -> Path: ...
-
-        repository_root: Path
-
-        def _project_kind(
-            self,
-            path: Path,
-            payload: t.JsonMapping,
-            project_kind: str | None,
-        ) -> str: ...
-
-        @staticmethod
-        def _read_document_state(
-            path: Path,
-            *,
-            source: str | None = None,
-        ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
-
-        def _apply_document_phases(
-            self,
-            state: m.Infra.PyprojectDocumentState,
-            *,
-            canonical_dev: t.StrSequence,
-            topology: m.Infra.PyprojectDeclaredTopology,
-            tool_config: m.Infra.ToolConfigDocument | None = None,
-        ) -> t.StrSequence: ...
-
-        def _render_document_state(
-            self,
-            state: m.Infra.PyprojectDocumentState,
-            changes: t.StrSequence,
-            *,
-            skip_comments: bool,
-            format_source: bool = True,
-            preserve_layout: bool = False,
-        ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(
         self,

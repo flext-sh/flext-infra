@@ -9,87 +9,16 @@ from __future__ import annotations
 import re
 import shutil
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, r, settings
-from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from flext_infra import config
+from tests import c, m, r, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
-
-    @staticmethod
-    @pytest.mark.parametrize("partial_runtime", [False, True])
-    def test_editable_cold_setup_bootstraps_its_own_lock(
-        tmp_path: Path,
-        editable_supplier: Callable[[Path | None], None],
-        partial_runtime: bool,
-    ) -> None:
-        """First opt-in provisions an owned runtime without installed Infra."""
-        credential = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
-        source = tm.ok(infra.project_context(Path.cwd()))
-        root, _ = u.Tests.render_make_environment(
-            tmp_path, c.Infra.MakeProfile.STANDALONE, bootstrap=True
-        )
-        supplier = tm.not_none(source.runtime).runtime_root
-        editable_supplier(supplier)
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.MAKEFILE_FILENAME,
-                u.Tests.conform_makefile_text(root, workspace),
-            )
-        )
-        policy = inputs.spec.make.uv_resolution
-        environment = root / c.Infra.ENVIRONMENT_DIRECTORY
-        resolution = root / policy.editable_directory
-        tm.fail(environment.exists())
-        tm.fail((resolution / c.PYPROJECT_FILENAME).exists())
-        if partial_runtime:
-            binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
-            created = tm.ok(
-                u.Cli.run_raw(
-                    [str(binary), "venv", str(environment), "--python", sys.executable],
-                    cwd=root,
-                )
-            )
-            tm.that(created.outcome.raw_return_code, eq=0, msg=created.stderr)
-        tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
-        process = tm.ok(
-            u.Tests.run_isolated_make(
-                ["setup"],
-                cwd=root,
-                env={type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(supplier)},
-                private_env={"GITHUB_TOKEN": credential},
-            )
-        )
-        tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
-            msg=process.stdout + process.stderr,
-        )
-        tm.ok((environment / "pyvenv.cfg").is_file())
-        tm.ok((resolution / c.Infra.UV_LOCK_FILENAME).is_file())
-        verified = tm.ok(
-            u.Cli.run_raw(
-                [
-                    str(u.Infra.runtime_python(root, runtime_root=root)),
-                    "-m",
-                    "flext_infra",
-                    "workspace",
-                    "verify-environment",
-                    "--repository-root",
-                    str(root),
-                ],
-                cwd=root,
-            )
-        )
-        tm.that(verified.outcome.raw_return_code, eq=0, msg=verified.stderr)
 
     @staticmethod
     def test_help_parses_before_runtime_provisioning(
@@ -106,43 +35,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
             msg=output.stdout + output.stderr,
         )
         tm.fail(environment.exists())
-
-    @staticmethod
-    def test_bootstrap_seed_has_native_resolution_inputs_without_lock_writes(
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
-    ) -> None:
-        """A newly rendered candidate admits both views before any resolution."""
-        _profile, root = generated_make_template
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        views = tuple(
-            root / relative for relative in inputs.spec.uv_resolution_pyprojects
-        )
-        tool_lock = root / c.Infra.MISE_LOCK_FILENAME
-        previous_tool_lock = tool_lock.read_bytes()
-        for view in views:
-            tm.ok(view.is_file())
-            tm.fail((view.parent / c.Infra.UV_LOCK_FILENAME).exists())
-        help_output = tm.ok(u.Tests.run_isolated_make(["help"], cwd=root))
-        tm.that(
-            u.Cli.process_succeeded(help_output.outcome),
-            eq=True,
-            msg=help_output.stdout + help_output.stderr,
-        )
-        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
-        for view in views:
-            owner = tm.ok(
-                u.Cli.capture(
-                    [str(binary), "workspace", "dir", "--project", str(view.parent)],
-                    cwd=root,
-                    options=m.Cli.ProcessOptions(
-                        remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
-                    ),
-                ),
-            )
-            tm.that(Path(owner).resolve(), eq=view.parent.resolve())
-            tm.fail((view.parent / c.Infra.UV_LOCK_FILENAME).exists())
-        tm.that(tool_lock.read_bytes(), eq=previous_tool_lock)
-        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
 
     @staticmethod
     def test_setup_installs_dependencies_before_importing_infra(
@@ -442,7 +334,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that((foreign / "sentinel").read_text(), eq="untouched\n")
         tm.that(tuple((foreign / "bin").iterdir()), eq=())
 
-    def _assert_cold_setup_receipts(self, parent: Path) -> t.Pair[Path, Path]:
+    @staticmethod
+    def _assert_cold_setup_receipts(parent: Path) -> t.Pair[Path, Path]:
         """Require every cold-setup receipt to succeed and the hook to run.
 
         Returns:
@@ -469,8 +362,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(upgrade.stdout, has="upg-hook-ran")
         return (upgrade_source, setup_source)
 
+    @staticmethod
     def _assert_candidate_receipt_prefixes(
-        self,
         parent: Path,
         observed: t.SequenceOf[t.Pair[Path, Path]],
         source: t.Triple[str, str, str],
@@ -484,37 +377,35 @@ class TestsFlextInfraCodegenMakeUpgrade:
             tm.ok((environment / "pyvenv.cfg").is_file())
             tm.that(observation.stdout, has=f"candidate-prefix={environment.resolve()}")
 
+    @staticmethod
     def _assert_lock_floor_preserved(
-        self,
         root: Path,
         checkout: Path,
         source: t.Triple[str, str, str],
     ) -> None:
         """Require the checkout's locks to match the resolved root exactly."""
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        for manifest in inputs.spec.uv_resolution_pyprojects:
-            lock = manifest.with_name(c.Infra.UV_LOCK_FILENAME)
-            tm.ok((root / lock).is_file())
-            tm.that((checkout / lock).read_bytes(), eq=(root / lock).read_bytes())
-            packages = tuple(
-                package
-                for package in u.Tests.toml_tables_at(
-                    (root / lock).read_text(encoding="utf-8"),
-                    "package",
-                )
-                if package.get("name")
-                == config.Infra.codegen.infra_repository.distribution
+        manifest = Path(c.PYPROJECT_FILENAME)
+        lock = manifest.with_name(c.Infra.UV_LOCK_FILENAME)
+        tm.ok((root / lock).is_file())
+        tm.that((checkout / lock).read_bytes(), eq=(root / lock).read_bytes())
+        packages = tuple(
+            package
+            for package in u.Tests.toml_tables_at(
+                (root / lock).read_text(encoding="utf-8"),
+                "package",
             )
-            tm.that(len(packages), eq=1)
-            locked_source = u.Tests.toml_mapping(packages[0].get("source"))
-            tm.that(
-                str(locked_source.get("git")).endswith(f"#{source[2]}"),
-                eq=True,
-            )
-            tm.that(
-                (checkout / manifest).read_bytes(),
-                eq=(root / manifest).read_bytes(),
-            )
+            if package.get("name") == config.Infra.codegen.infra_repository.distribution
+        )
+        tm.that(len(packages), eq=1)
+        locked_source = u.Tests.toml_mapping(packages[0].get("source"))
+        tm.that(
+            str(locked_source.get("git")).endswith(f"#{source[2]}"),
+            eq=True,
+        )
+        tm.that(
+            (checkout / manifest).read_bytes(),
+            eq=(root / manifest).read_bytes(),
+        )
 
     def test_generated_dependency_upgrade_projects_lock_floors(
         self,
@@ -717,10 +608,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(halves["PUBLIC"], lacks="direnv exec")
         tm.that(halves["PUBLIC"].split(), eq=halves["PRODUCE"].split())
 
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
     def test_setup_holds_no_lock_verdict_and_audit_owns_it(
-        self,
         tmp_path: Path,
         resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
         profile: c.Infra.MakeProfile,
@@ -733,22 +624,15 @@ class TestsFlextInfraCodegenMakeUpgrade:
             profile,
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        policy = inputs.spec.make.uv_resolution
-        view = root / policy.standalone_directory / c.PYPROJECT_FILENAME
+        view = root / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(view.read_text(encoding="utf-8"))
         groups = u.Cli.toml_ensure_table(document, "dependency-groups")
-        project = u.Tests.toml_table_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-            "project",
-        )
+        project = u.Tests.toml_table_at(view.read_text(encoding="utf-8"), "project")
         groups["fixture-native-lock-drift"] = [str(project["name"])]
         tm.ok(u.Cli.atomic_write_text_file(view, u.Cli.toml_dumps(document)))
         locks = (
             root / c.Infra.MISE_LOCK_FILENAME,
-            *(
-                root / path.with_name(c.Infra.UV_LOCK_FILENAME)
-                for path in inputs.spec.uv_resolution_pyprojects
-            ),
+            root / c.Infra.UV_LOCK_FILENAME,
         )
         before = {path: path.read_bytes() for path in locks}
         drifted_manifest = view.read_bytes()
@@ -756,9 +640,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.fail(environment.exists())
         native_environment = {
             **hermetic_git_environment,
-            "UV_OFFLINE": "0",
+            "UV_OFFLINE": c.ParserBooleanToken.ZERO,
             inputs.spec.make.ci.variable: inputs.spec.make.ci.value,
-            policy.hosted_variable: policy.hosted_value,
         }
         setup = tm.ok(
             u.Tests.run_isolated_make(["setup"], cwd=root, env=native_environment),
@@ -779,6 +662,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that({path: path.read_bytes() for path in locks}, eq=before)
         tm.that(view.read_bytes(), eq=drifted_manifest)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "generated_make_template",
         [c.Infra.MakeProfile.STANDALONE],
@@ -787,7 +671,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
     @pytest.mark.remote
     @pytest.mark.slow
     def test_native_shared_workspace_guard_stops_before_uv_lock(
-        self,
         tmp_path: Path,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -799,7 +682,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             template,
             member,
             symlinks=True,
-            ignore=shutil.ignore_patterns(".venv", ".git"),
+            ignore=shutil.ignore_patterns(".venv", c.GIT_DIR_NAME),
         )
         u.Tests.initialize_git_repo(member)
         workspace_lock = workspace / c.Infra.UV_LOCK_FILENAME
@@ -835,10 +718,10 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.fail(workspace_lock.exists())
 
+    @staticmethod
     @pytest.mark.remote
     @pytest.mark.slow
     def test_failed_member_hook_prevents_containing_root_upgrade(
-        self,
         tmp_path: Path,
         generated_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -853,7 +736,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 generated_make_templates[profile],
                 destination,
                 symlinks=True,
-                ignore=shutil.ignore_patterns(".venv", ".git"),
+                ignore=shutil.ignore_patterns(".venv", c.GIT_DIR_NAME),
                 dirs_exist_ok=True,
             )
             u.Tests.initialize_git_repo(destination)
@@ -951,7 +834,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 "-f",
                 c.Infra.GITMODULES,
                 f"submodule.{member.path.as_posix()}.flext-managed",
-                "true",
+                c.ParserBooleanToken.TRUE,
             ),
         )
         u.Tests.commit_git_changes(root, "attach upgrade consumer")
@@ -968,7 +851,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             '\t@$(UV) lock --check --project "$(RUNTIME_ROOT)"\n'
             "\t@$(UV_RUN) python -c 'import importlib.metadata; "
             "from pathlib import Path; import tomllib; "
-            'project = tomllib.loads(Path("pyproject.toml").read_text())["project"]; '
+            "project = tomllib.loads(Path( "
+            'c.PYPROJECT_FILENAME).read_text())["project"]; '
             'assert importlib.metadata.version(project["name"]) == project["version"]'
             "'\n"
             "\t@printf '%s\\n' 'root-runtime-reconciled'\n",

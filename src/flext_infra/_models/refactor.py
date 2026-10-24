@@ -25,11 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenJournalModels,
-    FlextInfraModelsCodegenPipelineModels,
-    FlextInfraModelsCodegenTransactionModels,
-)
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransactionModels
 
 
 class FlextInfraModelsRefactor(
@@ -52,23 +48,15 @@ class FlextInfraModelsRefactor(
         ] = m.Field(description="Native relocation selections")
         py_files: t.SequenceOf[Path] = m.Field(description="Selected Python sources")
         sources: t.MappingKV[Path, str] = m.Field(description="Immutable input sources")
-        receipt: FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis = m.Field(
-            description="Authenticated source states and prior declarations"
-        )
 
     class NamespaceRelocationState(m.ArbitraryTypesModel):
-        """Mutable candidate bytes retaining their native authentication receipts."""
+        """Mutable candidate bytes with the original states they replace."""
 
         working: t.MutableMappingKV[Path, str] = m.Field(
             description="Candidate sources changed only by native planning effects"
         )
         originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = m.Field(
             description="Complete original dependency closure"
-        )
-        befores: t.MutableMappingKV[
-            Path, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
-        ] = m.Field(
-            description="Original file or absent-parent receipt for each output"
         )
         modes: t.MutableMappingKV[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
@@ -132,7 +120,9 @@ class FlextInfraModelsRefactor(
         destination_file: Annotated[
             Path | None,
             m.Field(
-                description="Exact Python file destination for joint semantic publication"
+                description=(
+                    "Exact Python file destination for joint semantic publication"
+                )
             ),
         ] = None
 
@@ -252,13 +242,6 @@ class FlextInfraModelsRefactor(
         projects: t.SequenceOf[Path] = m.Field(
             default=(),
             description="Declared project topology owning text findings.",
-        )
-        publication_chain: (
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagedFile]
-            | None
-        ) = m.Field(
-            default=None,
-            description="Authenticated staged publication receipts.",
         )
 
     class ViolationsTotals(m.ContractModel):
@@ -417,9 +400,9 @@ class FlextInfraModelsRefactor(
             m.Field(description="Observed governed project topology"),
         ]
         ast_report: Annotated[
-            FlextInfraModelsScan.ModScanReport | None,
+            FlextInfraModelsScan.ModScanEvidence | None,
             m.Field(
-                description="Actual complete elected rule scan, None if unobserved"
+                description="Complete normalized scan evidence, None if unobserved"
             ),
         ] = None
         text_report: Annotated[
@@ -683,6 +666,7 @@ class FlextInfraModelsRefactor(
 
     class RefactorNamespaceEnforceInput(
         FlextInfraModelsMixins.WriteMixin,
+        FlextInfraModelsMixins.ModuleSelectionMixin,
         m.ContractModel,
     ):
         """CLI/service request for namespace enforcement."""
@@ -726,7 +710,12 @@ class FlextInfraModelsRefactor(
             str, m.Field(description="Output format (json|text)")
         ] = "text"
 
-    class AccessorMigrationInput(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
+    class AccessorMigrationInput(
+        FlextInfraModelsMixins.WriteMixin,
+        FlextInfraModelsMixins.ModuleSelectionMixin,
+        FlextInfraModelsMixins.NamespaceSelectionMixin,
+        m.ContractModel,
+    ):
         """CLI/service request for accessor migration dry-runs and applies."""
 
         preview_limit: Annotated[
@@ -982,7 +971,7 @@ class FlextInfraModelsRefactor(
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[
-            t.Infra.RopePyModule,
+            t.Port[t.Infra.RopePyModule],
             m.Field(description="Parsed PyObject module representation"),
         ]
 
@@ -1046,13 +1035,13 @@ class FlextInfraModelsRefactor(
             FlextInfraModelsRefactor.ImportLawScope,
             m.Field(description="Module facts of the pass"),
         ]
-        tree: Annotated[ast.Module, m.Field(description="Parsed module")]
+        tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed module")]
         parents: Annotated[
-            t.MappingKV[int, ast.AST],
+            t.MappingKV[int, t.Port[ast.AST]],
             m.Field(description="Child node id to parent node map"),
         ]
         bindings: Annotated[
-            t.MappingKV[str, ast.stmt],
+            t.MappingKV[str, t.Port[ast.stmt]],
             m.Field(description="Module-level statement binding each top name"),
         ]
         root_exports: Annotated[

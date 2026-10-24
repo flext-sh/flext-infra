@@ -1,0 +1,15 @@
+id: retire-publication-stack-mutation-lease
+valid:
+  - |
+    with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
+        clean(root)
+  - |
+    with other.mutation_lease(root):
+        clean(root)
+invalid:
+  - |
+    with FlextInfraCodegenFileLeases.mutation_lease(root):
+        clean(root)
+  - |
+    with FlextInfraCodegenFileLeases.mutation_lease(project_dir / "src"):
+        publish()

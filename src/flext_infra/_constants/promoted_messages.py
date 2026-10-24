@@ -14,6 +14,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -109,8 +111,8 @@ class FlextInfraConstantsPromotedMessages:
         COMMAND_HEADER = "make {verb} WHAT={what}"
         COMMAND_DOMAIN = "Domain: {domain}"
         COMMAND_MUTATES = "Mutates: {mutates}"
-        YES = "yes"
-        NO = "no"
+        YES = c.ParserBooleanToken.YES
+        NO = c.ParserBooleanToken.NO
         PARAMS = "Parameters:"
         PARAM_LINE = "  {name:24} {help}{required}{default}{choices}"
         PARAM_REQUIRED = " required"

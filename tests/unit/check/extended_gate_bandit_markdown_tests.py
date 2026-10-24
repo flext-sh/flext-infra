@@ -11,10 +11,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 
-from flext_infra import config, m, t
-from flext_infra.gates.bandit import FlextInfraBanditGate
-from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from tests import c, tm, u
+from flext_infra import config
+from flext_infra.gates import FlextInfraBanditGate, FlextInfraMarkdownGate
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

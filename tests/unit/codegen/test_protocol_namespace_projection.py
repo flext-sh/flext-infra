@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from textwrap import indent
 from typing import Literal
@@ -82,7 +83,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{family.directory}"
+        service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -190,7 +191,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{directory}"
+        service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
@@ -285,7 +286,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{directory}"
+        service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         with pytest.raises(ValueError, match=r"ambiguous .* class attribute"):
@@ -295,9 +296,12 @@ class TestsFlextInfraProtocolNamespaceProjection:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("marker_base", [False, True])
     def test_alias_only_namespace_is_not_an_interface(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
+        *,
+        marker_base: bool,
     ) -> None:
         """Keep original protocol types inside a plain namespace of aliases."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -307,18 +311,19 @@ class TestsFlextInfraProtocolNamespaceProjection:
             package / c.Infra.INIT_PY: "",
             package / family.directory / "base.py": (
                 "from typing import Protocol, runtime_checkable\n"
+                "class Marker(Protocol): pass\n"
                 "class Contracts:\n"
                 "    @runtime_checkable\n"
                 "    class Payload(Protocol):\n"
                 "        value: str\n"
-                "__all__ = ['Contracts']\n"
+                "__all__ = ['Contracts', 'Marker']\n"
             ),
             facade: (
                 "from typing import Protocol, runtime_checkable\n"
-                f"from {package.name}.{family.directory}.base import Contracts\n"
+                f"from {package.name}.{family.directory} import Contracts, Marker\n"
                 "class Facade:\n"
                 "    @runtime_checkable\n"
-                "    class Namespace(Protocol):\n"
+                f"    class Namespace({'Marker, ' if marker_base else ''}Protocol):\n"
                 "        Payload = Contracts.Payload\n"
                 "p = Facade\n"
                 "__all__ = ['Facade', 'p']\n"
@@ -329,9 +334,18 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{family.directory}"
+        service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        tm.that(
+            sum(
+                alias.name == "Contracts"
+                for node in ast.walk(ast.parse(rendered))
+                if isinstance(node, ast.ImportFrom)
+                for alias in node.names
+            ),
+            eq=1,
+        )
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
         tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -339,8 +353,9 @@ class TestsFlextInfraProtocolNamespaceProjection:
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "from typing import is_protocol\n"
             f"from {package.name} import p\n"
-            f"from {package.name}.{family.directory}.base import Contracts\n"
+            f"from {package.name}.{family.directory}.base import Contracts, Marker\n"
             "assert not is_protocol(p.Namespace)\n"
+            f"assert (Marker in p.Namespace.__mro__) is {marker_base!r}\n"
             "assert p.Namespace.Payload is Contracts.Payload\n"
             "assert is_protocol(p.Namespace.Payload)\n"
             "class Value:\n"

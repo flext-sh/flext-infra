@@ -13,17 +13,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from collections.abc import Generator
+from collections.abc import Generator, MutableMapping, Sequence
 from hashlib import sha256
 from importlib.metadata import version
 from pathlib import Path
 from sys import modules, monitoring
 from traceback import format_exception
 from types import CodeType, ModuleType, SimpleNamespace
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 from warnings import WarningMessage
 
 import pytest
+from flext_cli import u
 from pytest_markdown_docs import plugin as markdown_plugin
 from pytest_markdown_docs.definitions import FenceTestDefinition
 from pytest_markdown_docs.plugin import (
@@ -33,7 +34,13 @@ from pytest_markdown_docs.plugin import (
     extract_fence_tests,
 )
 
-from flext_infra import c, m, p, u
+from flext_infra import c, p
+from flext_infra._models import FlextInfraModelsCore
+
+if TYPE_CHECKING:
+    from xdist.workermanage import WorkerController
+
+    from flext_infra import m
 
 
 class FlextInfraPytestCollection:
@@ -42,6 +49,13 @@ class FlextInfraPytestCollection:
     _markdown: ClassVar[pytest.StashKey[m.Infra.PytestMarkdownCollection]] = (
         pytest.StashKey()
     )
+    _workers: ClassVar[pytest.StashKey[set[str]]] = pytest.StashKey()
+    _worker_ids: ClassVar[pytest.StashKey[dict[str, tuple[str, ...]]]] = (
+        pytest.StashKey()
+    )
+    _worker_manifests: ClassVar[
+        pytest.StashKey[dict[str, m.Infra.PytestCollectionManifest]]
+    ] = pytest.StashKey()
 
     @staticmethod
     def _origin(
@@ -54,7 +68,7 @@ class FlextInfraPytestCollection:
             The resulting ``m.Infra.PytestMarkdownOrigin``.
 
         """
-        return m.Infra.PytestMarkdownOrigin(
+        return FlextInfraModelsCore.PytestMarkdownOrigin(
             source_path=definition.source_path.resolve().relative_to(root).as_posix(),
             start_line=definition.start_line,
             source_sha256=sha256(definition.source.encode("utf-8")).hexdigest(),
@@ -91,7 +105,7 @@ class FlextInfraPytestCollection:
         ):
             return
         state = item.config.stash[FlextInfraPytestCollection._markdown]
-        observation = m.Infra.PytestMarkdownItem(
+        observation = FlextInfraModelsCore.PytestMarkdownItem(
             node_id=item.nodeid,
             origin=FlextInfraPytestCollection._origin(
                 item.test_definition,
@@ -207,7 +221,7 @@ class FlextInfraPytestCollection:
                     raise observer.first_error from error
                 raise
             finally:
-                proof = m.Infra.PytestMarkdownAttempt(
+                proof = FlextInfraModelsCore.PytestMarkdownAttempt(
                     node_id=item.nodeid,
                     attempts=observer.attempts,
                     first_exception_type=(
@@ -275,7 +289,7 @@ class FlextInfraPytestCollection:
         parser.addoption(
             c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION,
             default=None,
-            help="Path where a collect-only session publishes its final items.",
+            help="Path where the session publishes its observed final items.",
         )
         parser.addoption(
             c.Infra.PYTEST_SUITE_STOP_OPTION,
@@ -288,9 +302,13 @@ class FlextInfraPytestCollection:
     def pytest_configure(config: pytest.Config) -> None:
         """Record warnings once, on the controller or in serial execution."""
         config.stash[FlextInfraPytestCollection._markdown] = (
-            m.Infra.PytestMarkdownCollection()
+            FlextInfraModelsCore.PytestMarkdownCollection()
         )
-        report_log = config.getoption("report_log")
+        if FlextInfraPytestCollection._suite_manifest_target(config) is not None:
+            config.stash[FlextInfraPytestCollection._workers] = set()
+            config.stash[FlextInfraPytestCollection._worker_ids] = {}
+            config.stash[FlextInfraPytestCollection._worker_manifests] = {}
+        report_log = config.getoption("report_log", default=None)
         if report_log and not hasattr(config, "workerinput"):
             config.pluginmanager.register(
                 FlextInfraPytestCollection.WarningAccounting(Path(report_log)),
@@ -300,6 +318,133 @@ class FlextInfraPytestCollection:
             config.pluginmanager.register(
                 FlextInfraPytestCollection.SuiteStop(stop_at_monotonic=stop_at),
             )
+
+    @staticmethod
+    def _suite_manifest_target(config: pytest.Config) -> Path | None:
+        """Read the existing manifest destination for an executing suite.
+
+        Returns:
+            The invocation's requested destination, or no suite observation.
+
+        """
+        target: str | None = config.getoption(
+            c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION,
+        )
+        if target is None or config.getoption("collectonly"):
+            return None
+        return Path(target)
+
+    @staticmethod
+    def _worker_identity(node: WorkerController) -> str:
+        """Read the native worker gateway identity as a validated string.
+
+        Returns:
+            The identity the distributed controller assigned to this worker.
+
+        """
+        return u.type_adapter(str).validate_python(
+            vars(node.gateway).get("id"), strict=True
+        )
+
+    @staticmethod
+    @pytest.hookimpl(optionalhook=True)
+    def pytest_configure_node(node: WorkerController) -> None:
+        """Admit each actual native worker into this invocation's inventory.
+
+        Raises:
+            ValueError: If the native worker identity was already admitted.
+
+        """
+        if FlextInfraPytestCollection._suite_manifest_target(node.config) is None:
+            return
+        workers = node.config.stash[FlextInfraPytestCollection._workers]
+        identity = FlextInfraPytestCollection._worker_identity(node)
+        if identity in workers:
+            msg = f"duplicate pytest worker admission: {identity}"
+            raise ValueError(msg)
+        workers.add(identity)
+
+    @staticmethod
+    @pytest.hookimpl(optionalhook=True)
+    def pytest_xdist_node_collection_finished(
+        node: WorkerController,
+        ids: Sequence[str],
+    ) -> None:
+        """Retain the controller's native node order before test dispatch.
+
+        Raises:
+            ValueError: If the worker is unadmitted, its collection repeats,
+                or its node IDs contain duplicates or empty identifiers.
+
+        """
+        if FlextInfraPytestCollection._suite_manifest_target(node.config) is None:
+            return
+        identity = FlextInfraPytestCollection._worker_identity(node)
+        workers = node.config.stash[FlextInfraPytestCollection._workers]
+        observed = node.config.stash[FlextInfraPytestCollection._worker_ids]
+        node_ids = tuple(ids)
+        if identity not in workers or identity in observed:
+            msg = f"unadmitted or repeated pytest worker collection: {identity}"
+            raise ValueError(msg)
+        if len(node_ids) != len(set(node_ids)) or any(not item for item in node_ids):
+            msg = f"pytest worker collected duplicate or empty node IDs: {identity}"
+            raise ValueError(msg)
+        observed[identity] = node_ids
+
+    @staticmethod
+    @pytest.hookimpl(optionalhook=True)
+    def pytest_testnodedown(
+        node: WorkerController,
+        error: object | None,
+    ) -> None:
+        """Publish one manifest after every admitted worker supplies its facts.
+
+        Raises:
+            TypeError: If the observed worker's payload is not JSON text.
+            ValueError: If the worker is unadmitted, its manifest repeats,
+                the payload is invalid, its IDs differ from native collection,
+                or the admitted workers' complete manifests disagree.
+
+        """
+        target = FlextInfraPytestCollection._suite_manifest_target(node.config)
+        if target is None or error is not None:
+            return
+        identity = FlextInfraPytestCollection._worker_identity(node)
+        workers = node.config.stash[FlextInfraPytestCollection._workers]
+        observed = node.config.stash[FlextInfraPytestCollection._worker_ids]
+        manifests = node.config.stash[FlextInfraPytestCollection._worker_manifests]
+        if identity not in workers or identity in manifests:
+            msg = f"unadmitted or repeated pytest worker manifest: {identity}"
+            raise ValueError(msg)
+        if identity not in observed:
+            # Native shutdown can discard a late collection notification while
+            # still delivering workeroutput. That payload cannot prove its own
+            # missing collection authority; every worker remains required.
+            return
+        key = c.Infra.PYTEST_WORKER_COLLECTION_KEY
+        if key not in node.workeroutput:
+            # A worker that never completed collection provides no inventory.
+            # Its native failure cannot authorize another worker's subset.
+            return
+        payload = node.workeroutput[key]
+        if not isinstance(payload, str):
+            msg = "pytest worker collection payload must be JSON text"
+            raise TypeError(msg)
+        manifest = FlextInfraModelsCore.PytestCollectionManifest.model_validate_json(
+            payload,
+            strict=True,
+        )
+        if manifest.node_ids != observed[identity]:
+            msg = f"pytest worker manifest differs from native collection: {identity}"
+            raise ValueError(msg)
+        manifests[identity] = manifest
+        if manifests.keys() != workers:
+            return
+        reference = next(iter(manifests.values()))
+        if any(item != reference for item in manifests.values()):
+            msg = "pytest worker collection manifests disagree"
+            raise ValueError(msg)
+        FlextInfraPytestCollection._write_collection_manifest(reference, target)
 
     @staticmethod
     @pytest.hookimpl(wrapper=True, tryfirst=True)
@@ -314,14 +459,17 @@ class FlextInfraPytestCollection:
         Raises:
             ValueError: If Runner collection manifest contains duplicate node IDs; or if
                 Runner collection differs from selection.
+            TypeError: If the native worker has no output channel.
 
         """
         selected: str | None = session.config.getoption(
             c.Infra.PYTEST_SELECTED_COLLECTION_OPTION,
         )
         if selected is not None:
-            manifest = m.Infra.PytestCollectionManifest.model_validate_json(
-                Path(selected).read_text(encoding="utf-8"),
+            manifest = (
+                FlextInfraModelsCore.PytestCollectionManifest.model_validate_json(
+                    Path(selected).read_text(encoding="utf-8"),
+                )
             )
             order = {node_id: index for index, node_id in enumerate(manifest.node_ids)}
             collected = [item.nodeid for item in session.items]
@@ -343,19 +491,54 @@ class FlextInfraPytestCollection:
         target: str | None = session.config.getoption(
             c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION,
         )
-        if target is not None and session.config.getoption("collectonly"):
-            FlextInfraPytestCollection._write_collection_manifest(session, Path(target))
+        if target is None:
+            return
+        collect_only = session.config.getoption("collectonly")
+        if not collect_only and session.testsfailed:
+            return
+        if (
+            not collect_only
+            and not hasattr(session.config, "workerinput")
+            and session.config.pluginmanager.getplugin("dsession") is not None
+        ):
+            # The distributed controller owns no local pytest items.
+            return
+        manifest = FlextInfraPytestCollection._collection_manifest(session)
+        if not collect_only and hasattr(session.config, "workerinput"):
+            worker_output = vars(session.config).get("workeroutput")
+            if not isinstance(worker_output, MutableMapping):
+                msg = "native pytest worker has no output channel"
+                raise TypeError(msg)
+            worker_output[c.Infra.PYTEST_WORKER_COLLECTION_KEY] = (
+                manifest.model_dump_json()
+            )
+            return
+        FlextInfraPytestCollection._write_collection_manifest(manifest, Path(target))
 
     @staticmethod
-    def _write_collection_manifest(session: pytest.Session, target: Path) -> None:
-        """Publish final selected items after testmon and every collection hook."""
+    def _collection_manifest(
+        session: pytest.Session,
+    ) -> m.Infra.PytestCollectionManifest:
+        """Bind final items and independent Markdown observations.
+
+        Returns:
+            The actual manifest after testmon and every collection hook.
+
+        """
         state = session.config.stash[FlextInfraPytestCollection._markdown]
-        manifest = m.Infra.PytestCollectionManifest(
+        return FlextInfraModelsCore.PytestCollectionManifest(
             node_ids=tuple(item.nodeid for item in session.items),
             markdown_eligible=tuple(state.eligible),
             markdown_collected=tuple(state.collected),
             markdown_deselected=tuple(state.deselected),
         )
+
+    @staticmethod
+    def _write_collection_manifest(
+        manifest: m.Infra.PytestCollectionManifest,
+        target: Path,
+    ) -> None:
+        """Publish the observed manifest through its existing atomic writer."""
         u.Cli.atomic_write_text_file(target, manifest.model_dump_json() + "\n").unwrap()
 
     class SuiteStop:
@@ -439,7 +622,7 @@ class FlextInfraPytestCollection:
         def pytest_warning_recorded(self, warning_message: WarningMessage) -> None:
             """Record the real warning once before report-log serializes it."""
             category = warning_message.category
-            event = m.Infra.PytestWarningEvent(
+            event = FlextInfraModelsCore.PytestWarningEvent(
                 category=category.__name__,
                 category_module=category.__module__,
                 category_qualname=category.__qualname__,

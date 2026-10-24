@@ -11,10 +11,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
-import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -39,73 +37,59 @@ class TestsFlextInfraWorkspaceMemberPropagation:
     SETTLED = "fixture-beta"
     MEMBERS = (CHANGED, SETTLED)
 
-    RECEIPT = "propagation-workspace.receipt"
+    def _template(self, tmp_path: Path, settled: t.StrSequence) -> Path:
+        """Return the declared workspace with ``settled`` members conformed.
 
-    def _template(self, settled: t.StrSequence, hermetic: t.StrMapping) -> Path:
-        """Return the declared workspace with ``settled`` conformed, built once.
-
-        Declaring members and settling one is this class's arrange phase, not
-        its behavior under test, so it runs once per locked-source set (the
-        hermetic mirror routes encode it) and member layout under the canonical
-        lease; the first consumer pays it inside its own deadline and every
-        test clones the result.
+        Declaring members and settling some is this class's arrange phase, not
+        its behavior under test; it is built under the test's own ``tmp_path``
+        and every test clones the result.
 
         Returns:
-            The declared workspace with ``settled`` conformed, built once.
+            The declared workspace with ``settled`` conformed.
 
         """
-        material = "\n".join((
-            *(f"{name}={value}" for name, value in sorted(hermetic.items())),
-            *self.MEMBERS,
-            "settled:",
-            *settled,
-        ))
-        key = hashlib.sha256(material.encode()).hexdigest()[:16]
-        parent = Path(tempfile.gettempdir()) / "propagation-workspace" / key
-        parent.mkdir(parents=True, exist_ok=True)
-        with u.Infra.codegen_transaction_lease(parent / self.RECEIPT):
-            if not (parent / self.RECEIPT).is_file():
-                root = u.Tests.WorktreeFixture.governed_workspace(parent, "workspace")
-                for name in self.MEMBERS:
-                    u.Tests.WorktreeFixture.initialize_governed_project(
-                        root / name,
-                        name,
-                        beads=u.Tests.BeadsIdentity(
-                            workspace="fixture-workspace",
-                            database="fixture_workspace",
-                            issue_prefix="fixture-workspace",
-                        ),
-                    )
-                    u.Tests.checkout_integration(root / name)
-                u.Tests.WorktreeFixture.write_gitmodules(root, self.MEMBERS)
-                for name in self.MEMBERS:
-                    head = u.Tests.git_capture(
-                        root / name,
-                        "rev-parse",
-                        c.Infra.GIT_HEAD,
-                    )
-                    u.Tests.git_run(
-                        root,
-                        "update-index",
-                        "--add",
-                        "--cacheinfo",
-                        f"160000,{head.strip()},{name}",
-                    )
-                u.Tests.commit_git_changes(root, "declare members")
-                for name in settled:
-                    tm.ok(
-                        FlextInfraCodegenConform.execute_request(
-                            m.Infra.CodegenConformRequest(
-                                root=root / name,
-                                scope=c.Infra.CodegenConformScope.ALL,
-                                mode=c.Infra.CodegenConformMode.APPLY,
-                            ),
-                            execution_context=infra,
-                        ),
-                    )
-                    u.Tests.commit_git_changes(root / name, "settle projections")
-                tm.ok(u.Cli.atomic_write_text_file(parent / self.RECEIPT, key + "\n"))
-        return parent / "workspace"
+        parent = tmp_path / "template"
+        parent.mkdir()
+        root = u.Tests.WorktreeFixture.governed_workspace(parent, "workspace")
+        for name in self.MEMBERS:
+            u.Tests.WorktreeFixture.initialize_governed_project(
+                root / name,
+                name,
+                beads=u.Tests.BeadsIdentity(
+                    workspace="fixture-workspace",
+                    database="fixture_workspace",
+                    issue_prefix="fixture-workspace",
+                ),
+            )
+            u.Tests.checkout_integration(root / name)
+        u.Tests.WorktreeFixture.write_gitmodules(root, self.MEMBERS)
+        for name in self.MEMBERS:
+            head = u.Tests.git_capture(
+                root / name,
+                "rev-parse",
+                c.Infra.GIT_HEAD,
+            )
+            u.Tests.git_run(
+                root,
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                f"160000,{head.strip()},{name}",
+            )
+        u.Tests.commit_git_changes(root, "declare members")
+        for name in settled:
+            tm.ok(
+                FlextInfraCodegenConform.execute_request(
+                    m.Infra.CodegenConformRequest(
+                        root=root / name,
+                        scope=c.Infra.CodegenConformScope.ALL,
+                        mode=c.Infra.CodegenConformMode.APPLY,
+                    ),
+                    execution_context=infra,
+                ),
+            )
+            u.Tests.commit_git_changes(root / name, "settle projections")
+        return root
 
     @contextmanager
     def _workspace(
@@ -124,7 +108,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
         # Dependency reads use the run's local mirrors without resolving locks.
         with u.Tests.env_vars_context(env_vars=hermetic):
             root = tmp_path / "workspace"
-            shutil.copytree(self._template(settled, hermetic), root, symlinks=True)
+            shutil.copytree(self._template(tmp_path, settled), root, symlinks=True)
             for name in self.MEMBERS:
                 self._publish_to_local_origin(root / name, tmp_path / "remotes" / name)
             gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
@@ -220,7 +204,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             tm.that(self._propagate(root), eq=0)
 
             changed, settled = root / self.CHANGED, root / self.SETTLED
-            tm.that(self._lane_commits(changed), eq="1")
+            tm.that(self._lane_commits(changed), eq=c.ParserBooleanToken.ONE)
             subject = u.Tests.git_capture(
                 changed,
                 "log",
@@ -271,7 +255,9 @@ class TestsFlextInfraWorkspaceMemberPropagation:
 
             tm.that(self._propagate(root), eq=0)
 
-            tm.that(self._lane_commits(root / self.CHANGED), eq="1")
+            tm.that(
+                self._lane_commits(root / self.CHANGED), eq=c.ParserBooleanToken.ONE
+            )
             tm.that(self._published(tmp_path, self.CHANGED), eq=first)
             tm.that(self._published(tmp_path, self.SETTLED), eq="")
             tm.ok(self._on_clean_base(root / self.CHANGED))

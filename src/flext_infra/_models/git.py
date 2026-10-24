@@ -315,6 +315,17 @@ class FlextInfraModelsGit(
             m.Field(description="Remote tip the mutation is leased on"),
         ] = None
 
+    class GitLaneOwnershipRequest(GitRemoteRequest):
+        """Authenticate an existing retained checkpoint, without publishing state."""
+
+        checkpoint_ref: Annotated[
+            t.NonEmptyStr, m.Field(description="Existing dedicated checkpoint ref")
+        ]
+        expected_tip: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Previously observed integration tip, when selected"),
+        ] = None
+
     class GitLaneVerificationRequest(GitRemoteRequest):
         """Read-only admission and census against the live integration tip."""
 
@@ -517,6 +528,12 @@ class FlextInfraModelsGit(
                 description="Live retained and integrated prior owned repository state"
             ),
         ] = None
+
+    class GitIndexScope(m.ContractModel):
+        """One explicitly selected native index in the current request only."""
+
+        repo_root: Path = m.Field(description="Exact repository owning the scope")
+        index_file: Path = m.Field(description="Git owner's isolated native index")
 
     class GitCheckoutPathsRequest(GitRepoRequest):
         """Repository plus optional paths for checkout/restore operations."""

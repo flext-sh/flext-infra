@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from tests import tm, u
+from flext_infra import config
+from tests import c, tm, u
 
 
 class TestsFlextInfraGovernanceAuthority:
@@ -36,7 +37,7 @@ class TestsFlextInfraGovernanceAuthority:
         super_modules = [
             p
             for p in common_dir.parents
-            if p.name == "modules" and p.parent.name == ".git"
+            if p.name == "modules" and p.parent.name == c.GIT_DIR_NAME
         ]
         resolve_root = super_modules[0].parent.parent if super_modules else self.ROOT
         return Path(
@@ -50,14 +51,14 @@ class TestsFlextInfraGovernanceAuthority:
 
     def test_markdownlint_does_not_suppress_strict_rules(self) -> None:
         """Test markdownlint does not suppress strict rules."""
-        config = u.Tests.json_payload(
+        markdown_config = u.Tests.json_payload(
             (self.ROOT / ".markdownlint.json").read_text(encoding="utf-8"),
         )
-        assert config.get("MD012") is not False
-        assert config.get("MD050") is not False
-        assert config.get("MD064") is not False
-        assert config.get("MD075") is not False
-        line_length = u.Tests.toml_mapping(config["MD013"])["line_length"]
+        tm.ok(markdown_config.get("MD012") is not False)
+        tm.ok(markdown_config.get("MD050") is not False)
+        tm.ok(markdown_config.get("MD064") is not False)
+        tm.ok(markdown_config.get("MD075") is not False)
+        line_length = u.Tests.toml_mapping(markdown_config["MD013"])["line_length"]
         tm.that(line_length, eq=u.Infra.docs_markdown_line_length(config.Infra.tooling))
 
     def test_flext_law_requires_automated_structural_rewires(self) -> None:

@@ -1,6 +1,5 @@
-# A non-None guard on a plain name narrows through the matcher's return value:
-# tm.not_none returns T, so rebinding the name keeps the narrowing a native
-# assert gave Python type checkers, in one statement instead of a guard block.
+# A terminating failure preserves narrowing without rebinding local or global
+# names, and evaluates an assertion message only when the condition fails.
 id: rewire-test-assert-not-none
 language: Python
 severity: error
@@ -36,8 +35,10 @@ rule:
 constraints:
   X:
     kind: identifier
-fix: $X = tm.not_none($X)
-message: Narrow a non-None name through the tm matcher's returned value.
+fix: |-
+  if $X is None:
+      tm.reject()
+message: Preserve non-None narrowing and name bindings through tm.reject.
 ---
 id: rewire-test-assert-not-none-message
 language: Python
@@ -70,10 +71,12 @@ rule:
 constraints:
   X:
     kind: identifier
-fix: $X = tm.not_none($X, msg=$MSG)
-message: Narrow a non-None name through the tm matcher's returned value.
+fix: |-
+  if $X is None:
+      tm.reject($MSG)
+message: Preserve non-None narrowing and lazy assertion arguments through tm.reject.
 ---
-# A message-bearing check that narrows nothing is a plain boolean observation.
+# Message-bearing observations keep native conditional and message evaluation.
 id: rewire-test-assert-message-observation
 language: Python
 severity: error
@@ -113,5 +116,9 @@ rule:
         has:
           matches: tm-imported-from-flext
           stopBy: end
-fix: tm.that($COND, msg=$MSG)
-message: Observe a non-narrowing condition through the tm matcher facade.
+fix: |-
+  if $COND:
+      pass
+  else:
+      tm.reject($MSG)
+message: Preserve conditional evaluation and lazy assertion arguments through tm.reject.

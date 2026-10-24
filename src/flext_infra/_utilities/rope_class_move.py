@@ -15,13 +15,14 @@ from flext_cli import u
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticNestingTypes,
 )
 
@@ -36,8 +37,7 @@ class FlextInfraUtilitiesRopeClassMove:
         source_file: Path,
         destination_directory: Path | None = None,
         *,
-        sources: t.MappingKV[Path, str],
-        source_states: tuple[m.Cli.AtomicFileState, ...],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
         destination_file: Path | None = None,
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Plan a module relocation without creating its destination.
@@ -56,12 +56,13 @@ class FlextInfraUtilitiesRopeClassMove:
             ValueError: If input identity or a native relocation proof differs.
 
         """
+        sources = inputs[0]
         if destination_file is not None:
             if destination_directory is not None:
                 msg = "module move requires exactly one destination"
                 raise ValueError(msg)
             return cls._plan_module_resource_move(
-                rope_project, source_file, destination_file, sources, source_states
+                rope_project, source_file, destination_file, inputs
             )
         if destination_directory is None:
             msg = "module move requires a destination"
@@ -72,21 +73,17 @@ class FlextInfraUtilitiesRopeClassMove:
         if source == target:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
-        before, captured = cls._module_input_epoch(root, source, sources, source_states)
+        states = cls._module_input_states(source, inputs)
         request, target_plan, proposed, virtual, source_module_name = (
-            cls._module_move_preparation(
-                rope_project, source, target, sources, captured
-            )
+            cls._module_move_preparation(rope_project, source, target, sources, states)
         )
-        source_states = target_plan.source_states
         return cls._module_file_plans(
             target_plan,
             source,
-            before,
             cls._module_completed_changes(
-                request, source_module_name, sources, proposed, (captured, virtual)
+                request, source_module_name, sources, proposed, virtual
             ),
-            source_states,
+            states,
         )
 
     @classmethod
@@ -95,8 +92,7 @@ class FlextInfraUtilitiesRopeClassMove:
         project: p.Infra.RopeProject,
         source_file: Path,
         destination_file: Path,
-        sources: t.MappingKV[Path, str],
-        source_states: tuple[m.Cli.AtomicFileState, ...],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose native resource rename and move in lookup-only source views.
 
@@ -105,8 +101,6 @@ class FlextInfraUtilitiesRopeClassMove:
 
         Raises:
             ValueError: If paths or source identities are invalid or incomplete.
-            FileExistsError: If a native destination is occupied.
-            FileNotFoundError: If the source has no captured mode.
 
         """
         root = Path(project.root.real_path).resolve()
@@ -115,6 +109,18 @@ class FlextInfraUtilitiesRopeClassMove:
         if source == target:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
+        cls._validate_module_resource_paths(root, source, target)
+        return cls._module_resource_move_plans(project, root, (source, target), inputs)
+
+    @staticmethod
+    def _validate_module_resource_paths(root: Path, source: Path, target: Path) -> None:
+        """Reject invalid module identifiers and occupied package parents.
+
+        Raises:
+            ValueError: If a path cannot identify a Python module.
+            FileExistsError: If a parent is already a file module.
+
+        """
         for path in (source, target):
             if path.suffix != ".py" or path.name == c.Infra.INIT_PY:
                 msg = f"module resource move requires a Python file module: {path}"
@@ -125,67 +131,92 @@ class FlextInfraUtilitiesRopeClassMove:
             ):
                 msg = f"module resource move requires Python identifiers: {path}"
                 raise ValueError(msg)
-        for parent in target.parents:
-            if parent == root:
+        for directory in target.parents:
+            if directory == root:
                 break
-            if parent.with_suffix(".py").exists():
-                raise FileExistsError(parent.with_suffix(".py"))
-        parents = {
-            root,
-            *(path.parent for path in sources if path.is_relative_to(root)),
-        }
-        parents.update(
-            path
-            for path in target.parents
-            if path.is_relative_to(root) and path.is_dir()
-        )
-        directories = tuple(
-            u.Cli
-            .atomic_inventory_physical_directory(path)
-            .unwrap()
-            .model_copy(update={"membership_queried": True})
-            for path in sorted(parents)
-        )
-        topology = tuple(
-            u.Cli.atomic_plan_directory_chain(path).unwrap() for path in sorted(parents)
-        )
+            module_file = directory.with_suffix(".py")
+            if module_file.exists():
+                raise FileExistsError(module_file)
+
+    @classmethod
+    def _module_resource_move_plans(
+        cls,
+        project: p.Infra.RopeProject,
+        root: Path,
+        paths: t.Pair[Path, Path],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Compose native resource changes and publication plans.
+
+        Returns:
+            File plans for the destination, the retired source and consumers.
+
+        Raises:
+            ValueError: If the source inventory is incomplete.
+            FileNotFoundError: If the source has no observed mode.
+            FileExistsError: If an intermediate module is occupied.
+
+        """
+        source, target = paths
+        sources = inputs[0]
         inventory = {
             Path(item.real_path).resolve() for item in project.get_python_files()
         }
         if not inventory.issubset(sources):
             msg = "module resource move requires the complete source inventory"
             raise ValueError(msg)
-        before, captured = cls._module_input_epoch(
-            root, source, sources, source_states, class_only=False
-        )
-        if before.mode is None:
+        states = cls._module_input_states(source, inputs, class_only=False)
+        mode = states[source].mode
+        if mode is None:
             raise FileNotFoundError(source)
-        states = captured.snapshot.states
-        target_plan = cls._module_destination_plan(
-            root, target, "", before.mode, states
-        )
+        target_plan = cls._module_destination_plan(root, target, "", mode)
         if target.with_suffix("").exists():
             raise FileExistsError(target.with_suffix(""))
         candidate = dict(sources)
         virtual = [target_plan]
         initializer = target.parent / c.Infra.INIT_PY
         if initializer not in candidate:
-            virtual.append(
-                cls._module_destination_plan(root, initializer, "", before.mode, states)
-            )
-        # Native Rename retains the source package; native Move then changes it.
-        # The intermediate resource is lookup-only and is never published.
+            virtual.append(cls._module_destination_plan(root, initializer, "", mode))
+        intermediate = cls._module_resource_relocation(
+            project, paths, candidate, virtual, mode
+        )
+        changed = {
+            path: text
+            for path, text in candidate.items()
+            if path == target or (path in sources and text != sources[path])
+        }
+        changed.pop(intermediate if intermediate != target else source, None)
+        return cls._module_file_plans(target_plan, source, changed, states)
+
+    @classmethod
+    def _module_resource_relocation(
+        cls,
+        project: p.Infra.RopeProject,
+        paths: t.Pair[Path, Path],
+        candidate: t.MutableMappingKV[Path, str],
+        virtual: list[m.Infra.CodegenFilePlan],
+        mode: int,
+    ) -> Path:
+        """Compose lookup-only native Rename followed by native Move.
+
+        Returns:
+            The intermediate path.
+
+        Raises:
+            FileExistsError: If the intermediate name is occupied.
+
+        """
+        root = Path(project.root.real_path).resolve()
+        source, target = paths
         intermediate = source.with_name(target.name)
         if intermediate != source:
             if intermediate.with_suffix("").exists():
                 raise FileExistsError(intermediate.with_suffix(""))
-            declaration = cls._module_destination_plan(
-                root, intermediate, "", before.mode, states
-            )
+            declaration = cls._module_destination_plan(root, intermediate, "", mode)
             if intermediate != target:
                 virtual.append(declaration)
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                project, candidate, captured=captured, declared_files=tuple(virtual)
+                project, candidate, declared_files=tuple(virtual)
             )
             try:
                 changes = FlextInfraUtilitiesRopeRuntime.rename_changes(
@@ -205,26 +236,13 @@ class FlextInfraUtilitiesRopeClassMove:
                     candidate,
                     source,
                     intermediate,
-                    captured=captured,
                     declared_files=tuple(virtual),
                 )
             finally:
                 native.close()
-            virtual = [
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[intermediate].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                if plan.path == intermediate
-                else plan
-                for plan in virtual
-            ]
         if intermediate.parent != target.parent:
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                project, candidate, captured=captured, declared_files=tuple(virtual)
+                project, candidate, declared_files=tuple(virtual)
             )
             try:
                 mover = FlextInfraUtilitiesRopeRuntime.create_move(
@@ -242,39 +260,11 @@ class FlextInfraUtilitiesRopeClassMove:
                     candidate,
                     intermediate,
                     target,
-                    captured=captured,
                     declared_files=tuple(virtual),
                 )
             finally:
                 native.close()
-        changed = {
-            path: text
-            for path, text in candidate.items()
-            if path == target or (path in sources and text != sources[path])
-        }
-        changed.pop(intermediate if intermediate != target else source, None)
-        states = m.Infra.CodemodBindingSnapshot(
-            states=(
-                *states,
-                *(
-                    plan.before
-                    for plan in virtual
-                    if isinstance(plan.before, m.Cli.AtomicFileState)
-                ),
-            )
-        ).states
-        u.Cli.atomic_verify_directory_queries(directories, topology).unwrap()
-        return tuple(
-            plan.model_copy(
-                update={
-                    "source_directories": directories,
-                    "source_query_topology": topology,
-                }
-            )
-            for plan in cls._module_file_plans(
-                target_plan, source, before, changed, states
-            )
-        )
+        return intermediate
 
     @classmethod
     def _module_quoted_sources(
@@ -284,7 +274,6 @@ class FlextInfraUtilitiesRopeClassMove:
         source: Path,
         target: Path,
         *,
-        captured: m.Infra.CodemodSourceEpoch,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
     ) -> None:
         """Rewire only quoted type prefixes with the native source module identity.
@@ -309,39 +298,10 @@ class FlextInfraUtilitiesRopeClassMove:
             msg = f"native module identity does not select its destination: {target}"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesSemanticNestingTypes
 
-        def scopes(module: p.Infra.RopeParsedModule) -> list[p.Infra.RopeScope]:
-            ordered: list[p.Infra.RopeScope] = [module.get_scope()]
-            for scope in ordered:
-                ordered.extend(scope.get_scopes())
-            return ordered
-
-        def declarations(
-            items: t.SequenceOf[p.Infra.RopeScope],
-        ) -> list[t.Pair[str | None, str]]:
-            return [
-                (scope.get_kind(), scope.pyobject.get_name() if index else "")
-                for index, scope in enumerate(items)
-            ]
-
-        def virtual_files() -> tuple[m.Infra.CodegenFilePlan, ...]:
-            return tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                if plan.path in candidate
-                else plan
-                for plan in declared_files
-            )
-
-        checks: dict[Path, dict[tuple[int, str], int]] = {}
+        checks: t.DictKV[Path, t.DictKV[tuple[int, str], int]] = {}
         composed = runtime.snapshot_project(
-            project, candidate, captured=captured, declared_files=virtual_files()
+            project, candidate, declared_files=declared_files
         )
         try:
             destination_module = (
@@ -349,186 +309,375 @@ class FlextInfraUtilitiesRopeClassMove:
                     composed, cls._resource(composed, root, target)
                 )
             )
+
             for path, text in tuple(candidate.items()):
                 if path == source:
                     continue
-                resource = cls._resource(composed, root, path)
-                original = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    project,
-                    cls._resource(project, root, source if path == target else path),
+                # Module and PyObject protocols expose the same native identities.
+                rewritten, required = cls._module_quoted_consumer(
+                    (project, composed),
+                    (source, target, path),
+                    text,
+                    (id(expected), id(destination_module)),
+                    destination,
                 )
-                module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    composed, resource
-                )
-                before_scopes, current_scopes = scopes(original), scopes(module)
-                # Resource relocation changes imports, never lexical declarations.
-                if declarations(before_scopes) != declarations(current_scopes):
-                    msg = f"module relocation changed native annotation scopes: {path}"
-                    raise ValueError(msg)
-                positions = {
-                    id(scope): index for index, scope in enumerate(current_scopes)
-                }
-                if source.stem != target.stem:
-                    for scope in before_scopes:
-                        previous, occupied = (
-                            scope.lookup(source.stem),
-                            scope.lookup(target.stem),
-                        )
-                        if (
-                            previous is not None
-                            and previous.get_object() is expected
-                            and occupied is not None
-                            and occupied.get_object() is not expected
-                        ):
-                            msg = f"module rename would capture a consumer binding: {path}:{target.stem}"
-                            raise ValueError(msg)
-                required: dict[tuple[int, str], int] = {}
-                binding: str | None = None
-
-                def replacement(
-                    scope: p.Infra.RopeScope, expression: str
-                ) -> str | None:
-                    nonlocal binding
-                    index = positions[id(scope)]
-                    old_scope = before_scopes[index]
-                    parts = expression.split(".")
-                    for count in range(1, len(parts) + 1):
-                        prefix = ".".join(parts[:count])
-                        old = runtime.expression_name(old_scope, prefix)
-                        if old is None or old.get_object() is not expected:
-                            continue
-                        current = runtime.expression_name(scope, prefix)
-                        if (
-                            current is not None
-                            and current.get_object() is destination_module
-                        ):
-                            required[index, expression] = count
-                            return None
-                        renamed = runtime.expression_name(scope, target.stem)
-                        if (
-                            count == 1
-                            and prefix == source.stem
-                            and renamed is not None
-                            and renamed.get_object() is destination_module
-                        ):
-                            selected = types.checked_type_reference(
-                                scope, ".".join((target.stem, *parts[count:]))
-                            )
-                            required[index, selected] = 1
-                            return selected
-                        imported, elected = runtime.import_binding(
-                            composed, module, destination, None
-                        )
-                        imported_module = runtime.build_string_module(
-                            composed, imported, resource=resource
-                        )
-                        root_name = elected.partition(".")[0]
-                        previous_root = runtime.expression_name(
-                            module.get_scope(), root_name
-                        )
-                        elected_root = runtime.expression_name(
-                            imported_module.get_scope(), root_name
-                        )
-                        elected_module = runtime.expression_name(
-                            imported_module.get_scope(), elected
-                        )
-                        if (
-                            elected_module is None
-                            or elected_module.get_object() is not destination_module
-                            or (
-                                previous_root is not None
-                                and not runtime.same_name(previous_root, elected_root)
-                            )
-                        ):
-                            msg = f"occupied native quoted module destination: {path}:{elected}"
-                            raise ValueError(msg)
-                        selected = types.checked_type_reference(
-                            scope, ".".join((elected, *parts[count:]))
-                        )
-                        if binding is not None and binding != elected:
-                            msg = f"quoted module move changed its native import binding: {path}"
-                            raise ValueError(msg)
-                        binding = elected
-                        required[index, selected] = len(elected.split("."))
-                        return selected
-                    return None
-
-                rewritten = types.rewrite_quoted_types(
-                    composed, resource, text, replacement
-                )
-                if binding is not None:
-                    rewritten, elected = runtime.import_binding(
-                        composed,
-                        runtime.build_string_module(
-                            composed, rewritten, resource=resource
-                        ),
-                        destination,
-                        None,
-                    )
-                    if elected != binding:
-                        msg = f"quoted module move changed its native import binding: {path}"
-                        raise ValueError(msg)
                 candidate[path] = rewritten
                 if required:
                     checks[path] = required
-                exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                    text
-                )
-                published = original.get_scope().lookup(source.stem)
-                if (
-                    source.stem != target.stem
-                    and source.stem in exports
-                    and published is not None
-                    and published.get_object() is expected
-                ):
-                    candidate[path] = (
-                        FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
-                            candidate[path],
-                            names=[
-                                target.stem if name == source.stem else name
-                                for name in exports
-                            ],
-                        )
-                    )
         finally:
             composed.close()
         verified = runtime.snapshot_project(
-            project, candidate, captured=captured, declared_files=virtual_files()
+            project, candidate, declared_files=declared_files
         )
         try:
             relocated = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
                 verified, cls._resource(verified, root, target)
             )
+
             for path, required in checks.items():
-                resource = cls._resource(verified, root, path)
-                module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    verified, resource
+                cls._validate_module_quoted_consumer(
+                    verified, path, candidate[path], required, id(relocated)
                 )
-                positions = {
-                    id(scope): index for index, scope in enumerate(scopes(module))
-                }
-                seen: set[tuple[int, str]] = set()
-
-                def validate(scope: p.Infra.RopeScope, expression: str) -> None:
-                    key = positions[id(scope)], expression
-                    count = required.get(key)
-                    if count is not None:
-                        actual = runtime.expression_name(
-                            scope, ".".join(expression.split(".")[:count])
-                        )
-                        if actual is None or actual.get_object() is not relocated:
-                            msg = f"quoted module reference lost its native identity: {path}:{expression}"
-                            raise ValueError(msg)
-                        seen.add(key)
-
-                types.quoted_type_edits(verified, resource, candidate[path], validate)
-                if seen != set(required):
-                    msg = (
-                        f"module relocation lost original quoted type positions: {path}"
-                    )
-                    raise ValueError(msg)
         finally:
             verified.close()
+
+    @staticmethod
+    def _module_scopes(module: p.Infra.RopeParsedModule) -> list[p.Infra.RopeScope]:
+        """Return native lexical scopes in stable breadth-first order.
+
+        Returns:
+            The module scope followed by its lexical children.
+
+        """
+        ordered: list[p.Infra.RopeScope] = [module.get_scope()]
+        index = 0
+        while index < len(ordered):
+            ordered.extend(ordered[index].get_scopes())
+            index += 1
+        return ordered
+
+    @classmethod
+    def _module_quoted_consumer(
+        cls,
+        projects: t.Pair[p.Infra.RopeProject, p.Infra.RopeProject],
+        paths: t.Triple[Path, Path, Path],
+        text: str,
+        identities: t.Pair[int, int],
+        destination: str,
+    ) -> t.Pair[str, t.DictKV[tuple[int, str], int]]:
+        """Rewrite one consumer with callback state owned by this invocation.
+
+        Returns:
+            Rewritten text and the native identity checks it requires.
+
+        """
+        project, composed = projects
+        source, target, path = paths
+        root = Path(project.root.real_path).resolve()
+        resource = cls._resource(composed, root, path)
+        original = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            project, cls._resource(project, root, source if path == target else path)
+        )
+        module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            composed, resource
+        )
+        cls._validate_module_quoted_scopes(
+            cls._module_scopes(original),
+            cls._module_scopes(module),
+            paths,
+            identities[0],
+        )
+        rewritten, required = cls._module_quoted_rewrite(
+            composed, (original, module), text, paths, (identities, destination)
+        )
+        return cls._module_quoted_exports(
+            original, text, rewritten, paths, identities[0]
+        ), required
+
+    @classmethod
+    def _module_quoted_rewrite(
+        cls,
+        composed: p.Infra.RopeProject,
+        modules: t.Pair[p.Infra.RopeParsedModule, p.Infra.RopeParsedModule],
+        text: str,
+        paths: t.Triple[Path, Path, Path],
+        destination_info: t.Pair[t.Pair[int, int], str],
+    ) -> t.Pair[str, t.DictKV[tuple[int, str], int]]:
+        """Apply one consumer's quoted edits with invocation-local callback state.
+
+        Returns:
+            Rewritten source and native prefix checks.
+
+        Raises:
+            ValueError: If native import election changes during rewriting.
+
+        """
+        module = modules[1]
+        identities, destination = destination_info
+        resource = cls._resource(
+            composed, Path(composed.root.real_path).resolve(), paths[2]
+        )
+        before_scopes = cls._module_scopes(modules[0])
+        positions = {
+            id(scope): index for index, scope in enumerate(cls._module_scopes(module))
+        }
+        required: t.DictKV[tuple[int, str], int] = {}
+        binding: str | None = None
+
+        def replacement(scope: p.Infra.RopeScope, expression: str) -> str | None:
+            nonlocal binding
+            index = positions[id(scope)]
+            selected, elected, count = cls._module_quoted_reference(
+                composed,
+                module,
+                (before_scopes[index], scope),
+                expression,
+                ((paths[0], paths[1]), identities, destination),
+            )
+            if count:
+                required[index, selected if selected is not None else expression] = (
+                    count
+                )
+            if elected is not None:
+                if binding is not None and binding != elected:
+                    msg = (
+                        "quoted module move changed its native import binding: "
+                        f"{paths[2]}"
+                    )
+                    raise ValueError(msg)
+                binding = elected
+            return selected
+
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        rewritten = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+            composed, resource, text, replacement
+        )
+        if binding is not None:
+            rewritten, elected = runtime.import_binding(
+                composed,
+                runtime.build_string_module(composed, rewritten, resource=resource),
+                destination,
+                None,
+            )
+            if elected != binding:
+                msg = (
+                    f"quoted module move changed its native import binding: {paths[2]}"
+                )
+                raise ValueError(msg)
+        return rewritten, required
+
+    @staticmethod
+    def _validate_module_quoted_scopes(
+        before: t.SequenceOf[p.Infra.RopeScope],
+        current: t.SequenceOf[p.Infra.RopeScope],
+        paths: t.Triple[Path, Path, Path],
+        expected: int,
+    ) -> None:
+        """Require unchanged lexical declarations and reject name capture.
+
+        Raises:
+            ValueError: If declarations change or the destination shadows a binding.
+
+        """
+        source, target, path = paths
+        old_declarations = [
+            (scope.get_kind(), scope.pyobject.get_name() if index else "")
+            for index, scope in enumerate(before)
+        ]
+        declarations = [
+            (scope.get_kind(), scope.pyobject.get_name() if index else "")
+            for index, scope in enumerate(current)
+        ]
+        if old_declarations != declarations:
+            msg = f"module relocation changed native annotation scopes: {path}"
+            raise ValueError(msg)
+        if source.stem == target.stem:
+            return
+        for scope in before:
+            previous, occupied = scope.lookup(source.stem), scope.lookup(target.stem)
+            if (
+                previous is not None
+                and id(previous.get_object()) == expected
+                and occupied is not None
+                and id(occupied.get_object()) != expected
+            ):
+                msg = (
+                    f"module rename would capture a consumer binding: {path}:"
+                    f"{target.stem}"
+                )
+                raise ValueError(msg)
+
+    @classmethod
+    def _module_quoted_reference(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        scopes: t.Pair[p.Infra.RopeScope, p.Infra.RopeScope],
+        expression: str,
+        destination_info: t.Triple[
+            t.Pair[Path, Path],
+            t.Pair[int, int],
+            str,
+        ],
+    ) -> t.Triple[str | None, str | None, int]:
+        """Resolve a quoted prefix by original and destination native identity.
+
+        Returns:
+            Replacement, required import binding and verified prefix length.
+
+        """
+        paths, identities, destination = destination_info
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesSemanticNestingTypes
+        parts = expression.split(".")
+        for count in range(1, len(parts) + 1):
+            prefix = ".".join(parts[:count])
+            old = runtime.expression_name(scopes[0], prefix)
+            if old is None or id(old.get_object()) != identities[0]:
+                continue
+            current = runtime.expression_name(scopes[1], prefix)
+            if current is not None and id(current.get_object()) == identities[1]:
+                return None, None, count
+            renamed = runtime.expression_name(scopes[1], paths[1].stem)
+            if (
+                count == 1
+                and prefix == paths[0].stem
+                and renamed is not None
+                and id(renamed.get_object()) == identities[1]
+            ):
+                return (
+                    types.checked_type_reference(
+                        scopes[1], ".".join((paths[1].stem, *parts[count:]))
+                    ),
+                    None,
+                    1,
+                )
+            elected = cls._module_quoted_import(
+                project, module, destination, identities[1]
+            )
+            selected = types.checked_type_reference(
+                scopes[1], ".".join((elected, *parts[count:]))
+            )
+            return selected, elected, len(elected.split("."))
+        return None, None, 0
+
+    @staticmethod
+    def _module_quoted_import(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        destination: str,
+        destination_module: int,
+    ) -> str:
+        """Elect an import only when its native module and root stay unambiguous.
+
+        Returns:
+            The native import binding.
+
+        Raises:
+            ValueError: If the elected import would capture an occupied binding.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        imported, elected = runtime.import_binding(project, module, destination, None)
+        resource = module.get_resource()
+        imported_module = runtime.build_string_module(
+            project, imported, resource=resource
+        )
+        root_name = elected.partition(".")[0]
+        previous_root = runtime.expression_name(module.get_scope(), root_name)
+        elected_root = runtime.expression_name(imported_module.get_scope(), root_name)
+        elected_module = runtime.expression_name(imported_module.get_scope(), elected)
+        if (
+            elected_module is None
+            or id(elected_module.get_object()) != destination_module
+            or (
+                previous_root is not None
+                and not runtime.same_name(previous_root, elected_root)
+            )
+        ):
+            path = resource.real_path if resource is not None else module.get_name()
+            msg = f"occupied native quoted module destination: {path}:{elected}"
+            raise ValueError(msg)
+        return elected
+
+    @staticmethod
+    def _module_quoted_exports(
+        original: p.Infra.RopeParsedModule,
+        text: str,
+        rewritten: str,
+        paths: t.Triple[Path, Path, Path],
+        expected: int,
+    ) -> str:
+        """Preserve explicit exports of the relocated native module.
+
+        Returns:
+            The text with an authenticated exported module name updated.
+
+        """
+        source, target, _path = paths
+        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(text)
+        published = original.get_scope().lookup(source.stem)
+        if (
+            source.stem != target.stem
+            and source.stem in exports
+            and published is not None
+            and id(published.get_object()) == expected
+        ):
+            return FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+                rewritten,
+                names=[
+                    target.stem if name == source.stem else name for name in exports
+                ],
+            )
+        return rewritten
+
+    @classmethod
+    def _validate_module_quoted_consumer(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        text: str,
+        required: t.DictKV[tuple[int, str], int],
+        relocated: int,
+    ) -> None:
+        """Verify every original quoted position in a single consumer invocation.
+
+        Raises:
+            ValueError: If any required quoted position or native identity is lost.
+
+        """
+        root = Path(project.root.real_path).resolve()
+        resource = cls._resource(project, root, path)
+        module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            project, resource
+        )
+        positions = {
+            id(scope): index for index, scope in enumerate(cls._module_scopes(module))
+        }
+        seen: set[tuple[int, str]] = set()
+
+        def validate(scope: p.Infra.RopeScope, expression: str) -> None:
+            key = positions[id(scope)], expression
+            count = required.get(key)
+            if count is None:
+                return
+            actual = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                scope, ".".join(expression.split(".")[:count])
+            )
+            if actual is None or id(actual.get_object()) != relocated:
+                msg = (
+                    f"quoted module reference lost its native identity: {path}:"
+                    f"{expression}"
+                )
+                raise ValueError(msg)
+            seen.add(key)
+
+        FlextInfraUtilitiesSemanticNestingTypes.quoted_type_edits(
+            project, resource, text, validate
+        )
+        if seen != set(required):
+            msg = f"module relocation lost original quoted type positions: {path}"
+            raise ValueError(msg)
 
     @staticmethod
     def _module_resource_changes(
@@ -578,7 +727,7 @@ class FlextInfraUtilitiesRopeClassMove:
         source: Path,
         target: Path,
         sources: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> tuple[
         m.Infra.ClassMoveRequest,
         m.Infra.CodegenFilePlan,
@@ -586,9 +735,8 @@ class FlextInfraUtilitiesRopeClassMove:
         t.VariadicTuple[m.Infra.CodegenFilePlan],
         str,
     ]:
-        source_states = captured.snapshot.states
         canonical, source_module_name, reexports = cls._canonical_module_metadata(
-            rope_project, source, sources, captured
+            rope_project, source, sources
         )
         declaration = cls._module_class_declaration(canonical, source)
         prelude = cls._module_prelude(canonical, source, declaration)
@@ -600,70 +748,37 @@ class FlextInfraUtilitiesRopeClassMove:
             line=declaration.lineno,
             apply=False,
         )
-        target_plan, virtual, source_states = cls._module_virtual_destinations(
-            request, prelude, source_states, sources
+        mode = states[source].mode
+        if mode is None:
+            msg = f"module move source is absent: {source}"
+            raise ValueError(msg)
+        root = Path(rope_project.root.real_path).resolve()
+        target_plan = cls._module_destination_plan(root, target, prelude, mode)
+        # Package identity is needed by native Rope before any directory exists.
+        # This lookup-only initializer is never returned for semantic publication:
+        # the existing lazy-init phase owns the real generated file.
+        initializer = target.parent / c.Infra.INIT_PY
+        virtual = (
+            (target_plan,)
+            if initializer in sources
+            else (
+                target_plan,
+                cls._module_destination_plan(root, initializer, "", mode),
+            )
         )
         proposed = dict(sources)
         proposed[source] = canonical
         proposed[target] = prelude
         for plan in virtual[1:]:
             proposed[plan.path] = ""
-        cls._module_reexport_sources(request, proposed, captured, virtual, reexports)
+        cls._module_reexport_sources(request, proposed, sources, virtual, reexports)
         return (
             request,
-            target_plan.model_copy(update={"source_states": source_states}),
+            target_plan,
             proposed,
             virtual,
             source_module_name,
         )
-
-    @classmethod
-    def _module_virtual_destinations(
-        cls,
-        request: m.Infra.ClassMoveRequest,
-        prelude: str,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        sources: t.MappingKV[Path, str],
-    ) -> t.Triple[
-        m.Infra.CodegenFilePlan,
-        t.VariadicTuple[m.Infra.CodegenFilePlan],
-        t.VariadicTuple[m.Cli.AtomicFileState],
-    ]:
-        root = Path(request.rope_project.root.real_path).resolve()
-        target = request.target_file
-        before = next(
-            state
-            for state in source_states
-            if state.path.resolve() == request.source_file
-        )
-        if before.mode is None:
-            msg = f"module move source is absent: {request.source_file}"
-            raise ValueError(msg)
-        target_plan = cls._module_destination_plan(
-            root, target, prelude, before.mode, source_states
-        )
-        virtual = [target_plan]
-        # Package identity is needed by native Rope before any directory exists.
-        # This lookup-only initializer is never returned for semantic publication:
-        # the existing lazy-init phase owns the real generated file.
-        initializer = target.parent / c.Infra.INIT_PY
-        if initializer not in sources:
-            initializer_plan = cls._module_destination_plan(
-                root,
-                initializer,
-                "",
-                before.mode,
-                source_states,
-            )
-            if isinstance(initializer_plan.before, m.Cli.AtomicFileState):
-                source_states = m.Infra.CodemodBindingSnapshot(
-                    states=(*source_states, initializer_plan.before),
-                ).states
-            elif initializer_plan.before != target_plan.before:
-                msg = f"module move destination parent snapshots disagree: {target}"
-                raise ValueError(msg)
-            virtual.append(initializer_plan)
-        return target_plan, tuple(virtual), source_states
 
     @classmethod
     def _module_completed_changes(
@@ -672,18 +787,13 @@ class FlextInfraUtilitiesRopeClassMove:
         source_module_name: str,
         sources: t.MappingKV[Path, str],
         proposed: t.MappingKV[Path, str],
-        view: t.Pair[
-            m.Infra.CodemodSourceEpoch, t.VariadicTuple[m.Infra.CodegenFilePlan]
-        ],
+        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.DictKV[Path, str]:
-        captured, virtual = view
-        changed = cls._module_reference_changes(
-            request, sources, proposed, captured, virtual
-        )
+        changed = cls._module_reference_changes(request, sources, proposed, virtual)
         candidate = dict(proposed)
         candidate.update(changed)
         metadata_removed = cls._module_metadata_cleanup(
-            request, source_module_name, candidate, captured, virtual
+            request, source_module_name, candidate, virtual
         )
         if metadata_removed is not None:
             changed[request.target_file] = metadata_removed
@@ -698,48 +808,33 @@ class FlextInfraUtilitiesRopeClassMove:
         return changed
 
     @classmethod
-    def _module_input_epoch(
+    def _module_input_states(
         cls,
-        root: Path,
         source: Path,
-        sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
         *,
         class_only: bool = True,
-    ) -> t.Pair[m.Cli.AtomicFileState, m.Infra.CodemodSourceEpoch]:
-        states = {
-            state.path.resolve(): state
-            for state in m.Infra.CodemodBindingSnapshot(states=source_states).states
-        }
-        if source not in states or source not in sources:
-            msg = f"module move source is not authenticated: {source}"
+    ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
+        sources, source_states = inputs
+        states = {state.path.resolve(): state for state in source_states}
+        before = states.get(source)
+        if before is None or source not in sources:
+            msg = f"module move source is not among its inputs: {source}"
             raise ValueError(msg)
-        before = states[source]
         if before.content is None or before.mode is None:
             msg = f"module move source is absent: {source}"
             raise ValueError(msg)
         for path, text in sources.items():
             state = states.get(path.resolve())
             if state is None or state.content is None:
-                msg = f"module move input is not authenticated: {path}"
+                msg = f"module move input has no observed state: {path}"
                 raise ValueError(msg)
             if state.content.decode(c.DEFAULT_ENCODING) != text:
-                msg = f"module move input disagrees with its snapshot: {path}"
+                msg = f"module move input disagrees with its observed state: {path}"
                 raise ValueError(msg)
         if class_only:
             cls._module_class_declaration(sources[source], source)
-        captured = FlextInfraUtilitiesCodemodProject.codemod_binding_snapshot(
-            root, tuple(states[path.resolve()] for path in sources)
-        )
-        for state in captured.states:
-            path = state.path.resolve()
-            if path in states and states[path] != state:
-                msg = f"module move dependency snapshot disagrees: {path}"
-                raise ValueError(msg)
-            states[path] = state
-        return before, FlextInfraUtilitiesCodemodProject.codemod_source_epoch(
-            m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
-        )
+        return states
 
     @classmethod
     def _canonical_module_metadata(
@@ -747,11 +842,10 @@ class FlextInfraUtilitiesRopeClassMove:
         rope_project: p.Infra.RopeProject,
         source: Path,
         sources: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
     ) -> t.Triple[str, str, t.VariadicTuple[str]]:
         root = Path(rope_project.root.real_path).resolve()
         original = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            rope_project, sources, captured=captured
+            rope_project, sources
         )
         try:
             source_resource = cls._resource(original, root, source)
@@ -793,7 +887,7 @@ class FlextInfraUtilitiesRopeClassMove:
         cls,
         request: m.Infra.ClassMoveRequest,
         proposed: t.MutableMappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
+        sources: t.MappingKV[Path, str],
         virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
         reexports: t.VariadicTuple[str],
     ) -> None:
@@ -803,7 +897,6 @@ class FlextInfraUtilitiesRopeClassMove:
             package_plan = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                 request.rope_project,
                 proposed,
-                captured=captured,
                 declared_files=virtual,
             )
             try:
@@ -817,7 +910,7 @@ class FlextInfraUtilitiesRopeClassMove:
                     if (
                         path in virtual_paths
                         or path == request.source_file
-                        or captured.sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
+                        or sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
                     ):
                         continue
                     updated = FlextInfraUtilitiesRopeImports.plan_from_import_aliases(
@@ -838,13 +931,11 @@ class FlextInfraUtilitiesRopeClassMove:
         request: m.Infra.ClassMoveRequest,
         sources: t.MappingKV[Path, str],
         proposed: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
         virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.DictKV[Path, str]:
         planned = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             proposed,
-            captured=captured,
             declared_files=virtual,
         )
         try:
@@ -871,24 +962,13 @@ class FlextInfraUtilitiesRopeClassMove:
         request: m.Infra.ClassMoveRequest,
         source_module_name: str,
         candidate: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
         virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> str | None:
         root = Path(request.rope_project.root.real_path).resolve()
         metadata_project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             candidate,
-            captured=captured,
-            declared_files=tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        )
-                    }
-                )
-                for plan in virtual
-            ),
+            declared_files=virtual,
         )
         try:
             return FlextInfraUtilitiesRopeImports.remove_import_names(
@@ -906,26 +986,24 @@ class FlextInfraUtilitiesRopeClassMove:
         cls,
         target_plan: m.Infra.CodegenFilePlan,
         source: Path,
-        before: m.Cli.AtomicFileState,
         changed: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         root, target = target_plan.project, target_plan.path
-        states = {state.path.resolve(): state for state in source_states}
         files = [
-            target_plan.model_copy(
-                update={
-                    "desired_content": changed[target].encode(c.DEFAULT_ENCODING),
-                    "source_states": source_states,
-                }
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=target_plan.before,
+                desired_content=changed[target].encode(c.DEFAULT_ENCODING),
+                desired_mode=target_plan.desired_mode,
             ),
             m.Infra.CodegenFilePlan(
                 project=root,
                 path=source,
-                before=before,
+                before=states[source],
                 desired_content=None,
                 desired_mode=None,
-                source_states=source_states,
             ),
         ]
         for path, content in changed.items():
@@ -933,7 +1011,7 @@ class FlextInfraUtilitiesRopeClassMove:
                 continue
             state = states.get(path)
             if state is None or state.mode is None:
-                msg = f"module move consumer is not authenticated: {path}"
+                msg = f"module move consumer has no observed state: {path}"
                 raise ValueError(msg)
             if state.content is not None and state.content.decode(
                 c.DEFAULT_ENCODING,
@@ -951,7 +1029,6 @@ class FlextInfraUtilitiesRopeClassMove:
                     before=state,
                     desired_content=content.encode(c.DEFAULT_ENCODING),
                     desired_mode=state.mode,
-                    source_states=source_states,
                 ),
             )
         return tuple(files)
@@ -1074,34 +1151,25 @@ class FlextInfraUtilitiesRopeClassMove:
         target: Path,
         source: str,
         mode: int,
-        source_states: tuple[m.Cli.AtomicFileState, ...],
     ) -> m.Infra.CodegenFilePlan:
-        """Capture an absent file or absent parent chain without creating either.
+        """Plan an absent destination file; publication creates its parents.
 
         Returns:
-            The authenticated plan for the absent destination.
+            The plan for the absent destination.
 
         Raises:
             FileExistsError: If the destination already has file content.
 
         """
-        parents = u.Cli.atomic_plan_directory_chain(target.parent).unwrap()
-        before: m.Cli.AtomicDirectoryChainPlan | m.Cli.AtomicFileState
-        if parents.directories:
-            before = parents
-        else:
-            before = u.Cli.atomic_read_binary_file_state(
-                target, required=False
-            ).unwrap()
-            if before.content is not None:
-                raise FileExistsError(target)
+        before = u.Cli.atomic_read_binary_file_state(target, required=False).unwrap()
+        if before.content is not None:
+            raise FileExistsError(target)
         return m.Infra.CodegenFilePlan(
             project=root,
             path=target,
             before=before,
             desired_content=source.encode(c.DEFAULT_ENCODING),
             desired_mode=mode,
-            source_states=source_states,
         )
 
     @classmethod

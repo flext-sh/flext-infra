@@ -167,6 +167,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     @pytest.mark.parametrize("reuse_config", [False, True])
     def test_generated_source_tree_is_outside_the_scan_targets(
         tmp_path: Path,
+        *,
         reuse_config: bool,
     ) -> None:
         """`make mod` targets only the inventory its semantic phases index.
@@ -203,6 +204,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     @pytest.mark.parametrize("git_project", [False, True])
     def test_active_sources_share_one_inventory(
         tmp_path: Path,
+        *,
         git_project: bool,
     ) -> None:
         """Root modules and arbitrary tiers cannot disappear behind configured roots."""
@@ -219,8 +221,8 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             u.Tests.initialize_git_repo(project)
         live_paths = (
             project / "root.py",
-            project / "arbitrary" / "deep" / "tier" / "worker.py",
-            project / "arbitrary" / "deep" / "tier" / "__init__.py",
+            project / "arbitrary" / c.MergeStrategy.DEEP / "tier" / "worker.py",
+            project / "arbitrary" / c.MergeStrategy.DEEP / "tier" / "__init__.py",
         )
         for path in live_paths:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -271,7 +273,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         )
         with u.Infra.facade_source_project(project, project_roots=(project,)) as (
             source_project,
-            _,
             _,
         ):
             authenticated = set(
@@ -334,7 +335,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         with u.Infra.facade_source_project(project, project_roots=(project,)) as (
             source_project,
             _,
-            _,
         ):
             for reader in (None, source_project):
                 discovered = u.Infra.discover_python_files(
@@ -358,7 +358,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         os.mkfifo(project / "worker.py")
         with u.Infra.facade_source_project(project, project_roots=(project,)) as (
             source_project,
-            _,
             _,
         ):
             for reader in (None, source_project):
@@ -445,7 +444,10 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             "message: Active source finding\nrule:\n  pattern: probe($VALUE)\n",
             encoding="utf-8",
         )
-        paths = (project / "root.py", project / "arbitrary" / "deep" / "worker.py")
+        paths = (
+            project / "root.py",
+            project / "arbitrary" / c.MergeStrategy.DEEP / "worker.py",
+        )
         for path in paths:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("probe(1)\n", encoding="utf-8")

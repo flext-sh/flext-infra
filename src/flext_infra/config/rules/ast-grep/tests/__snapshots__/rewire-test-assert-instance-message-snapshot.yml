@@ -1,11 +1,44 @@
 id: rewire-test-assert-instance-message
 snapshots:
   ? |
+    from flext_tests import tm
+    value = 1
+    def check():
+        assert isinstance(value, int), explain()
+  : fixed: |
+      from flext_tests import tm
+      value = 1
+      def check():
+          if isinstance(value, int):
+              pass
+          else:
+              tm.reject(explain())
+    labels:
+    - source: assert isinstance(value, int), explain()
+      style: primary
+      start: 54
+      end: 94
+    - source: from flext_tests import tm
+      style: secondary
+      start: 0
+      end: 26
+    - source: |
+        from flext_tests import tm
+        value = 1
+        def check():
+            assert isinstance(value, int), explain()
+      style: secondary
+      start: 0
+      end: 95
+  ? |
     from tests import tm
     assert isinstance(value, Entry), "An entry is required"
   : fixed: |
       from tests import tm
-      value = tm.instance(value, Entry, msg="An entry is required")
+      if isinstance(value, Entry):
+          pass
+      else:
+          tm.reject("An entry is required")
     labels:
     - source: assert isinstance(value, Entry), "An entry is required"
       style: primary
@@ -27,7 +60,10 @@ snapshots:
         raise AssertionError(report)
   : fixed: |
       from tests import tm
-      value = tm.instance(value, Entry, msg=report)
+      if isinstance(value, Entry):
+          pass
+      else:
+          tm.reject(report)
     labels:
     - source: |-
         if not (isinstance(value, Entry)):

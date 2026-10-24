@@ -10,23 +10,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import c, tm, u
-
-if TYPE_CHECKING:
-    from tests import m
+from flext_infra.codegen import FlextInfraCodegenScaffolder
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenScaffolder:
     """Tests for ``FlextInfraCodegenScaffolder``."""
 
-    def test_missing_repository_propagates_discovery_failure(
-        self, tmp_path: Path
-    ) -> None:
+    @staticmethod
+    def test_missing_repository_propagates_discovery_failure(tmp_path: Path) -> None:
         """A missing repository cannot produce a successful empty scaffold."""
         missing = tmp_path / "missing"
         with pytest.raises(RuntimeError, match=str(missing)):

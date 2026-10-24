@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, infra, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, tm, u
 
 pytestmark = pytest.mark.slow
@@ -34,7 +34,6 @@ _HOOK_TEMPLATE = (
 
 def _conform(
     root: Path,
-    workspace: m.Infra.WorkspaceSpec,
     mode: c.Infra.CodegenConformMode,
 ) -> p.Result[p.Infra.CodegenResult]:
     """Run one conform operation through its public owner.
@@ -50,22 +49,11 @@ def _conform(
             scope=c.Infra.CodegenConformScope.SELF,
             mode=mode,
         ),
-        initial_workspace=workspace,
     )
 
 
 class TestsFlextInfraCodegenHookConformance:
     """Prove generation owns hook artifacts and preserves runtime installation."""
-
-    @staticmethod
-    def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
-        """Load the smallest repository-local topology needed by conform.
-
-        Returns:
-            The resulting ``m.Infra.WorkspaceSpec``.
-
-        """
-        return u.Tests.standalone_workspace(root)
 
     @staticmethod
     def _render_hooks(root: Path) -> str:
@@ -88,11 +76,8 @@ class TestsFlextInfraCodegenHookConformance:
         return rendered
 
     @staticmethod
-    def _check(
-        root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[p.Infra.CodegenResult]:
-        return _conform(root, workspace, c.Infra.CodegenConformMode.CHECK)
+    def _check(root: Path) -> p.Result[p.Infra.CodegenResult]:
+        return _conform(root, c.Infra.CodegenConformMode.CHECK)
 
     def test_check_never_requires_runtime_hook_installation(
         self,
@@ -100,21 +85,20 @@ class TestsFlextInfraCodegenHookConformance:
     ) -> None:
         """Conform owns generated files; AI Hub owns hook installation."""
         root = infra_git_repo
-        workspace = self._standalone_workspace(root)
         self._render_hooks(root)
 
-        result = self._check(root, workspace)
+        result = self._check(root)
 
         if result.failure:
             tm.that(result.error or "", lacks="git hook is not installed")
 
-    def test_apply_does_not_install_hook_shims(self, infra_git_repo: Path) -> None:
+    @staticmethod
+    def test_apply_does_not_install_hook_shims(infra_git_repo: Path) -> None:
         """Apply materializes files only and never provisions hook shims."""
         root = infra_git_repo
-        workspace = self._standalone_workspace(root)
-        hooks_dir = root / ".git" / "hooks"
+        hooks_dir = root / c.GIT_DIR_NAME / "hooks"
 
-        _conform(root, workspace, c.Infra.CodegenConformMode.APPLY)
+        _conform(root, c.Infra.CodegenConformMode.APPLY)
 
         for stage in ("pre-commit", "pre-push"):
             hook = hooks_dir / stage
@@ -183,15 +167,13 @@ class TestsFlextInfraCodegenHookConformance:
         hook_config = root / c.Infra.PRE_COMMIT_CONFIG_FILENAME
         tm.ok(u.Cli.atomic_write_text_file(hook_config, rendered))
         document = u.Cli.yaml_load_mapping(hook_config)
-        repositories = document["repos"]
-        tm.that(isinstance(repositories, list), truth=True)
-        repository = u.Cli.JSON_MAPPING_ADAPTER.validate_python(repositories[0])
-        hooks = repository["hooks"]
-        tm.that(isinstance(hooks, list), truth=True)
+        repositories = u.Cli.json_as_sequence(document["repos"])
+        repository = u.Cli.json_as_mapping(repositories[0])
+        hooks = u.Cli.json_as_sequence(repository["hooks"])
         tm.that(len(hooks), eq=1)
-        hook = u.Cli.JSON_MAPPING_ADAPTER.validate_python(hooks[0])
-        entry = hook["entry"]
-        tm.that(isinstance(entry, str), truth=True)
+        hook = u.Cli.json_as_mapping(hooks[0])
+        entry = u.Cli.json_pick_str(hook, "entry")
+        tm.that(entry, empty=False)
         process = tm.ok(
             u.Cli.run_raw(
                 shlex.split(entry),
@@ -232,15 +214,14 @@ class TestsFlextInfraCodegenHookConformance:
     ) -> None:
         """Conform never overwrites a foreign executable hook."""
         root = infra_git_repo
-        workspace = self._standalone_workspace(root)
         self._render_hooks(root)
-        hooks_dir = root / ".git" / "hooks"
+        hooks_dir = root / c.GIT_DIR_NAME / "hooks"
         foreign = "#!/bin/sh\nexit 0\n"
         for stage in ("pre-commit", "pre-push"):
             (hooks_dir / stage).write_text(foreign, encoding="utf-8")
 
-        self._check(root, workspace)
-        _conform(root, workspace, c.Infra.CodegenConformMode.APPLY)
+        self._check(root)
+        _conform(root, c.Infra.CodegenConformMode.APPLY)
 
         for stage in ("pre-commit", "pre-push"):
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)
@@ -326,7 +307,7 @@ class TestsFlextInfraCodegenHookConformance:
             encoding="utf-8",
         )
 
-        planned = FlextInfraCodegenConform.retired_projection_plans(
+        planned = FlextInfraCodegenConformExecute.retired_projection_plans(
             root,
             c.Infra.MakeProfile.STANDALONE,
         )
@@ -346,7 +327,7 @@ class TestsFlextInfraCodegenHookConformance:
             encoding="utf-8",
         )
 
-        planned = FlextInfraCodegenConform.retired_projection_plans(
+        planned = FlextInfraCodegenConformExecute.retired_projection_plans(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )

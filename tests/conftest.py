@@ -22,6 +22,7 @@ pytest_plugins = [
     "tests.fixtures.workspace",
     "tests.fixtures.facades",
     "tests.fixtures.infra",
+    "tests.fixtures.provisioning",
     "tests.fixtures.git",
 ]
 
@@ -96,6 +97,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         ValueError: If requires_engine arguments must be canonical engine names.
 
     """
+    for item in items:
+        item.add_marker(pytest.mark.usefixtures("runner_ci_context_cleared"))
     policy = config.Infra.codegen.make.ci
     if u.Infra.env_value(policy.variable).strip() != policy.value:
         return

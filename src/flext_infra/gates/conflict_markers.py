@@ -44,9 +44,12 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
             else u.Infra.git_source_scope_paths(project_dir)
         )
         if paths is None or not paths:
-            message = f"conflict-marker gate requires a nonempty source inventory: {project_dir}"
+            message = (
+                "conflict-marker gate requires a nonempty source inventory: "
+                f"{project_dir}"
+            )
             raise ValueError(message)
-        return self._check_paths(paths, project_dir)
+        return self._check_paths(paths, project_dir, ctx)
 
     @override
     def check_files(
@@ -62,7 +65,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
 
         """
         return (
-            self._check_paths(files, project_dir)
+            self._check_paths(files, project_dir, ctx)
             if files
             else self.check(project_dir, ctx)
         )
@@ -71,6 +74,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         self,
         paths: t.SequenceOf[Path],
         project_dir: Path,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         """Read literal file bytes and classify controls through the shared owner.
 
@@ -119,7 +123,9 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=tuple(issues),
-            raw_output="\n".join((raw, *(issue.formatted for issue in issues))),
+            evidence=self._publish_raw_receipt(
+                ctx, "\n".join((raw, *(issue.formatted for issue in issues)))
+            ),
             started=started,
         )
 

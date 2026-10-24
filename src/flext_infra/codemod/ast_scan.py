@@ -42,15 +42,8 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         """
         # The engines currently own full-corpus inventories and count receipts.
-        # Refuse narrower requests before either engine can scan or publish.
-        if any(
-            selector is not None
-            for selector in (
-                self.target_module,
-                self.target_namespace,
-                self.project_filter,
-            )
-        ):
+        # Refuse project filters before either engine can scan or publish.
+        if self.project_filter is not None:
             return r[t.Cli.ResultValue].fail(
                 "ast: selected scope is not supported by both mechanical "
                 "inventories and their count receipts; no scan or rewrite executed",
@@ -205,10 +198,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
             if rule_ids is not None
             else before
         )
-        published_plans: list[m.Infra.CodegenStagedFile] = []
-        outcome = cls._converge(
-            root, current, rule_ids=rule_ids, published_plans=published_plans
-        )
+        outcome = cls._converge(root, current, rule_ids=rule_ids)
         if rule_ids is None:
             return outcome
         observed = cls._observed_after_evidence(root, invocation, outcome)
@@ -221,13 +211,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         try:
             catalog_after = u.Infra.codemod_rule_plan(root)
             cls._require_whole_catalog_correspondence(catalog_before, catalog_after)
-            deltas = u.Infra.rule_deltas(
-                before,
-                after,
-                options=m.Infra.RuleDeltaOptions(
-                    publication_chain=tuple(published_plans)
-                ),
-            )
+            deltas = u.Infra.rule_deltas(before, after)
         except ValueError as exc:
             sys.stderr.write(
                 f"ast: {'secondary ' if outcome.failure else ''}"
@@ -352,7 +336,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         current: m.Infra.ModScanReport,
         *,
         rule_ids: t.StrSequence | None = None,
-        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 
@@ -388,7 +371,6 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 root,
                 current,
                 exact_replacements=rule_ids is not None,
-                published_plans=published_plans,
             )
             if rule_ids is None:
                 applied.unwrap()

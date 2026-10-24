@@ -55,26 +55,6 @@ class FlextInfraModelsBase:
             str | None,
             m.Field(description="Project filter (comma-separated)", exclude=True),
         ] = None
-        target_module: Annotated[
-            str | None,
-            m.Field(
-                alias="module",
-                description=(
-                    "Dotted module path to scope the verb to a single module "
-                    "(e.g. flext_core.result). Composes with --repository-root/--projects."
-                ),
-            ),
-        ] = None
-        target_namespace: Annotated[
-            str | None,
-            m.Field(
-                alias="namespace",
-                description=(
-                    "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the "
-                    "verb to a single facade slot."
-                ),
-            ),
-        ] = None
         report_path: Annotated[
             Path | None,
             m.Field(description="Report output path", exclude=True),

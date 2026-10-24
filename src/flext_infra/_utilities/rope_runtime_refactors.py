@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
+from pathlib import Path
 from typing import cast
 
 from flext_cli import u
@@ -390,6 +391,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         resource: p.Infra.RopeResource,
         offset: int | None,
         new_name: str,
+        *,
+        sources: t.MappingKV[Path, str],
     ) -> t.VariadicTuple[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]]:
         """Preview every elected project before any publication or Project.do.
 
@@ -397,49 +400,39 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             Native per-project changes, including module resource moves.
 
         Raises:
-            TypeError: If the native multiproject result violates its contract.
-            ValueError: If no producer project was elected.
+            ValueError: If no producer is elected or native module ownership changes.
 
         """
         if not projects:
             msg = "native rename requires a producer project"
             raise ValueError(msg)
-        factory = cls.runtime_callable("rope.refactor.rename", "Rename")
-        multiproject = cls.runtime_callable(
-            "rope.refactor.multiproject", "MultiProjectRefactoring"
-        )(factory, list(projects[1:]))
-        if not callable(multiproject):
-            msg = "Rope multiproject factory is not callable"
-            raise TypeError(msg)
-        # The native proxy and its collector stay behind typed callable views
-        # so the untyped fork members never leak past this boundary.
-        refactoring = cast("Callable[..., p.AttributeProbe]", multiproject)(
-            projects[0],
-            resource,
-            offset,
-        )
-        get_all_changes = getattr(refactoring, "get_all_changes", None)
-        if not callable(get_all_changes):
-            msg = "Rope multiproject does not expose get_all_changes"
-            raise TypeError(msg)
-        collect = cast(
-            "Callable[..., list[tuple[p.AttributeProbe, p.AttributeProbe]]]",
-            get_all_changes,
-        )
-        result = collect(new_name, in_hierarchy=True)
-        if len(result) != len(projects):
-            msg = "Rope multiproject returned invalid project changes"
-            raise TypeError(msg)
+        producer = cls.require_semantic_module(projects[0].get_pymodule(resource))
+        module_name = producer.get_name()
         changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
-        for project, item in zip(projects, result, strict=True):
-            match item:
-                case (owner, change) if owner is project and isinstance(
-                    change, p.Infra.RopeChangeSet
-                ):
-                    changes.append((project, change))
-                case _:
-                    msg = "Rope multiproject changed its elected project"
-                    raise TypeError(msg)
+        for project in projects:
+            # Foreign declarations must use the same authenticated resource owner
+            # as imports, not MultiProjectRefactoring's global NoProject resolver.
+            elected = project.find_module(module_name)
+            if elected is None or elected.real_path != resource.real_path:
+                msg = f"native rename lost its elected module: {module_name}"
+                raise ValueError(msg)
+            changes.append((
+                project,
+                cls.rename_changes(
+                    project,
+                    elected,
+                    offset,
+                    new_name,
+                    options=m.Infra.RopeRenameOptions(
+                        resources=tuple(
+                            candidate
+                            for candidate in project.get_python_files()
+                            if Path(candidate.real_path) in sources
+                        ),
+                        in_hierarchy=True,
+                    ),
+                ),
+            ))
         return tuple(changes)
 
     @classmethod

@@ -30,6 +30,29 @@ class FlextInfraMypyGate(FlextInfraGate):
         "[pydantic-mypy]:",
     )
 
+    def __init__(
+        self,
+        repository_root: Path,
+        *,
+        runner: p.Cli.CommandRunner | None = None,
+    ) -> None:
+        """Keep one effective resource policy for each admitted analysis."""
+        super().__init__(repository_root, runner=runner)
+        self._resource_limits: t.MutableMappingKV[Path, m.Infra.MypyResourceLimit] = {}
+
+    def _project_limit(self, project_dir: Path) -> m.Infra.MypyResourceLimit:
+        """Return the admitted policy shared by the child, runner and receipt.
+
+        Returns:
+            The effective project resource limit.
+
+        """
+        if project_dir not in self._resource_limits:
+            self._resource_limits[project_dir] = (
+                u.Infra.mypy_resource_limit_for_project(project_dir)
+            )
+        return self._resource_limits[project_dir]
+
     @staticmethod
     def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
         """Return the compiled [tool.mypy].exclude regex, if configured.
@@ -129,6 +152,9 @@ class FlextInfraMypyGate(FlextInfraGate):
 
         """
         cfg = self._resolve_config(project_dir, ctx)
+        self._resource_limits[project_dir] = u.Infra.mypy_resource_limit_for_project(
+            project_dir,
+        )
         profile_output = u.Cli.process_env().get(c.Infra.MYPY_PROFILE_OUTPUT_ENV)
         destination = None
         if profile_output is not None:
@@ -148,7 +174,36 @@ class FlextInfraMypyGate(FlextInfraGate):
                 verbose=True,
                 profile_output=destination,
             ),
+            self._project_limit(project_dir),
         )
+
+    @override
+    def _parsed_gate_execution(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        result: p.Cli.CommandOutput,
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Publish the admitted budget alongside untouched checker streams.
+
+        Returns:
+            The native gate execution and durable budget evidence.
+
+        """
+        limit = self._project_limit(project_dir)
+        recorded = m.Cli.CommandOutput(
+            stdout=result.stdout,
+            stderr=(
+                "LOG:  Mypy resource budget: "
+                f"timeout_seconds={limit.timeout_seconds} "
+                f"memory_limit_mb={limit.memory_limit_mb} "
+                f"runner_timeout_seconds={u.Infra.mypy_runner_timeout(limit)}\n"
+                f"{result.stderr}"
+            ),
+            outcome=result.outcome,
+        )
+        return super()._parsed_gate_execution(project_dir, ctx, recorded, started)
 
     @override
     def _validate_check_report(
@@ -205,6 +260,17 @@ class FlextInfraMypyGate(FlextInfraGate):
                 msg = f"Mypy native report contains an unsubmitted source: {source}"
                 raise ValueError(msg)
 
+    @staticmethod
+    @override
+    def _runner_deadline(timeout: int) -> p.Cli.ProcessDeadline:
+        """Leave the child's analysis and forced-kill windows uninterrupted.
+
+        Returns:
+            A deadline whose soft boundary follows the inner forced-kill window.
+
+        """
+        return u.Infra.mypy_runner_deadline(timeout)
+
     @override
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Keep the outer runner alive through the controlled Mypy deadline.
@@ -214,7 +280,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
         """
         del ctx
-        return u.Infra.mypy_runner_timeout_for_project(project_dir)
+        return u.Infra.mypy_runner_timeout(self._project_limit(project_dir))
 
     @override
     def _check_env(
@@ -251,7 +317,10 @@ class FlextInfraMypyGate(FlextInfraGate):
         """
         del ctx
         diagnostics: t.MutableSequenceOf[p.Infra.Issue] = []
-        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(result):
+        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(
+            result,
+            self._project_limit(project_dir),
+        ):
             return (
                 False,
                 (

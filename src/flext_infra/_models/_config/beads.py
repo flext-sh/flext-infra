@@ -1,4 +1,4 @@
-"""Beads projection and workspace environment models.
+"""Beads projection models.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,12 +11,12 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
 class FlextInfraConfigModelsBeads:
-    """Beads projection and workspace environment models."""
+    """Beads projection models."""
 
     class BeadsProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -147,76 +147,6 @@ class FlextInfraConfigModelsBeads:
                 ),
             ),
         ] = None
-
-    class WorkspaceEnvironmentCliRequest(FlextInfraConfigModelsContract.ConfigContract):
-        """CLI-safe request for one Python workspace environment sync."""
-
-        repository_root: Annotated[
-            Path,
-            m.Field(description="Repository root receiving the sync"),
-        ]
-        scope: Annotated[
-            c.Infra.CodegenConformScope,
-            m.Field(description="Sync this root or all Git-declared repository roots"),
-        ] = c.Infra.CodegenConformScope.SELF
-        apply: Annotated[
-            bool,
-            m.Field(description="Write changes instead of reporting them"),
-        ] = True
-        force: Annotated[
-            bool,
-            m.Field(description="Replace custom files with generated content"),
-        ] = False
-        allow_direnv: Annotated[
-            bool,
-            m.Field(description="Authorize the rendered .envrc after an applied sync"),
-        ] = True
-
-    class WorkspaceEnvironmentSyncRequest(
-        FlextInfraConfigModelsContract.ConfigContract,
-    ):
-        """Validated internal request for one workspace environment sync."""
-
-        repository_root: Annotated[
-            Path,
-            m.Field(description="Repository root receiving the sync"),
-        ]
-        apply: Annotated[
-            bool,
-            m.Field(description="Write changes instead of reporting them"),
-        ] = True
-        force: Annotated[
-            bool,
-            m.Field(description="Replace custom files with generated content"),
-        ] = False
-        allow_direnv: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Run `direnv allow` for the workspace after a successful "
-                    "applied sync so managed roots never carry a stale allow"
-                ),
-            ),
-        ] = True
-
-    class WorkspaceEnvironmentSyncResult(FlextInfraConfigModelsContract.ConfigContract):
-        """Outcome of one workspace environment sync."""
-
-        changed_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Environment files created, updated, or removed"),
-        ] = ()
-
-        @m.computed_field
-        @property
-        def changed(self) -> bool:
-            """Whether the sync altered any environment file.
-
-            Returns:
-                The resulting ``bool``.
-
-            """
-            return bool(self.changed_files)
 
 
 __all__: list[str] = ["FlextInfraConfigModelsBeads"]

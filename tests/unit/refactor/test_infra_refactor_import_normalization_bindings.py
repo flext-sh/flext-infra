@@ -112,8 +112,8 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    assert r.ok(c)\n",
         )
 
-        tm.that(normalized, has="from tests import c\n")
-        tm.that(normalized, has="from tests import r\n")
+        tm.that(normalized, has="from tests import c, r\n")
+        tm.that(normalized, has="from tests import c, r, t\n")
 
     @classmethod
     def test_relative_import_becomes_absolute(cls, tmp_path: Path) -> None:
@@ -234,7 +234,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    assert u.Demo.run(c.Demo.NAME, value)\n",
         )
 
-        tm.that(normalized, has="from tests import c, u\n")
+        tm.that(normalized, has="from tests import c, r, u\n")
         tm.that(
             FlextInfraImportNormalization.normalize_source(
                 project_root=project,
@@ -279,7 +279,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             target,
             "from __future__ import annotations\n"
             "\n"
-            "from tests import c\n"
+            "from tests import c, r\n"
             "\n"
             "\n"
             "class TestsDemoConstants:\n"
@@ -292,7 +292,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         target.write_text(normalized, encoding="utf-8")
         result = tm.ok(
             u.Cli.run(
-                (sys.executable, "-c", "from tests import c; print(c.NAME)"),
+                (sys.executable, "-c", "from tests import c, r; print(c.NAME)"),
                 cwd=project,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(project)}),
             ),

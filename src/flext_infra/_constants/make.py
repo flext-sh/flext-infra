@@ -45,7 +45,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     VERB_SONARCLOUD_SYNC: ClassVar[str] = "sonarcloud-sync"
     VERB_SONARCLOUD_ISSUES: ClassVar[str] = "sonarcloud-issues"
     VERB_CHECK: ClassVar[str] = "check"
-    VERB_TEST: ClassVar[str] = "test"
+    VERB_TEST: ClassVar[str] = "tests"
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""

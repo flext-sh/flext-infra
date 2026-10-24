@@ -163,7 +163,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         declared_sources: t.StrMapping,
         candidate_sources: t.StrMapping,
-        family_line: str | None,
+        native_sources: t.StrSequence = (),
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -174,7 +174,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         provenance = FlextInfraUtilitiesPyprojectRequirementsProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
-            family_line=family_line,
+            native_sources=native_sources,
         )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
@@ -301,19 +301,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
         requirement: str,
         *,
         provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        generated: bool = False,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
-        The requirement line is the only authority for an internal
-        dependency's canonical URL and branch: it is parsed and canonicalized
-        (transport scheme only), never rewritten from provider policy. The ref
-        is the dependency's integration line: uv.lock alone records the commit
-        it resolves to, so a commit left in this generated projection is
-        residue re-rendered on its line (an attached member's declared line,
-        otherwise the detected FLEXT line) and never written back; without a
-        line it fails loudly. Internal means the FLEXT family or an attached
-        workspace member of any family. A source-less internal dependency that
-        the active workspace overlay does not own is a loud failure.
+        Native sources and inline requirements retain their authored refs,
+        extras and markers. Only explicit candidate declarations replace a
+        source; generated bare floors use their declared provider provenance.
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -325,6 +319,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
             candidate_sources=provenance.candidate_sources,
         )
         if dependency_name is None:
+            return r[str].ok(requirement.strip())
+        if (
+            not generated
+            or dependency_name in provenance.native_sources
+            or cls._declares_direct_source(requirement)
+        ) and dependency_name not in provenance.candidate_sources:
             return r[str].ok(requirement.strip())
         if "@" not in requirement.partition(";")[0] and (
             FlextInfraUtilitiesDependencies
@@ -346,22 +346,15 @@ class FlextInfraUtilitiesPyprojectRequirements:
             head,
             dependency_name,
             parsed=(url, declared_ref),
-            line=provenance.family_line,
             provenance=provenance,
         )
         if resolved.failure:
             return r[str].from_failure(resolved)
-        pins_commit = cls._pins_commit(
-            candidate_sources=provenance.candidate_sources,
-            dependency_name=dependency_name,
-            declared_ref=declared_ref,
-        )
         return cls._rendered_canonical(
             head,
             dependency_name,
             resolved.value,
             marker_pair,
-            pins_commit=pins_commit,
         )
 
     @classmethod
@@ -371,13 +364,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dependency_name: str,
         *,
         parsed: t.Pair[str, str],
-        line: str | None,
         provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
-    ) -> p.Result[t.Pair[t.Pair[str, str], str | None]]:
+    ) -> p.Result[t.Pair[str, str]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.Pair[str, str], str | None]]``.
+            The declared or explicitly elected Git URL and ref.
 
         """
         url, declared_ref = parsed
@@ -385,7 +377,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if declared is not None:
             declared_result = cls._declared_member_override(head, declared)
             if declared_result.failure:
-                return r[t.Pair[t.Pair[str, str], str | None]].from_failure(
+                return r[t.Pair[str, str]].from_failure(
                     declared_result,
                 )
             # An attached member renders on the line its declaration carries.
@@ -401,29 +393,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 url,
             )
             if candidate_result.failure:
-                return r[t.Pair[t.Pair[str, str], str | None]].from_failure(
+                return r[t.Pair[str, str]].from_failure(
                     candidate_result,
                 )
             url, declared_ref = candidate_result.value
-            line = declared_ref
-        return r[t.Pair[t.Pair[str, str], str | None]].ok(((url, declared_ref), line))
-
-    @staticmethod
-    def _pins_commit(
-        *,
-        candidate_sources: t.StrMapping,
-        dependency_name: str,
-        declared_ref: str,
-    ) -> bool:
-        """Whether the rendered requirement pins an exact commit.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return candidate_sources.get(dependency_name) is None and (
-            FlextInfraUtilitiesRepository.ref_is_commit(declared_ref)
-        )
+        return r[t.Pair[str, str]].ok((url, declared_ref))
 
     @staticmethod
     def _internal_dependency_name(
@@ -533,10 +507,8 @@ class FlextInfraUtilitiesPyprojectRequirements:
     def _rendered_canonical(
         head: str,
         dependency_name: str,
-        resolved: t.Pair[t.Pair[str, str], str | None],
+        resolved: t.Pair[str, str],
         marker: t.Pair[bool, str],
-        *,
-        pins_commit: bool,
     ) -> p.Result[str]:
         """Render the canonical inline Git requirement line.
 
@@ -544,22 +516,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[str]``.
 
         """
-        ((url, declared_ref), line) = resolved
+        url, declared_ref = resolved
         has_marker, marker_text = marker
         if not url:
             return r[str].fail(
                 f"internal dependency declares no direct git source: {dependency_name}",
             )
-        if pins_commit:
-            if line is None:
-                return r[str].fail(
-                    f"internal dependency {dependency_name} pins commit "
-                    f"{declared_ref} and no line is declared to re-render "
-                    "it: uv.lock records the commit and only `make upg` moves it",
-                )
-            declared_ref = line
-        # The inline Git source is the sole provenance for each independent
-        # project lock, including the orchestration repository.
+        # Only generated floors and explicit candidates reach this renderer.
         inline = f"{head} @ git+{url}@{declared_ref}"
         return r[str].ok(f"{inline} ; {marker_text}" if has_marker else inline)
 
@@ -642,8 +605,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
             groups, str(c.Infra.DEV)
         )
-        # A bare internal requirement carries no source or version constraint.
-        # Preserve its declared direct source when composing the policy floor.
+        # Authored requirements retain their source, including registry choice.
         live = cls._normalized_live_group_entries(
             groups,
             dev_name,
@@ -652,22 +614,22 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if live.failure:
             return r[bool].from_failure(live)
         live_dev = live.value
-        sourced_live = tuple(
-            requirement
-            for requirement in live_dev
-            if isinstance(requirement, str) and cls._declares_direct_source(requirement)
+        authored_live = tuple(
+            requirement for requirement in live_dev if isinstance(requirement, str)
         )
         required_dev: list[str] = []
         for requirement in required_dev_dependencies:
             if FlextInfraUtilitiesDependencies.dep_name(requirement) == project_name:
                 continue
-            normalized = cls._canonical_requirement(requirement, provenance=provenance)
+            normalized = cls._canonical_requirement(
+                requirement, provenance=provenance, generated=True
+            )
             if normalized.failure:
                 return r[bool].from_failure(normalized)
             if (
-                cls._floor_yields_to_declared_source(
+                cls._floor_yields_to_declared_requirement(
                     requirement,
-                    sourced_live,
+                    authored_live,
                 )
                 and normalized.value not in live_dev
             ):
@@ -702,7 +664,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, codegen_name)
-        cls._remove_workspace_dependency_group(document)
         return r[bool].ok(value=True)
 
     @staticmethod
@@ -716,12 +677,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return "@" in requirement.partition(";")[0]
 
     @classmethod
-    def _floor_yields_to_declared_source(
+    def _floor_yields_to_declared_requirement(
         cls,
         requirement: str,
-        sourced_live: t.StrSequence,
+        authored_live: t.StrSequence,
     ) -> bool:
-        """Whether a bare internal floor name must yield to a declared source.
+        """Whether a generated bare floor must yield to an authored requirement.
 
         Returns:
             The resulting ``bool``.
@@ -736,24 +697,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
         ):
             return False
         return any(
-            identity[0] == candidate[0]
-            and identity[1][0] == candidate[1][0]
-            and candidate[1][1] is not None
-            for source in sourced_live
+            identity[0] == candidate[0] and identity[1][0] == candidate[1][0]
+            for source in authored_live
             for candidate in (cls._development_requirement_identity(source),)
         )
-
-    @staticmethod
-    def _remove_workspace_dependency_group(document: t.Cli.TomlDocument) -> None:
-        """Drop the retired git-pinned ``workspace`` dependency group.
-
-        The root's canonical dev group requests declared package members and
-        their groups/extras; its path sources select local checkouts. A second
-        membership group would be a competing generated owner.
-        """
-        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-        if groups is not None:
-            u.Cli.toml_remove_key_if_present(groups, "workspace")
 
     @staticmethod
     def _validate_dependency_provenance(

@@ -54,43 +54,6 @@ class FlextInfraReleaseProjectMixin(FlextInfraReleaseMetadataMixin):
         )
         return written.map(lambda _: self._record(target, log, exit_code=1))
 
-    @classmethod
-    def mirror_release_inputs(
-        cls,
-        project_path: Path,
-        stage_path: Path,
-    ) -> p.Result[bool]:
-        """Carry the project's prepared release inputs into the staged source.
-
-        A project's own build hook can force-include inputs its lifecycle
-        generates under ``dist/`` (a pylock, a vendored node lock, a source
-        receipt). The stage is a Git archive: ignored build outputs never
-        enter it, so the files prepared in the checkout are mirrored verbatim.
-        The project's hook stays the sole owner of the input names and of
-        failing when one is missing; a project without ``dist/`` stages
-        unchanged.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        del cls
-        source = project_path / "dist"
-        if not source.is_dir():
-            return r[bool].ok(value=True)
-        staged = stage_path / "dist"
-        try:
-            staged.mkdir(parents=True, exist_ok=True)
-            for entry in sorted(source.iterdir()):
-                if not entry.is_file():
-                    return r[bool].fail(
-                        f"project dist must contain only regular files: {entry}",
-                    )
-                shutil.copy2(entry, staged / entry.name)
-        except OSError as exc:
-            return r[bool].fail_op(f"mirror release inputs {source}", exc)
-        return r[bool].ok(value=True)
-
     def _build_staged(
         self,
         ctx: m.Infra.ReleasePhaseDispatchConfig,
@@ -125,8 +88,7 @@ class FlextInfraReleaseProjectMixin(FlextInfraReleaseMetadataMixin):
                 log,
                 f"release metadata staged and validated: {name}\n",
             ).map(lambda _: self._record(target, log, exit_code=0, source=staged))
-        build = self._execute_staged_build(
-            path,
+        build = self._run_staged_build(
             stage,
             dist=temporary / "dist",
             policy=policy,
@@ -221,31 +183,6 @@ class FlextInfraReleaseProjectMixin(FlextInfraReleaseMetadataMixin):
             if written.failure:
                 return r[bool].from_failure(written)
         return r[bool].ok(value=True)
-
-    def _execute_staged_build(
-        self,
-        path: Path,
-        stage: Path,
-        *,
-        dist: Path,
-        policy: m.Infra.BuildPolicy,
-        source_date_epoch: int,
-    ) -> p.Result[p.Cli.CommandOutput]:
-        """Mirror the project's release inputs, then run the isolated build.
-
-        Returns:
-            The resulting ``p.Result[p.Cli.CommandOutput]``.
-
-        """
-        mirrored = self.mirror_release_inputs(path, stage)
-        if mirrored.failure:
-            return r[p.Cli.CommandOutput].from_failure(mirrored)
-        return self._run_staged_build(
-            stage,
-            dist=dist,
-            policy=policy,
-            source_date_epoch=source_date_epoch,
-        )
 
     def _logged_build_verdict(
         self,

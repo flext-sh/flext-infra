@@ -33,8 +33,8 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         return (
             ("componentKeys", project_key),
             ("branch", branch),
-            ("inNewCodePeriod", "true"),
-            ("resolved", "false"),
+            ("inNewCodePeriod", c.ParserBooleanToken.TRUE),
+            ("resolved", c.ParserBooleanToken.FALSE),
             ("p", str(page)),
         )
 

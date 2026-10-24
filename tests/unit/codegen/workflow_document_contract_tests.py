@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import tm, u
+from flext_infra import codegen, config, main
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,12 +20,12 @@ if TYPE_CHECKING:
 class TestsFlextInfraWorkflowDocumentContract:
     """Generated workflows contain executable jobs in valid YAML documents."""
 
+    @staticmethod
     @pytest.mark.slow
-    def test_rendered_workflows_load_through_public_yaml_boundary(
-        self,
+    def test_generated_workflows_publish_the_complete_declared_surface(
         tmp_path: Path,
     ) -> None:
-        """Read every rendered workflow with the same public YAML consumer."""
+        """Public generation stages every declared workflow, then converges."""
         root = tmp_path / "project"
         u.Tests.WorktreeFixture.initialize_governed_project(
             root,
@@ -36,21 +37,36 @@ class TestsFlextInfraWorkflowDocumentContract:
             ),
         )
 
-        plan = u.Tests.governed_project_plan(root)
-        workflow_directory = root / ".github" / "workflows"
-        workflows = tuple(
-            item
-            for item in plan.files
-            if item.path.parent == workflow_directory
-            and item.desired_content is not None
+        surface = c.Infra.CodegenConformSurface.WORKFLOWS
+        contract = codegen.FlextInfraCodegenConformExecute.surface_contract(
+            surface,
+            codegen=config.Infra.codegen,
         )
-        tm.ok(bool(workflows))
-        for item in workflows:
-            item.path.parent.mkdir(parents=True, exist_ok=True)
-            item.path.write_bytes(tm.not_none(item.desired_content))
-            document = u.Cli.yaml_load_mapping(item.path)
+        expected = {root / path for path in tm.not_none(contract.destinations)}
+        workflow_root = root / c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH
+        tm.that(expected, empty=False)
+        arguments = [
+            "codegen",
+            "generate",
+            "--root",
+            str(root),
+            "--what",
+            surface.value,
+            "--scope",
+            c.Infra.CodegenConformScope.ALL.value,
+        ]
+        tm.that(main(arguments), eq=0)
+        tm.that(
+            {path for path in expected if path.is_relative_to(workflow_root)},
+            eq={path for path in expected if path.is_file()},
+        )
+        published = {path: path.read_bytes() for path in expected}
+        for path in expected:
+            document = u.Cli.yaml_load_mapping(path)
             jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
             tm.ok(bool(jobs))
             for raw_job in jobs.values():
                 job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
                 tm.ok("steps" in job or "uses" in job)
+        tm.that(main(arguments), eq=0)
+        tm.that({path: path.read_bytes() for path in expected}, eq=published)

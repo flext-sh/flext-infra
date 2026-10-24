@@ -10,6 +10,7 @@ import ast
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -47,7 +48,7 @@ class TestsFlextInfraSharedHelperPromotion:
         helper = f"{stem}Helper"
         source = fixtures / "behavior.py"
         source.write_text(
-            "from tests import u\n\n"
+            "from tests import c, r, u\n\n"
             f"class {helper}:\n"
             '    """Shared documentation.\n\n    Original indentation.\n    """\n'
             "    def value(self) -> str:\n"
@@ -132,9 +133,10 @@ class TestsFlextInfraSharedHelperPromotion:
         while isinstance(primary, ast.Attribute):
             primary = primary.value
         tm.that(isinstance(primary, ast.Name), truth=True)
+        name = cast("ast.Name", primary)
         quoted.write_text(
             quoted.read_text(encoding="utf-8")
-            + f"\nclass Local:\n    {primary.id} = str\n    value: 'Shared'\n",
+            + f"\nclass Local:\n    {name.id} = str\n    value: 'Shared'\n",
             encoding="utf-8",
         )
 
@@ -255,7 +257,7 @@ class TestsFlextInfraSharedHelperPromotion:
         tm.that(self._run(root, probe), eq=before)
         identity = (
             "from typing import get_type_hints\n"
-            "from tests import u\n"
+            "from tests import c, r, u\n"
             "from tests.unit.quoted import echo\n"
             "from tests.unit._fixtures import behavior\n"
             f"assert get_type_hints(echo)['value'] is u.{helper}\n"
@@ -365,7 +367,7 @@ class TestsFlextInfraSharedHelperPromotion:
         tm.that(
             self._run(
                 root,
-                "from tests import u\n"
+                "from tests import c, r, u\n"
                 "from tests.unit.consumer import VALUE\n"
                 f"assert VALUE == u.{helper}.Nested.value()\n"
                 "print(VALUE)\n",

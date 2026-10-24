@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from re import escape
 
 import pytest
 
@@ -32,6 +33,9 @@ class TestsFlextInfraCodemodGate:
         tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
         project = installed_dependency_path / "scanner_contract"
         (project / "src").mkdir(parents=True)
+        package = project / "src" / "scanner_contract"
+        package.mkdir()
+        (package / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
         metadata = installed_dependency_path / "scanner_contract-1.0.0.dist-info"
         metadata.mkdir()
         (metadata / "METADATA").write_text(
@@ -40,7 +44,9 @@ class TestsFlextInfraCodemodGate:
         )
         (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "scanner-contract"\nversion = "1.0.0"\n'
-            "dependencies = []\n",
+            "dependencies = []\n"
+            '[tool.uv.build-backend]\nmodule-root = "src"\n'
+            'module-name = "scanner_contract"\n',
             encoding="utf-8",
         )
         u.Tests.declare_codemod_rules(
@@ -201,11 +207,13 @@ class TestsFlextInfraCodemodGate:
             "examples/boundary.pyi": b"def load() -> bytes: ...\n",
             "scripts/boundary.pyi": f"{c.Infra.AUTOGEN_HEADERS[0]}\n".encode(),
             "infra/contracts/boundary.pyi": b"\xff\n",
+            "src/pkg/.typecache/boundary.pyi": b"",
             f"src/pkg/{generated}/boundary.pyi": b"",
             f"{retired}/owned-stubs/package/__init__.pyi": b"",
         }
         excluded = (
             ".venv/lib/site-packages/dependency/__init__.pyi",
+            "src/pkg/.venv/lib/site-packages/dependency/__init__.pyi",
             f"{retired}/foreign/__init__.pyi",
             "foreign/__init__.pyi",
         )
@@ -243,6 +251,133 @@ class TestsFlextInfraCodemodGate:
         tm.ok(all(entry.source_state is not None for entry in report.entries))
         for relative, content in owned.items():
             tm.that((project / relative).read_bytes(), eq=content)
+
+    def test_custom_analysis_exclusion_keeps_stub_and_python_scope_distinct(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+    ) -> None:
+        """Authored exclusions hide ordinary Python, never owned stub policy paths."""
+        project = self._project(tmp_path, installed_dependency_path)
+        custom = m.Infra.CodegenArtifactSpec(
+            name="arbitrary_contract_exclusion",
+            analysis_exclude=True,
+        )
+        declared = config.Infra.codegen.model_copy(
+            update={"artifacts": (*config.Infra.codegen.artifacts, custom)},
+        )
+        delta: t.JsonValue = {
+            "codegen": declared.model_dump(mode="json", include={"artifacts"}),
+        }
+        prefix = type(config).model_config.get("env_prefix")
+        if prefix is None:
+            tm.reject("The config owner must declare its environment prefix")
+        try:
+            with u.Tests.env_vars_context({
+                f"{prefix}Infra": tm.ok(
+                    u.Cli.json_dumps(delta),
+                ),
+            }):
+                type(config).reset_for_testing()
+                elected = next(
+                    artifact
+                    for artifact in config.Infra.codegen.artifacts
+                    if artifact.name == custom.name
+                )
+                source_root = project / config.Infra.source_scan.roots[0]
+                excluded = source_root / elected.name
+                excluded.mkdir(parents=True)
+                stub = excluded / "boundary.pyi"
+                stub.write_bytes(b"")
+                ordinary = excluded / "ordinary.py"
+                ordinary.write_text("second(1)\n", encoding=c.DEFAULT_ENCODING)
+                active = source_root / "active.py"
+                active.write_text("second(2)\n", encoding=c.DEFAULT_ENCODING)
+                before = tuple(
+                    tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                    for path in (stub, ordinary, active)
+                )
+                expected = {
+                    ("ban-stub-file", stub.relative_to(project).as_posix()),
+                    ("contract-second", active.relative_to(project).as_posix()),
+                }
+                gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+                tm.fail(gate.result.passed)
+                tm.that(
+                    {
+                        (issue.code, Path(issue.file).as_posix())
+                        for issue in gate.issues
+                        if issue.code in {rule for rule, _ in expected}
+                    },
+                    eq=expected,
+                )
+                report = tm.ok(
+                    FlextInfraModGateEngine.scan(
+                        project,
+                        fix=False,
+                        selection=("ban-stub-file", "contract-second"),
+                    ),
+                )
+                tm.that(
+                    {
+                        (entry.rule_id, entry.file.as_posix())
+                        for entry in report.entries
+                    },
+                    eq=expected,
+                )
+                tm.ok(u.Cli.atomic_verify_binary_file_states(before))
+        finally:
+            type(config).reset_for_testing()
+
+    @pytest.mark.parametrize("target_scope", ["in_tree", "foreign", "broken"])
+    def test_stub_symlink_keeps_the_owned_path_name(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        target_scope: str,
+    ) -> None:
+        """Check observes the stub name; Mod preserves the original physical guard."""
+        project = self._project(tmp_path, installed_dependency_path)
+        source_root = (
+            project / "src" if target_scope == "in_tree" else tmp_path / "foreign"
+        )
+        source_root.mkdir(parents=True, exist_ok=True)
+        source = source_root / "boundary.py"
+        if target_scope != "broken":
+            source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        source_before = tm.ok(u.Cli.atomic_read_binary_file_state(source))
+        stub = project / "src" / "boundary.pyi"
+        stub.symlink_to(source.name if target_scope == "in_tree" else source)
+        link_before = stub.readlink()
+        identity_before = stub.lstat()
+        tm.that(
+            u.Infra.ast_grep_scan_targets(project, source_files=(stub,)),
+            eq=(stub.relative_to(project).as_posix(),),
+        )
+        gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        tm.that(
+            [issue.file for issue in gate.issues if issue.code == "ban-stub-file"],
+            eq=[stub.relative_to(project).as_posix()],
+        )
+        with pytest.raises(OSError, match=escape(str(stub))) as original_guard:
+            u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
+        with pytest.raises(type(original_guard.value)) as mod_guard:
+            FlextInfraModGateEngine.scan(
+                project,
+                fix=False,
+                selection=("ban-stub-file",),
+                source_files=(stub,),
+            )
+        tm.that(mod_guard.value.args, eq=original_guard.value.args)
+        tm.that(mod_guard.value.filename, eq=original_guard.value.filename)
+        tm.that(stub.is_symlink(), eq=True)
+        tm.that(stub.readlink(), eq=link_before)
+        identity_after = stub.lstat()
+        tm.that(
+            (identity_after.st_dev, identity_after.st_ino),
+            eq=(identity_before.st_dev, identity_before.st_ino),
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((source_before,)))
 
     def test_runtime_typing_contracts_are_not_stub_paths(
         self,
@@ -296,7 +431,7 @@ class TestsFlextInfraCodemodGate:
                     "--file",
                     str(declaration),
                     f"submodule.src/vendor.{c.Infra.GITMODULE_MANAGED_KEY}",
-                    "false",
+                    c.ParserBooleanToken.FALSE,
                 ),
                 cwd=project,
             ),
@@ -426,7 +561,9 @@ class TestsFlextInfraCodemodGate:
         result = results[0]
         tm.fail(result.passed)
         receipt = result.gates["codemod"].raw_receipt
-        tm.that(receipt, none=False)
+        if receipt is None:
+            msg = "A failed codemod gate must retain its native receipt"
+            tm.reject(msg)
         reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",

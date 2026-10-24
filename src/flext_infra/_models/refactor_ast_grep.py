@@ -83,6 +83,7 @@ class FlextInfraModelsRefactorGrep:
                 )
                 raise ValueError(msg)
             if self.predicate in {
+                c.Infra.CodemodContextPredicate.DECLARATION_DECORATOR,
                 c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
                 c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
             } and (
@@ -93,6 +94,35 @@ class FlextInfraModelsRefactorGrep:
                 )
             ):
                 msg = f"{self.predicate} requires one module and native producer"
+                raise ValueError(msg)
+            if (
+                self.predicate is c.Infra.CodemodContextPredicate.FOREIGN_FACADE_MEMBER
+                and (
+                    len(self.arg) != 1
+                    or self.arg[0] not in set(c.Infra.FacadeMemberPlacement)
+                    or bool(self.as_)
+                    or self.of is not None
+                )
+            ):
+                msg = (
+                    "foreign-facade-member requires exactly one placement arg: "
+                    f"{sorted(c.Infra.FacadeMemberPlacement)}"
+                )
+                raise ValueError(msg)
+            if (
+                self.predicate is c.Infra.CodemodContextPredicate.FACADE_MEMBER_OWNER
+                and any((
+                    self.of is None,
+                    len(self.arg) != 1,
+                    not all(value.isidentifier() for value in self.arg),
+                    bool(self.as_),
+                    not self.holds,
+                ))
+            ):
+                msg = (
+                    "facade-member-owner requires of (the member capture) and "
+                    "exactly one owner letter arg"
+                )
                 raise ValueError(msg)
             if (
                 self.predicate is c.Infra.CodemodContextPredicate.MEMBER_RELOCATION
@@ -197,24 +227,27 @@ class FlextInfraModelsRefactorGrep:
 
         @m.model_validator(mode="after")
         def _validate_owned_path_rule(self) -> Self:
-            """Keep path prohibitions detection-only and without ownership exemptions.
+            """Require unconditional detection with a nonblank path diagnostic.
+
+            Owned paths cannot depend on context, ownership, consumers, relocation,
+            or module absence, and cannot declare an automated fix.
 
             Returns:
                 The original unexempted rule.
 
             Raises:
-                ValueError: If a path prohibition can rewrite or exempt its paths.
+                ValueError: If a path rule rewrites, exempts, or lacks a diagnostic.
 
             """
-            if self.owned_path_suffix is not None and (
-                self.fixable
-                or self.context
-                or self.owner
-                or self.consumers_of
-                or self.relocation
-                or self.module_absence
-                or not self.message.strip()
-            ):
+            if self.owned_path_suffix is not None and any((
+                self.fixable,
+                self.context,
+                self.owner,
+                self.consumers_of,
+                self.relocation,
+                self.module_absence,
+                not self.message.strip(),
+            )):
                 msg = "owned-path rules cannot rewrite or exempt owned paths"
                 raise ValueError(msg)
             return self

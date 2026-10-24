@@ -9,14 +9,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import tm, u
-
-if TYPE_CHECKING:
-    from tests import m, t
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraInfraSelection:
@@ -34,9 +30,9 @@ class TestsFlextInfraInfraSelection:
         for name in ["alpha", "beta", "gamma"]:
             proj = tmp_path / name
             proj.mkdir()
-            (proj / ".git").mkdir()
+            (proj / c.GIT_DIR_NAME).mkdir()
             (proj / "Makefile").touch()
-            (proj / "pyproject.toml").write_text(
+            (proj / c.PYPROJECT_FILENAME).write_text(
                 f'[project]\nname = "{name}"\ndependencies = ["flext-core"]\n',
             )
             package_dir = proj / "src" / name.replace("-", "_")
@@ -78,11 +74,11 @@ class TestsFlextInfraInfraSelection:
         ]:
             proj = tmp_path / directory_name
             proj.mkdir()
-            (proj / ".git").mkdir()
+            (proj / c.GIT_DIR_NAME).mkdir()
             (proj / "Makefile").touch()
             package_dir = proj / "src" / project_name.replace("-", "_")
             package_dir.mkdir(parents=True)
-            (proj / "pyproject.toml").write_text(
+            (proj / c.PYPROJECT_FILENAME).write_text(
                 f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n',
             )
             (package_dir / "__init__.py").write_text("")
@@ -107,9 +103,9 @@ class TestsFlextInfraInfraSelection:
             The resulting ``Path``.
 
         """
-        (tmp_path / ".git").mkdir()
+        (tmp_path / c.GIT_DIR_NAME).mkdir()
         (tmp_path / "Makefile").touch()
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "workspace"\ndependencies = ["flext-core"]\n',
         )
         (tmp_path / ".gitmodules").write_text(
@@ -125,7 +121,7 @@ class TestsFlextInfraInfraSelection:
             project = tmp_path / "apps" / name
             project.mkdir(parents=True)
             (project / "Makefile").touch()
-            (project / "pyproject.toml").write_text(
+            (project / c.PYPROJECT_FILENAME).write_text(
                 f'[project]\nname = "{name}"\ndependencies = ["flext-core"]\n',
             )
             package = project / "src" / name.replace("-", "_")

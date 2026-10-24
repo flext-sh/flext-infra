@@ -1,0 +1,46 @@
+# A literal dynamic import of the own package hides a runtime import cycle
+# from the import graph: the dependency still exists, but no layer, cycle or
+# reverse-import rule can see it. The cure is structural: inject the
+# collaborator through its `t.Port[p.X]` contract at the composition root, or
+# move the behavior to the layer that may import its dependency directly.
+# Dynamic imports whose module comes from data (a lazy loader, a declared
+# discovery entry point) are not literal and stay legitimate.
+id: ban-import-module-cycle-escape
+language: python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  context:
+    MODULE:
+      is: own-package
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        any:
+          - kind: identifier
+            regex: "^import_module$"
+          - kind: attribute
+            has:
+              field: attribute
+              regex: "^import_module$"
+    - has:
+        field: arguments
+        has:
+          kind: string
+          nthChild: 1
+          has:
+            kind: string_content
+            pattern: $MODULE
+message: >-
+  Dynamic import of the own package `$MODULE` hides a runtime import cycle.
+note: >-
+  Where: this call. Why: the import law (ADR-005, ADR-014) requires every
+  runtime dependency to be a visible, acyclic import of an equal-or-lower
+  layer; a literal import_module of the own package escapes the cycle and
+  layer rules. How: declare the collaborator as a `p.*` protocol, type the
+  receiving field `t.Port[p.X]`, and let the composition root (`api.py`) inject
+  it; or move the behavior into the layer that may import the dependency
+  directly.

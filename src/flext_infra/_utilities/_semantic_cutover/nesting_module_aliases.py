@@ -63,9 +63,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         ):
             return module, owner
         package = origin.get_name().partition(".")[0]
-        inventory = cls._public_owner_inventory(project, package, sources)
+        public_inventory = cls._public_owner_inventory(project, package, sources)
         return cls._public_owner_route(
-            project, (module, package), (origin, original_owner), owner, inventory
+            project,
+            (module, package),
+            (origin, original_owner),
+            owner,
+            public_inventory,
         )
 
     @staticmethod
@@ -73,7 +77,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         project: p.Infra.RopeProject,
         package: str,
         sources: t.MappingKV[Path, str],
-    ) -> t.MappingKV[str, t.Pair[str, bool]]:
+    ) -> t.Pair[t.MappingKV[str, t.Pair[str, bool]], p.Infra.RopeResource]:
         native_package = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(package),
         )
@@ -99,7 +103,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
                 msg = f"ambiguous native public owner module: {name}"
                 raise ValueError(msg)
             inventory[name] = source, module_resource.name == c.Infra.INIT_PY
-        return inventory
+        return inventory, resource
 
     @staticmethod
     def _public_owner_route(
@@ -107,36 +111,48 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         names: t.Pair[str, str],
         original: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyName | None],
         owner: str,
-        inventory: t.MappingKV[str, t.Pair[str, bool]],
+        public_inventory: t.Pair[
+            t.MappingKV[str, t.Pair[str, bool]], p.Infra.RopeResource
+        ],
     ) -> t.Pair[str, str]:
         module, package = names
         origin, original_owner = original
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        facades = FlextInfraUtilitiesPrivateImportFacades
-        bindings, exports = facades.declared_exports(inventory)
+        inventory, public_resource = public_inventory
+        bindings, exports = FlextInfraUtilitiesPrivateImportFacades.declared_exports(
+            inventory
+        )
         qualified = f"{origin.get_name()}.{owner}"
-        declared = facades.declared_public_reference(qualified, bindings, exports)
+        declared = FlextInfraUtilitiesPrivateImportFacades.declared_public_reference(
+            qualified, bindings, exports
+        )
         if declared is not None:
             native = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                 project.get_module(declared[0]),
             )
-            if original_owner is not None and runtime.same_name(
-                original_owner,
-                native.get_attribute(declared[1]),
+            if (
+                original_owner is not None
+                and FlextInfraUtilitiesRopeRuntimeModules.same_name(
+                    original_owner,
+                    native.get_attribute(declared[1]),
+                )
             ):
                 return declared
-        reference = facades.public_reference(
-            owners=facades.discover(inventory).get(package, ()),
+        reference = FlextInfraUtilitiesPrivateImportFacades.public_reference(
+            owners=FlextInfraUtilitiesPrivateImportFacades.discover(inventory).get(
+                package, ()
+            ),
             package=package,
             qualified=qualified,
             bindings=bindings,
             class_bases=FlextInfraUtilitiesPrivateImportAncestry.class_bases(inventory),
         )
         if reference is not None and original_owner is not None:
-            public = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                project.get_module(package),
+            public = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project, public_resource
             )
-            exposed_owner = runtime.expression_name(public.get_scope(), reference)
+            exposed_owner = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                public.get_scope(), reference
+            )
             if exposed_owner is not None and original_owner.get_object() in (
                 FlextInfraUtilitiesDeclarationPayload.class_ancestry(
                     exposed_owner.get_object(),

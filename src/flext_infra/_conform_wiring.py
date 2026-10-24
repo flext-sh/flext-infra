@@ -1,4 +1,4 @@
-"""Conform wiring collaborators for the public API facade.
+"""Projection wiring collaborators for the public API facade.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,11 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, t, u
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
+from flext_infra import m, t
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.gates import FlextInfraMarkdownFormatGate
 
@@ -22,67 +18,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraConformWiring:
-    """Bind the cross-family collaborators conform crosses into."""
-
-    @staticmethod
-    def generation_participant_policy(
-        root: Path,
-        *,
-        initial_workspace: p.Infra.WorkspaceSpec | None,
-    ) -> p.Result[p.Infra.CodegenParticipantPolicy]:
-        """Authorize the actual physical coordination root and declared members.
-
-        Returns:
-            The resulting ``p.Result[p.Infra.CodegenParticipantPolicy]``.
-
-        """
-        return FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=root),
-        ).participant_policy(initial_workspace=initial_workspace)
-
-    @staticmethod
-    def codegen_footprint(
-        request: m.Infra.CodegenFootprintRequest,
-    ) -> p.Result[str]:
-        """Inspect recorded effects against physical topology without planning writes.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
-        )
-        observed = transaction.inspect_journal()
-        if observed.failure:
-            return r[str].from_failure(observed)
-        # Preserve recorded authority even if topology or authorization fails.
-        u.Cli.info(observed.value.model_dump_json())
-        policy = transaction.participant_policy()
-        if policy.failure:
-            return r[str].from_failure(policy)
-        footprint = observed.value.model_copy(
-            update={
-                "authorized_roots": tuple(root.target for root in policy.value.roots)
-            },
-        )
-        u.Cli.info(footprint.model_dump_json())
-        bounded = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
-            participant_policy=policy.value,
-        )
-        authorized = bounded.validate_footprint(footprint)
-        if authorized.failure:
-            return r[str].from_failure(authorized)
-        return r[str].ok(
-            authorized.value.model_copy(
-                update={
-                    "authorized_roots": tuple(
-                        root.target for root in policy.value.roots
-                    ),
-                },
-            ).model_dump_json(),
-        )
+    """Bind the cross-family capabilities the projection executor consumes."""
 
     @staticmethod
     def docs_artifact_planner(
@@ -117,13 +53,10 @@ class FlextInfraConformWiring:
         """Bind the docs family complete conform crosses into.
 
         Returns:
-            The caller-bound docs planner and participant policy capabilities.
+            The caller-bound docs planner capability.
 
         """
-        return m.Infra.CodegenConformPorts(
-            docs_planner=self.docs_artifact_planner,
-            participant_policy=self.generation_participant_policy,
-        )
+        return m.Infra.CodegenConformPorts(docs_planner=self.docs_artifact_planner)
 
 
 __all__: list[str] = ["FlextInfraConformWiring"]

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra import codegen
-from tests import tm
+from tests import c, tm
 
 
 class TestsFlextInfraPublicApi:
@@ -54,8 +54,8 @@ class TestsFlextInfraPublicApi:
         first.planning_issues.append(issue)
         first.planning_exception = ValueError(issue.message)
 
-        assert first.ports is ports
-        assert second.ports is ports
+        tm.that(first.ports is ports, truth=True)
+        tm.that(second.ports is ports, truth=True)
         tm.that(first.planning_issues, eq=[issue])
         tm.that(second.planning_issues, empty=True)
         tm.that(second.planning_exception, none=True)
@@ -85,7 +85,7 @@ class TestsFlextInfraPublicApi:
             tm.fail(conformed)
             tm.that(root.exists(), truth=False)
         tm.that(tm.ok(api.execute()), eq=before)
-        tm.that(hasattr(api, "request"), truth=False)
+        tm.that(hasattr(api, c.ContextScope.REQUEST), truth=False)
         tm.that(hasattr(api, "planning_issues"), truth=False)
 
     @staticmethod
@@ -110,7 +110,7 @@ class TestsFlextInfraPublicApi:
         runtime_settings = api.settings
         initial_context = api.context
         engines = tuple(
-            codegen.FlextInfraCodegenConform(
+            codegen.FlextInfraCodegenConformExecute(
                 state=flext_infra.m.Infra.CodegenConformState(
                     repository_root=root,
                     request=flext_infra.m.Infra.CodegenConformRequest(root=root),
@@ -123,15 +123,18 @@ class TestsFlextInfraPublicApi:
         )
         first, second = engines
         for engine in engines:
-            assert engine.state.ports is ports
-            assert engine.runtime_settings is runtime_settings
-            assert engine.initial_context is initial_context
-            assert engine.settings is runtime_settings
-            assert engine.context is initial_context
+            tm.that(engine.state.ports is ports, truth=True)
+            tm.that(engine.runtime_settings is runtime_settings, truth=True)
+            tm.that(engine.initial_context is initial_context, truth=True)
+            tm.that(engine.settings is runtime_settings, truth=True)
+            tm.that(engine.context is initial_context, truth=True)
             tm.that(engine.state.request, none=False)
-            tm.that(engine.state.repository_root, eq=engine.state.request.root)
-        assert first is not second
-        assert first.state.request is not second.state.request
+            tm.that(
+                engine.state.repository_root,
+                eq=tm.not_none(engine.state.request).root,
+            )
+        tm.that(first is not second, truth=True)
+        tm.that(first.state.request is not second.state.request, truth=True)
         first.state.planning_exception = ValueError("First invocation failure")
         tm.that(second.state.planning_exception, none=True)
         tm.that(second.state.planning_issues, empty=True)

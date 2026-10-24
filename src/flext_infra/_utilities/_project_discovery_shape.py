@@ -34,7 +34,9 @@ class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
             Whether the candidate is excluded by the current declaration.
 
         """
-        resolved = candidate.resolve()
+        resolved = (
+            candidate.absolute() if candidate.suffix == ".pyi" else candidate.resolve()
+        )
         root = repository_root.resolve()
         if not resolved.is_relative_to(root):
             return False

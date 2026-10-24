@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, c, infra, m
-from tests import tm, u
+from flext_infra import FlextInfraConfig, infra, m
+from tests import c, tm, u
 
 
 class TestsFlextInfraRenameCampaignMod:

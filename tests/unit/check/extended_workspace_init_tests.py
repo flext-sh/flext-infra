@@ -16,7 +16,7 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraWorkspaceInit:
@@ -38,18 +38,20 @@ class TestsFlextInfraWorkspaceInit:
         tm.fail(result, has="Use execute_command() directly")
 
     @staticmethod
-    def test_resolve_gates_rejects_duplicate_explicit_gates() -> None:
+    def test_resolve_gates_rejects_duplicate_explicit_gates(tmp_path: Path) -> None:
         """Test resolve gates rejects duplicate explicit gates."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             c.Infra.PYREFLY,
             c.Infra.PYREFLY,
         ])
         tm.fail(result, has=f"duplicate gate '{c.Infra.PYREFLY}'")
 
     @staticmethod
-    def test_resolve_gates_rejects_unknown_gate() -> None:
+    def test_resolve_gates_rejects_unknown_gate(tmp_path: Path) -> None:
         """Test resolve gates rejects unknown gate."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["unknown"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "unknown"
+        ])
         tm.fail(result, has="unknown gate")
 
     @staticmethod

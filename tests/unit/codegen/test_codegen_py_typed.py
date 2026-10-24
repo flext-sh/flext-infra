@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+from flext_infra.codegen import FlextInfraCodegenPyTyped
 from tests import c, tm
 
 if TYPE_CHECKING:

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from typing_extensions import TypeForm
+
 from flext_infra import config
 from flext_infra.deps import FlextInfraConfigFixer, FlextInfraExtraPathsManager
 from tests import c, t, tm, u
@@ -36,7 +38,7 @@ class TestsFlextInfraExtendedConfigFixer:
         def test_process_file_invalid_toml(tmp_path: Path) -> None:
             """Return a typed failure for invalid TOML input."""
             fixer = FlextInfraConfigFixer(repository_root=tmp_path)
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text("invalid [[[")
             tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
 
@@ -44,7 +46,7 @@ class TestsFlextInfraExtendedConfigFixer:
         def test_process_file_no_pyrefly_section(tmp_path: Path) -> None:
             """Leave documents without a Pyrefly table unchanged."""
             fixer = FlextInfraConfigFixer(repository_root=tmp_path)
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text("[tool]\nother = true\n")
             result = fixer.process_file(pyproject)
             tm.ok(result)
@@ -54,7 +56,7 @@ class TestsFlextInfraExtendedConfigFixer:
         def test_process_file_dry_run_no_write(tmp_path: Path) -> None:
             """Keep the source file unchanged during dry-run."""
             fixer = FlextInfraConfigFixer(repository_root=tmp_path)
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             original = "[tool.pyrefly]\nsearch-path = []\n"
             pyproject.write_text(original)
             result = fixer.process_file(pyproject, dry_run=True)
@@ -67,7 +69,7 @@ class TestsFlextInfraExtendedConfigFixer:
         ) -> None:
             """Synchronize search paths through the public manager."""
             (tmp_path / "typings" / "generated").mkdir(parents=True)
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n", encoding="utf-8")
 
             result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(
@@ -85,7 +87,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 tuple(u.Tests.strings(pyrefly["search-path"])),
                 eq=TestsFlextInfraExtendedConfigFixer._extra_paths_manager(
                     tmp_path,
-                ).pyrefly_search_paths(project_dir=tmp_path, is_root=True),
+                ).pyrefly_search_paths(project_dir=tmp_path),
             )
 
         @staticmethod
@@ -104,7 +106,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 "def test_package() -> None:\n    pass\n",
                 encoding="utf-8",
             )
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 (
                     "[tool.pyright]\n"
@@ -134,7 +136,7 @@ class TestsFlextInfraExtendedConfigFixer:
             tmp_path: Path,
         ) -> None:
             """Preserve unrelated TOML trivia while changing Pyrefly keys."""
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 (
                     "[project]\n"
@@ -175,7 +177,7 @@ class TestsFlextInfraExtendedConfigFixer:
             tmp_path: Path,
         ) -> None:
             """Remove ignored Pyrefly sub-configurations through the public API."""
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 (
                     "[tool.pyrefly]\n"
@@ -207,7 +209,7 @@ class TestsFlextInfraExtendedConfigFixer:
             tmp_path: Path,
         ) -> None:
             """Synchronize root exclusions from the validated config singleton."""
-            pyproject = tmp_path / "pyproject.toml"
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 ('[tool.pyrefly]\nsearch-path = ["src"]\nproject-excludes = []\n'),
                 encoding="utf-8",
@@ -233,7 +235,7 @@ class TestsFlextInfraExtendedConfigFixer:
                             config.Infra.tooling,
                             c.Infra.PYREFLY,
                             c.Infra.PROJECT_EXCLUDES,
-                            t.StrSequence,
+                            TypeForm(t.StrSequence),
                         ),
                     )
                 ),

@@ -71,27 +71,42 @@ class FlextInfraUtilitiesPrivateImportFacades:
             if isinstance(node, ast.ImportFrom) and not node.level and node.module
         }
         for package in sorted(referenced - supplied):
-            spec = find_spec(package)
-            if spec is None or spec.submodule_search_locations is None:
-                continue
-            for location in spec.submodule_search_locations:
-                package_root = Path(location)
-                for path in sorted(package_root.rglob("*.py")):
-                    parts = path.relative_to(package_root).parts
-                    suffix = (
-                        parts[:-1]
-                        if path.name == c.Infra.INIT_PY
-                        else (*parts[:-1], path.stem)
-                    )
-                    module = ".".join((package, *suffix))
-                    if module in modules:
-                        msg = f"ambiguous installed module identity: {module}"
-                        raise ValueError(msg)
-                    modules[module] = (
-                        path.read_text(encoding="utf-8"),
-                        path.name == c.Infra.INIT_PY,
-                    )
+            FlextInfraUtilitiesPrivateImportFacades._index_installed_package(
+                modules, package
+            )
         return modules
+
+    @staticmethod
+    def _index_installed_package(
+        modules: MutableMapping[str, t.Pair[str, bool]],
+        package: str,
+    ) -> None:
+        """Index one installed top-level package's files without importing it.
+
+        Raises:
+            ValueError: If ambiguous installed module identity.
+
+        """
+        spec = find_spec(package)
+        if spec is None or spec.submodule_search_locations is None:
+            return
+        for location in spec.submodule_search_locations:
+            package_root = Path(location)
+            for path in sorted(package_root.rglob("*.py")):
+                parts = path.relative_to(package_root).parts
+                suffix = (
+                    parts[:-1]
+                    if path.name == c.Infra.INIT_PY
+                    else (*parts[:-1], path.stem)
+                )
+                module = ".".join((package, *suffix))
+                if module in modules:
+                    msg = f"ambiguous installed module identity: {module}"
+                    raise ValueError(msg)
+                modules[module] = (
+                    path.read_text(encoding="utf-8"),
+                    path.name == c.Infra.INIT_PY,
+                )
 
     @staticmethod
     def reachable_sources(
@@ -237,8 +252,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 bindings,
                 package=package,
                 module=module,
-                lazy_exports=lazy_exports,
-                lazy_name=lazy_name,
+                lazy=(lazy_exports, lazy_name),
             )
             collector.collect(tree.body)
             if not any(part.startswith("_") for part in module.split(".")):
@@ -258,15 +272,13 @@ class FlextInfraUtilitiesPrivateImportFacades:
             *,
             package: str,
             module: str,
-            lazy_exports: t.StrSequence,
-            lazy_name: str,
+            lazy: t.Pair[t.StrSequence, str],
             scope: str | None = None,
         ) -> None:
             self.bindings = bindings
             self.package = package
             self.module = module
-            self.lazy_exports = lazy_exports
-            self.lazy_name = lazy_name
+            self.lazy_exports, self.lazy_name = lazy
             self.scope = scope or module
 
         def collect(self, statements: t.SequenceOf[ast.stmt]) -> None:
@@ -315,8 +327,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     self.bindings,
                     package=self.package,
                     module=self.module,
-                    lazy_exports=self.lazy_exports,
-                    lazy_name=self.lazy_name,
+                    lazy=(self.lazy_exports, self.lazy_name),
                     scope=identity,
                 ).collect(node.body)
 
@@ -740,23 +751,44 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     f"{public_path}.{child.name}",
                     f"{identity}.{child.name}",
                 )
-            elif isinstance(child, ast.Assign | ast.AnnAssign):
-                targets = (
-                    child.targets if isinstance(child, ast.Assign) else [child.target]
+                continue
+            if isinstance(child, ast.Assign | ast.AnnAssign):
+                cls._collect_reexport_references(
+                    references, resolvers, child, public_path, identity
                 )
-                for target in targets:
-                    if (
-                        isinstance(target, ast.Name)
-                        and not target.id.startswith("_")
-                        and cls._inherits_facade(
-                            bindings,
-                            class_bases,
-                            qualified,
-                            f"{identity}.{target.id}",
-                            frozenset(),
-                        )
-                    ):
-                        references.add(f"{public_path}.{target.id}")
+
+    @classmethod
+    def _collect_reexport_references(
+        cls,
+        references: set[str],
+        resolvers: t.Triple[
+            t.MappingKV[str, set[str]],
+            t.MappingKV[str, t.VariadicTuple[str]],
+            str,
+        ],
+        child: ast.Assign | ast.AnnAssign,
+        public_path: str,
+        identity: str,
+    ) -> None:
+        """Add public class-body reexports whose target inherits the facade.
+
+        ``resolvers`` carries ``(bindings, class_bases, qualified)``.
+        """
+        bindings, class_bases, qualified = resolvers
+        targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+        for target in targets:
+            if (
+                isinstance(target, ast.Name)
+                and not target.id.startswith("_")
+                and cls._inherits_facade(
+                    bindings,
+                    class_bases,
+                    qualified,
+                    f"{identity}.{target.id}",
+                    frozenset(),
+                )
+            ):
+                references.add(f"{public_path}.{target.id}")
 
     @staticmethod
     def facade_alias_binding(

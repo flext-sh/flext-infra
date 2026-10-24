@@ -903,14 +903,14 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def normalize_top_level_spacing(source: str) -> str:
-        """Collapse blank-line runs left behind by top-level removals.
+        """Normalize blank-line runs and the EOF left by top-level removals.
 
         Returns:
             The resulting ``str``.
 
         """
-        normalized: str = c.Infra.BLANK_LINE_RUN_RE.sub("\n\n\n", source)
-        return normalized
+        normalized = c.Infra.BLANK_LINE_RUN_RE.sub("\n\n\n", source).rstrip("\r\n")
+        return f"{normalized}\n" if normalized else ""
 
     @staticmethod
     def clone_project_for_validation(source: Path, destination: Path) -> Path:

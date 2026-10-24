@@ -220,7 +220,11 @@ class FlextInfraConstantsRefactor:
           rule names in ``arg`` (a declared facade letter, a module, a
           private module or a subpackage of that name);
         - ``family-base``: the private family package holding the finding's
-          module begins with ``base.py``.
+          module begins with ``base.py``;
+        - ``family-member``: the captured dotted module names a private
+          family (its first ``_``-prefixed segment) that the finding's module
+          belongs to: the finding lives inside that family tree or is the
+          family's facade module (the segment without its ``_``).
 
         ``family-base-file`` proves that the finding is the immediate base
         leaf of a private family with a declared sibling facade.
@@ -263,6 +267,7 @@ class FlextInfraConstantsRefactor:
         LATER_LAYER = "later-layer"
         IMPORT_CYCLE = "import-cycle"
         COMPOSES_FAMILY = "composes-family"
+        FAMILY_MEMBER = "family-member"
         CLASS_STEM = "class-stem"
         PACKAGE_LAYERS = "package-layers"
         PACKAGE_ROOT_INIT = "package-root-init"
@@ -271,6 +276,7 @@ class FlextInfraConstantsRefactor:
         LAYER_ZERO_FILE = "layer-zero-file"
         PAYLOAD_DECLARATION = "payload-declaration"
         PROTOCOL_DECLARATION = "protocol-declaration"
+        DECLARATION_DECORATOR = "declaration-decorator"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"
         MEMBER_RELOCATION = "member-relocation"
@@ -280,6 +286,36 @@ class FlextInfraConstantsRefactor:
         UNREFERENCED_IMPORT = "unreferenced-import"
         IMPLEMENTATION_OWNER = "implementation-owner"
         ISOLATED_EXECUTION = "isolated-execution"
+        FAMILY_FILE = "family-file"
+        FOREIGN_FACADE_MEMBER = "foreign-facade-member"
+        FACADE_MEMBER_OWNER = "facade-member-owner"
+
+    @unique
+    class FacadeMemberKind(StrEnum):
+        """Kind of runtime object a facade member binds; config maps it to an owner."""
+
+        EXCEPTION = "exception"
+        ENUM = "enum"
+        CONSTANT = "constant"
+        PROTOCOL = "protocol"
+        MODEL = "model"
+        MODEL_DECLARATION = "model-declaration"
+        TYPE = "type"
+        FUNCTION = "function"
+
+    FACADE_MEMBER_TYPING_MODULES: ClassVar[frozenset[str]] = frozenset({
+        "typing",
+        "types",
+        "typing_extensions",
+    })
+    "Modules whose objects are typing forms (unions, literals, generic aliases)."
+
+    @unique
+    class FacadeMemberPlacement(StrEnum):
+        """Whether a foreign facade member's owner already exposes it."""
+
+        EXPOSED = "exposed"
+        MISSING = "missing"
 
     CODEMOD_RUNTIME_CLOSURE_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({
@@ -384,6 +420,9 @@ class FlextInfraConstantsRefactor:
     )
     # Rope restructure argument that binds a capture to one qualified identity.
     ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
+    # Rope restructure argument that types a capture by one builtin class:
+    # Rope evaluates builtins through its ``__builtins__`` namespace.
+    ROPE_BUILTIN_TYPE_CONSTRAINT_PREFIX: ClassVar[str] = "type=__builtins__."
     CODEMOD_RULE_DIRS_KEY: ClassVar[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: ClassVar[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: ClassVar[str] = "testConfigs"
@@ -410,7 +449,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_TEXT_KEY_EXCLUDE: ClassVar[str] = "exclude"
     CODEMOD_TEXT_KEY_DISTRIBUTIONS: ClassVar[str] = "distributions"
     CODEMOD_TEXT_KEY_FIND: ClassVar[str] = "find"
-    CODEMOD_TEXT_KEY_REPLACE: ClassVar[str] = "replace"
+    CODEMOD_TEXT_KEY_REPLACE: ClassVar[str] = c.MergeStrategy.REPLACE
     CODEMOD_TEXT_KEY_FLAGS: ClassVar[str] = "flags"
     CODEMOD_TEXT_KEY_EXPECTED: ClassVar[str] = "expected"
     CODEMOD_TEXT_KEY_CAPTURE_EQUALS: ClassVar[str] = "capture_equals"

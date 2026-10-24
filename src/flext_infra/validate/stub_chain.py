@@ -42,7 +42,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return None
         return [self.repository_root / name for name in names]
 
-    def _discover_typed_projects(self, repository_root: Path) -> t.SequenceOf[Path]:
+    @staticmethod
+    def _discover_typed_projects(repository_root: Path) -> t.SequenceOf[Path]:
         """Discover projects that should participate in typed dependency checks.
 
         Returns:
@@ -55,7 +56,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             if (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
         ]
 
-    def _is_internal(self, module_name: str, project_name: str) -> bool:
+    @staticmethod
+    def _is_internal(module_name: str, project_name: str) -> bool:
         """Check if a module is an internal project module.
 
         Returns:
@@ -68,7 +70,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return True
         return root_mod == project_root
 
-    def _module_resolved(self, module_name: str) -> bool:
+    @staticmethod
+    def _module_resolved(module_name: str) -> bool:
         """Check if an external module is installed in the active typed environment.
 
         Returns:

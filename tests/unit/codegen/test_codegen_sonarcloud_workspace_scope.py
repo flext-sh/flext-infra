@@ -13,9 +13,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, t
-from flext_infra.codegen import FlextInfraCodegenConform
-from tests import tm, u
+from flext_infra import config, t
+from flext_infra.codegen import FlextInfraCodegenConformExecute
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
@@ -37,7 +37,9 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        plan = tm.ok(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+        )
         rendered = tm.not_none(
             u.Tests.planned_text(plan, c.Infra.SONARCLOUD_PROPERTIES_FILENAME),
         )

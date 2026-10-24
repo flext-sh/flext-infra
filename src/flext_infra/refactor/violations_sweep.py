@@ -222,14 +222,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         result = r[t.Pair[t.StrSequence | None, t.StrSequence]]
-        if any(
-            selector is not None
-            for selector in (
-                self.target_module,
-                self.target_namespace,
-                self.project_filter,
-            )
-        ):
+        if self.project_filter is not None:
             return result.fail(
                 "violations sweep requires the full governed project inventory",
             )
@@ -242,7 +235,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         if focused.failure:
             return result.from_failure(focused)
         verbs = (
-            ("audit",)
+            (c.Infra.VERB_CHECK,)
             if self.audit_rules
             else tuple(verb.strip() for verb in self.repair_verbs.split(","))
             if self.repair_verbs is not None
@@ -251,18 +244,17 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         admissible = {
             verb.name
             for verb in config.Infra.codegen.make.verbs
-            if u.Infra.selector_free_make_verb(
-                verb.arguments,
+            if u.Infra.make_verb_supports_profiles(
                 verb.profiles,
                 tuple(c.Infra.MakeProfile),
             )
         }
         if not verbs or any(verb not in admissible for verb in verbs):
             return result.fail(
-                "violations sweep requires declared selector-free Make verbs: "
+                "violations sweep requires declared Make verbs in every profile: "
                 + ", ".join(verb for verb in verbs if verb not in admissible),
             )
-        if rule_ids is not None and any(verb != "audit" for verb in verbs):
+        if rule_ids is not None and any(verb != c.Infra.VERB_CHECK for verb in verbs):
             return result.fail(
                 "selected-rule mutation is not implemented; no repair verb invoked",
             )
@@ -440,7 +432,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         destination: Path,
     ) -> p.Result[
         t.Triple[
-            m.Infra.ModScanReport,
+            m.Infra.ModScanEvidence,
             m.Infra.ModScanEvidenceReceipt,
             m.Infra.ViolationsSweepSources,
         ]
@@ -453,7 +445,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         """
         result = r[
             t.Triple[
-                m.Infra.ModScanReport,
+                m.Infra.ModScanEvidence,
                 m.Infra.ModScanEvidenceReceipt,
                 m.Infra.ViolationsSweepSources,
             ]
@@ -484,7 +476,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         if digests.failure:
             return result.from_failure(digests)
         repositories = tuple(project.name for project in snapshot.repository_roots)
-        receipt = u.Infra.publish_mod_scan_evidence(
+        receipt = u.Infra.publish_mod_scan_evidence_receipt(
             root,
             report,
             publication=m.Infra.ModScanPublication(
@@ -499,7 +491,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
     @staticmethod
     def _verify_entry_digests(
-        report: m.Infra.ModScanReport,
+        report: m.Infra.ModScanEvidence,
         snapshot: m.Infra.ViolationsSweepSources,
     ) -> p.Result[bool]:
         """Require every native finding to carry its authenticated source digest.
@@ -664,13 +656,26 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         ast_scan = (
-            r[m.Infra.ModScanReport].ok(previous.ast_report)
+            r[m.Infra.ModScanEvidence].ok(previous.ast_report)
             if previous is not None
             and previous.ast_report is not None
             and previous.sha256 == snapshot.sha256
             and previous.plan == snapshot.plan
             and previous.scope == snapshot.scope
-            else FlextInfraModGateEngine.scan(root, fix=False)
+            else FlextInfraModGateEngine.scan(root, fix=False).map(
+                lambda report: u.Infra.mod_scan_evidence(
+                    root,
+                    report,
+                    publication=m.Infra.ModScanPublication(
+                        command=c.Infra.ModScanCommand.SCAN,
+                        scope=snapshot.scope,
+                        repositories=tuple(
+                            project.name for project in snapshot.repository_roots
+                        ),
+                        rule_ids=tuple(rule.id for rule in snapshot.plan.rules),
+                    ),
+                )
+            )
         )
         text_scan = FlextInfraModTextGateEngine.scan(root, fix=False)
         lint = u.Infra.lint_snapshots(

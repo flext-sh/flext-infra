@@ -114,7 +114,7 @@ class TestsFlextInfraClassNestingSuiteScope:
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
-                            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+                            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE,
                             "PYTEST_ADDOPTS": "",
                             "PYTEST_PLUGINS": "",
                             cache.database_environment_variable: str(
@@ -587,7 +587,6 @@ class TestsFlextInfraClassNestingSuiteScope:
                 root,
                 report,
                 rope,
-                source_preview=flext_infra.infra.source_preview(root),
                 workspace_factory=flext_infra.infra.rope_workspace,
             )
         tm.fail(applied, has=f"{owner_name}: LIMIT")

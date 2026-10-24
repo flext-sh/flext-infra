@@ -17,11 +17,11 @@ from git import (
 )
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticLaneMixin,
 )
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticLaneMixin
 
 
 class FlextInfraUtilitiesGitSemanticIdentityMixin(
@@ -45,12 +45,6 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            if cls._git_head_is_unborn(repo):
-                return r[m.Infra.GitIdentityReport].fail(
-                    f"Git repository has no committed HEAD: "
-                    f"{request.repo_root.resolve()}",
-                    error_code=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE,
-                )
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
                 return r[m.Infra.GitIdentityReport].from_failure(primary)
@@ -122,37 +116,86 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
             The resulting ``p.Result[m.Infra.GitIdentityReport]``.
 
         """
-        identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
-        if identity.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(identity)
-        if identity.value.repo_root != requested:
-            return r[m.Infra.GitIdentityReport].fail(
-                "Git request is not the exact Git worktree root: "
-                f"requested={requested} resolved={identity.value.repo_root}",
+        control = cls.exact_worktree_git_dir(requested)
+        if control.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(control)
+        return cls.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
+
+    @classmethod
+    def exact_worktree_git_dir(cls, requested: Path) -> p.Result[Path]:
+        """Authenticate an exact checkout's control directory, not its inventory.
+
+        HEAD and registered topology establish ownership. Mutable status, remotes
+        and child inventories belong to ``git_identity``, not control storage.
+
+        Returns:
+            The authenticated Git directory, or the causal topology failure.
+
+        """
+        try:
+            with cls._repo(requested) as repo:
+                return cls._exact_worktree_control(repo, requested)
+        except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
+            return r[Path].fail(
+                f"failed to resolve exact Git worktree control directory: {exc}",
+                exception=exc,
             )
-        if identity.value.is_submodule or identity.value.is_worktree:
-            return identity
+
+    @classmethod
+    def _exact_worktree_control(cls, repo: Repo, requested: Path) -> p.Result[Path]:
+        """Resolve authenticated control storage on the owned open handle.
+
+        Returns:
+            The control directory after exact-root and nesting validation.
+
+        """
+        # Missing symbolic branches have no commit object. Existing refs still
+        # resolve their object here so corruption retains its native failure.
+        if not cls._git_head_is_unborn(repo):
+            _ = repo.head.commit.hexsha
+        working_tree = Path(repo.git.rev_parse("--show-toplevel")).resolve()
+        if working_tree != requested:
+            return r[Path].fail(
+                "Git request is not the exact Git worktree root: "
+                f"requested={requested} resolved={working_tree}",
+            )
+        primary = cls._git_primary_worktree_root_path(requested)
+        if primary.failure:
+            return r[Path].from_failure(primary)
+        git_dir = Path(repo.git_dir).resolve()
+        superproject = cls._superproject_root(
+            repo, primary_root=primary.value, working_tree=working_tree
+        )
+        if superproject is not None or git_dir != Path(repo.common_dir).resolve():
+            return r[Path].ok(git_dir)
         parent = requested.parent
         if parent != requested:
-            outer = cls.git_identity(m.Infra.GitRepoRequest(repo_root=parent))
-            if outer.success:
-                return r[m.Infra.GitIdentityReport].fail(
+            try:
+                outer = Repo(parent, search_parent_directories=True)
+            except (InvalidGitRepositoryError, NoSuchPathError):
+                return r[Path].ok(git_dir)
+            with outer:
+                outer_root = outer.git.rev_parse("--show-toplevel").strip()
+                return r[Path].fail(
                     "Git request is nested inside another Git repository and is "
                     "not a registered submodule or linked worktree: "
-                    f"requested={requested} outer={outer.value.repo_root}",
+                    f"requested={requested} outer={outer_root}",
                 )
-        return identity
+        return r[Path].ok(git_dir)
 
     @classmethod
     def git_is_inside_work_tree(
         cls,
         request: m.Infra.GitRepoRequest,
+        *,
+        search_parent_directories: bool = True,
     ) -> p.Result[m.Infra.GitBoolReport]:
         """Return whether ``repo_root`` sits inside a Git work tree.
 
         Three-way contract mirroring ``rev-parse --is-inside-work-tree``:
         ``ok(False)`` when no repository owns the path (the expected
         non-error case), ``fail`` only on genuine probe errors.
+        Disable parent discovery when testing a prospective repository root.
 
         Returns:
             Whether ``repo_root`` sits inside a Git work tree.
@@ -164,7 +207,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         resolved = request.repo_root.expanduser().resolve()
         try:
             # Why: same nested-path contract as git_open_repo.
-            repo = Repo(resolved, search_parent_directories=True)
+            repo = Repo(resolved, search_parent_directories=search_parent_directories)
         except InvalidGitRepositoryError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except NoSuchPathError:
@@ -260,7 +303,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
             The resulting ``m.Infra.GitIdentityReport``.
 
         """
-        head_oid = repo.head.commit.hexsha
+        head_oid = None if cls._git_head_is_unborn(repo) else repo.head.commit.hexsha
         working_tree = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
         git_dir = Path(repo.git_dir).resolve()
         common_dir = Path(repo.common_dir).resolve()

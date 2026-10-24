@@ -30,8 +30,8 @@ _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
 class TestsFlextInfraCodemodDuplicateApply:
     """Cure identity-proven duplicates; plan every structural clone."""
 
+    @staticmethod
     def test_cure_models_preserve_native_definition_identity(
-        self,
         tmp_path: Path,
     ) -> None:
         """Census cure contracts consume the same typed source objects directly."""
@@ -64,9 +64,9 @@ class TestsFlextInfraCodemodDuplicateApply:
             copies=(),
             edits=(),
         )
-        assert planned.owner is copy
-        assert planned.owner.definition is definition
-        assert planned.owner.definition.statement is statement
+        tm.that(planned.owner is copy, eq=True)
+        tm.that(planned.owner.definition is definition, eq=True)
+        tm.that(planned.owner.definition.statement is statement, eq=True)
         tm.that(
             planned.owner.definition.source
             == path.read_text(
@@ -196,21 +196,9 @@ class TestsFlextInfraCodemodDuplicateApply:
                 for resource in rope.rope_project.get_python_files()
             }
             frozen = dict(sources)
-            states = tuple(
-                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-                for path in sources
-            )
             planned, deletions = tm.ok(
                 FlextInfraCodemodDuplicateApply.plan_census(
-                    root,
-                    rope,
-                    (group,),
-                    sources=sources,
-                    receipt=m.Infra.CodegenPhaseAnalysis(
-                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                        inputs=states,
-                        files=(),
-                    ),
+                    root, rope, (group,), sources=sources
                 )
             )
             tm.that(planned.edits, empty=False)

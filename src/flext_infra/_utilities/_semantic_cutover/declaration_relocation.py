@@ -21,19 +21,19 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
 class FlextInfraUtilitiesSemanticDeclarationRelocation(
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverEdits,
 ):
     """Relocate payloads and bind config imports to existing permitted owners."""
 
@@ -43,28 +43,25 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     def contract_rule_root(
         repository_root: t.Infra.RopeSourcePath,
         rule: p.Infra.RopeContractRule,
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> t.Infra.RopeSourcePath:
-        """Bind retirement to the project owning its authenticated catalogue.
+        """Bind retirement to the project owning the rule's declaring catalogue.
 
         Returns:
-            The unique project owner, or the repository when no inputs are declared.
+            The catalogue's project owner, or the repository for packaged rules.
 
         Raises:
-            ValueError: If the catalogue has no unique owner inside the workspace.
+            ValueError: If the catalogue has no project owner inside the workspace.
 
         """
-        owners = {
-            FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                repository_root, state.path
-            )
-            for state in rule.source_states
-        }
-        if not owners:
+        if rule.owner_root is None:
             return repository_root
-        if len(owners) != 1 or None in owners:
-            msg = f"{rule.id}: contract catalogue has no unique project owner"
-            raise ValueError(msg)
-        owner = owners.pop()
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            repository_root,
+            rule.owner_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH,
+            source_project=source_project,
+        )
         if owner is None or not owner.is_relative_to(repository_root):
             msg = f"{rule.id}: contract owner is outside its workspace"
             raise ValueError(msg)
@@ -109,15 +106,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
-        # One closed epoch serves every snapshot of this pass: the sources, their
-        # import closure and the identities payload relocation resolves.
-        epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
-            Path(workspace.rope_project.root.real_path),
-            tuple(sources),
-            c.Infra.DECLARATION_RELOCATION_IDENTITIES,
-        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, sources, captured=epoch
+            workspace.rope_project,
+            sources,
         )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
@@ -130,7 +121,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if working != sources:
                 project.close()
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project, working, captured=epoch
+                    workspace.rope_project,
+                    working,
                 )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -181,7 +173,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working, captured=epoch
+                        workspace.rope_project,
+                        working,
                     )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
@@ -243,13 +236,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             The owning family letter, including split-source descendants.
 
         """
-        for parent in path.parents:
-            family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-                parent.name,
-            )
-            if family is not None:
-                return family
-        return None
+        return FlextInfraUtilitiesCodegenNamespace.facade_family_of_source(path)
 
     @classmethod
     def _declaration_import_rewrites(
@@ -682,8 +669,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if any(
                 child.pyobject in bases
                 for ancestor in cls.class_ancestry(value)
-                if (scope := ancestor.get_scope()) is not None
-                for child in scope.get_scopes()
+                if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor)
+                for child in ancestor.get_scope().get_scopes()
                 if child.get_kind() == "Class"
             ):
                 related.append((path, owner, route))
@@ -718,15 +705,16 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if exports.get("m") != facade.get_name():
             return ()
-        public = facade.get_attribute("m").get_object()
+        public = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            facade.get_attribute("m").get_object(), "public model facade"
+        )
         routes: list[t.Pair[p.Infra.RopePyObject, str]] = [(public, "m")]
         scope = public.get_scope()
-        if scope is not None:
-            routes.extend(
-                (child.pyobject, f"m.{child.pyobject.get_name()}")
-                for child in scope.get_scopes()
-                if child.get_kind() == "Class"
-            )
+        routes.extend(
+            (child.pyobject, f"m.{child.pyobject.get_name()}")
+            for child in scope.get_scopes()
+            if child.get_kind() == "Class"
+        )
         return routes
 
     @staticmethod
@@ -1165,19 +1153,13 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             message = "payload declaration has no enclosing source scope"
             raise TypeError(message)
         outer_name = node.parent.pyobject.get_name()
-        outer = origin_module.get_attribute(outer_name).get_object().get_scope()
-        if outer is None:
-            message = "payload enclosing declaration has no native source scope"
-            raise TypeError(message)
-        payload = (
-            outer.pyobject
-            .get_attribute(node.pyobject.get_name())
-            .get_object()
-            .get_scope()
-        )
-        if payload is None:
-            message = "payload declaration has no native source scope"
-            raise TypeError(message)
+        outer = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            origin_module.get_attribute(outer_name).get_object(), outer_name
+        ).get_scope()
+        payload = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            outer.pyobject.get_attribute(node.pyobject.get_name()).get_object(),
+            node.pyobject.get_name(),
+        ).get_scope()
         lines = cls._source_lines(updated[origin])
         start = lines.get_line_start(payload.get_start())
         end = min(lines.get_line_end(payload.get_end()) + 1, len(updated[origin]))
@@ -1224,9 +1206,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             imports: Required imports added to the destination module.
             transplanted: Payload text and indentation from the origin cut.
 
-        Raises:
-            TypeError: The destination owner lacks its native source scope.
-
         """
         transferred, indentation = transplanted
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1236,10 +1215,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         destination = runtime.build_string_module(
             project, updated[target[0]], resource=resource
         )
-        owner = destination.get_attribute(target[1]).get_object().get_scope()
-        if owner is None:
-            message = "payload destination owner has no native source scope"
-            raise TypeError(message)
+        owner = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            destination.get_attribute(target[1]).get_object(), target[1]
+        ).get_scope()
         target_lines = cls._source_lines(updated[target[0]])
         first = target_lines.get_line_start(owner.get_body_start())
         last = min(
@@ -1714,10 +1692,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         """
         owners: list[t.Triple[p.Infra.RopePyModule, str, str]] = []
         for ancestor in cls.class_ancestry(composed):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor):
+                continue
             scope = ancestor.get_scope()
             provider = ancestor.get_module()
-            resource = provider.get_resource() if provider is not None else None
-            if scope is None or provider is None or resource is None:
+            resource = provider.get_resource()
+            if resource is None:
                 continue
             if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider):
                 message = "declaration owner requires a native source module"

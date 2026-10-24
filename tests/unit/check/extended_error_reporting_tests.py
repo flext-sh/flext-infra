@@ -19,7 +19,7 @@ from tests import c, m, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraGateErrorReporting:
@@ -30,7 +30,9 @@ class TestsFlextInfraGateErrorReporting:
         tmp_path: Path,
     ) -> None:
         """Test workspace report retains all executed failures."""
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path, "p1", pyproject='[project]\nname = "p1"\n', with_src=True
+        )
         (project_dir / "src" / "p1" / "value.py").write_text(
             "value=[1,2,3]\n",
             encoding="utf-8",
@@ -58,8 +60,7 @@ class TestsFlextInfraGateErrorReporting:
             project.total_findings,
             eq=sum(len(item.issues) for item in project.gates.values()),
         )
-        receipt = project.gates[gates[0]].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(project.gates[gates[0]].raw_receipt)
         report_path = receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         report = report_path.read_text(
             encoding="utf-8",
@@ -86,7 +87,9 @@ class TestsFlextInfraGateErrorReporting:
         tmp_path: Path,
     ) -> None:
         """Test ruff format reports each unformatted file once."""
-        proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        proj_dir = u.Tests.mk_project(
+            tmp_path, "p1", pyproject='[project]\nname = "p1"\n', with_src=True
+        )
         unformatted = "value=[1,2,3]\n\n\n\n\nother=(4,5)\n"
         for name in ("one.py", "two.py"):
             (proj_dir / c.Infra.DEFAULT_SRC_DIR / name).write_text(
@@ -108,11 +111,14 @@ class TestsFlextInfraGateErrorReporting:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """A formatter error without issues remains available in its raw receipt."""
+        """A native formatter error retains its blocking diagnostic and receipt."""
         project_dir = u.Tests.mk_project(
             tmp_path,
             "p1",
-            pyproject='[tool.ruff]\nline-length = "invalid-line-length"\n',
+            pyproject=(
+                '[project]\nname = "p1"\n'
+                '[tool.ruff]\nline-length = "invalid-line-length"\n'
+            ),
             with_src=True,
         )
         (project_dir / "src" / "p1" / "value.py").write_text(
@@ -131,19 +137,19 @@ class TestsFlextInfraGateErrorReporting:
         project = result.value[0]
         tm.fail(project.passed)
         execution = project.gates[c.Infra.FORMAT]
-        tm.fail(bool(execution.issues))
-        tm.fail(bool(execution.result.errors))
+        tm.that(tuple(issue.code for issue in execution.issues), eq=("format-exec",))
+        tm.that(len(execution.result.errors), eq=1)
+        tm.that(execution.result.errors[0], has="invalid-line-length")
         tm.that(execution.raw_output, has="invalid-line-length")
-        tm.that(execution.raw_receipt, none=False)
+        raw_receipt = tm.not_none(execution.raw_receipt)
         tm.that(
-            execution.raw_receipt.read_bytes().decode("utf-8"),
+            raw_receipt.read_bytes().decode("utf-8"),
             eq=execution.raw_output,
         )
         captured = capsys.readouterr()
         tm.that(
             f"{captured.out}\n{captured.err}",
-            has=str(execution.raw_receipt),
-            lacks="invalid-line-length",
+            has=[str(execution.raw_receipt), "invalid-line-length"],
         )
 
     @staticmethod
@@ -159,7 +165,7 @@ class TestsFlextInfraGateErrorReporting:
         )
         source_marker = "native_receipt_source_marker"
         (source_dir / "finding.py").write_text(
-            f'assert "{source_marker}"\n',
+            f'eval("{source_marker}")\n',
             encoding="utf-8",
         )
         invalid = source_dir / "invalid.py"
@@ -178,16 +184,18 @@ class TestsFlextInfraGateErrorReporting:
         execution = projects[0].gates[c.Infra.SECURITY]
         tm.fail(execution.result.passed)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(execution.raw_receipt, none=False)
+        raw_receipt = tm.not_none(execution.raw_receipt)
+        (invocation_directory,) = tuple(reports_dir.iterdir())
         tm.that(
-            execution.raw_receipt,
-            eq=execution.raw_receipt.parent
+            raw_receipt,
+            eq=invocation_directory
+            / tmp_path.name
+            / project_dir.relative_to(tmp_path)
             / (f"{c.Infra.SECURITY}{config.Infra.tooling.raw_check_receipt_suffix}"),
         )
-        tm.that(execution.raw_receipt.parent.name, eq=project_dir.name)
-        tm.that(execution.raw_receipt.parent.parent.parent, eq=reports_dir)
-        receipt = execution.raw_receipt.read_bytes().decode("utf-8")
+        receipt = raw_receipt.read_bytes().decode("utf-8")
         tm.that(receipt, eq=execution.raw_output, has=source_marker)
+        tm.that(any(issue.code == "B307" for issue in execution.issues), eq=True)
         tm.that(
             any(
                 issue.code == c.Infra.ToolOutcome.ERROR
@@ -196,15 +204,13 @@ class TestsFlextInfraGateErrorReporting:
             ),
             eq=True,
         )
-        report_path = (
-            execution.raw_receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
-        )
+        report_path = invocation_directory / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         report = report_path.read_text(
             encoding="utf-8",
         )
         tm.that(
             report,
-            has=execution.raw_receipt.resolve().as_uri(),
+            has=raw_receipt.resolve().as_uri(),
             lacks=source_marker,
         )
         captured = capsys.readouterr()
@@ -247,8 +253,7 @@ class TestsFlextInfraGateErrorReporting:
                 reports_dir=reports_dir,
             ),
         )
-        receipt = projects[0].gates[c.Infra.SECURITY].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(projects[0].gates[c.Infra.SECURITY].raw_receipt)
         tm.ok(receipt.is_file())
         tm.that(receipt, ne=blocked_receipt)
         tm.ok(blocked_receipt.is_dir())
@@ -264,6 +269,7 @@ class TestsFlextInfraGateErrorReporting:
             tmp_path,
             "p1",
             pyproject=(
+                '[project]\nname = "p1"\n'
                 '[tool.mypy]\nplugins = ["broken_plugin.py"]\nshow_traceback = true\n'
             ),
             with_src=True,
@@ -338,8 +344,7 @@ class TestsFlextInfraGateErrorReporting:
         tm.fail(result.value[0].passed)
         captured = capsys.readouterr()
         tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
-        receipt = result.value[0].gates[c.Infra.MARKDOWN].raw_receipt
-        tm.that(receipt, none=False)
+        receipt = tm.not_none(result.value[0].gates[c.Infra.MARKDOWN].raw_receipt)
         report = m.Infra.SarifReport.model_validate_json(
             (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
                 encoding="utf-8",

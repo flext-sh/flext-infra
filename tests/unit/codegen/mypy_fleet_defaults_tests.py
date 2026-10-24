@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, deps
-from tests import e, m, t, tm, u
+from tests import c, e, m, t, tm, u
 
 
 class TestsFlextInfraMypyFleetMandatoryDefaults:
@@ -96,7 +96,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             ("enable-error-code", True),
             ("overrides", False),
             ("ignore_errors", True),
-            ("ignore_errors", "true"),
+            ("ignore_errors", c.ParserBooleanToken.TRUE),
         ],
     )
     def test_generic_options_cannot_shadow_typed_policy(
@@ -217,14 +217,14 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         package = tmp_path / source_dir / "arbitrary_package"
         package.mkdir(parents=True)
         (package / "__init__.py").write_text("", encoding="utf-8")
-        path = tmp_path / "pyproject.toml"
+        path = tmp_path / c.PYPROJECT_FILENAME
         source = (
             '[project]\nname = "arbitrary-project"\ndependencies = []\n'
             '[tool.mypy]\nmypy_path = ["retired-root"]\n'
         )
         path.write_text(source, encoding="utf-8")
         manager = deps.FlextInfraExtraPathsManager(repository_root=tmp_path)
-        expected = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
+        expected = manager.mypy_search_paths(project_dir=tmp_path)
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(source_dir,),
             declared_python_dirs_are_complete=True,
@@ -253,7 +253,6 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             manager.sync_payload(
                 payload,
                 project_dir=tmp_path,
-                is_root=True,
                 mypy_search_paths=expected,
             ),
             empty=True,

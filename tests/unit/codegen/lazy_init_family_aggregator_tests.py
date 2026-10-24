@@ -112,9 +112,13 @@ class TestsFlextInfraLazyInitFamilyAggregator:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
+        # Decision 1: a static class alias imports its class and binds the letter.
         tm.that(
-            generated,
-            has=f"from {package_root.name}.constants import FlextTestAggConstants, c",
+            generated.splitlines(),
+            has=[
+                f"    from {package_root.name}.constants import FlextTestAggConstants",
+                "    c = FlextTestAggConstants",
+            ],
         )
         tm.that(generated, lacks="FlextTestAggConstants as c")
         entries, _refs = u.Infra.lazy_import_mapping_source(generated)

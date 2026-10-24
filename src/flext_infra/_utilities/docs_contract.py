@@ -164,7 +164,9 @@ class FlextInfraUtilitiesDocsContract:
             The first rendered H1 label, or no title when none exists.
 
         """
-        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(content, "1")
+        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(
+            content, c.ParserBooleanToken.ONE
+        )
         if not rendered.toc_tokens:
             return None
         return (
@@ -220,8 +222,6 @@ class FlextInfraUtilitiesDocsContract:
     @staticmethod
     def docs_workspace_contract(
         repository_root: Path,
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata.
 
@@ -232,17 +232,14 @@ class FlextInfraUtilitiesDocsContract:
         return FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             repository_root,
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python({}),
-            source_states=source_states,
         )
 
     @staticmethod
     def docs_current_project_contract(
         project_root: Path,
         rendered_contract: t.JsonMapping,
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
-        """Bind rendered API analysis to the current authenticated pyproject bytes.
+        """Bind rendered API analysis to the current pyproject bytes.
 
         Returns:
             The resulting ``t.JsonMapping``.
@@ -253,7 +250,6 @@ class FlextInfraUtilitiesDocsContract:
         """
         payload = FlextInfraUtilitiesDocsScope.project_payload(
             project_root,
-            source_states=source_states,
         )
         project_value = payload.get(c.Infra.PROJECT)
         if not isinstance(project_value, Mapping):
@@ -299,7 +295,6 @@ class FlextInfraUtilitiesDocsContract:
         content: bytes | None,
         *,
         desired_mode: int | None,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Plan one exact docs artifact without publishing it.
 
@@ -331,7 +326,6 @@ class FlextInfraUtilitiesDocsContract:
                 before=before.value,
                 desired_content=content,
                 desired_mode=desired_mode,
-                source_states=tuple(source_states),
                 owner="docs",
                 policy="full",
             ),
@@ -347,8 +341,7 @@ class FlextInfraUtilitiesDocsContract:
         """Write generated content only when needed and allowed.
 
         This imperative helper belongs to non-generation docs fixers. Generated
-        documentation uses :meth:`docs_file_plan` and is published only by the
-        enclosing codegen transaction.
+        documentation uses :meth:`docs_file_plan` and the shared codegen publisher.
 
         Returns:
             The resulting ``m.Infra.GeneratedFile``.

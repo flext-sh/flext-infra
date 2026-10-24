@@ -85,5 +85,17 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
         """
         return FlextInfraGitLanes.verify_lanes(request)
 
+    @staticmethod
+    def lane_ownership(
+        request: m.Infra.GitLaneOwnershipRequest,
+    ) -> p.Result[m.Infra.GitLaneOwnershipReceipt]:
+        """Read authenticated prior ownership from an existing published checkpoint.
+
+        Returns:
+            The native producer receipt without changing current shared work.
+
+        """
+        return u.Infra.git_lane_ownership(request)
+
 
 __all__: list[str] = ["FlextInfraGitService"]

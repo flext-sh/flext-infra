@@ -1,0 +1,9 @@
+id: retire-publication-stack-read-state
+valid:
+  - |
+    state = u.Cli.atomic_read_binary_file_state(path, required=True)
+invalid:
+  - |
+    state = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+  - |
+    tm.ok(FlextInfraMiseArtifactsFiles.read_state(report, required=False))

@@ -8,12 +8,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, p, r, t
+from flext_infra import c, m, p, r, t
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesVersioning:
@@ -24,71 +27,23 @@ class FlextInfraUtilitiesVersioning:
     """
 
     @staticmethod
-    def _extract_project_version_from_text(content: str) -> str | None:
-        """Extract project version from text.
+    def _project_document(
+        content: str,
+    ) -> p.Result[t.Pair[t.Cli.TomlDocument, t.Cli.TomlTable]]:
+        """Parse one pyproject document with its live ``[project]`` table.
 
         Returns:
-            The resulting ``str | None``.
+            The parsed document and its ``[project]`` table.
 
         """
-        in_project_section = False
-        for raw_line in content.splitlines():
-            line = raw_line.strip()
-            if line.startswith("[") and line.endswith("]"):
-                in_project_section = line == c.Infra.SEMVER_PROJECT_SECTION
-                continue
-            if not in_project_section or not line.startswith(c.Infra.VERSION):
-                continue
-            match = c.Infra.VERSION_RE.match(line)
-            if match:
-                version: str = match.group(1)
-                return version
-        return None
-
-    @staticmethod
-    def _has_project_table(content: str) -> bool:
-        """Has project table.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return any(
-            raw_line.strip() == c.Infra.SEMVER_PROJECT_SECTION
-            for raw_line in content.splitlines()
-        )
-
-    @staticmethod
-    def _replace_project_version_in_text(content: str, version: str) -> str | None:
-        """Replace project version in text.
-
-        Returns:
-            The resulting ``str | None``.
-
-        """
-        lines = content.splitlines(keepends=True)
-        in_project_section = False
-        updated_lines: t.MutableSequenceOf[str] = []
-        replaced = False
-        for raw_line in lines:
-            line = raw_line.strip()
-            if line.startswith("[") and line.endswith("]"):
-                in_project_section = line == c.Infra.SEMVER_PROJECT_SECTION
-                updated_lines.append(raw_line)
-                continue
-            if (
-                in_project_section
-                and line.startswith(c.Infra.VERSION)
-                and (not replaced)
-            ):
-                line_ending = "\n" if raw_line.endswith("\n") else ""
-                updated_lines.append(f'version = "{version}"{line_ending}')
-                replaced = True
-                continue
-            updated_lines.append(raw_line)
-        if not replaced:
-            return None
-        return "".join(updated_lines)
+        result = r[t.Pair[t.Cli.TomlDocument, t.Cli.TomlTable]]
+        document = u.Cli.toml_parse_text(content)
+        if document is None:
+            return result.fail("invalid pyproject.toml")
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        if project is None:
+            return result.fail("missing [project] table")
+        return result.ok((document, project))
 
     @staticmethod
     def bump_version(
@@ -157,10 +112,21 @@ class FlextInfraUtilitiesVersioning:
             content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
         except OSError as exc:
             return r[str].fail_op("read", exc)
-        version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
-            content,
-        )
-        if version is None or not version.strip():
+        return FlextInfraUtilitiesVersioning.project_version_from_text(content)
+
+    @staticmethod
+    def project_version_from_text(content: str) -> p.Result[str]:
+        """Read ``[project].version`` from one pyproject document's text.
+
+        Returns:
+            The declared project version.
+
+        """
+        parsed = FlextInfraUtilitiesVersioning._project_document(content)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        version = u.Cli.toml_value(parsed.value[1], c.Infra.VERSION)
+        if not isinstance(version, str) or not version.strip():
             return r[str].fail("version not found in pyproject.toml")
         return r[str].ok(version)
 
@@ -262,40 +228,74 @@ class FlextInfraUtilitiesVersioning:
         version_result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if version_result.failure:
             return r[str].from_failure(version_result)
-        if not FlextInfraUtilitiesVersioning._has_project_table(content):
-            return r[str].fail("missing [project] table")
-        updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(
-            content,
-            version,
-        )
-        if updated is None:
+        parsed = FlextInfraUtilitiesVersioning._project_document(content)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        document, project = parsed.value
+        if u.Cli.toml_item_child(project, c.Infra.VERSION) is None:
             return r[str].fail("missing [project] version")
-        return r[str].ok(updated)
+        u.Cli.toml_sync_value(project, c.Infra.VERSION, version)
+        return r[str].ok(u.Cli.toml_dumps(document))
+
+    @staticmethod
+    def project_version_plan(
+        project_path: Path, version: str
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Plan the canonical version-field edit against its actual physical input.
+
+        Returns:
+            The original file witness and exact rendered bytes, without effects.
+
+        """
+        result = r[m.Infra.CodegenFilePlan]
+        root = project_path.resolve()
+        captured = u.Cli.atomic_read_binary_file_state(
+            root / c.PYPROJECT_FILENAME, required=True
+        )
+        if captured.failure:
+            return result.from_failure(captured)
+        if captured.value.content is None:
+            return result.fail("project version requires its actual file preimage")
+        try:
+            content = captured.value.content.decode(c.DEFAULT_ENCODING)
+        except UnicodeError as exc:
+            return result.fail_op("read project version", exc)
+        rendered = FlextInfraUtilitiesVersioning.render_project_version(
+            content, version
+        )
+        if rendered.failure:
+            return result.from_failure(rendered)
+        return result.ok(
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=captured.value.path,
+                before=captured.value,
+                desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
+                desired_mode=captured.value.mode,
+            )
+        )
 
     @staticmethod
     def replace_project_version(project_path: Path, version: str) -> p.Result[bool]:
-        """Update the version field in a project's pyproject.toml.
-
-        Args:
-            project_path: Directory containing pyproject.toml.
-            version: The new version string.
+        """Publish the same version plan through the existing boolean file API.
 
         Returns:
-            r[bool] with True on success.
+            The guarded atomic writer result; this is not Git publication authority.
 
         """
-        pyproject = project_path / c.PYPROJECT_FILENAME
-        try:
-            content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
-        except OSError as exc:
-            return r[bool].fail_op("read", exc)
-        rendered = FlextInfraUtilitiesVersioning.render_project_version(
-            content,
-            version,
+        planned = FlextInfraUtilitiesVersioning.project_version_plan(
+            project_path, version
         )
-        if rendered.failure:
-            return r[bool].from_failure(rendered)
-        written = u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        if planned.value.desired_content is None:
+            return r[bool].fail("project version plan cannot delete its version anchor")
+        before = planned.value.before
+        written = u.Cli.atomic_write_binary_file_guarded(
+            before,
+            planned.value.desired_content,
+            permission_mode=before.mode,
+        )
         if written.failure:
             return written
         # Why: flext-core caches the parsed pyproject per process. This is the

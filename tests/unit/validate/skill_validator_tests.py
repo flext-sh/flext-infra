@@ -16,7 +16,7 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
+from tests import m
 
 
 class TestsFlextInfraSkillValidator:
@@ -29,7 +29,7 @@ class TestsFlextInfraSkillValidator:
         f.write_text("key: value\nlist:\n  - item1\n  - item2")
         result = u.Cli.yaml_load_mapping(f)
         tm.that(result.get("key"), eq="value")
-        list_value = result.get("list")
+        list_value = result.get(c.Action.LIST)
         tm.that(list_value, is_=list)
         tm.that(list_value, eq=["item1", "item2"])
 

@@ -7,11 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 from flext_core import FlextRuntime
+from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
+from flext_infra._models.deps import (
+    GitSourceRefFromField,
+    GitSourceRefToField,
+    GitSourceUrlPrefixField,
+)
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import (
     FlextInfraConsolidateGroupsPhase,
@@ -30,16 +36,58 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyprojectModernizerDocument:
+class FlextInfraPyprojectModernizerDocument(
+    FlextInfraProjectSelectionServiceBase[bool],
+):
     """Own the parsed document state and the ordered phase pipeline."""
 
-    if TYPE_CHECKING:
-        # Members supplied by the composed modernizer service.
-        tomlsort_sort_first: t.StrSequence
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
+    @staticmethod
+    def _config_sort_first() -> t.StrSequence:
+        """Read the config-owned top-level TOML section order once.
 
-        @property
-        def root(self) -> Path: ...
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
+        return u.Infra.native_tool_setting(
+            config.Infra.tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+        )
+
+    audit: Annotated[
+        bool,
+        m.Field(default=False, description="Audit pyproject changes without writing"),
+    ] = False
+    skip_check: Annotated[
+        bool,
+        m.Field(alias="skip-check", description="Skip post-write validation"),
+    ] = False
+    skip_comments: Annotated[
+        bool,
+        m.Field(alias="skip-comments", description="Skip managed comment updates"),
+    ] = False
+    rewrite_constraints: Annotated[
+        bool,
+        m.Field(
+            alias="rewrite-constraints",
+            description="Rewrite dependency constraints from the provisioned runtime",
+        ),
+    ] = False
+    managed_artifacts: Annotated[
+        m.Infra.ProjectManagedArtifactsResolution | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Caller-owned project ManagedArtifacts resolution",
+        ),
+    ] = None
+    git_source_url_prefix: GitSourceUrlPrefixField = None
+    git_source_ref_from: GitSourceRefFromField = None
+    git_source_ref_to: GitSourceRefToField = None
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=_config_sort_first,
+        exclude=True,
+        description="Config-owned top-level TOML section order",
+    )
 
     def _project_kind(
         self,
@@ -147,69 +195,6 @@ class FlextInfraPyprojectModernizerDocument:
             changes.append("removed empty poetry group container")
         return changes
 
-    @staticmethod
-    def _ordered_keys(
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        preferred_first: t.StrSequence,
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
-        """Return current keys and their preferred-first, then alphabetical order.
-
-        Returns:
-            Current keys and their preferred-first, then alphabetical order.
-
-        """
-        current = [str(key) for key in container]
-        ordered = [key for key in preferred_first if key in current]
-        ordered.extend(sorted(set(current) - set(ordered)))
-        return current, ordered
-
-    @classmethod
-    def _reorder_child(
-        cls,
-        container: t.Cli.TomlDocument | t.Cli.TomlTable,
-        table_key: str,
-    ) -> None:
-        """Reorder a table child or every table in an array child."""
-        table = u.Cli.toml_table_child(container, table_key)
-        if table is not None:
-            cls._reorder_table(table)
-            return
-        item = u.Cli.toml_item_child(container, table_key)
-        if item is not None and u.Cli.toml_is_aot(item):
-            for entry in item.body:
-                cls._reorder_table(entry)
-
-    @classmethod
-    def _reorder_table(cls, table: t.Cli.TomlTable) -> None:
-        """Reorder one validated TOML table and its table-like children."""
-        current, ordered = cls._ordered_keys(table, ())
-        for key in ordered:
-            cls._reorder_child(table, key)
-        items = {key: table[key] for key in current}
-        if ordered != current:
-            for key in current:
-                del table[key]
-            for key in ordered:
-                table[key] = items[key]
-
-    @classmethod
-    def _reorder_document(
-        cls,
-        doc: t.Cli.TomlDocument,
-        *,
-        preferred_first: t.StrSequence,
-    ) -> None:
-        """Apply deterministic ordering to top-level groups and nested tables."""
-        current, ordered = cls._ordered_keys(doc, preferred_first)
-        if ordered != current:
-            items = {key: doc[key] for key in current}
-            for key in current:
-                del doc[key]
-            for key in ordered:
-                doc[key] = items[key]
-        for key in ordered:
-            cls._reorder_child(doc, key)
-
     def _process_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
@@ -242,56 +227,78 @@ class FlextInfraPyprojectModernizerDocument:
                 preserve_layout=True,
             )
         else:
-            inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent)
-            if inputs.failure:
-                return r[t.StrSequence].from_failure(inputs)
-            repository = inputs.value.spec.repository
-            project = repository.project
-            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(
-                state.payload
-            )
-            topology = m.Infra.PyprojectDeclaredTopology.model_validate({
-                **(
-                    project.model_dump(
-                        include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
-                    )
-                    if project is not None
-                    else {}
-                ),
-                "project_declaration_resource": (
-                    FlextInfraEnsurePackagingPhase.declaration_resource(
-                        package_name=(
-                            project.package_name
-                            if project is not None
-                            else u.Infra.package_name_from_payload(
-                                state.pyproject_path.parent,
-                                state.payload,
-                                u.Infra.docs_meta_from_payload(state.payload),
-                            )
-                        ),
-                        package=u.Infra.project_package_participation(packaging),
-                    )
-                ),
-            })
-            rendered = self._render_document_state(
+            rendered = self._render_declared_state(
                 state,
-                self._apply_document_phases(
+                canonical_dev=canonical_dev,
+                skip_comments=skip_comments,
+            )
+        if rendered.failure:
+            return rendered
+        if state.rendered == state.original_rendered:
+            return r[t.StrSequence].ok(())
+        if not dry_run:
+            u.write_file(
+                state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
+            )
+        if not rendered.value:
+            return r[t.StrSequence].ok(("canonical pyproject rendering changed bytes",))
+        return rendered
+
+    def _render_declared_state(
+        self,
+        state: m.Infra.PyprojectDocumentState,
+        *,
+        canonical_dev: t.StrSequence,
+        skip_comments: bool,
+    ) -> p.Result[t.StrSequence]:
+        """Run every managed phase against the declared repository topology.
+
+        Returns:
+            The rendered change list, or the first declaration failure.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent)
+        if inputs.failure:
+            return r[t.StrSequence].from_failure(inputs)
+        repository = inputs.value.spec.repository
+        project = repository.project
+        build_changes = self._normalize_build_payload(state.payload)
+        packaging = m.Infra.ProjectPackagingDeclaration.model_validate(state.payload)
+        topology = m.Infra.PyprojectDeclaredTopology.model_validate({
+            **(
+                project.model_dump(
+                    include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+                )
+                if project is not None
+                else {}
+            ),
+            "project_declaration_resource": (
+                FlextInfraEnsurePackagingPhase.declaration_resource(
+                    package_name=(
+                        project.package_name
+                        if project is not None
+                        else u.Infra.package_name_from_payload(
+                            state.pyproject_path.parent,
+                            state.payload,
+                            u.Infra.docs_meta_from_payload(state.payload),
+                        )
+                    ),
+                    package=u.Infra.project_package_participation(packaging),
+                )
+            ),
+        })
+        return self._render_document_state(
+            state,
+            (
+                *build_changes,
+                *self._apply_document_phases(
                     state,
                     canonical_dev=canonical_dev,
                     topology=topology,
                 ),
-                skip_comments=skip_comments,
-            )
-        if (
-            rendered.success
-            and state.rendered == state.original_rendered.rstrip() + "\n"
-        ):
-            return r[t.StrSequence].ok(())
-        if rendered.success and not dry_run:
-            u.write_file(
-                state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
-            )
-        return rendered
+            ),
+            skip_comments=skip_comments,
+        )
 
     def _apply_document_phases(
         self,
@@ -337,9 +344,7 @@ class FlextInfraPyprojectModernizerDocument:
         )
         path_rules = tooling.tools.pyrefly.path_rules
         if paths_manager is not None:
-            mypy_search_paths = paths_manager.mypy_search_paths(
-                project_dir=path.parent, is_root=is_root
-            )
+            mypy_search_paths = paths_manager.mypy_search_paths(project_dir=path.parent)
         elif path_rules.source_dir in topology.declared_python_dirs:
             mypy_search_paths = tuple(
                 root
@@ -356,7 +361,7 @@ class FlextInfraPyprojectModernizerDocument:
         else:
             mypy_search_paths = FlextInfraExtraPathsManager(
                 repository_root=self.root
-            ).mypy_search_paths(project_dir=path.parent, is_root=is_root)
+            ).mypy_search_paths(project_dir=path.parent)
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:
             managed_artifacts = u.Infra.load_project_managed_artifacts(
@@ -412,7 +417,6 @@ class FlextInfraPyprojectModernizerDocument:
                 paths_manager.sync_payload(
                     payload,
                     project_dir=path.parent,
-                    is_root=is_root,
                     mypy_search_paths=mypy_search_paths,
                 ),
             )
@@ -451,8 +455,15 @@ class FlextInfraPyprojectModernizerDocument:
             doc = state.document
             self._sync_document_values(doc, state.payload)
         else:
-            doc = u.Cli.toml_document_from_mapping(state.payload)
-            self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
+            canonical = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.Cli.json_sort_keys(dict(state.payload)),
+            )
+            preferred = {
+                key: canonical[key]
+                for key in self.tomlsort_sort_first
+                if key in canonical
+            }
+            doc = u.Cli.toml_document_from_mapping({**preferred, **canonical})
         rendered = doc.as_string()
         comment_changes: t.StrSequence = ()
         if not skip_comments:

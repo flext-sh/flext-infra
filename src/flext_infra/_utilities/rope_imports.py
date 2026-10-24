@@ -23,6 +23,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSource,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 from flext_infra._utilities.rope_runtime_modules import (
@@ -38,6 +40,8 @@ class FlextInfraUtilitiesRopeImports:
         cls,
         project: p.Infra.RopeProject,
         source: str,
+        *,
+        resource: p.Infra.RopeResource | None = None,
     ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
         """Collect declared imports from Rope's parsed tree in source order.
 
@@ -48,6 +52,7 @@ class FlextInfraUtilitiesRopeImports:
         Args:
             project: The Rope project instance.
             source: The source code to analyze.
+            resource: The source owner, including for projected source bytes.
 
         Returns:
             A tuple of Rope import statements found in the source.
@@ -59,7 +64,7 @@ class FlextInfraUtilitiesRopeImports:
         # AST columns are UTF-8 byte offsets; index the source once for every import.
         source_lines = source.encode(c.DEFAULT_ENCODING).splitlines(keepends=True)
         statements: list[p.Infra.RopeImportStatement] = []
-        for node in cls._source_import_nodes(project, source):
+        for node in cls._source_import_nodes(project, source, resource=resource):
             if node.end_lineno is None or node.end_col_offset is None:
                 msg = "Rope import declaration has no complete source span"
                 raise ValueError(msg)
@@ -92,8 +97,13 @@ class FlextInfraUtilitiesRopeImports:
         cls,
         project: p.Infra.RopeProject,
         source: str,
+        *,
+        resource: p.Infra.RopeResource | None = None,
     ) -> t.VariadicTuple[t.Pair[str | None, t.StrSequence]]:
         """Collect each declared import's module and imported names in order.
+
+        The optional resource identifies the owner; the supplied source remains
+        authoritative even when its planned bytes differ from the physical file.
 
         Returns:
             One ``(module, names)`` pair per import statement; ``module`` keeps
@@ -107,13 +117,15 @@ class FlextInfraUtilitiesRopeImports:
                 else None,
                 tuple(alias.name for alias in node.names),
             )
-            for node in cls._source_import_nodes(project, source)
+            for node in cls._source_import_nodes(project, source, resource=resource)
         )
 
     @staticmethod
     def _source_import_nodes(
         project: p.Infra.RopeProject,
         source: str,
+        *,
+        resource: p.Infra.RopeResource | None = None,
     ) -> t.SequenceOf[t.Infra.PythonImportNode]:
         """Collect import nodes from Rope's parsed tree in source order.
 
@@ -130,6 +142,7 @@ class FlextInfraUtilitiesRopeImports:
         tree = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
+            resource=resource,
         ).get_ast()
         if not isinstance(tree, ast.AST):
             msg = "Rope import inventory requires a native syntax tree"

@@ -57,7 +57,7 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
                     f"generated {c.Infra.MARKDOWNLINT_CONFIG_FILENAME} is absent: "
                     f"{config_path}; run make gen"
                 ),
-                passed=False,
+                ctx=ctx,
                 started=time.monotonic(),
             )
         return super().check(project_dir, ctx)

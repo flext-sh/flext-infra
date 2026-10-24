@@ -19,24 +19,20 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportFacades,
-    FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
+from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
 from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverClassScope,
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverNestingCst,
     FlextInfraUtilitiesSemanticCutoverNestingOwner,
     FlextInfraUtilitiesSemanticFamilyFlatten,
-)
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
-    FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities._semantic_cutover.test_helpers import (
     FlextInfraUtilitiesSemanticTestHelpers,
 )
 
@@ -183,6 +179,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         file_path: Path,
         tree: ast.Module,
         policy: m.Infra.NamespaceModulePolicy,
+        *,
+        singleton: str | None,
     ) -> frozenset[str]:
         """Preserve policy-owned native aliases and Python's export protocol.
 
@@ -206,9 +204,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             module.source_code,
         )
         aliases: set[str] = set()
-        singleton = FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
-            file_path.name
-        )
         for node in tree.body:
             target, value = (
                 FlextInfraUtilitiesPrivateImportFacades.assigned_target_value(node)
@@ -441,7 +436,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 for base in ancestry
             ):
                 model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
-                if model is not None and model.get_object() in ancestry:
+                if model.get_object() in ancestry:
                     entities.add(name)
             if (
                 payloads.protocol_declaration(
@@ -502,12 +497,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     @classmethod
     def _class_nesting_definitions(
         cls,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
+        convention: m.Infra.RopeModuleConvention,
         source: str,
         *,
         project: p.Infra.RopeProject,
         pytest_patterns: t.Triple[t.StrTuple, t.StrTuple, t.StrTuple],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.StrMapping]:
         """Map each loose top-level class to the owner Rope's module policy elects.
 
@@ -516,7 +511,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         """
         planned = r[t.StrMapping]
-        convention = rope_workspace.convention(file_path)
+        file_path = convention.file_path
         if file_path.name == c.Infra.INIT_PY:
             return planned.ok({})
         tree = ast.parse(source, filename=str(file_path))
@@ -526,7 +521,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         test_module = any(
             fnmatch(file_path.name, pattern) for pattern in pytest_patterns[0]
         )
-        members = cls._nesting_module_members(project, file_path, tree, convention)
+        members = cls._nesting_module_members(
+            project, file_path, tree, convention, codegen
+        )
         if members.failure:
             return planned.from_failure(members)
         loose = members.value
@@ -595,10 +592,23 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         file_path: Path,
         tree: ast.Module,
         convention: m.Infra.RopeModuleConvention,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.StrTuple]:
         planned = r[t.StrTuple]
         canonical = cls._canonical_module_bindings(
-            project, file_path, tree, convention.module_policy
+            project,
+            file_path,
+            tree,
+            convention.module_policy,
+            singleton=FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
+                file_path.name,
+                project_name=(
+                    convention.project_layout.project_name
+                    if convention.project_layout is not None
+                    else ""
+                ),
+                codegen=codegen,
+            ),
         )
         # Collect syntax before admitting canonical native bindings.
         loose = tuple(
@@ -793,7 +803,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 f"{', '.join(sorted(blocked))}",
             )
         owner_node = classes.get(owner)
-        occupied = (
+        occupied: frozenset[str] = (
             frozenset(
                 name for node in owner_node.body for name in cls._scope_bindings(node)
             )
@@ -944,7 +954,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         declaration: ast.ClassDef,
         replacement: str,
     ) -> p.Infra.RopePyName:
-        pending = [module.get_scope()]
+        pending: list[p.Infra.RopeScope] = [module.get_scope()]
         defining: p.Infra.RopeScope | None = None
         while pending:
             scope = pending.pop()
@@ -1225,6 +1235,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose helper promotion, family flattening, and orphan nesting.
 
@@ -1260,7 +1271,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         prefixed = cls._test_prefix_edits(rope_workspace, proposed)
         for edit in prefixed:
             proposed[edit.file_path] = edit.updated_source
-        nested = cls._plan_orphan_nesting(rope_workspace, proposed)
+        nested = cls._plan_orphan_nesting(rope_workspace, proposed, codegen)
         if nested.failure:
             return planned.from_failure(nested)
         for edit in (*consolidated, *flattened, *prefixed, *nested.value):
@@ -1276,7 +1287,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 else edit.changes,
             )
             proposed[edit.file_path] = edit.updated_source
-        for edit in cls._test_registration_edits(rope_workspace, proposed):
+        for edit in cls._test_registration_edits(rope_workspace, proposed, codegen):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
@@ -1295,6 +1306,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Publish already class-owned plugins as well as newly nested declarations.
 
@@ -1341,11 +1353,21 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     else frozenset(),
                 )
                 final_tree = ast.parse(updated)
+                convention = workspace.convention(path)
                 canonical = cls._canonical_module_bindings(
                     project,
                     path,
                     final_tree,
-                    workspace.convention(path).module_policy,
+                    convention.module_policy,
+                    singleton=FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
+                        path.name,
+                        project_name=(
+                            convention.project_layout.project_name
+                            if convention.project_layout is not None
+                            else ""
+                        ),
+                        codegen=codegen,
+                    ),
                 )
                 outside = tuple(
                     type(node).__name__
@@ -1523,7 +1545,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
         target = owner.get_attribute(site.namespace.name).get_object()
         destinations = [
-            base for base in target.get_superclasses() if base.get_name() == child.name
+            base
+            for base in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+                target, site.namespace.name
+            ).get_superclasses()
+            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
+            and base.get_name() == child.name
         ]
         if len(destinations) != 1:
             return
@@ -1569,11 +1596,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 outside the editable inventory, or is already occupied.
 
         """
-        if destination.get_scope() is None:
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(destination):
             msg = "namespace declaration owner has no source scope"
             raise ValueError(msg)
         module = destination.get_module()
-        if module is None or (destination_resource := module.get_resource()) is None:
+        if (destination_resource := module.get_resource()) is None:
             msg = "namespace declaration owner has no module resource"
             raise ValueError(msg)
         destination_path = Path(destination_resource.real_path).resolve()
@@ -1754,6 +1781,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan all structural nesting and consumer rewrites without effects.
 
@@ -1785,10 +1813,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         def definitions_for(item: t.Pair[Path, str]) -> p.Result[t.StrMapping]:
             try:
                 return cls._class_nesting_definitions(
-                    rope_workspace,
-                    *item,
+                    rope_workspace.convention(item[0]),
+                    item[1],
                     project=project,
                     pytest_patterns=pytest_patterns,
+                    codegen=codegen,
                 )
             except Exception:
                 traceback.print_exc()
@@ -1799,7 +1828,18 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             project.close()
             return planned_edits.from_failure(planned)
         definitions_by_file = {
-            path: definitions
+            path: cls._nesting_declaration_destinations(
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    project,
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        project.get_resource(
+                            path.relative_to(Path(project.root.real_path)).as_posix()
+                        ),
+                        path,
+                    ),
+                ),
+                definitions,
+            )
             for (path, _source), definitions in zip(owned, planned.value, strict=True)
             if definitions
         }

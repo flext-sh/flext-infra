@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, main
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.services.cli_routes import FlextInfraCliRouteService
 from tests import c, m, tm, u
 
@@ -34,7 +34,7 @@ class TestsFlextInfraCliRepositoryRootContract:
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=tmp_path,
                 state=m.Infra.CodegenConformState(
                     repository_root=tmp_path,
@@ -56,7 +56,7 @@ class TestsFlextInfraCliRepositoryRootContract:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("group", "command", "generated_command"),
+        ("group", c.HandlerMode.COMMAND, "generated_command"),
         [
             (c.Infra.CLI_GROUP_CHECK, c.Infra.VERB_RUN, c.Infra.VERB_RUN),
             (c.Infra.CLI_GROUP_DEPS, "modernize", "modernize"),

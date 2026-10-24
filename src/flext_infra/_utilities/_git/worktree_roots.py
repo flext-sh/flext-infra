@@ -10,6 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from tempfile import TemporaryFile
 
+from flext_cli import u
 from git import Git, GitCommandError
 
 from flext_infra import c, m, p, r, t
@@ -137,12 +138,15 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                         f"invalid Git submodule management declaration: {exc}",
                         exception=exc,
                     )
-                if normalized not in {"true", "false"}:
+                if normalized not in {
+                    c.ParserBooleanToken.TRUE,
+                    c.ParserBooleanToken.FALSE,
+                }:
                     error = ValueError(
                         "Git returned a noncanonical management boolean",
                     )
                     return result.fail(str(error), exception=error)
-                managed = normalized == "true"
+                managed = normalized == c.ParserBooleanToken.TRUE
             raw_layer = values.get(c.Infra.GITMODULE_LAYER_KEY)
             layer: c.Infra.MemberArchitectureLayer | None = None
             if raw_layer is not None:
@@ -230,17 +234,21 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
 
         """
         if source_project is None:
-            return Git(repository_root).config(
-                "--file",
-                str(repository_root / c.Infra.GITMODULES),
-                *arguments,
+            return u.type_adapter(str).validate_python(
+                Git(repository_root).config(
+                    "--file",
+                    str(repository_root / c.Infra.GITMODULES),
+                    *arguments,
+                ),
+                strict=True,
             )
         content = source_project.source_text(repository_root / c.Infra.GITMODULES)
         with TemporaryFile() as source:
             source.write(content.encode(c.DEFAULT_ENCODING))
             source.seek(0)
-            return Git(repository_root).config(
-                "--file", "-", *arguments, istream=source
+            return u.type_adapter(str).validate_python(
+                Git(repository_root).config("--file", "-", *arguments, istream=source),
+                strict=True,
             )
 
     @classmethod
@@ -249,6 +257,9 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         request: m.Infra.GitSubmoduleContractRequest,
     ) -> p.Result[m.Infra.GitSubmoduleDeclaration]:
         """Return the one declaration of a path that carries URL and branch.
+
+        After native path election, reuse the declaration owner's contract
+        validation without enumerating the repository a second time.
 
         Returns:
             The declaration; a missing path, URL or branch fails closed.
@@ -271,11 +282,26 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 f"Git submodule path must be declared exactly once: "
                 f"{request.member_path}",
             )
+        return cls.git_require_submodule_contract(declaration)
+
+    @staticmethod
+    def git_require_submodule_contract(
+        declaration: m.Infra.GitSubmoduleDeclaration,
+    ) -> p.Result[m.Infra.GitSubmoduleDeclaration]:
+        """Require URL and branch on an already elected native declaration.
+
+        Returns:
+            The same declaration, or its original missing URL or branch failure.
+
+        """
+        result = r[m.Infra.GitSubmoduleDeclaration]
         if not declaration.url:
-            return result.fail(f"Git submodule URL is missing: {request.member_path}")
+            return result.fail(
+                f"Git submodule URL is missing: {declaration.path.as_posix()}",
+            )
         if not declaration.branch:
             return result.fail(
-                f"Git submodule branch is missing: {request.member_path}",
+                f"Git submodule branch is missing: {declaration.path.as_posix()}",
             )
         return result.ok(declaration)
 

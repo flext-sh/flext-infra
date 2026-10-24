@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, tm, u
 
 _PROJECT_COUNT = c.Tests.GEN_PIPELINE_PROJECT_COUNT
@@ -101,7 +101,7 @@ class TestsFlextInfraCodegenPipelinePerformance:
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         result = generator.plan_files()
         tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
-        for plan in result.value.files:
+        for plan in result.value:
             if plan.desired_content is not None:
                 compile(plan.desired_content, str(plan.path), "exec")
 

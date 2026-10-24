@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
+from flext_infra.codegen import FlextInfraCodegenConformPyprojectPolicy
 from flext_infra.deps import FlextInfraEnsurePackagingPhase
 
 
@@ -103,8 +103,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         cls,
         source: str,
         render_inputs: m.Infra.CodegenRenderInputs,
-        *,
-        member_declarations: t.VariadicTuple[m.Cli.AtomicFileState] | None = None,
     ) -> p.Result[str]:
         """Conform one pyproject source under the plan's render inputs.
 
@@ -155,9 +153,62 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
             options=u.Infra.PyprojectConformOptions(
                 flext_line=flext_line.value,
-                repository_root=target.root,
-                member_declarations=member_declarations,
             ),
+        )
+
+    @staticmethod
+    def _release_product_verbs(
+        repository: m.Infra.RepositoryRef,
+    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
+        """Derive the opted-in product surface from the native release phases.
+
+        Returns:
+            One generated verb per native release phase.
+
+        """
+        return (
+            tuple(
+                m.Infra.MakeVerbSpec(
+                    name=f"release-{phase.value}",
+                    description=f"Execute the declared release {phase.value} phase.",
+                    arguments=(
+                        ("PR_TITLE",)
+                        if phase is c.Infra.ReleasePhase.PLAN
+                        else ("LANE_CHECKPOINT_REF",)
+                        if phase is c.Infra.ReleasePhase.VERSION
+                        else ("INDEX",)
+                        if phase is c.Infra.ReleasePhase.PUBLISH
+                        else ()
+                    ),
+                )
+                for phase in c.Infra.ReleasePhase
+            )
+            if repository.publishes_release
+            else ()
+        )
+
+    def _elected_extra_verbs(
+        self,
+        repository: m.Infra.RepositoryRef,
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
+        """Compose authored commands and elected product capabilities once.
+
+        Returns:
+            The merged authored, discovered and release verbs.
+
+        """
+        release_verbs = self._release_product_verbs(repository)
+        return (
+            *self._merge_extra_verbs(
+                repository.extra_verbs,
+                ()
+                if repository.script_dispatch is None
+                else self._discover_script_verbs(root),
+                frozenset(verb.name for verb in (*codegen.make.verbs, *release_verbs)),
+            ),
+            *release_verbs,
         )
 
     def make_render_context(
@@ -191,14 +242,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        extra_verbs = self._merge_extra_verbs(
-            repository.extra_verbs,
-            (
-                ()
-                if repository.script_dispatch is None
-                else self._discover_script_verbs(repository_root)
-            ),
-            frozenset(verb.name for verb in codegen.make.verbs),
+        extra_verbs = self._elected_extra_verbs(
+            repository,
+            repository_root,
+            codegen,
         )
         try:
             delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
@@ -210,10 +257,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
             )
         except ValueError as exc:
-            return r[m.Infra.MakeRenderContext].fail(str(exc))
+            return r[m.Infra.MakeRenderContext].fail(str(exc), exception=exc)
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=tooling.tools.pytest,
+                release_verbs=self._release_product_verbs(repository),
                 make=codegen.make,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
@@ -276,7 +324,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectSpec].fail(
                 f"existing pyproject is missing author email: {repository_root}",
             )
-        homepage = pep621.urls.homepage or repository.url.removesuffix(".git")
+        homepage = pep621.urls.homepage or repository.url.removesuffix(c.GIT_DIR_NAME)
         documentation = pep621.urls.documentation or homepage
         runtime_names = {
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
@@ -526,15 +574,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         project_dependencies, development_dependencies = dependencies.value
         profile = target.make_profile
         tooling_runtime = render_inputs.tooling_runtime
-        if tooling_runtime is None:
+        if tooling_runtime is None or tooling_runtime.document is None:
             return r[m.Infra.ProjectRenderContext].fail(
-                "Project rendering requires resolved tooling context",
+                "Project rendering requires resolved tooling context"
+                if tooling_runtime is None
+                else "Project rendering requires the elected tooling document",
             )
         tooling = tooling_runtime.document
-        if tooling is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                "Project rendering requires the elected tooling document",
-            )
         integration = self._integration_facts(render_inputs)
         if integration.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(integration)
@@ -576,6 +622,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 tooling=tooling,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads=workspace.beads,
+                ownership_command_prefix=codegen.toolchain.beads.ownership_command_prefix,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,
                 package_name=project.package_name,
@@ -584,6 +631,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     *packaged_data_paths.directories,
                 ),
                 packaged_data_files=packaged_data_paths.files,
+                package_config_resource=(
+                    FlextInfraEnsurePackagingPhase.config_resource(
+                        repository_root, project.package_name, planned_data_files
+                    )
+                ),
                 project_declaration_resource=(
                     FlextInfraEnsurePackagingPhase.declaration_resource(
                         package_name=project.package_name,

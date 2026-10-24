@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -127,24 +128,132 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
 
-    class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One scaffold artifact and its typed rendering owner."""
+    class ManagedFileOwnership(FlextInfraConfigModelsContract.ConfigContract):
+        """Path-independent ownership shared by declarations and planned views."""
+
+        model_config = m.ConfigDict(extra="forbid")
+
+        owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Versioned declaration or checkout-local projection"),
+        ] = "versioned"
+        policy: Annotated[
+            Literal["full", "merge"],
+            m.Field(
+                description=(
+                    "Full renders the whole file; merge keeps content outside "
+                    "the owner's declared sections"
+                ),
+            ),
+        ]
+        mode: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact permission bits owned by generated publication",
+            ),
+        ] = 0o644
+        conflict_sections: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Dotted sections rendered by the canonical owner"),
+        ] = ()
+        preserve_project_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Authored PEP 621 project keys retained on merge"),
+        ] = ()
+        overwrite_project_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="PEP 621 project keys replaced by generation"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def validate_project_key_ownership(self) -> Self:
+            """Reject keys assigned to both the author and the generator.
+
+            Returns:
+                The declaration with disjoint project-key ownership.
+
+            Raises:
+                ValueError: If project keys have competing owners.
+
+            """
+            competing = set(self.preserve_project_keys).intersection(
+                self.overwrite_project_keys,
+            )
+            if competing:
+                msg = (
+                    "project keys have competing owners: "
+                    f"{', '.join(sorted(competing))}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @m.computed_field
+        @property
+        def managed_tool_tables(self) -> t.VariadicTuple[str]:
+            """Derive tool-relative table paths from the owner's sections.
+
+            Returns:
+                The tool-relative table paths without duplicates.
+
+            """
+            return tuple(
+                dict.fromkeys(
+                    table
+                    for section in self.conflict_sections
+                    for root, _separator, table in (section.partition("."),)
+                    if root == c.Infra.TOOL and table
+                ),
+            )
+
+    class TemplateDeclarationSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Path-independent template body stored under one destination key."""
+
+        model_config = m.ConfigDict(extra="forbid")
 
         source: Annotated[
             Path | None,
-            m.Field(description="Template-root-relative source for render entries"),
+            m.Field(
+                description="Source relative to the selected template or package root",
+            ),
         ] = None
-        destination: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Tokenized repository-relative destination"),
-        ]
+        source_kind: Annotated[
+            Literal["template", "resource"],
+            m.Field(
+                description="Render a template or project the original package asset",
+            ),
+        ] = "template"
+        source_package: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Explicit original package owner of a resource declaration"
+                ),
+            ),
+        ] = None
+        source_closure: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Complete package-relative resource source closure"),
+        ] = ()
+        requires_artifacts: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Catalog destination keys required by this artifact"),
+        ] = ()
         profiles: Annotated[
             t.VariadicTuple[c.Infra.MakeProfile],
-            m.Field(description="Profiles that consume the template"),
+            m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
-        delegate: Annotated[
-            c.Infra.TemplateDelegate,
-            m.Field(description="Canonical rendering delegate"),
+        ownership: Annotated[
+            FlextInfraConfigModelsTemplates.ManagedFileOwnership | None,
+            m.Field(
+                description=(
+                    "Explicit generated-file ownership, or null for an authored "
+                    "project-creation seed"
+                ),
+            ),
         ]
         requires_release_protocol: Annotated[
             bool,
@@ -161,98 +270,223 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Whether the projection requires Beads participation"),
         ] = False
 
-        @m.model_validator(mode="after")
-        def validate_delegate_source(self) -> Self:
-            """Require a template only for the delegate that renders one.
+        @m.field_validator("source_package")
+        @classmethod
+        def validate_source_package(cls, value: str | None) -> str | None:
+            """Require a qualified Python package identity without importing it.
 
             Returns:
-                The resulting ``Self``.
+                The explicit package identity, or the own-package selection.
 
             Raises:
-                ValueError: If render delegate requires a template source; or if
-                    manifest delegate must not declare a template source.
+                ValueError: If the identity contains an invalid package component.
 
             """
-            if self.delegate == c.Infra.TemplateDelegate.RENDER:
-                if self.source is None:
-                    msg = "render delegate requires a template source"
-                    raise ValueError(msg)
-            elif self.source is not None:
-                msg = "manifest delegate must not declare a template source"
+            if value is not None and any(
+                not part.isidentifier() or iskeyword(part) for part in value.split(".")
+            ):
+                msg = f"resource source_package must be a qualified package: {value}"
+                raise ValueError(msg)
+            return value
+
+        @m.model_validator(mode="after")
+        def validate_artifact_declaration(self) -> Self:
+            """Confine paths and require an explicit render or specialized owner.
+
+            Returns:
+                The confined declaration without an ambiguous rendering route.
+
+            Raises:
+                ValueError: If an artifact escapes its root, repeats a profile,
+                    or has neither a template nor specialized merge ownership.
+
+            """
+            if self.source is not None and (
+                self.source.is_absolute()
+                or ".." in self.source.parts
+                or self.source == Path()
+            ):
+                msg = f"artifact source must be root-relative: {self.source}"
+                raise ValueError(msg)
+            if len(set(self.profiles)) != len(self.profiles):
+                msg = "artifact profiles must not repeat"
+                raise ValueError(msg)
+            if (
+                self.source_package is not None or self.source_closure
+            ) and self.source_kind != "resource":
+                msg = "source_package and source_closure require a resource declaration"
+                raise ValueError(msg)
+            full_ownership = (
+                self.ownership is not None and self.ownership.policy == "full"
+            )
+            if self.source_kind == "resource" and (
+                self.source is None
+                or self.source_package is None
+                or self.source not in self.source_closure
+                or not full_ownership
+            ):
+                msg = (
+                    "resource requires an explicit package, source closure and "
+                    "full managed ownership"
+                )
+                raise ValueError(msg)
+            if len(set(self.source_closure)) != len(self.source_closure) or any(
+                path.is_absolute() or ".." in path.parts or path == Path()
+                for path in self.source_closure
+            ):
+                msg = (
+                    "resource source closure must contain unique package-relative paths"
+                )
+                raise ValueError(msg)
+            if self.source is None and (
+                self.ownership is None or self.ownership.policy != "merge"
+            ):
+                msg = "artifact without a template requires specialized merge ownership"
+                raise ValueError(msg)
+            return self
+
+    class TemplateEntrySpec(TemplateDeclarationSpec):
+        """One validated template body with its derived destination."""
+
+        destination: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Tokenized repository-relative destination"),
+        ]
+
+        @m.model_validator(mode="after")
+        def validate_destination(self) -> Self:
+            """Confine the destination supplied by its catalog key.
+
+            Returns:
+                The entry with a repository-relative destination.
+
+            Raises:
+                ValueError: If the destination escapes the repository root.
+
+            """
+            path = Path(self.destination)
+            if path.is_absolute() or ".." in path.parts or path == Path():
+                msg = f"artifact destination must be root-relative: {path}"
                 raise ValueError(msg)
             return self
 
     class TemplatesSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """New-project scaffold root and ordered artifact declarations."""
+        """The single ordered catalog of generated artifacts and authored seeds."""
+
+        model_config = m.ConfigDict(
+            extra="forbid",
+            serialize_by_alias=True,
+            validate_by_alias=True,
+            validate_by_name=False,
+        )
 
         root: Annotated[Path, m.Field(description="Package-relative template root")]
-        entries: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec],
-            m.Field(description="Complete ordered template manifest"),
+        catalog: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                FlextInfraConfigModelsTemplates.TemplateDeclarationSpec,
+            ],
+            m.Field(
+                alias="entries",
+                description="Ordered template bodies keyed by destination",
+            ),
         ]
 
-    class ManagedFileSpec(FlextInfraConfigModelsContract.ConfigContract):
+        @property
+        def entries(
+            self,
+        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec]:
+            """Expose the existing typed consumer view without a second wire field."""
+            return tuple(
+                FlextInfraConfigModelsTemplates.TemplateEntrySpec(
+                    destination=destination,
+                    source=declaration.source,
+                    source_kind=declaration.source_kind,
+                    source_package=declaration.source_package,
+                    source_closure=declaration.source_closure,
+                    requires_artifacts=declaration.requires_artifacts,
+                    profiles=declaration.profiles,
+                    ownership=declaration.ownership,
+                    requires_release_protocol=declaration.requires_release_protocol,
+                    requires_beads=declaration.requires_beads,
+                )
+                for destination, declaration in self.catalog.items()
+            )
+
+        def required_destinations(self, destinations: frozenset[str]) -> frozenset[str]:
+            """Expand selected catalog keys through their explicit dependencies.
+
+            Returns:
+                Selected keys and their transitive artifact dependencies.
+
+            """
+            selected = set(destinations)
+            pending = list(destinations)
+            while pending:
+                destination = pending.pop()
+                declaration = self.catalog.get(destination)
+                if declaration is None:
+                    continue
+                for dependency in declaration.requires_artifacts:
+                    if dependency not in selected:
+                        selected.add(dependency)
+                        pending.append(dependency)
+            return frozenset(selected)
+
+        @m.model_validator(mode="after")
+        def validate_unique_destinations(self) -> Self:
+            """Require exactly one authoring declaration per destination.
+
+            Returns:
+                The catalog with unique destination paths.
+
+            Raises:
+                ValueError: If two declarations address the same artifact.
+
+            """
+            if self.root.is_absolute() or ".." in self.root.parts:
+                msg = f"template root must be package-relative: {self.root}"
+                raise ValueError(msg)
+            paths = tuple(Path(entry.destination) for entry in self.entries)
+            if len(set(paths)) != len(paths):
+                msg = "artifact destinations must have exactly one declaration"
+                raise ValueError(msg)
+            for destination, declaration in self.catalog.items():
+                for dependency in declaration.requires_artifacts:
+                    required = self.catalog.get(dependency)
+                    if required is None:
+                        msg = f"artifact dependency is not declared: {dependency}"
+                        raise ValueError(msg)
+                    unavailable_capability = (
+                        required.requires_beads and not declaration.requires_beads
+                    ) or (
+                        required.requires_release_protocol
+                        and not declaration.requires_release_protocol
+                    )
+                    if (
+                        not set(declaration.profiles) <= set(required.profiles)
+                        or required.ownership is None
+                        or unavailable_capability
+                    ):
+                        msg = (
+                            f"artifact dependency is not always available: {dependency}"
+                        )
+                        raise ValueError(msg)
+                    if destination in self.required_destinations(
+                        frozenset({dependency}),
+                    ):
+                        msg = f"artifact dependency cycle: {destination}"
+                        raise ValueError(msg)
+            return self
+
+    class ManagedFileSpec(ManagedFileOwnership):
         """One declared file governed by generation and tracking policy."""
 
         path: Annotated[Path, m.Field(description="Repository-relative file path")]
-        owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
-        tracking: Annotated[
-            Literal["versioned", "runtime-local"],
-            m.Field(description="Versioned declaration or checkout-local projection"),
-        ] = "versioned"
-        policy: Annotated[
-            Literal["full", "merge"],
-            m.Field(
-                description=(
-                    "Conform mutation policy: full renders the whole file; merge "
-                    "dispatches to the owner merge that keeps CUSTOM content"
-                ),
-            ),
-        ]
-        mode: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                le=0o7777,
-                strict=True,
-                description="Exact permission bits owned by generated publication",
-            ),
-        ] = 0o644
-        conflict_sections: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Dotted sections the owner renders, so a merge conflict in "
-                    "them is resolvable by re-rendering rather than by hand. A "
-                    "section the owner produces but does not declare here "
-                    "dead-ends the merge: absorbing an integration base that "
-                    "still carries the previous projection leaves a conflict "
-                    "the canonical surface cannot resolve."
-                ),
-            ),
-        ] = ()
-        preserve_project_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "CUSTOM PEP 621 [project] keys kept from the live file when "
-                    "policy is merge."
-                ),
-            ),
-        ] = ()
-        overwrite_project_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "MANAGED PEP 621 [project] keys the template overwrites. "
-                    "Must be disjoint from preserve_project_keys."
-                ),
-            ),
-        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_runtime_tracking(self) -> Self:
-            """Confine local projections and require local tracking for bindings.
+            """Confine a derived managed destination to its repository.
 
             Returns:
                 The validated artifact declaration.
@@ -269,22 +503,6 @@ class FlextInfraConfigModelsTemplates:
                 msg = f"managed artifact path must be repository-relative: {self.path}"
                 raise ValueError(msg)
             return self
-
-        @m.computed_field
-        @property
-        def managed_tool_tables(self) -> t.VariadicTuple[str]:
-            """Complete tool-relative table paths declared by the file owner.
-
-            Returns:
-                The resulting ``t.VariadicTuple[str]``.
-
-            """
-            tables: list[str] = []
-            for section in self.conflict_sections:
-                root, _separator, table = section.partition(".")
-                if root == c.Infra.TOOL and table and table not in tables:
-                    tables.append(table)
-            return tuple(tables)
 
     class GitignoreRenderContext(FlextInfraConfigModelsContract.ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""

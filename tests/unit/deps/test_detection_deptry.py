@@ -229,7 +229,9 @@ class TestsFlextInfraDepsDetectionDeptry:
 
     @staticmethod
     @pytest.mark.parametrize("with_src", [False, True])
-    def test_missing_configuration_is_a_failure(tmp_path: Path, with_src: bool) -> None:
+    def test_missing_configuration_is_a_failure(
+        tmp_path: Path, *, with_src: bool
+    ) -> None:
         """An absent declaration never becomes an empty successful report."""
         project = tmp_path / "missing-config"
         project.mkdir()

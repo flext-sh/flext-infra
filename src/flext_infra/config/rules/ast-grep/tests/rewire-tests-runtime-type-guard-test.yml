@@ -1,0 +1,14 @@
+id: rewire-tests-runtime-type-guard
+valid:
+  - tm.that(result.exception, is_=ValueError)
+  - isinstance(value, ValueError)
+  - other.matches_runtime_type(value, ValueError)
+  - matched = tm.matches_runtime_type(value, ValueError)
+  - return tm.matches_runtime_type(value, ValueError)
+  - tm.that(tm.matches_runtime_type(value, ValueError), eq=True)
+  - |
+    if tm.matches_runtime_type(value, ValueError):
+        consume(value)
+invalid:
+  - tm.matches_runtime_type(result.exception, ValueError)
+  - tm.matches_runtime_type(result.exception, m.ValidationError)

@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
-from tests import m, tm, u
+from flext_infra import config
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import p
 
 
 class TestsFlextInfraRuleCatalogCache:

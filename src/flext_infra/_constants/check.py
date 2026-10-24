@@ -11,6 +11,8 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_core import c
+
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
 
@@ -32,6 +34,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
     DEPS: ClassVar[str] = "deps"
+    RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
 
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
@@ -64,6 +67,12 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
             "pyright": ("Pyright", "https://github.com/microsoft/pyright", False, True),
         }),
         FlextInfraConstantsConfig.GateKind.INFRA: MappingProxyType({
+            RUNTIME_INTEGRITY: (
+                "Flext Runtime Integrity",
+                "internal://flext-infra/runtime-integrity",
+                False,
+                False,
+            ),
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
@@ -165,7 +174,11 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
     PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
     """Native pytest-timeout sentinel disabling per-item deadlines."""
+    PYTEST_WORKER_RESTARTS_DISABLED: ClassVar[int] = 0
+    """Native xdist sentinel prohibiting replacement of crashed workers."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
+    PYTEST_WORKER_COLLECTION_KEY: ClassVar[str] = "flext_collection_manifest"
+    """Native xdist worker-output key carrying the observed manifest as JSON."""
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
         "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
     )
@@ -258,6 +271,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Human-readable check report written beside the SARIF report."
     CHECK_REPORT_SARIF_FILENAME: ClassVar[str] = "check-report.sarif"
     "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
+    CHECK_PROFILE_FILENAME: ClassVar[str] = "check.pstats"
+    "Optional native profile of the captured checker in its invocation directory."
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )
@@ -277,14 +292,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "``rumdl fmt --check`` unified-diff header pair naming one file the "
         "formatter would rewrite; consecutive lines carry the same path."
     )
-    MARKDOWN_PY_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^```(?P<info>python\S*(?:\s+notest)?)\s*$\n(?P<code>.*?)^```\s*$",
-        re.MULTILINE | re.DOTALL,
-    )
-    (
-        "Canonical fenced-Python-block extractor; "
-        "the flext-tests markdown validator consumes the same pattern."
-    )
+    MARKDOWN_CODE_LANGUAGE: ClassVar[str] = "python"
+    "Fence language prefix (``python``, ``python3``) the embedded-code gates own."
     MARKDOWN_CODE_SOURCE_FORMAT: ClassVar[str] = "{}_b{}.py"
     "Temp-file name for one extracted block: sanitized doc path plus block index."
     MARKDOWN_CODE_SKIP_MARKER: ClassVar[str] = "notest"
@@ -440,7 +449,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "nohup",
         "xargs",
         "sudo",
-        "command",
+        c.HandlerType.COMMAND,
         "nice",
         "ionice",
         "stdbuf",

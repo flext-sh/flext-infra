@@ -1,0 +1,18 @@
+id: retire-publication-stack-unauthenticated-branch
+snapshots:
+  ? |
+    if not project.authenticated_sources:
+        snapshot = fallback()
+    else:
+        snapshot = read()
+  : fixed: |
+      snapshot = read()
+    labels:
+    - source: |-
+        if not project.authenticated_sources:
+            snapshot = fallback()
+        else:
+            snapshot = read()
+      style: primary
+      start: 0
+      end: 91

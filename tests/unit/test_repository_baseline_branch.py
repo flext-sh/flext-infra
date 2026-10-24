@@ -61,8 +61,7 @@ class TestsFlextInfraRepositoryBaselineBranch:
             declared_branch=declared,
         )
 
-        tm.ok(resolved)
-        tm.that(resolved.value, eq=declared)
+        tm.ok(resolved, eq=declared)
 
     @staticmethod
     def test_baseline_fails_loud_without_the_declared_line(

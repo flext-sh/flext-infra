@@ -11,9 +11,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_core import m
+from flext_core import c, m
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
@@ -68,6 +68,13 @@ class FlextInfraModelsMiseToolchain:
     class BeadsToolSpec(FlextInfraModelsMiseToolchainBase):
         """Beads ledger and Gas City projection contract."""
 
+        ownership_command_prefix: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Public ownership command projected into each repository",
+            ),
+        ]
         endpoint_origin: Annotated[
             Literal["inherited_city"],
             m.Field(description="Gas City-owned endpoint inheritance mode"),
@@ -211,7 +218,7 @@ class FlextInfraModelsMiseToolchain:
                 )
                 raise ValueError(msg)
             # A malformed expression raises re.PatternError unchanged here.
-            re.compile(self.pattern.replace(placeholder, "0"))
+            re.compile(self.pattern.replace(placeholder, c.ParserBooleanToken.ZERO))
             if self.tool is not None and not self.resources:
                 msg_0 = "external version probes require installed resources"
                 raise ValueError(msg_0)
@@ -524,25 +531,23 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = True
         mise_provenance_api_failures_fatal: Annotated[
-            bool,
+            Literal[True],
             m.Field(
                 description=(
                     "Rendered as [settings] provenance_api_failures_fatal. "
-                    "Keep false: third-party manifest releases (jscpd, qlty) "
-                    "publish no SLSA attestations, so treating provenance API "
-                    "and attestation-absence failures as fatal would block "
-                    "every lock; release checksums still enforce integrity."
+                    "API failures must remain fatal. Native attestation absence "
+                    "is a distinct result, not an API-failure waiver."
                 ),
             ),
-        ] = False
+        ] = True
         mise_locked_verify_provenance: Annotated[
             bool,
             m.Field(
                 description=(
                     "Rendered as [settings] locked_verify_provenance. "
-                    "Keep false while manifest releases lack attestations; "
-                    "flip true once every pinned release publishes SLSA "
-                    "attestations."
+                    "Locked installation may consume the existing lock and "
+                    "checksums without requerying provenance. Lock-time "
+                    "provenance handling remains independent."
                 ),
             ),
         ] = False
@@ -682,15 +687,6 @@ class FlextInfraModelsMiseToolchain:
 
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
-
-        @m.computed_field
-        @property
-        def mise_platforms_by_host(self) -> t.MappingKV[str, str]:
-            """Project the canonical host identities into shell case keys."""
-            return {
-                f"{system}/{machine}": platform
-                for (system, machine), platform in c.Infra.MISE_PLATFORM_BY_HOST.items()
-            }
 
         @m.computed_field
         @property

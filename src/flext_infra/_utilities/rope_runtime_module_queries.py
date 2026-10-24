@@ -44,6 +44,29 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             )
         )
 
+    @staticmethod
+    def native_election(project: p.Infra.RopeProject) -> p.Infra.RopeProjectElection:
+        """Capture the installed native resolver's elected source identities.
+
+        Returns:
+            The original source, extension and interpreter search election.
+
+        """
+        return m.Infra.RopeProjectElection(
+            source_folders=tuple(
+                folder.path for folder in project.get_source_folders()
+            ),
+            ignored_resources=tuple(sorted(config.Infra.codegen.source_scan_ignored)),
+            extension_modules=FlextInfraUtilitiesRopeRuntimeModuleQueries.extension_module_names(
+                project
+            ),
+            python_path_folders=tuple(
+                folder.real_path
+                for folder in project.get_python_path_folders()
+                if folder.is_folder()
+            ),
+        )
+
     @classmethod
     def from_import(
         cls,
@@ -357,168 +380,86 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
         *,
-        captured: p.Infra.CodemodSourceEpoch | None = None,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
-        """Capture a complete identity graph with proposed sources authoritative.
+        """Open a Rope view of the live tree with proposed sources overlaid.
 
-        Unchanged dependencies are captured once before graph construction;
-        subsequent imports and MRO resolution only read that closed inventory.
-        Governed project-root entry modules (e.g. conftest.py) are real project
-        resources outside every source folder; they join the closed inventory
-        from disk so consumer rewrites still resolve inside the snapshot.
+        ``sources`` are authoritative; ``declared_files`` contribute only the
+        paths ``sources`` does not name.
 
         Returns:
-            The resulting ``p.Infra.RopeProject``.
+            The overlaid project; the caller owns closing it.
 
         Raises:
-            TypeError: If Rope project owner does not expose snapshot construction; or
-                if Rope snapshot does not satisfy its project contract.
-            ValueError: If Rope proposed source is outside its input inventory.
+            ValueError: If a proposed source escapes the project.
 
         """
-        inventory = (
-            {
-                Path(resource.real_path).resolve(): resource.read()
-                for resource in project.get_python_files()
-            }
-            if captured is None
-            else dict(captured.sources)
-        )
-        contents = (
-            {path: source.encode("utf-8") for path, source in inventory.items()}
-            if captured is None
-            else dict(captured.contents)
-        )
-        captured_paths = (
-            frozenset(state.path for state in captured.snapshot.states)
-            if captured is not None
-            else frozenset()
-        )
         root = Path(project.root.real_path).resolve()
-        declared: t.MutableMappingKV[Path, str] = {}
-        for plan in declared_files:
-            path, content = cls.snapshot_destination(root, plan)
-            proposed = content.decode("utf-8")
-            if path in declared and declared[path] != proposed:
-                msg = f"Rope virtual destination declarations disagree: {path}"
-                raise ValueError(msg)
-            declared[path] = proposed
-            inventory[path] = proposed
-            contents[path] = content
+        declared = {plan.path.resolve(): plan for plan in declared_files}
         for path, source in sources.items():
             resolved = path.resolve()
-            if resolved in declared and declared[resolved] != source:
-                msg = f"Rope virtual destination source disagrees with its plan: {path}"
+            content = source.encode("utf-8")
+            declared.pop(resolved, None)
+            before = project.source_state(resolved, required=False)
+            if before.content == content:
+                continue
+            if not resolved.is_relative_to(root):
+                msg = f"Rope proposed source is outside its project: {path}"
                 raise ValueError(msg)
-            if resolved not in inventory:
-                if captured is not None:
-                    if resolved not in captured_paths:
-                        msg = f"Rope proposed source is outside its input inventory: {path}"
-                        raise ValueError(msg)
-                else:
-                    inventory[resolved] = cls._snapshot_resource_source(
-                        project,
-                        root,
-                        resolved,
-                    )
-            if resolved not in contents or inventory[resolved] != source:
-                contents[resolved] = source.encode("utf-8")
-            inventory[resolved] = source
+            declared[resolved] = m.Infra.CodegenFilePlan(
+                project=root,
+                path=resolved,
+                before=before,
+                desired_content=content,
+                desired_mode=(
+                    before.mode
+                    if before.mode is not None
+                    else config.Infra.codegen.modes.file_default
+                ),
+            )
+        return cls.planned_project(
+            project,
+            election=cls.native_election(project),
+            declared_files=tuple(declared.values()),
+        )
+
+    @classmethod
+    def planned_project(
+        cls,
+        live: p.Infra.RopeProject,
+        *,
+        election: p.Infra.RopeProjectElection,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        additional_source_folders: tuple[str, ...] = (),
+    ) -> p.Infra.RopeProject:
+        """Open the overlay project owner over ``live`` with planned file effects.
+
+        Returns:
+            The overlaid project admitted at its project contract; the caller
+            owns closing it.
+
+        Raises:
+            TypeError: If the Rope project owner violates its contract.
+
+        """
         owner = cls.runtime_type(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
         )
-        factory = getattr(owner, "from_snapshot", None)
+        factory = getattr(owner, "from_atomic_reads", None)
         if not callable(factory):
-            msg = "Rope project owner does not expose snapshot construction"
+            msg = "Rope project owner does not expose overlay construction"
             raise TypeError(msg)
         snapshot = factory(
-            project.root.real_path,
-            contents,
-            m.Infra.RopeProjectElection(
-                source_folders=tuple(
-                    folder.path for folder in project.get_source_folders()
-                ),
-                ignored_resources=tuple(
-                    sorted(config.Infra.codegen.source_scan_ignored)
-                ),
-                extension_modules=cls.extension_module_names(project),
-                python_path_folders=tuple(
-                    folder.real_path
-                    for folder in project.get_python_path_folders()
-                    if folder.is_folder()
-                ),
-            ),
+            live,
+            election=election,
+            declared_files=declared_files,
+            additional_source_folders=additional_source_folders,
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"
             raise TypeError(msg)
         return snapshot
-
-    @staticmethod
-    def snapshot_destination(
-        root: Path,
-        plan: m.Infra.CodegenFilePlan,
-    ) -> t.Pair[Path, bytes]:
-        """Authenticate the original absence witness of one virtual destination.
-
-        Returns:
-            Its physical destination and exact declared bytes.
-
-        Raises:
-            ValueError: If the destination is foreign or its absence witness changed.
-
-        """
-        path = plan.path.resolve()
-        if not path.is_relative_to(root) or plan.desired_content is None:
-            msg = f"Rope virtual destination is not a declared source: {path}"
-            raise ValueError(msg)
-        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
-            directory_state = u.Cli.atomic_plan_directory_chain(
-                plan.before.target,
-            ).unwrap()
-            if directory_state != plan.before:
-                msg = f"Rope virtual destination parent changed: {path}"
-                raise ValueError(msg)
-        else:
-            file_state = u.Cli.atomic_read_binary_file_state(
-                path,
-                required=False,
-            ).unwrap()
-            if file_state != plan.before or file_state.content is not None:
-                msg = f"Rope virtual destination changed or already exists: {path}"
-                raise ValueError(msg)
-        return path, plan.desired_content
-
-    @staticmethod
-    def _snapshot_resource_source(
-        project: p.Infra.RopeProject,
-        root: Path,
-        path: Path,
-    ) -> str:
-        """Read an actual root-owned source absent from the uncaptured inventory.
-
-        Returns:
-            The native physical resource's original source.
-
-        Raises:
-            ValueError: If the proposed source lies outside the physical inventory.
-
-        """
-        try:
-            relative = path.relative_to(root)
-        except ValueError as error:
-            msg = f"Rope proposed source is outside its input inventory: {path}"
-            raise ValueError(msg) from error
-        resource = project.get_resource(relative.as_posix())
-        if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource):
-            msg = f"Rope proposed source is outside its input inventory: {path}"
-            raise ValueError(msg)
-        if not Path(resource.real_path).is_file():
-            msg = f"Rope proposed source is outside its input inventory: {path}"
-            raise ValueError(msg)
-        return resource.read()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeModuleQueries"]

@@ -303,12 +303,10 @@ class FlextInfraModelsCore:
                 "Whether this phase acquired its Testmon lease; absent for coverage"
             ),
         )
-        deadline_monotonic: float | None = m.Field(
+        deadline_monotonic: float = m.Field(
             gt=0,
-            description=(
-                "Shared absolute deadline across all execution phases; absent "
-                "for the unbounded full operation"
-            ),
+            allow_inf_nan=False,
+            description="Shared absolute deadline across all execution phases",
         )
         report_directory: Path | None = m.Field(
             default=None,
@@ -388,8 +386,9 @@ class FlextInfraModelsCore:
 
             Raises:
                 ValueError: If WarningMessage requires category, filename, lineno and
-                    message; or if TestReport requires nodeid, a runtest phase and
-                    outcome; or if CollectReport requires nodeid and outcome.
+                    message; or if TestReport lacks a node ID and a native runtest
+                    or failed worker-crash phase; or if CollectReport requires
+                    nodeid and outcome.
 
             """
             if self.report_type == "WarningMessage" and any(
@@ -400,10 +399,16 @@ class FlextInfraModelsCore:
                 raise ValueError(msg)
             if self.report_type == "TestReport" and (
                 not self.nodeid
-                or self.when not in {"setup", "call", "teardown"}
+                or not (
+                    self.when in {"setup", "call", "teardown"}
+                    or (self.when == "???" and self.outcome == "failed")
+                )
                 or self.outcome is None
             ):
-                msg = "TestReport requires nodeid, a runtest phase and outcome"
+                msg = (
+                    "TestReport requires nodeid, a runtest or failed worker-crash "
+                    "phase and outcome"
+                )
                 raise ValueError(msg)
             if self.report_type == "CollectReport" and (
                 self.nodeid is None or self.outcome is None
@@ -428,12 +433,28 @@ class FlextInfraModelsCore:
         """One observed pytest lifecycle phase, never inferred from selection."""
 
         node_id: t.NonEmptyStr = m.Field(description="Actual TestReport node ID")
-        phase: Literal["setup", "call", "teardown"] = m.Field(
+        phase: Literal["setup", "call", "teardown", "???"] = m.Field(
             description="Observed public pytest runtest phase",
         )
         outcome: Literal["passed", "failed", "skipped"] = m.Field(
             description="Unmodified TestReport outcome",
         )
+
+        @m.model_validator(mode="after")
+        def require_failed_worker_crash(self) -> Self:
+            """Keep the native worker-crash phase restricted to failure.
+
+            Returns:
+                The unchanged observed outcome.
+
+            Raises:
+                ValueError: If the native worker-crash phase is not failed.
+
+            """
+            if self.phase == "???" and self.outcome != "failed":
+                msg = "the native worker-crash phase requires a failed outcome"
+                raise ValueError(msg)
+            return self
 
     class PytestDiagnostics(m.ArbitraryTypesModel):
         """Extracted diagnostics summary from JUnit XML and pytest report-log."""

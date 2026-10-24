@@ -39,7 +39,7 @@ class TestsWorkspaceOperationReceipts:
         tm.that(restored, eq=report)
         tm.fail(restored.receipts[0].executed)
         tm.that(restored.receipts[0].outcome, eq=None)
-        tm.fail(restored.receipts[0].completed)
+        tm.that(restored.receipts[0].completed, eq=False)
         tm.that(
             projected.receipts[0].native_tool_qualifications,
             eq=receipt.native_tool_qualifications,

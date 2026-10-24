@@ -6,23 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor import (
-    FlextInfraProjectClassifierDepsMixin,
-    FlextInfraProjectClassifierFamilyMixin,
-)
+from flext_infra.refactor import FlextInfraProjectClassifierFamilyMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraProjectClassifier(
-    FlextInfraProjectClassifierDepsMixin,
-    FlextInfraProjectClassifierFamilyMixin,
-):
+class FlextInfraProjectClassifier(FlextInfraProjectClassifierFamilyMixin):
     """Classify a project by kind and discover FLEXT family chains."""
 
     def __init__(
@@ -108,24 +101,6 @@ class FlextInfraProjectClassifier(
             dependencies=dependencies,
         )
         return (project_name, dependencies)
-
-    @override
-    def _as_mapping(
-        self,
-        raw_value: t.JsonValue | None,
-    ) -> t.MappingKV[str, t.JsonValue]:
-        """As mapping.
-
-        Returns:
-            The resulting ``t.MappingKV[str, t.JsonValue]``.
-
-        """
-        if isinstance(raw_value, Mapping):
-            validated: t.MappingKV[str, t.JsonValue] = (
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
-            )
-            return validated
-        return {}
 
     def _normalized_name_from_mapping(
         self,

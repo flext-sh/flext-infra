@@ -21,12 +21,31 @@ class FlextInfraWorkspaceCheckReportsMixin:
     """
 
     @staticmethod
+    def _project_summary(
+        summary: m.Infra.CheckReportSummary,
+        target: m.Infra.CheckProjectTarget,
+    ) -> m.Infra.CheckReportSummary:
+        """Bind one exact target to its ordered result before judging completeness.
+
+        Returns:
+            The target's requested inventory with only its reached executions.
+
+        """
+        position = summary.targets.index(target)
+        return summary.model_copy(
+            update={
+                "targets": (target,),
+                "results": summary.results[position : position + 1],
+            },
+        )
+
+    @classmethod
     def _generate_markdown(
-        results: t.SequenceOf[m.Infra.ProjectResult],
-        gates: t.StrSequence,
+        cls,
+        summary: m.Infra.CheckReportSummary,
         timestamp: str,
     ) -> str:
-        """Render markdown check report from project gate results.
+        """Render reached results and missing executions from one typed inventory.
 
         Returns:
             The resulting ``str``.
@@ -36,24 +55,57 @@ class FlextInfraWorkspaceCheckReportsMixin:
             "# Workspace Check Report",
             "",
             f"Generated: {timestamp}",
-            f"Projects: {len(results)}",
+            f"Execution: {'COMPLETE' if summary.complete else 'INCOMPLETE'}",
+            f"Projects reached: {len(summary.results)}/{len(summary.targets)}",
             "",
             "## Summary",
             "",
             "| Project | Status | Findings |",
             "|---|---:|---:|",
         ]
-        for project in results:
-            status = "PASS" if project.passed else "FAIL"
-            lines.append(f"| {project.project} | {status} | {project.total_findings} |")
+        for target in summary.targets:
+            project_summary = cls._project_summary(summary, target)
+            project = (
+                project_summary.results[0]
+                if len(project_summary.results) == 1
+                else None
+            )
+            status = (
+                "INCOMPLETE"
+                if not project_summary.complete
+                else "PASS"
+                if project is not None and project.passed
+                else "FAIL"
+            )
+            findings = (
+                str(project.total_findings) if project is not None else "unrecorded"
+            )
+            lines.append(f"| {target.name} | {status} | {findings} |")
         lines.extend(["", "## Details", ""])
-        for project in results:
-            lines.append(f"### {project.project}")
-            for gate in gates:
-                execution = project.gates.get(gate)
+        for target in summary.targets:
+            project_summary = cls._project_summary(summary, target)
+            project = (
+                project_summary.results[0]
+                if len(project_summary.results) == 1
+                else None
+            )
+            lines.extend([f"### {target.name}", f"Root: `{target.path}`"])
+            if not target.applicable_gates:
+                lines.append("- INCOMPLETE: no applicable gate inventory was recorded")
+            for gate in target.applicable_gates:
+                execution = project.gates.get(gate) if project is not None else None
                 if execution is None:
+                    lines.append(
+                        f"- {gate}: NOT COMPLETED (no completed execution receipt)",
+                    )
                     continue
-                gate_status = "PASS" if execution.result.passed else "FAIL"
+                gate_status = (
+                    "INCOMPLETE"
+                    if not execution.complete
+                    else "PASS"
+                    if execution.result.passed
+                    else "FAIL"
+                )
                 lines.append(
                     f"- {gate}: {gate_status} ({len(execution.issues)} issues)",
                 )
@@ -69,12 +121,28 @@ class FlextInfraWorkspaceCheckReportsMixin:
             lines.append("")
         return "\n".join(lines)
 
+    @staticmethod
+    def _publish_invocation_summary(
+        summary: m.Infra.CheckReportSummary,
+        before: m.Cli.AtomicFileState,
+    ) -> m.Cli.AtomicFileState:
+        """Advance this invocation's exact report target from its read state.
+
+        Returns:
+            The state of the report that was just written.
+
+        """
+        u.Cli.atomic_write_text_file_guarded(
+            before, summary.model_dump_json(round_trip=True) + "\n"
+        ).unwrap()
+        return u.Cli.atomic_read_binary_file_state(before.path, required=True).unwrap()
+
     @classmethod
     def _generate_sarif(
         cls,
         results: t.SequenceOf[m.Infra.ProjectResult],
         gates: t.StrSequence,
-        summary: m.Infra.CheckReportSummary | None = None,
+        summary: m.Infra.CheckReportSummary,
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results.
 
@@ -89,7 +157,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 execution = project.gates.get(gate)
                 if execution is None:
                     continue
-                tool_name, tool_url = c.Infra.SARIF_TOOL_INFO[gate]
+                tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(
+                    gate, (gate, f"internal://project-check/{gate}")
+                )
                 for issue in execution.issues:
                     rule_id = issue.code or gate
                     rules_by_id.setdefault(
@@ -145,44 +215,53 @@ class FlextInfraWorkspaceCheckReportsMixin:
         })
 
     @classmethod
-    def _write_reports_and_summary(
+    def _write_reports(
         cls,
-        resolved_gates: t.StrSequence,
         report_base: Path,
-        outcome: p.Infra.WorkspaceLoopOutcome,
         summary: m.Infra.CheckReportSummary,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
-        """Write markdown/SARIF reports and print summary to output.
+    ) -> p.Result[bool]:
+        """Publish this invocation's Markdown and SARIF without console repetition.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectResult]]``.
+            Success after both current aggregate reports have been published.
 
         """
-        results = outcome.results
         timestamp = u.now().strftime("%Y-%m-%d %H:%M:%S %Z")
         md_path = report_base / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         md_write_result = u.Cli.atomic_write_text_file(
             md_path,
-            FlextInfraWorkspaceCheckReportsMixin._generate_markdown(
-                results,
-                resolved_gates,
-                timestamp,
-            ),
+            cls._generate_markdown(summary, timestamp),
         )
         if md_write_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(md_write_result)
+            return r[bool].from_failure(md_write_result)
         sarif_path = report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME
-        sarif_report = cls._generate_sarif(results, resolved_gates, summary)
+        sarif_report = cls._generate_sarif(
+            summary.results, summary.requested_gates, summary
+        )
         sarif_write_result = u.Cli.atomic_write_text_file(
             sarif_path,
             sarif_report.model_dump_json(indent=2, round_trip=True),
         )
         if sarif_write_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(
-                sarif_write_result,
-            )
+            return r[bool].from_failure(sarif_write_result)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _print_summary(
+        cls,
+        report_base: Path,
+        outcome: p.Infra.WorkspaceLoopOutcome,
+        summary: m.Infra.CheckReportSummary,
+    ) -> None:
+        """Print the terminal summary once, without republishing unchanged reports."""
+        results = outcome.results
         total_findings = sum(project.total_findings for project in results)
-        success = len(results) - outcome.failed
+        success = sum(
+            project_summary.complete
+            and all(project.passed for project in project_summary.results)
+            for target in summary.targets
+            for project_summary in (cls._project_summary(summary, target),)
+        )
         u.Cli.summary(
             m.Infra.SummaryStats(
                 verb=c.Infra.VERB_CHECK,
@@ -193,8 +272,14 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 elapsed=outcome.total_elapsed,
             ),
         )
-        u.Cli.info(f"Reports: {md_path}")
-        u.Cli.info(f"         {sarif_path}")
+        if not summary.complete:
+            u.Cli.info(
+                "Execution INCOMPLETE: "
+                f"{len(results)}/{len(summary.targets)} projects reached; "
+                "see the requested gate inventory in the reports",
+            )
+        u.Cli.info(f"Reports: {report_base / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}")
+        u.Cli.info(f"         {report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         if total_findings > 0:
             u.Cli.info("Findings by project (see reports for detail):")
             for project in sorted(
@@ -206,13 +291,12 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     continue
                 breakdown = ", ".join(
                     f"{gate}={project.gates[gate].finding_count}"
-                    for gate in resolved_gates
+                    for gate in summary.requested_gates
                     if gate in project.gates and project.gates[gate].finding_count
                 )
                 u.Cli.info(
                     f"{project.project:30s} {project.total_findings:6d}  ({breakdown})",
                 )
-        return r[t.SequenceOf[m.Infra.ProjectResult]].ok(results)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceCheckReportsMixin"]

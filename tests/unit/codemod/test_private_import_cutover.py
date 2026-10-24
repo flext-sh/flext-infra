@@ -24,17 +24,29 @@ class TestsFlextInfraPrivateImportCutover(
 ):
     """Exercise installed and declared re-export cutovers only through ``u.Infra``."""
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("example_path", "consumer"),
         [
             (
                 "flext-grpc/examples/advanced_usage.py",
                 (
-                    "from flext_grpc import c, p, t\n"
+                    "from flext_grpc import FlextGrpcModels, c, p, t\n"
+                    "from examples import ExamplesFlextGrpcTypes\n"
+                    "from examples import (c as example_c, p as example_p, "
+                    "t as example_t)\n"
                     "example = namespace['ExamplesFlextGrpcAdvancedUsage']()\n"
-                    "assert example.c is c\n"
-                    "assert example.p is p\n"
-                    "assert example.t is t\n"
+                    "assert example.c is example_c is namespace['c']\n"
+                    "assert example.p is example_p is namespace['p']\n"
+                    "assert example.t is example_t is namespace['t']\n"
+                    "assert issubclass(example_c, c)\n"
+                    "assert issubclass(example_p, p)\n"
+                    "assert issubclass(example_t, t)\n"
+                    "assert example_c is c\n"
+                    "assert example_p is p\n"
+                    "assert example_t is ExamplesFlextGrpcTypes\n"
+                    "assert t.Grpc.CompleteSetup.__value__ "
+                    "is FlextGrpcModels.Grpc.CompleteSetup\n"
                 ),
             ),
             (
@@ -52,7 +64,6 @@ class TestsFlextInfraPrivateImportCutover(
         ],
     )
     def test_workspace_examples_preserve_public_facade_runtime(
-        self,
         example_path: str,
         consumer: str,
     ) -> None:
@@ -67,10 +78,10 @@ class TestsFlextInfraPrivateImportCutover(
                     "namespace = run_path(sys.argv[1])\n" + consumer,
                     str(root / example_path),
                 ],
-                cwd=root,
+                cwd=(root / example_path).parents[1],
             ),
         )
-        tm.ok(u.Cli.process_succeeded(executed.outcome))
+        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True, msg=executed.stderr)
         tm.that(executed.stderr, eq="")
 
     def test_earlier_semantic_move_retires_stale_preflight_import(
@@ -244,7 +255,8 @@ class TestsFlextInfraPrivateImportCutover(
             tm.that(edits[0].updated_source, has="from flext_sample import c")
             tm.that(edits[0].updated_source, has="profile = c.Profile.Value")
         elif case == "shadowed":
-            tm.fail(self._plan(tmp_path, sources, consumer, statement), has=case)
+            with pytest.raises(ValueError, match="public facade alias c is shadowed"):
+                self._plan(tmp_path, sources, consumer, statement)
         else:
             with pytest.raises(ValueError, match=case):
                 self._plan(tmp_path, sources, consumer, statement)

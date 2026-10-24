@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from flext_infra import c, config
-from tests import tm, u
+from flext_infra import config
+from tests import c, tm, u
 
 
 class TestsFlextInfraLockfilePolicyProjection:

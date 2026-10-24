@@ -26,6 +26,8 @@ dependencies = [
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "gitdb>=4.0.12",
   "GitPython>=3.2.0",
+  "griffelib>=2.4.1",
+  "import-linter>=2.5",
   "jinja2>=3.1.6",
   "libcst>=1.9.0",
   "Markdown>=3.11.1",
@@ -141,12 +143,14 @@ package_name = "flext_infra"
 scan_dirs = ["src"]
 
 [tool.hatch.build.targets.wheel]
+exclude = ["/src/flext_infra/config"]
 only-include = ["src/flext_infra"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/flext_infra" = "flext_infra"
 
 [tool.hatch.build.targets.wheel.force-include]
+"src/flext_infra/config" = "flext_infra/config"
 "pyproject.toml" = "flext_infra/pyproject.toml"
 
 [tool.hatch.build.targets.sdist]
@@ -268,7 +272,6 @@ project-excludes = [
   "**/site-packages/**",
   "**/site/**",
   "**/target/**",
-  "**/typings/**",
   "**/venv/**",
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
@@ -415,7 +418,7 @@ exclude = [
   "**/venv/**",
 ]
 extraPaths = ["src", "."]
-include = ["conftest.py", "src", "tests"]
+include = ["src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportCallIssue = "error"
@@ -424,6 +427,7 @@ reportIncompatibleMethodOverride = "error"
 reportInconsistentConstructor = "error"
 reportMissingImports = "error"
 reportMissingModuleSource = "error"
+reportMissingTypeStubs = "none"
 reportPrivateUsage = "error"
 reportUnnecessaryCast = "error"
 reportUnnecessaryComparison = "error"
@@ -436,7 +440,7 @@ typeCheckingMode = "strict"
 useLibraryCodeForTypes = true
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
+extraPaths = ["src", "."]
 reportPrivateUsage = "error"
 root = "src"
 

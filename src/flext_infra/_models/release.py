@@ -12,11 +12,105 @@ from typing import Annotated, Self
 from flext_core import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsGit,
+    FlextInfraModelsMixins,
+)
 
 
 class FlextInfraModelsRelease:
     """Models for release management."""
+
+    class ReleaseOptions(m.ArbitraryTypesModel):
+        """Shared release declarations used by requests and execution."""
+
+        phase: Annotated[
+            c.Infra.ReleasePhase,
+            m.Field(description="Release phase to execute"),
+        ] = c.Infra.ReleasePhase.PLAN
+        index: Annotated[
+            bool,
+            m.Field(
+                description="Publish receipt-verified artifacts to the package index"
+            ),
+        ] = False
+        pr_title: Annotated[
+            str,
+            m.Field(description="Pull-request title to validate against the protocol"),
+        ] = ""
+        ownership: Annotated[
+            FlextInfraModelsGit.GitLaneOwnershipReceipt | None,
+            m.Field(
+                description="Authenticated integrated prior-state ownership receipt"
+            ),
+        ] = None
+
+    class ReleaseRunCommand(FlextInfraModelsBase.CommandContext, ReleaseOptions):
+        """Typed release input before native ownership and service composition."""
+
+        projects: Annotated[
+            t.StrSequence | None,
+            m.BeforeValidator(
+                lambda value: (value,) if isinstance(value, str) else value
+            ),
+            m.Field(
+                description="Projects to process",
+                json_schema_extra={"typer_param_decls": ["--project", "--projects"]},
+            ),
+        ] = None
+        checkpoint_ref: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Existing published checkpoint resolved by native Git"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _exclusive_ownership_transport(self) -> Self:
+            """Accept one explicit ownership transport without inferring proof.
+
+            Returns:
+                The validated request.
+
+            Raises:
+                ValueError: If both ownership transports are selected.
+
+            """
+            if self.checkpoint_ref is not None and self.ownership is not None:
+                msg = "checkpoint_ref and ownership are mutually exclusive"
+                raise ValueError(msg)
+            return self
+
+    class GithubReleaseAsset(m.StrictBoundaryModel):
+        """Selected native GitHub asset metadata, before publication effects."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Native asset filename")]
+        digest: Annotated[
+            str | None,
+            m.Field(default=None, description="Native digest, if available"),
+        ] = None
+        state: Annotated[t.NonEmptyStr, m.Field(description="Native upload state")]
+
+    class GithubReleaseAssets(m.StrictBoundaryModel):
+        """Complete paginated asset inventory."""
+
+        assets: Annotated[
+            t.VariadicTuple[FlextInfraModelsRelease.GithubReleaseAsset],
+            m.Field(description="All release assets across API pages"),
+        ]
+
+    class GithubReleaseIdentity(m.StrictBoundaryModel):
+        """Native release identity selected by its exact tag."""
+
+        id: Annotated[t.PositiveInt, m.Field(description="Native release identifier")]
+        tag_name: Annotated[t.NonEmptyStr, m.Field(description="Exact release tag")]
+
+    class GithubReleaseInventory(m.StrictBoundaryModel):
+        """Complete paginated releases used to distinguish absence from failure."""
+
+        releases: Annotated[
+            t.VariadicTuple[FlextInfraModelsRelease.GithubReleaseIdentity],
+            m.Field(description="All repository releases across API pages"),
+        ]
 
     class SourceSnapshot(m.StrictBoundaryModel):
         """Immutable committed source identity used by one project build."""
@@ -249,10 +343,10 @@ class FlextInfraModelsRelease:
             Raises:
                 ValueError: If build report total does not match record count; or if
                     build report failures do not match record outcomes; or if build
-                    report contains duplicate projects; or if non-dry build report
-                    contains no projects; or if failed build contains artifacts; or if
-                    dry-run build contains artifacts; or if successful build lacks wheel
-                    and sdist; or if successful build lacks source provenance.
+                    report contains duplicate projects or asset names; or if non-dry
+                    build report contains no projects; or if failed build contains
+                    artifacts; or if dry-run build contains artifacts; or if a
+                    successful build lacks wheel and sdist or source provenance.
 
             """
             if self.total != len(self.records):
@@ -263,8 +357,13 @@ class FlextInfraModelsRelease:
                 msg = "build report failures do not match record outcomes"
                 raise ValueError(msg)
             projects = tuple(record.project for record in self.records)
-            if len(projects) != len(set(projects)):
-                msg = "build report contains duplicate projects"
+            names = [
+                Path(artifact.path).name
+                for record in self.records
+                for artifact in record.artifacts
+            ]
+            if len(projects) != len(set(projects)) or len(names) != len(set(names)):
+                msg = "build report contains duplicate projects or asset names"
                 raise ValueError(msg)
             if not self.dry_run and not self.records:
                 msg = "non-dry build report contains no projects"

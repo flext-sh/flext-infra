@@ -20,6 +20,8 @@ from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
+from flext_core import c
+
 from flext_infra._constants import FlextInfraConstantsSharedInfra
 from flext_infra._constants.config import FlextInfraConstantsConfig
 
@@ -42,13 +44,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
     # closed vocabulary used by models and CLI dispatch.
-
-    @unique
-    class TemplateDelegate(StrEnum):
-        """Rendering owner for a scaffold catalog entry."""
-
-        RENDER = "render"
-        MANIFEST = "manifest"
 
     @unique
     class CodegenConformScope(StrEnum):
@@ -172,14 +167,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     ``u.Cli.toml_dot_path``; it is never written a second time.
     """
 
-    DOCS_SOURCE_STATE_RACE_MARKER: ClassVar[str] = (
-        "docs source state changed during planning"
-    )
-    """Emitted when a captured docs source changes content or physical identity."""
-    DOCS_SOURCE_TOPOLOGY_RACE_MARKER: ClassVar[str] = (
-        "docs source topology changed during planning"
-    )
-    """Emitted when the captured docs source membership changes."""
     CONFIG_SNAPSHOT_ROOT_RACE_MARKER: ClassVar[str] = (
         "project root changed during config snapshot"
     )
@@ -210,7 +197,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
     MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[t.StrMapping] = MappingProxyType({
-        "MISE_DISABLE_UPDATE_WARNING": "1",
+        "MISE_DISABLE_UPDATE_WARNING": c.ParserBooleanToken.ONE,
     })
     """Environment of the mise version-identity probes, and of nothing else.
 

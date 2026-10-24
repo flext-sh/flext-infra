@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Literal
 
-from flext_cli import m, t
+from flext_cli import c, m, t
 
 
 class FlextInfraSettingsModels:
@@ -18,14 +18,11 @@ class FlextInfraSettingsModels:
     class InfraSettings(m.BaseSettings):
         """Validated process-start settings owned by flext-infra."""
 
-        EDITABLE_SUPPLIER_ENVIRONMENT: ClassVar[str] = (
-            "FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT"
-        )
-
         # Validate every external alias before singleton export.
         model_config = m.SettingsConfigDict(
             env_prefix="",
             env_ignore_empty=True,
+            enable_decoding=False,
             case_sensitive=True,
             populate_by_name=True,
             frozen=True,
@@ -42,50 +39,21 @@ class FlextInfraSettingsModels:
             validation_alias="FLEXT_REPOSITORY_ROOT",
             description="Explicit repository root for dependency orchestration.",
         )
-        github_actions: Literal["true", "false"] | None = m.Field(
+        github_actions: (
+            Literal[c.ParserBooleanToken.TRUE, c.ParserBooleanToken.FALSE] | None
+        ) = m.Field(
             default=None,
             validation_alias="GITHUB_ACTIONS",
             description="Actual hosted-runner signal used before host-path election.",
         )
-        editable_supplier_root: Path | None = m.Field(
-            default=None,
-            validation_alias=EDITABLE_SUPPLIER_ENVIRONMENT,
-            description="External live workspace supplying editable dependencies.",
+        profile: bool = m.Field(
+            default=False,
+            validation_alias="FLEXT_INFRA_PROFILE",
+            description=(
+                "Measure generation, modification, captured checks and tests through "
+                "the shared profilers without changing operation, status or deadline."
+            ),
         )
-
-        @m.field_validator("editable_supplier_root", mode="before")
-        @classmethod
-        def _elect_editable_supplier_root(
-            cls, value: str | Path | None, info: m.ValidationInfo
-        ) -> str | Path | None:
-            """Ignore a host supplier before path parsing on the hosted runner.
-
-            Returns:
-                The local input unchanged, or no supplier for hosted execution.
-
-            """
-            if info.data is not None and info.data.get("github_actions") == "true":
-                return None
-            return value
-
-        @m.field_validator("editable_supplier_root")
-        @classmethod
-        def _validate_editable_supplier_root(cls, value: Path | None) -> Path | None:
-            """Validate the host choice once without inferring a fallback path.
-
-            Returns:
-                The physical supplier directory, or the unset selection.
-
-            Raises:
-                ValueError: If the supplied path is relative.
-
-            """
-            if value is None:
-                return None
-            if not value.is_absolute():
-                msg = "editable supplier root must be an absolute path"
-                raise ValueError(msg)
-            return value
 
         use_https: bool = m.Field(
             default=False,

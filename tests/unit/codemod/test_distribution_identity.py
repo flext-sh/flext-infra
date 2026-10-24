@@ -19,7 +19,7 @@ class TestsFlextInfraDistributionIdentity:
     @staticmethod
     def project(root: Path) -> None:
         """Provide ``project``."""
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "metadata-consumer"\ndependencies = []\n',
             encoding="utf-8",
         )

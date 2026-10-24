@@ -1,4 +1,4 @@
-"""Real formatter effects share Git capture and physical file-scope leases.
+"""Real formatter effects share one Git-scoped mutation lock.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenFileLeases
 from flext_infra.gates import FlextInfraRuffFormatGate
 from tests import c, m, tm, u
 
@@ -21,24 +20,26 @@ class TestsFlextInfraMutationLeases:
 
     @staticmethod
     @pytest.mark.parametrize("git_owned", [False, True])
-    def test_source_epoch_contains_stable_native_lease_identity(
+    def test_mutation_lock_lives_outside_the_worktree(
         tmp_path: Path,
         *,
         git_owned: bool,
     ) -> None:
-        """Prepare the owned lock before capture without hiding other members."""
+        """Every writer of one scope shares a lock that never dirties the tree."""
         root = u.Tests.git_repository(tmp_path) if git_owned else tmp_path
-        control = root / c.Infra.TRANSACTION_STATE_DIRNAME
-        journal = control / c.Infra.JOURNAL_NAME
-        lock = journal.with_name(f"{journal.name}.lock")
-        tm.ok(FlextInfraCodegenFileLeases.prepare_source_controlplanes((root,)))
-        before = tm.ok(u.Cli.atomic_inventory_physical_directory(control))
-        state = tm.ok(u.Cli.atomic_read_binary_file_state(lock, required=True))
-        tm.ok(FlextInfraCodegenFileLeases.prepare_source_controlplanes((root,)))
-        tm.that(tm.ok(u.Cli.atomic_inventory_physical_directory(control)), eq=before)
-        tm.that(tm.ok(u.Cli.atomic_read_binary_file_state(lock)), eq=state)
-        (control / "other-owner").write_text("retained", encoding=c.DEFAULT_ENCODING)
-        tm.that(tm.ok(u.Cli.atomic_inventory_physical_directory(control)), ne=before)
+        lock = tm.ok(u.Infra.mutation_lock_path(root))
+        nested = root / "nested"
+        nested.mkdir()
+        if git_owned:
+            identity = tm.ok(
+                u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+            )
+            tm.that(lock.parent, eq=Path(identity.git_dir).resolve())
+            tm.that(tm.ok(u.Infra.mutation_lock_path(nested)), eq=lock)
+        else:
+            tm.that(lock.parent, eq=root.resolve() / c.Infra.TRANSACTION_STATE_DIRNAME)
+        with u.Cli.file_changes_lock(lock):
+            tm.that(lock.parent.is_dir(), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize("git_owned", [False, True])
@@ -50,7 +51,7 @@ class TestsFlextInfraMutationLeases:
         """Test format waits for scope writer and does not apply lint."""
         root = u.Tests.git_repository(tmp_path) if git_owned else tmp_path / "files"
         root.mkdir(exist_ok=True)
-        (root / "pyproject.toml").write_text("[tool.ruff]\n", encoding="utf-8")
+        (root / c.PYPROJECT_FILENAME).write_text("[tool.ruff]\n", encoding="utf-8")
         source = root / "src"
         source.mkdir()
         target = source / "sample.py"
@@ -63,7 +64,7 @@ class TestsFlextInfraMutationLeases:
             apply_fixes=True,
         )
         with ThreadPoolExecutor(max_workers=1) as pool:
-            with FlextInfraCodegenFileLeases.mutation_lease(root):
+            with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
                 applied = pool.submit(gate.fix, root, context)
                 with pytest.raises(TimeoutError):
                     applied.result(timeout=0.2)
@@ -84,10 +85,10 @@ class TestsFlextInfraMutationLeases:
         tm.fail((tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME).exists())
 
     @staticmethod
-    def test_nested_git_scope_uses_original_worktree_journal(
+    def test_nested_git_scope_uses_original_worktree_git_dir(
         tmp_path: Path,
     ) -> None:
-        """Test nested git scope uses original worktree journal."""
+        """Test nested git scope uses original worktree git dir."""
         root = u.Tests.git_repository(tmp_path)
         nested = root / "nested"
         nested.mkdir()

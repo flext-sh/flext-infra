@@ -62,7 +62,10 @@ class FlextInfraPytestProfile:
         return r[bool].ok(value=True)
 
     def run_parent(
-        self, *, started_at_monotonic: float, profile: cProfile.Profile
+        self,
+        *,
+        started_at_monotonic: float,
+        profile: cProfile.Profile,
     ) -> int:
         """Bind the profile to the typed runner's repository, never the caller cwd.
 

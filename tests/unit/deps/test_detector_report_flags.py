@@ -60,7 +60,7 @@ class TestsFlextInfraDepsDetectorReportFlags:
                 ),
             ),
         )
-        tm.fail(u.Cli.json_as_mapping(report.get("pip_check")).get("ok"))
+        tm.that(u.Cli.json_as_mapping(report.get("pip_check")).get("ok"), eq=False)
         project = u.Cli.json_as_mapping(
             u.Cli.json_as_mapping(report.get("projects")).get(root.name),
         )

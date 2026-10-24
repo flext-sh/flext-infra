@@ -12,6 +12,10 @@ from urllib.parse import urlparse
 from git import GitCommandError
 
 from flext_infra import p, r, t
+from flext_infra._constants import (
+    FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsSharedInfra,
+)
 from flext_infra._utilities import FlextInfraUtilitiesBase
 from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRootsMixin
 
@@ -47,7 +51,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
                 remote_path = parsed.path.lstrip("/")
             else:
                 remote_path = value
-        remote_path = remote_path.rstrip("/").removesuffix(".git")
+        remote_path = remote_path.rstrip("/").removesuffix(
+            FlextInfraConstantsCodegenProject.GIT_URL_SUFFIX
+        )
         parts = [part for part in remote_path.split("/") if part]
         match parts:
             case [*_, owner, repo]:
@@ -88,7 +94,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
                 raise ValueError(msg)
             relative_path_text = path_fields[0]
             relative_path = Path(relative_path_text)
-            if (repository_root / relative_path / ".git").exists():
+            if (
+                repository_root / relative_path / FlextInfraConstantsSharedInfra.GIT_DIR
+            ).exists():
                 paths.append(relative_path)
         return r[t.SequenceOf[Path]].ok(
             tuple(sorted(paths, key=FlextInfraUtilitiesBase.path_depth_then_text)),

@@ -72,6 +72,7 @@ class FlextInfraFreshImportGate(FlextInfraGate):
                 repository_root=project_dir,
                 runtime_root=ctx.runtime_root,
             ).build_report(repository_roots=(project_dir,)),
+            ctx=ctx,
             started=started,
         )
 
@@ -95,7 +96,7 @@ class FlextInfraFreshImportGate(FlextInfraGate):
         if files:
             selected = tuple(path for path in files if path.exists())
             if not selected:
-                return self._skip_result(project_dir, time.monotonic())
+                return self._skip_result(project_dir, ctx, time.monotonic())
             for path in selected:
                 _ = path.relative_to(project_dir)
         return self.check(project_dir, ctx)

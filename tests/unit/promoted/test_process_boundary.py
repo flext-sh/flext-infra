@@ -16,10 +16,12 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
+from tests import c
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from tests import t
+from tests import t
 
 
 @dataclasses.dataclass(frozen=True)
@@ -87,7 +89,7 @@ raise SystemExit(
         command = tmp_path / "scripts" / "probe" / "probe.py"
         command.parent.mkdir(parents=True)
         command.write_text(source, encoding="utf-8")
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='probe'\n",
             encoding="utf-8",
         )

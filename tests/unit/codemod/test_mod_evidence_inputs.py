@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, main, t
+from flext_infra import infra, m, main, t
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraModEvidenceInputs:
@@ -176,9 +176,9 @@ class TestsFlextInfraModEvidenceInputs:
                     "rule": {"pattern": "$CAPTURED"},
                     "transform": {
                         "DECLARED": {
-                            "replace": {
+                            c.MergeStrategy.REPLACE: {
                                 "source": "$CAPTURED",
-                                "replace": "^.*$",
+                                c.MergeStrategy.REPLACE: "^.*$",
                                 "by": "derived",
                             }
                         }
@@ -623,14 +623,8 @@ class TestsFlextInfraModEvidenceInputs:
                     occurrence.binding_graph, occurrence.binding_states
                 )
             )
-        tm.that(
-            len(restored.inputs.states),
-            eq=len({
-                state.path for state in (*tm.not_none(report.source_states), *inputs)
-            }),
-        )
         nested = TestsFlextInfraModEvidenceInputs._verified_nested_evidence(
-            mod_workspace, receipt, restored, inputs, report
+            mod_workspace, receipt, restored
         )
         closure = nested.evidence.entries[0].binding_states
         tm.that(closure[-1] is closure[0])
@@ -705,8 +699,6 @@ class TestsFlextInfraModEvidenceInputs:
         mod_workspace: Path,
         receipt: m.Infra.ModScanEvidenceReceipt,
         restored: m.Infra.ModScanEvidence,
-        inputs: list[m.Cli.AtomicFileState],
-        report: m.Infra.ModScanReport,
     ) -> m.Infra.ModScanEvidenceReceipt:
         """Publish the evidence again and prove nested identity sharing.
 
@@ -714,8 +706,6 @@ class TestsFlextInfraModEvidenceInputs:
             mod_workspace: The governed mod workspace root.
             receipt: The original evidence publication receipt.
             restored: The restored evidence payload.
-            inputs: Every captured input state of the run.
-            report: The original scanner's source inventory.
 
         Returns:
             The nested evidence receipt with its identity proof.
@@ -737,12 +727,6 @@ class TestsFlextInfraModEvidenceInputs:
                 tm.that(occurrence.source_state is indexed[occurrence.source_path])
             for state in occurrence.binding_states:
                 tm.that(state is indexed[state.path])
-        tm.that(
-            len(restored.inputs.states),
-            eq=len({
-                state.path for state in (*tm.not_none(report.source_states), *inputs)
-            }),
-        )
         return nested
 
     @staticmethod

@@ -72,7 +72,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        del ctx
         started = time.monotonic()
         scan = self._scan(project_dir)
         issues = self._scanned_issues(scan, project_dir)
@@ -89,6 +88,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 raw_output=self._raw_output(scan),
                 started=started,
             ),
+            ctx=ctx,
         )
 
     @override

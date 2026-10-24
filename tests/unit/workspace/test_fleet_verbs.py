@@ -100,7 +100,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
             )
             outcome = tm.not_none(receipt.outcome)
             tm.ok(u.Cli.process_succeeded(outcome))
-            tm.ok(receipt.applicable)
+            tm.that(receipt.applicable, eq=True)
             tm.that(receipt.error, eq=None)
             tm.ok(receipt.output_file.is_file())
 

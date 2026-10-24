@@ -18,10 +18,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities._semantic_cutover.nesting_types import (
     FlextInfraUtilitiesSemanticNestingTypes,
 )
 
@@ -168,13 +166,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
         assignments: tuple[ast.Assign, ...],
     ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        scope = wrapper.get_object().get_scope()
-        if scope is None:
-            msg = (
-                f"model alias namespace has no native scope: "
-                f"{path}:{wrapper.get_object().get_name()}"
-            )
-            raise ValueError(msg)
+        namespace = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            wrapper.get_object(), str(path)
+        )
+        scope = namespace.get_scope()
         aliases: dict[str, p.Infra.RopePyName] = {}
         targets: dict[str, tuple[str, str]] = {}
         for assignment in assignments:
@@ -183,7 +178,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             if target is None:
                 msg = (
                     f"unresolved model alias target: "
-                    f"{path}:{wrapper.get_object().get_name()}.{alias}"
+                    f"{path}:{namespace.get_name()}.{alias}"
                 )
                 raise ValueError(msg)
             value = target.get_object()
@@ -198,7 +193,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
                 return None
             provider = value.get_module()
-            provider_resource = None if provider is None else provider.get_resource()
+            provider_resource = provider.get_resource()
             if provider_resource is None:
                 msg = f"model alias target has no source declaration: {path}:{alias}"
                 raise ValueError(msg)
@@ -227,7 +222,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 and binding.get_object() == value
                 and runtime.same_name(binding, target)
             )
-            if len(canonical) != 1 or provider is None:
+            if len(canonical) != 1:
                 msg = (
                     f"alias target is not a canonical model declaration: {path}:{alias}"
                 )
@@ -287,9 +282,73 @@ class FlextInfraUtilitiesSemanticModelAliases:
                             f"inventory: {changed}"
                         )
                         raise ValueError(msg)
-                    working[changed] = change.new_contents
+                    working[changed] = cls._retain_inline_imports(
+                        snapshot, current, change, working[changed]
+                    )
             finally:
                 snapshot.close()
+
+    @staticmethod
+    def _retain_inline_imports(
+        project: p.Infra.RopeProject,
+        origin: p.Infra.RopeResource,
+        change: p.Infra.RopeChangeContents,
+        source: str,
+    ) -> str:
+        """Retain authored and still-used imports after a native inline change.
+
+        Returns:
+            The native change with only its proven obsolete imports removed.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        before = runtime.build_string_module(project, source, resource=change.resource)
+        original_imports = {
+            (information.module_name, information.level, binding)
+            for statement in runtime.module_imports_for_pymodule(
+                project, before
+            ).imports
+            if isinstance(information := statement.import_info, p.Infra.RopeFromImport)
+            for binding in information.names_and_aliases
+        }
+        after = runtime.build_string_module(
+            project, change.new_contents, resource=change.resource
+        )
+        imports = runtime.module_imports_for_pymodule(project, after)
+        used_imports = {
+            (information.module_name, information.level, binding)
+            for information in imports.get_used_imports(after)
+            if isinstance(information, p.Infra.RopeFromImport)
+            for binding in information.names_and_aliases
+        }
+        for statement in imports.imports:
+            information = statement.import_info
+            if (
+                not isinstance(information, p.Infra.RopeFromImport)
+                or (
+                    project.get_relative_module(
+                        information.module_name,
+                        change.resource.parent,
+                        information.level,
+                    )
+                    if information.level
+                    else project.get_module(information.module_name)
+                ).get_resource()
+                != origin
+            ):
+                continue
+            retained = tuple(
+                binding
+                for binding in information.names_and_aliases
+                if (key := (information.module_name, information.level, binding))
+                in original_imports
+                or key in used_imports
+            )
+            if retained != tuple(information.names_and_aliases):
+                statement.import_info = runtime.from_import(
+                    information.module_name, information.level, retained
+                )
+        return imports.get_changed_source()
 
     @staticmethod
     def _remove_alias_namespace(
@@ -349,7 +408,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
         targets: t.MappingKV[str, t.Pair[str, str]],
         sources: t.MutableMappingKV[Path, str],
     ) -> frozenset[Path]:
-        name = wrapper.get_object().get_name()
+        name = FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+            wrapper.get_object(), "model alias namespace"
+        ).get_name()
         observed = dict(sources)
         for resource in project.get_python_files():
             path = Path(resource.real_path).resolve()

@@ -58,6 +58,61 @@ class TestsFlextInfraLazyInitAliasInheritance:
     """
 
     @staticmethod
+    @pytest.mark.parametrize("publishes_result", [False, True])
+    def test_authored_parent_only_serves_its_published_inherited_letters(
+        tmp_path: Path, *, publishes_result: bool
+    ) -> None:
+        """Class ancestry cannot add missing reexports to a retained initializer."""
+        repository, child = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-authored-parent",
+            package_name="flext_authored_child",
+        )
+        parent = repository / "infra" / "contracts"
+        parent.mkdir(parents=True)
+        (parent.parent / "__init__.py").write_text(
+            '"""Infrastructure namespace."""\n', encoding=c.DEFAULT_ENCODING
+        )
+        authored = '"""Authored contracts boundary."""\n' + (
+            "from flext_core import r\n__all__ = ['r']\n" if publishes_result else ""
+        )
+        (parent / "__init__.py").write_text(authored, encoding=c.DEFAULT_ENCODING)
+        (parent / "constants.py").write_text(
+            "from flext_cli import c as upstream\n"
+            "class ContractsConstants(upstream):\n    pass\n"
+            "c = ContractsConstants\n__all__ = ['ContractsConstants', 'c']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (child / "constants.py").write_text(
+            "from infra.contracts.constants import ContractsConstants\n"
+            "class ChildConstants(ContractsConstants):\n    pass\n"
+            "c = ChildConstants\n__all__ = ['ChildConstants', 'c']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        first = (child / "__init__.py").read_text(encoding=c.DEFAULT_ENCODING)
+        entries, _refs = u.Infra.lazy_import_mapping_source(first)
+        targets = dict(entries)
+        owner = "infra.contracts" if publishes_result else "flext_cli"
+        tm.that(targets.get(owner, ()), has="r")
+        tm.that(
+            (parent / "__init__.py").read_text(encoding=c.DEFAULT_ENCODING), eq=authored
+        )
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            (child / "__init__.py").read_text(encoding=c.DEFAULT_ENCODING), eq=first
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "from flext_authored_child import r\n"
+                "from flext_core import r as upstream\nprint(r is upstream)\n",
+                python_paths=(str(repository / "src"), str(repository), *sys.path),
+                cwd=repository,
+            ),
+            eq=["True"],
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("renamed_checkout", [False, True])
     def test_declared_alias_identity_survives_checkout_rename(
         tmp_path: Path,
@@ -355,4 +410,4 @@ class TestsFlextInfraLazyInitAliasInheritance:
                 " resolves nowhere in the active environment"
             ),
         ):
-            u.Tests.plan_lazy_init(repository_root)
+            u.Tests.create_lazy_init_service(repository_root).plan_files()

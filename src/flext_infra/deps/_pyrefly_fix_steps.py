@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
+from typing_extensions import TypeForm
+
 from flext_infra import c, config, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 
@@ -27,8 +29,6 @@ class FlextInfraConfigFixerSteps:
         self,
         pyrefly: MutableMapping[str, t.JsonValue],
         project_dir: Path,
-        *,
-        is_root: bool,
     ) -> p.Result[t.StrSequence]:
         """Synchronize tool.pyrefly.search-path from YAML rules.
 
@@ -47,7 +47,7 @@ class FlextInfraConfigFixerSteps:
         ]
         expected_search = FlextInfraExtraPathsManager(
             repository_root=self._repository_root,
-        ).pyrefly_search_paths(project_dir=project_dir, is_root=is_root)
+        ).pyrefly_search_paths(project_dir=project_dir)
         if current_search != expected_search:
             pyrefly[c.Infra.SEARCH_PATH] = u.Cli.toml_array(expected_search)
             return r[t.StrSequence].ok(["synchronized search-path from YAML rules"])
@@ -168,7 +168,7 @@ class FlextInfraConfigFixerSteps:
                 config.Infra.tooling,
                 c.Infra.PYREFLY,
                 c.Infra.PROJECT_EXCLUDES,
-                t.StrSequence,
+                TypeForm(t.StrSequence),
             ),
         )
         if current_excludes != expected_excludes:

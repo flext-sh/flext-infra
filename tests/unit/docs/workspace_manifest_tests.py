@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config
-from tests import t, tm, u
+from flext_infra import config
+from tests import c, t, tm, u
 
 _PROBE = "flext-probe"
 

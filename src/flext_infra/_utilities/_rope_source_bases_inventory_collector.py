@@ -476,7 +476,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         ):
             return False
         owner = cls._reference(target.value, visible, spec)
-        if owner.target not in spec.definitions or owner.attributes:
+        owner = cls._nested_class_receiver(owner, spec.definitions)
+        if owner is None:
             return False
         definition = spec.definitions[owner.target]
         members = dict(definition.members)
@@ -485,8 +486,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             members.pop(target.attr, None)
         else:
             members[target.attr] = assigned
-        spec.definitions[owner.target] = definition.model_copy(
-            update={"members": members},
+        spec.definitions[owner.target] = m.Infra.SourceClassDefinition(
+            identity=definition.identity,
+            bases=definition.bases,
+            members=members,
         )
         return True
 
@@ -510,9 +513,10 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         """
         current = reference
+        remaining = current.attributes
         visited: set[t.Pair[str, t.VariadicTuple[str]]] = set()
-        while current.attributes:
-            identity = current.target, current.attributes
+        while remaining:
+            identity = current.target, remaining
             if identity in visited:
                 message = f"cyclic class namespace receiver: {current.qualified_base}"
                 raise ValueError(message)
@@ -520,14 +524,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             definition = definitions.get(current.target)
             if definition is None:
                 return None
-            member = definition.members.get(current.attributes[0])
+            member = definition.members.get(remaining[0])
             if member is None:
                 return None
-            current = member.model_copy(
-                update={
-                    "attributes": (*member.attributes, *current.attributes[1:]),
-                },
-            )
+            remaining = (*member.attributes, *remaining[1:])
+            current = member
         return current if current.target in definitions else None
 
     @classmethod

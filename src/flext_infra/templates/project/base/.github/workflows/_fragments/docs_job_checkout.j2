@@ -6,7 +6,7 @@
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
-          submodules: {{ checkout_submodules }}
+          submodules: {{ "false" if private_submodules or private_dependency_auth else checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 {%- include "_fragments/private_dependency_auth.j2" %}

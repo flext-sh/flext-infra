@@ -1,8 +1,8 @@
-"""Public API facade for {{ package_name }}.
+"""Public API facade.
 
 The package root freezes this facade as the stable user entrypoint. Consumers
-import ``{{ class_stem }}`` or ``{{ alias }}`` from ``{{ package_name }}`` and
-reach domain concerns through canonical aliases and namespaces.
+Import the service facade or its short alias from the package root and reach
+domain concerns through canonical aliases and namespaces.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,13 +10,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from {{ package_name }} import config, settings
 from {{ package_name }}.services.ping import {{ class_stem }}Ping
 
 
 class {{ class_stem }}({{ class_stem }}Ping):
-    """Public {{ class_stem }} facade composed through cooperative FLEXT."""
+    """Public service facade composed through cooperative FLEXT."""
 
 
-{{ alias }}: {{ class_stem }} = {{ class_stem }}.fetch_global()
+{{ alias }}: {{ class_stem }} = {{ class_stem }}(
+    configuration=config,
+    runtime_options=settings,
+)
 
 __all__: list[str] = ["{{ class_stem }}", "{{ alias }}"]

@@ -37,10 +37,10 @@ src/flext_infra/
 | ------------------------------- | ----- | ------------------------------ | ---------------------------------------------------------- |
 | `FlextInfra`                    | class | `api.py`                       | Rope workspace / health facade                             |
 | `FlextInfraCli`                 | class | `cli.py`                       | CLI entry                                                  |
-| `FlextInfraCodegenPipeline`     | class | `codegen/pipeline.py`          | codegen pipeline                                           |
-| `FlextInfraCodegenLazyInitPlanner` | class | `codegen/lazy_init_planner.py` | lazy-init export planning (service composite)              |
+| `FlextInfraCodegenLazyInit`     | class | `codegen/lazy_init.py`         | lazy-init planning of every generated `__init__.py`        |
+| `FlextInfraCodegenPythonModel`  | class | `codegen/python_model.py`      | parse-once Griffe static model shared by one run           |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
-| `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | body-less conform facade over `codegen/_conform/execute.py` |
+| `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
 | `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
 | `FlextInfraPromoted`            | class | `promoted.py`                  | promoted command framework facade                          |
 
@@ -94,10 +94,42 @@ do not validate a changed revision; execution context never becomes another trac
 
 ## Commands
 
+For `flext-0029c` native-bootstrap work only, follow the
+[direct public CLI route](docs/guides/execution-context.md#native-bootstrap-task-route-flext-0029c)
+and its parent local-law citation, overriding the general Make-only instructions
+for that task. Align documentation before worker coding, prove real runtime before
+test changes, and leave Make integration until last. Implementation is approved;
+the documentation-only slice executes neither surface and proves no runtime result.
+
+The approved target uses one native root uv workspace and lock in local execution
+and root CI; CI checks out declared submodules and installs noneditable. Independent
+checkouts retain their native contracts. External suppliers use native pyproject
+sources, not environment variables, persisted selection or synthetic resolvers.
+Official Mise acquisition and native locked tool provisioning precede
+`uv sync --frozen` into the owned physical `.venv`. Retire authored Python setup
+admission and copied resources, not just their filename: no replacement AWK/shell
+lock parser or installer. Native declarations and lock consistency replace the
+stronger independent pre-install supplier admission. Ordinary installed Infra
+verification runs after provision and cannot attest the preceding install. Keep
+the real source-authenticated import guard separate, with its actual consumer.
+The active Bead records cutover and runtime acceptance; this prose does not prove them.
+
+Keep the independently consumed post-install stdlib guard, handing off to the
+existing typed environment, lock and provenance owners after provisioning.
+Coordinate wider generated Make/direnv integration with `flext-itpd1.4.13`.
+Repeat bounded native QA after causal repairs and for convergence; change tests
+only after real subsystem and cold-bootstrap execution, never from a smoke alone.
+
+Before changing an implementation, reconcile its documented contract in
+`docs/guides/execution-context.md`, the active Bead and parent ADR-010. README and
+instruction projections remain owned by their declared generators; canonical
+governance and skill changes belong to `agents-governance`, not installed copies.
+
 Correct runtime behavior is the authority. Exercise the real setup, generation and
-consumer paths first, then make tests verify that contract. Never alter the environment
-to preserve an obsolete fixture or treat a passing test as proof of integrated runtime
-behavior.
+consumer paths first. Change tests only after implementation, using real functionality
+and observable effects without mocks, tautologies or duplicated policy values. Never
+alter the environment to preserve an obsolete fixture or treat a passing test as proof
+of integrated runtime behavior. No fallback producer or lifecycle operation is allowed.
 
 Generation journals file effects and reports failures at each affected target.
 Independently valid effects remain published when another target fails; a changed
@@ -127,7 +159,8 @@ before claiming delivery.
 
 Every checkout owns its physical `.venv` directory. Setup and runtime verbs reject
 symlinked environments before bootstrap, environment activation, or hooks; they never
-borrow another checkout's environment or editable sources. Caller environment and
+borrow another checkout's environment or infer unselected editable sources. An explicit
+external supplier declares native sources, not its environment. Caller environment and
 command-line variables cannot redirect the derived workspace or interpreter paths.
 Attached members use only their containing workspace's environment. Managed base
 interpreter symlinks inside the environment remain valid; the environment itself must
@@ -136,7 +169,7 @@ belong to this workspace.
 ```bash
 make setup
 make check
-make test
+make tests
 make build
 ```
 

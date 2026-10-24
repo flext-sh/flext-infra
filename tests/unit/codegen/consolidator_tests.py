@@ -11,9 +11,8 @@ from pathlib import Path
 import pytest
 from flext_cli import m as cli_m
 
-from flext_infra import c
-from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from tests import t, tm, u
+from flext_infra.codegen import FlextInfraCodegenConsolidator
+from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -24,19 +23,19 @@ class TestsFlextInfraCodegenConsolidator:
     class _ConsolidatorFilePayload(cli_m.ContractModel):
         """Typed JSON row emitted by the consolidator command."""
 
-        file: str = cli_m.Field(description="Relative file path")
-        status: str = cli_m.Field(description="File processing status")
-        changes: t.StrSequence = cli_m.Field(description="Changes applied to the file")
+        file: str = m.Field(description="Relative file path")
+        status: str = m.Field(description="File processing status")
+        changes: t.StrSequence = m.Field(description="Changes applied to the file")
 
     class _ConsolidatorJsonPayload(cli_m.ContractModel):
         """Typed JSON payload emitted by the consolidator command."""
 
-        total_found: int = cli_m.Field(description="Total replacements found")
-        total_applied: int = cli_m.Field(description="Total replacements applied")
-        total_failed: int = cli_m.Field(description="Total files that failed")
+        total_found: int = m.Field(description="Total replacements found")
+        total_applied: int = m.Field(description="Total replacements applied")
+        total_failed: int = m.Field(description="Total files that failed")
         files: t.SequenceOf[
             TestsFlextInfraCodegenConsolidator._ConsolidatorFilePayload
-        ] = cli_m.Field(description="Per-file consolidator results")
+        ] = m.Field(description="Per-file consolidator results")
 
     @staticmethod
     def _consolidator_payload(
@@ -65,20 +64,21 @@ class TestsFlextInfraCodegenConsolidator:
         """
         repository_root = tmp_path / "workspace"
         repository_root.mkdir(parents=True)
-        (repository_root / "pyproject.toml").write_text(
+        (repository_root / c.PYPROJECT_FILENAME).write_text(
             '[tool.uv.workspace]\nmembers = ["flext-demo"]\n',
             encoding="utf-8",
         )
         project_root = repository_root / "flext-demo"
         package_dir = project_root / "src" / "flext_demo"
         package_dir.mkdir(parents=True)
-        (project_root / "pyproject.toml").write_text(
+        (project_root / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext-demo'\nversion='0.1.0'\n"
             "\n"
             "[tool.mypy]\n"
             'mypy_path = ["src"]\n',
             encoding="utf-8",
         )
+        u.Tests.declare_workspace_projects(repository_root, (project_root.name,))
         return repository_root, project_root, package_dir
 
     def _execute_consolidator(
@@ -114,8 +114,6 @@ class TestsFlextInfraCodegenConsolidator:
             encoding="utf-8",
         )
         (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
-        u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
-
         result = u.Tests.consolidate_codegen(
             repository_root=repository_root,
             dry_run=True,
@@ -151,7 +149,6 @@ class TestsFlextInfraCodegenConsolidator:
             'from __future__ import annotations\n\nVALUE = "demo"\n',
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
         u.Tests.provision_checkout(repository_root)
         return repository_root
 

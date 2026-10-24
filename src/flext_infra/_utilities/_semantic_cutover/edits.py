@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from flext_infra import p
 
@@ -74,6 +74,25 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                     ),
                 )
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(edits))
+
+    @classmethod
+    def _semantic_checked_edits(
+        cls,
+        items: t.SequenceOf[t.Pair[Path, str]],
+        rewrite: Callable[[Path, str], t.Infra.TransformResult],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Keep declarative validation failures on their typed result boundary.
+
+        Returns:
+            Complete edits or the first original validation exception.
+
+        """
+        try:
+            return cls._semantic_edits(items, rewrite)
+        except ValueError as exc:
+            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
+                str(exc), exception=exc
+            )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverEdits"]

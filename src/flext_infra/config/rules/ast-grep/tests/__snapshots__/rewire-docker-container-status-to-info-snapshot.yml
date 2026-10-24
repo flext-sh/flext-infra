@@ -1,0 +1,16 @@
+id: rewire-docker-container-status-to-info
+snapshots:
+  docker.fetch_container_status(container_name):
+    fixed: docker.fetch_container_info(container_name)
+    labels:
+    - source: docker.fetch_container_status(container_name)
+      style: primary
+      start: 0
+      end: 45
+  docker_control.fetch_container_status(container_name):
+    fixed: docker_control.fetch_container_info(container_name)
+    labels:
+    - source: docker_control.fetch_container_status(container_name)
+      style: primary
+      start: 0
+      end: 53

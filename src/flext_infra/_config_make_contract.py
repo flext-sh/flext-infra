@@ -13,18 +13,20 @@ class FlextInfraMakeContract:
     """Make admission behavior independent of project facades and configuration."""
 
     @staticmethod
-    def selector_free_make_verb[Profile: str](
-        arguments: Sequence[str],
+    def make_verb_supports_profiles[Profile: str](
         profiles: Sequence[Profile],
         required_profiles: Sequence[Profile],
     ) -> bool:
-        """Check argument-free applicability against the declared profile universe.
+        """Check applicability against the declared profile universe.
+
+        Help metadata describes optional data inputs, not partial execution.
+        The generated common handlers own their complete operation scope.
 
         Returns:
-            Whether the operation satisfies selector-free all-profile admission.
+            Whether the operation is available in every required profile.
 
         """
-        return not arguments and set(profiles) == set(required_profiles)
+        return set(profiles) == set(required_profiles)
 
 
 __all__: list[str] = []

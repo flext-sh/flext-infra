@@ -22,10 +22,10 @@ class FlextInfraUtilitiesMiseBinary:
     def managed_mise_binary(name: str, owner_root: Path) -> p.Result[Path]:
         """Resolve one declared tool's executable through Mise in ``owner_root``.
 
-        Mise resolves the release the committed mise.lock pins wherever it pins
-        one and the declared selector otherwise, so a stale or incomplete lock
-        never stops a verb (operator-ruling-2026-10-09-setup-resilient);
-        ``make audit`` (codegen mise-proof) proves the pins.
+        The runtime manifest must declare the tool, then the existing lock owner
+        selects its pinned release. Missing declarations or pins fail at this
+        owner; they never select a host executable or resolve a moving request.
+        ``make check`` consumes the same toolchain proof over the committed pins.
 
         Returns:
             The absolute executable inside the tool's install root, never a
@@ -53,15 +53,18 @@ class FlextInfraUtilitiesMiseBinary:
         if requested.failure:
             return r[Path].from_failure(requested)
         if not requested.value:
-            host_binary = shutil.which(selector.split("/")[-1])
-            if host_binary is not None:
-                return r[Path].ok(Path(host_binary))
             return r[Path].fail(f"runtime manifest does not declare {selector}")
+        pinned = FlextInfraUtilitiesMiseBinary.locked_mise_version(
+            owner_root,
+            tool=selector,
+            selector=requested.value[0],
+        )
+        if pinned.failure:
+            return r[Path].from_failure(pinned)
         return FlextInfraUtilitiesMiseBinary._managed_mise_path(
             tool.version_probe.binary,
             owner_root,
             Path(reader),
-            f"{selector}@{requested.value[0]}",
         )
 
     @staticmethod
@@ -122,7 +125,6 @@ class FlextInfraUtilitiesMiseBinary:
                         c.Infra.MISE,
                         owner_root,
                         qualified,
-                        f"{config.Infra.codegen.toolchain.mise_selector}@{pinned}",
                     ),
                 )
                 .flat_map(
@@ -232,11 +234,9 @@ class FlextInfraUtilitiesMiseBinary:
         return r[Path].ok(binary)
 
     @staticmethod
-    def _managed_mise_path(
-        name: str, owner_root: Path, reader: Path, selector: str
-    ) -> p.Result[Path]:
+    def _managed_mise_path(name: str, owner_root: Path, reader: Path) -> p.Result[Path]:
         located = u.Cli.run_raw(
-            (str(reader), "-C", str(owner_root), "which", name, "--tool", selector),
+            (str(reader), "-C", str(owner_root), "which", name),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )

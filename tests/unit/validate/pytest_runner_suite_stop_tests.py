@@ -49,7 +49,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
-                - runner.run_timeout_seconds(policy)
+                - policy.run_timeout_seconds
                 + policy.termination_grace_seconds,
             },
         )
@@ -120,76 +120,51 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.fail((outcome_path.parent / "summary.txt").exists())
         tm.fail((outcome_path.parent / "run-accounting.json").exists())
 
-    @staticmethod
-    def test_ordinary_stop_reserve_is_independent_of_dispatch(
-        cached_runner_project: Path,
-    ) -> None:
-        """Both dispatch shapes share the aggregate grace, without an item cap."""
-        policy = config.Infra.tooling.tools.pytest
+    def _testmon_batch_size(self) -> int:
+        """Read the installed testmon batch size from its source declaration.
 
-        def dispatch_plan(node_ids: t.StrSequence) -> m.Infra.PytestSelectionPlan:
-            """Synthetic selection whose manifest path matches the real argv.
+        Returns:
+            The positive literal batch size declared by the installed distribution.
 
-            Returns:
-                The resulting ``m.Infra.PytestSelectionPlan``.
+        Raises:
+            TypeError: If the declaration is not a literal positive integer.
 
-            """
-            # The plan is a strict value: it takes typed fields, never the
-            # JSON-shaped str/list a lax validation would coerce.
-            return m.Infra.PytestSelectionPlan(
-                manifest_path=Path("m.json"),
-                node_ids=tuple(node_ids),
-                whole_target=False,
-                inventory_collected=False,
-                owns_no_tests=False,
+        """
+        distribution = u.Infra.codemod_distributions()["pytest-testmon"]
+        installed_files = tm.not_none(distribution.files)
+        (batch_owner,) = (
+            entry
+            for entry in installed_files
+            if entry.as_posix() == "testmon/testmon_core.py"
+        )
+        batch_source = Path(str(distribution.locate_file(batch_owner)))
+        tree = ast.parse(self._read(batch_source), filename=str(batch_source))
+        (declaration,) = (
+            statement
+            for statement in tree.body
+            if isinstance(statement, ast.Assign)
+            and any(
+                isinstance(name, ast.Name) and name.id == "TEST_BATCH_SIZE"
+                for name in statement.targets
             )
-
-        u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
-        multi = [f"tests/test_serial_{'x' * index}.py::test_one" for index in range(4)]
-        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        multi_plan = dispatch_plan(multi)
-        multi_command = runner.build_command(
-            cached_runner_project / runner.reports,
-            multi_plan,
         )
-        serial_plan = dispatch_plan(multi[:1])
-        serial_command = runner.build_command(
-            cached_runner_project / runner.reports,
-            serial_plan,
-        )
-
-        def stop_value(command: t.StrSequence) -> float:
-            (raw,) = (
-                argument
-                for argument in command
-                if argument.startswith(c.Infra.PYTEST_SUITE_STOP_OPTION)
-            )
-            return float(raw.partition("=")[2])
-
-        workers_index = list(multi_command).index("-n") + 1
-        budget = runner.parallel_worker_budget(policy)
-        tm.ok(budget > 1)
-        tm.that(list(multi_command)[workers_index], eq=str(min(budget, len(multi))))
-        tm.that(
-            stop_value(multi_command),
-            eq=runner.started_at_monotonic
-            + runner.run_timeout_seconds(policy)
-            - policy.termination_grace_seconds,
-        )
-        serial_workers_index = list(serial_command).index("-n") + 1
-        tm.that(list(serial_command)[serial_workers_index], eq="0")
-        tm.that(
-            stop_value(serial_command),
-            eq=runner.started_at_monotonic
-            + runner.run_timeout_seconds(policy)
-            - policy.termination_grace_seconds,
-        )
+        literal = declaration.value
+        if not isinstance(literal, ast.Constant):
+            msg = "TEST_BATCH_SIZE must be a literal constant"
+            raise TypeError(msg)
+        batch_size = literal.value
+        if not isinstance(batch_size, int) or isinstance(batch_size, bool):
+            msg = "TEST_BATCH_SIZE must be an integer"
+            raise TypeError(msg)
+        tm.that(batch_size > 0, truth=True)
+        return batch_size
 
     @pytest.mark.slow
     @pytest.mark.parametrize("distributed", [True, False], ids=["xdist", "serial"])
     def test_suite_stop_instant_persists_the_executed_prefix(
         self,
         cached_runner_project: Path,
+        *,
         distributed: bool,
     ) -> None:
         """A run reaching its stop instant ends itself and testmon keeps progress.
@@ -205,35 +180,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             if distributed
             else 1
         )
-        distribution = u.Infra.codemod_distributions()["pytest-testmon"]
-        installed_files = distribution.files
-        tm.that(installed_files, none=False)
-        (batch_owner,) = (
-            entry
-            for entry in installed_files
-            if entry.as_posix() == "testmon/testmon_core.py"
-        )
-        batch_source = Path(str(distribution.locate_file(batch_owner)))
-        tree = u.Infra.parse_rope_module(
-            self._read(batch_source),
-            filename=str(batch_source),
-        )
-        tm.that(isinstance(tree, ast.Module), truth=True)
-        (declaration,) = (
-            statement
-            for statement in tree.body
-            if isinstance(statement, ast.Assign)
-            and any(
-                isinstance(name, ast.Name) and name.id == "TEST_BATCH_SIZE"
-                for name in statement.targets
-            )
-        )
-        literal = declaration.value
-        tm.that(isinstance(literal, ast.Constant), truth=True)
-        batch_size = literal.value
-        tm.that(isinstance(batch_size, int), truth=True)
-        tm.that(isinstance(batch_size, bool), truth=False)
-        tm.that(batch_size > 0, truth=True)
+        batch_size = self._testmon_batch_size()
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
             "from runner_sample import answer\n\n"

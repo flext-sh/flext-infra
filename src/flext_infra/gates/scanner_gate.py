@@ -40,7 +40,6 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        del ctx
         started = time.monotonic()
         files_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(project_dir,)),
@@ -50,11 +49,11 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
                 project_dir,
                 Path(c.PYPROJECT_FILENAME),
                 files_result.error or self.scan_error_message,
-                passed=False,
+                ctx=ctx,
                 started=started,
             )
         if not files_result.value:
-            return self._skip_result(project_dir, started)
+            return self._skip_result(project_dir, ctx, started)
         rope_project = u.Infra.init_rope_project(project_dir)
         try:
             issues = [
@@ -70,6 +69,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
             rope_project.close()
         return self._detected_gate_execution(
             project_dir,
+            ctx=ctx,
             issues=issues,
             started=started,
         )

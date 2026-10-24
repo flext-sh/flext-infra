@@ -9,39 +9,39 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfraConformWiring, FlextInfraPreviewWiring, m, r, s, t, u
+from flext_infra import (
+    FlextInfraConformWiring,
+    FlextInfraGitService,
+    FlextInfraPreviewWiring,
+    m,
+    r,
+    s,
+    t,
+    u,
+)
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenFixer,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenPipeline,
-    FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
+from flext_infra.release import FlextInfraReleaseOrchestrator
 from flext_infra.services import (
     FlextInfraCandidateBootstrapService,
     FlextInfraCodegenHandlers,
     FlextInfraModHandlers,
 )
 from flext_infra.validate import FlextInfraNamespaceValidator
-from flext_infra.workspace import (
-    FlextInfraRopeWorkspace,
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentMixin,
-)
+from flext_infra.workspace import FlextInfraRopeWorkspace, FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
-    from flext_infra.codegen import FlextInfraCodegenProjectNew
     from flext_infra.docs import FlextInfraDocFormatter
-    from flext_infra.release import FlextInfraReleaseOrchestrator
     from flext_infra.workspace import FlextInfraWorkspacePropagation
 
 
 class FlextInfra(
-    FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraConformWiring,
     FlextInfraPreviewWiring,
     FlextInfraCodegenHandlers,
@@ -78,16 +78,12 @@ class FlextInfra(
         if workspace.failure:
             return r[bool].from_failure(workspace)
         return FlextInfraCandidateBootstrapService(
-            planner=FlextInfraCodegenConform(
+            planner=FlextInfraCodegenConformExecute(
                 repository_root=source_root,
                 state=m.Infra.CodegenConformState(repository_root=source_root),
             ),
-            transaction=FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=source_root),
-            ),
-        ).execute(source_root, workspace.value, request, inputs.value.sources)
+        ).execute(source_root, workspace.value, request)
 
-    @override
     def rope_workspace(
         self,
         repository_root: Path | None = None,
@@ -120,6 +116,32 @@ class FlextInfra(
         return FlextInfraWorkspaceChecker(
             repository_root=request.repository_root,
         ).execute_payload(request)
+
+    @staticmethod
+    def check_integrity(request: m.Infra.RunCommand) -> p.Result[bool]:
+        """Run the same check engine over its declared runtime-integrity subset.
+
+        Returns:
+            p.Result[bool]: the integrity verdict of the declared subset.
+
+        """
+        return FlextInfraWorkspaceChecker(
+            repository_root=request.repository_root
+        ).execute_integrity(request)
+
+    @staticmethod
+    def check_report(
+        request: m.Infra.RunCommand,
+    ) -> p.Result[m.Infra.CheckReportSummary]:
+        """Collect typed invocation facts; each gate retains its actual verdict.
+
+        Returns:
+            p.Result[m.Infra.CheckReportSummary]: the collected check report.
+
+        """
+        return FlextInfraWorkspaceChecker(
+            repository_root=request.repository_root
+        ).execute_report(request)
 
     @staticmethod
     def codegen_census(request: m.Infra.CodegenCommand) -> p.Result[str]:
@@ -155,48 +177,39 @@ class FlextInfra(
             rules_only=request.rules_only,
         ).execute()
 
-    def codegen_pipeline(self, request: m.Infra.CodegenCommand) -> p.Result[str]:
-        """Run the codegen pipeline with the facade-wired conform ports.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        return FlextInfraCodegenPipeline(
-            repository_root=request.repository_root,
-            apply_changes=request.apply,
-            check_only=request.check_only,
-            dry_run=request.dry_run,
-            output_format=request.output_format,
-            conform_collaborators=m.Infra.CodegenConformPorts.model_validate(
-                self.codegen_conform_collaborators(),
-                from_attributes=True,
-            ),
-        ).execute()
-
-    def codegen_new(
-        self,
-        command: FlextInfraCodegenProjectNew,
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Scaffold one project through conform with the facade-wired ports.
-
-        Returns:
-            The resulting ``p.Result[p.Infra.CodegenResult]``.
-
-        """
-        return command.model_copy(
-            update={"conform_collaborators": self.codegen_conform_collaborators()},
-        ).execute()
-
-    def release_run(self, command: FlextInfraReleaseOrchestrator) -> p.Result[bool]:
+    def release_run(self, request: m.Infra.ReleaseRunCommand) -> p.Result[bool]:
         """Run one release phase with the facade-wired conform ports.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        return command.model_copy(
-            update={"conform_collaborators": self.codegen_conform_collaborators()},
+        ownership = request.ownership
+        if request.checkpoint_ref is not None:
+            selected = FlextInfraGitService.lane_ownership(
+                m.Infra.GitLaneOwnershipRequest(
+                    repo_root=request.root,
+                    checkpoint_ref=request.checkpoint_ref,
+                ),
+            )
+            if selected.failure:
+                return r[bool].from_failure(selected)
+            ownership = selected.value
+        return FlextInfraReleaseOrchestrator(
+            repository_root=request.repository_root,
+            apply_changes=request.apply_changes,
+            check_only=request.check_only,
+            dry_run=request.dry_run,
+            output_format=request.output_format,
+            project_filter=request.project_filter,
+            report_path=request.report_path,
+            output_dir=request.output_dir,
+            selected_projects=request.projects,
+            phase=request.phase,
+            index=request.index,
+            pr_title=request.pr_title,
+            ownership=ownership,
+            conform_collaborators=self.codegen_conform_collaborators(),
         ).execute()
 
     def workspace_propagate(
@@ -293,24 +306,6 @@ class FlextInfra(
         )
 
     @staticmethod
-    def _project_git_identity(
-        resolved: Path,
-    ) -> p.Result[m.Infra.GitIdentityReport | None]:
-        """Return the repository Git identity, or ``None`` outside a repository.
-
-        Args:
-            resolved: Resolved project working directory.
-
-        Returns:
-            The Git identity report, or ``None`` when no Git identity exists.
-
-        """
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
-        if identity.failure:
-            return r[m.Infra.GitIdentityReport | None].ok(value=None)
-        return r[m.Infra.GitIdentityReport | None].ok(value=identity.value)
-
-    @staticmethod
     def _project_captured_runtime(
         resolved: Path,
         root: Path,
@@ -388,8 +383,8 @@ class FlextInfra(
             return r[m.Infra.WorkspaceProjectContext].fail(
                 f"project context cwd is not a directory: {resolved}",
             )
-        identity = FlextInfra._project_git_identity(resolved)
-        if identity.value is None:
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
+        if identity.failure:
             return r[m.Infra.WorkspaceProjectContext].ok(
                 m.Infra.WorkspaceProjectContext(cwd=resolved),
             )

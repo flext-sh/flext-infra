@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import m, r, t, tm
+from tests import c, m, r, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -73,7 +73,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             f'{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"]\n'
         )
         _write(
-            workspace / "pyproject.toml",
+            workspace / c.PYPROJECT_FILENAME,
             '[project]\nname = "workspace"\nversion = "0.1.0"\n'
             f"{development}{workspace_table}",
         )
@@ -83,7 +83,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             project.mkdir(parents=True, exist_ok=True)
             pkg_name = name.replace("-", "_")
             _write(
-                project / "pyproject.toml",
+                project / c.PYPROJECT_FILENAME,
                 (f'[project]\nname = "{name}"\nversion = "0.1.0"\n{development}'),
             )
             _write(
@@ -157,7 +157,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         for name in project_names:
             project = workspace / name
             project.mkdir(parents=True, exist_ok=True)
-            (project / "pyproject.toml").write_text(
+            (project / c.PYPROJECT_FILENAME).write_text(
                 (
                     "[project]\n"
                     f'name = "{name}"\n'
@@ -204,7 +204,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     def prepare_docs_bundle(
         generator: FlextInfraDocGenerator,
     ) -> m.Infra.DocsGenerationBundle:
-        """Freeze one docs bundle and create every parent directory it requires.
+        """Freeze one docs bundle.
 
         Returns:
             The resulting ``m.Infra.DocsGenerationBundle``.
@@ -212,17 +212,13 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         """
         prepared = generator.prepare_bundle()
         tm.ok(prepared)
-        required = generator.required_directories(prepared.value)
-        tm.ok(required)
-        for directory in required.value:
-            directory.mkdir(parents=True, exist_ok=True)
         return prepared.value
 
     @staticmethod
     def plan_docs_bundle(
         generator: FlextInfraDocGenerator,
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
-        """Prepare one docs bundle, create its required parents, and plan files.
+        """Prepare one docs bundle and plan its files.
 
         Returns:
             The resulting ``t.VariadicTuple[m.Infra.CodegenFilePlan]``.

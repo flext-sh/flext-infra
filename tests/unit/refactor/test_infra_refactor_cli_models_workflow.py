@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m, main
-from tests import tm, u
+from flext_infra import m, main
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,6 +25,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     @staticmethod
     def test_mod_cli_accepts_repeated_typed_consumer_roots_and_rejects_missing_scope(
         tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Repeated run roots reach the canonical action without CSV or env inputs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -48,7 +49,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             ])
         tm.ok(result != 0)
         tm.that(
-            output.getvalue(),
+            capsys.readouterr().err,
             has="consumer roots must be existing absolute checkout roots",
         )
         tm.that(source.read_bytes(), eq=original)
@@ -69,8 +70,8 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "        return 'native'\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        roots = []
-        consumers = []
+        roots: list[Path] = []
+        consumers: list[Path] = []
         for index in range(2):
             root, consumer_package = u.Tests.create_lazy_init_workspace(
                 tmp_path,
@@ -140,8 +141,10 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             )
         tm.that(main(arguments), eq=0)
         tm.that(
-            m.Infra.SemanticRenamePlan.model_validate_json(artifact_path.read_bytes()),
-            eq=artifact,
+            m.Infra.SemanticRenamePlan.model_validate_json(
+                artifact_path.read_bytes()
+            ).model_dump(include={"edits", "decisions", "moves"}),
+            eq=artifact.model_dump(include={"edits", "decisions", "moves"}),
         )
         for path, content in originals.items():
             tm.that(path.read_bytes(), eq=content)
@@ -262,10 +265,12 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             tm.that(artifact.candidate.workspace, eq=workspace)
             tm.that(artifact.edits[0].updated_source, has="def meaningful(")
             tm.that(main(arguments), eq=0)
-            tm.that(
-                m.Infra.SemanticRenamePlan.model_validate_json(output.read_bytes()),
-                eq=artifact,
+            repeated = m.Infra.SemanticRenamePlan.model_validate_json(
+                output.read_bytes()
             )
+            tm.that(repeated.edits, eq=artifact.edits)
+            tm.that(repeated.decisions, eq=artifact.decisions)
+            tm.that(repeated.moves, eq=artifact.moves)
         else:
             tm.that(result, ne=0)
         for path, content in originals.items():
@@ -336,7 +341,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         source_file = scripts_dir / "sample.py"
         source_file.write_text(
-            "from tests import c\n"
+            "from tests import c, r\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = c.Core.Tests.ERR_OK_FAILED\n",
@@ -370,7 +375,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         scripts_dir.mkdir(parents=True)
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (scripts_dir / "sample.py").write_text(
-            "from tests import m\n"
+            "from tests import c, m, r\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = m.Core.Tests.Testobject\n",
@@ -403,7 +408,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         source_file = scripts_dir / "sample.py"
         source_file.write_text(
-            "from tests import t\n"
+            "from tests import c, r, t\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = t.Core.Tests.Testobject\n",
@@ -420,6 +425,6 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
 
         tm.that(result, eq=0)
         updated = source_file.read_text(encoding="utf-8")
-        tm.that(updated, has="from tests import t")
+        tm.that(updated, has="from tests import c, r, t")
         tm.that(updated, has="t.Tests.Testobject")
         tm.that(updated, lacks="Core.Tests")

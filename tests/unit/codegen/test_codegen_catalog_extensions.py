@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
@@ -38,42 +38,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         tm.that(line.base_url, eq=u.Tests.provider().base_url)
         tm.that(line.branch, eq=u.Tests.provider_branch())
-        tm.fail(root.exists())
-
-    @staticmethod
-    def test_invalid_scaffold_source_fails_before_filesystem_effects(
-        tmp_path: Path,
-    ) -> None:
-        """Source validation happens before creating a directory or Git metadata."""
-        root = tmp_path / "unborn"
-        consumer = u.Tests.repository_ref("new-project")
-        # The scaffold source the materialization consumes is the workspace's
-        # bootstrap source; naming a repository other than the infrastructure
-        # distribution makes it invalid.
-        workspace = u.Tests.workspace_spec(
-            consumer,
-            project=u.Tests.project_spec(consumer.name),
-        ).model_copy(
-            update={
-                "flext_source": m.Infra.CodegenBootstrapSource(
-                    url=consumer.url,
-                    ref=u.Tests.provider_branch(),
-                ),
-            },
-        )
-        result = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
-        tm.ok(result.failure)
-        tm.that(
-            result.error,
-            has=f"must be the {config.Infra.codegen.infra_repository.distribution}",
-        )
         tm.fail(root.exists())
 
     @staticmethod
@@ -173,7 +137,12 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
+                [
+                    c.Infra.GIT,
+                    "config",
+                    "remote.origin.skipDefaultUpdate",
+                    c.ParserBooleanToken.TRUE,
+                ],
                 cwd=member_checkout,
             ),
         )
@@ -200,7 +169,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         provider = u.Tests.provider()
         root = tmp_path / "infra-checkout"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             "dependencies = []\n"
             "[dependency-groups]\n"
@@ -228,7 +197,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         branch = u.Tests.provider_branch()
         root = tmp_path / "other-org-consumer"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             f'dependencies = ["flext-core @ git+{provider.base_url}/flext-core.git@'
             f'{branch}"]\n'
@@ -364,6 +333,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
     @pytest.mark.parametrize("infra_first", [False, True])
     def test_infra_authority_preserves_distinct_distribution_refs(
         tmp_path: Path,
+        *,
         infra_first: bool,
     ) -> None:
         """Exact Infra provenance is independent of another distribution's order/ref."""
@@ -457,7 +427,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         branch = u.Tests.provider_branch()
         root = tmp_path / "split-consumer"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             f'dependencies = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
             f'{branch}"]\n'
@@ -477,7 +447,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             None,
             *next(
                 item
-                for item in config.Infra.codegen.managed_files
+                for item in config.Infra.codegen.managed_file_specs
                 if item.path.as_posix() == c.PYPROJECT_FILENAME
             ).conflict_sections,
         ],
@@ -529,7 +499,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         codegen = config.Infra.codegen
         root = tmp_path / "undeclared-checkout"
         root.mkdir()
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\ndependencies = []\n',
             encoding="utf-8",
         )
@@ -640,13 +610,13 @@ class TestsFlextInfraCodegenCatalogExtensions:
         # The composer reads the committed catalog: the overlay must be in HEAD.
         u.Tests.initialize_git_repo(tmp_path)
 
-        result = FlextInfraCodegenConform.compose_project_artifact(
+        result = FlextInfraCodegenConformExecute.compose_project_artifact(
             tmp_path,
             c.Infra.MISE_TOML_FILENAME,
             '[tools]\npython = "3.13"\n',
         )
 
-        rendered = u.Tests.toml_payload(tm.ok(result).rendered)
+        rendered = u.Tests.toml_payload(tm.ok(result))
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(
@@ -715,16 +685,20 @@ class TestsFlextInfraCodegenCatalogExtensions:
         declared_gitmodules = gitmodules.read_bytes()
         # Topology rendering must not require the fixture member to be installed
         # for the unrelated Pyproject provenance surface selected by ALL.
-        result = FlextInfraCodegenConform(
-            state=m.Infra.CodegenConformState(initial_workspace=workspace),
-        ).plan(
-            u.Tests.conform_request(
-                repository_root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
+        request = u.Tests.conform_request(
+            repository_root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.CHECK,
         )
+        result = FlextInfraCodegenConformExecute(
+            repository_root=repository_root,
+            state=m.Infra.CodegenConformState(
+                repository_root=repository_root,
+                request=request,
+                initial_workspace=workspace,
+            ),
+        ).plan(request)
 
         plan = tm.ok(result)
         tm.that(plan.issues, eq=())

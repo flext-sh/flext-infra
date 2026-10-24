@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import importlib.util
-import sys
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -273,8 +272,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
 
         def _index_modules(self) -> None:
-            """Index every captured module and its declared namespaces."""
-            sys.setrecursionlimit(max(sys.getrecursionlimit(), 4096))
+            """Index captured modules without changing interpreter resource policy."""
             self._modules = {
                 module: self._inventory(module, captured)
                 for module, captured in self._sources.items()
@@ -298,8 +296,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             bases declared as `from dcdoc import DcdocServiceBase` mean the
             project one).
 
+            Consumed provider files are not a complete package inventory.
+            Membership comes from the injected project's complete native source
+            snapshot, including declared additions and retirements; captured
+            initializer bytes still own the lazy bindings.
+
             Raises:
-                ValueError: Native package membership differs from captured sources.
+                ValueError: Native package membership differs from its source snapshot.
 
             """
             for alias_module, captured in self._sources.items():
@@ -309,21 +312,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 root = Path(self._project.root.real_path)
                 relative_parent = alias_path.parent.relative_to(root).as_posix()
                 if self._project.root.has_child(relative_parent):
+                    expected = {
+                        path
+                        for path in self._project.source_children(alias_path.parent)
+                        if path.suffix == c.Infra.EXT_PYTHON
+                        and self._project.source_query(path, "isfile")
+                    }
                     folder = self._project.get_folder(relative_parent)
                     actual = {
                         Path(child.real_path)
                         for child in folder.get_children()
                         if not child.is_folder()
                         and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
-                    }
-                    expected = {
-                        path
-                        for path, _source in self._sources.values()
-                        if path.parent == alias_path.parent
-                        and path.suffix == c.Infra.EXT_PYTHON
-                        and self._project.root.has_child(
-                            path.relative_to(root).as_posix()
-                        )
                     }
                     if actual != expected:
                         message = (
@@ -457,13 +457,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if not FlextInfraUtilitiesRopeRuntime.abstract_class(value):
                 message = "Rope did not resolve a required base to a class"
                 raise TypeError(message)
-            if isinstance(
-                value,
-                FlextInfraUtilitiesRopeRuntime.runtime_type(
-                    "rope.base.pyobjectsdef",
-                    "PyClass",
-                ),
-            ):
+            if FlextInfraUtilitiesRopeRuntime.py_class(value):
                 return self._pyclass_identity(value)
             return self._deduplicated_external_identity(value)
 
@@ -481,22 +475,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The constructed class identity, or None for other objects.
 
             """
-            if not isinstance(
-                value,
-                FlextInfraUtilitiesRopeRuntime.runtime_type(
-                    "rope.base.pyobjectsdef",
-                    "PyFunction",
-                ),
-            ):
+            if not FlextInfraUtilitiesRopeRuntime.py_function(value):
                 return None
             if value.get_name() not in {"TypedDict", "NamedTuple"}:
                 return None
             module = value.get_module()
-            module_name = module.get_name() if module is not None else ""
+            module_name = module.get_name()
             name = value.get_name()
             return f"{module_name}.{name}" if module_name else name
 
-        def _pyclass_identity(self, value: t.Infra.RopePyObject) -> str:
+        def _pyclass_identity(self, value: p.Infra.RopeSourceClass) -> str:
             """Return the declaration identity of one external Rope class.
 
             Returns:
@@ -508,10 +496,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             module = value.get_module()
             scope = value.get_scope()
-            resource = module.get_resource() if module is not None else None
+            resource = module.get_resource()
             if (
                 not FlextInfraUtilitiesRopeRuntime.source_module(module)
-                or scope is None
                 or resource is None
             ):
                 message = (
@@ -526,7 +513,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _declared_pyclass_identity(
             self,
-            value: t.Infra.RopePyObject,
+            value: p.Infra.RopeNamedObject,
             module: t.Infra.RopePyModule,
             name: str,
             line: int,
@@ -869,6 +856,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             imported = self._provider_module(binding.imported_module)
             imported_name = imported.get_name()
+            if (
+                target == f"{imported_name}.{binding.imported_name}"
+                and self._project.find_module(target) is not None
+            ):
+                # ``from . import child`` binds a real submodule, not a
+                # reexport of the package attribute currently being resolved.
+                return self._external_reference(
+                    target, tuple(remaining), visiting | {target}, depth + 1
+                )
             if imported_name in self._namespaces:
                 return self._resolve(
                     m.Infra.SourceClassReference(
@@ -1072,7 +1068,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             A name the planned module does not bind continues into the captured
             submodule of that name, as ``from package import submodule`` does;
             an explicit package binding (class or value) keeps precedence over
-            the file name.
+            the file name. Captured package prefixes do not imply a complete
+            child inventory: an uncaptured child retains the injected project's
+            exact native module election, without importing its runtime package.
 
             Returns:
                 The resolved target and its remaining attribute path.
@@ -1100,7 +1098,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     )
                 bound = module in self._modules and name in self._modules[module]
                 submodule = f"{module}.{name}"
-                if bound or submodule not in self._namespaces:
+                if bound:
+                    break
+                if submodule not in self._namespaces:
+                    if self._project.find_module(submodule) is not None:
+                        return self._external_reference(
+                            submodule, tuple(remaining), visiting, depth + 1
+                        ), []
                     break
                 module = submodule
             if module not in self._modules:

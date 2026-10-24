@@ -10,21 +10,22 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c
 from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
+@pytest.mark.usefixtures("repository")
 class TestsFlextInfraDepsLockIntegrity:
     """Validate committed generated lock verification through its public model."""
 
     @staticmethod
-    @pytest.fixture(autouse=True)
-    def _repository(tmp_path: Path) -> None:
+    @pytest.fixture
+    def repository(tmp_path: Path) -> None:
+        """Every lock scenario starts from an initialized Git repository."""
         u.Tests.initialize_git_repo(tmp_path)
 
     @staticmethod

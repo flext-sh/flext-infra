@@ -69,6 +69,43 @@ class FlextInfraModHandlers:
             state,
         )
 
+    @staticmethod
+    def _campaign_scope_failure(
+        root: Path,
+        config_dir: Path,
+        campaigns_config: m.Infra.RefactorCsvCampaignsSpec,
+    ) -> p.Result[t.Cli.ResultValue] | None:
+        """Reject declared campaigns whose drivers or roots escape their boundary.
+
+        Returns:
+            The first boundary failure, or ``None`` when every campaign is contained.
+
+        """
+        config_root = config_dir.resolve()
+        repository_root = root.resolve()
+        for declared in campaigns_config.campaigns:
+            csv = config_dir / declared.csv
+            if not csv.resolve().is_relative_to(config_root):
+                return r[t.Cli.ResultValue].fail(
+                    f"CSV campaign driver escapes config directory: {csv}",
+                )
+            campaign_roots = tuple(
+                (root / value).resolve() for value in declared.roots
+            ) or (root,)
+            escaped = next(
+                (
+                    path
+                    for path in campaign_roots
+                    if not path.is_relative_to(repository_root)
+                ),
+                None,
+            )
+            if escaped is not None:
+                return r[t.Cli.ResultValue].fail(
+                    f"CSV campaign scan root escapes repository: {escaped}",
+                )
+        return None
+
     def mod(
         self: p.Infra.ModExecutionContext,
         request: p.Infra.ModRequest,
@@ -97,22 +134,11 @@ class FlextInfraModHandlers:
                 return r[t.Cli.ResultValue].from_failure(published)
             u.Cli.atomic_verify_binary_file_states((configured[1],)).unwrap()
         config_dir = root / c.CONFIG_DIR_NAME
-        config_root = config_dir.resolve()
-        repository_root = root.resolve()
-        for declared in campaigns_config.campaigns:
-            csv = config_dir / declared.csv
-            if not csv.resolve().is_relative_to(config_root):
-                return r[t.Cli.ResultValue].fail(
-                    f"CSV campaign driver escapes config directory: {csv}",
-                )
-            campaign_roots = tuple(
-                (root / value).resolve() for value in declared.roots
-            ) or (root,)
-            for path in campaign_roots:
-                if not path.resolve().is_relative_to(repository_root):
-                    return r[t.Cli.ResultValue].fail(
-                        f"CSV campaign scan root escapes repository: {path}",
-                    )
+        scope_failure = FlextInfraModHandlers._campaign_scope_failure(
+            root, config_dir, campaigns_config
+        )
+        if scope_failure is not None:
+            return scope_failure
         campaigns = tuple(
             m.Infra.ApplyRenamesInput(
                 repository_root=root,
@@ -148,7 +174,7 @@ class FlextInfraModHandlers:
                     FlextInfraImportNormalizationPhase(),
                     FlextInfraNamespaceRelocationPhase(),
                     FlextInfraDuplicateApplyPhase(),
-                    FlextInfraAccessorRenamePhase(source_preview=source_preview),
+                    FlextInfraAccessorRenamePhase(),
                 ),
             ).execute()
 

@@ -15,13 +15,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra.codegen import FlextInfraCodegenScaffolder
 from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
@@ -52,6 +52,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
     class TestsGeneratedTopologyContracts:
         """Generated topology modules compile and follow the naming contract."""
 
+        @staticmethod
         @pytest.mark.parametrize(
             ("with_all_modules", "validate"),
             [
@@ -102,7 +103,6 @@ class TestsFlextInfraCodegenScaffolderNaming:
             ],
         )
         def test_generated_topology_satisfies_declared_contract(
-            self,
             tmp_path: Path,
             *,
             with_all_modules: bool,

@@ -19,7 +19,7 @@ from tests import c, m, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
+from tests import t
 
 
 class TestsFlextInfraWorkspaceCheckCli:
@@ -60,9 +60,9 @@ class TestsFlextInfraWorkspaceCheckCli:
         return module_path
 
     @staticmethod
-    def test_resolve_gates_rejects_duplicate_explicit_gate() -> None:
+    def test_resolve_gates_rejects_duplicate_explicit_gate(tmp_path: Path) -> None:
         """Test resolve gates rejects duplicate explicit gate."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             c.Infra.LINT,
             c.Infra.PYREFLY,
             c.Infra.LINT,
@@ -202,7 +202,7 @@ class TestsFlextInfraWorkspaceCheckCli:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize("parallel", [False, True])
+    @pytest.mark.parametrize(c.ProcessingMode.PARALLEL, [False, True])
     @pytest.mark.parametrize("directory_option", [None, "--reports-dir"])
     def test_real_cli_invocations_preserve_independent_reports(
         tmp_path: Path,
@@ -273,13 +273,13 @@ class TestsFlextInfraWorkspaceCheckCli:
     @staticmethod
     @pytest.mark.parametrize("residual", [False, True])
     @pytest.mark.parametrize("workspace_member", [False, True])
-    def test_run_cli_file_apply_repairs_only_selected_source(
+    def test_run_cli_file_apply_rejects_before_effects(
         tmp_path: Path,
         *,
         residual: bool,
         workspace_member: bool,
     ) -> None:
-        """Standalone and member file repairs retain effects and native failures."""
+        """Standalone and member file checks reject a different operation."""
         root = u.Tests.mk_project(tmp_path, "file-workspace", with_src=True)
         project = root
         if workspace_member:
@@ -296,6 +296,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             encoding="utf-8",
         )
         unselected.write_text("import os\n", encoding="utf-8")
+        before = selected.read_bytes()
         exit_code = main([
             "check",
             "run",
@@ -307,8 +308,8 @@ class TestsFlextInfraWorkspaceCheckCli:
             c.Infra.LINT,
             "--apply",
         ])
-        tm.that(exit_code, eq=int(residual))
-        tm.that(selected.read_text(encoding="utf-8"), lacks="import os")
+        tm.that(exit_code, eq=2)
+        tm.that(selected.read_bytes(), eq=before)
         tm.that(unselected.read_text(encoding="utf-8"), eq="import os\n")
 
     @pytest.mark.parametrize("residual", [False, True])

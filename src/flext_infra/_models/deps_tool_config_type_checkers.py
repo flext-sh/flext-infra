@@ -72,27 +72,38 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
 
+            project_root_env_dirs: Annotated[
+                t.StrSequence,
+                m.Field(
+                    alias="project-root-env-dirs",
+                    description=(
+                        "Included directories resolved from their project "
+                        "package parent."
+                    ),
+                ),
+            ] = ()
+
             source_dir: Annotated[
                 str,
                 m.Field(
                     alias="source-dir",
                     description="Primary source directory name.",
                 ),
-            ]
+            ] = "src"
             project_root: Annotated[
                 str,
                 m.Field(
                     alias="project-root",
                     description="Project root path entry used in path resolution.",
                 ),
-            ]
+            ] = "."
             env_dirs: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="env-dirs",
                     description="Canonical execution environment directories in order.",
                 ),
-            ]
+            ] = ()
             test_like_dirs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -101,14 +112,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                         "Env dirs that should include project root in extraPaths."
                     ),
                 ),
-            ]
+            ] = ()
             default_excludes: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="default-excludes",
                     description="Always-applied pyright exclude globs.",
                 ),
-            ]
+            ] = ()
             ignored_diagnostic_globs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -160,18 +171,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
 
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
-            m.BeforeValidator(
-                lambda value: {
-                    "source-dir": "src",
-                    "project-root": ".",
-                    "env-dirs": [],
-                    "test-like-dirs": [],
-                    "default-excludes": [],
-                    "ignored-diagnostic-globs": [],
-                    "diagnostic-path-overrides": [],
-                    **(value or {}),
-                }
-            ),
             m.Field(
                 alias="path-rules",
                 description="Pyright path resolution and execution-env rules.",
@@ -198,35 +197,35 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     alias="source-dir",
                     description="Primary source directory name.",
                 ),
-            ]
+            ] = "src"
             project_root: Annotated[
                 str,
                 m.Field(
                     alias="project-root",
                     description="Project root path entry used in search-path.",
                 ),
-            ]
+            ] = "."
             env_dirs: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="env-dirs",
                     description="Canonical directories used to build project-includes.",
                 ),
-            ]
+            ] = ()
             workspace_include_children: Annotated[
                 bool,
                 m.Field(
                     alias="workspace-include-children",
                     description="Whether root pyrefly should include child projects.",
                 ),
-            ]
+            ] = False
             workspace_include_child_env_dirs: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="workspace-include-child-env-dirs",
                     description="Child env dirs included by root pyrefly when enabled.",
                 ),
-            ]
+            ] = ()
             project_shared_search_paths: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -236,21 +235,10 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                         "for declared_repository pyrefly search-path."
                     ),
                 ),
-            ]
+            ] = ()
 
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
-            m.BeforeValidator(
-                lambda value: {
-                    "source-dir": "src",
-                    "project-root": ".",
-                    "env-dirs": [],
-                    "workspace-include-children": False,
-                    "workspace-include-child-env-dirs": [],
-                    "project-shared-search-paths": [],
-                    **(value or {}),
-                }
-            ),
             m.Field(alias="path-rules", description="Pyrefly search-path rules."),
         ]
 

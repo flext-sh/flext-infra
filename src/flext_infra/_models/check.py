@@ -102,6 +102,13 @@ class FlextInfraModelsCheck:
                 description="One literal repository-relative file; read-only gates"
             ),
         ] = None
+        report_output: Annotated[
+            Path | None,
+            m.Field(
+                alias="report-output",
+                description="Absent invocation-owned typed summary destination",
+            ),
+        ] = None
 
         @property
         def reports_dir_path(self) -> Path:
@@ -121,6 +128,10 @@ class FlextInfraModelsCheck:
 
         name: Annotated[str, m.Field(description="Display/project name")]
         path: Annotated[Path, m.Field(description="Resolved project root path")]
+        applicable_gates: Annotated[
+            t.StrSequence,
+            m.Field(description="Requested gates elected for this project's inputs"),
+        ] = ()
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
@@ -291,7 +302,9 @@ class FlextInfraModelsCheck:
             mode="before",
         )
         @classmethod
-        def _coerce_declared_sequences(cls, value: object) -> object:
+        def _coerce_declared_sequences(
+            cls, value: t.JsonValue
+        ) -> t.JsonValue | t.VariadicTuple[t.JsonValue]:
             """Coerce scanner JSON arrays into the strict tuple form.
 
             Args:
@@ -332,6 +345,14 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
+    class GateOutputReceipt(m.ContractModel):
+        """Exact native output paired with its atomically published runtime path."""
+
+        raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
+            m.Field(description="Unmodified native output", exclude=True)
+        )
+        path: Path = m.Field(description="Durably published native output receipt")
+
     class GateExecutionParams(m.ContractModel):
         """Validated assembly inputs keeping native outcome apart from acceptance."""
 
@@ -341,7 +362,9 @@ class FlextInfraModelsCheck:
         issues: t.VariadicTuple[Issue] = m.Field(
             description="Complete native diagnostics",
         )
-        raw_output: str = m.Field(description="Unmodified native output")
+        raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
+            m.Field(description="Unmodified native output")
+        )
         started: float = m.Field(description="Monotonic execution start time")
 
     class GateExecution(m.ArbitraryTypesModel):
@@ -356,14 +379,16 @@ class FlextInfraModelsCheck:
                 "Complete native gate diagnostics, including informative findings"
             ),
         )
-        raw_output: str = m.Field(
-            "",
-            description=(
-                "In-memory native output; persisted once at raw_receipt rather "
-                "than duplicated inside serialized execution summaries"
-            ),
-            exclude=True,
-            validate_default=True,
+        raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
+            m.Field(
+                default="",
+                description=(
+                    "In-memory native output; persisted once at raw_receipt rather "
+                    "than duplicated inside serialized execution summaries"
+                ),
+                exclude=True,
+                validate_default=True,
+            )
         )
         raw_receipt: Path | None = m.Field(
             None,
@@ -373,6 +398,42 @@ class FlextInfraModelsCheck:
         outcome: c.Infra.ToolOutcome = m.Field(
             description="Native process/report verdict, independent of findings policy",
         )
+        process: Annotated[
+            m.Cli.ProcessOutcome | None,
+            m.Field(description="Original native process, when this gate invoked one"),
+        ] = None
+        components: Annotated[
+            MutableMapping[str, FlextInfraModelsCheck.GateExecution],
+            m.Field(description="Executions owned by a composite gate"),
+        ] = m.Field(default_factory=dict)
+        requested_components: Annotated[
+            t.StrSequence,
+            m.Field(description="Native component inventory elected before execution"),
+        ] = ()
+
+        @m.computed_field
+        @property
+        def complete(self) -> bool:
+            """Every elected component has its actual execution record."""
+            return (
+                len(set(self.requested_components)) == len(self.requested_components)
+                and set(self.components) == set(self.requested_components)
+                and all(component.complete for component in self.components.values())
+            )
+
+        @m.computed_field
+        @property
+        def interrupted(self) -> bool:
+            """Whether this execution or an owned component was interrupted."""
+            process = self.process
+            return (
+                process is not None
+                and (
+                    process.timed_out
+                    or process.forwarded_signal is not None
+                    or process.raw_return_code < 0
+                )
+            ) or any(component.interrupted for component in self.components.values())
 
         @m.computed_field
         @property
@@ -605,6 +666,24 @@ class FlextInfraModelsCheck:
             t.VariadicTuple[Path],
             m.Field(description="File selection; empty means full-project execution"),
         ]
+
+        @m.computed_field
+        @property
+        def complete(self) -> bool:
+            """Every selected target executed its exact applicable inventory."""
+            return (
+                bool(self.targets)
+                and len(self.targets) == len(self.results)
+                and len({target.path for target in self.targets}) == len(self.targets)
+                and all(
+                    target.name == result.project
+                    and bool(target.applicable_gates)
+                    and set(target.applicable_gates).issubset(self.requested_gates)
+                    and set(result.gates) == set(target.applicable_gates)
+                    and all(execution.complete for execution in result.gates.values())
+                    for target, result in zip(self.targets, self.results, strict=True)
+                )
+            )
 
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report; serializes and validates the same JSON."""

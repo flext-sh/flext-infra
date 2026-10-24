@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra
-from tests import t, tm, u
+from flext_infra import infra
+from tests import c, t, tm, u
 
 _TRANSACTION_MARKER = "-transaction-"
 

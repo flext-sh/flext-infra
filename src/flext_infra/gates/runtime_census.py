@@ -45,6 +45,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
             if ctx.candidate_runtime_report is None:
                 return self._build_project_error_gate_result(
                     project_dir,
+                    ctx=ctx,
                     passed=False,
                     errors=["sealed runtime census report is required"],
                     started=started,
@@ -52,6 +53,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
             return self._build_validation_report_result(
                 project_dir,
                 r[m.Infra.ValidationReport].ok(ctx.candidate_runtime_report),
+                ctx=ctx,
                 started=started,
             )
         validator = FlextInfraRuntimeCensusValidator.for_project(
@@ -60,6 +62,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         if validator.failure:
             return self._build_project_error_gate_result(
                 project_dir,
+                ctx=ctx,
                 passed=False,
                 errors=[validator.error or "runtime census scoping failed"],
                 started=started,
@@ -69,6 +72,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         return self._build_validation_report_result(
             project_dir,
             validator.value.build_report(),
+            ctx=ctx,
             started=started,
         )
 

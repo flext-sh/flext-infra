@@ -2,11 +2,14 @@
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
-          submodules: {{ checkout_submodules }}
-          # No step needs authenticated git after checkout; persisting the
-          # token into .git/config would expose it to every later command.
+          submodules: {{ "false" if private_submodules or private_dependency_auth else checkout_submodules }}
+{% if not private_submodules %}
+          # Dependency authentication uses the declared process configuration,
+          # never a persisted checkout credential.
           persist-credentials: false
-{%- include "_fragments/mise_install.j2" %}
+{% endif %}
+{%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
       - name: Bootstrap
 {% if explicit_bash %}        shell: bash
 {% endif %}        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
@@ -19,6 +22,6 @@
 {% if explicit_bash %}        shell: bash
 {% endif %}        run: |
           {{ make.ci.variable }}={{ make.ci.value }} make check
-          {{ make.ci.variable }}={{ make.ci.value }} make test
+          {{ make.ci.variable }}={{ make.ci.value }} make tests
           {{ make.ci.variable }}={{ make.ci.value }} make build
 {%- endmacro %}

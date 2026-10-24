@@ -322,7 +322,8 @@ class FlextInfraRenameSymbols:
         if occupied is not None:
             occupied_path = Path(occupied.real_path).resolve()
             if (
-                not occupied.is_folder()
+                path.name == c.Infra.INIT_PY
+                or not occupied.is_folder()
                 or any(source.is_relative_to(occupied_path) for source in sources)
                 or any(
                     name.endswith((".py", ".pyi"))
@@ -379,12 +380,7 @@ class FlextInfraRenameSymbols:
             t.MutableMappingKV[Path, Path],
         ],
     ) -> None:
-        """Collect authenticated native changes and quoted-reference rewrites.
-
-        Raises:
-            TypeError: If Rope emits an unsupported native effect.
-
-        """
+        """Collect authenticated native changes and quoted-reference rewrites."""
         producer = projects[0]
         root = Path(producer.root.real_path)
         path = cls._native_rename_path(producer, sources, item, replacement)
@@ -392,7 +388,7 @@ class FlextInfraRenameSymbols:
         offset = cls._native_identifier_offset(producer, sources, item, replacement)
         owner = item.scope_path.rpartition(".")[0]
         for project, changes in u.Infra.rename_all_changes(
-            projects, resource, offset, replacement
+            projects, resource, offset, replacement, sources=sources
         ):
             cls._record_native_changes(project, changes, sources, effects, root)
             cls._plan_quoted_rename(
@@ -401,6 +397,7 @@ class FlextInfraRenameSymbols:
                 {
                     Path(candidate.real_path): candidate
                     for candidate in project.get_python_files()
+                    if Path(candidate.real_path) in sources
                 },
                 (
                     item.module_name.rpartition(".")[0]
@@ -468,10 +465,12 @@ class FlextInfraRenameSymbols:
             ValueError: If topology, payloads, or destinations cannot be preserved.
 
         """
-        if not isinstance(resource, p.Infra.RopeRoot):
+        children = (
+            resource.get_children() if isinstance(resource, p.Infra.RopeRoot) else None
+        )
+        if children is None:
             msg = f"native package has no directory inventory: {resource.real_path}"
             raise ValueError(msg)
-        children = resource.get_children()
         if not children:
             msg = (
                 f"native package cannot preserve empty directory: {resource.real_path}"
@@ -698,13 +697,11 @@ class FlextInfraRenameSymbols:
             return ("class", ast.dump(function))
         owner_binding = cls.resolve_member(project, declaration.module_name, owner)
         scope = (
-            owner_binding.get_object().get_scope()
+            u.Infra.require_source_object(owner_binding.get_object(), owner).get_scope()
             if owner_binding is not None
             else module.get_scope()
         )
-        if scope is None or not u.Infra.same_name(
-            binding, scope.get_defined_names().get(name)
-        ):
+        if not u.Infra.same_name(binding, scope.get_defined_names().get(name)):
             msg = (
                 "semantic rename is inherited rather than introduced: "
                 f"{declaration.scope_path}"

@@ -123,33 +123,38 @@ class TestsFlextInfraWorkspaceChecker:
         tm.that(selected_exit_code, eq=0)
 
     @staticmethod
-    def test_resolve_gates_with_valid_gates() -> None:
+    def test_resolve_gates_with_valid_gates(tmp_path: Path) -> None:
         """Test that resolve_gates normalizes valid gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             "lint",
             "pyrefly",
             "mypy",
             "pyright",
         ])
-        tm.ok(result)
-        tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
+        tm.ok(result, eq=["lint", "pyrefly", "mypy", "pyright"])
 
     @staticmethod
-    def test_resolve_gates_rejects_a_repeated_gate() -> None:
+    def test_resolve_gates_rejects_a_repeated_gate(tmp_path: Path) -> None:
         """A gate named twice is an operator mistake, not something to absorb.
 
         Silently collapsing the repeat would run exactly the gates the
         operator asked for while hiding that the request did not say what
         they thought it said.
         """
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "lint",
+            "lint",
+            "format",
+        ])
         tm.fail(result)
         tm.that(result.error, has="duplicate gate 'lint'")
 
     @staticmethod
-    def test_resolve_gates_with_invalid_gate() -> None:
+    def test_resolve_gates_with_invalid_gate(tmp_path: Path) -> None:
         """Test that resolve_gates fails on invalid gate name."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["invalid_gate"])
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
+            "invalid_gate",
+        ])
         tm.fail(result)
 
     @staticmethod
@@ -160,7 +165,12 @@ class TestsFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         reports_dir = tmp_path / "reports"
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
@@ -172,7 +182,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that lint() returns a GateResult."""
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
         (project_dir / "src" / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
@@ -189,6 +204,12 @@ class TestsFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        result = checker.format(tmp_path)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "p1",
+            pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        result = checker.format(project_dir)
         tm.that(result, is_=r)
         tm.ok(result)

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests import tm
+from tests import c, tm
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -29,20 +30,18 @@ class TestsFlextInfraExtraPathsSearchPaths:
             generated_python_roots=("src", "tests"),
         )
 
-        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path)
 
-        tm.that(result, eq=("src", "tests", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(
+                tmp_path, manager.generated_python_roots
+            ),
+        )
 
     @staticmethod
-    def test_included_scripts_root_joins_the_search_path(tmp_path: Path) -> None:
-        """A scripts-rooted module tree resolves without a repo-root twin.
-
-        Issue #485: project-includes carried ``scripts/**/*.py*`` while the
-        search path lacked the scripts root, so a consumer whose scripts own
-        their module root (``from lib...`` with ``scripts/lib/``) failed with
-        missing-import. Inclusion and resolution derive from the same declared
-        env-dir set.
-        """
+    def test_included_scripts_root_obeys_declared_search_paths(tmp_path: Path) -> None:
+        """Analysis inclusion does not introduce an undeclared import identity."""
         (tmp_path / "src").mkdir()
         scripts = tmp_path / "scripts" / "lib"
         scripts.mkdir(parents=True)
@@ -52,12 +51,17 @@ class TestsFlextInfraExtraPathsSearchPaths:
         )
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path)
         includes = manager.pyrefly_project_includes(project_dir=tmp_path, is_root=True)
 
-        tm.ok("scripts" in result)
-        tm.ok(result.index("scripts") < result.index("."))
-        tm.ok("scripts/**/*.py*" in includes)
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(tmp_path),
+        )
+        tm.that(
+            "scripts/**/*.py*" in includes,
+            eq="scripts" in config.Infra.tooling.tools.pyrefly.path_rules.env_dirs,
+        )
 
     """Verify productive, existing Pyrefly search roots."""
 
@@ -68,10 +72,10 @@ class TestsFlextInfraExtraPathsSearchPaths:
         """Keep project-local roots when dependencies are development-only."""
         consumer = tmp_path / "flext-core"
         consumer.mkdir()
-        (consumer / ".git").mkdir()
+        (consumer / c.GIT_DIR_NAME).mkdir()
         (consumer / "src").mkdir()
         (consumer / "Makefile").write_text("", encoding="utf-8")
-        (consumer / "pyproject.toml").write_text(
+        (consumer / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'flext-core'\n"
@@ -86,42 +90,48 @@ class TestsFlextInfraExtraPathsSearchPaths:
         ):
             dep_root = tmp_path / dep_name
             dep_root.mkdir()
-            (dep_root / ".git").mkdir()
+            (dep_root / c.GIT_DIR_NAME).mkdir()
             (dep_root / "Makefile").write_text("", encoding="utf-8")
             dep_src = dep_root / "src" / package_name
             dep_src.mkdir(parents=True)
-            (dep_root / "pyproject.toml").write_text(
+            (dep_root / c.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname = '{dep_name}'\n",
                 encoding="utf-8",
             )
             (dep_src / "__init__.py").write_text("", encoding="utf-8")
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
+        result = manager.pyrefly_search_paths(project_dir=consumer)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(consumer),
+        )
 
     @staticmethod
     def test_pyrefly_search_paths_include_project_root_for_tests_package(
         tmp_path: Path,
     ) -> None:
-        """Include the tests root and project root when tests are importable."""
+        """Importable tests retain only the configured import identities."""
         consumer = tmp_path / "flext-infra"
         consumer.mkdir()
-        (consumer / ".git").mkdir()
+        (consumer / c.GIT_DIR_NAME).mkdir()
         (consumer / "src").mkdir()
         (consumer / "tests").mkdir()
         (consumer / "Makefile").write_text("", encoding="utf-8")
-        (consumer / "pyproject.toml").write_text(
+        (consumer / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'flext-infra'\n",
             encoding="utf-8",
         )
         (consumer / "tests" / "__init__.py").write_text("", encoding="utf-8")
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
+        result = manager.pyrefly_search_paths(project_dir=consumer)
 
-        tm.that(result, eq=("src", "tests", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(consumer),
+        )
 
     @staticmethod
     def test_pyrefly_search_paths_ignore_non_path_dependencies_at_root(
@@ -134,20 +144,23 @@ class TestsFlextInfraExtraPathsSearchPaths:
         )
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(tmp_path),
+        )
 
     @staticmethod
     def test_pyrefly_search_paths_omit_workspace_dependency_src_dirs_at_root(
         tmp_path: Path,
     ) -> None:
         """Keep declared workspace projects out of the root's search path."""
-        (tmp_path / ".git").mkdir()
+        (tmp_path / c.GIT_DIR_NAME).mkdir()
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
-        (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 "name = 'flext'\n"
@@ -163,9 +176,9 @@ class TestsFlextInfraExtraPathsSearchPaths:
         ):
             dep_root = tmp_path / dep_name
             dep_root.mkdir()
-            (dep_root / ".git").mkdir()
+            (dep_root / c.GIT_DIR_NAME).mkdir()
             (dep_root / "Makefile").write_text("", encoding="utf-8")
-            (dep_root / "pyproject.toml").write_text(
+            (dep_root / c.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname = '{dep_name}'\n",
                 encoding="utf-8",
             )
@@ -174,9 +187,12 @@ class TestsFlextInfraExtraPathsSearchPaths:
             (dep_src / "__init__.py").write_text("", encoding="utf-8")
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path)
 
-        tm.that(result, eq=("src", "tests", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(tmp_path),
+        )
 
     @staticmethod
     def test_pyrefly_search_paths_exclude_dependency_dirs_at_root(
@@ -191,6 +207,9 @@ class TestsFlextInfraExtraPathsSearchPaths:
         (dep_venv / "python").write_text("", encoding="utf-8")
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
-        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(
+            result,
+            eq=TestsFlextInfraExtraPathsSupport.expected_pyrefly_paths(tmp_path),
+        )

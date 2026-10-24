@@ -169,7 +169,7 @@ class FlextInfraUtilitiesManagedConflicts:
             if item.path.as_posix() == c.PYPROJECT_FILENAME:
                 return r[m.Infra.ManagedFileSpec].ok(item)
         return r[m.Infra.ManagedFileSpec].fail(
-            f"codegen.yaml templates.managed_files must declare {c.PYPROJECT_FILENAME}",
+            f"codegen.yaml templates.entries must own {c.PYPROJECT_FILENAME}",
         )
 
     @classmethod

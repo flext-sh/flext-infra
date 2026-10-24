@@ -66,8 +66,7 @@ class FlextInfraRefactorRoutes:
                     repository_root=root, rename_plan=request.plan, check=True
                 ),
                 workspace,
-                infra.source_preview(root),
-            ).map(lambda accepted: accepted)
+            )
 
     @staticmethod
     def execute_move_module(
@@ -103,12 +102,14 @@ class FlextInfraRefactorRoutes:
                     workspace.rope_project,
                     source,
                     destination_file=target,
-                    sources={
-                        state.path: state.content.decode(c.DEFAULT_ENCODING)
-                        for state in states
-                        if state.content is not None
-                    },
-                    source_states=states,
+                    inputs=(
+                        {
+                            state.path: state.content.decode(c.DEFAULT_ENCODING)
+                            for state in states
+                            if state.content is not None
+                        },
+                        states,
+                    ),
                 )
                 if any(not plan.path.is_relative_to(root) for plan in plans):
                     msg = "exact module move effects escape the declared repository"
@@ -119,7 +120,6 @@ class FlextInfraRefactorRoutes:
                         repository_root=root,
                         options=m.Infra.SemanticPublicationOptions(
                             projection_roots=(root,),
-                            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                         ),
                     )
                 )

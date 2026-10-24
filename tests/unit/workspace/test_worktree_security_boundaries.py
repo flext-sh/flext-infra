@@ -22,7 +22,7 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
         repository = tmp_path / "repository"
         repository.mkdir()
         (repository / "README.md").write_text("fixture\n", encoding="utf-8")
-        (repository / "pyproject.toml").write_text(
+        (repository / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )

@@ -11,8 +11,8 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from flext_infra.codegen import FlextInfraCodegenConformExecute
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraConformSupport:
@@ -52,22 +52,42 @@ class TestsFlextInfraConformSupport:
         return u.Tests.standalone_workspace(root)
 
     @staticmethod
+    def conform_in_workspace(
+        request: m.Infra.CodegenConformRequest,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Execute one conform request against a pre-declared workspace topology.
+
+        Returns:
+            The conformance outcome of the bound executor.
+
+        """
+        return FlextInfraCodegenConformExecute(
+            state=m.Infra.CodegenConformState(
+                repository_root=request.root,
+                request=request,
+                initial_workspace=workspace,
+                ports=infra.codegen_conform_collaborators(),
+            ),
+            runtime_settings=infra.settings,
+            initial_context=infra.context,
+        ).execute()
+
+    @staticmethod
     def apply_conform_surface(
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
         surface: c.Infra.CodegenConformSurface,
     ) -> None:
         """Materialize one exact public conform surface for a focused test."""
+        request = u.Tests.conform_request(
+            root,
+            what=surface,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
         tm.ok(
-            infra.codegen_conform(
-                u.Tests.conform_request(
-                    root,
-                    what=surface,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                ),
-                initial_workspace=workspace,
-            ),
+            TestsFlextInfraConformSupport.conform_in_workspace(request, workspace),
         )
 
     @staticmethod
@@ -95,7 +115,7 @@ class TestsFlextInfraConformSupport:
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
                 if path.is_file()
-                and ".git" not in path.relative_to(root).parts
+                and c.GIT_DIR_NAME not in path.relative_to(root).parts
                 and ".infra-baseline" not in path.relative_to(root).parts
                 and c.Infra.TRANSACTION_STATE_DIRNAME
                 not in path.relative_to(root).parts
@@ -128,8 +148,14 @@ class TestsFlextInfraConformSupport:
             for path in sorted(expected_files.keys() | actual_files.keys())
             if expected_files.get(path) != actual_files.get(path)
             for line in unified_diff(
-                expected_files.get(path, b"").decode(errors="replace").splitlines(),
-                actual_files.get(path, b"").decode(errors="replace").splitlines(),
+                expected_files
+                .get(path, b"")
+                .decode(errors=c.MergeStrategy.REPLACE)
+                .splitlines(),
+                actual_files
+                .get(path, b"")
+                .decode(errors=c.MergeStrategy.REPLACE)
+                .splitlines(),
                 fromfile=f"created/{path}",
                 tofile=f"conformed/{path}",
                 lineterm="",
@@ -148,7 +174,7 @@ class TestsFlextInfraConformSupport:
         dist = u.Tests.repository_ref(config.Infra.name).distribution
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
+                root / c.PYPROJECT_FILENAME,
                 f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
                 'description = "Existing repository fixture"\n'
                 f"requires-python = "
@@ -171,11 +197,11 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def self_check_conform_service(
         root: Path,
-    ) -> t.Pair[FlextInfraCodegenConform, m.Infra.CodegenConformRequest]:
+    ) -> t.Pair[FlextInfraCodegenConformExecute, m.Infra.CodegenConformRequest]:
         """Materialize the standalone root fixture and its CHECK-mode conform service.
 
         Returns:
-            The resulting ``t.Pair[FlextInfraCodegenConform,
+            The resulting ``t.Pair[FlextInfraCodegenConformExecute,
                 m.Infra.CodegenConformRequest]``.
 
         """
@@ -186,7 +212,7 @@ class TestsFlextInfraConformSupport:
             repository,
             project=u.Tests.project_spec(repository.name),
         )
-        (root / "pyproject.toml").write_text(
+        (root / c.PYPROJECT_FILENAME).write_text(
             f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
             encoding="utf-8",
         )
@@ -201,11 +227,11 @@ class TestsFlextInfraConformSupport:
         workspace: m.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-    ) -> t.Pair[FlextInfraCodegenConform, m.Infra.CodegenConformRequest]:
+    ) -> t.Pair[FlextInfraCodegenConformExecute, m.Infra.CodegenConformRequest]:
         """Build the CHECK-mode conform service bound to one declared workspace.
 
         Returns:
-            The resulting ``t.Pair[FlextInfraCodegenConform,
+            The resulting ``t.Pair[FlextInfraCodegenConformExecute,
                 m.Infra.CodegenConformRequest]``.
 
         """
@@ -215,7 +241,7 @@ class TestsFlextInfraConformSupport:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(
+        service = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,

@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config
 from tests import c, m, t, tm, u
@@ -20,7 +21,6 @@ class TestsFlextInfraPytestTargetFile:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.remote
     @pytest.mark.parametrize(
         ("budgeted", "slow", "failure"),
         [
@@ -33,21 +33,15 @@ class TestsFlextInfraPytestTargetFile:
             (True, True, "collection"),
         ],
     )
-    def test_public_make_runs_complete_requested_file_once(
-        provisioned_infra_checkout: t.Pair[str, Path],
+    def test_public_runner_runs_complete_requested_file_once(
+        cached_runner_project: Path,
         *,
         budgeted: bool,
         slow: bool,
         failure: str,
     ) -> None:
-        """Native Make runs one complete file phase and preserves causal failure."""
-        _, root = provisioned_infra_checkout
-        generated = tm.ok(u.Tests.run_isolated_make(["gen"], cwd=root))
-        tm.that(
-            u.Cli.process_succeeded(generated.outcome),
-            eq=True,
-            msg=generated.stdout + generated.stderr,
-        )
+        """The public file operation runs one bounded phase with causal failure."""
+        root = cached_runner_project
         make = config.Infra.codegen.make
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
         relative = Path(make.testmon_cache.target_directory) / (
@@ -55,7 +49,7 @@ class TestsFlextInfraPytestTargetFile:
                 config.Infra.tooling,
                 "pytest.ini_options",
                 "python_files",
-                t.StrSequence,
+                TypeForm(t.StrSequence),
             )[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"
@@ -75,27 +69,24 @@ class TestsFlextInfraPytestTargetFile:
         )
         reports = root / make.testmon_cache.reports_directory
         before = set(reports.glob("*/run-context.json"))
-        process = tm.ok(
-            u.Tests.run_isolated_make(
-                ["test-file", f"FILE={relative.as_posix()}"],
-                cwd=root,
-                env={make.ci.variable: make.ci.local_value},
-            ),
-        )
+        runner = u.Tests.PytestRunner.runner_for(root, target_file=relative)
+
+        status = tm.ok(runner.execute_file())
+
         tm.that(
-            u.Cli.process_succeeded(process.outcome),
+            status == pytest.ExitCode.OK.value,
             eq=bool(expected) and not failure,
-            msg=process.stdout + process.stderr,
         )
-        observed: t.StrSequence = (
-            proof.read_text().splitlines() if proof.exists() else []
-        )
-        tm.that(
-            all(observed.count(item) <= expected.count(item) for item in observed),
-            eq=True,
-        )
-        if expected and not failure:
-            tm.that(sorted(observed), eq=sorted(expected))
+        if failure == "collection" or not expected:
+            tm.fail(proof.exists())
+        else:
+            observed = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
+            tm.that(
+                all(observed.count(item) <= expected.count(item) for item in observed),
+                eq=True,
+            )
+            if not failure:
+                tm.that(sorted(observed), eq=sorted(expected))
         receipts = [
             m.Infra.PytestRunContext.model_validate_json(path.read_text())
             for path in sorted(
@@ -107,7 +98,11 @@ class TestsFlextInfraPytestTargetFile:
         tm.that([receipt.execution_mode for receipt in receipts], eq=modes)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
         tm.that(
-            all(receipt.deadline_monotonic is None for receipt in receipts), eq=True
+            {receipt.deadline_monotonic for receipt in receipts},
+            eq={
+                runner.started_at_monotonic
+                + config.Infra.tooling.tools.pytest.run_timeout_seconds,
+            },
         )
         if expected and not failure:
             TestsFlextInfraPytestTargetFile._assert_rerun_executes_again(
@@ -159,21 +154,12 @@ class TestsFlextInfraPytestTargetFile:
         proof: Path,
         expected: list[str],
     ) -> None:
-        """A green declared file reruns through Make and records every phase."""
-        make = config.Infra.codegen.make
+        """A green public file operation reruns and records every selected item."""
         before = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
-        repeated = tm.ok(
-            u.Tests.run_isolated_make(
-                ["test-file", f"FILE={relative.as_posix()}"],
-                cwd=root,
-                env={make.ci.variable: make.ci.local_value},
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(repeated.outcome),
-            eq=True,
-            msg=repeated.stdout + repeated.stderr,
-        )
+        runner = u.Tests.PytestRunner.runner_for(root, target_file=relative)
+
+        tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
+
         after = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         tm.that(after[: len(before)], eq=before)
         tm.that(sorted(after[len(before) :]), eq=sorted(expected))

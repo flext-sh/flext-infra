@@ -1,63 +1,96 @@
+# Keep the historical rule identity: concrete runtime Mixin ellipses and
+# class-local typing shells are the same competing-implementation law. Only
+# declaration-shaped bodies are candidates; native identities preserve Protocol,
+# abstractmethod and overload declarations, even behind aliases or decorators.
 id: concrete-mixin-runtime-ellipsis
 language: python
-severity: warning
+severity: error
 files:
-  - "**/src/**/*.py"
-  - "src/**/*.py"
-ignores:
-  - "**/legado/**"
+  - "**/*.py"
 message: >-
-  A concrete Mixin runtime method contains only ellipsis and can shadow later
-  FLEXT behavior. Put declaration-only signatures in the canonical p.* Protocol;
-  otherwise implement or remove the concrete method after semantic FLEXT review.
-  Detection only; do not hide the violation behind TYPE_CHECKING.
+  A concrete class supplies a competing declaration-only method. Compose the actual
+  implementation and state owner; use p.* only for a genuine dependency capability,
+  never a copy of sibling signatures or a TYPE_CHECKING implementation.
+metadata:
+  context:
+    NAME:
+      not: protocol-declaration
+    GUARD:
+      is: resolved-symbol
+      arg: typing TYPE_CHECKING
+    METHOD:
+      - not: declaration-decorator
+        arg: abc abstractmethod
+      - not: declaration-decorator
+        arg: typing overload
+      - not: declaration-decorator
+        arg: typing_extensions overload
+utils:
+  shell-body:
+    kind: block
+    all:
+      - has:
+          any:
+            - kind: delete_statement
+            - kind: expression_statement
+              has:
+                kind: ellipsis
+      - not:
+          has:
+            not:
+              any:
+                - kind: delete_statement
+                - kind: expression_statement
+                  has:
+                    any:
+                      - kind: ellipsis
+                      - kind: string
+                - kind: raise_statement
+                  any:
+                    - pattern: raise NotImplementedError
+                    - pattern: raise NotImplementedError($$$ARGS)
 rule:
   kind: function_definition
   all:
+    - has:
+        field: name
+        pattern: $METHOD
+    - has:
+        field: body
+        matches: shell-body
     - any:
-        - pattern: |
-            def $METHOD($$$PARAMS):
-                ...
-        - pattern: |
-            def $METHOD($$$PARAMS) -> $RETURN:
-                ...
-    # Chained neighbor scoping: the method's immediate enclosing class must be
-    # the Mixin itself. `inside` with default neighbor stop walks function ->
-    # class body block -> class definition, so a Protocol nested inside a
-    # concrete Mixin (declaration-only methods) is never flagged.
-    - inside:
-        kind: block
-        inside:
-          kind: class_definition
-          all:
-            - has:
-                field: name
-                regex: "Mixin$"
-            - not:
+        - all:
+            - inside:
+                kind: if_statement
+                stopBy: end
                 has:
-                  field: superclasses
-                  regex: "(Protocol|ABC)"
-    - not:
-        inside:
-          kind: if_statement
-          stopBy: end
-          has:
-            field: condition
-            pattern: TYPE_CHECKING
-    - not:
-        inside:
-          kind: decorated_definition
-          stopBy: end
-          has:
-            pattern: "@abstractmethod"
-    - not:
-        inside:
-          kind: decorated_definition
-          stopBy: end
-          any:
-            - has:
-                kind: decorator
-                pattern: "@overload"
-            - has:
-                kind: decorator
-                pattern: "@typing.overload"
+                  field: condition
+                  pattern: $GUARD
+            - inside:
+                kind: class_definition
+                stopBy:
+                  any:
+                    - kind: class_definition
+                    - kind: function_definition
+                has:
+                  field: name
+                  pattern: $NAME
+        - all:
+            - any:
+                - pattern: |
+                    def $METHOD($$$PARAMS):
+                        ...
+                - pattern: |
+                    def $METHOD($$$PARAMS) -> $RETURN:
+                        ...
+            - inside:
+                kind: class_definition
+                stopBy:
+                  any:
+                    - kind: class_definition
+                    - kind: function_definition
+                has:
+                  field: name
+                  all:
+                    - pattern: $NAME
+                    - regex: "Mixin$"

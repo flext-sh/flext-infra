@@ -5,7 +5,8 @@ snapshots:
     assert value is not None
   : fixed: |
       from tests import tm
-      value = tm.not_none(value)
+      if value is None:
+          tm.reject()
     labels:
     - source: assert value is not None
       style: primary
@@ -27,7 +28,8 @@ snapshots:
         raise AssertionError
   : fixed: |
       from tests import tm
-      value = tm.not_none(value)
+      if value is None:
+          tm.reject()
     labels:
     - source: |-
         if not (value is not None):

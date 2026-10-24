@@ -8,32 +8,22 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, settings, t, u
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
-from flext_infra.refactor import FlextInfraAccessorOriginResolver
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen import FlextInfraStagedPackage
+from flext_infra.refactor import (
+    FlextInfraAccessorMigrationRewriteMixin,
+    FlextInfraAccessorOriginResolver,
+)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraAccessorMigrationReportMixin:
+class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteMixin):
     """Compose a complete accessor candidate before any shared-source write."""
-
-    if TYPE_CHECKING:
-        _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]]
-
-        def _apply_automated_rewrites(
-            self,
-            rope_project: t.Infra.RopeProject,
-            py_file: Path,
-            source: str,
-            *,
-            resolver: FlextInfraAccessorOriginResolver,
-        ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
-            del rope_project, py_file, source, resolver
 
     @staticmethod
     def _accumulate_lint_totals(
@@ -130,7 +120,6 @@ class FlextInfraAccessorMigrationReportMixin:
                         desired_content=updated_source.encode(c.DEFAULT_ENCODING),
                         desired_mode=state.mode,
                         changes=tuple(change.original_name for change in automated),
-                        source_states=tuple(states.values()),
                     )
                 )
         return result_type.ok((tuple(plans), tuple(reports)))
@@ -165,7 +154,9 @@ class FlextInfraAccessorMigrationReportMixin:
         staged = FlextInfraStagedPackage.plan_sources(
             params.repository_root,
             updates,
-            options=m.Infra.StageSourceOptions(inputs=plans[0].source_states),
+            options=m.Infra.StageSourceOptions(
+                inputs=tuple(plan.before for plan in plans)
+            ),
         )
         if staged.failure:
             return result_type.from_failure(staged)
@@ -174,9 +165,8 @@ class FlextInfraAccessorMigrationReportMixin:
         if checked.failure:
             return result_type.from_failure(checked)
         if params.apply:
-            published = FlextInfraSemanticPublication.publish_source_candidate(
-                plans,
-                candidate=staged.value,
+            published = FlextInfraSemanticPublication.publish_semantic_file_plans(
+                plans, repository_root=params.repository_root
             )
             if published.failure:
                 return result_type.from_failure(published)
@@ -280,13 +270,9 @@ class FlextInfraAccessorMigrationReportMixin:
             plan.updates,
             validate,
             options=m.Infra.CodegenSourcePreviewOptions(
-                inputs=plan.inputs,
-                runtime_root=u.Infra.runtime_environment_dir(
-                    scopes[0],
-                    runtime_root=type(settings).fetch_global().Infra.runtime_root,
-                ).parent,
                 workspaces=plan.workspaces,
                 modes=plan.modes,
+                inputs=plan.inputs,
             ),
         )
         if previewed.failure:

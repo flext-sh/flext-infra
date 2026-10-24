@@ -16,21 +16,12 @@ if TYPE_CHECKING:
     from flext_infra.codegen._conform.artifact_render import (
         FlextInfraCodegenConformArtifactRender,
     )
-    from flext_infra.codegen._conform.beads_routes import (
-        FlextInfraCodegenConformBeadsRoutes,
-    )
     from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
     from flext_infra.codegen._conform.context_render import (
         FlextInfraCodegenConformContextRender,
     )
     from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
     from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
-    from flext_infra.codegen._conform.execute_directed import (
-        FlextInfraCodegenConformExecuteDirected,
-    )
-    from flext_infra.codegen._conform.execute_scaffold import (
-        FlextInfraCodegenConformExecuteScaffold,
-    )
     from flext_infra.codegen._conform.existing_plan import (
         FlextInfraCodegenConformExistingPlan,
     )
@@ -48,13 +39,10 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformArtifactRender",
-    "FlextInfraCodegenConformBeadsRoutes",
     "FlextInfraCodegenConformBootstrap",
     "FlextInfraCodegenConformContextRender",
     "FlextInfraCodegenConformEditor",
     "FlextInfraCodegenConformExecute",
-    "FlextInfraCodegenConformExecuteDirected",
-    "FlextInfraCodegenConformExecuteScaffold",
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformPlan",
@@ -67,13 +55,10 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraCodegenConformArtifactRender": ".artifact_render",
-        "FlextInfraCodegenConformBeadsRoutes": ".beads_routes",
         "FlextInfraCodegenConformBootstrap": ".bootstrap",
         "FlextInfraCodegenConformContextRender": ".context_render",
         "FlextInfraCodegenConformEditor": ".editor",
         "FlextInfraCodegenConformExecute": ".execute",
-        "FlextInfraCodegenConformExecuteDirected": ".execute_directed",
-        "FlextInfraCodegenConformExecuteScaffold": ".execute_scaffold",
         "FlextInfraCodegenConformExistingPlan": ".existing_plan",
         "FlextInfraCodegenConformFilePlans": ".file_plans",
         "FlextInfraCodegenConformPlan": ".plan",

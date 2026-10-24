@@ -10,7 +10,7 @@ import os
 import time
 from pathlib import Path
 
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
@@ -47,7 +47,7 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
     @staticmethod
     def _register(repo: Path, name: str, worktree: Path, branch: str = "") -> None:
         """Register one worktree the way Git stores it on the filesystem."""
-        registry = repo / ".git" / "worktrees" / name
+        registry = repo / c.GIT_DIR_NAME / "worktrees" / name
         registry.mkdir(parents=True, exist_ok=True)
         (registry / "gitdir").write_text(f"{worktree / '.git'}\n", encoding="utf-8")
         head = f"ref: refs/heads/{branch}\n" if branch else f"{'0' * 40}\n"
@@ -131,7 +131,7 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
     def test_broken_gitdir_is_skipped(self, tmp_path: Path) -> None:
         """A registry entry pointing nowhere is a report cell, not an error."""
         repo = tmp_path / "repo"
-        registry = repo / ".git" / "worktrees" / "ghost"
+        registry = repo / c.GIT_DIR_NAME / "worktrees" / "ghost"
         registry.mkdir(parents=True)
         (registry / "gitdir").write_text("/nonexistent/wt/.git\n", encoding="utf-8")
 
@@ -199,7 +199,7 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
         plan = report.plan
 
         tm.that(len(report.facts), eq=1)
-        tm.that(plan, none=False)
+        plan = tm.not_none(plan)
         tm.fail(plan.apply)
         tm.that(plan.total_reclaim_bytes, eq=8)
         tm.that(len(plan.actions), eq=1)

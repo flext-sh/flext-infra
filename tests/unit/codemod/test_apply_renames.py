@@ -21,12 +21,16 @@ from flext_infra.codemod import (
 )
 from tests import c, m, tm, u
 
+_SECOND_RECEIVER = 2
+_MIN_CHANGED_FILES = 2
 
+
+@pytest.mark.usefixtures("campaign_runtime")
 class TestsFlextInfraApplyRenames:
     """Campaigns change declared sources, preserve drivers, and prove convergence."""
 
     @staticmethod
-    @pytest.fixture(autouse=True)
+    @pytest.fixture
     def campaign_runtime(mod_workspace: Path) -> None:
         """Every publication consumes its checkout's independently owned runtime."""
         u.Tests.provision_checkout(mod_workspace)
@@ -159,7 +163,8 @@ class TestsFlextInfraApplyRenames:
                 )
                 (root / "config").mkdir(exist_ok=True)
                 (root / "config" / "codegen.yaml").write_text(
-                    "Infra:\n  codegen:\n    workspace_inventory_command: "
+                    "Infra:\n  codegen:\n    repository:\n"
+                    "      workspace_inventory_command: "
                     + json.dumps((str(python), "-B", str(provider)))
                     + "\n",
                     encoding=c.DEFAULT_ENCODING,
@@ -185,7 +190,9 @@ class TestsFlextInfraApplyRenames:
             encoding=c.DEFAULT_ENCODING,
         )
         first = packages[1] if len(packages) > 1 else package
-        second = packages[2] if len(packages) > 2 else package
+        second = (
+            packages[_SECOND_RECEIVER] if len(packages) > _SECOND_RECEIVER else package
+        )
         (first / "receiver.py").write_text(
             '"""Direct and aliased public provider consumers."""\n'
             "from __future__ import annotations\n"
@@ -249,7 +256,7 @@ class TestsFlextInfraApplyRenames:
     @pytest.mark.parametrize(
         "authority", ["workspace", "member", "standalone", "external"]
     )
-    @pytest.mark.parametrize("operation", ["class", "module"])
+    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["class", "module"])
     def test_provider_rename_reaches_all_native_consumer_scopes(
         tmp_path: Path,
         authority: str,
@@ -307,7 +314,6 @@ class TestsFlextInfraApplyRenames:
                                 apply=apply,
                             ),
                             workspace,
-                            infra.source_preview(root),
                         )
                     )
                     if not apply:
@@ -335,7 +341,9 @@ class TestsFlextInfraApplyRenames:
         """Exercise provider identity and local test imports in fresh interpreters."""
         package = packages[0]
         first = packages[1] if len(packages) > 1 else package
-        second = packages[2] if len(packages) > 2 else package
+        second = (
+            packages[_SECOND_RECEIVER] if len(packages) > _SECOND_RECEIVER else package
+        )
         code = (
             "from typing import get_args, get_type_hints\n"
             f"from provider_pkg import {exported_name} as CanonicalProvider\n"
@@ -617,7 +625,7 @@ class TestsFlextInfraApplyRenames:
         first = tm.ok(
             FlextInfraApplyRenames.run(request.model_copy(update={"apply": True})),
         )
-        tm.ok(first.files_changed >= 2)
+        tm.ok(first.files_changed >= _MIN_CHANGED_FILES)
         tm.that(first.occurrences, eq=0)
         tm.that(
             target.read_text(),
@@ -785,6 +793,58 @@ class TestsFlextInfraApplyRenames:
         tm.that(second.files_changed, eq=0)
         tm.that(second.occurrences, eq=0)
 
+    @staticmethod
+    def test_enum_constant_owner_preserves_value_and_quoted_class_identity(
+        mod_workspace: Path,
+    ) -> None:
+        """A value assignment keeps its owner while facade aliases expose classes."""
+        driver = mod_workspace / "renames.csv"
+        driver.write_text(
+            "old,new\nc.AiHub.CLI_COMMAND_BD,c.AiHub.Base.CLI_COMMAND_BD\n",
+            encoding="utf-8",
+        )
+        (mod_workspace / "definer.py").write_text(
+            "from enum import StrEnum\n"
+            "from typing import Final\n"
+            "class OwnerBase:\n"
+            "    class Command(StrEnum):\n        BD = 'bd'\n"
+            "    CLI_COMMAND_BD: Final[Command] = Command.BD\n"
+            "class Public:\n"
+            "    class AiHub:\n        Base = OwnerBase\n",
+            encoding="utf-8",
+        )
+        consumer = mod_workspace / "external_consumer.py"
+        consumer.write_text(
+            "from definer import Public as c\n"
+            "from typing import get_type_hints\n"
+            "def read() -> 'c.AiHub.Base.Command':\n"
+            "    return c.AiHub.CLI_COMMAND_BD\n"
+            "value = read()\n"
+            "print(value is c.AiHub.Base.Command.BD, "
+            "type(value) is get_type_hints(read)['return'], str(value))\n",
+            encoding="utf-8",
+        )
+        original = consumer.read_bytes()
+        request = m.Infra.ApplyRenamesInput(
+            csv=str(driver),
+            roots=(str(mod_workspace),),
+            bindings={"c": ("definer.Public",)},
+        )
+        preview = tm.ok(FlextInfraApplyRenames.run(request))
+        tm.that(preview.files_changed, eq=0)
+        tm.that(preview.occurrences, eq=1)
+        tm.that(consumer.read_bytes(), eq=original)
+        report = tm.ok(
+            FlextInfraApplyRenames.run(request.model_copy(update={"apply": True}))
+        )
+        tm.that(report.files_changed, eq=1)
+        tm.that(report.occurrences, eq=0)
+        output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
+        tm.that(output.stdout, eq="True True bd\n")
+        again = tm.ok(FlextInfraApplyRenames.run(request))
+        tm.that(again.files_changed, eq=0)
+        tm.that(again.occurrences, eq=0)
+
     def test_missing_public_destination_prevents_text_publication(
         self,
         mod_workspace: Path,
@@ -818,7 +878,7 @@ class TestsFlextInfraApplyRenames:
         report = tm.ok(
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True)),
         )
-        tm.ok(report.files_changed >= 2)
+        tm.ok(report.files_changed >= _MIN_CHANGED_FILES)
         tm.that(authored.read_text(), eq="campaign_renamed_token")
         tm.that(projected.read_text(), eq=generated)
 

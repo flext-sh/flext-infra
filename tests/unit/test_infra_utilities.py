@@ -9,8 +9,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import c
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraInfraUtilities:

@@ -154,11 +154,11 @@ class FlextInfraWrapperRootNamespaceRefactor(
         self,
         files_scanned: int,
         accumulator: m.Infra.WrapperRewriteAccumulator,
-    ) -> t.MutableJsonMapping:
+    ) -> t.JsonDict:
         """Build the canonical JSON payload from the accumulated wrapper run state.
 
         Returns:
-            The resulting ``t.MutableJsonMapping``.
+            The resulting ``t.JsonDict``.
 
         """
         mode_value = (
@@ -175,7 +175,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             accumulator.per_project_replacements.items(),
         )
         changed_files_preview: t.JsonValueList = list(accumulator.changed_files[:200])
-        report_payload: t.MutableJsonMapping = {
+        report_payload: t.JsonDict = {
             "files_scanned": files_scanned,
             "files_changed": len(accumulator.changed_files),
             "replacements": accumulator.total_replacements,

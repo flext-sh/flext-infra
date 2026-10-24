@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, t
-from tests import tm, u
+from flext_infra import t
+from tests import c, tm, u
 
 
 class TestsFlextInfraCiDeclaredSecretsContract:
@@ -58,7 +58,9 @@ class TestsFlextInfraCiDeclaredSecretsContract:
 
         """
         document = u.Cli.yaml_load_mapping(workflow_path)
-        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document[c.ParserBooleanToken.ON]
+        )
         workflow_call = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
             triggers["workflow_call"],
         )
@@ -108,4 +110,4 @@ class TestsFlextInfraCiDeclaredSecretsContract:
         tm.that(referenced - set(declared), empty=True)
         for contract in declared.values():
             specification = u.Cli.JSON_MAPPING_ADAPTER.validate_python(contract)
-            tm.fail(specification["required"])
+            tm.that(specification["required"], eq=False)

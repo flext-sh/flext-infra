@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, s, u
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -246,11 +246,10 @@ class FlextInfraWorkspacePropagation(s[bool]):
                 subject=c.Infra.PROPAGATION_COMMIT_SUBJECT,
                 body_file=body.value,
             ),
-            lambda: FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
+            lambda: FlextInfraCodegenConformExecute.execute_request(
+                m.Infra.CodegenGenerateRequest(
                     root=member_root,
                     scope=c.Infra.CodegenConformScope.ALL,
-                    mode=c.Infra.CodegenConformMode.APPLY,
                 ),
                 execution_context=self,
             ).map(lambda _conformed: True),

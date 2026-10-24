@@ -10,7 +10,7 @@ import ast
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_core import u as core_u
+from flext_cli import u
 
 from flext_infra import c, m, t
 from flext_infra._utilities import (
@@ -445,7 +445,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return False
 
     @staticmethod
-    def _deduplicated_imports(import_lines: t.SequenceOf[str]) -> list[str]:
+    def _deduplicated_imports(import_lines: t.SequenceOf[str]) -> t.StrSequence:
         """Deduplicate import lines by the names they bind, first emitter wins.
 
         Three collectors contribute imports and they can name the same alias
@@ -456,7 +456,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         construction the ones the moved declaration resolved against.
 
         Returns:
-            The resulting ``list[str]``.
+            The owned import sequence without a transport copy.
 
         """
         seen_bindings: t.Infra.StrSet = set()
@@ -469,7 +469,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 continue
             seen_bindings |= bound_names
             candidate_imports.append(import_line)
-        return list(candidate_imports)
+        return candidate_imports
 
     @classmethod
     def _missing_target_imports(
@@ -519,15 +519,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return updated_target
 
     @staticmethod
-    def _moved_sources_parse(
-        updated_target: str,
-        kept_lines: t.SequenceOf[str],
-    ) -> None:
-        """Parse both candidates; the original SyntaxError propagates unchanged."""
-        ast.parse(updated_target)
-        ast.parse("\n".join(kept_lines))
-
-    @staticmethod
     def _write_declaration_move(
         *,
         project_root: Path,
@@ -535,7 +526,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         writes: t.MappingKV[Path, str],
         expected_sources: t.MappingKV[Path, str | None],
     ) -> None:
-        """Normalize every staged declaration and consumer before atomic publication.
+        """Normalize candidates and pass original source expectations by reference.
 
         Raises:
             RuntimeError: If the protected writer rejects the candidate.
@@ -550,19 +541,18 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             ).unwrap()
             for path, source in writes.items()
         }
-        candidate_expected = dict(expected_sources)
         ok, reports = FlextInfraUtilitiesProtectedEdit.protected_source_writes(
             candidate_writes,
             request=m.Infra.ProtectedSourceWritesRequest(
                 workspace=project_root,
-                expected_sources=candidate_expected,
+                expected_sources=expected_sources,
                 gates=gates,
             ),
         )
         if not ok:
             FlextInfraUtilitiesRefactorNamespaceMoves._restore_rejected_writes(
                 written=candidate_writes,
-                expected_sources=candidate_expected,
+                expected_sources=expected_sources,
             )
             raise RuntimeError("\n".join(reports))
 
@@ -637,7 +627,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         t.Pair[t.MutableMappingKV[Path, str], t.MutableMappingKV[Path, str | None]]
         | None
     ):
-        """Prepare sources without publication; invalid syntax propagates.
+        """Prepare and natively parse final sources before publication.
 
         Returns:
             Candidate and expected sources, or None when no aliases move.
@@ -696,7 +686,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 target_source,
             ),
         )
-        cls._moved_sources_parse(updated_target, kept_source.splitlines())
+        ast.parse(updated_target)
+        ast.parse(kept_source)
         return (
             {target_file: updated_target + "\n", source_file: kept_source},
             {target_file: expected_target_source, source_file: source},
@@ -900,7 +891,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
             moved_pymodule.get_ast(),
         )
-        runtime_aliases = core_u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
+        runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         moved_ast = moved_pymodule.get_ast()
         if not FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(moved_ast):
             return ()

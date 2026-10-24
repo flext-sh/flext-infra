@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, tm, u
 
 pytestmark = [pytest.mark.slow]
@@ -57,7 +57,7 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = FlextInfraCodegenConform(
+        planned = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,
@@ -167,7 +167,12 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Setup never invokes the removed lock-rebuilding bootstrap route."""
+        """Setup never invokes removed routes and authorizes direnv natively.
+
+        Outside CI the lifecycle runs native ``direnv allow`` itself; the
+        retired ``workspace sync-environment`` route and the provenance check
+        (owned by ``make check``) never run from setup.
+        """
         rendered = self._render_root_makefile(
             tmp_path,
             role=c.Infra.MakeProfile.WORKSPACE,
@@ -182,8 +187,11 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
                 'bootstrap reconcile "$(PROJECT_ROOT)"',
                 "SETUP_MISE_LOCK_DRIFT",
                 "could not rebuild mise.lock; setup continues",
+                "workspace sync-environment",
+                "workspace verify-environment",
             ],
         )
+        tm.that(lifecycle, has='direnv allow "$(PROJECT_ROOT)"')
 
     def test_standalone_render_omits_the_reconcile_step(
         self,

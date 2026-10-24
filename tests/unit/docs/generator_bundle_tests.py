@@ -8,22 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, c, m
-from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra import m
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import p, tm, u
 
 _DOCS_CONSUMER_SOURCE = r"""sys.path.insert(0, sys.argv[1])
-from flext_infra import FlextInfraConfig, c, m
-from flext_infra.codegen import (
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-    FlextInfraMiseArtifactsJournal,
-    FlextInfraMiseArtifactsVerification,
-    FlextInfraMisePublication,
-)
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import p, tm, u
+from tests import c, tm, u
 from tests.unit.docs.generator_bundle_tests import TestsFlextInfraDocsGeneratorBundle
 tmp_path = Path(sys.argv[2])
 case = TestsFlextInfraDocsGeneratorBundle()
@@ -47,222 +38,6 @@ class TestsFlextInfraDocsGeneratorBundle:
         )
 
     @staticmethod
-    def _materialize_required_parents(
-        generator: FlextInfraDocGenerator,
-        bundle: m.Infra.DocsGenerationBundle,
-    ) -> None:
-        """Materialize fixture parents after the read-only planner has named them."""
-        required = generator.required_directories(bundle)
-        tm.ok(required)
-        for directory in required.value:
-            directory.mkdir(parents=True, exist_ok=True)
-
-    @staticmethod
-    def test_publication_rejects_changed_captured_source(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Reject changed bytes from the exact bundle instead of rerendering them."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
-guide.parent.mkdir(parents=True, exist_ok=True)
-guide.write_text("# Original\n", encoding="utf-8")
-target = workspace / "flext-a/README.md"
-original_target = target.read_bytes()
-generator = case._generator(workspace)
-prepared = generator.prepare_bundle()
-tm.ok(prepared)
-guide.write_text("# Changed\n", encoding="utf-8")
-published = generator.publish_batch(prepared.value)
-tm.fail(published)
-tm.that(published.error or "", has=str(guide))
-tm.that(target.read_bytes(), eq=original_target)
-tm.that(
-    (workspace / "flext-a" / c.Infra.DIR_DOCS / "api-reference/generated").exists(),
-    eq=False,
-)
-""",
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_published_membership_preserves_captured_resource_dependencies(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Keep template/config inputs while refusing a newly introduced source."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r'''workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-generator = case._generator(workspace)
-prepared = tm.ok(generator.prepare_bundle())
-resources = tuple(
-    state.path
-    for state in prepared.source_states
-    if state.content is not None
-    and not u.Infra.docs_source_path_is_input(
-        state.path,
-        prepared.source_roots,
-        source_scope=prepared.source_scope,
-    )
-)
-tm.ok(bool(resources))
-receipts: list[m.Infra.CodegenPhaseOutcome] = []
-tm.ok(generator.publish_batch(prepared, publication_receipts=receipts))
-tm.that(len(receipts), eq=1)
-published_sources = {source.path: source for source in receipts[0].sources}
-captured_sources = tuple(
-    tm.ok(
-        FlextInfraMiseArtifactsJournal.source_record(
-            receipts[0].phase, source
-        )
-    )
-    for source in prepared.source_states
-)
-tm.that(
-    all(
-        source.path in published_sources
-        and published_sources[source.path].sha256 == source.sha256
-        for source in captured_sources
-    ),
-    eq=True,
-)
-tm.ok(
-    FlextInfraMiseArtifactsVerification.publication_states_current(
-        receipts[0]
-    ),
-)
-added = workspace / "flext-a/src/flext_a/new_source.py"
-added.write_text('"""Source added after publication."""\n', encoding="utf-8")
-changed = FlextInfraMiseArtifactsVerification.publication_states_current(
-    receipts[0]
-)
-tm.fail(changed)
-tm.that(changed.error or "", has=str(added))
-''',
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_publication_rejects_declared_optional_layer_creation(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """An absent optional input remains part of the admitted source census."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-_, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
-    workspace,
-    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-)
-tm.fail(local_layer.exists())
-generator = case._generator(workspace)
-prepared = tm.ok(generator.prepare_bundle())
-captured = next(state for state in prepared.source_states if state.path == local_layer)
-tm.that(captured.content, eq=None)
-local_layer.parent.mkdir(parents=True, exist_ok=True)
-tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
-published = generator.publish_batch(prepared)
-tm.fail(published)
-tm.that(published.error or "", has=str(local_layer))
-""",
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    def test_batch_captures_optional_configuration_absence(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """The conform batch keeps the optional layer's absence as a source fact."""
-        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-        _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
-            workspace,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        generator = self._generator(workspace)
-        prepared = tm.ok(next(generator.prepare_batches()))
-        captured = next(
-            state for state in prepared.source_states if state.path == local_layer
-        )
-        tm.that(captured.content, eq=None)
-        local_layer.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
-
-        published = generator.publish_batch(prepared)
-
-        tm.fail(published)
-        tm.that(published.error or "", has=str(local_layer))
-
-    @staticmethod
-    def test_publication_rejects_source_topology_addition_after_bundle(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Reject a newly consumed source that was absent from the frozen inventory."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r'''workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-generator = case._generator(workspace)
-prepared = generator.prepare_bundle()
-tm.ok(prepared)
-added = workspace / "flext-a/src/flext_a/added.py"
-added.write_text('"""Added after render."""\n', encoding="utf-8")
-published = generator.publish_batch(prepared.value)
-tm.fail(published)
-tm.that(published.error or "", has=c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER)
-''',
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_publication_rejects_replaced_source_directory(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Identical bytes under a replacement source directory retain no authority."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-generator = FlextInfraDocGenerator(
-    repository_root=workspace,
-    selected_projects=["flext-a"],
-    include_root=False,
-)
-prepared = next(generator.prepare_batches())
-tm.ok(prepared)
-package = workspace / "flext-a/src/flext_a"
-relocated = workspace / "flext-a/retained_package"
-package.rename(relocated)
-package.mkdir()
-for source in relocated.iterdir():
-    if source.is_file():
-        (package / source.name).write_bytes(source.read_bytes())
-published = generator.publish_batch(prepared.value)
-tm.fail(published)
-tm.that(published.error or "", has=str(package))
-""",
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
     def test_noop_destination_edit_rejects_original_publication_state(
         tmp_path: Path,
     ) -> None:
@@ -280,101 +55,12 @@ tm.that(published.error or "", has=str(package))
         )
         target.write_bytes(b"concurrent\n")
 
-        published = FlextInfraMisePublication.publish_file_plan(plan, phase="docs")
+        published = u.Cli.publish_file_changes(
+            (plan,), lock_path=u.Infra.mutation_lock_path(plan.project).unwrap()
+        )
 
         tm.fail(published)
         tm.that(target.read_bytes(), eq=b"concurrent\n")
-
-    @staticmethod
-    def test_admitted_inputs_remain_the_publication_snapshot(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Changed inputs reject publication and preserve both physical files."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r"""root = u.Tests.git_repository(tmp_path)
-source = root / "input.py"
-source.write_bytes(b"value = 1\n")
-captured = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-target = root / "generated.md"
-before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))
-analysis = m.Infra.CodegenPhaseAnalysis(
-    phase=c.Infra.CodegenStagedFilePhase.DOCS,
-    inputs=(captured,),
-    files=(
-        m.Infra.CodegenFilePlan(
-            project=root,
-            path=target,
-            before=before,
-            desired_content=b"captured value = 1\n",
-            desired_mode=0o644,
-            source_states=(captured,),
-            owner="docs",
-        ),
-    ),
-)
-transaction = FlextInfraCodegenTransaction(
-    FlextInfraCodegenMiseArtifacts(repository_root=root),
-)
-admission = tm.ok(FlextInfraMisePublication.admit_batch(analysis))
-source.write_bytes(b"value = 2\n")
-roots = {"@docs": root}
-published = transaction.run_files_locked(
-    roots,
-    lambda scope: transaction.publish_file_phase_locked(
-        scope,
-        roots,
-        analysis,
-        m.Infra.CodegenPhasePublicationPolicy(
-            directories=(), admission=admission
-        ),
-    ),
-)
-tm.fail(published)
-tm.that(
-    tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False)),
-    eq=before,
-)
-tm.that(source.read_bytes(), eq=b"value = 2\n")
-""",
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_member_batch_survives_later_member_source_change(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Settle an admitted member without a later member's source barrier."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r'''workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a", "flext-b")
-)
-generator = FlextInfraDocGenerator(
-    repository_root=workspace,
-    selected_projects=["flext-a", "flext-b"],
-    include_root=False,
-)
-batches = generator.prepare_batches()
-first = next(batches)
-tm.ok(first)
-later = workspace / "flext-b/src/flext_b/later.py"
-later.write_text('"""Later member input."""\n', encoding="utf-8")
-published = generator.publish_batch(first.value)
-tm.ok(published)
-earlier_readme = workspace / "flext-a/README.md"
-admitted = earlier_readme.read_bytes()
-second = next(batches)
-tm.ok(second)
-tm.ok(generator.publish_batch(second.value))
-tm.that(earlier_readme.read_bytes(), eq=admitted)
-''',
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
 
     @staticmethod
     def test_docs_target_leaf_symlink_to_in_project_file_is_rejected(
@@ -396,7 +82,6 @@ target.symlink_to(unmanaged.name)
 generator = case._generator(workspace)
 prepared = generator.prepare_bundle()
 tm.ok(prepared)
-case._materialize_required_parents(generator, prepared.value)
 planned = generator.plan_files(prepared.value)
 tm.fail(planned)
 tm.that(planned.error or "", has="atomic")
@@ -448,7 +133,7 @@ outside = tmp_path / "outside"
 package = outside / "src/outside"
 package.mkdir(parents=True)
 (package / "__init__.py").write_text("", encoding="utf-8")
-(outside / "pyproject.toml").write_text(
+(outside /  c.PYPROJECT_FILENAME).write_text(
     '[project]\nname = "outside"\nversion = "0.1.0"\n',
     encoding="utf-8",
 )
@@ -461,104 +146,6 @@ prepared = generator.prepare_bundle()
 tm.fail(prepared)
 tm.that(prepared.error or "", has="atomic")
 """,
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_bundle_captures_actual_guide_and_template_sources(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Bind every guide and both templates that materially feed the render."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
-guide.parent.mkdir(parents=True, exist_ok=True)
-guide.write_text("# Operator\n", encoding="utf-8")
-generator = case._generator(workspace)
-prepared = generator.prepare_bundle()
-tm.ok(prepared)
-source_paths = {state.path for state in prepared.value.source_states}
-source_names = {path.name for path in source_paths}
-tm.ok(guide in source_paths)
-tm.ok(c.Infra.TEMPLATE_MKDOCS_PROJECT in source_names)
-tm.ok(c.Infra.TEMPLATE_MKDOCS_ROOT in source_names)
-""",
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_publication_rejects_changed_batch_source(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """Reject stale render inputs at the guarded publication boundary."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r"""workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a",)
-)
-guide = workspace / "flext-a" / c.Infra.DIR_DOCS / "guides/operator.md"
-guide.parent.mkdir(parents=True, exist_ok=True)
-guide.write_text("# Original\n", encoding="utf-8")
-generator = case._generator(workspace)
-prepared = tm.ok(generator.prepare_bundle())
-case._materialize_required_parents(generator, prepared)
-guide.write_text("# Changed\n", encoding="utf-8")
-planned = generator.plan_files(prepared)
-tm.ok(planned)
-readme = next(
-    plan for plan in planned.value if plan.path == workspace / "flext-a/README.md"
-)
-before = readme.path.read_bytes()
-published = FlextInfraMisePublication.publish_file_plan(readme, phase="docs")
-tm.fail(published)
-tm.that(readme.path.read_bytes(), eq=before)
-tm.that(guide.read_text(encoding="utf-8"), eq="# Changed\n")
-""",
-            str(Path(__file__).resolve().parents[3]),
-            str(tmp_path),
-        )
-
-    @staticmethod
-    def test_batches_capture_later_sources_after_previous_publication(
-        native_consumer: p.Tests.NativeConsumer,
-        tmp_path: Path,
-    ) -> None:
-        """A later scope's edits neither stale nor delay the preceding batch."""
-        native_consumer(
-            _DOCS_CONSUMER_SOURCE
-            + r'''workspace = u.Tests.create_docs_workspace(
-    tmp_path, project_names=("flext-a", "flext-b")
-)
-generator = FlextInfraDocGenerator(
-    repository_root=workspace,
-    selected_projects=["flext-a", "flext-b"],
-    include_root=False,
-)
-receipts: list[m.Infra.CodegenPhaseOutcome] = []
-batches = generator.prepare_batches(
-    publication_receipts=receipts,
-)
-first = tm.ok(next(batches))
-source = workspace / "flext-b/src/flext_b/added.py"
-source.write_text('"""Added before the next batch."""\n', encoding="utf-8")
-plans = tm.ok(generator.plan_files(first))
-readme = next(
-    plan for plan in plans if plan.path == workspace / "flext-a/README.md"
-)
-tm.ok(generator.publish_batch(first, publication_receipts=receipts))
-tm.that(readme.path.read_bytes(), eq=readme.desired_content)
-second = tm.ok(next(batches))
-captured = next(state for state in second.source_states if state.path == source)
-tm.that(captured.content, eq=source.read_bytes())
-tm.that(tuple(batches), empty=True)
-''',
             str(Path(__file__).resolve().parents[3]),
             str(tmp_path),
         )

@@ -56,7 +56,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         """Read real test attempts and every warning independently of terminal text.
 
         Every reported node must show one setup and one teardown phase, plus a
-        call phase whenever setup passed; a missing or repeated phase fails.
+        call phase whenever setup passed. A native failed worker-crash report
+        explains missing phases only for that node; repeated phases still fail.
 
         Raises:
             ValueError: If pytest report log contains no events; or if incomplete pytest
@@ -84,6 +85,8 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         for event, identity in zip(warnings, identities, strict=True):
             cls._record_warning(event, identity, diag)
         for nodeid, phases in diag.reported_phases.items():
+            if phases.get("???") == "failed":
+                continue
             if (
                 "setup" not in phases
                 or "teardown" not in phases
@@ -198,7 +201,11 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         cls,
         report_log: Path,
     ) -> p.Result[m.Infra.PytestDiagnostics]:
-        """Read collection-only evidence through the same runtime event boundary.
+        """Read native event evidence without manufacturing JUnit test outcomes.
+
+        Failed calls and failed setup, teardown or worker-crash phases retain
+        their actual node identities. Collection without TestReports remains
+        zero execution; original traceback bytes stay in the raw log.
 
         Returns:
             The resulting ``p.Result[m.Infra.PytestDiagnostics]``.
@@ -206,6 +213,13 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         """
         diag = m.Infra.DiagResult()
         cls._extract_report_events(report_log, diag)
+        for node_id, phases in diag.reported_phases.items():
+            if phases.get("call") == "failed":
+                diag.failed_cases.append(node_id)
+            if any(
+                phases.get(phase) == "failed" for phase in ("setup", "teardown", "???")
+            ):
+                diag.error_cases.append(node_id)
         return r.ok(cls._diagnostics_model(diag))
 
     @staticmethod

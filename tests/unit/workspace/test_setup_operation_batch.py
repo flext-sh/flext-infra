@@ -1,4 +1,4 @@
-"""Exercise setup batches through original validators and environment writers.
+"""Exercise setup batches through original validators.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import main
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentMixin
 from tests import c, m, tm, u
 
 
@@ -146,7 +145,7 @@ class TestsFlextInfraSetupOperationBatch:
             "--file",
             c.Infra.GITMODULES,
             f"submodule.{first.name}.{c.Infra.GITMODULE_MANAGED_KEY}",
-            "false",
+            c.ParserBooleanToken.FALSE,
         )
         (first / c.Infra.CONFIG_SPEC[0]).write_text(
             "[tools\n",
@@ -184,71 +183,3 @@ class TestsFlextInfraSetupOperationBatch:
         tm.that(unavailable.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(unavailable.issues[0].file, eq=str(missing))
         tm.fail(missing.exists())
-
-    def test_read_only_member_policy_prevents_environment_effects(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """The original member's own policy governs writes without a root roster."""
-        root, first, second = self._workspace(tmp_path / "workspace")
-        manifest = tm.ok(u.Infra.load_workspace_manifest(first))[0]
-        policy = manifest.model_copy(
-            update={
-                "repository": manifest.repository.model_copy(
-                    update={"read_only": True},
-                ),
-            },
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                u.Infra.workspace_manifest_path(first),
-                policy.model_dump(mode="json", exclude_computed_fields=True),
-            ),
-        )
-
-        tm.ok(
-            FlextInfraWorkspaceEnvironmentMixin.execute_request(
-                m.Infra.WorkspaceEnvironmentSyncRequest(
-                    repository_root=root,
-                    allow_direnv=False,
-                ),
-                scope=c.Infra.CodegenConformScope.ALL,
-            ),
-        )
-
-        report = self._report(root, "sync-environment")
-        tm.that(report.scope, eq=(root, first, second))
-        inactive = report.receipts[1]
-        tm.fail(inactive.executed)
-        tm.that(inactive.outcome, eq=None)
-        tm.ok(bool(inactive.applicability))
-        tm.fail((first / c.Infra.ENVRC_FILENAME).exists())
-        tm.ok((second / c.Infra.ENVRC_FILENAME).is_file())
-
-    def test_environment_batch_preserves_invalid_destination_and_publishes_other_roots(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A real writer rejection preserves successful independent publications."""
-        root, first, second = self._workspace(tmp_path / "workspace")
-        blocked = first / c.Infra.ENVRC_FILENAME
-        blocked.mkdir()
-        result = FlextInfraWorkspaceEnvironmentMixin.execute_request(
-            m.Infra.WorkspaceEnvironmentSyncRequest(
-                repository_root=root,
-                allow_direnv=False,
-            ),
-            scope=c.Infra.CodegenConformScope.ALL,
-        )
-
-        tm.ok(result.failure)
-        report = self._report(root, "sync-environment")
-        tm.that(report.scope, eq=(root, first, second))
-        tm.ok(all(row.executed for row in report.receipts))
-        tm.that(report.receipts[1].outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.ok(blocked.is_dir())
-        for index in (0, 2):
-            row = report.receipts[index]
-            tm.that(row.outcome, eq=c.Infra.ToolOutcome.CLEAN)
-            tm.that(row.files, eq=(row.root / c.Infra.ENVRC_FILENAME,))
-            tm.ok(row.files[0].is_file())

@@ -16,11 +16,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
 
-from flext_infra import c, m
-from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import tm
+from flext_infra import config, gates, m, u
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,7 +34,7 @@ class TestsFlextInfraGateHookDefaults:
     _MARKER_VALUE = "from-override"
     _REPORT_NAME = "probe.json"
 
-    class _Probe(FlextInfraGate):
+    class _Probe(gates.FlextInfraGate):
         """Run one environment probe without replacing the five hook defaults."""
 
         gate_id: ClassVar[str] = "probe"
@@ -81,9 +78,74 @@ class TestsFlextInfraGateHookDefaults:
         check_report_filename: ClassVar[str] = "probe.json"
         check_timeout: ClassVar[int] = 1
         check_remove_env_keys: ClassVar[t.StrSequence] = (
-            *FlextInfraGate.check_remove_env_keys,
+            *gates.FlextInfraGate.check_remove_env_keys,
             "FLEXT_GATE_PROBE_KEPT",
         )
+
+    class _FixProbe(_Probe):
+        """Emit a distinct native repair with no implicit verification run."""
+
+        can_fix: ClassVar[bool] = True
+
+        @override
+        def _build_fix_command(
+            self,
+            project_dir: Path,
+            ctx: m.Infra.GateContext,
+            targets: t.StrSequence,
+        ) -> t.StrSequence:
+            """Return a native repair probe.
+
+            Returns:
+                The interpreter command carrying this gate's marker.
+
+            """
+            _ = project_dir, ctx, targets
+            return (sys.executable, "-c", f"print({self.gate_id!r} + '-FIXED')")
+
+    class _FailedFixProbe(_FixProbe):
+        """Fail natively so error assembly must retain the real repair receipt."""
+
+        @override
+        def _build_fix_command(
+            self,
+            project_dir: Path,
+            ctx: m.Infra.GateContext,
+            targets: t.StrSequence,
+        ) -> t.StrSequence:
+            """Return a failing native repair.
+
+            Returns:
+                The interpreter command with a distinct failed repair marker.
+
+            """
+            _ = project_dir, ctx, targets
+            return (
+                sys.executable,
+                "-c",
+                f"print({self.gate_id!r} + '-FAILED'); raise SystemExit(2)",
+            )
+
+    class _MissingParser(gates.FlextInfraGate):
+        """Exercise the instance parsing hook without implementing it."""
+
+        gate_id: ClassVar[str] = "missing-parser"
+
+        @override
+        def _build_check_command(
+            self,
+            project_dir: Path,
+            ctx: m.Infra.GateContext,
+            check_dirs: t.StrSequence,
+        ) -> t.StrSequence:
+            """Run a successful tool before encountering the unimplemented hook.
+
+            Returns:
+                A native command identifying the gate that lacks a parser.
+
+            """
+            _ = project_dir, ctx, check_dirs
+            return (sys.executable, "-c", f"print({self.gate_id!r})")
 
     class _EnvOverride(_Probe):
         """Overlay one marker while the other hook defaults stay inherited."""
@@ -230,7 +292,7 @@ class TestsFlextInfraGateHookDefaults:
 
     def _check_with_replaced_reports(
         self,
-        gate_class: type[FlextInfraGate],
+        gate_class: type[gates.FlextInfraGate],
         tmp_path: Path,
     ) -> tuple[m.Infra.GateExecution, Path, Path]:
         """Run one gate over a project holding a stale and a kept report.
@@ -324,18 +386,87 @@ class TestsFlextInfraGateHookDefaults:
         tm.that(execution.raw_output, lacks="FINISHED")
         tm.that(execution.result.duration, lt=10)
 
+    @pytest.mark.parametrize(
+        c.ContextScope.OPERATION, ["check", "skip", "fix", "failed-fix"]
+    )
+    def test_returned_execution_already_has_its_native_receipt(
+        self, tmp_path: Path, operation: str
+    ) -> None:
+        """Direct callers receive durable evidence of only their requested action."""
+        project, reports = self._project(tmp_path)
+        ctx = self._context(project, reports)
+        gate = (
+            self._FailedFixProbe(project)
+            if operation == "failed-fix"
+            else self._FixProbe(project)
+        )
+        if operation == "check":
+            execution = gate.check(project, ctx)
+        elif operation == "skip":
+            execution = gate.check_files((project / "absent.py",), project, ctx)
+        elif operation == "fix":
+            execution = gate.fix(project, ctx.model_copy(update={"apply_fixes": True}))
+            tm.that(execution.raw_output, has="probe-FIXED", lacks="NATIVE")
+        else:
+            execution = gate.fix(project, ctx.model_copy(update={"apply_fixes": True}))
+            tm.that(execution.raw_output, has="probe-FAILED", lacks="NATIVE")
+            tm.that(execution.result.passed, eq=False)
+        receipt = reports / f"probe{config.Infra.tooling.raw_check_receipt_suffix}"
+        tm.that(execution.raw_receipt, eq=receipt)
+        state = u.Cli.atomic_read_binary_file_state(receipt, required=True).unwrap()
+        tm.that(state.content, eq=execution.raw_output.encode("utf-8"))
+        tm.that(execution.model_dump(mode="json"), lacks="raw_output")
+
+    @pytest.mark.parametrize(
+        ("apply_fixes", "check_only"), [(False, False), (True, True)]
+    )
+    def test_repair_refuses_a_different_operation_before_effects(
+        self, tmp_path: Path, *, apply_fixes: bool, check_only: bool
+    ) -> None:
+        """A repair never becomes a successful preview or a read-only check."""
+        project, reports = self._project(tmp_path)
+        context = self._context(project, reports).model_copy(
+            update={"apply_fixes": apply_fixes, "check_only": check_only}
+        )
+        with pytest.raises(ValueError, match="repair requires"):
+            self._FixProbe(project).fix(project, context)
+        tm.fail(
+            (reports / f"probe{config.Infra.tooling.raw_check_receipt_suffix}").exists()
+        )
+
+    def test_failed_receipt_publication_does_not_return_an_execution(
+        self, tmp_path: Path
+    ) -> None:
+        """An unwritable runtime destination fails rather than inventing a path."""
+        project, _ = self._project(tmp_path)
+        blocker = project / "not-a-directory"
+        blocker.write_text("occupied", encoding="utf-8")
+        ctx = self._context(project, blocker / "reports")
+        with pytest.raises(OSError, match="not-a-directory"):
+            self._Probe(project).check(project, ctx)
+
+    def test_unimplemented_parser_identifies_the_concrete_gate(
+        self, tmp_path: Path
+    ) -> None:
+        """The instance hook remains polymorphic and names the missing override."""
+        project, reports = self._project(tmp_path)
+        with pytest.raises(
+            NotImplementedError, match=r"_MissingParser\._parse_check_output"
+        ):
+            self._MissingParser(project).check(project, self._context(project, reports))
+
     @staticmethod
     def test_production_gates_keep_their_declared_defaults() -> None:
         """Pyright and Pyrefly keep the deadlines and removals they declared."""
-        tm.that(FlextInfraPyrightGate.check_timeout, eq=c.Infra.TIMEOUT_LONG)
+        tm.that(gates.FlextInfraPyrightGate.check_timeout, eq=c.Infra.TIMEOUT_LONG)
         tm.that(
-            tuple(FlextInfraPyreflyGate.check_remove_env_keys),
+            tuple(gates.FlextInfraPyreflyGate.check_remove_env_keys),
             eq=(
-                *tuple(FlextInfraGate.check_remove_env_keys),
+                *tuple(gates.FlextInfraGate.check_remove_env_keys),
                 c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
             ),
         )
         tm.that(
-            FlextInfraPyreflyGate.check_report_filename,
+            gates.FlextInfraPyreflyGate.check_report_filename,
             eq="pyrefly.json",
         )

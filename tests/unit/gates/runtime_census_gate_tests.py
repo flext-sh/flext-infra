@@ -13,18 +13,17 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, p, r, t
-from flext_infra.codegen import FlextInfraCodegenTransaction, FlextInfraStagedPackage
+from flext_infra import m, t
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
 _MIXED_SOURCES: t.MappingKV[str, str] = {
-    "pyproject.toml": '[project]\nname = "fixturecensusmixed"\nversion = "0.1.0"\n',
+    c.PYPROJECT_FILENAME: '[project]\nname = "fixturecensusmixed"\nversion = "0.1.0"\n',
     "src/fixturecensusmixed/__init__.py": (
         '"""Fixture package tripping several census rule families."""\n'
         "\n"
@@ -42,7 +41,9 @@ _MIXED_SOURCES: t.MappingKV[str, str] = {
     ),
 }
 _GENUINE_SOURCES: t.MappingKV[str, str] = {
-    "pyproject.toml": ('[project]\nname = "fixturecensusgenuine"\nversion = "0.1.0"\n'),
+    c.PYPROJECT_FILENAME: (
+        '[project]\nname = "fixturecensusgenuine"\nversion = "0.1.0"\n'
+    ),
     "src/fixturecensusgenuine/__init__.py": (
         '"""Fixture package whose only census violation is a genuine rule."""\n'
         "\n"
@@ -92,7 +93,7 @@ def broken_export_project(tmp_path: Path) -> Iterator[Path]:
 
     """
     sources = {
-        "pyproject.toml": (
+        c.PYPROJECT_FILENAME: (
             '[project]\nname = "fixturecensusbroken"\nversion = "0.1.0"\n'
         ),
         "src/fixturecensusbroken/__init__.py": (
@@ -151,58 +152,6 @@ def _importable_project(root: Path) -> Iterator[Path]:
 
 class TestRuntimeCensusSelection:
     """Empty discovery is a broken invocation, not evidence of conformance."""
-
-    @staticmethod
-    @pytest.mark.parametrize("candidate", ["VALUE = 1\n", "class Plain: pass\n"])
-    def test_sealed_census_does_not_import_cached_live_source(
-        tmp_path: Path,
-        candidate: str,
-    ) -> None:
-        """The existing isolated consumer reports the sealed candidate's rules."""
-        root = u.Tests.git_repository(tmp_path / "sealed")
-        _write_project(
-            root,
-            {
-                "pyproject.toml": (
-                    '[project]\nname = "fixturecensussealed"\nversion = "0.1.0"\n'
-                ),
-                "src/fixturecensussealed/__init__.py": (
-                    "def __dir__():\n    "
-                    'raise RuntimeError("cached live census imported")\n'
-                ),
-            },
-        )
-        target = root / "src/fixturecensussealed/__init__.py"
-        runtime_root = u.Infra.runtime_environment_dir(
-            Path(__file__).resolve().parents[3]
-        ).parent
-        plan = tm.ok(FlextInfraStagedPackage.plan_sources(root, {target: candidate}))
-
-        def consume(view: Path) -> p.Result[bool]:
-            observed = FlextInfraCodegenTransaction.consume_source_runtime(
-                plan,
-                view,
-                runtime_root,
-                project_root=root,
-            )
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            context = m.Infra.GateContext(
-                repository_root=view,
-                reports_dir=tmp_path / "reports",
-                runtime_root=runtime_root,
-                candidate_runtime_report=observed.value,
-            )
-            result = FlextInfraRuntimeCensusGate(repository_root=view).check(
-                view, context
-            )
-            tm.that(result.result.passed, eq=observed.value.passed)
-            tm.that(result.result.passed, eq=candidate == "VALUE = 1\n")
-            return r[bool].ok(value=True)
-
-        for _project in _importable_project(root):
-            importlib.import_module("fixturecensussealed")
-            tm.ok(FlextInfraStagedPackage.consume_sources(plan, consume))
 
     @staticmethod
     def test_sealed_gate_requires_observed_runtime_report(tmp_path: Path) -> None:

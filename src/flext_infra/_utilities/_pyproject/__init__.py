@@ -25,9 +25,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities._pyproject.requirements import (
         FlextInfraUtilitiesPyprojectRequirements,
     )
-    from flext_infra._utilities._pyproject.session import (
-        FlextInfraUtilitiesPyprojectSession,
-    )
     from flext_infra._utilities._pyproject.toml_phases import (
         FlextInfraUtilitiesPyprojectTomlPhases,
     )
@@ -41,7 +38,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPyprojectDocument",
     "FlextInfraUtilitiesPyprojectOverlay",
     "FlextInfraUtilitiesPyprojectRequirements",
-    "FlextInfraUtilitiesPyprojectSession",
     "FlextInfraUtilitiesPyprojectTomlPhases",
     "FlextInfraUtilitiesPyprojectUvSources",
 )
@@ -54,7 +50,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyprojectDocument": ".document",
         "FlextInfraUtilitiesPyprojectOverlay": ".overlay",
         "FlextInfraUtilitiesPyprojectRequirements": ".requirements",
-        "FlextInfraUtilitiesPyprojectSession": ".session",
         "FlextInfraUtilitiesPyprojectTomlPhases": ".toml_phases",
         "FlextInfraUtilitiesPyprojectUvSources": ".uv_sources",
     }),

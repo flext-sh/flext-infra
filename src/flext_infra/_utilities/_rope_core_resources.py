@@ -38,8 +38,6 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         resolved_path = file_path.resolve()
         if not resolved_path.is_relative_to(root) or not (
             rope_project.source_query(resolved_path, "exists")
-            if rope_project.authenticated_sources
-            else resolved_path.exists()
         ):
             return None
         resource = rope_project.get_resource(str(resolved_path.relative_to(root)))
@@ -104,14 +102,15 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
     def python_resources(
         rope_project: t.Infra.RopeProject,
     ) -> t.SequenceOf[t.Infra.RopeFile]:
-        """Return Rope's already-filtered Python resources without a path roundtrip.
+        """Return native Python resources from their project's source election.
 
         Every yielded resource passed the ``file_resource`` predicate, so the
         element contract is the file shape with content access, not the wider
-        file-or-folder resource.
+        file-or-folder resource. Authenticated projects elect scoped candidate
+        sources before constructing resources for unrelated directory entries.
 
         Returns:
-            Rope's already-filtered Python resources without a path roundtrip.
+            The project's elected native Python file resources.
 
         """
         return tuple(

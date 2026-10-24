@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, u
-from tests import tm
+from flext_infra import m, u
+from tests import c, tm
 
 
 class TestsFlextInfraManagedConflictRecovery:
@@ -71,6 +71,7 @@ class TestsFlextInfraManagedConflictRecovery:
     @staticmethod
     @pytest.mark.parametrize("render_owned", [True, False])
     def test_overlay_preserves_inline_custom_and_replaces_entire_owned_subtree(
+        *,
         render_owned: bool,
     ) -> None:
         """Keep sibling data while replacing owned descendants and unknown keys."""
