@@ -24,6 +24,18 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+{% set checkout_steps %}    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
+      GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+    steps:
+      - name: Checkout
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
+        with:
+          submodules: {{ checkout_submodules }}
+          fetch-depth: 0
+{%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
+{%- endset -%}
 jobs:
   docs-quality:
     name: docs-quality
@@ -36,17 +48,7 @@ jobs:
     # @latest backends (observed 2026-09-23: 403, rate limit 0/60, on every
     # backend in Sync workspace toolchain), and docs generation reads the
     # governed sibling repos. The job token authenticates both, as in CI.
-    env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
-      GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
-    steps:
-      - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
-        with:
-          submodules: {{ checkout_submodules }}
-          fetch-depth: 0
-{%- include "_fragments/private_submodules_init.j2" %}
-{%- include "_fragments/private_dependency_auth.j2" %}
+{{ checkout_steps }}
 
       # Why: a cold runner re-downloaded every locked Mise tool
       # (go included) on every Docs run, and a network blip failed setup. The
@@ -122,17 +124,7 @@ jobs:
       # ("Resource not accessible by integration").
       pages: write
     # Why: same authenticated toolchain and docs-source resolution as docs-quality.
-    env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
-      GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
-    steps:
-      - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
-        with:
-          submodules: {{ checkout_submodules }}
-          fetch-depth: 0
-{%- include "_fragments/private_submodules_init.j2" %}
-{%- include "_fragments/private_dependency_auth.j2" %}
+{{ checkout_steps }}
 
       # Why: same cold-download protection as the docs-quality job.
 {%- include "_fragments/toolchain_cache_restore.j2" %}

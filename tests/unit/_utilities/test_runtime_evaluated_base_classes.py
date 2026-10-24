@@ -18,6 +18,29 @@ from tests import tm, u
 class TestsFlextInfraRuntimeEvaluatedBaseClasses:
     """Plan new packages without importing them or collapsing nested identities."""
 
+    @staticmethod
+    def _lazy_package(root: Path, name: str) -> Path:
+        """Create ``src/<name>`` with a generated lazy ``m`` export.
+
+        Returns:
+            The package directory; importing it raises by construction.
+
+        """
+        package = root / "src" / name
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text(
+            c.Infra.AUTOGEN_HEADERS[0]
+            + "\nfrom types import MappingProxyType\n"
+            + "from typing import TYPE_CHECKING\n"
+            + "from flext_core.lazy import install_lazy_exports\n"
+            + "if TYPE_CHECKING:\n    from .models import m\n"
+            + "install_lazy_exports(__name__, __file__, "
+            'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
+            + 'raise RuntimeError("This package must not be imported")\n',
+            encoding="utf-8",
+        )
+        return package
+
     @pytest.mark.parametrize(
         ("setup", "condition", "selects_model"),
         [
@@ -399,19 +422,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tmp_path: Path,
     ) -> None:
         """Generated package exports bind the same source-defined model identity."""
-        package = tmp_path / "src" / "generated_contract"
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0]
-            + "\nfrom types import MappingProxyType\n"
-            + "from typing import TYPE_CHECKING\n"
-            + "from flext_core.lazy import install_lazy_exports\n"
-            + "if TYPE_CHECKING:\n    from .models import m\n"
-            + "install_lazy_exports(__name__, __file__, "
-            'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
-            + 'raise RuntimeError("This package must not be imported")\n',
-            encoding="utf-8",
-        )
+        package = self._lazy_package(tmp_path, "generated_contract")
         planned = {
             package / "models.py": u.Tests.runtime_root_import()
             + "class Contract(RuntimeRoot): pass\n"
@@ -442,19 +453,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         qualified: bool,
     ) -> None:
         """Provider members resolve through the exported class, not its module."""
-        package = tmp_path / "src" / "flext"
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0]
-            + "\nfrom types import MappingProxyType\n"
-            + "from typing import TYPE_CHECKING\n"
-            + "from flext_core.lazy import install_lazy_exports\n"
-            + "if TYPE_CHECKING:\n    from .models import m\n"
-            + "install_lazy_exports(__name__, __file__, "
-            'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
-            + 'raise RuntimeError("This package must not be imported")\n',
-            encoding="utf-8",
-        )
+        package = self._lazy_package(tmp_path, "flext")
         source = (
             "import flext\nclass Consumer(flext.m.BaseModel): pass\n"
             if qualified

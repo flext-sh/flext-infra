@@ -93,6 +93,30 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @classmethod
+    def _plan_module_move(
+        cls,
+        root: Path,
+        source: Path,
+        target: Path,
+    ) -> t.Pair[tuple[m.Infra.CodegenFilePlan, ...], tuple[m.Cli.AtomicFileState, ...]]:
+        """Plan relocating ``source`` into ``target``'s directory from captured inputs.
+
+        Returns:
+            The planned file effects and the original physical file states.
+
+        """
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            plans = u.Infra.plan_module_move(
+                workspace.rope_project,
+                source,
+                target.parent,
+                sources=sources,
+                source_states=states,
+            )
+        return plans, states
+
+    @classmethod
     def test_snapshot_exposes_only_declared_virtual_nested_resources(
         cls,
         tmp_path: Path,
@@ -199,15 +223,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     ) -> None:
         """Planning creates nothing; joint publication preserves public behavior."""
         root, package, source, target = cls._module_move_workspace(tmp_path)
-        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
-            sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                sources=sources,
-                source_states=states,
-            )
+        plans, states = cls._plan_module_move(root, source, target)
         for plan in plans:
             tm.that(
                 any(
@@ -253,15 +269,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     ) -> None:
         """A newer source remains intact and the planned destination stays absent."""
         root, _package, source, target = cls._module_move_workspace(tmp_path)
-        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
-            sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                sources=sources,
-                source_states=states,
-            )
+        plans, states = cls._plan_module_move(root, source, target)
         newer = source.read_bytes() + b"\n# Newer authored work.\n"
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -303,16 +311,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             source.read_text(encoding=c.DEFAULT_ENCODING) + extra,
             encoding=c.DEFAULT_ENCODING,
         )
-        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
-            sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match=message):
-                u.Infra.plan_module_move(
-                    workspace.rope_project,
-                    source,
-                    target.parent,
-                    sources=sources,
-                    source_states=states,
-                )
+        with pytest.raises(ValueError, match=message):
+            _ = cls._plan_module_move(root, source, target)
         tm.that(target.parent.exists(), eq=False)
 
     @staticmethod

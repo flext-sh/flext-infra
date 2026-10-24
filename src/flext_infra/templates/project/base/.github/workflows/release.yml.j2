@@ -30,6 +30,17 @@ concurrency:
 
 permissions: {}
 
+{% set release_boot %}
+{%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
+      - name: Release identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+{%- include "_fragments/mise_install.j2" %}
+      - name: Boot
+        run: make setup
+{%- endset -%}
 jobs:
   identity:
     name: Resolve release state
@@ -90,15 +101,7 @@ jobs:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
           token: {% raw %}${{ github.token }}{% endraw %}
-{%- include "_fragments/private_submodules_init.j2" %}
-{%- include "_fragments/private_dependency_auth.j2" %}
-      - name: Release identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-{%- include "_fragments/mise_install.j2" %}
-      - name: Boot
-        run: make setup
+{{- release_boot }}
       - name: Release pull request
         run: make release-version
 
@@ -123,15 +126,7 @@ jobs:
           fetch-depth: 0
           ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}
           submodules: {{ checkout_submodules }}
-{%- include "_fragments/private_submodules_init.j2" %}
-{%- include "_fragments/private_dependency_auth.j2" %}
-      - name: Release identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-{%- include "_fragments/mise_install.j2" %}
-      - name: Boot
-        run: make setup
+{{- release_boot }}
       - name: Tag
         run: make release-tag
       - name: Build receipt

@@ -17,9 +17,9 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsCandidates,
     FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from tests import c, m, p, r, t, tm, u
@@ -51,6 +51,39 @@ class TestsFlextInfraTransactionDirectoryJournal:
             )
             for path in sorted(archive.iterdir())
         )
+
+    @staticmethod
+    def _begin_with_mise_phase(
+        owner: FlextInfraCodegenTransaction,
+        roots: t.MappingKV[str, Path],
+        scope_root: Path,
+        root: Path,
+    ) -> tuple[m.Infra.CodegenTransactionSession, m.Cli.AtomicFileState]:
+        """Begin a locked file session and append the unchanged Mise config phase.
+
+        Returns:
+            The session after the Mise phase and the authenticated config state.
+
+        """
+        config_path = root / ".mise.toml"
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(config_path, required=True),
+        )
+        config_plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=config_path,
+            before=before,
+            desired_content=before.content,
+            desired_mode=before.mode,
+            owner="mise",
+        )
+        session = tm.ok(owner.begin_files_locked(scope_root, roots, ()))
+        session = tm.ok(
+            owner.append_phase_locked(
+                session, c.Infra.CodegenStagedFilePhase.MISE, (config_plan,)
+            ),
+        )
+        return session, before
 
     @staticmethod
     @pytest.mark.slow
@@ -133,10 +166,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
         template_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(template, required=True),
         )
-        assert template_state.content is not None
         config_sources = tm.ok(u.Infra.snapshot_config_sources(root))
         local_state = next(source for source in config_sources if source.path == local)
-        assert local_state.content is not None
         owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
         planner = FlextInfraMiseWorkspacePlanner(owner)
         layout = tm.ok(planner.layout_from_selectors(root, (".",)))
@@ -160,10 +191,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.ok(FlextInfraMiseArtifactsVerification.sources(observed))
         template.write_text("{{ changed }}\n", encoding="utf-8")
         tm.fail(planner.snapshot(layout, (config_plan,)), has=str(template))
-        template.write_bytes(template_state.content)
+        template.write_bytes(tm.not_none(template_state.content))
         local.write_text("scenario: changed\n", encoding="utf-8")
         tm.fail(planner.snapshot(layout, (config_plan,)), has=str(local))
-        local.write_bytes(local_state.content)
+        local.write_bytes(tm.not_none(local_state.content))
         (config_dir / "added.yaml").write_text("added: true\n", encoding="utf-8")
         tm.fail(
             FlextInfraMiseArtifactsVerification.sources(observed),
@@ -281,8 +312,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
             rejected = owner.run_files_locked(roots, publish)
             tm.fail(rejected, has="source dependenc")
             tm.that(rejected.exception is original_errors[0], eq=True)
-            assert rejected.error_data is not None
-            tm.that(bool(rejected.error_data["cleanup_error"]), eq=True)
+            error_data = tm.not_none(rejected.error_data)
+            tm.that(bool(error_data["cleanup_error"]), eq=True)
         tm.that(target.read_bytes(), eq=before.content)
         tm.that(source_path.read_bytes(), eq=source.content)
 
@@ -597,25 +628,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         target = root / "docs/generated/readme.md"
 
         def conflict(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
-            config_path = root / ".mise.toml"
-            before = tm.ok(
-                u.Cli.atomic_read_binary_file_state(config_path, required=True),
-            )
-            config_plan = m.Infra.CodegenFilePlan(
-                project=root,
-                path=config_path,
-                before=before,
-                desired_content=before.content,
-                desired_mode=before.mode,
-                owner="mise",
-            )
-            session = tm.ok(
-                owner.begin_files_locked(scope_root, roots, ()),
-            )
-            session = tm.ok(
-                owner.append_phase_locked(
-                    session, c.Infra.CodegenStagedFilePhase.MISE, (config_plan,)
-                ),
+            session, before = (
+                TestsFlextInfraTransactionDirectoryJournal._begin_with_mise_phase(
+                    owner, roots, scope_root, root
+                )
             )
             session = tm.ok(
                 owner.append_directories_locked(session, "docs", (target.parent,)),
@@ -770,25 +786,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         def replace_parent(
             scope_root: Path,
         ) -> p.Result[m.Infra.CodegenTransactionSession]:
-            config_path = root / ".mise.toml"
-            before = tm.ok(
-                u.Cli.atomic_read_binary_file_state(config_path, required=True),
-            )
-            config_plan = m.Infra.CodegenFilePlan(
-                project=root,
-                path=config_path,
-                before=before,
-                desired_content=before.content,
-                desired_mode=before.mode,
-                owner="mise",
-            )
-            session = tm.ok(
-                owner.begin_files_locked(scope_root, roots, ()),
-            )
-            session = tm.ok(
-                owner.append_phase_locked(
-                    session, c.Infra.CodegenStagedFilePhase.MISE, (config_plan,)
-                ),
+            session, before = (
+                TestsFlextInfraTransactionDirectoryJournal._begin_with_mise_phase(
+                    owner, roots, scope_root, root
+                )
             )
             planned = m.Infra.CodegenFilePlan(
                 project=root,
@@ -1083,8 +1084,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         directories = tm.ok(planned)
         tm.that((layout.scope_root / ".state").exists(), eq=False)
         directories = self._materialize(layout, directories)
-        transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         (transaction_root / "partial-download").write_bytes(b"owned staging bytes")
         journal = self._register_manifest(layout, directories)
 
@@ -1136,8 +1136,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             FlextInfraMiseArtifactsState.plan_transaction_directories(layout),
         )
         directories = self._materialize(layout, directories)
-        transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         journal = self._register_manifest(layout, directories)
         (transaction_root / "alias").symlink_to(layout.scope_root)
 
@@ -1191,8 +1190,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             tm.ok(FlextInfraMiseArtifactsState.plan_transaction_directories(layout)),
         )
         journal = self._register_manifest(layout, directories)
-        transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         foreign = transaction_root / "foreign.bin"
         foreign.write_bytes(b"foreign")
 
@@ -1215,8 +1213,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             layout,
             tm.ok(FlextInfraMiseArtifactsState.plan_transaction_directories(layout)),
         )
-        transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         payload = transaction_root / "registered.bin"
         payload.write_bytes(b"registered")
         journal = self._register_manifest(layout, directories)
@@ -1240,8 +1237,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         directories = tm.ok(
             FlextInfraMiseArtifactsState.plan_transaction_directories(layout),
         )
-        transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        transaction_root = tm.not_none(layout.projects[0].transaction_root)
         transaction_root.mkdir(parents=True)
         marker = transaction_root / "unknown-owner.bin"
         marker.write_bytes(b"preserve")

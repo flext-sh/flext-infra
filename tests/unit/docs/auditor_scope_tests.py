@@ -22,106 +22,49 @@ class TestsFlextInfraAuditorScope:
     """Tests for FlextInfraDocAuditor scope, forbidden terms, and audit_scope."""
 
     @staticmethod
-    def test_forbidden_term_issues_empty_scope(tmp_path: Path) -> None:
-        """Test forbidden_term_issues with no markdown files."""
-        auditor = FlextInfraDocAuditor()
-        scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues), gte=0)
-
-    @staticmethod
-    def test_forbidden_term_issues_root_scope(tmp_path: Path) -> None:
-        """Test forbidden_term_issues filters by docs/ for root scope."""
-        auditor = FlextInfraDocAuditor()
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir(parents=True, exist_ok=True)
-        (docs_dir / "test.md").write_text("# Test")
-        scope = m.Infra.DocScope(
-            name="root",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues), gte=0)
-
-    @staticmethod
-    def test_forbidden_term_issues_project_scope(tmp_path: Path) -> None:
-        """Test forbidden_term_issues filters by project name."""
-        auditor = FlextInfraDocAuditor()
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir(parents=True, exist_ok=True)
-        (docs_dir / "test.md").write_text("# Test")
-        scope = m.Infra.DocScope(
-            name="flext-core",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues), gte=0)
-
-    @staticmethod
-    def test_forbidden_term_issues_root_scope_non_docs_file(
+    @pytest.mark.parametrize(
+        ("scope_name", "markdown"),
+        [
+            ("test", None),
+            ("root", "docs/test.md"),
+            ("flext-core", "docs/test.md"),
+            ("root", "README.md"),
+            ("other-project", "test.md"),
+        ],
+    )
+    def test_forbidden_term_issues_scope_filtering(
         tmp_path: Path,
+        scope_name: str,
+        markdown: str | None,
     ) -> None:
-        """Test forbidden_term_issues skips non-docs files in root scope."""
-        auditor = FlextInfraDocAuditor()
-        (tmp_path / "README.md").write_text("# Test")
+        """Test forbidden_term_issues over empty, docs, root, and foreign scopes."""
+        if markdown is not None:
+            target = tmp_path / markdown
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("# Test")
         scope = m.Infra.DocScope(
-            name="root",
+            name=scope_name,
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
-        issues = auditor.forbidden_term_issues(scope)
+        issues = FlextInfraDocAuditor().forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
     @staticmethod
-    def test_forbidden_term_issues_non_flext_scope(tmp_path: Path) -> None:
-        """Test forbidden_term_issues skips non-flext scopes."""
-        auditor = FlextInfraDocAuditor()
-        (tmp_path / "test.md").write_text("# Test")
-        scope = m.Infra.DocScope(
-            name="other-project",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues), gte=0)
-
-    @staticmethod
-    def test_audit_scope_with_links_check(tmp_path: Path) -> None:
-        """Test audit_scope runs links check."""
-        auditor = FlextInfraDocAuditor()
+    @pytest.mark.parametrize("check", ["links", "forbidden-terms"])
+    def test_audit_scope_runs_requested_check(tmp_path: Path, check: str) -> None:
+        """Test audit_scope runs the requested check."""
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
-        report = auditor.audit_scope(
+        report = FlextInfraDocAuditor().audit_scope(
             scope,
-            params=m.Infra.AuditScopeParams(check="links"),
+            params=m.Infra.AuditScopeParams(check=check),
         )
         tm.that(report.phase, eq="audit")
-        tm.that(report.checks, has="links")
-
-    @staticmethod
-    def test_audit_scope_with_forbidden_terms_check(tmp_path: Path) -> None:
-        """Test audit_scope runs forbidden-terms check."""
-        auditor = FlextInfraDocAuditor()
-        scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        report = auditor.audit_scope(
-            scope,
-            params=m.Infra.AuditScopeParams(check="forbidden-terms"),
-        )
-        tm.that(report.phase, eq="audit")
-        tm.that(report.checks, has="forbidden-terms")
+        tm.that(report.checks, has=check)
 
     @staticmethod
     def test_audit_scope_without_issues_passes(tmp_path: Path) -> None:

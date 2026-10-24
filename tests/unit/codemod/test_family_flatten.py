@@ -17,36 +17,99 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-
-@dataclasses.dataclass(frozen=True)
-class ComposedFacadeFixture:
-    """The seeded wrapper, composed facade, consumer, and their sources."""
-
-    root: Path
-    path: Path
-    facade_path: Path
-    consumer: Path
-    source: str
-    facade: str
-    references: str
-    project: str
-
-
-@dataclasses.dataclass(frozen=True)
-class WrapperFamilyFixture:
-    """The seeded wrapper family and every source its consumers declare."""
-
-    root: Path
-    path: Path
-    consumer: Path
-    homonym: Path
-    source: str
-    references: str
-    unrelated: str
+    from tests import m, t
 
 
 class TestsFlextInfraFamilyFlatten:
     """Exercise the real module graph, not mocked semantic identities."""
+
+    @dataclasses.dataclass(frozen=True)
+    class ComposedFacadeFixture:
+        """The seeded wrapper, composed facade, consumer, and their sources."""
+
+        root: Path
+        path: Path
+        facade_path: Path
+        consumer: Path
+        source: str
+        facade: str
+        references: str
+        project: str
+
+    @dataclasses.dataclass(frozen=True)
+    class WrapperFamilyFixture:
+        """The seeded wrapper family and every source its consumers declare."""
+
+        root: Path
+        path: Path
+        consumer: Path
+        homonym: Path
+        source: str
+        references: str
+        unrelated: str
+
+    @staticmethod
+    def _payload(
+        tmp_path: Path,
+        facade_py: str = c.Infra.MODELS_PY,
+    ) -> tuple[Path, Path, str, Path, str]:
+        """Seed one workspace with an empty facade family and its payload path.
+
+        Returns:
+            The root, package, family directory name, payload path and owner name.
+
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(facade_py).directory
+        family = package / directory
+        family.mkdir()
+        (family / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        owner = (
+            f"{u.derive_class_stem(root.name)}{facade_py.removesuffix('.py').title()}"
+            "Payload"
+        )
+        return root, package, directory, family / "payload.py", owner
+
+    @staticmethod
+    def _plan(
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Plan the class-nesting cutover over the given sources.
+
+        Returns:
+            The planned file edits.
+
+        """
+        with infra.rope_workspace(root) as rope:
+            return tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+
+    @staticmethod
+    def _apply(
+        sources: t.MappingKV[Path, str],
+        edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit],
+    ) -> t.MutableMappingKV[Path, str]:
+        """Overlay planned edits on the sources without touching the disk.
+
+        Returns:
+            The proposed post-edit sources.
+
+        """
+        proposed = dict(sources)
+        proposed.update({edit.file_path: edit.updated_source for edit in edits})
+        return proposed
+
+    @staticmethod
+    def _unchanged(sources: t.MappingKV[Path, str]) -> None:
+        """Prove planning left every snapshotted source byte-identical."""
+        for item, original in sources.items():
+            tm.that(item.read_text(encoding="utf-8"), eq=original)
 
     @staticmethod
     def test_duplicate_facade_namespace_uses_declared_inherited_owner(
@@ -93,30 +156,22 @@ class TestsFlextInfraFamilyFlatten:
             item: item.read_text(encoding="utf-8")
             for item in (path, declaration, consumer, tier / "__init__.py")
         }
-        with infra.rope_workspace(root) as rope:
-            result = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=sources,
-            )
-            tm.ok(result)
-            proposed = dict(sources)
-            proposed.update({
-                edit.file_path: edit.updated_source for edit in result.value
-            })
-            tm.that(proposed[consumer], has="class Consumer(u.Tests):")
-            tm.that(proposed[consumer], has="VALUE = u.Tests.Entity.VALUE")
-            tm.that(proposed[declaration], has="class Entity:")
-            tm.that(proposed[path], lacks="class Support:")
-        for item, original in sources.items():
-            tm.that(item.read_text(encoding="utf-8"), eq=original)
+        proposed = TestsFlextInfraFamilyFlatten._apply(
+            sources,
+            TestsFlextInfraFamilyFlatten._plan(root, sources),
+        )
+        tm.that(proposed[consumer], has="class Consumer(u.Tests):")
+        tm.that(proposed[consumer], has="VALUE = u.Tests.Entity.VALUE")
+        tm.that(proposed[declaration], has="class Entity:")
+        tm.that(proposed[path], lacks="class Support:")
+        TestsFlextInfraFamilyFlatten._unchanged(sources)
 
     @staticmethod
     def _seed_wrapper_family(
         tmp_path: Path,
         *,
         collision: bool,
-    ) -> WrapperFamilyFixture:
+    ) -> TestsFlextInfraFamilyFlatten.WrapperFamilyFixture:
         """Seed the wrapper family, its consumers, and one unrelated homonym.
 
         Imports and MRO must resolve the proposed wrapper, not its disk name.
@@ -125,13 +180,9 @@ class TestsFlextInfraFamilyFlatten:
             The seeded wrapper family fixture.
 
         """
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
-        family = package / directory
-        family.mkdir()
-        (family / "__init__.py").write_text("", encoding="utf-8")
-        path = family / "payload.py"
-        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
+        root, package, directory, path, owner = TestsFlextInfraFamilyFlatten._payload(
+            tmp_path,
+        )
         parent = package / "entities.py"
         parent.write_text("class Parent:\n    Entity = 'inherited'\n", encoding="utf-8")
         inheritance = "(Parent)" if collision else ""
@@ -160,7 +211,7 @@ class TestsFlextInfraFamilyFlatten:
             "VALUE = Other.Wrapper.TEXT\n"
         )
         homonym.write_text(unrelated, encoding="utf-8")
-        return WrapperFamilyFixture(
+        return TestsFlextInfraFamilyFlatten.WrapperFamilyFixture(
             root=root,
             path=path,
             consumer=consumer,
@@ -173,20 +224,16 @@ class TestsFlextInfraFamilyFlatten:
     @staticmethod
     def _seed_composed_facade(
         tmp_path: Path,
-    ) -> ComposedFacadeFixture:
+    ) -> TestsFlextInfraFamilyFlatten.ComposedFacadeFixture:
         """Seed the nested wrapper, its composed facade, and one consumer.
 
         Returns:
             The composed facade fixture.
 
         """
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
-        family = package / directory
-        family.mkdir()
-        (family / "__init__.py").write_text("", encoding="utf-8")
-        path = family / "payload.py"
-        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
+        root, package, directory, path, owner = TestsFlextInfraFamilyFlatten._payload(
+            tmp_path,
+        )
         source = (
             f"class {owner}:\n"
             "    class VerbReceipt:\n"
@@ -216,7 +263,7 @@ class TestsFlextInfraFamilyFlatten:
             f"    return m.{project}.VerbReceipt.Stage()\n"
         )
         consumer.write_text(references, encoding="utf-8")
-        return ComposedFacadeFixture(
+        return TestsFlextInfraFamilyFlatten.ComposedFacadeFixture(
             root=root,
             path=path,
             facade_path=facade_path,
@@ -239,52 +286,36 @@ class TestsFlextInfraFamilyFlatten:
             tmp_path,
             collision=collision,
         )
-        root = fixture.root
         path = fixture.path
         consumer = fixture.consumer
         homonym = fixture.homonym
-        unrelated = fixture.unrelated
-        sources = {
+        originals = {
             path: fixture.source,
             consumer: fixture.references,
-            homonym: unrelated,
+            homonym: fixture.unrelated,
         }
         # Imports and MRO must resolve the proposed wrapper, not its disk name.
-        sources[path] = fixture.source.replace("class Wrapper:", "class Grouping:")
-        sources[consumer] = fixture.references.replace(".Wrapper.", ".Grouping.")
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=sources,
-            )
-            tm.ok(planned)
-            proposed = dict(sources)
-            proposed.update({
-                edit.file_path: edit.updated_source for edit in planned.value
-            })
-            expected_member = "GroupingEntity"
-            tm.that(proposed[path], has=f"    class {expected_member}(Enum):")
-            tm.that(
-                proposed[path],
-                has="'''first\n        literal indentation\n        last'''",
-            )
-            tm.that(proposed[consumer], has=f"VALUE = Public.{expected_member}.VALUE")
-            tm.that(proposed[consumer], has="TEXT = Part.GroupingTEXT")
-            tm.that(proposed[homonym], eq=unrelated)
-            remaining = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=proposed,
-            )
-            tm.ok(remaining)
-            tm.that(remaining.value, empty=True)
-        for file_path, original in {
-            path: fixture.source,
-            consumer: fixture.references,
-            homonym: unrelated,
-        }.items():
-            tm.that(file_path.read_text(encoding="utf-8"), eq=original)
+        sources = {
+            **originals,
+            path: fixture.source.replace("class Wrapper:", "class Grouping:"),
+            consumer: fixture.references.replace(".Wrapper.", ".Grouping."),
+        }
+        edits = TestsFlextInfraFamilyFlatten._plan(fixture.root, sources)
+        proposed = TestsFlextInfraFamilyFlatten._apply(sources, edits)
+        expected_member = "GroupingEntity"
+        tm.that(proposed[path], has=f"    class {expected_member}(Enum):")
+        tm.that(
+            proposed[path],
+            has="'''first\n        literal indentation\n        last'''",
+        )
+        tm.that(proposed[consumer], has=f"VALUE = Public.{expected_member}.VALUE")
+        tm.that(proposed[consumer], has="TEXT = Part.GroupingTEXT")
+        tm.that(proposed[homonym], eq=fixture.unrelated)
+        tm.that(
+            TestsFlextInfraFamilyFlatten._plan(fixture.root, proposed),
+            empty=True,
+        )
+        TestsFlextInfraFamilyFlatten._unchanged(originals)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -299,27 +330,15 @@ class TestsFlextInfraFamilyFlatten:
         entity: str,
     ) -> None:
         """Test entity classes are not namespace wrappers."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        family = (
-            package / u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        root, _package, _directory, path, owner = TestsFlextInfraFamilyFlatten._payload(
+            tmp_path
         )
-        family.mkdir()
-        (family / "__init__.py").write_text("", encoding="utf-8")
-        path = family / "payload.py"
-        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
         source = (
             f"from enum import Enum\nclass {owner}:\n    {entity}\n\n"
             f"__all__ = ['{owner}']\n"
         )
         path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.ok(planned)
-        tm.that(planned.value, empty=True)
+        tm.that(TestsFlextInfraFamilyFlatten._plan(root, {path: source}), empty=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -337,45 +356,25 @@ class TestsFlextInfraFamilyFlatten:
         reference: str,
     ) -> None:
         """Test wrapper used as an entity is preserved without edits."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        directory = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY).directory
-        family = package / directory
-        family.mkdir()
-        (family / "__init__.py").write_text("", encoding="utf-8")
-        path = family / "payload.py"
-        owner = f"{u.derive_class_stem(root.name)}ConstantsPayload"
+        root, _package, _directory, path, owner = TestsFlextInfraFamilyFlatten._payload(
+            tmp_path, c.Infra.CONSTANTS_PY
+        )
         source = (
             f"class {owner}:\n    class Wrapper:\n        VALUE = 1\n\n"
             f"{reference.format(owner=owner)}\n\n__all__ = ['{owner}']\n"
         )
         path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.ok(planned)
-        tm.that(planned.value, empty=True)
+        tm.that(TestsFlextInfraFamilyFlatten._plan(root, {path: source}), empty=True)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    def _seed_docstring_wrapper_fixture(
-        root: Path,
-        package: Path,
-    ) -> tuple[Path, Path, str, str]:
-        """Seed the models payload wrapper and its aliased consumer.
-
-        Returns:
-            The payload path, the consumer path, and both sources.
-
-        """
-        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
-        family = package / directory
-        family.mkdir()
-        (family / c.Infra.INIT_PY).write_text("", encoding="utf-8")
-        path = family / "payload.py"
-        owner = f"{u.derive_class_stem(root.name)}ModelsPayload"
+    def test_flatten_removes_wrapper_docstring_and_promotes_alias_member(
+        tmp_path: Path,
+    ) -> None:
+        """Test flatten removes wrapper docstring and promotes alias member."""
+        root, package, directory, path, owner = TestsFlextInfraFamilyFlatten._payload(
+            tmp_path,
+        )
         source = (
             "from enum import Enum\n\n"
             f"class {owner}:\n"
@@ -394,31 +393,11 @@ class TestsFlextInfraFamilyFlatten:
             f"{owner} as Part\n\nmember: Part.Wrapper.Grouped\n"
         )
         consumer.write_text(references, encoding="utf-8")
-        return path, consumer, source, references
-
-    @staticmethod
-    def test_flatten_removes_wrapper_docstring_and_promotes_alias_member(
-        tmp_path: Path,
-    ) -> None:
-        """Test flatten removes wrapper docstring and promotes alias member."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path, consumer, source, references = (
-            TestsFlextInfraFamilyFlatten._seed_docstring_wrapper_fixture(
-                root,
-                package,
-            )
+        sources = {path: source, consumer: references}
+        flattened = TestsFlextInfraFamilyFlatten._apply(
+            sources,
+            TestsFlextInfraFamilyFlatten._plan(root, sources),
         )
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources={path: source, consumer: references},
-            )
-        tm.ok(planned)
-        flattened = {path: source, consumer: references}
-        flattened.update({
-            edit.file_path: edit.updated_source for edit in planned.value
-        })
         tm.that(flattened[path], has='"""Owner doc."""')
         tm.that(flattened[path], has="type WrapperGrouped = WrapperEntity")
         tm.that(flattened[consumer], has="member: Part.WrapperGrouped")
@@ -430,25 +409,16 @@ class TestsFlextInfraFamilyFlatten:
     ) -> None:
         """A facade alias that still names the wrapper is not flattened away."""
         fixture = TestsFlextInfraFamilyFlatten._seed_composed_facade(tmp_path)
-        root = fixture.root
-        path = fixture.path
         consumer = fixture.consumer
-        references = fixture.references
-        project = fixture.project
         sources = {
-            path: fixture.source,
+            fixture.path: fixture.source,
             fixture.facade_path: fixture.facade,
-            consumer: references,
+            consumer: fixture.references,
         }
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        tm.ok(planned)
-        updated = dict(sources)
-        updated.update({edit.file_path: edit.updated_source for edit in planned.value})
-        tm.that(updated[path], has="class VerbReceipt:")
-        tm.that(updated[consumer], has=f"m.{project}.VerbReceipt.Stage")
-        tm.that(consumer.read_text(encoding="utf-8"), eq=references)
+        updated = TestsFlextInfraFamilyFlatten._apply(
+            sources,
+            TestsFlextInfraFamilyFlatten._plan(fixture.root, sources),
+        )
+        tm.that(updated[fixture.path], has="class VerbReceipt:")
+        tm.that(updated[consumer], has=f"m.{fixture.project}.VerbReceipt.Stage")
+        tm.that(consumer.read_text(encoding="utf-8"), eq=fixture.references)

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.services import FlextInfraCodegen
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCodegenVscode:
@@ -23,31 +23,37 @@ class TestsFlextInfraCodegenVscode:
         _ = settings_path.write_text(content, encoding="utf-8")
         return settings_path
 
+    def _render_over(self, tmp_path: Path, existing: t.JsonMapping) -> t.JsonMapping:
+        """Render the settings document over an existing ``.vscode/settings.json``.
+
+        Returns:
+            The rendered settings document.
+
+        """
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        u.Tests.initialize_git_repo(project_root)
+        self._write_settings(project_root, tm.ok(u.Cli.json_dumps(existing)) + "\n")
+        return u.Tests.json_payload(
+            tm.ok(FlextInfraCodegen.render_vscode_settings(project_root)),
+        )
+
     def test_applies_canonical_settings_and_removes_retired_artifacts(
         self,
         tmp_path: Path,
     ) -> None:
         """Enforce canonical keys while deleting stale generated map entries."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
-        self._write_settings(
-            project_root,
-            tm.ok(
-                u.Cli.json_dumps({
-                    "python.languageServer": "None",
-                    "python.analysis.typeCheckingMode": "off",
-                    "files.exclude": {"**/.retired-cache": True},
-                    "python.analysis.diagnosticSeverityOverrides": {
-                        "reportUnknownMemberType": "none",
-                    },
-                }),
-            )
-            + "\n",
+        doc = self._render_over(
+            tmp_path,
+            {
+                "python.languageServer": "None",
+                "python.analysis.typeCheckingMode": "off",
+                "files.exclude": {"**/.retired-cache": True},
+                "python.analysis.diagnosticSeverityOverrides": {
+                    "reportUnknownMemberType": "none",
+                },
+            },
         )
-
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
-        tm.ok(result)
-        doc = u.Tests.json_payload(result.value)
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
         interpreter = "python.defaultInterpreterPath"
@@ -70,26 +76,16 @@ class TestsFlextInfraCodegenVscode:
 
     def test_strips_retired_keys_owning_pyright_config(self, tmp_path: Path) -> None:
         """Strip keys owned by [tool.pyright] to avoid Pylance warnings."""
-        project_root = tmp_path / "project"
-        project_root.mkdir()
-        self._write_settings(
-            project_root,
-            tm.ok(
-                u.Cli.json_dumps({
-                    "python.analysis.typeCheckingMode": "standard",
-                    "python.analysis.diagnosticSeverityOverrides": {
-                        "reportMissingTypeStubs": "error",
-                    },
-                    "python.languageServer": "Pylance",
-                }),
-            )
-            + "\n",
+        doc = self._render_over(
+            tmp_path,
+            {
+                "python.analysis.typeCheckingMode": "standard",
+                "python.analysis.diagnosticSeverityOverrides": {
+                    "reportMissingTypeStubs": "error",
+                },
+                "python.languageServer": "Pylance",
+            },
         )
-
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
-
-        tm.ok(result)
-        doc = u.Tests.json_payload(result.value)
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
         tm.that(doc["python.languageServer"], eq="Pylance")
@@ -98,6 +94,7 @@ class TestsFlextInfraCodegenVscode:
         """Rendering a document that was already rendered produces no drift."""
         project_root = tmp_path / "project"
         project_root.mkdir()
+        u.Tests.initialize_git_repo(project_root)
 
         first = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(first)
@@ -113,6 +110,7 @@ class TestsFlextInfraCodegenVscode:
         """Keep opened-folder settings canonical for roots and subprojects."""
         project_root = tmp_path / "workspace"
         project_root.mkdir()
+        u.Tests.initialize_git_repo(project_root)
         provider = u.Tests.provider()
         (project_root / c.Infra.GITMODULES).write_text(
             '[submodule "app-a"]\n'
@@ -129,6 +127,7 @@ class TestsFlextInfraCodegenVscode:
         result = FlextInfraCodegen.render_vscode_settings(project_root)
         standalone_root = tmp_path / "standalone"
         standalone_root.mkdir()
+        u.Tests.initialize_git_repo(standalone_root)
         standalone = FlextInfraCodegen.render_vscode_settings(standalone_root)
 
         tm.ok(result)
@@ -148,6 +147,7 @@ class TestsFlextInfraCodegenVscode:
         """Return a typed failure when the existing settings are unparseable."""
         project_root = tmp_path / "project"
         project_root.mkdir()
+        u.Tests.initialize_git_repo(project_root)
         self._write_settings(project_root, "{ invalid json")
 
         result = FlextInfraCodegen.render_vscode_settings(project_root)

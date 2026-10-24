@@ -397,32 +397,22 @@ class TestsFlextInfraPytestRunner:
         )
         source = cached_runner_project / "src" / "runner_sample" / "__init__.py"
 
-        tm.that(
-            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
-            eq=0,
-        )
-        tm.that(
-            tm.ok(
+        for rewrite_source in (False, True):
+            if rewrite_source:
+                source.write_text(
+                    "def answer() -> int:\n    return 41 + 1\n",
+                    encoding="utf-8",
+                )
+            budgeted_exit = tm.ok(
+                u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+            )
+            slow_exit = tm.ok(
                 u.Tests.PytestRunner.runner_for(
                     cached_runner_project, slow_phase=True
                 ).execute()
-            ),
-            ne=0,
-        )
-        source.write_text("def answer() -> int:\n    return 41 + 1\n", encoding="utf-8")
-        tm.that(
-            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
-            eq=0,
-        )
-
-        tm.that(
-            tm.ok(
-                u.Tests.PytestRunner.runner_for(
-                    cached_runner_project, slow_phase=True
-                ).execute()
-            ),
-            ne=0,
-        )
+            )
+            tm.that(budgeted_exit, eq=0)
+            tm.that(slow_exit, ne=0)
 
     @staticmethod
     @pytest.mark.slow

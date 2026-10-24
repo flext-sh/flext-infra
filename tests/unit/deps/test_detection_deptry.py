@@ -11,12 +11,44 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import c, tm, u
 
 
 class TestsFlextInfraDepsDetectionDeptry:
     """Exercise native deptry against real project declarations and sources."""
+
+    @staticmethod
+    def _scan(
+        project: Path,
+    ) -> t.Triple[
+        int,
+        t.SequenceOf[t.JsonMapping],
+        m.Infra.ProjectDependencyReport,
+    ]:
+        """Run native deptry over ``project``.
+
+        Returns:
+            The exit code, the findings and the classified report.
+
+        """
+        service = FlextInfraDependencyDetectionService()
+        issues, exit_code = tm.ok(
+            service.run_deptry(project, Path(sys.executable).parent),
+        )
+        return exit_code, issues, service.build_project_report(project.name, issues)
+
+    @staticmethod
+    def _assert_import_establishes_usage(project: Path, source: Path) -> None:
+        """Importing ``pydantic`` clears the finding; removing the import renews it."""
+        exit_code, issues, _ = TestsFlextInfraDepsDetectionDeptry._scan(project)
+        tm.that(exit_code, eq=0)
+        tm.that(issues, empty=True)
+        source.write_text("from pathlib import Path\n", encoding=c.DEFAULT_ENCODING)
+        exit_code, _, report = TestsFlextInfraDepsDetectionDeptry._scan(project)
+        tm.that(exit_code, eq=1)
+        tm.that(report.deptry.unused, has="pydantic")
 
     @staticmethod
     @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
@@ -57,24 +89,10 @@ class TestsFlextInfraDepsDetectionDeptry:
             "from pydantic import BaseModel\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        service = FlextInfraDependencyDetectionService()
 
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
-
-        tm.that(exit_code, eq=0)
-        tm.that(issues, empty=True)
-        source.write_text("from pathlib import Path\n", encoding=c.DEFAULT_ENCODING)
-
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
-
-        tm.that(exit_code, eq=1)
-        tm.that(
-            service.build_project_report(project.name, issues).deptry.unused,
-            has="pydantic",
+        TestsFlextInfraDepsDetectionDeptry._assert_import_establishes_usage(
+            project,
+            source,
         )
 
     @staticmethod
@@ -125,11 +143,7 @@ class TestsFlextInfraDepsDetectionDeptry:
             "from pathlib import Path\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        service = FlextInfraDependencyDetectionService()
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
-        report = service.build_project_report(project.name, issues)
+        exit_code, issues, report = TestsFlextInfraDepsDetectionDeptry._scan(project)
         tm.that(exit_code, eq=1)
         tm.that(report.deptry.unused, has="pydantic")
         tm.that(report.deptry.raw_count, eq=len(issues))
@@ -151,20 +165,10 @@ class TestsFlextInfraDepsDetectionDeptry:
             "from pydantic import BaseModel\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        service = FlextInfraDependencyDetectionService()
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
-        tm.that(exit_code, eq=0)
-        tm.that(issues, empty=True)
-        source.write_text("from pathlib import Path\n", encoding=c.DEFAULT_ENCODING)
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
-        tm.that(exit_code, eq=1)
-        tm.that(
-            service.build_project_report(project.name, issues).deptry.unused,
-            has="pydantic",
+
+        TestsFlextInfraDepsDetectionDeptry._assert_import_establishes_usage(
+            project,
+            source,
         )
 
     @staticmethod
@@ -191,15 +195,9 @@ class TestsFlextInfraDepsDetectionDeptry:
             "from pydantic import BaseModel\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        service = FlextInfraDependencyDetectionService()
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
+        exit_code, _, report = TestsFlextInfraDepsDetectionDeptry._scan(project)
         tm.that(exit_code, eq=1)
-        tm.that(
-            service.build_project_report(project.name, issues).deptry.unused,
-            has="pydantic",
-        )
+        tm.that(report.deptry.unused, has="pydantic")
 
     @staticmethod
     def test_dev_import_in_source_remains_a_finding(tmp_path: Path) -> None:
@@ -217,15 +215,9 @@ class TestsFlextInfraDepsDetectionDeptry:
             "from pydantic import BaseModel\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        service = FlextInfraDependencyDetectionService()
-        issues, exit_code = tm.ok(
-            service.run_deptry(project, Path(sys.executable).parent),
-        )
+        exit_code, _, report = TestsFlextInfraDepsDetectionDeptry._scan(project)
         tm.that(exit_code, eq=1)
-        tm.that(
-            service.build_project_report(project.name, issues).deptry.dev_in_runtime,
-            has="pydantic",
-        )
+        tm.that(report.deptry.dev_in_runtime, has="pydantic")
 
     @staticmethod
     @pytest.mark.parametrize("with_src", [False, True])

@@ -85,37 +85,24 @@ class TestsFlextInfraAuditorCodeblocks:
         tm.that(issues, eq=[])
 
     @staticmethod
-    def test_docs_python_codeblock_issues_report_unbound_name(
+    @pytest.mark.parametrize(
+        ("name", "source", "unfixable"),
+        [
+            ("snippet.md", "result = unavailable_name()", False),
+            ("broken.md", "**Happy coding!** \U0001f680", True),
+        ],
+    )
+    def test_docs_python_codeblock_issues_report_unexecutable_snippets(
         tmp_path: Path,
+        name: str,
+        source: str,
+        *,
+        unfixable: bool,
     ) -> None:
-        """Executable snippets cannot rely on an unseen surrounding import."""
+        """Unbound names and invalid Python are reported as codeblock issues."""
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
-        (docs_dir / "snippet.md").write_text(
-            "```python\nresult = unavailable_name()\n```\n",
-            encoding="utf-8",
-        )
-        scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
-        )
-        issues = u.Infra.docs_python_codeblock_issues(scope)
-        tm.that(len(issues), eq=1)
-        tm.that(issues[0].file, eq="docs/snippet.md")
-        tm.that(issues[0].issue_type, eq="python_codeblock")
-
-    @staticmethod
-    def test_docs_python_codeblock_issues_report_invalid_python(
-        tmp_path: Path,
-    ) -> None:
-        """Test docs python codeblock issues report invalid python."""
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir(parents=True, exist_ok=True)
-        (docs_dir / "broken.md").write_text(
-            "```python\n**Happy coding!** 🚀\n```\n",
-            encoding="utf-8",
-        )
+        (docs_dir / name).write_text(f"```python\n{source}\n```\n", encoding="utf-8")
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
@@ -125,11 +112,11 @@ class TestsFlextInfraAuditorCodeblocks:
         issues = u.Infra.docs_python_codeblock_issues(scope)
 
         tm.that(len(issues), eq=1)
+        tm.that(issues[0].file, eq=f"docs/{name}")
         tm.that(issues[0].issue_type, eq="python_codeblock")
-        tm.that(issues[0].file, eq="docs/broken.md")
-
-        with pytest.raises(RuntimeError, match="Ruff could not fix"):
-            u.Infra.docs_fix_python_codeblocks(scope, apply=True)
+        if unfixable:
+            with pytest.raises(RuntimeError, match="Ruff could not fix"):
+                u.Infra.docs_fix_python_codeblocks(scope, apply=True)
 
     @staticmethod
     def test_scanner_excerpt_requires_non_executable_text_fence(

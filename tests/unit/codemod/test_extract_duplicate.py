@@ -6,12 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
 from flext_infra.codemod import FlextInfraExtractDuplicatePhase
-from tests import c, m, t, tm, u
+from tests import c, t, tm, u
 
 _SAFE_SOURCE = (
     "CONSTANT = 2\n"
@@ -75,23 +74,18 @@ class TestsFlextInfraExtractDuplicate:
         return (first + 1, first + width, second + 1, second + width)
 
     @staticmethod
-    def _run_module(root: Path, probe: str) -> str:
-        """Execute a probe against a written module in a fresh interpreter.
+    def _demo(root: Path) -> t.StrSequence:
+        """Run the sample demo in a fresh interpreter rooted at ``root``.
 
         Returns:
-            The probe's stripped standard output.
+            The probe's standard output lines.
 
         """
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join([str(root), *sys.path])
-        outcome = tm.ok(
-            u.Cli.run(
-                [sys.executable, "-c", probe],
-                cwd=root,
-                options=m.Cli.ProcessOptions(env=env),
-            ),
+        return u.Tests.run_lazy_init_probe(
+            "import sample\nprint(sample.Sample.demo(3, []))\n",
+            python_paths=(str(root), *sys.path),
+            cwd=root,
         )
-        return outcome.stdout.strip()
 
     def test_safe_block_is_extracted_without_changing_behavior(
         self,
@@ -112,16 +106,9 @@ class TestsFlextInfraExtractDuplicate:
         module = tmp_path / "sample.py"
         (tmp_path / c.Infra.INIT_PY).write_text("", encoding="utf-8")
         module.write_text(_SAFE_SOURCE, encoding=c.DEFAULT_ENCODING)
-        original = self._run_module(
-            tmp_path,
-            "import sample\nprint(sample.Sample.demo(3, []))\n",
-        )
+        original = self._demo(tmp_path)
         module.write_text(updated, encoding=c.DEFAULT_ENCODING)
-        extracted = self._run_module(
-            tmp_path,
-            "import sample\nprint(sample.Sample.demo(3, []))\n",
-        )
-        tm.that(extracted, eq=original)
+        tm.that(self._demo(tmp_path), eq=original)
 
     def test_unsafe_block_is_skipped(self) -> None:
         """A block whose return crosses the boundary is never extracted."""

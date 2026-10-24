@@ -92,6 +92,115 @@ def _declared_candidate_campaign(
     return source, candidate
 
 
+def _attach_independent_member(root: Path) -> Path:
+    """Attach one independent governed member to the workspace ``root``.
+
+    Returns:
+        The attached member checkout.
+
+    """
+    independent = root / "independent-member"
+    beads = u.Tests.beads_project(root.name)
+    u.Tests.WorktreeFixture.initialize_governed_project(
+        independent,
+        independent.name,
+        beads=u.Tests.BeadsIdentity(
+            workspace=beads.workspace,
+            database=beads.database,
+            issue_prefix=beads.issue_prefix,
+        ),
+    )
+    u.Tests.WorktreeFixture.attach_submodule(
+        root,
+        independent,
+        distribution=independent.name,
+        relative_path=independent.relative_to(root).as_posix(),
+    )
+    return independent
+
+
+def _break_repository(
+    failure: str,
+    failed: Path,
+    member: Path,
+    inputs: m.Infra.CodegenInputs,
+    tmp_path: Path,
+) -> None:
+    """Damage the selected repository in the way ``failure`` names."""
+    if failure == "root-source":
+        projection = failed / c.PYPROJECT_FILENAME
+        projection.write_text(
+            projection.read_text(encoding=c.DEFAULT_ENCODING) + "\n[project]\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+    elif failure == "member-package":
+        package = member / "src" / u.Infra.project_package_name(member)
+        (package / c.Infra.INIT_PY).unlink()
+    else:
+        view = failed / inputs.spec.uv_resolution_pyprojects[0]
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        view.parent.parent.mkdir(parents=True, exist_ok=True)
+        view.parent.symlink_to(foreign, target_is_directory=True)
+
+
+def _tree_without_plan_report(root: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
+    """Return the project tree without the planning report the plan itself writes.
+
+    Returns:
+        The versionable project tree minus the planning report.
+
+    """
+    return tuple(
+        item
+        for item in TestsFlextInfraConformSupport.project_tree(root)
+        if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
+    )
+
+
+def _assert_independent_views_planned(
+    independent: Path,
+    planned_paths: set[Path],
+    report: m.Infra.CodegenPlanningReport,
+) -> None:
+    """Assert every resolution view of the independent member was planned."""
+    inputs = tm.ok(u.Infra.load_codegen_inputs(independent))
+    for relative in inputs.spec.uv_resolution_pyprojects:
+        path = independent / relative
+        tm.that(path in planned_paths, eq=True)
+        tm.that(
+            any(path == file.path for item in report.outcomes for file in item.files),
+            eq=True,
+        )
+
+
+def _assert_resolution_projected(
+    candidate: Path,
+    resolution: t.VariadicTuple[Path],
+    before: t.VariadicTuple[t.Pair[str, bytes]],
+    after: t.VariadicTuple[t.Pair[str, bytes]],
+    destinations: frozenset[str],
+) -> None:
+    """Assert resolution pyprojects are projected and nothing else moved."""
+    for relative in resolution:
+        view = candidate / relative
+        tm.that(view.is_file(), eq=True)
+        tm.that(dict(after), has=relative.as_posix())
+        tm.that(
+            u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8")) is not None,
+            eq=True,
+        )
+    untouched_before = tuple(item for item in before if item[0] not in destinations)
+    untouched_after = tuple(item for item in after if item[0] not in destinations)
+    tm.that(
+        untouched_after,
+        eq=untouched_before,
+        msg=TestsFlextInfraConformSupport.project_tree_diff(
+            untouched_before, untouched_after
+        ),
+    )
+
+
 class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
 
@@ -112,23 +221,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
             member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
         )
-        independent = root / "independent-member"
-        beads = u.Tests.beads_project(root.name)
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            independent,
-            independent.name,
-            beads=u.Tests.BeadsIdentity(
-                workspace=beads.workspace,
-                database=beads.database,
-                issue_prefix=beads.issue_prefix,
-            ),
-        )
-        u.Tests.WorktreeFixture.attach_submodule(
-            root,
-            independent,
-            distribution=independent.name,
-            relative_path=independent.relative_to(root).as_posix(),
-        )
+        independent = _attach_independent_member(root)
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = u.Tests.conform_request(
             root,
@@ -145,26 +238,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         tm.that(baseline.issues, empty=True)
         failed = root if failure.startswith("root-") else member
         inputs = tm.ok(u.Infra.load_codegen_inputs(failed))
-        if failure == "root-source":
-            projection = failed / c.PYPROJECT_FILENAME
-            projection.write_text(
-                projection.read_text(encoding=c.DEFAULT_ENCODING) + "\n[project]\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-        elif failure == "member-package":
-            package = member / "src" / u.Infra.project_package_name(member)
-            (package / c.Infra.INIT_PY).unlink()
-        else:
-            view = failed / inputs.spec.uv_resolution_pyprojects[0]
-            foreign = tmp_path / "foreign"
-            foreign.mkdir()
-            view.parent.parent.mkdir(parents=True, exist_ok=True)
-            view.parent.symlink_to(foreign, target_is_directory=True)
-        before = tuple(
-            item
-            for item in TestsFlextInfraConformSupport.project_tree(root)
-            if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
-        )
+        _break_repository(failure, failed, member, inputs, tmp_path)
+        before = _tree_without_plan_report(root)
 
         plan = tm.ok(
             FlextInfraCodegenConform(
@@ -181,30 +256,14 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
         tm.that(bool(failed_outcome.error or failed_outcome.issues), eq=True)
         tm.that(failed_outcome.files, empty=True)
-        independent_inputs = tm.ok(u.Infra.load_codegen_inputs(independent))
-        for relative in independent_inputs.spec.uv_resolution_pyprojects:
-            path = independent / relative
-            tm.that(path in planned_paths, eq=True)
-            tm.that(
-                any(
-                    path == file.path for item in report.outcomes for file in item.files
-                ),
-                eq=True,
-            )
+        _assert_independent_views_planned(independent, planned_paths, report)
         for relative in inputs.spec.uv_resolution_pyprojects:
             tm.that(failed / relative in planned_paths, eq=False)
         if failure == "member-package":
             root_outcome = next(item for item in report.outcomes if item.root == root)
             tm.that(root_outcome.error, has="no successful selected plan")
             tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
-        tm.that(
-            tuple(
-                item
-                for item in TestsFlextInfraConformSupport.project_tree(root)
-                if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
-            ),
-            eq=before,
-        )
+        tm.that(_tree_without_plan_report(root), eq=before)
 
     @staticmethod
     @pytest.mark.slow
@@ -882,22 +941,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             eq=original_groups,
         )
         after = TestsFlextInfraConformSupport.project_tree(candidate)
-        for relative in inputs.spec.uv_resolution_pyprojects:
-            view = candidate / relative
-            tm.that(view.is_file(), eq=True)
-            tm.that(dict(after), has=relative.as_posix())
-            tm.that(
-                u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
-                is not None,
-                eq=True,
-            )
-        tm.that(
-            tuple(item for item in after if item[0] not in destinations),
-            eq=tuple(item for item in before if item[0] not in destinations),
-            msg=TestsFlextInfraConformSupport.project_tree_diff(
-                tuple(item for item in before if item[0] not in destinations),
-                tuple(item for item in after if item[0] not in destinations),
-            ),
+        _assert_resolution_projected(
+            candidate,
+            tuple(inputs.spec.uv_resolution_pyprojects),
+            before,
+            after,
+            destinations,
         )
         tm.that(
             u.Infra.runtime_evaluated_base_classes(candidate, {}, roots),
@@ -950,21 +999,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
         tm.ok(infra.bootstrap_candidate(command))
         after = TestsFlextInfraConformSupport.project_tree(candidate)
-        for relative in resolution:
-            view = candidate / relative
-            tm.that(view.is_file(), eq=True)
-            tm.that(
-                u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
-                is not None,
-                eq=True,
-            )
-        tm.that(
-            tuple(item for item in after if item[0] not in destinations),
-            eq=tuple(item for item in before if item[0] not in destinations),
-            msg=TestsFlextInfraConformSupport.project_tree_diff(
-                tuple(item for item in before if item[0] not in destinations),
-                tuple(item for item in after if item[0] not in destinations),
-            ),
-        )
+        _assert_resolution_projected(candidate, resolution, before, after, destinations)
         tm.ok(infra.bootstrap_candidate(command))
         tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)

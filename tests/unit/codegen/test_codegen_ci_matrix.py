@@ -78,6 +78,25 @@ class TestsFlextInfraCodegenCiMatrix:
         return root
 
     @staticmethod
+    def ci_job_steps(
+        root: Path,
+    ) -> tuple[t.JsonMapping, t.JsonMapping, t.JsonMapping, list[t.JsonMapping]]:
+        """Load the rendered CI workflow with its jobs, blocking job, and steps.
+
+        Returns:
+            The workflow, its jobs, the ``ci`` job, and the ``ci`` job steps.
+
+        """
+        workflow = u.Cli.yaml_load_mapping(root / ".github" / "workflows" / "ci.yml")
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        steps = [
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
+        ]
+        return workflow, jobs, ci_job, steps
+
+    @staticmethod
     def _assert_dispatch_only(triggers: str) -> None:
         """Assert a workflow trigger section selects only manual dispatch."""
         tm.that(triggers, has="workflow_dispatch: {}")
@@ -196,15 +215,9 @@ class TestsFlextInfraCodegenCiMatrix:
         rendered_project: Path,
     ) -> None:
         """Generated CI executes its declared Make lifecycle in policy order."""
-        workflow = u.Cli.yaml_load_mapping(
-            rendered_project / ".github" / "workflows" / "ci.yml",
+        workflow, jobs, ci_job, steps = TestsFlextInfraCodegenCiMatrix.ci_job_steps(
+            rendered_project,
         )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
-        steps = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
-        ]
         make = config.Infra.codegen.make
         prefix = f"{make.ci.variable}={make.ci.value} make "
         expected = tuple(
@@ -255,15 +268,7 @@ class TestsFlextInfraCodegenCiMatrix:
         rendered_project: Path,
     ) -> None:
         """Cache restore and save reference their actual database producers."""
-        workflow = u.Cli.yaml_load_mapping(
-            rendered_project / ".github" / "workflows" / "ci.yml",
-        )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
-        steps = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
-        ]
+        *_, steps = TestsFlextInfraCodegenCiMatrix.ci_job_steps(rendered_project)
         make = config.Infra.codegen.make
         test_run = f"{make.ci.variable}={make.ci.value} make {c.Infra.VERB_TEST}"
         test_step = next(step for step in steps if step.get("run") == test_run)

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,24 +23,11 @@ from flext_infra.codemod import (
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import tm, u
 
+if TYPE_CHECKING:
+    from tests import t
+
 _SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
 _REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]
-
-
-class _RecordingProgress:
-    """Minimal real ModProgress transport that records emissions for asserts."""
-
-    def __init__(self) -> None:
-        """Initialize an empty emission log."""
-        self.messages: list[str] = []
-
-    def emit(self, message: str) -> None:
-        """Record one progress line."""
-        self.messages.append(message)
-
-    def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
-        """Record one rename campaign summary."""
-        self.messages.append(f"rename occurrences={report.occurrences}")
 
 
 def _phase_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
@@ -126,8 +114,58 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
         ).apply(project, preflight, rope)
 
 
+def _seed_consumer(legacy: Path) -> Path:
+    """Write the module importing the accessor next to its declaration.
+
+    Returns:
+        The consumer module path.
+
+    """
+    consumer = legacy.parent / "consumer.py"
+    _ = consumer.write_text(
+        f"from flext_core.legacy import {_SOURCE_NAME}\n\n"
+        f"value = {_SOURCE_NAME}(True)\n",
+        encoding="utf-8",
+    )
+    return consumer
+
+
+def _apply_rejected(
+    project: Path,
+    legacy: Path,
+    *,
+    callback: bool,
+) -> tuple[p.Result[bool], t.MappingKV[Path, bytes]]:
+    """Apply the accessor candidate that must fail and snapshot its sources.
+
+    Returns:
+        The failed verdict and the declaration/consumer bytes taken before it.
+
+    """
+    consumer = _seed_consumer(legacy)
+    before = {path: path.read_bytes() for path in (legacy, consumer)}
+    result = _apply_accessor(project, callback=callback)
+    tm.that(result.failure, eq=True)
+    return result, before
+
+
 class TestsFlextInfraCodemodLoopPhases:
     """Behavior contract for test_mod_loop_phases."""
+
+    class RecordingProgress:
+        """Minimal real ModProgress transport that records emissions for asserts."""
+
+        def __init__(self) -> None:
+            """Initialize an empty emission log."""
+            self.messages: list[str] = []
+
+        def emit(self, message: str) -> None:
+            """Record one progress line."""
+            self.messages.append(message)
+
+        def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+            """Record one rename campaign summary."""
+            self.messages.append(f"rename occurrences={report.occurrences}")
 
     @staticmethod
     def test_managed_scanner_keeps_resolution_outside_consumer_cwd(
@@ -205,12 +243,7 @@ class TestsFlextInfraCodemodLoopPhases:
     ) -> None:
         """Both public paths rename a coupled import and declaration together."""
         _workspace, project, _service, legacy, foreign = _phase_fixture(tmp_path)
-        consumer = legacy.parent / "consumer.py"
-        _ = consumer.write_text(
-            f"from flext_core.legacy import {_SOURCE_NAME}\n\n"
-            f"value = {_SOURCE_NAME}(True)\n",
-            encoding="utf-8",
-        )
+        consumer = _seed_consumer(legacy)
         foreign_before = foreign.read_bytes()
 
         result = _apply_accessor(project, callback=callback)
@@ -236,17 +269,9 @@ class TestsFlextInfraCodemodLoopPhases:
                 f"\n\ndef {_REPLACEMENT_NAME}(flag: bool) -> bool:\n"
                 "    return not flag\n"
             )
-        consumer = legacy.parent / "consumer.py"
-        _ = consumer.write_text(
-            f"from flext_core.legacy import {_SOURCE_NAME}\n\n"
-            f"value = {_SOURCE_NAME}(True)\n",
-            encoding="utf-8",
-        )
-        before = {path: path.read_bytes() for path in (legacy, consumer)}
 
-        result = _apply_accessor(project, callback=callback)
+        _, before = _apply_rejected(project, legacy, callback=callback)
 
-        tm.that(result.failure, eq=True)
         for path, content in before.items():
             tm.that(path.read_bytes(), eq=content)
 
@@ -264,17 +289,9 @@ class TestsFlextInfraCodemodLoopPhases:
             c.Infra.AUTOGEN_HEADERS[0] + "\n" + source,
             encoding="utf-8",
         )
-        consumer = legacy.parent / "consumer.py"
-        _ = consumer.write_text(
-            f"from flext_core.legacy import {_SOURCE_NAME}\n\n"
-            f"value = {_SOURCE_NAME}(True)\n",
-            encoding="utf-8",
-        )
-        before = {path: path.read_bytes() for path in (legacy, consumer)}
 
-        result = _apply_accessor(project, callback=callback)
+        result, before = _apply_rejected(project, legacy, callback=callback)
 
-        tm.that(result.failure, eq=True)
         tm.that(
             result.error, has="generated findings require canonical generator repair"
         )
@@ -301,12 +318,7 @@ class TestsFlextInfraCodemodLoopPhases:
     def test_added_consumer_rejects_the_authenticated_batch(tmp_path: Path) -> None:
         """The final leased guard detects a new consumer before either CAS write."""
         _workspace, project, _service, legacy, _foreign = _phase_fixture(tmp_path)
-        consumer = legacy.parent / "consumer.py"
-        _ = consumer.write_text(
-            f"from flext_core.legacy import {_SOURCE_NAME}\n\n"
-            f"value = {_SOURCE_NAME}(True)\n",
-            encoding="utf-8",
-        )
+        consumer = _seed_consumer(legacy)
         states = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in (legacy, consumer)
@@ -353,7 +365,7 @@ class TestsFlextInfraCodemodLoopPhases:
         _workspace, project, service_file, legacy_file, foreign_file = _phase_fixture(
             tmp_path,
         )
-        progress = _RecordingProgress()
+        progress = TestsFlextInfraCodemodLoopPhases.RecordingProgress()
         with infra.rope_workspace(project) as rope:
             result = FlextInfraCodemodBatchApply(
                 workspace_factory=infra.rope_workspace,

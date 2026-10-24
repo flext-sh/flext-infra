@@ -78,38 +78,12 @@ jobs:
           bash -ec 'make setup && make gen && make gen && make check && make test && make build'
   # End SECTION: distro-matrix
 
-  # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout + generated Make setup
-  macos:
-    runs-on: macos-latest
-    env:
-      {{ make.ci.variable }}: {{ make.ci.value }}
-      GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
-    steps:
-      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
-        with:
-          submodules: {{ checkout_submodules }}
-          # No step needs authenticated git after checkout; persisting the
-          # token into .git/config would expose it to every later command.
-          persist-credentials: false
-{%- include "_fragments/mise_install.j2" %}
-      - name: Bootstrap
-        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
-      - name: Generate twice
-        run: |
-          {{ make.ci.variable }}={{ make.ci.value }} make gen
-          {{ make.ci.variable }}={{ make.ci.value }} make gen
-      - name: Native gates
-        run: |
-          {{ make.ci.variable }}={{ make.ci.value }} make check
-          {{ make.ci.variable }}={{ make.ci.value }} make test
-          {{ make.ci.variable }}={{ make.ci.value }} make build
-  # End SECTION: macos
+{%- for job, shell in (("macos", ""), ("windows", "bash")) %}
 
-  # === SECTION: windows (managed) ===
+  # === SECTION: {{ job }} (managed) ===
   # Source: template + config:github_actions.checkout + generated Make setup
-  windows:
-    runs-on: windows-latest
+  {{ job }}:
+    runs-on: {{ job }}-latest
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
       GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
@@ -122,17 +96,24 @@ jobs:
           persist-credentials: false
 {%- include "_fragments/mise_install.j2" %}
       - name: Bootstrap
-        shell: bash
+{%- if shell %}
+        shell: {{ shell }}
+{%- endif %}
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Generate twice
-        shell: bash
+{%- if shell %}
+        shell: {{ shell }}
+{%- endif %}
         run: |
           {{ make.ci.variable }}={{ make.ci.value }} make gen
           {{ make.ci.variable }}={{ make.ci.value }} make gen
       - name: Native gates
-        shell: bash
+{%- if shell %}
+        shell: {{ shell }}
+{%- endif %}
         run: |
           {{ make.ci.variable }}={{ make.ci.value }} make check
           {{ make.ci.variable }}={{ make.ci.value }} make test
           {{ make.ci.variable }}={{ make.ci.value }} make build
-# End SECTION: windows
+{{ "" if loop.last else "  " }}# End SECTION: {{ job }}
+{%- endfor %}

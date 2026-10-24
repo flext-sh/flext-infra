@@ -500,24 +500,32 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
+    def _render_over(root: Path, seed: str) -> t.JsonMapping:
+        """Render VS Code settings over a git project whose settings hold ``seed``.
+
+        Returns:
+            The parsed rendered settings document.
+
+        """
+        settings_path = root / ".vscode" / "settings.json"
+        settings_path.parent.mkdir(parents=True)
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
+        _ = settings_path.write_text(seed, encoding="utf-8")
+        result = FlextInfraCodegen.render_vscode_settings(root)
+        tm.ok(result)
+        return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(result.value)),
+        )
+
+    @staticmethod
     def test_merge_marks_drift_and_renders_canonical_content(
         tmp_path: Path,
     ) -> None:
         """Plan a changed merge artifact with canonical and custom keys."""
         root = tmp_path / "project"
-        settings_path = root / ".vscode" / "settings.json"
-        settings_path.parent.mkdir(parents=True)
-        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
-        _ = settings_path.write_text(
+        doc = TestsFlextInfraVscodeOwnerMerge._render_over(
+            root,
             '{"python.languageServer": "None"}\n',
-            encoding="utf-8",
-        )
-
-        result = FlextInfraCodegen.render_vscode_settings(root)
-
-        tm.ok(result)
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            tm.ok(u.Cli.json_parse(result.value)),
         )
         for key, expected_value in config.Infra.codegen.vscode.scalar_settings.items():
             if key == "python.defaultInterpreterPath":
@@ -563,21 +571,10 @@ class TestsFlextInfraVscodeOwnerMerge:
         tmp_path: Path,
     ) -> None:
         """Artifact exclude maps are exact projections, not append-only unions."""
-        root = tmp_path / "project"
-        settings_path = root / ".vscode" / "settings.json"
-        settings_path.parent.mkdir(parents=True)
-        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         stale_key = "**/.retired-runtime"
-        _ = settings_path.write_text(
+        doc = TestsFlextInfraVscodeOwnerMerge._render_over(
+            tmp_path / "project",
             tm.ok(u.Cli.json_dumps({"files.exclude": {stale_key: True}})),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraCodegen.render_vscode_settings(root)
-
-        tm.ok(result)
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            tm.ok(u.Cli.json_parse(result.value)),
         )
         tm.that(
             doc["files.exclude"],
@@ -587,11 +584,8 @@ class TestsFlextInfraVscodeOwnerMerge:
     @staticmethod
     def test_merge_strips_retired_pyright_keys(tmp_path: Path) -> None:
         """Pylance settingsNotOverridable keys must be stripped, not preserved."""
-        root = tmp_path / "project"
-        settings_path = root / ".vscode" / "settings.json"
-        settings_path.parent.mkdir(parents=True)
-        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
-        _ = settings_path.write_text(
+        doc = TestsFlextInfraVscodeOwnerMerge._render_over(
+            tmp_path / "project",
             tm.ok(
                 u.Cli.json_dumps({
                     "python.analysis.typeCheckingMode": "standard",
@@ -601,14 +595,6 @@ class TestsFlextInfraVscodeOwnerMerge:
                     "ruff.nativeServer": True,
                 }),
             ),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraCodegen.render_vscode_settings(root)
-
-        tm.ok(result)
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            tm.ok(u.Cli.json_parse(result.value)),
         )
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)

@@ -42,11 +42,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
         return repository_root, module_path
 
     @staticmethod
-    def _module_objects_by_name(
+    def _module_objects(
         repository_root: Path,
         module_path: Path,
     ) -> t.MutableMappingKV[str, m.Infra.Object]:
-        """Index one module's non-local objects by their declared name.
+        """Index one module's non-local objects by their scope path.
 
         Returns:
             The resulting ``t.MutableMappingKV[str, m.Infra.Object]``.
@@ -54,7 +54,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         """
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             return {
-                item.name: item
+                item.scope_path: item
                 for item in rope.objects(module_path, include_local_scopes=False)
             }
 
@@ -512,8 +512,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
             with pytest.raises(FileNotFoundError, match=r"consumer\.py"):
                 rope.objects(service_path, include_local_scopes=False)
 
-    @staticmethod
-    def test_workspace_dsl_ignores_test_references(tmp_path: Path) -> None:
+    @classmethod
+    def test_workspace_dsl_ignores_test_references(
+        cls,
+        tmp_path: Path,
+    ) -> None:
         """Tests remain outside production reachability."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -541,13 +544,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            objects = {
-                item.scope_path: item
-                for item in rope.objects(module_path, include_local_scopes=False)
-            }
-
-        candidate = objects["only_for_tests"]
+        candidate = cls._module_objects(repository_root, module_path)["only_for_tests"]
         tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
@@ -566,7 +563,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             "m = FlextDemoModels\n",
         )
 
-        objects = self._module_objects_by_name(repository_root, module_path)
+        objects = self._module_objects(repository_root, module_path)
 
         tm.that(objects["FlextDemoModels"].is_facade_member, eq=False)
         tm.that(objects["m"].is_facade_member, eq=False)
@@ -585,14 +582,15 @@ class TestsFlextInfraInfraRopeServiceObjects:
             "    return 1\n",
         )
 
-        objects = self._module_objects_by_name(repository_root, module_path)
+        objects = self._module_objects(repository_root, module_path)
 
         tm.that(objects, has="__all__")
         tm.that(objects["__all__"].references_count, eq=0)
         tm.that(objects, has="public")
 
-    @staticmethod
+    @classmethod
     def test_workspace_dsl_ignores_example_importers_for_generic_names(
+        cls,
         tmp_path: Path,
     ) -> None:
         """Examples remain outside production reachability."""
@@ -622,19 +620,14 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            objects = {
-                item.scope_path: item
-                for item in rope.objects(producer_path, include_local_scopes=False)
-            }
-
-        candidate = objects["run"]
+        candidate = cls._module_objects(repository_root, producer_path)["run"]
         tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
-    @staticmethod
+    @classmethod
     def test_workspace_dsl_ignores_example_base_class_references(
+        cls,
         tmp_path: Path,
     ) -> None:
         """Example inheritance remains outside production reachability."""
@@ -675,19 +668,18 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            objects = {
-                item.scope_path: item
-                for item in rope.objects(shared_path, include_local_scopes=False)
-            }
-
-        candidate = objects["ExampleSharedPerson"]
+        candidate = cls._module_objects(repository_root, shared_path)[
+            "ExampleSharedPerson"
+        ]
         tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
-    @staticmethod
-    def test_workspace_dsl_tracks_same_file_references(tmp_path: Path) -> None:
+    @classmethod
+    def test_workspace_dsl_tracks_same_file_references(
+        cls,
+        tmp_path: Path,
+    ) -> None:
         """Same-file uses must block the unused fast-path shortcut."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -705,13 +697,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            objects = {
-                item.scope_path: item
-                for item in rope.objects(module_path, include_local_scopes=False)
-            }
-
-        candidate = objects["ExampleService"]
+        candidate = cls._module_objects(repository_root, module_path)["ExampleService"]
         tm.that(candidate.references_count, eq=1)
         tm.that(candidate.runtime_references_count, eq=1)
         tm.that(candidate.script_references_count, eq=0)

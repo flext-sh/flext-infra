@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -53,31 +52,16 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.that(normalized, has="return files")
         tm.that(normalized, has="literal = 'files'")
         target.write_text(normalized, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        "from demo_pkg.consumer import value, sibling, literal; "
-                        "assert value == 'published'; assert sibling('local') == "
-                        "'local'; "
-                        "assert literal == 'files'"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            )
+        cls._run_python(
+            project,
+            "-c",
+            "from demo_pkg.consumer import value, sibling, literal; "
+            "assert value == 'published'; assert sibling('local') == "
+            "'local'; "
+            "assert literal == 'files'",
+            pythonpath=package.parent,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=target,
-                source=normalized,
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, target)
 
     @classmethod
     def test_own_import_alias_rejects_destination_capture(cls, tmp_path: Path) -> None:
@@ -145,28 +129,15 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         normalized = cls._normalize(project, module, source)
         module.write_text(normalized, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}.{module.stem} import value, annotate; "
-                        "assert str(value) == 'consumer'; "
-                        "assert annotate(value) == value"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            )
+        cls._run_python(
+            project,
+            "-c",
+            f"from {package.name}.{module.stem} import value, annotate; "
+            "assert str(value) == 'consumer'; "
+            "assert annotate(value) == value",
+            pythonpath=package.parent,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project, file_path=module, source=normalized
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, module)
 
     @classmethod
     def test_eager_root_dependencies_preserve_bootstrap_imports(
@@ -189,14 +160,7 @@ class TestsFlextInfraRefactorImportNormalization(
         source += "class Bootstrap(DemoRecord):\n    pass\n"
         target = package / "bootstrap.py"
         target.write_text(source, encoding="utf-8")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=target,
-                source=source,
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, target)
 
     @classmethod
     @pytest.mark.parametrize("destination", ["missing", "stale"])
@@ -234,26 +198,16 @@ class TestsFlextInfraRefactorImportNormalization(
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(project,)),
             ),
         )
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}.consumer import instance; "
-                        f"from {package.name}.services import FlextTestProjectService; "
-                        f"from {package.name}.services.runner import "
-                        "FlextTestProjectService as provider; "
-                        "assert type(instance) is FlextTestProjectService is provider"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(
-                    env={"PYTHONPATH": str(package.parent)},
-                ),
-            ),
+        cls._run_python(
+            project,
+            "-c",
+            f"from {package.name}.consumer import instance; "
+            f"from {package.name}.services import FlextTestProjectService; "
+            f"from {package.name}.services.runner import "
+            "FlextTestProjectService as provider; "
+            "assert type(instance) is FlextTestProjectService is provider",
+            pythonpath=package.parent,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     def test_generic_bound_retains_its_declared_provider(
@@ -262,39 +216,23 @@ class TestsFlextInfraRefactorImportNormalization(
     ) -> None:
         """A generic bound resolves through its original public type provider."""
         project, package = cls._project(tmp_path)
-        module = package / "generic_boundary.py"
-        source = (
-            "from flext_core import t\n\nclass Generic[T: t.JsonPayload]:\n    pass\n"
-        )
         (package / "typings.py").write_text(
             "class LocalTypes:\n    type JsonPayload = str\n\nt = LocalTypes\n",
             encoding="utf-8",
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        cls._publish(
+            project,
+            package / "generic_boundary.py",
+            "from flext_core import t\n\nclass Generic[T: t.JsonPayload]:\n    pass\n",
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
+        cls._run_python(
+            project,
+            "-c",
+            "from flext_core import t; "
+            "from demo_pkg.generic_boundary import Generic; "
+            "assert Generic.__type_params__[0].__bound__ is t.JsonPayload",
+            pythonpath=package.parent,
         )
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        "from flext_core import t; "
-                        "from demo_pkg.generic_boundary import Generic; "
-                        "assert Generic.__type_params__[0].__bound__ is t.JsonPayload"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     def test_facade_dependency_retains_its_external_provider(
@@ -318,31 +256,13 @@ class TestsFlextInfraRefactorImportNormalization(
             "__all__ = ['u']\n",
             encoding="utf-8",
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        cls._publish(project, module, source)
+        cls._run_python(
+            project,
+            "-c",
+            "from demo_pkg import u\nassert u.ADAPTER.validate_python('x') == 'x'",
+            pythonpath=package.parent,
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        "from demo_pkg import u\nassert u.ADAPTER.validate_python('x') "
-                        "== "
-                        "'x'"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     @pytest.mark.parametrize(
@@ -360,34 +280,19 @@ class TestsFlextInfraRefactorImportNormalization(
         family.mkdir(exist_ok=True)
         (family / "__init__.py").touch(exist_ok=True)
         module = family / "provider_boundary.py"
-        source = (
+        cls._publish(
+            project,
+            module,
             "from flext_cli import m, u\n\n"
-            "ADAPTER: m.TypeAdapter[str] = u.type_adapter(str)\n"
+            "ADAPTER: m.TypeAdapter[str] = u.type_adapter(str)\n",
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        cls._run_python(
+            project,
+            "-c",
+            f"from demo_pkg.{directory}.provider_boundary import ADAPTER; "
+            "assert ADAPTER.validate_python('native-value') == 'native-value'",
+            pythonpath=package.parent,
         )
-        module.write_text(
-            normalized if normalized is not None else source, encoding="utf-8"
-        )
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from demo_pkg.{directory}.provider_boundary import ADAPTER; "
-                        "assert ADAPTER.validate_python('native-value') == "
-                        "'native-value'"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     @pytest.mark.parametrize("stale_root_export", [False, True])
@@ -412,22 +317,14 @@ class TestsFlextInfraRefactorImportNormalization(
             "from demo_pkg import DemoRunner\n\ninstance = DemoRunner()\n",
         )
         module.write_text(normalized, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        "from demo_pkg.consumer import instance; "
-                        "from demo_pkg.services import DemoRunner; "
-                        "assert type(instance) is DemoRunner"
-                    ),
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
+        cls._run_python(
+            project,
+            "-c",
+            "from demo_pkg.consumer import instance; "
+            "from demo_pkg.services import DemoRunner; "
+            "assert type(instance) is DemoRunner",
+            pythonpath=package.parent,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
 
     @classmethod
     def test_forward_inline_import_is_hoisted(cls, tmp_path: Path) -> None:

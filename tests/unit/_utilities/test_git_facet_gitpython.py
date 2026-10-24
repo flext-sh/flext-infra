@@ -514,6 +514,22 @@ class TestsFlextInfraGitFacet:
         tm.not_none(result.exception)
 
     @staticmethod
+    def _commit_on_topic(repository: Path) -> str:
+        """Commit one file on a new ``topic`` branch.
+
+        Returns:
+            The head oid of the new commit.
+
+        """
+        _ = u.Tests.git_run(repository, "switch", "-c", "topic")
+        (repository / "topic.txt").write_text("topic\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "add", "topic.txt")
+        _ = u.Tests.git_run(repository, "commit", "-m", "topic")
+        return tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository)),
+        ).oid
+
+    @staticmethod
     def _add_submodule(repository: Path, source: Path, name: str) -> None:
         """Add and commit ``source`` as a file-protocol submodule named ``name``."""
         _ = u.Tests.git_run(
@@ -593,19 +609,7 @@ class TestsFlextInfraGitFacet:
         tmp_path: Path,
     ) -> None:
         repository = u.Tests.git_repository(tmp_path)
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "branch", "topic"], cwd=repository))
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "topic"], cwd=repository))
-        (repository / "topic.txt").write_text("topic\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "topic.txt"], cwd=repository))
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "-m", "topic"],
-                cwd=repository,
-            ),
-        )
-        topic = tm.ok(
-            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository)),
-        ).oid
+        topic = TestsFlextInfraGitFacet._commit_on_topic(repository)
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "main"], cwd=repository))
         tm.ok(
             u.Infra.git_merge_no_edit(
@@ -994,23 +998,7 @@ class TestsFlextInfraGitFacet:
         base = tm.ok(
             u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository)),
         ).oid
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "switch", "-c", "topic"],
-                cwd=repository,
-            ),
-        )
-        (repository / "topic.txt").write_text("topic\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "topic.txt"], cwd=repository))
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "-m", "topic"],
-                cwd=repository,
-            ),
-        )
-        topic = tm.ok(
-            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository)),
-        ).oid
+        topic = TestsFlextInfraGitFacet._commit_on_topic(repository)
 
         ancestor = tm.ok(
             u.Infra.git_is_ancestor(

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-import json
 import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -40,6 +39,22 @@ def _legacy_module_source() -> str:
         "\n"
         "\n"
         f"value = {_SOURCE_NAME}(True)\n"
+    )
+
+
+def _accessor_rules() -> Sequence[m.Infra.AccessorMigrationRule]:
+    """Load the accessor migration rules from their YAML owner.
+
+    Returns:
+        The validated accessor migration rules.
+
+    """
+    return u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
+        u.Cli.yaml_safe_load(
+            type(config).ssot_config_dir().parent
+            / c.Infra.CODEMOD_ROPE_RULES_RELPATH
+            / "accessor-migrations.yaml",
+        ).unwrap(),
     )
 
 
@@ -177,13 +192,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tmp_path: Path,
     ) -> None:
         """Owned accesses migrate; real fields and literal payloads keep behavior."""
-        rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "accessor-migrations.yaml",
-            ).unwrap(),
-        )
+        rules = _accessor_rules()
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         consumer = package / "consumer.py"
         source = "from flext_infra import m\n\n"
@@ -274,13 +283,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tmp_path: Path,
     ) -> None:
         """An unresolved receiver cannot silently become an accepted skip."""
-        rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "accessor-migrations.yaml",
-            ).unwrap(),
-        )
+        rules = _accessor_rules()
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         consumer = package / "consumer.py"
         source = f"def unresolved(value):\n    return value.{rules[0].source_name}\n"
@@ -377,7 +380,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             workspace / c.Infra.ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH
         ).resolve()
         tm.that(receipt.exists(), eq=True)
-        published = json.loads(receipt.read_text(encoding="utf-8"))
+        published = u.Cli.json_as_mapping(
+            tm.ok(u.Cli.json_parse(receipt.read_text(encoding="utf-8"))),
+        )
         tm.that(published["dry_run"], eq=True)
         tm.that(published["workspace"], eq=str(workspace))
 

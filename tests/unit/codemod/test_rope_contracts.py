@@ -22,6 +22,69 @@ class TestsFlextInfraRopeContracts:
     """Prove runtime values, failure contracts and the shared fixed point."""
 
     @staticmethod
+    def _plan(
+        rope: p.Infra.RopeWorkspaceDsl,
+        path: Path,
+        source: str,
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan the contract-normalization cutover over one source.
+
+        Returns:
+            The planning verdict, never published.
+
+        """
+        return u.Infra.plan_semantic_cutover(
+            c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+            rope_workspace=rope,
+            sources={path: source},
+        )
+
+    @staticmethod
+    def _seed(tmp_path: Path, source: str) -> tuple[Path, Path]:
+        """Write one consumer module into a fresh workspace.
+
+        Returns:
+            The repository root and the consumer module path.
+
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        return root, path
+
+    @staticmethod
+    def _edits(
+        root: Path,
+        path: Path,
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Plan the cutover over the module as written on disk.
+
+        Returns:
+            The planned edits.
+
+        """
+        with infra.rope_workspace(root) as rope:
+            return tm.ok(
+                TestsFlextInfraRopeContracts._plan(
+                    rope,
+                    path,
+                    path.read_text(encoding=c.DEFAULT_ENCODING),
+                ),
+            )
+
+    @staticmethod
+    def _rejects(root: Path, path: Path, match: str) -> None:
+        """Prove planning the module on disk escapes loud and changes nothing."""
+        source = path.read_text(encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=match),
+        ):
+            TestsFlextInfraRopeContracts._plan(rope, path, source)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+
+    @staticmethod
     def test_catalog_phases_roundtrip_and_reject_unknown_values(
         tmp_path: Path,
     ) -> None:
@@ -204,9 +267,8 @@ class TestsFlextInfraRopeContracts:
         tmp_path: Path,
     ) -> None:
         """A repeated type expression must not run an authored callback twice."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
+        root, path = TestsFlextInfraRopeContracts._seed(
+            tmp_path,
             "from pydantic import BaseModel, Field\n"
             "events = []\n"
             "def element_type():\n"
@@ -214,20 +276,9 @@ class TestsFlextInfraRopeContracts:
             "    return str\n"
             "class Payload(BaseModel):\n"
             "    values: list[element_type()] = Field(default_factory=list)\n"
-            "evidence = (tuple(events), Payload().model_dump_json())\n"
+            "evidence = (tuple(events), Payload().model_dump_json())\n",
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"annotation.*repeat"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        TestsFlextInfraRopeContracts._rejects(root, path, r"annotation.*repeat")
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -239,9 +290,8 @@ class TestsFlextInfraRopeContracts:
         field_argument: str,
     ) -> None:
         """Assignment syntax must not reverse callbacks in an Annotated field."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
+        root, path = TestsFlextInfraRopeContracts._seed(
+            tmp_path,
             "from typing import Annotated\n"
             "from pydantic import BaseModel, Field\n"
             "events = []\n"
@@ -256,41 +306,20 @@ class TestsFlextInfraRopeContracts:
             "    return lambda: 7\n"
             "class Payload(BaseModel):\n"
             f"    value: Annotated[contract(), Field({field_argument})]\n"
-            "evidence = (tuple(events), Payload().model_dump_json())\n"
+            "evidence = (tuple(events), Payload().model_dump_json())\n",
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"annotation.*reorder"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        TestsFlextInfraRopeContracts._rejects(root, path, r"annotation.*reorder")
 
     @staticmethod
     def test_unrelated_field_factory_is_not_a_pydantic_field(tmp_path: Path) -> None:
         """Same-spelled functions do not establish a Pydantic identity."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
             "def Field(*, default_factory):\n"
             "    return default_factory()\n"
             "values: list[str] = Field(default_factory=list)\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-        tm.that(edits, empty=True)
+        root, path = TestsFlextInfraRopeContracts._seed(tmp_path, source)
+        tm.that(TestsFlextInfraRopeContracts._edits(root, path), empty=True)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
@@ -298,9 +327,8 @@ class TestsFlextInfraRopeContracts:
         tmp_path: Path,
     ) -> None:
         """Inherited BaseModel.dict is not lexical, but a real local dict is."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
+        root, path = TestsFlextInfraRopeContracts._seed(
+            tmp_path,
             "from builtins import dict as BuiltinDictionary\n"
             "from pydantic import BaseModel, Field, ConfigDict\n"
             "class dict(BuiltinDictionary):\n"
@@ -308,19 +336,10 @@ class TestsFlextInfraRopeContracts:
             "class Payload(BaseModel):\n"
             "    model_config = ConfigDict(arbitrary_types_allowed=True)\n"
             "    values: dict[str, list[int]] = Field(default_factory=dict)\n"
-            "evidence = type(Payload().values) is dict\n"
+            "evidence = type(Payload().values) is dict\n",
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
         tm.that(runpy.run_path(str(path))["evidence"], eq=True)
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-        tm.that(edits, empty=True)
+        tm.that(TestsFlextInfraRopeContracts._edits(root, path), empty=True)
         tm.that(runpy.run_path(str(path))["evidence"], eq=True)
 
     @staticmethod
@@ -369,11 +388,7 @@ class TestsFlextInfraRopeContracts:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
         with pytest.raises(ValueError, match=diagnostic):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
+            TestsFlextInfraRopeContracts._plan(rope, path, source)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 

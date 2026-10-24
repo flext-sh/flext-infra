@@ -71,11 +71,23 @@ class TestsFlextInfraFacadeEnvironmentSync:
             ),
         )
 
-    def test_activation_leaves_the_temp_directory_to_the_caller(
+    @pytest.mark.parametrize(
+        ("name", "relative", "exists"),
+        [
+            ("TMPDIR", "caller-tmp", True),
+            ("BEADS_DIR", f"main-checkout/{c.Infra.BEADS_DIRNAME}", False),
+        ],
+        ids=["temp-directory", "beads-routing"],
+    )
+    def test_activation_preserves_caller_selection(
         self,
         tmp_path: Path,
+        name: str,
+        relative: str,
+        *,
+        exists: bool,
     ) -> None:
-        """Activation forces no scratch root: the caller's TMPDIR survives."""
+        """Activation forces no scratch root and keeps a caller-selected Beads ledger."""
         home = tmp_path / "home"
         home.mkdir()
         workspace = tmp_path / "workspace"
@@ -88,38 +100,11 @@ class TestsFlextInfraFacadeEnvironmentSync:
                 ),
             ),
         )
-        caller_tmp = tmp_path / "caller-tmp"
-        caller_tmp.mkdir()
-        activated = self._activated_value(
-            workspace,
-            home,
-            "TMPDIR",
-            {"TMPDIR": str(caller_tmp)},
-        )
-        tm.that(activated.strip(), eq=str(caller_tmp))
-
-    def test_activation_preserves_caller_beads_routing(self, tmp_path: Path) -> None:
-        """A caller-selected Beads ledger survives activation (linked worktrees)."""
-        home = tmp_path / "home"
-        home.mkdir()
-        workspace = tmp_path / "workspace"
-        self._write_pyproject(workspace)
-        tm.ok(
-            infra.sync_environment_files(
-                m.Infra.WorkspaceEnvironmentSyncRequest(
-                    repository_root=workspace,
-                    allow_direnv=False,
-                ),
-            ),
-        )
-        ledger = tmp_path / "main-checkout" / c.Infra.BEADS_DIRNAME
-        routed = self._activated_value(
-            workspace,
-            home,
-            "BEADS_DIR",
-            {"BEADS_DIR": str(ledger)},
-        )
-        tm.that(routed, eq=str(ledger))
+        selected = tmp_path / relative
+        if exists:
+            selected.mkdir()
+        activated = self._activated_value(workspace, home, name, {name: str(selected)})
+        tm.that(activated.strip(), eq=str(selected))
 
     def test_sync_creates_envrc_without_creating_mise(self, tmp_path: Path) -> None:
         """Test sync creates envrc without creating mise."""

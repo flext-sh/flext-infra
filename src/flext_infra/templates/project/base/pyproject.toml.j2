@@ -130,7 +130,8 @@ allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower
 path = {{ hatch_build_hook_path | tojson }}
 {% endif %}
 
-[tool.hatch.build.targets.wheel]
+{# One file selection serves both hatch targets. #}
+{% set hatch_target_files %}
 {% if packaged_data_excludes %}
 exclude = [
 {% for data_path in packaged_data_excludes %}
@@ -150,6 +151,9 @@ only-include = [
   {{ namespace | tojson }},
 {% endfor %}
 ]
+{% endset %}
+[tool.hatch.build.targets.wheel]
+{{ hatch_target_files }}
 
 [tool.hatch.build.targets.wheel.sources]
 {{ ("src/" ~ package_name) | tojson }} = {{ package_name | tojson }}
@@ -177,25 +181,7 @@ only-include = [
 {% endif %}
 
 [tool.hatch.build.targets.sdist]
-{% if packaged_data_excludes %}
-exclude = [
-{% for data_path in packaged_data_excludes %}
-  {{ ("/" ~ data_path) | tojson }},
-{% endfor %}
-]
-{% endif %}
-only-include = [
-  "src/{{ package_name }}",
-{% for package in root_packages %}
-  {{ ("src/" ~ package) | tojson }},
-{% endfor %}
-{% for data_dir in packaged_data_paths if data_dir not in packaged_data_files %}
-  {{ data_dir | tojson }},
-{% endfor %}
-{% for namespace in repository_namespace_packages %}
-  {{ namespace | tojson }},
-{% endfor %}
-]
+{{ hatch_target_files }}
 {% if packaged_data_files or root_modules or hatch_build_hook_path or project_declaration_resource %}
 
 [tool.hatch.build.targets.sdist.force-include]

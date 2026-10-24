@@ -478,6 +478,21 @@ class TestsFlextInfraRepositoryLocalTopology:
             ),
         )
 
+    @staticmethod
+    def _deinitialize_member(root: Path, member: Path) -> None:
+        """Leave ``member`` as an indexed gitlink with an empty working directory."""
+        relative = member.relative_to(root).as_posix()
+        for arguments in (
+            ("absorbgitdirs", "--", relative),
+            ("deinit", "-f", "--", relative),
+        ):
+            tm.ok(
+                u.Cli.run_checked(
+                    (c.Infra.GIT, "submodule", *arguments),
+                    cwd=root,
+                ),
+            )
+
     def test_root_generation_preserves_declared_members_without_checkouts(
         self,
         tmp_path: Path,
@@ -497,21 +512,9 @@ class TestsFlextInfraRepositoryLocalTopology:
                 request,
             ),
         )
-        relative = member.relative_to(root).as_posix()
         # CI checks out the root alone: the member keeps its indexed gitlink
         # and an empty working directory, with no Git directory of its own.
-        tm.ok(
-            u.Cli.run_checked(
-                (c.Infra.GIT, "submodule", "absorbgitdirs", "--", relative),
-                cwd=root,
-            ),
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                (c.Infra.GIT, "submodule", "deinit", "-f", "--", relative),
-                cwd=root,
-            ),
-        )
+        self._deinitialize_member(root, member)
 
         after = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         second = tm.ok(
@@ -539,19 +542,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             item.model_copy(update={"package": False}) for item in before.subprojects
         )
         self._declare_members(root, declared)
-        relative = member.relative_to(root).as_posix()
-        tm.ok(
-            u.Cli.run_checked(
-                (c.Infra.GIT, "submodule", "absorbgitdirs", "--", relative),
-                cwd=root,
-            ),
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                (c.Infra.GIT, "submodule", "deinit", "-f", "--", relative),
-                cwd=root,
-            ),
-        )
+        self._deinitialize_member(root, member)
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 

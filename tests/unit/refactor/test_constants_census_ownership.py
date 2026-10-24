@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, infra
+from flext_infra import c, infra, m
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -20,40 +20,69 @@ if TYPE_CHECKING:
 class TestsFlextInfraConstantsCensusOwnership:
     """The constants contract overrides a containing file's behavior family."""
 
+    @staticmethod
+    def _declaration(*, exported: bool = True) -> str:
+        """Return a module declaring one ClassVar constant, optionally exported.
+
+        Returns:
+            The module source.
+
+        """
+        return (
+            "from __future__ import annotations\n"
+            "from typing import ClassVar\n"
+            "class Declaration:\n"
+            "    PROTOCOL_TOKEN: ClassVar[str] = 'fixture-token'\n"
+            + ("__all__ = ['Declaration']\n" if exported else "")
+        )
+
+    @staticmethod
+    def _census(
+        workspace_root: Path,
+        relative: str,
+        source: str,
+    ) -> tuple[m.Infra.Object, ...]:
+        """Write one module into a lazy-init workspace and run the Rope census.
+
+        Returns:
+            Every census object the module declares.
+
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            workspace_root,
+            project_name="flext-demo",
+            package_name="flext_demo",
+        )
+        path = package / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root) as workspace:
+            return tuple(
+                workspace.objects(
+                    path,
+                    include_local_scopes=True,
+                    include_references=False,
+                ),
+            )
+
     def test_checkout_ancestor_cannot_elect_a_source_family(
         self,
         tmp_path: Path,
     ) -> None:
         """A family-named checkout parent is outside the module's namespace."""
         unrelated = u.Infra.facade_families()["m"]
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path / unrelated.directory,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        path = package / "domain.py"
-        class_name = "Declaration"
-        path.write_text(
-            "from __future__ import annotations\n"
-            "from typing import ClassVar\n"
-            f"class {class_name}:\n"
-            "    PROTOCOL_TOKEN: ClassVar[str] = 'fixture-token'\n"
-            f"__all__ = [{class_name!r}]\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with infra.rope_workspace(root) as workspace:
-            constants = tuple(
-                item
-                for item in workspace.objects(
-                    path,
-                    include_local_scopes=True,
-                    include_references=False,
-                )
-                if item.name == "PROTOCOL_TOKEN"
+        constants = tuple(
+            item
+            for item in self._census(
+                tmp_path / unrelated.directory,
+                "domain.py",
+                self._declaration(),
             )
+            if item.name == "PROTOCOL_TOKEN"
+        )
         tm.that(constants, empty=False)
         for item in constants:
-            tm.that(item.actual_tier, eq=class_name)
+            tm.that(item.actual_tier, eq="Declaration")
             tm.that(item.expected_tier, eq=u.Infra.facade_families()["c"].suffix)
 
     def test_family_directory_owns_a_conflicting_facade_filename(
@@ -61,35 +90,18 @@ class TestsFlextInfraConstantsCensusOwnership:
         tmp_path: Path,
     ) -> None:
         """A filename cannot replace the family that contains its declaration."""
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
         families = u.Infra.facade_families()
         containing = families["m"]
         filename_owner = families["c"]
-        directory = package / containing.directory
-        directory.mkdir()
-        path = directory / min(filename_owner.file_names)
-        path.write_text(
-            "from __future__ import annotations\n"
-            "from typing import ClassVar\n"
-            "class Declaration:\n"
-            "    PROTOCOL_TOKEN: ClassVar[str] = 'fixture-token'\n"
-            "__all__ = ['Declaration']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with infra.rope_workspace(root) as workspace:
-            constants = tuple(
-                item
-                for item in workspace.objects(
-                    path,
-                    include_local_scopes=True,
-                    include_references=False,
-                )
-                if item.name == "PROTOCOL_TOKEN"
+        constants = tuple(
+            item
+            for item in self._census(
+                tmp_path,
+                f"{containing.directory}/{min(filename_owner.file_names)}",
+                self._declaration(),
             )
+            if item.name == "PROTOCOL_TOKEN"
+        )
         tm.that(constants, empty=False)
         for item in constants:
             tm.that(item.actual_tier, eq=containing.suffix)
@@ -100,30 +112,12 @@ class TestsFlextInfraConstantsCensusOwnership:
         tmp_path: Path,
     ) -> None:
         """Nested families cannot silently depend on catalog iteration order."""
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
         families = u.Infra.facade_families()
-        directory = package / families["m"].directory / families["c"].directory
-        directory.mkdir(parents=True)
-        path = directory / "domain.py"
-        path.write_text(
-            "from __future__ import annotations\n"
-            "from typing import ClassVar\n"
-            "class Declaration:\n"
-            "    PROTOCOL_TOKEN: ClassVar[str] = 'fixture-token'\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with (
-            infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="ambiguous facade family directories"),
-        ):
-            _ = workspace.objects(
-                path,
-                include_local_scopes=True,
-                include_references=False,
+        with pytest.raises(ValueError, match="ambiguous facade family directories"):
+            _ = self._census(
+                tmp_path,
+                f"{families['m'].directory}/{families['c'].directory}/domain.py",
+                self._declaration(exported=False),
             )
 
     @pytest.mark.parametrize("nested", [False, True])
@@ -133,35 +127,16 @@ class TestsFlextInfraConstantsCensusOwnership:
         nested: bool,
     ) -> None:
         """Exporting a class does not rename the family of its constants."""
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
         family = u.Infra.facade_families()["c"]
-        directory = package / family.directory
-        if nested:
-            directory /= "domain"
-        directory.mkdir(parents=True, exist_ok=True)
-        path = directory / "base.py"
-        path.write_text(
-            "from __future__ import annotations\n"
-            "from typing import ClassVar\n"
-            "class Declaration:\n"
-            "    PROTOCOL_TOKEN: ClassVar[str] = 'fixture-token'\n"
-            "__all__ = ['Declaration']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with infra.rope_workspace(root) as workspace:
-            constants = tuple(
-                item
-                for item in workspace.objects(
-                    path,
-                    include_local_scopes=True,
-                    include_references=False,
-                )
-                if item.name == "PROTOCOL_TOKEN"
+        constants = tuple(
+            item
+            for item in self._census(
+                tmp_path,
+                f"{family.directory}/{'domain/' if nested else ''}base.py",
+                self._declaration(),
             )
+            if item.name == "PROTOCOL_TOKEN"
+        )
         tm.that(constants, empty=False)
         for item in constants:
             tm.that(item.actual_tier, eq=family.suffix)
@@ -198,30 +173,18 @@ class TestsFlextInfraConstantsCensusOwnership:
         annotation: str,
     ) -> None:
         """Observe the real Rope census without freezing configuration values."""
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        path = package / relative_module
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            "from __future__ import annotations\n"
-            f"{typing_import}\n"
-            "class Declaration:\n"
-            f"    {name}: {annotation} = 'fixture-token'\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with infra.rope_workspace(root) as workspace:
-            constants = tuple(
-                item
-                for item in workspace.objects(
-                    path,
-                    include_local_scopes=True,
-                    include_references=False,
-                )
-                if item.name == name
+        constants = tuple(
+            item
+            for item in self._census(
+                tmp_path,
+                relative_module,
+                "from __future__ import annotations\n"
+                f"{typing_import}\n"
+                "class Declaration:\n"
+                f"    {name}: {annotation} = 'fixture-token'\n",
             )
+            if item.name == name
+        )
         tm.that(constants, none=False, empty=False)
         expected_family = u.Infra.facade_families()["c"].suffix
         for item in constants:
@@ -230,28 +193,17 @@ class TestsFlextInfraConstantsCensusOwnership:
 
     def test_user_final_homonym_remains_an_attribute(self, tmp_path: Path) -> None:
         """A user-defined Final name does not prove an immutable declaration."""
-        root, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        path = package / "service.py"
-        path.write_text(
-            "from __future__ import annotations\n"
-            "class Final:\n"
-            "    pass\n"
-            "class Declaration:\n"
-            "    token: Final = 'fixture-token'\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        with infra.rope_workspace(root) as workspace:
-            declaration = next(
-                item
-                for item in workspace.objects(
-                    path,
-                    include_local_scopes=True,
-                    include_references=False,
-                )
-                if item.scope_path == "Declaration.token"
+        declaration = next(
+            item
+            for item in self._census(
+                tmp_path,
+                "service.py",
+                "from __future__ import annotations\n"
+                "class Final:\n"
+                "    pass\n"
+                "class Declaration:\n"
+                "    token: Final = 'fixture-token'\n",
             )
+            if item.scope_path == "Declaration.token"
+        )
         tm.that(declaration.kind, eq="attribute")

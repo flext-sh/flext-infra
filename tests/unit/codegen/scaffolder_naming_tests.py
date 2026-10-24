@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests import c, tm, u
 
@@ -18,6 +20,26 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests import t
+
+
+def _generate_tier(tmp_path: Path, *, tests_tier: bool) -> Path:
+    """Scaffold a test project and return the generated src or tests package dir.
+
+    Returns:
+        The generated source package or tests directory of the test project.
+
+    """
+    project = u.Tests.create_scaffolder_test_project(
+        tmp_path=tmp_path,
+        with_all_modules=tests_tier,
+    )
+    if tests_tier:
+        (project / "tests").mkdir()
+    scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
+    _ = scaffolder.run(
+        projects=[u.Tests.create_project_info(project, name=project.name)]
+    )
+    return project / "tests" if tests_tier else project / "src" / "test_project"
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
@@ -48,86 +70,46 @@ class TestsFlextInfraCodegenScaffolderNaming:
     class TestsGeneratedFilesAreValidPython:
         """Generated source and test modules compile as Python."""
 
-        def test_generated_src_modules_parse_successfully(self, tmp_path: Path) -> None:
-            """Compile every generated source facade module."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=False,
-            )
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
-            pkg = project / "src" / "test_project"
-            _validate_modules_parse(pkg, tuple(row[0] for row in c.Infra.SRC_MODULES))
-
-        def test_generated_tests_modules_parse_successfully(
+        @pytest.mark.parametrize(
+            ("tests_tier", "rows"),
+            [(False, c.Infra.SRC_MODULES), (True, c.Infra.TESTS_MODULES)],
+            ids=["src", "tests"],
+        )
+        def test_generated_modules_parse_successfully(
             self,
             tmp_path: Path,
+            tests_tier: bool,
+            rows: t.VariadicTuple[t.Quad[str, str, str, str]],
         ) -> None:
-            """Compile every generated test facade module."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=True,
-            )
-            tests_dir = project / "tests"
-            tests_dir.mkdir()
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
+            """Compile every generated facade module of the selected tier."""
             _validate_modules_parse(
-                tests_dir, tuple(row[0] for row in c.Infra.TESTS_MODULES)
+                _generate_tier(tmp_path, tests_tier=tests_tier),
+                tuple(row[0] for row in rows),
             )
 
     class TestsGeneratedClassNamingConvention:
         """Generated class names follow the canonical prefix and suffix contract."""
 
-        def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
-            """Use the project prefix on generated source facade classes."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=False,
-            )
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
-            pkg = project / "src" / "test_project"
-            _validate_class_names(
-                pkg,
-                {
-                    "constants.py": "TestProjectConstants",
-                    "typings.py": "TestProjectTypes",
-                    "protocols.py": "TestProjectProtocols",
-                    "models.py": "TestProjectModels",
-                    "utilities.py": "TestProjectUtilities",
-                },
-            )
-
-        def test_tests_class_names_use_tests_prefix_suffix(
+        @pytest.mark.parametrize(
+            ("tests_tier", "prefix"),
+            [(False, "TestProject"), (True, "TestsTestProject")],
+            ids=["src", "tests"],
+        )
+        def test_class_names_use_prefix_suffix(
             self,
             tmp_path: Path,
+            tests_tier: bool,
+            prefix: str,
         ) -> None:
-            """Use the Tests prefix on generated test facade classes."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=True,
-            )
-            tests_dir = project / "tests"
-            tests_dir.mkdir()
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
+            """Use the tier prefix on generated facade classes."""
             _validate_class_names(
-                tests_dir,
+                _generate_tier(tmp_path, tests_tier=tests_tier),
                 {
-                    "constants.py": "TestsTestProjectConstants",
-                    "typings.py": "TestsTestProjectTypes",
-                    "protocols.py": "TestsTestProjectProtocols",
-                    "models.py": "TestsTestProjectModels",
-                    "utilities.py": "TestsTestProjectUtilities",
+                    "constants.py": f"{prefix}Constants",
+                    "typings.py": f"{prefix}Types",
+                    "protocols.py": f"{prefix}Protocols",
+                    "models.py": f"{prefix}Models",
+                    "utilities.py": f"{prefix}Utilities",
                 },
             )
 

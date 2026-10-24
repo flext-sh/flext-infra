@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import tm, u
 
@@ -92,10 +94,16 @@ class TestsFlextInfraRopeImports:
             )
 
     @staticmethod
-    def test_organize_imports_treats_already_clean_module_as_noop(
+    @pytest.mark.parametrize(
+        ("imports", "pending"),
+        [("import os\n\n\n", False), ("import os\nimport sys\n\n\n", True)],
+    )
+    def test_organize_imports_reports_pending_change_only_for_unused_import(
         tmp_path: Path,
+        imports: str,
+        pending: bool,
     ) -> None:
-        """An already-organized module yields a clean no-op result."""
+        """A clean module is a no-op; an unused import yields a pending change."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
@@ -105,7 +113,7 @@ class TestsFlextInfraRopeImports:
         module_path.write_text(
             (
                 "from __future__ import annotations\n\n"
-                "import os\n\n\n"
+                f"{imports}"
                 "def keep() -> str:\n"
                 "    return os.getcwd()\n"
             ),
@@ -118,34 +126,4 @@ class TestsFlextInfraRopeImports:
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result)
-        tm.that(result.value, eq=False)
-
-    @staticmethod
-    def test_organize_imports_reports_change_for_unused_import(
-        tmp_path: Path,
-    ) -> None:
-        """A module with an unused import yields a pending organize change."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        module_path = package_root / "service.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "import os\n"
-                "import sys\n\n\n"
-                "def keep() -> str:\n"
-                "    return os.getcwd()\n"
-            ),
-            encoding="utf-8",
-        )
-
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            resource = tm.not_none(resource)
-            result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
-
-        tm.ok(result)
-        tm.that(result.value, eq=True)
+        tm.that(result.value, eq=pending)

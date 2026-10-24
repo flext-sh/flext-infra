@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, r
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -266,6 +266,33 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
         tm.that(bool(upgraded.stderr.strip()), eq=True)
         tm.that(lock.read_bytes(), eq=previous_lock)
+
+    @staticmethod
+    def _attach_member_gitlink(workspace: Path, member: Path) -> None:
+        """Record ``member``'s HEAD as the ``member`` gitlink of ``workspace``."""
+        head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
+        u.Tests.git_run(
+            workspace,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"160000,{head.strip()},member",
+        )
+        u.Tests.commit_git_changes(workspace, "attach member")
+
+    @staticmethod
+    def _failed_upg(cwd: Path) -> p.Cli.CommandOutput:
+        """Run public ``make upg`` from ``cwd`` and require it to fail.
+
+        Returns:
+            The failed command output.
+
+        """
+        upgraded = tm.ok(
+            u.Tests.run_isolated_make(["--no-print-directory", "upg"], cwd=cwd),
+        )
+        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
+        return upgraded
 
     @staticmethod
     def _recipe_targets_containing(
@@ -716,15 +743,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         u.Tests.initialize_git_repo(member)
         workspace_lock = workspace / c.Infra.UV_LOCK_FILENAME
         u.Tests.initialize_git_repo(workspace)
-        head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
-        u.Tests.git_run(
-            workspace,
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            f"160000,{head.strip()},member",
-        )
-        u.Tests.commit_git_changes(workspace, "attach member")
+        TestsFlextInfraCodegenMakeUpgrade._attach_member_gitlink(workspace, member)
         (workspace / c.PYPROJECT_FILENAME).write_text(
             '[tool.uv.workspace]\nmembers = ["member"]\n',
             encoding="utf-8",
@@ -732,14 +751,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         member_lock = member / c.Infra.UV_LOCK_FILENAME
         previous = member_lock.read_bytes() if member_lock.is_file() else None
 
-        upgraded = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--no-print-directory", "upg"],
-                cwd=member,
-            ),
-        )
+        upgraded = TestsFlextInfraCodegenMakeUpgrade._failed_upg(member)
 
-        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
         tm.that(upgraded.stderr, has=["ERROR[upg]", str(workspace.resolve())])
         tm.that(
             member_lock.read_bytes() if member_lock.is_file() else None,
@@ -769,15 +782,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 dirs_exist_ok=True,
             )
             u.Tests.initialize_git_repo(destination)
-        head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
-        u.Tests.git_run(
-            workspace,
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            f"160000,{head.strip()},member",
-        )
-        u.Tests.commit_git_changes(workspace, "attach member")
+        TestsFlextInfraCodegenMakeUpgrade._attach_member_gitlink(workspace, member)
         marker = workspace / "root-upgrade-started"
         (workspace / c.Infra.MAKEFILE_CUSTOM_INCLUDE).write_text(
             'pre-upg:\n\t@touch "$(PROJECT_ROOT)/root-upgrade-started"\n',
@@ -789,13 +794,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         root_lock = workspace / c.Infra.UV_LOCK_FILENAME
         previous = root_lock.read_bytes() if root_lock.is_file() else None
-        upgraded = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--no-print-directory", "upg"],
-                cwd=member,
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
+        upgraded = TestsFlextInfraCodegenMakeUpgrade._failed_upg(member)
         tm.that(upgraded.stderr, has="member pre-upg failed")
         tm.that(marker.is_file(), eq=False)
         tm.that(
@@ -842,30 +841,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             ),
         )
         u.Tests.commit_git_changes(source, "render independent upgrade consumer")
-        branch = u.Tests.checkout_integration(source)
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "-c",
-                "protocol.file.allow=always",
-                "submodule",
-                "add",
-                "-b",
-                branch,
-                str(source),
-                member.path.as_posix(),
-            ),
-        )
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "config",
-                "-f",
-                c.Infra.GITMODULES,
-                f"submodule.{member.path.as_posix()}.flext-managed",
-                "true",
-            ),
-        )
+        u.Tests.attach_managed_submodule(root, source, member.path)
         u.Tests.commit_git_changes(root, "attach upgrade consumer")
         pyproject = root / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))

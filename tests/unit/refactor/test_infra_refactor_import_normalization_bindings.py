@@ -6,12 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import tm, u
 from tests.unit.refactor.import_normalization_support import (
@@ -140,27 +138,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "__all__ = ['run']\n",
         )
         target.write_text(normalized, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    "from demo_pkg.services import run; print(run())",
-                ),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
+        result = cls._run_python(
+            project,
+            "-c",
+            "from demo_pkg.services import run; print(run())",
+            pythonpath=package.parent,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="lazy-value")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=target,
-                source=normalized,
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, target)
 
     @classmethod
     def test_import_guard_becomes_plain_import(cls, tmp_path: Path) -> None:
@@ -234,14 +219,8 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
 
         tm.that(normalized, has="from tests import c, u\n")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=target,
-                source=normalized,
-            ),
-            eq=None,
-        )
+        target.write_text(normalized, encoding="utf-8")
+        cls._assert_fixed_point(project, target)
 
     @classmethod
     def test_locally_bound_letter_is_not_imported(cls, tmp_path: Path) -> None:
@@ -289,23 +268,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "__all__ = ['TestsDemoConstants', 'c']\n",
         )
         target.write_text(normalized, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (sys.executable, "-c", "from tests import c; print(c.NAME)"),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(project)}),
-            ),
+        result = cls._run_python(
+            project,
+            "-c",
+            "from tests import c; print(c.NAME)",
+            pythonpath=project,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="tier-value")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=target,
-                source=normalized,
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, target)
 
     @classmethod
     def test_distinct_inline_providers_fail_before_consumer_publication(
@@ -333,18 +303,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             encoding="utf-8",
         )
         command = (
-            sys.executable,
             "-c",
             "from demo_pkg.consumer import first, second; print(first(), second())",
         )
-        options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)})
-        before = tm.ok(u.Cli.run(command, cwd=project, options=options))
-        tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
+        before = cls._run_python(project, *command, pythonpath=package.parent)
         tm.that(before.stdout.strip(), eq="first provider second provider")
         with pytest.raises(ValueError, match="conflicting inline import providers"):
             FlextInfraImportNormalization.apply_files(project, (consumer,))
-        after = tm.ok(u.Cli.run(command, cwd=project, options=options))
-        tm.that(u.Cli.process_succeeded(after.outcome), eq=True, msg=after.stderr)
+        after = cls._run_python(project, *command, pythonpath=package.parent)
         tm.that(after.stdout, eq=before.stdout)
 
     @classmethod
@@ -394,31 +360,10 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             {"e": ".unavailable_provider", "s": ".unavailable_provider"},
         )
         module = package / "handler.py"
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project,
-            file_path=module,
-            source=source,
-        )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
-        result = tm.ok(
-            u.Cli.run(
-                (sys.executable, str(module)),
-                cwd=project,
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        cls._publish(project, module, source)
+        result = cls._run_python(project, str(module))
         tm.that(result.stdout.strip(), eq=expected)
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=module,
-                source=module.read_text(encoding="utf-8"),
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, module)
 
     @classmethod
     @pytest.mark.parametrize(
@@ -439,32 +384,10 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    value: str\n\n"
             "print(DemoConfig(value='validated-value').value)\n"
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project,
-            file_path=module,
-            source=source,
-        )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
-        outcome = tm.ok(
-            u.Cli.run(
-                (sys.executable, str(module)),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        cls._publish(project, module, source)
+        outcome = cls._run_python(project, str(module), pythonpath=package.parent)
         tm.that(outcome.stdout.strip(), eq="validated-value")
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=module,
-                source=module.read_text(encoding="utf-8"),
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, module)
 
     @classmethod
     @pytest.mark.parametrize(
@@ -511,29 +434,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             f"{consumer}\n"
             "print(capture())\nprint(consume())\n"
         )
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=project,
-            file_path=module,
-            source=source,
-        )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
-        outcome = tm.ok(
-            u.Cli.run(
-                (sys.executable, str(module)),
-                cwd=project,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        cls._publish(project, module, source)
+        outcome = cls._run_python(project, str(module), pythonpath=package.parent)
         tm.that(outcome.stdout.splitlines(), eq=["local-value", "provider-value"])
-        tm.that(
-            FlextInfraImportNormalization.normalize_source(
-                project_root=project,
-                file_path=module,
-                source=module.read_text(encoding="utf-8"),
-            ),
-            eq=None,
-        )
+        cls._assert_fixed_point(project, module)

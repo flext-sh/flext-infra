@@ -46,17 +46,9 @@ class TestsFlextInfraDeclarationRelocationGroups:
             "    from decimal import Decimal as Amount\n" + sources[origin]
         )
         origin.write_text(sources[origin], encoding="utf-8")
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"unresolved/outer dependency.*Amount"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        for path, source in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        TestsFlextInfraDeclarationRelocationSupport.refuses(
+            root, sources, r"unresolved/outer dependency.*Amount"
+        )
 
     @staticmethod
     @pytest.mark.parametrize("refused", ["destination", "exposure"])
@@ -72,14 +64,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             tmp_path,
             body="count: int = Field(default=3)",
         )
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
-            )
+        edits = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
         blocked = target if refused == "destination" else target.parent / "__init__.py"
@@ -206,14 +191,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             body="count: int = Field(default=3)",
         )
         before_sources = {path: path.read_bytes() for path in root.rglob("*.py")}
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
-            )
+        edits = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
         plans: list[m.Infra.SemanticFilePlan] = []
@@ -377,19 +355,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             "from pydantic import field_validator, computed_field\n" + sources[origin]
         )
         origin.write_text(sources[origin], encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-            tm.ok(planned)
-            target = next(
-                edit
-                for edit in planned.value
-                if edit.file_path.parent.name
-                == u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
-            )
+        target = TestsFlextInfraDeclarationRelocationSupport.models_edit(root, sources)
         published = tmp_path / "published_validator.py"
         published.write_text(target.updated_source, encoding="utf-8")
         spec = importlib.util.spec_from_file_location("published_validator", published)
@@ -410,19 +376,10 @@ class TestsFlextInfraDeclarationRelocationGroups:
         root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         path = next(path for path in sources if path.name == "consumer.py")
         sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
-        expected = "generated consumer"
         path.write_text(sources[path], encoding="utf-8")
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=expected),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        for path, source in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        TestsFlextInfraDeclarationRelocationSupport.refuses(
+            root, sources, "generated consumer"
+        )
 
     @staticmethod
     def test_unresolved_source_owner_is_a_finding_not_a_crash(

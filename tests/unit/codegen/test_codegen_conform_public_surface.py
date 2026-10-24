@@ -30,6 +30,25 @@ class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
 
     @staticmethod
+    def _assert_check_rejects_unchanged(root: Path) -> None:
+        """Assert a read-only bootstrap check fails and keeps the receipt bytes."""
+        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+            c.Infra.CodegenConformSurface.MAKEFILE
+        )
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
+        )
+        observed = FlextInfraCodegenMakeBootstrap(
+            repository_root=root,
+            check_only=True,
+        ).execute()
+        tm.that(observed.failure, eq=True)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
+            eq=before,
+        )
+
+    @staticmethod
     def test_dependency_apply_rejects_before_creating_target(tmp_path: Path) -> None:
         """A prohibited partial publication never initializes its target."""
         root = tmp_path / "uninitialized"
@@ -190,20 +209,8 @@ class TestsFlextInfraCodegenConformPublicSurface:
             target = source.path
             content = tm.not_none(source.content)
         target.write_bytes(content + b"\n# publication drift\n")
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
-        result = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-        tm.that(result.failure, eq=True)
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
+        TestsFlextInfraCodegenConformPublicSurface._assert_check_rejects_unchanged(
+            root,
         )
 
     @staticmethod
@@ -219,25 +226,12 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         tm.that(local_layer.exists(), eq=False)
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
         local_layer.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.yaml_dump(local_layer, {"Infra": {"codegen": {}}}))
 
-        observed = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
+        TestsFlextInfraCodegenConformPublicSurface._assert_check_rejects_unchanged(
+            root,
         )
-        tm.that(observed.failure, eq=True)
 
     @staticmethod
     def test_bootstrap_check_authenticates_imported_template_resources(
@@ -275,26 +269,13 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(bool(imported), eq=True)
         resource = imported[0]
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
-        receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
-            c.Infra.CodegenConformSurface.MAKEFILE
-        )
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
-        )
         resource.path.write_bytes(
             tm.not_none(resource.content) + b"\n{# imported resource drift #}\n",
         )
 
-        observed = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            check_only=True,
-        ).execute()
-
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
-            eq=before,
+        TestsFlextInfraCodegenConformPublicSurface._assert_check_rejects_unchanged(
+            root,
         )
-        tm.that(observed.failure, eq=True)
 
     @staticmethod
     def test_complete_fleet_receipt_covers_the_observed_root_subset(

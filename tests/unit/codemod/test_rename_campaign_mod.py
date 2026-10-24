@@ -9,11 +9,15 @@ from __future__ import annotations
 import shutil
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import FlextInfraConfig, c, infra, m
 from tests import tm, u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class TestsFlextInfraRenameCampaignMod:
@@ -32,6 +36,36 @@ class TestsFlextInfraRenameCampaignMod:
             "        text_globs: ['**/*.md']\n"
             "        python_documentation: true\n",
             encoding="utf-8",
+        )
+
+    @staticmethod
+    def _mod(
+        workspace: Path,
+        config_dir: Path,
+        *flags: str,
+    ) -> p.Cli.CommandOutput:
+        """Run the public ``refactor mod`` command in its own process.
+
+        Returns:
+            The command output under the declared campaign config directory.
+
+        """
+        return tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    "flext_infra",
+                    "refactor",
+                    "mod",
+                    "--repository-root",
+                    str(workspace),
+                    *flags,
+                ),
+                options=m.Cli.ProcessOptions(
+                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                ),
+            ),
         )
 
     @pytest.mark.slow
@@ -54,22 +88,10 @@ class TestsFlextInfraRenameCampaignMod:
         )
         guide = mod_workspace / "guide.md"
         guide.write_text("A campaign_token paragraph.\n", encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "refactor",
-                    "mod",
-                    "--repository-root",
-                    str(mod_workspace),
-                    *(("--apply",) if apply else ()),
-                ),
-                options=m.Cli.ProcessOptions(
-                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
-                ),
-            ),
+        result = self._mod(
+            mod_workspace,
+            config_dir,
+            *(("--apply",) if apply else ()),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=apply, msg=result.stderr)
         if apply:
@@ -164,23 +186,7 @@ class TestsFlextInfraRenameCampaignMod:
         )
         guide = mod_workspace / "guide.md"
         guide.write_text("A campaign_token paragraph.\n", encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "refactor",
-                    "mod",
-                    "--repository-root",
-                    str(mod_workspace),
-                    "--apply",
-                ),
-                options=m.Cli.ProcessOptions(
-                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
-                ),
-            ),
-        )
+        result = self._mod(mod_workspace, config_dir, "--apply")
         tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
         tm.that(
             result.stderr,
@@ -219,26 +225,9 @@ class TestsFlextInfraRenameCampaignMod:
                 encoding="utf-8",
             )
             expected = "CSV campaign scan root escapes repository"
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "refactor",
-                    "mod",
-                    "--repository-root",
-                    str(mod_workspace),
-                    "--apply",
-                ),
-                options=m.Cli.ProcessOptions(
-                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
-                ),
-            ),
-        )
+        result = self._mod(mod_workspace, config_dir, "--apply")
         tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
         # The preflight refusal is a typed command failure, which the CLI
         # renders on stdout; config-validation errors escape on stderr.
         tm.that(result.stdout, has=expected)
-        tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")

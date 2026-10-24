@@ -485,20 +485,9 @@ class TestsFlextInfraSemanticPublication:
             )
 
         def validate(candidate_root: Path) -> p.Result[bool]:
-            return u.Cli.run_raw((
-                sys.executable,
-                "-I",
-                "-c",
-                (
-                    "import runpy, sys; "
-                    "assert all(runpy.run_path(path)['value'] == 'after' "
-                    "for path in sys.argv[1:])"
-                ),
-                *(
-                    str(candidate_root / plan.path.relative_to(mod_workspace))
-                    for plan in plans
-                ),
-            )).map(lambda output: u.Cli.process_succeeded(output.outcome))
+            return self._run_after(candidate_root, mod_workspace, plans).map(
+                lambda output: u.Cli.process_succeeded(output.outcome),
+            )
 
         tm.ok(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -539,20 +528,7 @@ class TestsFlextInfraSemanticPublication:
             return verify_inputs()
 
         def validate(candidate_root: Path) -> p.Result[bool]:
-            consumer = u.Cli.run_raw((
-                sys.executable,
-                "-I",
-                "-c",
-                (
-                    "import runpy, sys; "
-                    "assert all(runpy.run_path(path)['value'] == 'after' "
-                    "for path in sys.argv[1:])"
-                ),
-                *(
-                    str(candidate_root / plan.path.relative_to(mod_workspace))
-                    for plan in plans
-                ),
-            ))
+            consumer = self._run_after(candidate_root, mod_workspace, plans)
             if consumer.failure:
                 return r[bool].from_failure(consumer)
             if not u.Cli.process_succeeded(consumer.value.outcome):
@@ -787,6 +763,7 @@ class TestsFlextInfraSemanticPublication:
         plans: list[m.Infra.SemanticFilePlan] = []
         for path in (previous, current):
             before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            current_content = tm.not_none(before.content)
             outgoing: t.StrSequence = ["DeclaredService"] if path == previous else []
             incoming: t.StrSequence = [] if path == previous else ["DeclaredService"]
             plans.append(
@@ -794,9 +771,7 @@ class TestsFlextInfraSemanticPublication:
                     project=mod_workspace,
                     path=path,
                     before=before,
-                    desired_content=tm
-                    .not_none(before.content)
-                    .decode(c.DEFAULT_ENCODING)
+                    desired_content=current_content.decode(c.DEFAULT_ENCODING)
                     .replace(
                         f"__all__ = {outgoing!r}",
                         f"__all__ = {incoming!r}",
@@ -969,6 +944,33 @@ class TestsFlextInfraSemanticPublication:
             )
         return tuple(plans)
 
+    @staticmethod
+    def _run_after(
+        candidate_root: Path,
+        root: Path,
+        plans: t.VariadicTuple[m.Infra.SemanticFilePlan],
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run the real consumer asserting every candidate file carries the new value.
+
+        Returns:
+            The consumer's raw command output.
+
+        """
+        return u.Cli.run_raw(
+            (
+                sys.executable,
+                "-I",
+                "-c",
+                (
+                    "import runpy, sys; "
+                    "assert all(runpy.run_path(path)['value'] == 'after' "
+                    "for path in sys.argv[1:])"
+                ),
+                *(str(candidate_root / plan.path.relative_to(root)) for plan in plans),
+            ),
+            cwd=candidate_root,
+        )
+
     @pytest.mark.parametrize("raises", [False, True])
     def test_rejected_semantic_acceptance_preserves_original_files(
         self,
@@ -985,24 +987,7 @@ class TestsFlextInfraSemanticPublication:
                 candidate = candidate_root / plan.path.relative_to(mod_workspace)
                 tm.that(candidate.read_bytes(), eq=plan.desired_content)
                 tm.that(plan.path.read_bytes(), eq=plan.before.content)
-            consumer = tm.ok(
-                u.Cli.run_raw(
-                    (
-                        sys.executable,
-                        "-c",
-                        (
-                            "import runpy, sys; "
-                            "assert all(runpy.run_path(path)['value'] == 'after' "
-                            "for path in sys.argv[1:])"
-                        ),
-                        *(
-                            str(candidate_root / plan.path.relative_to(mod_workspace))
-                            for plan in plans
-                        ),
-                    ),
-                    cwd=candidate_root,
-                ),
-            )
+            consumer = tm.ok(self._run_after(candidate_root, mod_workspace, plans))
             tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
             if raises:
                 raise failure

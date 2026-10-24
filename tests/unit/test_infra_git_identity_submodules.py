@@ -105,17 +105,6 @@ class TestsFlextInfraGitIdentitySubmodules:
                 "-C",
                 str(plain),
                 "remote",
-                "set-url",
-                "origin",
-                origin,
-            ]),
-        )
-        tm.ok(
-            u.Cli.run_checked([
-                c.Infra.GIT,
-                "-C",
-                str(plain),
-                "remote",
                 "add",
                 "upstream",
                 upstream,

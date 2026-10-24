@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import main
 from tests import c, tm, u
 
@@ -33,26 +35,43 @@ class TestsFlextInfraExtendedCliEntry:
         return workspace
 
     @staticmethod
+    def _run_lint(workspace: Path, *scope: str) -> int:
+        """Run the public ``check run`` entry for the lint gate.
+
+        Returns:
+            The process exit code.
+
+        """
+        return main([
+            "check",
+            "run",
+            "--repository-root",
+            str(workspace),
+            "--gates",
+            "lint",
+            *scope,
+        ])
+
+    @staticmethod
     def test_empty_workspace_errors(tmp_path: Path) -> None:
         """Test empty workspace errors."""
         tm.that(main(["check", "run", "--repository-root", str(tmp_path)]), eq=1)
 
-    def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
-        """Test run accepts explicit scope."""
+    @pytest.mark.parametrize("broken", [False, True])
+    def test_run_with_projects_reports_member_health(
+        self,
+        tmp_path: Path,
+        *,
+        broken: bool,
+    ) -> None:
+        """An explicit project scope exits 0 when clean and 1 on a member defect."""
         workspace = self._workspace(tmp_path)
-        tm.that(
-            main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
-            eq=0,
-        )
+        if broken:
+            (workspace / "p1" / "src" / "broken.py").write_text(
+                "def broken(:\n",
+                encoding="utf-8",
+            )
+        tm.that(self._run_lint(workspace, "--projects", "p1"), eq=int(broken))
 
     def test_run_without_projects_evaluates_only_the_repository(
         self,
@@ -75,53 +94,7 @@ class TestsFlextInfraExtendedCliEntry:
             "def broken(:\n",
             encoding="utf-8",
         )
-        tm.that(
-            main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--gates",
-                "lint",
-            ]),
-            eq=0,
-        )
-
-    def test_with_projects_success(self, tmp_path: Path) -> None:
-        """Test with projects success."""
-        workspace = self._workspace(tmp_path)
-        tm.that(
-            main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
-            eq=0,
-        )
-
-    def test_with_projects_failure(self, tmp_path: Path) -> None:
-        """Test with projects failure."""
-        workspace = self._workspace(tmp_path)
-        broken_file = workspace / "p1" / "src" / "broken.py"
-        broken_file.write_text("def broken(:\n", encoding="utf-8")
-        tm.that(
-            main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
-            eq=1,
-        )
+        tm.that(self._run_lint(workspace), eq=0)
 
     @staticmethod
     def test_check_main_routes_real_help() -> None:
@@ -143,18 +116,13 @@ class TestsFlextInfraExtendedCliEntry:
         caller.mkdir(parents=True, exist_ok=True)
         relative_reports = Path("reports/check")
         with tm.scope(cwd=str(caller)):
-            exit_code = main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--gates",
-                "lint",
+            exit_code = self._run_lint(
+                workspace,
                 "--projects",
                 "p1",
                 "--reports-dir",
                 str(relative_reports),
-            ])
+            )
         tm.that(exit_code, eq=0)
         (report_path,) = (workspace / relative_reports).glob(
             f"*/{c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}",

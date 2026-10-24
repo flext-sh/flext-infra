@@ -69,8 +69,13 @@ class TestsFlextInfraTestmonDbInspector:
             ).execute()
 
     @staticmethod
-    def test_healthy_new_db_is_saveable_seed(tmp_path: Path) -> None:
-        """Test healthy new db is saveable seed."""
+    @pytest.mark.parametrize("unchanged", [False, True], ids=["new", "unchanged"])
+    def test_saveability_follows_the_pre_run_digest(
+        tmp_path: Path,
+        *,
+        unchanged: bool,
+    ) -> None:
+        """A healthy new db is a saveable seed; an unchanged one is not saveable."""
         repository_root = tmp_path / "checkout"
         repository_root.mkdir()
         db = (
@@ -88,39 +93,17 @@ class TestsFlextInfraTestmonDbInspector:
             FlextInfraTestmonDbInspector(
                 repository_root=repository_root,
                 db_path=db,
-                pre_run_digest=None,
+                pre_run_digest=FlextInfraTestmonDbInspector.digest_file(db)
+                if unchanged
+                else None,
             ).execute(),
         )
-        tm.that(state.seed_needed, eq=True)
-        tm.that(state.saveable, eq=True)
-        tm.that(state.reason, eq="seed_ready")
-
-    @staticmethod
-    def test_unchanged_db_is_not_saveable(tmp_path: Path) -> None:
-        """Test unchanged db is not saveable."""
-        repository_root = tmp_path / "checkout"
-        repository_root.mkdir()
-        db = (
-            tmp_path
-            / "cache"
-            / config.Infra.codegen.make.testmon_cache.database_filename
-        )
-        db.parent.mkdir()
-        connection = sqlite3.connect(db)
-        connection.execute("CREATE TABLE meta (k TEXT)")
-        connection.commit()
-        connection.close()
-        digest = FlextInfraTestmonDbInspector.digest_file(db)
-        state: m.Infra.TestmonCacheState = tm.ok(
-            FlextInfraTestmonDbInspector(
-                repository_root=repository_root,
-                db_path=db,
-                pre_run_digest=digest,
-            ).execute(),
-        )
-        tm.that(state.changed, eq=False)
-        tm.that(state.saveable, eq=False)
-        tm.that(state.reason, eq="unchanged")
+        tm.that(state.saveable, eq=not unchanged)
+        tm.that(state.reason, eq="unchanged" if unchanged else "seed_ready")
+        if unchanged:
+            tm.that(state.changed, eq=False)
+        else:
+            tm.that(state.seed_needed, eq=True)
 
     @staticmethod
     def test_in_checkout_database_is_rejected(tmp_path: Path) -> None:

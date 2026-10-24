@@ -15,9 +15,9 @@ import pytest
 
 from flext_infra import c, e, m, p, r
 from flext_infra.codegen import (
+    FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsProcess,
-    codegen_transaction as transaction,
 )
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
@@ -42,7 +42,7 @@ class TestsFlextInfraTransactionStaging:
         root = u.Tests.git_repository(tmp_path / "flext-demo")
         member = root / "flext-demo-member"
         member.mkdir()
-        roots = transaction.FlextInfraCodegenTransaction.capability_roots(
+        roots = FlextInfraCodegenTransaction.capability_roots(
             "lazy-init",
             (root, member),
         )
@@ -203,7 +203,7 @@ class TestsFlextInfraTransactionStaging:
             "workspace",
             pyproject="[project]\nname = 'workspace'\nversion = '1.0.0'\n",
         )
-        packages: dict[str, Path] = {}
+        packages: t.MutableMappingKV[str, Path] = {}
         for name in ("receiver", "provider", "dependency"):
             packages[name] = u.Tests.src_package(
                 root / name,
@@ -247,7 +247,7 @@ class TestsFlextInfraTransactionStaging:
             FlextInfraStagedPackage.plan_sources(root, updates, inputs=originals[:2])
         )
         tm.that({layout.package_name for layout in plan.layouts}, eq=set(packages))
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
 
@@ -304,6 +304,28 @@ class TestsFlextInfraTransactionStaging:
             )
 
     @staticmethod
+    def _sample_contract(
+        tmp_path: Path,
+    ) -> tuple[Path, Path, Path, m.Cli.AtomicFileState]:
+        """Create a git project holding one ``sample`` contract module.
+
+        Returns:
+            The repository root, the source package, the contract module, and
+            the authenticated state of the contract module.
+
+        """
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
+        target = package / "contract.py"
+        target.write_text("VALUE = 1\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        return root, package, target, before
+
+    @staticmethod
     def test_source_runtime_rejects_live_package_origin_before_checks(
         tmp_path: Path,
     ) -> None:
@@ -317,7 +339,7 @@ class TestsFlextInfraTransactionStaging:
         target = package / "__init__.py"
         (package / "contract.py").write_text("VALUE = 1\n")
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
 
@@ -347,15 +369,9 @@ class TestsFlextInfraTransactionStaging:
         borrowed: bool,
     ) -> None:
         """Neither a linked environment nor a borrowed interpreter owns this runtime."""
-        root = u.Tests.git_repository(tmp_path)
-        package = u.Tests.src_package(
-            root,
-            "sample",
-            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        root, _, target, before = TestsFlextInfraTransactionStaging._sample_contract(
+            tmp_path
         )
-        target = package / "contract.py"
-        target.write_text("VALUE = 1\n")
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         if borrowed:
             u.Tests.provision_checkout(root)
         else:
@@ -367,7 +383,7 @@ class TestsFlextInfraTransactionStaging:
         def checks(_view_root: Path, _candidates: t.MappingKV[Path, Path]) -> bool:
             pytest.fail("checks ran before candidate runtime rejection")
 
-        outcome = transaction.FlextInfraCodegenTransaction(
+        outcome = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         ).preview_sources(
             root,
@@ -396,16 +412,10 @@ class TestsFlextInfraTransactionStaging:
         mutation: str,
     ) -> None:
         """Keep shared source changes while rejecting stale acceptance receipts."""
-        root = u.Tests.git_repository(tmp_path)
-        package = u.Tests.src_package(
-            root,
-            "sample",
-            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        root, package, target, before = (
+            TestsFlextInfraTransactionStaging._sample_contract(tmp_path)
         )
-        target = package / "contract.py"
-        target.write_text("VALUE = 1\n")
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
 
@@ -435,15 +445,9 @@ class TestsFlextInfraTransactionStaging:
         tmp_path: Path,
     ) -> None:
         """A fresh read cannot replace the caller's original source authority."""
-        root = u.Tests.git_repository(tmp_path)
-        package = u.Tests.src_package(
-            root,
-            "sample",
-            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        root, _, target, before = TestsFlextInfraTransactionStaging._sample_contract(
+            tmp_path
         )
-        target = package / "contract.py"
-        target.write_text("VALUE = 1\n")
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         target.write_text("VALUE = 3\n")
         tm.fail(
             FlextInfraStagedPackage.plan_sources(
@@ -460,8 +464,8 @@ class TestsFlextInfraTransactionStaging:
         """An independent writer's progress cannot invalidate an earlier observation."""
         root = u.Tests.git_repository(tmp_path)
         artifacts = FlextInfraCodegenMiseArtifacts(repository_root=root)
-        writer = transaction.FlextInfraCodegenTransaction(artifacts)
-        reader = transaction.FlextInfraCodegenTransaction(
+        writer = FlextInfraCodegenTransaction(artifacts)
+        reader = FlextInfraCodegenTransaction(
             artifacts,
             participant_policy=m.Infra.CodegenParticipantPolicy(
                 scope_root=root,
@@ -567,12 +571,11 @@ class TestsFlextInfraTransactionStaging:
             if mutation == "content":
                 target.write_bytes(b"value = 3\n")
             elif mutation == "inode":
-                assert original.mode is not None
                 tm.ok(
                     u.Cli.atomic_write_binary_file_guarded(
                         original,
                         tm.not_none(before.content),
-                        permission_mode=original.mode,
+                        permission_mode=tm.not_none(original.mode),
                     ),
                 )
             return r[bool].ok(value=True)
@@ -644,7 +647,7 @@ class TestsFlextInfraTransactionStaging:
                 ),
             ),
         )
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             mise_owner,
             participant_policy=m.Infra.CodegenParticipantPolicy(
                 scope_root=root,
@@ -700,7 +703,7 @@ class TestsFlextInfraTransactionStaging:
     def test_effect_free_inspection_preserves_corrupt_journal(tmp_path: Path) -> None:
         """Preserve the original parser failure without creating recovery state."""
         root = u.Tests.git_repository(tmp_path)
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
         absent = tm.ok(owner.inspect_journal())
@@ -735,7 +738,7 @@ class TestsFlextInfraTransactionStaging:
     ) -> None:
         """The bound permits a genuine requested-root journal and cleanup."""
         root = u.Tests.git_repository(tmp_path)
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
             participant_policy=m.Infra.CodegenParticipantPolicy(
                 scope_root=root,
@@ -776,7 +779,7 @@ class TestsFlextInfraTransactionStaging:
         target = root / "obsolete.md"
         target.write_bytes(content)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
             participant_policy=m.Infra.CodegenParticipantPolicy(
                 scope_root=root,
@@ -872,7 +875,7 @@ class TestsFlextInfraTransactionStaging:
             b"from stage_sample._typings.types import SampleTypes as _SampleTypes\n"
             b"class SampleTypes(_SampleTypes): pass\nt = SampleTypes\n"
         )
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
         roots = {"@sample-0": root}
@@ -917,12 +920,11 @@ class TestsFlextInfraTransactionStaging:
                             view.target.path, required=True
                         )
                     )
-                    assert snapshot.mode is not None
                     tm.ok(
                         u.Cli.atomic_write_binary_file_guarded(
                             snapshot,
                             b"changed candidate\n",
-                            permission_mode=snapshot.mode,
+                            permission_mode=tm.not_none(snapshot.mode),
                         )
                     )
                 verified = FlextInfraValidateFreshImport(
@@ -968,7 +970,7 @@ class TestsFlextInfraTransactionStaging:
         target = root / "generated.md"
         target.write_bytes(b"original document\n")
         original = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
         roots = {"@docs-0": root}
@@ -1006,19 +1008,19 @@ class TestsFlextInfraTransactionStaging:
                 payloads[:created_count],
                 strict=True,
             ):
-                assert content is not None
                 tm.ok(
                     u.Cli.atomic_write_binary_file_guarded(
                         intent.before,
-                        content,
+                        tm.not_none(content),
                         permission_mode=intent.mode,
                     ),
                 )
             return r[m.Infra.CodegenTransactionSession].ok(prepared)
 
         prepared = tm.ok(owner.run_files_locked(roots, interrupted))
-        transaction_root = prepared.plan.layout.file_participants[0].transaction_root
-        assert transaction_root is not None
+        transaction_root = tm.not_none(
+            prepared.plan.layout.file_participants[0].transaction_root
+        )
         tm.that(transaction_root.exists(), eq=True)
         if relocated:
             previous_root = root
@@ -1028,7 +1030,7 @@ class TestsFlextInfraTransactionStaging:
             target = root / target.relative_to(previous_root)
             original = original.model_copy(update={"path": target})
             roots = {"@docs-0": root}
-            owner = transaction.FlextInfraCodegenTransaction(
+            owner = FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=root),
             )
             # Exercise the existing physical relocation/CAS boundary before the
@@ -1064,7 +1066,7 @@ class TestsFlextInfraTransactionStaging:
         """Preserve mismatched staging bytes instead of adopting a new inventory."""
         root = u.Tests.git_repository(tmp_path)
         target = root / "generated.md"
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
         roots = {"@docs-0": root}
@@ -1124,7 +1126,7 @@ class TestsFlextInfraTransactionStaging:
             tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
             for target in targets
         )
-        owner = transaction.FlextInfraCodegenTransaction(
+        owner = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
         roots = {"@docs-0": root}
@@ -1161,8 +1163,7 @@ class TestsFlextInfraTransactionStaging:
             else:
                 path.write_bytes(b"foreign leaf\n")
             tampered = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False))
-            content = planned[index].desired_content
-            assert content is not None
+            content = tm.not_none(planned[index].desired_content)
             failed = FlextInfraMiseArtifactsProcess.write_new(
                 path,
                 content,

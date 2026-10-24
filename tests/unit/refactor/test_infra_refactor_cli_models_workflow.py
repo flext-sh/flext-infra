@@ -141,8 +141,22 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         tm.that(result, ne=0)
 
     @staticmethod
-    def test_wrapper_root_namespace_cli_dry_run_succeeds(tmp_path: Path) -> None:
-        """Test wrapper root namespace cli dry run succeeds."""
+    @pytest.mark.parametrize(
+        ("mode", "facade", "member", "succeeds"),
+        [
+            ("--dry-run", "c", "ERR_OK_FAILED", True),
+            ("--check", "m", "Testobject", False),
+            ("--apply", "t", "Testobject", True),
+        ],
+    )
+    def test_wrapper_root_namespace_cli_modes(
+        tmp_path: Path,
+        mode: str,
+        facade: str,
+        member: str,
+        succeeds: bool,
+    ) -> None:
+        """Dry-run keeps bytes, check flags needed changes, apply rewrites the file."""
         workspace = u.Tests.mk_project(
             tmp_path,
             "workspace",
@@ -154,90 +168,30 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         source_file = scripts_dir / "sample.py"
         source_file.write_text(
-            "from tests import c\n"
+            f"from tests import {facade}\n"
             "\n"
             "def test_contract() -> None:\n"
-            "    _ = c.Core.Tests.ERR_OK_FAILED\n",
+            f"    _ = {facade}.Core.Tests.{member}\n",
             encoding="utf-8",
         )
-        u.Tests.initialize_git_repo(workspace)
+        if mode == "--apply":
+            u.Tests.provision_checkout(workspace)
+        else:
+            u.Tests.initialize_git_repo(workspace)
 
         with redirect_stdout(StringIO()):
             result = main([
                 "refactor",
                 "wrapper-root-namespace",
                 f"--repository-root={workspace!s}",
-                "--dry-run",
+                mode,
             ])
 
-        tm.that(result, eq=0)
-        tm.that(source_file.read_text(encoding="utf-8"), has="c.Core.Tests")
-
-    @staticmethod
-    def test_wrapper_root_namespace_cli_check_fails_when_changes_are_needed(
-        tmp_path: Path,
-    ) -> None:
-        """Test wrapper root namespace cli check fails when changes are needed."""
-        workspace = u.Tests.mk_project(
-            tmp_path,
-            "workspace",
-            pyproject="[project]\nname='sample'\ndependencies = []\n",
-            with_src=True,
-        )
-        scripts_dir = workspace / "scripts"
-        scripts_dir.mkdir(parents=True)
-        (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        (scripts_dir / "sample.py").write_text(
-            "from tests import m\n"
-            "\n"
-            "def test_contract() -> None:\n"
-            "    _ = m.Core.Tests.Testobject\n",
-            encoding="utf-8",
-        )
-        u.Tests.initialize_git_repo(workspace)
-
-        result = main([
-            "refactor",
-            "wrapper-root-namespace",
-            f"--repository-root={workspace!s}",
-            "--check",
-        ])
-
-        tm.that(result, ne=0)
-
-    @staticmethod
-    def test_wrapper_root_namespace_cli_apply_rewrites_file(
-        tmp_path: Path,
-    ) -> None:
-        """Test wrapper root namespace cli apply rewrites file."""
-        workspace = u.Tests.mk_project(
-            tmp_path,
-            "workspace",
-            pyproject="[project]\nname='sample'\ndependencies = []\n",
-            with_src=True,
-        )
-        scripts_dir = workspace / "scripts"
-        scripts_dir.mkdir(parents=True)
-        (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        source_file = scripts_dir / "sample.py"
-        source_file.write_text(
-            "from tests import t\n"
-            "\n"
-            "def test_contract() -> None:\n"
-            "    _ = t.Core.Tests.Testobject\n",
-            encoding="utf-8",
-        )
-        u.Tests.provision_checkout(workspace)
-
-        result = main([
-            "refactor",
-            "wrapper-root-namespace",
-            f"--repository-root={workspace!s}",
-            "--apply",
-        ])
-
-        tm.that(result, eq=0)
+        tm.that(result == 0, eq=succeeds)
         updated = source_file.read_text(encoding="utf-8")
-        tm.that(updated, has="from tests import t")
-        tm.that(updated, has="t.Tests.Testobject")
-        tm.that(updated, lacks="Core.Tests")
+        if mode == "--apply":
+            tm.that(updated, has=f"from tests import {facade}")
+            tm.that(updated, has=f"{facade}.Tests.{member}")
+            tm.that(updated, lacks="Core.Tests")
+        elif mode == "--dry-run":
+            tm.that(updated, has=f"{facade}.Core.Tests")

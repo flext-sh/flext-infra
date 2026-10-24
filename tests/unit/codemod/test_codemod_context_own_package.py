@@ -51,40 +51,10 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 "dependencies": list(dependencies),
             }
         tm.ok(u.Cli.toml_write_mapping(project / c.PYPROJECT_FILENAME, declaration))
-        consumer = project / "consumer.py"
-        consumer.write_text(
-            "from pydantic import BaseModel\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        rule = self._private_import_rule().model_copy(
-            update={
-                "context": (
-                    m.Infra.CodemodContextCondition(
-                        variable="MOD",
-                        predicate=predicate,
-                        holds=True,
-                    ),
-                ),
-            },
-        )
+        rule = self._context_rule(predicate)
+        tm.that(self._admits_pydantic(project, rule), eq=False)
         facts = u.Infra.codemod_project_facts(project, (rule,))
         tm.that(facts.runtime_modules, empty=True)
-        with u.Infra.codemod_binding_project(
-            project,
-            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
-        ) as (rope_project, sources):
-            admitted = u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=project,
-                    rule=rule,
-                    file_path=consumer,
-                    captures={"MOD": {"text": "pydantic"}},
-                    facts=facts,
-                ),
-                project=rope_project,
-                sources=sources,
-            )
-        tm.that(admitted, eq=False)
 
     def test_declared_installed_runtime_package_is_admitted(
         self,
@@ -100,39 +70,8 @@ class TestsFlextInfraCodemodContextOwnPackage:
             ),
             with_src=True,
         )
-        consumer = project / "consumer.py"
-        consumer.write_text(
-            "from pydantic import BaseModel\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        rule = self._private_import_rule().model_copy(
-            update={
-                "context": (
-                    m.Infra.CodemodContextCondition(
-                        variable="MOD",
-                        predicate=c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE,
-                        holds=True,
-                    ),
-                ),
-            },
-        )
-        facts = u.Infra.codemod_project_facts(project, (rule,))
-        with u.Infra.codemod_binding_project(
-            project,
-            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
-        ) as (rope_project, sources):
-            admitted = u.Infra.codemod_context_admits(
-                m.Infra.CodemodAdmission(
-                    root=project,
-                    rule=rule,
-                    file_path=consumer,
-                    captures={"MOD": {"text": "pydantic"}},
-                    facts=facts,
-                ),
-                project=rope_project,
-                sources=sources,
-            )
-        tm.that(admitted, eq=True)
+        rule = self._context_rule(c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE)
+        tm.that(self._admits_pydantic(project, rule), eq=True)
 
     @pytest.mark.parametrize(
         ("relative", "admitted"),
@@ -155,17 +94,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 f"__all__ = [{export!r}]\n", encoding="utf-8"
             )
         path.write_text("from flext_core import c\n", encoding="utf-8")
-        rule = self._private_import_rule().model_copy(
-            update={
-                "context": (
-                    m.Infra.CodemodContextCondition(
-                        variable="MOD",
-                        predicate=c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE,
-                        holds=True,
-                    ),
-                )
-            }
-        )
+        rule = self._context_rule(c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE)
         verdict = u.Infra.codemod_context_admits(
             m.Infra.CodemodAdmission(
                 root=mod_workspace,
@@ -176,6 +105,53 @@ class TestsFlextInfraCodemodContextOwnPackage:
             ),
         )
         tm.that(verdict, eq=admitted)
+
+    @classmethod
+    def _context_rule(
+        cls, predicate: c.Infra.CodemodContextPredicate
+    ) -> m.Infra.CodemodRule:
+        """Return the probe rule admitting only where ``predicate`` holds."""
+        return cls._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="MOD",
+                        predicate=predicate,
+                        holds=True,
+                    ),
+                ),
+            },
+        )
+
+    @staticmethod
+    def _admits_pydantic(project: Path, rule: m.Infra.CodemodRule) -> bool:
+        """Author a pydantic consumer and return the rule's admission verdict.
+
+        Returns:
+            Whether ``rule`` admits the consumer's ``pydantic`` import.
+
+        """
+        consumer = project / "consumer.py"
+        consumer.write_text(
+            "from pydantic import BaseModel\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        facts = u.Infra.codemod_project_facts(project, (rule,))
+        with u.Infra.codemod_binding_project(
+            project,
+            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
+        ) as (rope_project, sources):
+            return u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=project,
+                    rule=rule,
+                    file_path=consumer,
+                    captures={"MOD": {"text": "pydantic"}},
+                    facts=facts,
+                ),
+                project=rope_project,
+                sources=sources,
+            )
 
     @staticmethod
     def _private_import_rule() -> m.Infra.CodemodRule:

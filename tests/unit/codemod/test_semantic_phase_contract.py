@@ -154,6 +154,25 @@ class TestsFlextInfraSemanticPhaseContract:
             + unaffected
         )
         path.write_text(source, encoding="utf-8")
+        updated = TestsFlextInfraSemanticPhaseContract._fixed_point(
+            root,
+            path,
+            source,
+            "from flext_cli import u",
+            "    from flext_core import u",
+            unaffected,
+            "    return u.scalar_mapping_adapter()",
+        )
+        tm.that(updated.count("from flext_core import"), eq=1)
+
+    @staticmethod
+    def _fixed_point(root: Path, path: Path, source: str, *fragments: str) -> str:
+        """Plan the single rewrite of ``path``, then prove its fixed point.
+
+        Returns:
+            The rewritten source, which contains every expected fragment.
+
+        """
         phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
         with infra.rope_workspace(root) as rope:
             planned = tm.ok(
@@ -163,11 +182,8 @@ class TestsFlextInfraSemanticPhaseContract:
             )
             tm.that(len(planned), eq=1)
             updated = planned[0].updated_source
-            tm.that(updated, has="from flext_cli import u")
-            tm.that(updated, has="    from flext_core import u")
-            tm.that(updated, has=unaffected)
-            tm.that(updated, has="    return u.scalar_mapping_adapter()")
-            tm.that(updated.count("from flext_core import"), eq=1)
+            for fragment in fragments:
+                tm.that(updated, has=fragment)
             remaining = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     phase, rope_workspace=rope, sources={path: updated}
@@ -175,6 +191,27 @@ class TestsFlextInfraSemanticPhaseContract:
             )
         tm.that(remaining, empty=True)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
+        return updated
+
+    @staticmethod
+    def _constants_module(tmp_path: Path) -> t.Triple[Path, Path, str]:
+        """Author a constants facade module declaring one extra class.
+
+        Returns:
+            The repository root, the module path and the facade owner name.
+
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
+        path = package / "constants.py"
+        u.Tests.write_lazy_init_namespace_module(
+            path,
+            class_name=owner,
+            alias="c",
+            extra_class_names=(f"{owner}Member",),
+        )
+        return root, path, owner
 
     @staticmethod
     def _reviewed_behavior_provider(
@@ -427,27 +464,16 @@ class TestsFlextInfraSemanticPhaseContract:
             + "def local(t):\n    return t.scalar_mapping_adapter()\n"
         )
         path.write_text(source, encoding="utf-8")
-        phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
-        with infra.rope_workspace(root) as rope:
-            planned = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    phase, rope_workspace=rope, sources={path: source}
-                )
-            )
-            tm.that(len(planned), eq=1)
-            updated = planned[0].updated_source
-            tm.that(updated, has="u.strict_str_sequence_adapter()")
-            tm.that(updated, has="u.scalar_mapping_adapter()")
-            tm.that(updated, has="from flext_core import u")
-            tm.that(updated, has="def local(t):\n    return t.scalar_mapping_adapter()")
-            tm.that(updated, has="'t.scalar_mapping_adapter()'")
-            remaining = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    phase, rope_workspace=rope, sources={path: updated}
-                )
-            )
-        tm.that(remaining, empty=True)
-        tm.that(path.read_text(encoding="utf-8"), eq=source)
+        TestsFlextInfraSemanticPhaseContract._fixed_point(
+            root,
+            path,
+            source,
+            "u.strict_str_sequence_adapter()",
+            "u.scalar_mapping_adapter()",
+            "from flext_core import u",
+            "def local(t):\n    return t.scalar_mapping_adapter()",
+            "'t.scalar_mapping_adapter()'",
+        )
 
     @staticmethod
     def test_named_adapter_factories_reject_shadowed_utilities(tmp_path: Path) -> None:
@@ -679,29 +705,15 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(edits, empty=False)
         for edit in edits:
             tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
-        result = tm.ok(
-            u.Cli.run(
-                [
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}.consumer import value; "
-                        f"from {package.name}.unrelated import "
-                        "owner, value as unrelated; "
-                        "print(value, unrelated, owner)"
-                    ),
-                ],
-                cwd=root,
-                options=m.Cli.ProcessOptions(
-                    env={
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                            root / c.Infra.DEFAULT_SRC_DIR,
-                        ),
-                    },
-                ),
-            ),
+        lines = u.Tests.run_lazy_init_probe(
+            f"from {package.name}.consumer import value; "
+            f"from {package.name}.unrelated import "
+            "owner, value as unrelated; "
+            "print(value, unrelated, owner)",
+            python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
+            cwd=root,
         )
-        tm.that(result.stdout.strip(), eq=f"ALIGNED UNCHANGED {typing_owner}")
+        tm.that(lines, eq=[f"ALIGNED UNCHANGED {typing_owner}"])
 
     @staticmethod
     @pytest.mark.parametrize("guarded", [False, True])
@@ -834,15 +846,8 @@ class TestsFlextInfraSemanticPhaseContract:
         tmp_path: Path,
     ) -> None:
         """Test annotations and nesting complete in one atomic cutover."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
-        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
-        path = package / "constants.py"
-        u.Tests.write_lazy_init_namespace_module(
-            path,
-            class_name=owner,
-            alias="c",
-            extra_class_names=(f"{owner}Member",),
+        root, path, owner = TestsFlextInfraSemanticPhaseContract._constants_module(
+            tmp_path
         )
         tm.ok(u.Tests.provision_python_project_environment(root))
         source = path.read_text(encoding="utf-8").replace(
@@ -894,15 +899,8 @@ class TestsFlextInfraSemanticPhaseContract:
         tmp_path: Path,
     ) -> None:
         """Test nesting replans proposed sources without publishing."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
-        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
-        path = package / "constants.py"
-        u.Tests.write_lazy_init_namespace_module(
-            path,
-            class_name=owner,
-            alias="c",
-            extra_class_names=(f"{owner}Member",),
+        root, path, owner = TestsFlextInfraSemanticPhaseContract._constants_module(
+            tmp_path
         )
         original = path.read_text(encoding="utf-8")
         nesting = c.Infra.SemanticCutoverPhase.CLASS_NESTING

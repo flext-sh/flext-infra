@@ -9,10 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from difflib import unified_diff
 from pathlib import Path
 
-from tests import c, m, t, tm, u
+from tests import m, t, tm, u
 from tests.unit.pyproject_conform_topology_support import (
     TestsFlextInfraPyprojectConformTopologySupport,
 )
@@ -23,55 +22,46 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
 ):
     """Overlay, candidate-commit, and render-context contracts by topology role."""
 
+    def _assert_custom_dev_survives(self, source: str) -> str:
+        """Conform and overlay ``source``; its only DEV entry must stay custom.
+
+        Returns:
+            The conformed document.
+
+        """
+        first = tm.ok(self._conform(source, self._workspace()))
+        tm.that(
+            u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(source, source))
+        tm.that(
+            u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
+            eq=("hypothesis>=6",),
+        )
+        return first
+
     def test_overlay_preserves_custom_values_and_rederives_owned_members(
         self,
         tmp_path: Path,
     ) -> None:
         """The real overlay consumes ownership comments before the next render."""
         member = self._member_ref("acme-engine", "libraries/engine")
-        path = tmp_path / member.path / c.PYPROJECT_FILENAME
-        path.parent.mkdir(parents=True)
-        path.write_text(
-            f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n',
-            encoding="utf-8",
-        )
+        self._write_member(tmp_path, member)
         source = (
             '[project]\nname = "workspace"\nversion = "1.0.0"\n'
             '[dependency-groups]\ncodegen = ["build>=1"]\n'
             'dev = ["hypothesis>=6"]\n'
         )
-        options = u.Infra.PyprojectConformOptions(
-            repository_root=tmp_path,
-            flext_line=u.Tests.integration(),
-        )
-        first = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=self._workspace(member),
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=options,
-            ),
-        )
+        options = self._integration(tmp_path)
+        workspace = self._workspace(member)
+        first = tm.ok(self._conform(source, workspace, options))
         merged = tm.ok(u.Infra.overlay_preserved(source, first))
         tm.that(
             u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
             eq=("hypothesis>=6",),
         )
-        second = tm.ok(
-            u.Infra.pyproject_conform(
-                merged,
-                workspace=self._workspace(member),
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=options,
-            ),
-        )
-        tm.that(
-            second,
-            eq=first,
-            msg="\n".join(unified_diff(first.splitlines(), second.splitlines())),
-        )
+        self._assert_fixed_point(first, workspace, options, source=merged)
         # A later explicit CUSTOM duplicate does not inherit the owned marker.
         custom_member = self._inline_requirement(member)
         live = first.replace(
@@ -91,12 +81,10 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
     ) -> None:
         """Template composition retains CUSTOM codegen additions and provenance."""
         member = self._member_ref("acme-engine", "libraries/engine")
-        path = tmp_path / member.path / c.PYPROJECT_FILENAME
-        path.parent.mkdir(parents=True)
-        path.write_text(
-            f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n'
+        self._write_member(
+            tmp_path,
+            member,
             '[dependency-groups]\ndev = ["hypothesis>=6"]\n',
-            encoding="utf-8",
         )
         source = (
             '[project]\nname = "workspace"\nversion = "1.0.0"\n'
@@ -106,107 +94,39 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             '[project]\nname = "workspace"\nversion = "1.0.0"\n'
             '[dependency-groups]\ncodegen = ["ruff>=1"]\ndev = []\n'
         )
-        options = u.Infra.PyprojectConformOptions(
-            repository_root=tmp_path,
-            flext_line=u.Tests.integration(),
-        )
+        options = self._integration(tmp_path)
         workspace = self._workspace(member)
         initial = tm.ok(u.Infra.overlay_preserved(template, source))
         tm.that(
             u.Tests.toml_strings_at(initial, "dependency-groups", "codegen"),
             eq=("build>=1", "ruff>=1"),
         )
-        first = tm.ok(
-            u.Infra.pyproject_conform(
-                initial,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=options,
-            ),
-        )
+        first = tm.ok(self._conform(initial, workspace, options))
         merged = tm.ok(u.Infra.overlay_preserved(template, first))
         tm.that(
             u.Tests.toml_strings_at(merged, "dependency-groups", "codegen"),
             eq=("build>=1", "ruff>=1"),
         )
-        second = tm.ok(
-            u.Infra.pyproject_conform(
-                merged,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=options,
-            ),
-        )
-        tm.that(
-            second,
-            eq=first,
-            msg="\n".join(unified_diff(first.splitlines(), second.splitlines())),
-        )
+        self._assert_fixed_point(first, workspace, options, source=merged)
 
     def test_marked_same_value_outside_dev_preserves_custom_dev(self) -> None:
         """An ownership-looking comment in QA cannot own a DEV occurrence."""
-        source = (
+        first = self._assert_custom_dev_survives(
             '[project]\nname = "workspace"\nversion = "1.0.0"\n'
             '[dependency-groups]\ndev = ["hypothesis>=6"]\n'
             'qa = [\n    "hypothesis>=6", # flext: derived member environment\n]\n'
         )
-        first = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=self._workspace(),
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-            ),
-        )
-        tm.that(
-            u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
-            eq=("hypothesis>=6",),
-        )
-        merged = tm.ok(u.Infra.overlay_preserved(source, source))
-        tm.that(
-            u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
-            eq=("hypothesis>=6",),
-        )
-        tm.that(
-            tm.ok(
-                u.Infra.pyproject_conform(
-                    first,
-                    workspace=self._workspace(),
-                    required_dev_dependencies=(),
-                    uv_resolution=self._toolchain_resolution(),
-                ),
-            ),
-            eq=first,
-        )
+        self._assert_fixed_point(first, self._workspace())
 
     def test_full_line_comments_do_not_become_owned_dev_items(self) -> None:
         """Commented-out values and multiple hashes do not enter the item stream."""
-        source = (
+        _ = self._assert_custom_dev_survives(
             '[project]\nname = "workspace"\nversion = "1.0.0"\n'
             "[dependency-groups]\ndev = [\n"
             '    # "hypothesis>=6", # flext: derived member environment\n'
             '    # "retired-generated>=1", # flext: derived member environment\n'
             '    "hypothesis>=6", # note # flext: derived member environment\n'
             "]\n"
-        )
-        first = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=self._workspace(),
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-            ),
-        )
-        tm.that(
-            u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
-            eq=("hypothesis>=6",),
-        )
-        merged = tm.ok(u.Infra.overlay_preserved(source, source))
-        tm.that(
-            u.Tests.toml_strings_at(merged, "dependency-groups", "dev"),
-            eq=("hypothesis>=6",),
         )
 
     def test_unmarked_duplicate_survives_direct_overlay_removal_and_fixed_point(
@@ -215,72 +135,36 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
     ) -> None:
         """Ownership is per occurrence throughout both generation entry paths."""
         member = self._member_ref("acme-driver", "plugins/driver")
-        path = tmp_path / member.path / c.PYPROJECT_FILENAME
-        path.parent.mkdir(parents=True)
-        path.write_text(
-            f'[project]\nname = "{member.distribution}"\nversion = "1.0.0"\n'
+        self._write_member(
+            tmp_path,
+            member,
             '[dependency-groups]\nqa = ["hypothesis>=6"]\n',
-            encoding="utf-8",
         )
         seed = '[project]\nname = "workspace"\nversion = "1.0.0"\n'
-        options = u.Infra.PyprojectConformOptions(
-            repository_root=tmp_path,
-            flext_line=u.Tests.integration(),
-        )
-        owned = tm.ok(
-            u.Infra.pyproject_conform(
-                seed,
-                workspace=self._workspace(member),
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=options,
-            ),
-        )
+        options = self._integration(tmp_path)
+        owned = tm.ok(self._conform(seed, self._workspace(member), options))
         live = owned.replace("dev = [\n", 'dev = [\n    "hypothesis>=6",\n', 1)
         for entry in (live, tm.ok(u.Infra.overlay_preserved(seed, live))):
-            first = tm.ok(
-                u.Infra.pyproject_conform(
-                    entry,
-                    workspace=self._workspace(),
-                    required_dev_dependencies=(),
-                    uv_resolution=self._toolchain_resolution(),
-                    options=options,
-                ),
-            )
+            first = tm.ok(self._conform(entry, self._workspace(), options))
             tm.that(
                 u.Tests.toml_strings_at(first, "dependency-groups", "dev"),
                 eq=("hypothesis>=6",),
             )
             for repeat in (first, tm.ok(u.Infra.overlay_preserved(seed, first))):
-                actual = tm.ok(
-                    u.Infra.pyproject_conform(
-                        repeat,
-                        workspace=self._workspace(),
-                        required_dev_dependencies=(),
-                        uv_resolution=self._toolchain_resolution(),
-                        options=options,
-                    )
-                )
-                tm.that(
-                    actual,
-                    eq=first,
-                    msg="\n".join(
-                        unified_diff(first.splitlines(), actual.splitlines())
-                    ),
+                self._assert_fixed_point(
+                    first,
+                    self._workspace(),
+                    options,
+                    source=repeat,
                 )
 
     def test_root_missing_member_metadata_fails_loud(self, tmp_path: Path) -> None:
         """A declared package without metadata is not silently omitted."""
         member = self._member_ref("acme-engine", "libraries/engine")
-        result = u.Infra.pyproject_conform(
+        result = self._conform(
             '[project]\nname = "workspace"\nversion = "1.0.0"\n',
-            workspace=self._workspace(member),
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(
-                repository_root=tmp_path,
-                flext_line=u.Tests.integration(),
-            ),
+            self._workspace(member),
+            self._integration(tmp_path),
         )
         tm.that(result.failure, eq=True)
 
@@ -289,30 +173,18 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
         cli = self._member_ref("flext-cli", "flext-cli")
         infra = self._member_ref("flext-infra", "flext-infra")
         candidate_commit = "a" * 40
-        workspace = self._workspace(cli, infra, role=self._ROLE.STANDALONE).model_copy(
-            update={
-                "candidate_dependencies": (
-                    m.Infra.DependencyCommitSourceSpec(
-                        distribution=cli.distribution,
-                        url=cli.url,
-                        commit=candidate_commit,
-                    ),
-                ),
-            },
-        )
-        source = (
-            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-            'dependencies = ["flext-cli", "flext-infra"]\n'
+        workspace = self._candidate_workspace(
+            cli,
+            infra,
+            candidate=cli,
+            commit=candidate_commit,
         )
         rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=u.Infra.PyprojectConformOptions(
-                    flext_line=u.Tests.integration(),
-                ),
+            self._conform(
+                '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+                'dependencies = ["flext-cli", "flext-infra"]\n',
+                workspace,
+                self._integration(),
             ),
         )
         dependencies = set(
@@ -332,48 +204,22 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
                 f"{cli.distribution} @ git+{cli.url}@{candidate_commit}",
             ),
         )
-        tm.that(
-            tm.ok(
-                u.Infra.pyproject_conform(
-                    rendered,
-                    workspace=workspace,
-                    required_dev_dependencies=(),
-                    uv_resolution=self._toolchain_resolution(),
-                    options=u.Infra.PyprojectConformOptions(
-                        flext_line=u.Tests.integration(),
-                    ),
-                ),
-            ),
-            eq=rendered,
-        )
+        self._assert_fixed_point(rendered, workspace, self._integration())
 
     def test_candidate_url_must_match_declared_requirement_source(self) -> None:
         """A commit cannot redirect an existing direct requirement to another repo."""
         cli = self._member_ref("flext-cli", "flext-cli")
         foreign = self._member_ref("flext-core", "flext-core")
-        workspace = self._workspace(cli, role=self._ROLE.STANDALONE).model_copy(
-            update={
-                "candidate_dependencies": (
-                    m.Infra.DependencyCommitSourceSpec(
-                        distribution=cli.distribution,
-                        url=foreign.url,
-                        commit="b" * 40,
-                    ),
-                ),
-            },
-        )
-        source = (
+        result = self._conform(
             '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-            f'dependencies = ["{self._inline_requirement(cli)}"]\n'
-        )
-        result = u.Infra.pyproject_conform(
-            source,
-            workspace=workspace,
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(
-                flext_line=u.Tests.integration(),
+            f'dependencies = ["{self._inline_requirement(cli)}"]\n',
+            self._candidate_workspace(
+                cli,
+                candidate=cli,
+                commit="b" * 40,
+                url=foreign.url,
             ),
+            self._integration(),
         )
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", contains="candidate dependency Git URL differs")
@@ -381,28 +227,11 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
     def test_candidate_cannot_invent_a_missing_dependency_origin(self) -> None:
         """A candidate pins an owned source; it cannot create provenance."""
         cli = self._member_ref("flext-cli", "flext-cli")
-        workspace = self._workspace(role=self._ROLE.STANDALONE).model_copy(
-            update={
-                "candidate_dependencies": (
-                    m.Infra.DependencyCommitSourceSpec(
-                        distribution=cli.distribution,
-                        url=cli.url,
-                        commit="c" * 40,
-                    ),
-                ),
-            },
-        )
-        result = u.Infra.pyproject_conform(
-            (
-                '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-                'dependencies = ["flext-cli"]\n'
-            ),
-            workspace=workspace,
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(
-                flext_line=u.Tests.integration(),
-            ),
+        result = self._conform(
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            'dependencies = ["flext-cli"]\n',
+            self._candidate_workspace(candidate=cli, commit="c" * 40),
+            self._integration(),
         )
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", contains="no declared Git provenance")
@@ -410,25 +239,10 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
     def test_candidate_must_be_a_declared_requirement(self) -> None:
         """A stale candidate entry cannot silently leave the resolver unchanged."""
         cli = self._member_ref("flext-cli", "flext-cli")
-        workspace = self._workspace(role=self._ROLE.STANDALONE).model_copy(
-            update={
-                "candidate_dependencies": (
-                    m.Infra.DependencyCommitSourceSpec(
-                        distribution=cli.distribution,
-                        url=cli.url,
-                        commit="d" * 40,
-                    ),
-                ),
-            },
-        )
-        result = u.Infra.pyproject_conform(
+        result = self._conform(
             '[project]\nname = "workspace"\nversion = "0.1.0"\n',
-            workspace=workspace,
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(
-                flext_line=u.Tests.integration(),
-            ),
+            self._candidate_workspace(candidate=cli, commit="d" * 40),
+            self._integration(),
         )
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", contains="not declared requirements: flext-cli")
@@ -449,17 +263,7 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             f'["{infra.distribution} @ git+{infra.url}@{stale_commit}"]\n'
         )
         workspace = self._workspace(infra, role=self._ROLE.STANDALONE)
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=u.Infra.PyprojectConformOptions(
-                    flext_line=u.Tests.integration(),
-                ),
-            ),
-        )
+        rendered = tm.ok(self._conform(source, workspace, self._integration()))
         tm.that(
             u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
             eq=(workspace.repository.distribution,),
@@ -504,17 +308,7 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             "\n[tool.uv.sources]\n"
             f'{unused.distribution} = {{path = "vendor/custom", editable = false}}\n'
         )
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=attached,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=u.Infra.PyprojectConformOptions(
-                    flext_line=u.Tests.integration(),
-                ),
-            ),
-        )
+        rendered = tm.ok(self._conform(source, attached, self._integration()))
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
         tm.that(u.Tests.toml_mapping(uv["workspace"]), eq={"members": []})
@@ -531,32 +325,8 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             u.Tests.toml_strings_at(rendered, "project", "dependencies"),
             eq=(self._inline_requirement(runtime),),
         )
-        detached = tm.ok(
-            u.Infra.pyproject_conform(
-                rendered,
-                workspace=standalone,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=u.Infra.PyprojectConformOptions(
-                    flext_line=u.Tests.integration(),
-                ),
-            ),
-        )
-        tm.that(detached, eq=rendered)
-        tm.that(
-            tm.ok(
-                u.Infra.pyproject_conform(
-                    rendered,
-                    workspace=attached,
-                    required_dev_dependencies=(),
-                    uv_resolution=self._toolchain_resolution(),
-                    options=u.Infra.PyprojectConformOptions(
-                        flext_line=u.Tests.integration(),
-                    ),
-                ),
-            ),
-            eq=rendered,
-        )
+        self._assert_fixed_point(rendered, standalone, self._integration())
+        self._assert_fixed_point(rendered, attached, self._integration())
 
     def test_standalone_preserves_declared_nonlocal_source(self) -> None:
         """Conformance owns local topology, not a user's independent Git source."""
@@ -571,12 +341,7 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
         }
         source = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
         rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=self._workspace(role=self._ROLE.STANDALONE),
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-            ),
+            self._conform(source, self._workspace(role=self._ROLE.STANDALONE)),
         )
         tm.that(
             u.Tests.toml_table_at(rendered, "tool", "uv", "sources"),
@@ -597,14 +362,7 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             f'dependencies = ["{self._inline_requirement(core)}"]\n'
         )
 
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                external,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-            ),
-        )
+        rendered = tm.ok(self._conform(external, workspace))
 
         self._assert_direct_source(rendered, core)
 
@@ -624,14 +382,7 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             f'dependencies = ["{self._inline_requirement(provider)}"]\n'
         )
 
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                publishable_project,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-            ),
-        )
+        rendered = tm.ok(self._conform(publishable_project, workspace))
 
         self._assert_direct_source(rendered, provider)
 
@@ -650,15 +401,11 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
         unmapped = self._member_ref("flext-unmapped", "flext-unmapped")
         requirement = self._inline_requirement(unmapped)
         rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                (
-                    f'[project]\nname = "{consumer.distribution}"\n'
-                    'version = "0.1.0"\n'
-                    f'dependencies = ["{requirement}"]\n'
-                ),
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
+            self._conform(
+                f'[project]\nname = "{consumer.distribution}"\n'
+                'version = "0.1.0"\n'
+                f'dependencies = ["{requirement}"]\n',
+                workspace,
             ),
         )
 
@@ -685,14 +432,7 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             f'dev = ["{self._inline_requirement(core)}"]\n'
         )
 
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                member_source,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-            ),
-        )
+        rendered = tm.ok(self._conform(member_source, workspace))
 
         group = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
@@ -722,14 +462,10 @@ class TestsFlextInfraPyprojectConformTopologyOverlays(
             f"{u.Tests.provider_branch()}"
         )
 
-        result = u.Infra.pyproject_conform(
-            (
-                '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
-                f'dependencies = ["{foreign}"]\n'
-            ),
-            workspace=workspace,
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
+        result = self._conform(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            f'dependencies = ["{foreign}"]\n',
+            workspace,
         )
 
         tm.fail(result, has="internal dependency Git URL differs from manifest")

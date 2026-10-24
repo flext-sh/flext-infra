@@ -20,6 +20,38 @@ class TestsFlextInfraCodegenUpgWorkspace:
     """Upgrade a real workspace with an indexed, uninitialized member."""
 
     @staticmethod
+    def _attach_member(
+        root: Path,
+        tmp_path: Path,
+        name: str,
+    ) -> m.Infra.RepositoryRef:
+        """Attach a governed origin member to ``root``; the caller commits it.
+
+        Args:
+            root: Workspace root receiving the submodule.
+            tmp_path: Test-scoped scratch root hosting the member origin.
+            name: Member repository name, also its checkout path.
+
+        Returns:
+            The member repository reference.
+
+        """
+        member = u.Tests.repository_ref(name, path=Path(name))
+        source = tmp_path / f"{name}-origin"
+        beads = u.Tests.beads_project(member.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            source,
+            member.distribution,
+            beads=u.Tests.BeadsIdentity(
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            ),
+        )
+        u.Tests.attach_managed_submodule(root, source, member.path)
+        return member
+
+    @staticmethod
     def _declared_member_checkout(
         root: Path,
         tmp_path: Path,
@@ -35,41 +67,10 @@ class TestsFlextInfraCodegenUpgWorkspace:
             member repository reference.
 
         """
-        member = u.Tests.repository_ref("fixture-member", path=Path("fixture-member"))
-        source = tmp_path / "member-origin"
-        beads = u.Tests.beads_project(member.name)
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            source,
-            member.distribution,
-            beads=u.Tests.BeadsIdentity(
-                workspace=beads.workspace,
-                database=beads.database,
-                issue_prefix=beads.issue_prefix,
-            ),
-        )
-        branch = u.Tests.checkout_integration(source)
-        u.Tests.git_bootstrap(
+        member = TestsFlextInfraCodegenUpgWorkspace._attach_member(
             root,
-            (
-                "-c",
-                "protocol.file.allow=always",
-                "submodule",
-                "add",
-                "-b",
-                branch,
-                str(source),
-                member.path.as_posix(),
-            ),
-        )
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "config",
-                "-f",
-                c.Infra.GITMODULES,
-                f"submodule.{member.path.as_posix()}.flext-managed",
-                "true",
-            ),
+            tmp_path,
+            "fixture-member",
         )
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, member.path.as_posix()))
         u.Tests.git_bootstrap(root, ("commit", "-m", "Declare real workspace member"))
@@ -93,41 +94,10 @@ class TestsFlextInfraCodegenUpgWorkspace:
             The checkout path of the additionally attached member.
 
         """
-        added = u.Tests.repository_ref("added-member", path=Path("added-member"))
-        added_source = tmp_path / "added-origin"
-        added_beads = u.Tests.beads_project(added.name)
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            added_source,
-            added.distribution,
-            beads=u.Tests.BeadsIdentity(
-                workspace=added_beads.workspace,
-                database=added_beads.database,
-                issue_prefix=added_beads.issue_prefix,
-            ),
-        )
-        added_branch = u.Tests.checkout_integration(added_source)
-        u.Tests.git_bootstrap(
+        added = TestsFlextInfraCodegenUpgWorkspace._attach_member(
             root,
-            (
-                "-c",
-                "protocol.file.allow=always",
-                "submodule",
-                "add",
-                "-b",
-                added_branch,
-                str(added_source),
-                added.path.as_posix(),
-            ),
-        )
-        u.Tests.git_bootstrap(
-            root,
-            (
-                "config",
-                "-f",
-                c.Infra.GITMODULES,
-                f"submodule.{added.path.as_posix()}.flext-managed",
-                "true",
-            ),
+            tmp_path,
+            "added-member",
         )
         u.Tests.commit_git_changes(root, "Declare additional governed member")
         return root / added.path

@@ -6,14 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
-import sys
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra
-from tests import c, m, tm, u
+from tests import c, tm, u
+from tests.unit.codemod.declaration_relocation_support import (
+    TestsFlextInfraDeclarationRelocationSupport,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,39 +50,17 @@ class TestsFlextInfraSelfFacadeCutover:
                 "description='Consumer values')\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                )
-            )
+        TestsFlextInfraDeclarationRelocationSupport.write(sources)
+        edits = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
         tm.that(edits, empty=True)
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}._models.consumer import Consumer; "
-                        "assert Consumer().values == []; "
-                        "print('external declaration accepted')"
-                    ),
-                ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(
-                    env={
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                            root / c.Infra.DEFAULT_SRC_DIR
-                        )
-                    }
-                ),
-            )
+        lines = u.Tests.run_lazy_init_probe(
+            f"from {package.name}._models.consumer import Consumer; "
+            "assert Consumer().values == []; "
+            "print('external declaration accepted')",
+            python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
+            cwd=root,
         )
-        tm.that(result.stdout.strip(), eq="external declaration accepted")
+        tm.that(lines, eq=["external declaration accepted"])
 
     @staticmethod
     @pytest.mark.parametrize("tier", ["private", "public", "examples"])
@@ -117,52 +95,29 @@ class TestsFlextInfraSelfFacadeCutover:
             'TypeForm(Bag[str])), description="Consumer values")\n'
         )
         consumer.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources={consumer: source},
-                )
-            )
-            tm.that(edits, empty=False)
-            for edit in edits:
-                tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
-            remaining = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources={consumer: consumer.read_text(encoding="utf-8")},
-                )
-            )
-        tm.that(remaining, empty=True)
-        output = tm.ok(
-            u.Cli.run(
-                [
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {module} import Consumer; "
-                        "first, second = Consumer(), Consumer(); "
-                        "first.values.append('consumer'); "
-                        "assert second.values == []; "
-                        "assert Consumer.model_validate_json("
-                        "first.model_dump_json()).values == first.values; "
-                        "print('declaration contract accepted')"
-                    ),
-                ],
-                cwd=root,
-                options=m.Cli.ProcessOptions(
-                    env={
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: os.pathsep.join((
-                            str(root / c.Infra.DEFAULT_SRC_DIR),
-                            str(root),
-                        ))
-                    }
-                ),
-            )
+        edits = tm.ok(
+            TestsFlextInfraDeclarationRelocationSupport.plan(root, {consumer: source})
         )
-        tm.that(output.stdout.strip(), eq="declaration contract accepted")
+        tm.that(edits, empty=False)
+        for edit in edits:
+            tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
+        written = {consumer: consumer.read_text(encoding="utf-8")}
+        remaining = tm.ok(
+            TestsFlextInfraDeclarationRelocationSupport.plan(root, written)
+        )
+        tm.that(remaining, empty=True)
+        lines = u.Tests.run_lazy_init_probe(
+            f"from {module} import Consumer; "
+            "first, second = Consumer(), Consumer(); "
+            "first.values.append('consumer'); "
+            "assert second.values == []; "
+            "assert Consumer.model_validate_json("
+            "first.model_dump_json()).values == first.values; "
+            "print('declaration contract accepted')",
+            python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR), str(root)),
+            cwd=root,
+        )
+        tm.that(lines, eq=["declaration contract accepted"])
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -216,60 +171,32 @@ class TestsFlextInfraSelfFacadeCutover:
                 "__all__ = ('Consumer', 'VALUE', 'TEXT', 'shadow')\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-            tm.that(edits, empty=False)
-            for edit in edits:
-                tm.ok(
-                    u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source),
-                )
-                sources[edit.file_path] = edit.updated_source
-            remaining = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-        tm.that(remaining, empty=True)
-        output = tm.ok(
-            u.Cli.run(
-                [
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name} import u; "
-                        f"from {package.name}._utilities.consumer import "
-                        "Consumer, VALUE, TEXT, shadow; "
-                        "assert VALUE == 'MODULE'; "
-                        "assert Consumer.value == 'CLASS'; "
-                        "assert Consumer.render() == 'DEFAULT'; "
-                        "assert Consumer.render.__doc__ == "
-                        "'Documented public operation.'; "
-                        "assert shadow(u) == 'LOCAL'; "
-                        "assert TEXT == 'u.render stays a string'; "
-                        "print('consumer contract accepted')"
-                    ),
-                ],
-                cwd=root,
-                options=m.Cli.ProcessOptions(
-                    env={
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                            root / c.Infra.DEFAULT_SRC_DIR,
-                        ),
-                    },
-                ),
-            ),
+        TestsFlextInfraDeclarationRelocationSupport.write(sources)
+        edits = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
+        tm.that(edits, empty=False)
+        for edit in edits:
+            tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
+            sources[edit.file_path] = edit.updated_source
+        remaining = tm.ok(
+            TestsFlextInfraDeclarationRelocationSupport.plan(root, sources)
         )
-        tm.that(output.stdout.strip(), eq="consumer contract accepted")
+        tm.that(remaining, empty=True)
+        lines = u.Tests.run_lazy_init_probe(
+            f"from {package.name} import u; "
+            f"from {package.name}._utilities.consumer import "
+            "Consumer, VALUE, TEXT, shadow; "
+            "assert VALUE == 'MODULE'; "
+            "assert Consumer.value == 'CLASS'; "
+            "assert Consumer.render() == 'DEFAULT'; "
+            "assert Consumer.render.__doc__ == "
+            "'Documented public operation.'; "
+            "assert shadow(u) == 'LOCAL'; "
+            "assert TEXT == 'u.render stays a string'; "
+            "print('consumer contract accepted')",
+            python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
+            cwd=root,
+        )
+        tm.that(lines, eq=["consumer contract accepted"])
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -321,14 +248,8 @@ class TestsFlextInfraSelfFacadeCutover:
             owner: f"class Owner:\n{method}__all__ = ('Owner',)\n",
             consumer: source,
         }
-        for path, content in sources.items():
-            path.write_text(content, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            result = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
+        TestsFlextInfraDeclarationRelocationSupport.write(sources)
+        result = TestsFlextInfraDeclarationRelocationSupport.plan(root, sources)
         tm.fail(result, has=expected)
         tm.that(isinstance(result.exception, ValueError), eq=True)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)

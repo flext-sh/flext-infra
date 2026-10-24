@@ -72,6 +72,39 @@ class TestsFlextInfraDepsGate:
         return root
 
     @staticmethod
+    def _check(root: Path, reports_dir: Path) -> m.Infra.GateExecution:
+        """Run the registered dependency gate's check over ``root``.
+
+        Returns:
+            The gate execution.
+
+        """
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+        return gate.check(
+            root,
+            m.Infra.GateContext(repository_root=root, reports_dir=reports_dir),
+        )
+
+    @staticmethod
+    def _repair_context(
+        root: Path,
+        reports_dir: Path,
+        inputs: m.Infra.RuntimeDependencyInputs,
+    ) -> m.Infra.GateContext:
+        """Bind the supplier inputs to a repair-enabled gate context.
+
+        Returns:
+            The gate context.
+
+        """
+        return m.Infra.GateContext(
+            repository_root=root,
+            reports_dir=reports_dir,
+            apply_fixes=True,
+            runtime_dependency_inputs=inputs,
+        )
+
+    @staticmethod
     def _dependency_inputs(root: Path) -> m.Infra.RuntimeDependencyInputs:
         """Capture a real installed supplier and a target-owned native lock input.
 
@@ -142,13 +175,7 @@ class TestsFlextInfraDepsGate:
             "import requests\n\n\ndef handler() -> int:\n"
             "    return len(requests.get)\n",
         )
-        gate = tm.not_none(
-            FlextInfraGateRegistry.default().create(c.Infra.DEPS, root),
-        )
-        result = gate.check(
-            root,
-            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "reports"),
-        )
+        result = TestsFlextInfraDepsGate._check(root, tmp_path / "reports")
 
         tm.that(result.result.passed, eq=False)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
@@ -167,13 +194,7 @@ class TestsFlextInfraDepsGate:
             "import requests\nimport yaml\n\n\ndef handler() -> str:\n"
             "    return yaml.safe_dump(requests.models.__name__)\n",
         )
-        gate = tm.not_none(
-            FlextInfraGateRegistry.default().create(c.Infra.DEPS, root),
-        )
-        result = gate.check(
-            root,
-            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "reports"),
-        )
+        result = TestsFlextInfraDepsGate._check(root, tmp_path / "reports")
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
@@ -353,11 +374,10 @@ class TestsFlextInfraDepsGate:
         )
         before = pyproject.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        context = m.Infra.GateContext(
-            repository_root=root,
-            reports_dir=tmp_path / "reports",
-            apply_fixes=True,
-            runtime_dependency_inputs=inputs,
+        context = TestsFlextInfraDepsGate._repair_context(
+            root,
+            tmp_path / "reports",
+            inputs,
         )
 
         repaired = gate.fix(root, context)
@@ -387,11 +407,10 @@ class TestsFlextInfraDepsGate:
         )
         before_lock = inputs.lock.path.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        context = m.Infra.GateContext(
-            repository_root=root,
-            reports_dir=tmp_path / "reports",
-            apply_fixes=True,
-            runtime_dependency_inputs=inputs,
+        context = TestsFlextInfraDepsGate._repair_context(
+            root,
+            tmp_path / "reports",
+            inputs,
         )
 
         repaired = gate.fix(root, context)
@@ -503,12 +522,8 @@ class TestsFlextInfraDepsGate:
             pyproject,
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
         ).unwrap()
-        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
 
-        result = gate.check(
-            root,
-            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "reports"),
-        )
+        result = TestsFlextInfraDepsGate._check(root, tmp_path / "reports")
 
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(result.result.passed, eq=False)
@@ -519,11 +534,7 @@ class TestsFlextInfraDepsGate:
         """The real scanner's configuration failure is not an empty findings run."""
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import os\n")
         (root / c.PYPROJECT_FILENAME).write_text("[project", encoding="utf-8")
-        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        result = gate.check(
-            root,
-            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path),
-        )
+        result = TestsFlextInfraDepsGate._check(root, tmp_path)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
         assert result.issues
@@ -576,13 +587,7 @@ class TestsFlextInfraDepsGate:
         stale.parent.mkdir()
         stale.write_text("[]", encoding="utf-8")
         (root / c.PYPROJECT_FILENAME).unlink()
-        gate = tm.not_none(
-            FlextInfraGateRegistry.default().create(c.Infra.DEPS, root),
-        )
-        result = gate.check(
-            root,
-            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path),
-        )
+        result = TestsFlextInfraDepsGate._check(root, tmp_path)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
         assert result.issues

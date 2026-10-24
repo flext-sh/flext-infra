@@ -20,25 +20,41 @@ class TestsFlextInfraRuffProjectExemptions:
     """A project inherits exactly the declared fleet exemptions."""
 
     @staticmethod
-    def test_project_map_is_the_fleet_map(tmp_path: Path) -> None:
-        """The projected per-file-ignores equal the fleet map, unfiltered."""
-        fleet = config.Infra.tooling.tools.ruff.lint.per_file_ignores
-        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-            u.Tests.toml_payload('[project]\nname = "fleet-exemptions"\n'),
-        )
+    def _project(
+        phase: FlextInfraEnsureRuffConfigPhase,
+        tmp_path: Path,
+        name: str,
+    ) -> t.Pair[t.MutableJsonMapping, t.MutableJsonMapping | None]:
+        """Project the phase onto a fresh payload.
 
-        FlextInfraEnsureRuffConfigPhase(
-            config.Infra.tooling,
-            u.Infra.empty_snapshot().resolution.artifacts.Ruff,
-        ).apply_payload(
+        Returns:
+            The payload and its projected per-file-ignores table.
+
+        """
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Tests.toml_payload(f'[project]\nname = "{name}"\n'),
+        )
+        phase.apply_payload(
             payload,
             path=tmp_path / c.PYPROJECT_FILENAME,
             analysis_exclusions=(),
         )
-
-        projected = u.Cli.toml_mapping_path(
+        return payload, u.Cli.toml_mapping_path(
             payload,
             (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
+        )
+
+    @staticmethod
+    def test_project_map_is_the_fleet_map(tmp_path: Path) -> None:
+        """The projected per-file-ignores equal the fleet map, unfiltered."""
+        fleet = config.Infra.tooling.tools.ruff.lint.per_file_ignores
+        _, projected = TestsFlextInfraRuffProjectExemptions._project(
+            FlextInfraEnsureRuffConfigPhase(
+                config.Infra.tooling,
+                u.Infra.empty_snapshot().resolution.artifacts.Ruff,
+            ),
+            tmp_path,
+            "fleet-exemptions",
         )
         projected_rules: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
         for pattern, rules in dict(projected or {}).items():
@@ -59,18 +75,11 @@ class TestsFlextInfraRuffProjectExemptions:
         local = m.Infra.ProjectRuffConfig(
             per_file_ignores={pattern: ("invalid-function-name",)},
         )
-        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-            u.Tests.toml_payload('[project]\nname = "project-exemptions"\n'),
-        )
         phase = FlextInfraEnsureRuffConfigPhase(config.Infra.tooling, local)
-        phase.apply_payload(
-            payload,
-            path=tmp_path / c.PYPROJECT_FILENAME,
-            analysis_exclusions=(),
-        )
-        projected = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
+        payload, projected = TestsFlextInfraRuffProjectExemptions._project(
+            phase,
+            tmp_path,
+            "project-exemptions",
         )
         tm.that(projected is not None, eq=True)
         assert projected is not None

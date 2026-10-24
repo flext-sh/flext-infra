@@ -8,11 +8,84 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, t, tm, u
+import pytest
+
+from flext_infra import infra
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraDeclarationRelocationSupport:
-    """Seed a real lazy-init package with relocatable family declarations."""
+    """Seed a real lazy-init package and plan its declaration relocation."""
+
+    @staticmethod
+    def write(sources: t.MappingKV[Path, str]) -> None:
+        """Write every source inventory entry to its path."""
+        for path, source in sources.items():
+            path.write_text(source, encoding="utf-8")
+
+    @staticmethod
+    def plan(
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan the declaration-relocation phase over ``sources``.
+
+        Returns:
+            The planning result for ``sources``.
+
+        """
+        with infra.rope_workspace(root) as rope:
+            return u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                rope_workspace=rope,
+                sources=sources,
+            )
+
+    @staticmethod
+    def findings(
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.DeclarationRelocationFinding]:
+        """Report the declarations of ``sources`` whose owner stays unresolved.
+
+        Returns:
+            One finding per unresolved payload declaration.
+
+        """
+        with infra.rope_workspace(root) as rope:
+            return u.Infra.declaration_relocation_findings(rope, sources)
+
+    @classmethod
+    def refuses(
+        cls,
+        root: Path,
+        sources: t.MappingKV[Path, str],
+        match: str,
+    ) -> None:
+        """Require planning to refuse ``sources`` without touching the disk."""
+        with pytest.raises(ValueError, match=match):
+            cls.plan(root, sources)
+        for path, source in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
+    @classmethod
+    def models_edit(
+        cls,
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> m.Infra.SemanticMigrationEdit:
+        """Plan ``sources`` and return the edit landing in the models family.
+
+        Returns:
+            The planned edit of the relocated payload's model owner.
+
+        """
+        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        return next(
+            edit
+            for edit in tm.ok(cls.plan(root, sources))
+            if edit.file_path.parent.name == directory
+        )
 
     @staticmethod
     def seed(

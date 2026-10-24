@@ -17,6 +17,19 @@ from tests import c, m, tm, u
 pytestmark = pytest.mark.slow
 
 
+def _stale_group_requirement() -> tuple[str, str, str]:
+    """Return the infra requirement, its retired-line twin, and the provider branch.
+
+    Returns:
+        The infra requirement, its retired-line twin, and the provider branch.
+
+    """
+    provider = u.Tests.provider()
+    distribution = config.Infra.codegen.infra_repository.distribution
+    requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
+    return requirement, f"{requirement}@retired-member-line", u.Tests.provider_branch()
+
+
 class TestsFlextInfraCodegenCatalogExtensions:
     """Prove generic extensions without a repository registry or second manifest."""
 
@@ -152,10 +165,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
     ) -> None:
         """Stale member projections cannot compete with the authored family line."""
         provider = u.Tests.provider()
-        branch = u.Tests.provider_branch()
-        distribution = config.Infra.codegen.infra_repository.distribution
-        requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
-        stale = f"{requirement}@retired-member-line"
+        requirement, stale, branch = _stale_group_requirement()
         source = (
             '[project]\nname = "consumer"\nversion = "0.1.0"\n'
             f'dependencies = ["{requirement}@{branch}"]\n'
@@ -232,11 +242,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         comment: str,
     ) -> None:
         """Ownership is per native occurrence, not per value or comment substring."""
-        provider = u.Tests.provider()
-        branch = u.Tests.provider_branch()
-        distribution = config.Infra.codegen.infra_repository.distribution
-        requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
-        stale = f"{requirement}@retired-member-line"
+        requirement, stale, branch = _stale_group_requirement()
         source = (
             '[project]\nname = "consumer"\nversion = "0.1.0"\n'
             f'dependencies = ["{requirement}@{branch}"]\n'

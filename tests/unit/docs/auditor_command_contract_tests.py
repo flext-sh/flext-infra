@@ -179,24 +179,6 @@ Make surfaces and documentation are changed at their canonical owner.
         tm.that(issues, eq=[])
 
     @staticmethod
-    def test_rejects_invented_make_selectors() -> None:
-        """Test rejects invented make selectors."""
-        content = """```bash
-make test PROJECT=flext-demo MATCH=unit
-```
-"""
-
-        issues = u.Infra.docs_command_contract_content_issues(
-            content,
-            relative_path="docs/guides/testing.md",
-            effective_verbs=config.Infra.codegen.make.verbs,
-        )
-
-        tm.that(len(issues), eq=1)
-        tm.that(issues[0].issue_type, eq="command_contract")
-        tm.that(issues[0].message, has="invented Make selector")
-
-    @staticmethod
     @pytest.mark.parametrize("value", ["Y", "N", "", "invalid"])
     def test_rejects_legacy_apply_flag_on_a_declared_verb(value: str) -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
@@ -237,38 +219,41 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(len(bad), eq=len(config.Infra.codegen.make.verbs))
 
     @staticmethod
-    def test_rejects_raw_pytest_execution() -> None:
-        """Test rejects raw pytest execution."""
-        content = """```bash
-PYTHONPATH=src python -m pytest tests/unit
-```
-"""
-
+    @pytest.mark.parametrize(
+        ("command", "relative_path", "message"),
+        [
+            (
+                "make test PROJECT=flext-demo MATCH=unit",
+                "docs/guides/testing.md",
+                "invented Make selector",
+            ),
+            (
+                "PYTHONPATH=src python -m pytest tests/unit",
+                "docs/guides/testing.md",
+                "bypasses `make test`",
+            ),
+            (
+                "ruff check src",
+                "docs/standards/development.md",
+                "bypasses the root Make dispatcher",
+            ),
+        ],
+    )
+    def test_rejects_commands_that_bypass_the_make_contract(
+        command: str,
+        relative_path: str,
+        message: str,
+    ) -> None:
+        """Invented selectors, raw pytest, and direct tools are each one issue."""
         issues = u.Infra.docs_command_contract_content_issues(
-            content,
-            relative_path="docs/guides/testing.md",
+            f"```bash\n{command}\n```\n",
+            relative_path=relative_path,
             effective_verbs=config.Infra.codegen.make.verbs,
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="bypasses `make test`")
-
-    @staticmethod
-    def test_rejects_direct_tool_execution() -> None:
-        """Test rejects direct tool execution."""
-        content = """```bash
-ruff check src
-```
-"""
-
-        issues = u.Infra.docs_command_contract_content_issues(
-            content,
-            relative_path="docs/standards/development.md",
-            effective_verbs=config.Infra.codegen.make.verbs,
-        )
-
-        tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="bypasses the root Make dispatcher")
+        tm.that(issues[0].issue_type, eq="command_contract")
+        tm.that(issues[0].message, has=message)
 
     @staticmethod
     def test_inline_command_requires_an_execution_directive() -> None:

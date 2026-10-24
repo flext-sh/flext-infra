@@ -6,14 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, m
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p
 
 
 class TestsFlextInfraRefactorImportNormalizationSupport:
@@ -85,3 +88,58 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         )
         tm.that(normalized is not None, eq=True)
         return normalized or ""
+
+    @staticmethod
+    def _publish(project: Path, module: Path, source: str) -> str:
+        """Write the normalized module, or its source when already normal.
+
+        Returns:
+            The text written to ``module``.
+
+        """
+        normalized = FlextInfraImportNormalization.normalize_source(
+            project_root=project,
+            file_path=module,
+            source=source,
+        )
+        text = source if normalized is None else normalized
+        module.write_text(text, encoding="utf-8")
+        return text
+
+    @staticmethod
+    def _assert_fixed_point(project: Path, module: Path) -> None:
+        """Require a second normalization pass over ``module`` to change nothing."""
+        tm.that(
+            FlextInfraImportNormalization.normalize_source(
+                project_root=project,
+                file_path=module,
+                source=module.read_text(encoding="utf-8"),
+            ),
+            eq=None,
+        )
+
+    @staticmethod
+    def _run_python(
+        project: Path,
+        *arguments: str,
+        pythonpath: Path | None = None,
+    ) -> p.Cli.CommandOutput:
+        """Run the interpreter in ``project`` and require a successful process.
+
+        Returns:
+            The captured command output.
+
+        """
+        result = tm.ok(
+            u.Cli.run(
+                (sys.executable, *arguments),
+                cwd=project,
+                options=(
+                    None
+                    if pythonpath is None
+                    else m.Cli.ProcessOptions(env={"PYTHONPATH": str(pythonpath)})
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        return result

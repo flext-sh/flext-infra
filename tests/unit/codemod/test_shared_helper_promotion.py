@@ -7,15 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, t, tm, u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class TestsFlextInfraSharedHelperPromotion:
@@ -97,24 +100,115 @@ class TestsFlextInfraSharedHelperPromotion:
 
     @staticmethod
     def _run(root: Path, probe: str) -> str:
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join([str(root), *sys.path])
-        outcome = tm.ok(
-            u.Cli.run(
-                [sys.executable, "-c", probe],
+        return "\n".join(
+            u.Tests.run_lazy_init_probe(
+                probe,
+                python_paths=(str(root), *sys.path),
                 cwd=root,
-                options=m.Cli.ProcessOptions(env=env),
             ),
         )
-        return outcome.stdout.strip()
+
+    @staticmethod
+    def _sources(root: Path) -> t.MutableMappingKV[Path, str]:
+        """Snapshot every python source under the workspace.
+
+        Returns:
+            Each python path mapped to its current text.
+
+        """
+        return {path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")}
+
+    @staticmethod
+    def _unchanged(sources: t.MappingKV[Path, str]) -> None:
+        """Prove planning left every snapshotted source byte-identical."""
+        for path, original in sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=original)
+
+    @staticmethod
+    def _plan(
+        rope: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Plan the class-nesting cutover over the given sources.
+
+        Returns:
+            The planned file edits.
+
+        """
+        return tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources=sources,
+            ),
+        )
+
+    def _converge(
+        self,
+        rope: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> tuple[t.VariadicTuple[m.Infra.SemanticMigrationEdit], t.MappingKV[Path, str]]:
+        """Plan a non-empty cutover and prove it is a fixed point.
+
+        Returns:
+            The planned edits and the proposed post-edit sources.
+
+        """
+        edits = self._plan(rope, sources)
+        tm.that(edits, empty=False)
+        proposed = dict(sources)
+        proposed.update({edit.file_path: edit.updated_source for edit in edits})
+        tm.that(self._plan(rope, proposed), empty=True)
+        return edits, proposed
+
+    def _publish(
+        self,
+        root: Path,
+        edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit],
+    ) -> None:
+        """Publish planned edits through the codegen transaction and re-materialize."""
+        plans = tuple(
+            m.Infra.SemanticFilePlan(
+                project=root,
+                path=edit.file_path,
+                before=(
+                    state := tm.ok(
+                        u.Cli.atomic_read_binary_file_state(
+                            edit.file_path,
+                            required=True,
+                        ),
+                    )
+                ),
+                desired_content=edit.updated_source.encode(),
+                desired_mode=state.mode,
+                changes=edit.changes,
+            )
+            for edit in edits
+        )
+        tm.ok(
+            FlextInfraSemanticPublication.publish_semantic_file_plans(
+                plans,
+                repository_root=root,
+            ),
+        )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+
+    def _rejects(self, root: Path, match: str) -> None:
+        """Prove planning escapes loud with ``match`` and changes no source."""
+        sources = self._sources(root)
+        with (
+            infra.rope_workspace(root) as rope,
+            pytest.raises(ValueError, match=match),
+        ):
+            self._plan(rope, sources)
+        self._unchanged(sources)
 
     @staticmethod
     def _seed_quoted_collision(root: Path, helper: str) -> None:
         """Append a colliding quoted annotation binding to the quoted module."""
         quoted = root / c.Infra.DIR_TESTS / "unit" / "quoted.py"
         with infra.rope_workspace(root) as rope:
-            resource = rope.resource(quoted)
-            assert resource is not None
+            resource = tm.not_none(rope.resource(quoted))
             _, binding = u.Infra.import_binding(
                 rope.rope_project,
                 u.Infra.resolve_pymodule(
@@ -128,10 +222,11 @@ class TestsFlextInfraSharedHelperPromotion:
         primary = ast.parse(binding, mode="eval").body
         while isinstance(primary, ast.Attribute):
             primary = primary.value
-        assert isinstance(primary, ast.Name)
+        primary_name = ast.unparse(primary)
+        tm.that(primary_name.isidentifier(), truth=True)
         quoted.write_text(
             quoted.read_text(encoding="utf-8")
-            + f"\nclass Local:\n    {primary.id} = str\n    value: 'Shared'\n",
+            + f"\nclass Local:\n    {primary_name} = str\n    value: 'Shared'\n",
             encoding="utf-8",
         )
 
@@ -181,72 +276,17 @@ class TestsFlextInfraSharedHelperPromotion:
                 "assert get_type_hints(Local)['value'] is Helper\n"
             )
         before = self._run(root, probe)
-        sources = {
-            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
-        }
+        if lexical_collision:
+            # A collision is a planning defect: it escapes loud, before any
+            # effect, instead of being folded into a failed result.
+            self._rejects(root, "shadowed quoted type destination")
+            tm.that(self._run(root, probe), eq=before)
+            return
+        sources = self._sources(root)
         with infra.rope_workspace(root) as rope:
-            if lexical_collision:
-                # A collision is a planning defect: it escapes loud, before any
-                # effect, instead of being folded into a failed result.
-                with pytest.raises(
-                    ValueError,
-                    match="shadowed quoted type destination",
-                ):
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                        rope_workspace=rope,
-                        sources=sources,
-                    )
-                for path, original in sources.items():
-                    tm.that(path.read_text(encoding="utf-8"), eq=original)
-                tm.that(self._run(root, probe), eq=before)
-                return
-            result = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=sources,
-            )
-            edits = tm.ok(result)
-            tm.that(edits, empty=False)
-            proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in edits})
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                        rope_workspace=rope,
-                        sources=proposed,
-                    ),
-                ),
-                empty=True,
-            )
-        for path, original in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=original)
-        plans = tuple(
-            m.Infra.SemanticFilePlan(
-                project=root,
-                path=edit.file_path,
-                before=(
-                    state := tm.ok(
-                        u.Cli.atomic_read_binary_file_state(
-                            edit.file_path,
-                            required=True,
-                        ),
-                    )
-                ),
-                desired_content=edit.updated_source.encode(),
-                desired_mode=state.mode,
-                changes=edit.changes,
-            )
-            for edit in edits
-        )
-        tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
-                plans,
-                repository_root=root,
-            ),
-        )
-        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+            edits, _ = self._converge(rope, sources)
+        self._unchanged(sources)
+        self._publish(root, edits)
         tm.that(self._run(root, probe), eq=before)
         identity = (
             "from typing import get_type_hints\n"
@@ -281,22 +321,10 @@ class TestsFlextInfraSharedHelperPromotion:
         else:
             (root / c.Infra.DIR_TESTS / "unit" / "consumer.py").unlink()
             (root / c.Infra.DIR_TESTS / "unit" / "quoted.py").unlink()
-        sources = {
-            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
-        }
+        sources = self._sources(root)
         with infra.rope_workspace(root) as rope:
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                        rope_workspace=rope,
-                        sources=sources,
-                    ),
-                ),
-                empty=True,
-            )
-        for path, original in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=original)
+            tm.that(self._plan(rope, sources), empty=True)
+        self._unchanged(sources)
 
     def test_private_support_with_nested_behavior_moves_to_utilities(
         self,
@@ -321,42 +349,10 @@ class TestsFlextInfraSharedHelperPromotion:
             encoding="utf-8",
         )
         (root / c.Infra.DIR_TESTS / "unit" / "quoted.py").unlink()
-        sources = {
-            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
-        }
+        sources = self._sources(root)
         with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-        plans = tuple(
-            m.Infra.SemanticFilePlan(
-                project=root,
-                path=edit.file_path,
-                before=(
-                    state := tm.ok(
-                        u.Cli.atomic_read_binary_file_state(
-                            edit.file_path,
-                            required=True,
-                        ),
-                    )
-                ),
-                desired_content=edit.updated_source.encode(),
-                desired_mode=state.mode,
-                changes=edit.changes,
-            )
-            for edit in edits
-        )
-        tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
-                plans,
-                repository_root=root,
-            ),
-        )
-        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+            edits = self._plan(rope, sources)
+        self._publish(root, edits)
         tm.that(
             self._run(
                 root,
@@ -374,26 +370,12 @@ class TestsFlextInfraSharedHelperPromotion:
     ) -> None:
         """Test two declared utilities owners fail without changing consumers."""
         root, _, _ = self._workspace(tmp_path, reexport=True)
-        tier = root / c.Infra.DIR_TESTS
         u.Tests.write_lazy_init_namespace_module(
-            tier / "other.py",
+            root / c.Infra.DIR_TESTS / "other.py",
             class_name="OtherUtilities",
             alias="u",
         )
-        sources = {
-            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
-        }
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="requires one utilities facade"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        for path, original in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=original)
+        self._rejects(root, "requires one utilities facade")
 
     def test_destination_import_of_the_moving_helper_is_replaced(
         self,
@@ -407,37 +389,16 @@ class TestsFlextInfraSharedHelperPromotion:
             imported + "\n" + utilities.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-        sources = {
-            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
-        }
+        sources = self._sources(root)
         with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-            proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in edits})
-            tm.that(
-                proposed[utilities],
-                has=f"class {helper}",
-                lacks=imported.strip(),
-            )
-            tm.that(proposed[source], lacks=f"class {helper}")
-            tm.that(
-                tm.ok(
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                        rope_workspace=rope,
-                        sources=proposed,
-                    ),
-                ),
-                empty=True,
-            )
-        for path, original in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=original)
+            _, proposed = self._converge(rope, sources)
+        tm.that(
+            proposed[utilities],
+            has=f"class {helper}",
+            lacks=imported.strip(),
+        )
+        tm.that(proposed[source], lacks=f"class {helper}")
+        self._unchanged(sources)
 
     def test_destination_homonym_still_rejects_the_move(
         self,
@@ -452,17 +413,4 @@ class TestsFlextInfraSharedHelperPromotion:
             "        return 'other'\n\n" + utilities.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-        sources = {
-            path: path.read_text(encoding="utf-8") for path in root.rglob("*.py")
-        }
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="already binds"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        for path, original in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=original)
+        self._rejects(root, "already binds")

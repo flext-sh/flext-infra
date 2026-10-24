@@ -6,18 +6,57 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, u
-from tests import tm
+from flext_infra import c, infra, m, p, u
+from tests import t, tm
 
 
 class TestsFlextInfraApiAliasCutover:
     """Exercise owner-first alias removal only through ``u.Infra``."""
 
-    @staticmethod
+    _OWNER = "flext-sample/src/flext_sample/api.py"
+    _CONSUMER = "flext-sample/tests/test_api.py"
+    _OWNER_SOURCE = (
+        "class FlextSample:\n"
+        "    pass\n\n"
+        "sample = FlextSample\n"
+        '__all__ = ["FlextSample", "sample"]\n'
+    )
+
+    @classmethod
+    def _plan(
+        cls,
+        tmp_path: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan the compatibility-alias cutover of the sample owner.
+
+        Returns:
+            The planning result for ``sources``.
+
+        """
+        finding = m.Infra.ModOccurrence(
+            rule_file="ban-compat-alias.yml",
+            rule_id="ban-compat-alias",
+            repository="flext-sample",
+            file=Path(cls._OWNER),
+            range={},
+            text="sample = FlextSample",
+            actionable=False,
+            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
+        )
+        with infra.rope_workspace(tmp_path) as rope:
+            return u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                rope_workspace=rope,
+                sources=sources,
+                findings=(finding,),
+            )
+
     @pytest.mark.parametrize(
         "consumer_source",
         [
@@ -32,40 +71,18 @@ class TestsFlextInfraApiAliasCutover:
         ],
     )
     def test_rewires_consumer_before_removing_owner(
+        self,
         tmp_path: Path,
         consumer_source: str,
     ) -> None:
         """Plan the complete owner/export/import/reference cutover together."""
-        owner = tmp_path / "flext-sample/src/flext_sample/api.py"
-        consumer = tmp_path / "flext-sample/tests/test_api.py"
+        owner = tmp_path / self._OWNER
+        consumer = tmp_path / self._CONSUMER
         sources = {
-            owner: (
-                "class FlextSample:\n"
-                "    pass\n\n"
-                "sample = FlextSample\n"
-                "facade = sample\n"
-                '__all__ = ["FlextSample", "sample"]\n'
-            ),
+            owner: self._OWNER_SOURCE.replace("__all__", "facade = sample\n__all__"),
             consumer: consumer_source,
         }
-        finding = m.Infra.ModOccurrence(
-            rule_file="ban-compat-alias.yml",
-            rule_id="ban-compat-alias",
-            repository="flext-sample",
-            file=owner.relative_to(tmp_path),
-            range={},
-            text="sample = FlextSample",
-            actionable=False,
-            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-        )
-
-        with infra.rope_workspace(tmp_path) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                rope_workspace=rope,
-                sources=sources,
-                findings=(finding,),
-            )
+        planned = self._plan(tmp_path, sources)
         tm.ok(planned)
         edits = planned.value
         by_path = {edit.file_path: edit.updated_source for edit in edits}
@@ -78,7 +95,6 @@ class TestsFlextInfraApiAliasCutover:
         tm.that(by_path[consumer], has="facade = FlextSample")
         tm.that(by_path[consumer], lacks="import sample")
 
-    @staticmethod
     @pytest.mark.parametrize(
         ("module", "receiver"),
         [
@@ -88,13 +104,14 @@ class TestsFlextInfraApiAliasCutover:
         ],
     )
     def test_module_attributes_require_import_identity(
+        self,
         tmp_path: Path,
         module: str,
         receiver: str,
     ) -> None:
         """Rewrite proven module reads without changing shadowed or literal uses."""
-        owner = tmp_path / "flext-sample/src/flext_sample/api.py"
-        consumer = tmp_path / "flext-sample/tests/test_api.py"
+        owner = tmp_path / self._OWNER
+        consumer = tmp_path / self._CONSUMER
         binding = receiver.split(".", maxsplit=1)[0]
         unchanged = (
             f"def shadowed({binding}):\n"
@@ -128,12 +145,7 @@ class TestsFlextInfraApiAliasCutover:
             f"    return getattr({receiver}, attribute)\n"
         )
         sources = {
-            owner: (
-                "class FlextSample:\n"
-                "    pass\n\n"
-                "sample = FlextSample\n"
-                '__all__ = ["FlextSample", "sample"]\n'
-            ),
+            owner: self._OWNER_SOURCE,
             consumer: (
                 f"import {module}\n"
                 "from typing import Annotated, Literal\n\n"
@@ -143,44 +155,21 @@ class TestsFlextInfraApiAliasCutover:
                 f"    return {receiver}.sample\n\n" + unchanged
             ),
         }
-        finding = m.Infra.ModOccurrence(
-            rule_file="ban-compat-alias.yml",
-            rule_id="ban-compat-alias",
-            repository="flext-sample",
-            file=owner.relative_to(tmp_path),
-            range={},
-            text="sample = FlextSample",
-            actionable=False,
-            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
+        planned = self._plan(tmp_path, sources)
+        tm.ok(planned)
+        rewritten = {edit.file_path: edit.updated_source for edit in planned.value}
+        tm.that(len(rewritten), eq=2)
+        tm.that(rewritten[consumer], has=f"facade = {receiver}.FlextSample")
+        tm.that(
+            rewritten[consumer],
+            has=f"    import {module}\n    return {receiver}.FlextSample",
         )
-
-        with infra.rope_workspace(tmp_path) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                rope_workspace=rope,
-                sources=sources,
-                findings=(finding,),
-            )
-            tm.ok(planned)
-            rewritten = {edit.file_path: edit.updated_source for edit in planned.value}
-            tm.that(len(rewritten), eq=2)
-            tm.that(rewritten[consumer], has=f"facade = {receiver}.FlextSample")
-            tm.that(
-                rewritten[consumer],
-                has=f"    import {module}\n    return {receiver}.FlextSample",
-            )
-            tm.that(rewritten[consumer], has=unchanged)
-            tm.that(rewritten[owner], lacks="sample = FlextSample")
-            converged = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                rope_workspace=rope,
-                sources=rewritten,
-                findings=(finding,),
-            )
+        tm.that(rewritten[consumer], has=unchanged)
+        tm.that(rewritten[owner], lacks="sample = FlextSample")
+        converged = self._plan(tmp_path, rewritten)
         tm.ok(converged)
         tm.that(converged.value, eq=())
 
-    @staticmethod
     @pytest.mark.parametrize(
         ("consumer_source", "diagnostic"),
         [
@@ -257,43 +246,19 @@ class TestsFlextInfraApiAliasCutover:
         ],
     )
     def test_unproven_consumers_reject_complete_plan(
+        self,
         tmp_path: Path,
         consumer_source: str,
         diagnostic: str,
     ) -> None:
         """Refuse mixed bindings, import-as bindings and opaque module escapes."""
-        owner = tmp_path / "flext-sample/src/flext_sample/api.py"
-        consumer = tmp_path / "flext-sample/tests/test_api.py"
         sources = {
-            owner: (
-                "class FlextSample:\n"
-                "    pass\n\n"
-                "sample = FlextSample\n"
-                '__all__ = ["FlextSample", "sample"]\n'
-            ),
-            consumer: consumer_source,
+            tmp_path / self._OWNER: self._OWNER_SOURCE,
+            tmp_path / self._CONSUMER: consumer_source,
         }
-        finding = m.Infra.ModOccurrence(
-            rule_file="ban-compat-alias.yml",
-            rule_id="ban-compat-alias",
-            repository="flext-sample",
-            file=owner.relative_to(tmp_path),
-            range={},
-            text="sample = FlextSample",
-            actionable=False,
-            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-        )
+        with pytest.raises(ValueError, match=re.escape(diagnostic)):
+            self._plan(tmp_path, sources)
 
-        with infra.rope_workspace(tmp_path) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                rope_workspace=rope,
-                sources=sources,
-                findings=(finding,),
-            )
-        tm.fail(planned, has=diagnostic)
-
-    @staticmethod
     @pytest.mark.parametrize(
         ("module_import", "receiver"),
         [
@@ -319,22 +284,16 @@ class TestsFlextInfraApiAliasCutover:
         ],
     )
     def test_reflective_alias_access_rejects_complete_plan(
+        self,
         tmp_path: Path,
         module_import: str,
         receiver: str,
         reflection: str,
     ) -> None:
         """Retain the complete owner when a proven reflective consumer is unsafe."""
-        owner = tmp_path / "flext-sample/src/flext_sample/api.py"
-        consumer = tmp_path / "flext-sample/tests/test_api.py"
         sources = {
-            owner: (
-                "class FlextSample:\n"
-                "    pass\n\n"
-                "sample = FlextSample\n"
-                '__all__ = ["FlextSample", "sample"]\n'
-            ),
-            consumer: (
+            tmp_path / self._OWNER: self._OWNER_SOURCE,
+            tmp_path / self._CONSUMER: (
                 "import builtins\n"
                 "from builtins import getattr as lookup\n"
                 f"{module_import}\n\n"
@@ -342,22 +301,5 @@ class TestsFlextInfraApiAliasCutover:
                 f"    return {reflection.replace('sample_api', receiver)}\n"
             ),
         }
-        finding = m.Infra.ModOccurrence(
-            rule_file="ban-compat-alias.yml",
-            rule_id="ban-compat-alias",
-            repository="flext-sample",
-            file=owner.relative_to(tmp_path),
-            range={},
-            text="sample = FlextSample",
-            actionable=False,
-            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-        )
-
-        with infra.rope_workspace(tmp_path) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
-                rope_workspace=rope,
-                sources=sources,
-                findings=(finding,),
-            )
-        tm.fail(planned, has="reflective")
+        with pytest.raises(ValueError, match="reflective"):
+            self._plan(tmp_path, sources)

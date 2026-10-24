@@ -99,6 +99,42 @@ class TestsFlextInfraUtilitiesGitMixin:
         )
 
     @staticmethod
+    def attach_managed_submodule(
+        repo_root: Path,
+        source: Path,
+        member_path: Path,
+    ) -> None:
+        """Add ``source`` as a real flext-managed submodule of ``repo_root``.
+
+        The submodule tracks the integration branch of ``source``; the caller
+        owns the commit that publishes the attachment.
+        """
+        bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
+        bootstrap(
+            repo_root,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-b",
+                TestsFlextInfraUtilitiesGitMixin.checkout_integration(source),
+                str(source),
+                member_path.as_posix(),
+            ),
+        )
+        bootstrap(
+            repo_root,
+            (
+                "config",
+                "-f",
+                c.Infra.GITMODULES,
+                f"submodule.{member_path.as_posix()}.flext-managed",
+                "true",
+            ),
+        )
+
+    @staticmethod
     def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
         """Return whether a real Git fixture contains the exact ref.
 

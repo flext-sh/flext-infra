@@ -57,56 +57,36 @@ class TestsFlextInfraDeclarationRelocation:
                 "class Config(ModelsBase):\n    payload = Payload\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-            tm.that(planned, eq=())
-            proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in planned})
-            tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
-            tm.that(
-                proposed[consumer],
-                lacks="._models.config import ConfigPayload as Payload",
-            )
-            tm.that(proposed[consumer], has="._models import ConfigPayload as Payload")
-            tm.that(proposed[consumer], has="._models.base import ModelsBase")
-            findings = u.Infra.declaration_relocation_findings(rope, proposed)
-            tm.that(len(findings), eq=2)
-            repeated = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=proposed,
-                ),
-            )
-            tm.that(repeated, eq=())
-        for path, source in proposed.items():
-            path.write_text(source, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}.{consumer.stem} import Config; "
-                        f"from {package.name}._models.config import ConfigPayload; "
-                        f"from {package.name}._models.base import ModelsBase; "
-                        "assert Config.payload is ConfigPayload; "
-                        "assert issubclass(Config, ModelsBase)"
-                    ),
-                ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
+        TestsFlextInfraDeclarationRelocationSupport.write(sources)
+        planned = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
+        tm.that(planned, eq=())
+        proposed = dict(sources)
+        proposed.update({edit.file_path: edit.updated_source for edit in planned})
+        tm.that(consumer.read_text(encoding="utf-8"), eq=sources[consumer])
+        tm.that(
+            proposed[consumer],
+            lacks="._models.config import ConfigPayload as Payload",
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.that(proposed[consumer], has="._models import ConfigPayload as Payload")
+        tm.that(proposed[consumer], has="._models.base import ModelsBase")
+        tm.that(
+            len(TestsFlextInfraDeclarationRelocationSupport.findings(root, proposed)),
+            eq=2,
+        )
+        repeated = tm.ok(
+            TestsFlextInfraDeclarationRelocationSupport.plan(root, proposed)
+        )
+        tm.that(repeated, eq=())
+        TestsFlextInfraDeclarationRelocationSupport.write(proposed)
+        u.Tests.run_lazy_init_probe(
+            f"from {package.name}.{consumer.stem} import Config; "
+            f"from {package.name}._models.config import ConfigPayload; "
+            f"from {package.name}._models.base import ModelsBase; "
+            "assert Config.payload is ConfigPayload; "
+            "assert issubclass(Config, ModelsBase)",
+            python_paths=(str(package.parent),),
+            cwd=root,
+        )
 
     @staticmethod
     def test_own_reexport_rebinds_to_its_real_external_provider(
@@ -124,37 +104,21 @@ class TestsFlextInfraDeclarationRelocation:
                 "class Config(m.BaseModel):\n    value: str\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-            proposed = dict(sources)
-            proposed.update({edit.file_path: edit.updated_source for edit in edits})
-            tm.that(u.Infra.declaration_relocation_findings(rope, proposed), eq=())
-        for path, source in proposed.items():
-            path.write_text(source, encoding="utf-8")
-        result = tm.ok(
-            u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}.{consumer.stem} import Config; "
-                        "print(Config(value='real-value').value)"
-                    ),
-                ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            ),
+        TestsFlextInfraDeclarationRelocationSupport.write(sources)
+        edits = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
+        proposed = dict(sources)
+        proposed.update({edit.file_path: edit.updated_source for edit in edits})
+        tm.that(
+            TestsFlextInfraDeclarationRelocationSupport.findings(root, proposed), eq=()
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
-        tm.that(result.stdout.strip(), eq="real-value")
+        TestsFlextInfraDeclarationRelocationSupport.write(proposed)
+        lines = u.Tests.run_lazy_init_probe(
+            f"from {package.name}.{consumer.stem} import Config; "
+            "print(Config(value='real-value').value)",
+            python_paths=(str(package.parent),),
+            cwd=root,
+        )
+        tm.that(lines, eq=["real-value"])
 
     @staticmethod
     def test_settings_imports_preserve_external_lazy_package(
@@ -167,14 +131,9 @@ class TestsFlextInfraDeclarationRelocation:
         consumer = package / "_settings.py"
         source = "from flext_tests import tm\nclass Settings:\n    matcher = tm\n"
         consumer.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources={consumer: source},
-                ),
-            )
+        planned = tm.ok(
+            TestsFlextInfraDeclarationRelocationSupport.plan(root, {consumer: source})
+        )
         tm.that(planned, eq=())
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
@@ -196,19 +155,11 @@ class TestsFlextInfraDeclarationRelocation:
                 "class Config:\n    payload = Payload\n"
             ),
         }
-        for path, source in sources.items():
-            path.write_text(source, encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                    rope_workspace=rope,
-                    sources=sources,
-                ),
-            )
-            tm.that(planned, eq=())
-            findings = u.Infra.declaration_relocation_findings(rope, sources)
-            tm.that(len(findings), eq=1)
+        TestsFlextInfraDeclarationRelocationSupport.write(sources)
+        planned = tm.ok(TestsFlextInfraDeclarationRelocationSupport.plan(root, sources))
+        tm.that(planned, eq=())
+        findings = TestsFlextInfraDeclarationRelocationSupport.findings(root, sources)
+        tm.that(len(findings), eq=1)
 
     @staticmethod
     @pytest.mark.parametrize("existing_imports", [False, True])
@@ -352,17 +303,9 @@ class TestsFlextInfraDeclarationRelocation:
             tmp_path,
             variants=frozenset({"cycle"}),
         )
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="runtime import cycle"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        for path, source in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        TestsFlextInfraDeclarationRelocationSupport.refuses(
+            root, sources, "runtime import cycle"
+        )
 
     @staticmethod
     def test_proposed_sources_not_disk_own_the_identity_snapshot(
@@ -409,17 +352,9 @@ class TestsFlextInfraDeclarationRelocation:
         consumer = next(path for path in sources if path.name == "consumer.py")
         sources[consumer] = sources[consumer].replace("def build()", "def build(m)")
         consumer.write_text(sources[consumer], encoding="utf-8")
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="shadowed quoted type destination"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-        for path, source in sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        TestsFlextInfraDeclarationRelocationSupport.refuses(
+            root, sources, "shadowed quoted type destination"
+        )
 
     @staticmethod
     def test_quoted_field_dependency_is_transferred(tmp_path: Path) -> None:
@@ -441,19 +376,7 @@ class TestsFlextInfraDeclarationRelocation:
         )
         sources[origin] = "from decimal import Decimal\n" + sources[origin]
         origin.write_text(sources[origin], encoding="utf-8")
-        with infra.rope_workspace(root) as rope:
-            planned = u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-                rope_workspace=rope,
-                sources=sources,
-            )
-            tm.ok(planned)
-            target = next(
-                edit
-                for edit in planned.value
-                if edit.file_path.parent.name
-                == u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
-            )
+        target = TestsFlextInfraDeclarationRelocationSupport.models_edit(root, sources)
         published = tmp_path / "published_decimal.py"
         published.write_text(target.updated_source, encoding="utf-8")
         spec = importlib.util.spec_from_file_location("published_decimal", published)

@@ -186,11 +186,32 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             eq=False,
         )
 
-    def test_code_gate_fix_splices_formatted_block_back(self, tmp_path: Path) -> None:
-        """`make fix` formats fenced blocks whose round-trip recompiles cleanly."""
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            pytest.param(UNFORMATTED, FORMATTED, id="formatted-block"),
+            pytest.param(
+                FRAGMENT_THEN_UNFORMATTED,
+                FRAGMENT_THEN_FORMATTED,
+                id="block-after-notest-fragment",
+            ),
+        ],
+    )
+    def test_code_gate_fix_splices_formatted_block_back(
+        self,
+        tmp_path: Path,
+        source: str,
+        expected: str,
+    ) -> None:
+        """`make fix` formats parseable blocks, even after a ``notest`` fragment.
+
+        The fragment case guards the extractor index: enumerating only
+        parseable blocks shifted every later source name, so a valid block
+        after a fragment was never spliced.
+        """
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix")
         readme = project_dir / "README.md"
-        readme.write_text(self.UNFORMATTED, encoding="utf-8")
+        readme.write_text(source, encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
@@ -203,28 +224,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(result.result.passed, eq=True)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(result.issues, empty=True)
-        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED)
-
-    def test_code_gate_fix_splices_block_after_fragment(self, tmp_path: Path) -> None:
-        """A parseable block keeps its extractor index after a ``notest`` fragment.
-
-        Regression: enumerating only parseable blocks shifted every later
-        source name, so a valid block after a fragment was never spliced.
-        """
-        project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix-after-fragment")
-        readme = project_dir / "README.md"
-        readme.write_text(self.FRAGMENT_THEN_UNFORMATTED, encoding="utf-8")
-        u.Tests.initialize_git_repo(project_dir)
-        context = m.Infra.GateContext(
-            repository_root=tmp_path,
-            reports_dir=tmp_path,
-            apply_fixes=True,
-        )
-
-        result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
-
-        tm.that(result.result.passed, eq=True)
-        tm.that(readme.read_text(encoding="utf-8"), eq=self.FRAGMENT_THEN_FORMATTED)
+        tm.that(readme.read_text(encoding="utf-8"), eq=expected)
 
     def test_code_gate_fix_preserves_fragment_for_syntax_owner(
         self,

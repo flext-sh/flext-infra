@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, main
+from flext_infra import infra, main, p
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
@@ -42,6 +42,28 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
             """Accept the public campaign progress contract."""
             _ = report
+
+    @staticmethod
+    def _batch_service(
+        root: Path,
+        rope: p.Infra.RopeWorkspaceDsl,
+        progress: TestsFlextInfraCodemodBatchApplyValidation.RuntimeProgress,
+    ) -> FlextInfraCodemodBatchApply:
+        """Bind the applying batch service to one workspace and its progress.
+
+        Returns:
+            The batch service applying changes against ``root``.
+
+        """
+        return FlextInfraCodemodBatchApply(
+            workspace_factory=infra.rope_workspace,
+            source_preview=infra.source_preview(root),
+            repository_root=root,
+            apply_changes=True,
+            rename_runner=FlextInfraApplyRenames(),
+            progress=progress,
+            rope=rope,
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -231,15 +253,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         tm.that("pydantic-typeform-import" in rule_ids, eq=False)
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
-            service = FlextInfraCodemodBatchApply(
-                workspace_factory=infra.rope_workspace,
-                source_preview=infra.source_preview(mod_workspace),
-                repository_root=mod_workspace,
-                apply_changes=True,
-                rename_runner=FlextInfraApplyRenames(),
-                progress=progress,
-                rope=rope,
-            )
+            service = self._batch_service(mod_workspace, rope, progress)
             tm.ok(service.execute())
             first = sample.read_bytes()
             tm.that(progress.validated, eq=True)
@@ -309,15 +323,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         )
         progress = self.RuntimeProgress(sample)
         with infra.rope_workspace(mod_workspace) as rope:
-            service = FlextInfraCodemodBatchApply(
-                workspace_factory=infra.rope_workspace,
-                source_preview=infra.source_preview(mod_workspace),
-                repository_root=mod_workspace,
-                apply_changes=True,
-                rename_runner=FlextInfraApplyRenames(),
-                progress=progress,
-                rope=rope,
-            )
+            service = self._batch_service(mod_workspace, rope, progress)
             if outcome != "converged":
                 with pytest.raises(
                     RuntimeError,

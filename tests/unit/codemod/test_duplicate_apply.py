@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -67,8 +66,9 @@ class TestsFlextInfraCodemodDuplicateApply:
         assert planned.owner is copy
         assert planned.owner.definition is definition
         assert planned.owner.definition.statement is statement
-        assert planned.owner.definition.source == path.read_text(
-            encoding=c.DEFAULT_ENCODING,
+        tm.that(
+            planned.owner.definition.source,
+            eq=path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         deletion = m.Infra.DuplicateDeletion(
             path=path,
@@ -76,8 +76,8 @@ class TestsFlextInfraCodemodDuplicateApply:
             line=item.line,
             project=item.project,
         )
-        assert deletion.path == definition.path
-        assert deletion.name == definition.item.name
+        tm.that(deletion.path, eq=definition.path)
+        tm.that(deletion.name, eq=definition.item.name)
 
     @staticmethod
     def _module(summary: str) -> str:
@@ -151,11 +151,13 @@ class TestsFlextInfraCodemodDuplicateApply:
             value_identical=value_identical,
         )
 
-    def test_trivial_group_keeps_owner_and_rewires_consumers(
-        self,
-        duplicate_project: Path,
-    ) -> None:
-        """The consumer-carrying definition wins and every copy disappears."""
+    def _core_side(self, duplicate_project: Path) -> tuple[Path, Path, Path, Path]:
+        """Seed the value-identical core/side constant pair.
+
+        Returns:
+            The repository root, source package, core module and side module.
+
+        """
         root, package = self._workspace(duplicate_project)
         core = package / "core.py"
         side = package / "side.py"
@@ -167,6 +169,42 @@ class TestsFlextInfraCodemodDuplicateApply:
             self._module("Side module") + _SIDE_CONSTANT,
             encoding=c.DEFAULT_ENCODING,
         )
+        return root, package, core, side
+
+    def _cure_pair(
+        self,
+        root: Path,
+        paths: tuple[Path, Path],
+        name: str,
+        *,
+        value_identical: bool,
+    ) -> m.Infra.DuplicateCureOutcome:
+        """Run the applying census cure over one two-module duplicate group.
+
+        Returns:
+            The cure outcome reported by the public duplicate-apply facade.
+
+        """
+        with infra.rope_workspace(root) as rope:
+            group = self._group(
+                self._objects(rope, paths, name),
+                value_identical=value_identical,
+            )
+            return tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root,
+                    rope,
+                    (group,),
+                    apply=True,
+                ),
+            )
+
+    def test_trivial_group_keeps_owner_and_rewires_consumers(
+        self,
+        duplicate_project: Path,
+    ) -> None:
+        """The consumer-carrying definition wins and every copy disappears."""
+        root, package, core, side = self._core_side(duplicate_project)
         consumer_a = package / "consumer_a.py"
         consumer_a.write_text(
             self._module("Consumer A") + "from flext_demo.core import SHARED_LIMIT\n"
@@ -182,19 +220,12 @@ class TestsFlextInfraCodemodDuplicateApply:
                 "TOTAL = SHARED_LIMIT + 2\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-        with infra.rope_workspace(root) as rope:
-            group = self._group(
-                self._objects(rope, (core, side), "SHARED_LIMIT"),
-                value_identical=True,
-            )
-            outcome = tm.ok(
-                FlextInfraCodemodDuplicateApply.census_duplicates(
-                    root,
-                    rope,
-                    (group,),
-                    apply=True,
-                ),
-            )
+        outcome = self._cure_pair(
+            root,
+            (core, side),
+            "SHARED_LIMIT",
+            value_identical=True,
+        )
         # The owner is the definition with the most existing consumers: the
         # two side.py consumers outvote the one core.py consumer, so the
         # core copy is deleted and its consumer rebinds to the owner.
@@ -216,17 +247,7 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     def test_phase_cures_once_then_converges(self, duplicate_project: Path) -> None:
         """The mod-loop callback changes sources once and reports the fixed point."""
-        root, package = self._workspace(duplicate_project)
-        core = package / "core.py"
-        side = package / "side.py"
-        core.write_text(
-            self._module("Core module") + _CORE_CONSTANT,
-            encoding=c.DEFAULT_ENCODING,
-        )
-        side.write_text(
-            self._module("Side module") + _SIDE_CONSTANT,
-            encoding=c.DEFAULT_ENCODING,
-        )
+        root, _package, core, side = self._core_side(duplicate_project)
         with infra.rope_workspace(root) as rope:
             first = tm.ok(
                 FlextInfraDuplicateApplyPhase.apply(
@@ -260,19 +281,12 @@ class TestsFlextInfraCodemodDuplicateApply:
             encoding=c.DEFAULT_ENCODING,
         )
         before = (first.read_bytes(), second.read_bytes())
-        with infra.rope_workspace(root) as rope:
-            group = self._group(
-                self._objects(rope, (first, second), "LIMIT"),
-                value_identical=False,
-            )
-            outcome = tm.ok(
-                FlextInfraCodemodDuplicateApply.census_duplicates(
-                    root,
-                    rope,
-                    (group,),
-                    apply=True,
-                ),
-            )
+        outcome = self._cure_pair(
+            root,
+            (first, second),
+            "LIMIT",
+            value_identical=False,
+        )
         tm.that(outcome.edits, empty=True)
         tm.that(outcome.copies_removed, eq=0)
         tm.that(outcome.plans, length=1)
@@ -303,19 +317,12 @@ class TestsFlextInfraCodemodDuplicateApply:
             encoding=c.DEFAULT_ENCODING,
         )
         before = (first.read_bytes(), second.read_bytes())
-        with infra.rope_workspace(root) as rope:
-            group = self._group(
-                self._objects(rope, (first, second), "LIMIT"),
-                value_identical=True,
-            )
-            outcome = tm.ok(
-                FlextInfraCodemodDuplicateApply.census_duplicates(
-                    root,
-                    rope,
-                    (group,),
-                    apply=True,
-                ),
-            )
+        outcome = self._cure_pair(
+            root,
+            (first, second),
+            "LIMIT",
+            value_identical=True,
+        )
         tm.that(outcome.edits, empty=True)
         tm.that(outcome.plans, length=1)
         tm.that(outcome.plans[0].reason, has="free name")
@@ -342,16 +349,12 @@ class TestsFlextInfraCodemodDuplicateApply:
         for path in (first, second):
             path.write_text(self._module("Binding trap") + source, encoding="utf-8")
         before = first.read_bytes(), second.read_bytes()
-        with infra.rope_workspace(root) as workspace:
-            group = self._group(
-                self._objects(workspace, (first, second), "LIMIT"),
-                value_identical=True,
-            )
-            outcome = tm.ok(
-                FlextInfraCodemodDuplicateApply.census_duplicates(
-                    root, workspace, (group,), apply=True
-                )
-            )
+        outcome = self._cure_pair(
+            root,
+            (first, second),
+            "LIMIT",
+            value_identical=True,
+        )
         tm.that(outcome.edits, empty=True)
         tm.that(outcome.plans, length=1)
         tm.that((first.read_bytes(), second.read_bytes()), eq=before)
@@ -369,16 +372,12 @@ class TestsFlextInfraCodemodDuplicateApply:
                 encoding="utf-8",
             )
         before = first.read_bytes(), second.read_bytes()
-        with infra.rope_workspace(root) as workspace:
-            group = self._group(
-                self._objects(workspace, (first, second), "LIMIT"),
-                value_identical=True,
-            )
-            outcome = tm.ok(
-                FlextInfraCodemodDuplicateApply.census_duplicates(
-                    root, workspace, (group,), apply=True
-                )
-            )
+        outcome = self._cure_pair(
+            root,
+            (first, second),
+            "LIMIT",
+            value_identical=True,
+        )
         tm.that(outcome.edits, empty=True)
         tm.that(outcome.plans, length=1)
         tm.that((first.read_bytes(), second.read_bytes()), eq=before)
@@ -425,8 +424,8 @@ class TestsFlextInfraCodemodDuplicateApply:
         plan = outcome.plans[0]
         tm.that(plan.origin, eq="jscpd")
         assert plan.reason
-        assert plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION
-        assert plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION
+        tm.that(plan.edits[0].action, eq=c.Infra.DUPLICATE_KEEP_ACTION)
+        tm.that(plan.edits[1].action, eq=c.Infra.DUPLICATE_DELETE_ACTION)
         tm.that(plan.owner_file_path, eq=owner)
         tm.that(
             (owner.read_bytes(), clone.read_bytes()),
@@ -469,17 +468,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         duplicate_project: Path,
     ) -> None:
         """``refactor census --rules duplicate --apply`` cures and reports."""
-        root, package = self._workspace(duplicate_project)
-        core = package / "core.py"
-        side = package / "side.py"
-        core.write_text(
-            self._module("Core module") + _CORE_CONSTANT,
-            encoding=c.DEFAULT_ENCODING,
-        )
-        side.write_text(
-            self._module("Side module") + _SIDE_CONSTANT,
-            encoding=c.DEFAULT_ENCODING,
-        )
+        root, _package, core, side = self._core_side(duplicate_project)
         report = tm.ok(
             infra.census(
                 m.Infra.CensusInput(
@@ -563,6 +552,6 @@ class TestsFlextInfraCodemodDuplicateApply:
         report_dir = root / c.Infra.JSCPD_REPORT_DIRNAME
         report_dir.mkdir(parents=True, exist_ok=True)
         (report_dir / c.Infra.JSCPD_REPORT_FILENAME).write_text(
-            json.dumps(report),
+            tm.ok(u.Cli.json_dumps(report)),
             encoding=c.DEFAULT_ENCODING,
         )

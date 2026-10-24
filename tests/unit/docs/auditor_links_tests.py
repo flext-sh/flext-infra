@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests import m, tm, u
 
 if TYPE_CHECKING:
@@ -56,166 +58,85 @@ class TestsFlextInfraAuditorLinks:
         """Tests for docs_broken_link_issues."""
 
         @staticmethod
-        def test_broken_link_issues_empty_scope(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues with no markdown files."""
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_valid_links(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores valid links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](test.md)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_external_links(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores external links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](https://example.com)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_fragments(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores fragment-only links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](#section)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_in_code_blocks(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores links in code blocks."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("```\n[link](nonexistent.md)\n```")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_should_skip_target_true(
+        @pytest.mark.parametrize(
+            "markdown",
+            [
+                None,
+                "[link](test.md)",
+                "[link](https://example.com)",
+                "[link](#section)",
+                "```\n[link](nonexistent.md)\n```",
+                "[a, b]",
+                "[some text]",
+                "[link](some text)",
+            ],
+        )
+        def test_broken_link_issues_ignore_non_links(
             tmp_path: Path,
+            markdown: str | None,
         ) -> None:
-            """Test broken link issues skip targets when should_skip_target is True."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[a, b]")
+            """Test docs_broken_link_issues ignores valid, external, and non-links."""
+            if markdown is not None:
+                docs_dir = tmp_path / "docs"
+                docs_dir.mkdir(parents=True, exist_ok=True)
+                (docs_dir / "test.md").write_text(markdown)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
                 report_dir=tmp_path / "reports",
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
+            tm.that(len(issues), eq=0)
 
         @staticmethod
-        def test_broken_link_issues_with_missing_target(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues reports missing targets."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](missing.md)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues) > 0, eq=True)
-            tm.that(any("missing.md" in issue.message for issue in issues), eq=True)
-
-        @staticmethod
-        def test_broken_link_issues_rejects_cross_project_relative_link(
+        @pytest.mark.parametrize(
+            ("markdown", "issue_type", "message"),
+            [
+                ("[link](missing.md)", "broken_link", "missing.md"),
+                (
+                    "[other project](../../flext-core/docs/index.md)",
+                    "cross_project_relative_link",
+                    "",
+                ),
+            ],
+        )
+        def test_broken_link_issues_reports_bad_targets(
             tmp_path: Path,
+            markdown: str,
+            issue_type: str,
+            message: str,
         ) -> None:
-            """Test broken link issues rejects cross project relative link."""
+            """Test docs_broken_link_issues reports missing and cross-project targets."""
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text(
-                "[other project](../../flext-core/docs/index.md)",
-                encoding="utf-8",
-            )
+            (docs_dir / "test.md").write_text(markdown, encoding="utf-8")
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
                 report_dir=tmp_path / "reports",
             )
-
             issues = u.Infra.docs_broken_link_issues(scope)
-
             tm.that(
                 any(
-                    issue.issue_type == "cross_project_relative_link"
+                    issue.issue_type == issue_type and message in issue.message
                     for issue in issues
                 ),
                 eq=True,
             )
 
-        @staticmethod
-        def test_broken_link_issues_skips_some_text(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues skips plain text brackets."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[some text]")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_space_in_url_skips(
-            tmp_path: Path,
-        ) -> None:
-            """Test docs_broken_link_issues skips URLs with spaces."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](some text)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-            tm.that(len(issues), eq=0)
-
     class TestAuditorGithubLinks:
         """Audit and repair links through real native repository facts."""
 
         @staticmethod
-        def _owner(root: Path) -> m.Infra.DocsGithubRepoSpec:
+        @pytest.fixture
+        def repo(tmp_path: Path) -> m.Infra.DocsGithubRepoSpec:
+            """Declare a git repository whose docs identity resolves natively.
+
+            Returns:
+                The resolved GitHub repository identity.
+
+            """
+            root = tmp_path
             u.Tests.initialize_git_repo(
                 root,
                 origin_url="https://github.com/fixture-owner/fixture-docs.git",
@@ -236,9 +157,11 @@ class TestsFlextInfraAuditorLinks:
             )
 
         @staticmethod
-        def test_github_stale_organization(tmp_path: Path) -> None:
+        def test_github_stale_organization(
+            tmp_path: Path,
+            repo: m.Infra.DocsGithubRepoSpec,
+        ) -> None:
             """Test github stale organization."""
-            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
             docs = tmp_path / "docs"
             docs.mkdir()
@@ -256,9 +179,11 @@ class TestsFlextInfraAuditorLinks:
             )
 
         @staticmethod
-        def test_github_wrong_branch(tmp_path: Path) -> None:
+        def test_github_wrong_branch(
+            tmp_path: Path,
+            repo: m.Infra.DocsGithubRepoSpec,
+        ) -> None:
             """Test github wrong branch."""
-            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             docs = tmp_path / "docs"
             docs.mkdir()
             (docs / "test.md").write_text(
@@ -274,9 +199,11 @@ class TestsFlextInfraAuditorLinks:
             )
 
         @staticmethod
-        def test_github_rewrite_fix(tmp_path: Path) -> None:
+        def test_github_rewrite_fix(
+            tmp_path: Path,
+            repo: m.Infra.DocsGithubRepoSpec,
+        ) -> None:
             """Test github rewrite fix."""
-            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
             docs = tmp_path / "docs"
             docs.mkdir()
