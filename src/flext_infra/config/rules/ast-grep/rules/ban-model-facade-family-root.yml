@@ -1,0 +1,41 @@
+# FLEXT law (operator order 2026-10-24, ADR-028 point 4): the declaration
+# families c/t/p/m/u are plain namespaces. Their facade roots and every MRO
+# part (the single top-level class of a family module or private family
+# package module) never inherit a model: inheriting one turns the namespace,
+# and every facade composing it, into a model. A model is declared only as a
+# nested member of the models namespace.
+#
+# Both operands are derived: `family-file` is the import-law role classifier
+# over the facade families the generator declares, and `model-ancestry` reads
+# Rope's native class ancestry against the declared model identity. The
+# operational families (r/x/h/s) are outside `family-file` by that same
+# derivation, so their designed inheritance of flext-core's operational bases
+# is never matched here.
+#
+# Detection only: the repair moves the model to a nested member of m and
+# passes it to its consumer, a per-class decision.
+id: ban-model-facade-family-root
+language: python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  context:
+    NAME:
+      - is: model-ancestry
+      - is: family-file
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclasses
+        pattern: $BASES
+    - inside:
+        kind: module
+message: >-
+  Facade family class `$NAME` inherits a model: a c/t/p/m/u namespace stays a
+  plain namespace; declare the model as a nested member of m and pass it to
+  its consumer.

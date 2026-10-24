@@ -22,6 +22,21 @@ from flext_infra._models._config import (
 class FlextInfraModelsDocsGeneration:
     """Declaration-only documentation generation contracts."""
 
+    class DocsRootInputs(m.FrozenModel):
+        """Workspace-level inputs shared by the aggregate root page rendering."""
+
+        workspace_contract: t.JsonMapping = m.Field(
+            description="Validated workspace contract of the repository",
+        )
+        markdown_width: int = m.Field(
+            gt=0,
+            description="Prose width elected once for the destination repository",
+        )
+        exclude_docs: t.StrSequence = m.Field(
+            default=(),
+            description="Excluded documentation page names",
+        )
+
     class DocScope(FlextInfraModelsBase.FrozenArbitrary):
         """Documentation scope targeting a project or workspace root."""
 

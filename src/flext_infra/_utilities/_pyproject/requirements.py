@@ -19,9 +19,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRepository,
 )
-from flext_infra._utilities._pyproject._requirements_provenance import (
-    FlextInfraUtilitiesPyprojectRequirementsProvenance,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -171,7 +168,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = FlextInfraUtilitiesPyprojectRequirementsProvenance(
+        provenance = m.Infra.RequirementsProvenance(
             declared_sources=declared_sources,
             candidate_sources=candidate_sources,
             native_sources=native_sources,
@@ -203,7 +200,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Normalize PEP 508 strings in place around native inclusion entries.
 
@@ -243,7 +240,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -300,7 +297,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         requirement: str,
         *,
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
         generated: bool = False,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
@@ -364,7 +361,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dependency_name: str,
         *,
         parsed: t.Pair[str, str],
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[t.Pair[str, str]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 
@@ -557,7 +554,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         groups: t.Cli.TomlTable,
         dev_name: str,
         *,
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[list[str | m.Infra.DependencyGroupInclude]]:
         """Normalize the live development group's entries in declared order.
 
@@ -585,7 +582,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         project_name: str,
         required_dev_dependencies: t.StrSequence,
-        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Sync development groups while applying explicit retirement policy.
 

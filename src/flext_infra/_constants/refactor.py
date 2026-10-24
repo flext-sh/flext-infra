@@ -243,6 +243,10 @@ class FlextInfraConstantsRefactor:
           belongs to: the finding lives inside that family tree or is the
           family's facade module (the segment without its ``_``).
 
+        ``model-ancestry``: the captured class resolves, through Rope's native
+        class ancestry, to a class whose ancestors include the model base
+        (``PYDANTIC_MODEL_IDENTITY``), whatever its body declares.
+
         ``family-base-file`` proves that the finding is the immediate base
         leaf of a private family with a declared sibling facade.
 
@@ -293,6 +297,7 @@ class FlextInfraConstantsRefactor:
         LAYER_ZERO_FILE = "layer-zero-file"
         PAYLOAD_DECLARATION = "payload-declaration"
         PROTOCOL_DECLARATION = "protocol-declaration"
+        MODEL_ANCESTRY = "model-ancestry"
         DECLARATION_DECORATOR = "declaration-decorator"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"

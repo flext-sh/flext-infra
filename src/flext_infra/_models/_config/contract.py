@@ -20,7 +20,7 @@ from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchai
 class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
     """Shared config contract base and inherited toolchain declarations."""
 
-    class ConfigContract(FlextInfraModelsMiseToolchainBase):
+    class ConfigContract(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Public declarative base for schema-loaded codegen records."""
 
     class DocsAuditOverridesSpec(ConfigContract):

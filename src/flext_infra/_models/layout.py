@@ -23,13 +23,13 @@ from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchai
 class FlextInfraModelsLayout:
     """Field-only layout SSOT contracts and engine result models."""
 
-    class LayoutMoveSpec(FlextInfraModelsMiseToolchainBase):
+    class LayoutMoveSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """One explicit per-project move override (nested source allowed)."""
 
         source: Annotated[t.NonEmptyStr, m.Field(description="Project-relative source")]
         target: Annotated[t.NonEmptyStr, m.Field(description="Project-relative target")]
 
-    class LayoutProjectOverrideSpec(FlextInfraModelsMiseToolchainBase):
+    class LayoutProjectOverrideSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Per-project layout deltas applied on top of the global rules."""
 
         archive_names: Annotated[
@@ -67,7 +67,7 @@ class FlextInfraModelsLayout:
             ),
         ] = ()
 
-    class LayoutSpec(FlextInfraModelsMiseToolchainBase):
+    class LayoutSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Fully modeled content of the ``layout`` section of ``codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
@@ -163,7 +163,7 @@ class FlextInfraModelsLayout:
             ]({}),
         )
 
-    class LayoutFinding(FlextInfraModelsMiseToolchainBase):
+    class LayoutFinding(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """One planned or executed layout decision for a project entry."""
 
         rule: Annotated[t.Infra.LayoutRule, m.Field(description="Decision kind")]
@@ -186,7 +186,7 @@ class FlextInfraModelsLayout:
 
     class LayoutProjectReport(
         FlextInfraModelsMixins.ProjectNameMixin,
-        FlextInfraModelsMiseToolchainBase,
+        FlextInfraModelsMiseToolchainBase.SchemaRecord,
     ):
         """Per-project layout plan or apply outcome."""
 
@@ -219,7 +219,7 @@ class FlextInfraModelsLayout:
             """
             return sum(1 for finding in self.findings if finding.status == "applied")
 
-    class LayoutRunReport(FlextInfraModelsMiseToolchainBase):
+    class LayoutRunReport(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Batch layout outcome across the selected projects."""
 
         reports: Annotated[

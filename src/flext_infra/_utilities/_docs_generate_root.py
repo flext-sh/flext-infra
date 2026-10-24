@@ -20,22 +20,6 @@ from flext_infra._utilities import (
 )
 
 
-class _DocsRootInputs(m.FrozenModel):
-    """Workspace-level inputs shared by the aggregate root page rendering."""
-
-    workspace_contract: t.JsonMapping = m.Field(
-        description="Validated workspace contract of the repository",
-    )
-    markdown_width: int = m.Field(
-        gt=0,
-        description="Prose width elected once for the destination repository",
-    )
-    exclude_docs: t.StrSequence = m.Field(
-        default=(),
-        description="Excluded documentation page names",
-    )
-
-
 class FlextInfraUtilitiesDocsGenerateRootMixin(
     FlextInfraUtilitiesDocsGenerateProjectMixin,
 ):
@@ -44,7 +28,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
     @staticmethod
     def _aggregate_root_pages(
         repository_root: Path,
-        inputs: _DocsRootInputs,
+        inputs: m.Infra.DocsRootInputs,
         src_paths: t.SequenceOf[str],
         catalog_entries: t.SequenceOf[m.Infra.DocsCatalogEntry],
     ) -> list[t.Pair[Path, str]]:
@@ -82,7 +66,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         cls,
         repository_root: Path,
         scopes: t.SequenceOf[m.Infra.DocScope],
-        inputs: _DocsRootInputs,
+        inputs: m.Infra.DocsRootInputs,
     ) -> p.Result[
         t.Triple[
             list[t.Pair[Path, str]],
@@ -319,7 +303,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         aggregated = cls._root_rendered(
             repository_root,
             scopes,
-            _DocsRootInputs(
+            m.Infra.DocsRootInputs(
                 workspace_contract=workspace_contract,
                 markdown_width=width,
                 exclude_docs=exclude_docs,

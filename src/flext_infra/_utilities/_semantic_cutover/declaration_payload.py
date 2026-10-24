@@ -459,6 +459,32 @@ class FlextInfraUtilitiesDeclarationPayload:
         )
 
     @classmethod
+    def model_ancestry_declaration(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        qualified_name: str,
+    ) -> p.Infra.RopePyName | None:
+        """Identify a class whose native ancestry reaches the model base.
+
+        Unlike ``payload_declaration`` any class body qualifies: a namespace
+        that inherits a model in any position of its ancestry is itself a model.
+
+        Returns:
+            The native class binding, or ``None`` when no ancestor is the model base.
+
+        """
+        resolved = cls._class_binding(project, path, qualified_name)
+        if resolved is None:
+            return None
+        _module, binding = resolved
+        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            binding.get_object(), qualified_name
+        )
+        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
+        return binding if base in cls.class_ancestry(value) else None
+
+    @classmethod
     def _payload_body(
         cls,
         value: p.Infra.RopeNamedObject,

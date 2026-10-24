@@ -480,6 +480,7 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
             c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+            c.Infra.CodemodContextPredicate.MODEL_ANCESTRY,
             c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE,
             c.Infra.CodemodContextPredicate.LATER_LAYER,
             c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
@@ -687,6 +688,7 @@ class FlextInfraUtilitiesCodemodProject(
         if condition.predicate in {
             c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
             c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+            c.Infra.CodemodContextPredicate.MODEL_ANCESTRY,
         }:
             return cls._declaration_condition_admits(
                 admission, condition, source, project, sources
@@ -1387,12 +1389,15 @@ class FlextInfraUtilitiesCodemodProject(
             capture.text,
             offset=start,
         )
-        resolve = (
-            FlextInfraUtilitiesDeclarationPayload.payload_declaration
-            if condition.predicate
-            is c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION
-            else FlextInfraUtilitiesDeclarationPayload.protocol_declaration
-        )
+        match condition.predicate:
+            case c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION:
+                resolve = FlextInfraUtilitiesDeclarationPayload.payload_declaration
+            case c.Infra.CodemodContextPredicate.MODEL_ANCESTRY:
+                resolve = (
+                    FlextInfraUtilitiesDeclarationPayload.model_ancestry_declaration
+                )
+            case _:
+                resolve = FlextInfraUtilitiesDeclarationPayload.protocol_declaration
         return (
             len(declarations) == 1
             and resolve(

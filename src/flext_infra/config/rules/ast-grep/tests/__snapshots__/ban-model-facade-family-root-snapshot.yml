@@ -1,0 +1,53 @@
+id: ban-model-facade-family-root
+snapshots:
+  ? |
+    class FlextFooModels(FlextCliModels):
+        pass
+  : labels:
+    - source: |-
+        class FlextFooModels(FlextCliModels):
+            pass
+      style: primary
+      start: 0
+      end: 46
+    - source: FlextFooModels
+      style: secondary
+      start: 6
+      end: 20
+    - source: (FlextCliModels)
+      style: secondary
+      start: 20
+      end: 36
+    - source: |
+        class FlextFooModels(FlextCliModels):
+            pass
+      style: secondary
+      start: 0
+      end: 47
+  ? |
+    class FlextFooModels(StateModel, FlextCliModels):
+        class State(m.BaseModel):
+            name: str
+  : labels:
+    - source: |-
+        class FlextFooModels(StateModel, FlextCliModels):
+            class State(m.BaseModel):
+                name: str
+      style: primary
+      start: 0
+      end: 97
+    - source: FlextFooModels
+      style: secondary
+      start: 6
+      end: 20
+    - source: (StateModel, FlextCliModels)
+      style: secondary
+      start: 20
+      end: 48
+    - source: |
+        class FlextFooModels(StateModel, FlextCliModels):
+            class State(m.BaseModel):
+                name: str
+      style: secondary
+      start: 0
+      end: 98

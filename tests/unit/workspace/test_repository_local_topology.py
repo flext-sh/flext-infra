@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraRepositoryLocalTopology:
@@ -100,18 +100,27 @@ class TestsFlextInfraRepositoryLocalTopology:
             ),
         )
 
-    def test_repository_declaration_owns_repository_policy(
+    def test_selected_workspace_manifest_owns_repository_policy(
         self,
         tmp_path: Path,
     ) -> None:
-        """The repository's own codegen declaration carries its typed policy."""
+        """Preserve typed local policy after reconciling it with observed Git."""
         root = self._self_named_governed_root(tmp_path, "manifest-policy")
-        u.Tests.WorktreeFixture.override_repository_declaration(
-            root,
-            {
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        manifest: t.MutableMappingKV[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": observed.name,
+            "repository": {
+                **observed.repository.model_dump(mode="json"),
                 "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK.value,
                 "uv_link_mode": "clone",
             },
+        }
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                manifest,
+            ),
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -126,9 +135,23 @@ class TestsFlextInfraRepositoryLocalTopology:
         """An explicit standalone policy needs no Beads or Gas City identity."""
         root = self._self_named_governed_root(tmp_path, "without-beads")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        u.Tests.WorktreeFixture.override_repository_declaration(
-            root,
-            {"beads_enabled": False, "gascity_enabled": False},
+        manifest: t.MutableMappingKV[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": observed.name,
+            "repository": observed.repository.model_dump(mode="json"),
+            "repository_policy_overlays": [
+                {
+                    "project": observed.repository.distribution,
+                    "beads_enabled": False,
+                    "gascity_enabled": False,
+                },
+            ],
+        }
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                manifest,
+            ),
         )
         (root / "config" / c.Infra.BEADS_CONFIG_FILENAME).unlink()
         ledger = root / c.Infra.BEADS_DIRNAME
@@ -143,12 +166,22 @@ class TestsFlextInfraRepositoryLocalTopology:
         self,
         tmp_path: Path,
     ) -> None:
-        """A declaration that omits beads_enabled keeps the default participation."""
+        """An overlay that omits beads_enabled resolves like no overlay at all."""
         root = self._self_named_governed_root(tmp_path, "overlay-default-beads")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        u.Tests.WorktreeFixture.override_repository_declaration(
-            root,
-            {"ci_enabled": False},
+        manifest: t.MutableMappingKV[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": observed.name,
+            "repository": observed.repository.model_dump(mode="json"),
+            "repository_policy_overlays": [
+                {"project": observed.repository.distribution, "ci_enabled": False},
+            ],
+        }
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                manifest,
+            ),
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -156,35 +189,64 @@ class TestsFlextInfraRepositoryLocalTopology:
         tm.that(workspace.beads, eq=observed.beads)
         tm.that(workspace.gascity_enabled, eq=observed.gascity_enabled)
 
-    def test_repository_declaration_cannot_declare_identity(
+    def test_selected_workspace_manifest_rejects_git_contradiction(
         self,
         tmp_path: Path,
     ) -> None:
-        """Git and project metadata own identity; a declared one fails closed."""
+        """Fail closed when selected declarative identity disagrees with Git."""
         root = self._self_named_governed_root(tmp_path, "manifest-contradiction")
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        _ = u.Tests.WorktreeFixture.override_repository_manifest(
             root,
             {"distribution": "different-distribution"},
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="distribution")
+        tm.fail(result, has="workspace manifest contradicts Git")
+        tm.that(result.error or "", has="distribution")
 
-    def test_repository_declaration_rejects_unknown_fields(
+    @pytest.mark.parametrize(
+        ("overrides", "missing_field", "expected_error"),
+        [
+            pytest.param({"version": 4}, None, "version", id="unknown-version"),
+            pytest.param(
+                {"unknown_contract": True},
+                None,
+                "unknown_contract",
+                id="unknown-field",
+            ),
+            pytest.param({}, "name", "name", id="missing-name"),
+        ],
+    )
+    def test_selected_workspace_manifest_validates_the_complete_document(
         self,
         tmp_path: Path,
+        overrides: t.MappingKV[str, t.JsonValue],
+        missing_field: str | None,
+        expected_error: str,
     ) -> None:
-        """Reject an unknown repository declaration field before policy use."""
-        root = self._self_named_governed_root(tmp_path, "unknown-field")
-        u.Tests.WorktreeFixture.override_repository_declaration(
-            root,
-            {"unknown_contract": True},
+        """Reject incompatible or partial manifest envelopes before policy use."""
+        root = self._self_named_governed_root(tmp_path, expected_error)
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        payload: t.MutableMappingKV[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": f"fixture-{expected_error}",
+            "repository": observed.repository.model_dump(mode="json"),
+        }
+        payload.update(overrides)
+        if missing_field is not None:
+            del payload[missing_field]
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                payload,
+            ),
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="unknown_contract")
+        tm.fail(result, has="workspace manifest model validation")
+        tm.fail(result, has=expected_error)
 
     @staticmethod
     def test_gitmodules_without_governed_members_remains_standalone(
@@ -282,6 +344,115 @@ class TestsFlextInfraRepositoryLocalTopology:
         )
         return member
 
+    @staticmethod
+    def _declare_members(
+        root: Path,
+        members: t.VariadicTuple[m.Infra.RepositoryRef],
+    ) -> None:
+        """Record ``members`` as the root manifest's declared member contracts."""
+        (manifest,) = tm.ok(u.Infra.load_workspace_manifest(root))
+        tm.ok(
+            u.Cli.yaml_dump(
+                u.Infra.workspace_manifest_path(root),
+                manifest.model_copy(update={"members": members}).model_dump(
+                    mode="json",
+                ),
+            ),
+        )
+
+    def test_root_generation_preserves_declared_members_without_checkouts(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Root-only CI planning keeps declared topology without member checkouts."""
+        member = self._attached_member(tmp_path)
+        root = member.parents[1]
+        before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        self._declare_members(root, before.subprojects)
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        first = tm.ok(
+            FlextInfraCodegenConformExecute(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(
+                request,
+            ),
+        )
+        relative = member.relative_to(root).as_posix()
+        # CI checks out the root alone: the member keeps its indexed gitlink
+        # and an empty working directory, with no Git directory of its own.
+        tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.GIT, "submodule", "absorbgitdirs", "--", relative),
+                cwd=root,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.GIT, "submodule", "deinit", "-f", "--", relative),
+                cwd=root,
+            ),
+        )
+
+        after = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        second = tm.ok(
+            FlextInfraCodegenConformExecute(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(
+                request,
+            ),
+        )
+
+        tm.that(after.subprojects, eq=before.subprojects)
+        tm.that(after.external_dependency_paths, empty=True)
+        tm.that(second.repositories, eq=first.repositories)
+        tm.that(second.files, eq=first.files)
+        tm.fail((member / c.PYPROJECT_FILENAME).exists())
+        tm.fail((member / c.Infra.GIT_DIR).exists())
+
+    def test_declared_content_member_remains_governed_without_checkout(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A content-only member's declared identity survives deinitialization."""
+        member = self._attached_member(tmp_path)
+        root = member.parents[1]
+        before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = tuple(
+            item.model_copy(update={"package": False}) for item in before.subprojects
+        )
+        self._declare_members(root, declared)
+        relative = member.relative_to(root).as_posix()
+        tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.GIT, "submodule", "absorbgitdirs", "--", relative),
+                cwd=root,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.GIT, "submodule", "deinit", "-f", "--", relative),
+                cwd=root,
+            ),
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(workspace.subprojects, eq=declared)
+        tm.that(workspace.external_dependency_paths, empty=True)
+        tm.fail((member / c.Infra.GIT_DIR).exists())
+
     def test_explicitly_unmanaged_content_member_remains_external(
         self,
         tmp_path: Path,
@@ -289,6 +460,14 @@ class TestsFlextInfraRepositoryLocalTopology:
         """The .gitmodules opt-out takes precedence over a cataloged member."""
         member = self._attached_member(tmp_path)
         root = member.parents[1]
+        before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        self._declare_members(
+            root,
+            tuple(
+                item.model_copy(update={"package": False})
+                for item in before.subprojects
+            ),
+        )
         relative = member.relative_to(root).as_posix()
         tm.ok(
             u.Cli.run_checked(
@@ -310,51 +489,52 @@ class TestsFlextInfraRepositoryLocalTopology:
         tm.that(workspace.subprojects, empty=True)
         tm.that(workspace.external_dependency_paths, has=Path(relative))
 
-    def test_member_origin_must_match_its_gitmodules_url(
+    def test_declared_member_url_must_match_its_gitmodules_url(
         self,
         tmp_path: Path,
     ) -> None:
-        """Reject a member checkout whose origin differs from .gitmodules."""
+        """Reject a manifest member whose URL identity differs from .gitmodules."""
         member = self._attached_member(tmp_path)
         root = member.parents[1]
-        u.Tests.git_run(
-            member,
-            "remote",
-            "set-url",
-            c.Infra.GIT_ORIGIN,
-            u.Tests.WorktreeFixture.governed_repository_url("foreign-member"),
+        before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        foreign_url = u.Tests.WorktreeFixture.governed_repository_url("foreign-member")
+        self._declare_members(
+            root,
+            tuple(
+                item.model_copy(update={"url": foreign_url})
+                for item in before.subprojects
+            ),
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
+        tm.fail(result, has="declared workspace member URL differs")
 
-    def test_member_checkout_without_pyproject_fails_closed(
+    def test_declared_member_checkout_without_pyproject_fails_closed(
         self,
         tmp_path: Path,
     ) -> None:
-        """A present member checkout must carry its native project declaration."""
+        """A present Git checkout of a declared package must carry its pyproject."""
         member = self._attached_member(tmp_path)
         root = member.parents[1]
+        before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        self._declare_members(root, before.subprojects)
         (member / c.PYPROJECT_FILENAME).unlink()
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="repository has no pyproject.toml")
+        tm.fail(result, has="declared Python member checkout has no")
 
     def test_makefile_bootstrap_accepts_unprovisioned_declared_member(
         self,
         tmp_path: Path,
     ) -> None:
-        """The setup Makefile renders before a declared member is checked out."""
+        """The setup Makefile can be rendered before a partial member is ready."""
         member = self._attached_member(tmp_path)
         root = member.parents[1]
-        relative = member.relative_to(root).as_posix()
-        for command in (
-            (c.Infra.GIT, "submodule", "absorbgitdirs", "--", relative),
-            (c.Infra.GIT, "submodule", "deinit", "-f", "--", relative),
-        ):
-            tm.ok(u.Cli.run_checked(command, cwd=root))
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        self._declare_members(root, workspace.subprojects)
+        (member / c.PYPROJECT_FILENAME).unlink()
 
         request = u.Tests.conform_request(
             root,
@@ -377,7 +557,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             tm.that(planned, has=root / destination)
         tm.fail(
             FlextInfraWorkspaceDetector.load_workspace_spec(root),
-            has="governed subproject checkout is missing",
+            has="no pyproject",
         )
 
     def test_composed_self_load_records_its_workspace_checkout(
@@ -400,9 +580,9 @@ class TestsFlextInfraRepositoryLocalTopology:
         self,
         tmp_path: Path,
     ) -> None:
-        """One declaration loads standalone and inside a workspace unchanged."""
+        """One manifest loads standalone and inside a workspace unchanged."""
         member = self._attached_member(tmp_path)
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        _ = u.Tests.WorktreeFixture.override_repository_manifest(
             member,
             {"uv_link_mode": "clone"},
         )
@@ -417,16 +597,16 @@ class TestsFlextInfraRepositoryLocalTopology:
         self,
         tmp_path: Path,
     ) -> None:
-        """Topology is observed from Git; a declared role fails closed."""
+        """A checkout without .gitmodules cannot declare the workspace role."""
         root = self._self_named_governed_root(tmp_path, "manifest-role-claim")
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        _ = u.Tests.WorktreeFixture.override_repository_manifest(
             root,
-            {"role": c.Infra.MakeProfile.WORKSPACE.value},
+            {"role": c.Infra.MakeProfile.WORKSPACE},
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="role")
+        tm.fail(result, has="role 'workspace' contradicts the observed topology")
 
     @staticmethod
     def test_workspace_excludes_governed_non_python_gitlinks_from_codegen(
@@ -475,21 +655,6 @@ class TestsFlextInfraRepositoryLocalTopology:
         u.Tests.WorktreeFixture.write_gitmodules(
             root,
             (python_project, service_project),
-        )
-        # Participation is declared natively: an absent flag inherits it, so
-        # the provider-owned service opts out in its own .gitmodules section.
-        tm.ok(
-            u.Cli.run_checked(
-                (
-                    c.Infra.GIT,
-                    "config",
-                    "-f",
-                    c.Infra.GITMODULES,
-                    f"submodule.{service_project}.flext-managed",
-                    c.ParserBooleanToken.FALSE,
-                ),
-                cwd=root,
-            ),
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))

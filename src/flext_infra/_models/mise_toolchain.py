@@ -20,7 +20,9 @@ from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchai
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
 
-    class UvOverridePackage(FlextInfraModelsMiseToolchainBase, strict=True):
+    class UvOverridePackage(
+        FlextInfraModelsMiseToolchainBase.SchemaRecord, strict=True
+    ):
         """Native UV package selector for a scoped dependency override."""
 
         name: Annotated[
@@ -43,7 +45,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class UvScopedOverride(FlextInfraModelsMiseToolchainBase, strict=True):
+    class UvScopedOverride(FlextInfraModelsMiseToolchainBase.SchemaRecord, strict=True):
         """One native UV scoped override, never a global dependency override."""
 
         package: Annotated[
@@ -65,7 +67,7 @@ class FlextInfraModelsMiseToolchain:
     ):
         """Native ordered global-string and scoped-table override grammar."""
 
-    class BeadsToolSpec(FlextInfraModelsMiseToolchainBase):
+    class BeadsToolSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Beads ledger and Gas City projection contract."""
 
         ownership_command_prefix: Annotated[
@@ -144,7 +146,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class MiseToolVersionProbe(FlextInfraModelsMiseToolchainBase):
+    class MiseToolVersionProbe(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Declared command whose output proves the provisioned tool version.
 
         The setup reality proof resolves ``binary`` through ``mise which``,
@@ -232,7 +234,7 @@ class FlextInfraModelsMiseToolchain:
                     raise ValueError(msg_0)
             return self
 
-    class MiseHttpToolOptions(FlextInfraModelsMiseToolchainBase):
+    class MiseHttpToolOptions(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Native HTTP backend declarations, projected without URL inference."""
 
         url: Annotated[
@@ -279,7 +281,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Native install-relative executable directory"),
         ] = None
 
-    class MisePostinstallOptions(FlextInfraModelsMiseToolchainBase):
+    class MisePostinstallOptions(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Native per-tool postinstall contract, including warm installation policy."""
 
         run: Annotated[t.NonEmptyStr, m.Field(description="Native postinstall command")]
@@ -288,7 +290,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Run on every installation when explicitly declared"),
         ] = None
 
-    class MiseToolEntry(FlextInfraModelsMiseToolchainBase):
+    class MiseToolEntry(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """One declarative fleet tool rendered into generated ``.mise.toml``.
 
         The entry table is the single toolchain surface: per-tool YAML keys,
@@ -424,7 +426,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Selectors already proven before this entry."),
         ]
 
-    class ToolchainSpec(FlextInfraModelsMiseToolchainBase):
+    class ToolchainSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Language-runtime and native-tool versions shared by generated projects.
 
         Native tools use moving ``latest`` selectors; Python retains its
@@ -835,7 +837,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class BeadsEndpointSpec(FlextInfraModelsMiseToolchainBase):
+    class BeadsEndpointSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Static network endpoint projected into Beads configuration."""
 
         host: Annotated[t.NonEmptyStr, m.Field(description="Beads server host")]

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -126,6 +127,52 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                     names.append(u.type_adapter(str).validate_python(capture["text"]))
             tm.that(sorted(names), eq=sorted(expected))
             tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        ("scenario", "expected"),
+        [("red", ["FixtureModels"]), ("green", [])],
+    )
+    def test_model_facade_root_requires_native_model_ancestry(
+        self,
+        tmp_path: Path,
+        fixture_tree: Callable[[str], Path],
+        scenario: str,
+        expected: list[str],
+    ) -> None:
+        """A family root inheriting a model is red; a nested model member is green."""
+        scenarios = fixture_tree("model-facade-root")
+        root = tmp_path / "project"
+        u.Tests.WorktreeFixture.write_python_project(root, "model-root-fixture")
+        _ = self._owner(root)
+        elected = self._elected_rule(root, "ban-model-facade-family-root.yml")
+        u.Tests.provision_checkout(root)
+        sample = (
+            root
+            / c.Infra.DEFAULT_SRC_DIR
+            / u.Infra.project_package_name(root)
+            / "models.py"
+        )
+        source = (scenarios / scenario / sample.name).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(root, fix=False, selection=(elected.id,))
+        )
+        names: list[str] = []
+        with u.Infra.mod_native_readers(report.native_artifacts) as readers:
+            for finding in report.entries:
+                tm.that(finding.rule_id, eq=elected.id)
+                tm.that(finding.file, eq=sample.relative_to(root))
+                mapping = u.type_adapter(t.TypeForm(t.JsonMapping))
+                native = u.Infra.mod_native_payload(finding, readers)
+                captures = mapping.validate_python(native["metaVariables"])
+                single = mapping.validate_python(captures["single"])
+                capture = mapping.validate_python(single[elected.context[0].variable])
+                names.append(u.type_adapter(str).validate_python(capture["text"]))
+        tm.that(names, eq=expected)
+        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @pytest.mark.parametrize("relative_catalog", ["policy", "nested/native/policy"])
     def test_native_snapshots_follow_declared_catalog_root(

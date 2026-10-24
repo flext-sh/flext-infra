@@ -46,6 +46,19 @@ class FlextInfraModelsDeps(
 ):
     """Models for dependency detection and modernization reporting."""
 
+    class RequirementsProvenance(m.ImmutableValueModel):
+        """Workspace provenance consulted while canonicalizing requirement lines."""
+
+        declared_sources: t.StrMapping = m.Field(
+            description="Declared member Git origins"
+        )
+        candidate_sources: t.StrMapping = m.Field(
+            description="Selected candidate Git origins"
+        )
+        native_sources: t.StrSequence = m.Field(
+            default=(), description="Names with explicit native UV source declarations"
+        )
+
     class ProjectPackagingDeclaration(m.ContractModel):
         """Native packaging facts retained independently of Python export health."""
 

@@ -89,7 +89,7 @@ class FlextInfraConfigModelsMake(
             int, m.Field(gt=0, description="Native module check wall-time limit")
         ] = c.Infra.TIMEOUT_DEFAULT
 
-    class RuffCacheSpec(FlextInfraExternalCacheDirectorySpec[str]):
+    class RuffCacheSpec(FlextInfraExternalCacheDirectorySpec.Directory[str]):
         """External Ruff cache with the declared default environment keys."""
 
         data_home_environment_variable: Annotated[
@@ -305,7 +305,7 @@ class FlextInfraConfigModelsMake(
             return self
 
     class MypyCacheSpec(
-        FlextInfraExternalCacheDirectorySpec[
+        FlextInfraExternalCacheDirectorySpec.Directory[
             FlextInfraConstantsConfig.MypyCacheEnvironment
         ],
         FlextInfraConfigModelsContract.ConfigContract,
@@ -505,7 +505,7 @@ class FlextInfraConfigModelsMake(
                 return self
 
         class TestmonCacheSpec(
-            FlextInfraExternalCacheDirectorySpec[
+            FlextInfraExternalCacheDirectorySpec.Directory[
                 FlextInfraConstantsConfig.PytestCacheEnvironment
             ],
             FlextInfraConfigModelsContract.ConfigContract,
@@ -640,7 +640,7 @@ class FlextInfraConfigModelsMake(
                 return self
 
         class CodemodRulesCacheSpec(
-            FlextInfraExternalCacheDirectorySpec,
+            FlextInfraExternalCacheDirectorySpec.Directory,
             FlextInfraConfigModelsContract.ConfigContract,
         ):
             """Content-keyed parsed codemod rule catalogs shared by every process."""

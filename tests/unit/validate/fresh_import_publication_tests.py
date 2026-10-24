@@ -53,7 +53,6 @@ def _probe_report(
     packages: t.StrSequence = (),
     publications: t.SequenceOf[m.Infra.LazyInitPlan] = (),
     repository_roots: t.SequenceOf[Path] = (),
-    runtime_root: Path,
 ) -> m.Infra.ValidationReport:
     """Build one fresh-import report over the probe checkout.
 
@@ -62,10 +61,7 @@ def _probe_report(
 
     """
     return tm.ok(
-        FlextInfraValidateFreshImport(
-            repository_root=tmp_path,
-            runtime_root=runtime_root,
-        ).build_report(
+        FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
             packages=packages,
             publications=publications,
             repository_roots=repository_roots,
@@ -87,7 +83,6 @@ class TestsFlextInfraFreshImportPublication:
     )
     def test_preserved_initializer_uses_real_publication_contract(
         tmp_path: Path,
-        suite_runtime_root: Path,
         content: str,
         *,
         missing_export: bool,
@@ -107,10 +102,7 @@ class TestsFlextInfraFreshImportPublication:
         )
 
         report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=repository_root,
-                runtime_root=suite_runtime_root,
-            ).build_report(
+            FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
                 repository_roots=(repository_root,),
             ),
         )
@@ -126,7 +118,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_layout_without_a_plan_verifies_its_on_disk_contract(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """A layout no publication claims is verified from its live exports.
 
@@ -142,10 +133,7 @@ class TestsFlextInfraFreshImportPublication:
         )
 
         report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=repository_root,
-                runtime_root=suite_runtime_root,
-            ).build_report(
+            FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
                 publications=(),
                 repository_roots=(repository_root,),
             ),
@@ -156,7 +144,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_layout_without_a_plan_still_fails_on_a_broken_disk_contract(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """A live package whose declared export cannot resolve still fails."""
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -166,10 +153,7 @@ class TestsFlextInfraFreshImportPublication:
         )
 
         report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=repository_root,
-                runtime_root=suite_runtime_root,
-            ).build_report(
+            FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
                 publications=(),
                 repository_roots=(repository_root,),
             ),
@@ -184,7 +168,6 @@ class TestsFlextInfraFreshImportPublication:
     @pytest.mark.parametrize("target_exists", [False, True])
     def test_declared_script_failure_blocks_publication(
         tmp_path: Path,
-        suite_runtime_root: Path,
         script_group: str,
         *,
         target_exists: bool,
@@ -207,7 +190,6 @@ class TestsFlextInfraFreshImportPublication:
         publication = _probe_publication(package, init_path=initializer)
         report = _probe_report(
             tmp_path,
-            runtime_root=suite_runtime_root,
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
@@ -223,7 +205,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_declared_script_contract_violation_stays_blocking(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """A missing export surfacing through a loadable script fails the report."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
@@ -242,7 +223,6 @@ class TestsFlextInfraFreshImportPublication:
         publication = _probe_publication(package, init_path=initializer)
         report = _probe_report(
             tmp_path,
-            runtime_root=suite_runtime_root,
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
@@ -250,9 +230,7 @@ class TestsFlextInfraFreshImportPublication:
         tm.that(report.violations[0], has="ImportError")
 
     @staticmethod
-    def test_advertised_lazy_export_must_resolve(
-        tmp_path: Path, suite_runtime_root: Path
-    ) -> None:
+    def test_advertised_lazy_export_must_resolve(tmp_path: Path) -> None:
         """Test advertised lazy export must resolve."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)
@@ -260,11 +238,7 @@ class TestsFlextInfraFreshImportPublication:
             "__all__ = ('missing_export',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        report = _probe_report(
-            tmp_path,
-            packages=(package.name,),
-            runtime_root=suite_runtime_root,
-        )
+        report = _probe_report(tmp_path, packages=(package.name,))
         tm.fail(report.passed)
         tm.that(report.violations[0], has="missing_export")
         tm.that(report.violations[0], has="Traceback")
@@ -273,7 +247,6 @@ class TestsFlextInfraFreshImportPublication:
     @pytest.mark.parametrize("dependency_present", [False, True])
     def test_declared_consumer_catches_exports_omitted_from_plan(
         tmp_path: Path,
-        suite_runtime_root: Path,
         *,
         dependency_present: bool,
     ) -> None:
@@ -298,7 +271,6 @@ class TestsFlextInfraFreshImportPublication:
         publication = _probe_publication(package, init_path=initializer)
         report = _probe_report(
             tmp_path,
-            runtime_root=suite_runtime_root,
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
@@ -311,7 +283,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_probe_larger_than_one_process_argument_still_runs(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """Test probe larger than one process argument still runs."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
@@ -334,7 +305,6 @@ class TestsFlextInfraFreshImportPublication:
         )
         report = _probe_report(
             tmp_path,
-            runtime_root=suite_runtime_root,
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
@@ -343,7 +313,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_rejects_owned_module_imported_from_another_directory(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """Test rejects owned module imported from another directory."""
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
@@ -371,7 +340,6 @@ class TestsFlextInfraFreshImportPublication:
         )
         report = _probe_report(
             tmp_path,
-            runtime_root=suite_runtime_root,
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
@@ -384,7 +352,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_foreign_origin_is_reported_before_phantom_export(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """A module loaded from outside this checkout names the origin first.
 
@@ -417,10 +384,7 @@ class TestsFlextInfraFreshImportPublication:
             exports=("value",),
         )
         report = tm.ok(
-            FlextInfraValidateFreshImport(
-                repository_root=tmp_path,
-                runtime_root=suite_runtime_root,
-            ).build_report(
+            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
                 packages=(package.name,),
                 publications=(publication,),
                 repository_roots=(tmp_path,),
@@ -436,7 +400,6 @@ class TestsFlextInfraFreshImportPublication:
     @staticmethod
     def test_origin_gate_keeps_the_probed_module_for_export_resolution(
         tmp_path: Path,
-        suite_runtime_root: Path,
     ) -> None:
         """Exports resolve against the published package, not the last loaded module.
 
@@ -475,7 +438,6 @@ class TestsFlextInfraFreshImportPublication:
         )
         report = _probe_report(
             tmp_path,
-            runtime_root=suite_runtime_root,
             publications=publications,
             repository_roots=(tmp_path,),
         )
