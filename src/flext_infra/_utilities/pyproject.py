@@ -23,6 +23,31 @@ from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
+    @staticmethod
+    def ruff_format_projection(
+        payload: t.JsonMapping,
+    ) -> p.Result[p.Infra.RuffFormatProjection]:
+        """Validate the formatter-owned view without changing native lint policy.
+
+        Returns:
+            One typed projection from the effective project Ruff table.
+
+        """
+        normalized = u.Cli.toml_as_mapping(payload)
+        if normalized is None:
+            return r[p.Infra.RuffFormatProjection].fail("formatter settings require a TOML mapping")
+        validated = u.validate_value(
+            m.Infra.RuffFormatProjection,
+            {
+                field.alias or name: normalized[field.alias or name]
+                for name, field in m.Infra.RuffFormatProjection.model_fields.items()
+                if (field.alias or name) in normalized
+            },
+        )
+        if validated.failure:
+            return r[p.Infra.RuffFormatProjection].from_failure(validated)
+        return r[p.Infra.RuffFormatProjection].ok(validated.value)
+
     @classmethod
     def declared_dependency_payload(
         cls,
@@ -88,7 +113,7 @@ class FlextInfraUtilitiesPyproject:
             entry
             if isinstance(entry, str)
             else dict(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.json_mapping_adapter().validate_python(
                     entry.model_dump(mode="json", by_alias=True),
                 ),
             )

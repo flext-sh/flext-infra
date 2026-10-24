@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_checkable
 
@@ -22,6 +22,81 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
+
+    @runtime_checkable
+    class RopeChangeComputer(Protocol):
+        """Changed source exposed by the native restructuring result."""
+
+        def get_changed(self) -> str | None: ...
+
+    @runtime_checkable
+    class RopeRestructureRequest(Protocol):
+        """Validated restructuring inputs consumed by the native adapter."""
+
+        @property
+        def pattern(self) -> str: ...
+
+        @property
+        def goal(self) -> str: ...
+
+        @property
+        def arguments(self) -> t.MappingKV[str, str | t.StrSequence]: ...
+
+        @property
+        def resources(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
+        @property
+        def imports(self) -> t.StrSequence | t.MappingKV[str, str]: ...
+
+        @property
+        def match_filter(
+            self,
+        ) -> (
+            Callable[
+                [
+                    FlextInfraProtocolsRopeRuntime.RopePyModule,
+                    FlextInfraProtocolsRopeRuntime.RopeContractMatch,
+                ],
+                bool,
+            ]
+            | None
+        ): ...
+
+    class RopeRestructureInitializer(Protocol):
+        """Structural contract of the native restructuring initializer."""
+
+        def __init__(
+            self,
+            project: FlextInfraProtocolsRopeRuntime.RopeProject,
+            pattern: str,
+            goal: str,
+            args: t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None = None,
+            imports: t.StrSequence | None = None,
+            wildcards: (
+                t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopeWildcard[str]] | None
+            ) = None,
+        ) -> None: ...
+
+    class RopeChangeComputation(Protocol):
+        """Native source computation hook, without a private SDK class import."""
+
+        def _compute_changes(
+            self,
+            matches: t.SequenceOf[FlextInfraTypesRopeNative.RopeNativeMatch],
+            pymodule: FlextInfraTypesRopeNative.RopeNativeSourceModule,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeComputer: ...
+
+    class RopeImportWriter(Protocol):
+        """Native import-writing hook used after lexical binding admission."""
+
+        def _add_imports(
+            self,
+            resource: FlextInfraTypesRopeNative.RopeNativeResource,
+            source: str,
+            imports: t.StrSequence,
+        ) -> str: ...
 
     @runtime_checkable
     class RopeProjectElection(Protocol):
@@ -294,8 +369,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def get_name(self) -> str: ...
-
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         def get_doc(self) -> str | None: ...
 

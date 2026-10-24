@@ -84,7 +84,11 @@ class FlextInfraCodegenStaging:
             if local.failure:
                 return result_type.from_failure(local)
             prepared_by_path.update((plan.path, plan) for plan in local.value)
-        return result_type.ok(tuple(prepared_by_path[plan.path] for plan in plans))
+        original = {plan.path for plan in plans}
+        return result_type.ok((
+            *(prepared_by_path[plan.path] for plan in plans),
+            *(plan for path, plan in prepared_by_path.items() if path not in original),
+        ))
 
     @classmethod
     def _prepare_single_project_plans(
@@ -105,6 +109,67 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        inputs = u.Infra.load_codegen_inputs(project)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        configuration = inputs.value.spec.make.ruff.format_config
+        destination = project / configuration
+        if not any(plan.path == destination for plan in plans):
+            metadata_plan = next(
+                (plan for plan in plans if plan.path == project / c.PYPROJECT_FILENAME),
+                None,
+            )
+            metadata_sources: tuple[m.Cli.AtomicFileState, ...] = ()
+            if metadata_plan is None:
+                metadata = u.Cli.atomic_read_binary_file_state(
+                    project / c.PYPROJECT_FILENAME, required=True
+                )
+                if metadata.failure:
+                    return result_type.from_failure(metadata)
+                content = metadata.value.content
+                metadata_sources = (metadata.value,)
+            else:
+                content = metadata_plan.desired_content
+            if content is None:
+                return result_type.fail("formatter preparation requires project metadata")
+            document = u.Cli.toml_parse_text(content.decode(c.DEFAULT_ENCODING))
+            if document is None:
+                return result_type.fail("formatter preparation requires valid project metadata")
+            payload = u.validate_value(
+                u.json_mapping_adapter(),
+                u.Cli.json_walk_path(document, ("tool", "ruff")),
+            )
+            if payload.failure:
+                return result_type.from_failure(payload)
+            projection = u.Infra.ruff_format_projection(payload.value)
+            if projection.failure:
+                return result_type.from_failure(projection)
+            entries = tuple(
+                entry for entry in inputs.value.spec.templates.entries
+                if entry.destination == configuration.as_posix()
+            )
+            managed = tuple(
+                entry for entry in inputs.value.spec.managed_file_specs
+                if entry.path == configuration
+            )
+            if len(entries) != 1 or entries[0].source is None or len(managed) != 1:
+                return result_type.fail("formatter projection requires one template and managed owner")
+            rendered = u.Cli.template_render_authenticated(
+                u.Infra.codegen_templates_root(inputs.value.spec) / entries[0].source,
+                m.Infra.RuffFormatRenderSpec.model_validate({"ruff": projection.value}),
+            )
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            planned = codegen.FlextInfraCodegenConform.file_plan(
+                project, configuration.as_posix(), rendered.value.rendered,
+                mode=managed[0].mode,
+                source_states=(
+                    *metadata_sources, *inputs.value.sources, *rendered.value.source_states,
+                ),
+            )
+            if planned.failure:
+                return result_type.from_failure(planned)
+            plans = (*plans, planned.value)
         sources = FlextInfraCodegenPreconditions.unique_states((
             *(state for plan in plans for state in plan.source_states),
             *(

@@ -228,10 +228,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             c.Infra.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
-        ruff_delegated_rules: Annotated[
-            t.StrTuple,
-            m.Field(description="Native rules checked by elected canonical owners"),
-        ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Relative path to the declared workspace root"),

@@ -11,12 +11,12 @@ import sys
 from pathlib import Path
 
 from flext_infra import config, r, u
-from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLazyInit,
 )
+from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
 from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
@@ -38,7 +38,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return u.Infra.facade_families()[family].module
 
     @staticmethod
-    def ruff_policy_toml() -> str:
+    def ruff_policy_toml(project: Path) -> str:
         """Render the fleet Ruff policy as a pyproject fragment.
 
         Reads the same typed SSOT production reads (P0): fixture
@@ -49,35 +49,41 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             The resulting ``str``.
 
         """
-        ruff_cfg = config.Infra.tooling.tools.ruff
-        select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
-        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
-            ruff_cfg.lint.rule_owners,
-            check_gates=config.Infra.codegen.make.check_gates_default,
-            repair_gates=(
-                *config.Infra.codegen.make.check_gates_fixable,
-                *config.Infra.codegen.make.fmt_gates,
-            ),
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
+        FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
+            payload, path=project / c.PYPROJECT_FILENAME, analysis_exclusions=(),
         )
-        ignore = ", ".join(f'"{rule}"' for rule in delegated)
-        isort = ruff_cfg.lint.isort
-        src = ", ".join(f'"{root}"' for root in ruff_cfg.src)
-        # Why: without the fleet's isort settings (combine-as-imports in
-        # particular), a fixture-generated `X, X as alias` combined import —
-        # the real lazy-facade pattern flext-infra's own __init__.py uses —
-        # fails ruff's default isort split, unlike production.
-        return (
-            f"[tool.ruff]\nsrc = [{src}]\n"
-            f"preview = {str(ruff_cfg.preview).lower()}\n\n"
-            f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
-            "[tool.ruff.lint.pydocstyle]\n"
-            f'convention = "{ruff_cfg.lint.pydocstyle.convention}"\n\n'
-            "[tool.ruff.lint.isort]\n"
-            f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
-            f"force-single-line = {str(isort.force_single_line).lower()}\n"
-            f"split-on-trailing-comma = "
-            f"{str(isort.split_on_trailing_comma).lower()}\n\n"
+        return u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload))
+
+    @staticmethod
+    def write_ruff_format_projection(project: Path) -> Path:
+        """Publish the declared native template for a real project fixture.
+
+        Returns:
+            The formatter artifact path owned by the canonical declaration.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(project).unwrap()
+        path = inputs.spec.make.ruff.format_config
+        entry = next(
+            item for item in inputs.spec.templates.entries
+            if item.destination == path.as_posix()
         )
+        if entry.source is None:
+            raise ValueError("formatter fixture requires its declared template")
+        document = u.Cli.toml_read_document(project / "pyproject.toml").unwrap()
+        payload = u.json_mapping_adapter().validate_python(
+            u.Cli.json_walk_path(document, ("tool", "ruff")),
+        )
+        projection = u.Infra.ruff_format_projection(payload).unwrap()
+        rendered = u.Cli.template_render_authenticated(
+            u.Infra.codegen_templates_root(inputs.spec) / entry.source,
+            m.Infra.RuffFormatRenderSpec.model_validate({"ruff": projection}),
+        ).unwrap()
+        destination = project / path
+        u.Cli.ensure_dir(destination.parent).unwrap()
+        u.Cli.atomic_write_text_file(destination, rendered.rendered).unwrap()
+        return destination
 
     @staticmethod
     def conform_request(
@@ -316,7 +322,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 f'license = "{project.license}"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n\n'
-                + TestsFlextInfraUtilitiesCodegenMixin.ruff_policy_toml()
+                + TestsFlextInfraUtilitiesCodegenMixin.ruff_policy_toml(repository_root)
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
         )

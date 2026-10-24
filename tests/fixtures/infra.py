@@ -312,22 +312,13 @@ def _provision_consumer_template(
                 distribution=name,
                 relative_path=name,
             )
-    workspace = u.Tests.workspace_spec(
-        repository,
-        project=u.Tests.project_spec(root.name),
-        subprojects=tuple(
-            u.Tests.repository_ref(name, path=Path(name))
-            for name in (() if member_dependencies is None else member_dependencies)
-        ),
-    )
+    workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
     conform_request = u.Tests.conform_request(
         root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
     )
     conform = FlextInfraCodegenConform(
         repository_root=root,
-        initial_workspace=workspace,
-        request=conform_request,
     )
     planned = conform.plan(conform_request)
     plan = tm.ok(planned)

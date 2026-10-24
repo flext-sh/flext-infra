@@ -89,10 +89,10 @@ class TestsFlextInfraDepsDetectionModels:
         """Verify default module to types package mapping."""
         service = FlextInfraDependencyDetectionService()
         limits = service.load_dependency_limits()
-        typing_libraries = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        typing_libraries = u.json_mapping_adapter().validate_python(
             limits["typing_libraries"],
         )
-        module_to_package = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        module_to_package = u.json_mapping_adapter().validate_python(
             typing_libraries["module_to_package"],
         )
         expected = module_to_package["yaml"]

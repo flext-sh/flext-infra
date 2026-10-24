@@ -1063,7 +1063,7 @@ class FlextInfraUtilitiesRefactor:
                 for item in results
             ],
         }
-        normalized_payload: t.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
+        normalized_payload: t.JsonValue = u.json_value_adapter().validate_python(
             payload,
         )
         write_result = u.Cli.json_write(output_path, normalized_payload)

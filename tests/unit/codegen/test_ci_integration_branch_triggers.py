@@ -136,7 +136,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         template = template_root / template_source
         rendered = tm.ok(u.Cli.template_render(template, spec))
         document = tm.ok(u.Cli.yaml_parse(rendered))
-        events = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["on"])
+        events = u.json_mapping_adapter().validate_python(document["on"])
 
         tm.that(
             "github.event.pull_request" in rendered and "pull_request" not in events,

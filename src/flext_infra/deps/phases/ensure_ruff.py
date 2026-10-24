@@ -91,7 +91,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
         """
         ruff_cfg = self._tool_config.tools.ruff
-        delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
+        FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_cfg.lint.rule_owners,
             check_gates=config.Infra.codegen.make.check_gates_default,
             repair_gates=(
@@ -170,19 +170,9 @@ class FlextInfraEnsureRuffConfigPhase:
                     table_path=("format",),
                     operations=tuple(
                         toml.SetOp(key=key, value=value)
-                        for key, value in (
-                            (
-                                "docstring-code-format",
-                                ruff_cfg.format.docstring_code_format,
-                            ),
-                            ("indent-style", ruff_cfg.format.indent_style),
-                            ("line-ending", ruff_cfg.format.line_ending),
-                            ("quote-style", ruff_cfg.format.quote_style),
-                            (
-                                "skip-magic-trailing-comma",
-                                ruff_cfg.format.skip_magic_trailing_comma,
-                            ),
-                        )
+                        for key, value in ruff_cfg.format.model_dump(
+                            mode="json", by_alias=True
+                        ).items()
                     ),
                 ),
                 toml.PhaseConfig(
@@ -219,10 +209,7 @@ class FlextInfraEnsureRuffConfigPhase:
                         toml.SetOp(
                             key="ignore",
                             value=FlextRuntime.normalize_to_json_value(
-                                sorted({
-                                    *delegated_rules,
-                                    *ruff_cfg.lint.ruling_disabled_rules,
-                                }),
+                                sorted(ruff_cfg.lint.ruling_disabled_rules),
                             ),
                         ),
                         toml.RemoveOp(key="extend-ignore"),

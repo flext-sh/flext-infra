@@ -418,6 +418,10 @@ class FlextInfraConfigModelsMake(
         mandatory unsafe channel. ***
         """
 
+        format_config: Annotated[
+            Path,
+            m.Field(description="Repository-relative native formatter-only projection"),
+        ]
         format_check: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Flags for ruff format --check (read-only fmt)"),
@@ -452,6 +456,14 @@ class FlextInfraConfigModelsMake(
                 ValueError: If make.ruff.lint_fix lacks the mandatory flag.
 
             """
+            if (
+                self.format_config.is_absolute()
+                or ".." in self.format_config.parts
+                or self.format_config.parent == Path(".")
+                or self.format_config.suffix != ".toml"
+            ):
+                msg = "make.ruff.format_config requires a confined nested TOML path"
+                raise ValueError(msg)
             if c.Infra.RUFF_UNSAFE_FIXES_FLAG not in self.lint_fix:
                 msg = (
                     "make.ruff.lint_fix must carry "

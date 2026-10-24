@@ -43,7 +43,9 @@ class FlextInfraRopeWorkspace(
     _codegen_projects: t.VariadicTuple[p.Infra.ProjectInfo] | None = u.PrivateAttr(
         default_factory=lambda: None,
     )
-    _project_layout_cache: MutableMapping[str, m.Infra.RopeProjectLayout | None] = (
+    _project_layout_cache: MutableMapping[
+        str, m.Infra.RopeProjectLayout | m.Infra.RopeLayoutObservation | None
+    ] = (
         u.PrivateAttr(default_factory=dict)
     )
     _package_context_cache: MutableMapping[str, m.Infra.LazyInitPackageContext] = (
@@ -296,10 +298,30 @@ class FlextInfraRopeWorkspace(
         """
         resolved_root = project_root.resolve()
         if not self._owns_rope_project:
-            return u.Infra.layout(resolved_root, rope_project=self.rope_project)
+            if not self.rope_project.authenticated_sources:
+                return u.Infra.layout(resolved_root, rope_project=self.rope_project)
+            cache_key = str(resolved_root)
+            observation = self._project_layout_cache.get(cache_key)
+            if observation is not None:
+                if not isinstance(observation, m.Infra.RopeLayoutObservation):
+                    msg = "authenticated layout cache requires its original receipt"
+                    raise TypeError(msg)
+                with self.rope_project.source_consumption():
+                    self.rope_project.replay_source_consumption(observation.receipt)
+                return observation.layout
+            with self.rope_project.source_consumption() as consumed:
+                layout = u.Infra.layout(resolved_root, rope_project=self.rope_project)
+            self._project_layout_cache[cache_key] = m.Infra.RopeLayoutObservation(
+                layout=layout, receipt=consumed.receipt(),
+            )
+            return layout
         cache_key = str(resolved_root)
         if cache_key in self._project_layout_cache:
-            return self._project_layout_cache[cache_key]
+            cached = self._project_layout_cache[cache_key]
+            if isinstance(cached, m.Infra.RopeLayoutObservation):
+                msg = "live layout cache cannot consume an authenticated epoch result"
+                raise TypeError(msg)
+            return cached
         project_info = next(
             (
                 project

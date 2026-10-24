@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from contextlib import nullcontext
+from re import escape
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 
 from flext_infra import config, m
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import tm, u
 
@@ -20,6 +23,83 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeSnapshot:
     """Validate the closed snapshot inventory against governed entry files."""
+
+    @staticmethod
+    @pytest.mark.parametrize("physical", [False, True])
+    @pytest.mark.parametrize("predicate", ["exists", "isfile", "isdir"])
+    def test_directory_predicates_consume_payload_only_for_virtual_positive_answers(
+        tmp_path: Path,
+        predicate: Literal["exists", "isfile", "isdir"],
+        *,
+        physical: bool,
+    ) -> None:
+        """A false file-kind query is not a read of every directory descendant."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        dependency = package / "dependency.py"
+        dependency.write_text("value = 1\n", encoding="utf-8")
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(dependency, required=True))
+        directory = package if physical else package / "planned"
+        provider = directory / "provider.py"
+        plan = tm.ok(FlextInfraCodegenConform.file_plan(
+            root, provider.relative_to(root).as_posix(), "value = 2\n",
+            source_states=(original,),
+        ))
+        with u.Infra.facade_source_project(root, declared_files=(plan,)) as binding:
+            project = binding[0]
+            with project.source_consumption() as consumer:
+                tm.that(project.source_query(directory, predicate), eq=predicate != "isfile")
+            receipt = consumer.receipt()
+            tm.that(
+                dependency in {state.path for state in receipt.inputs},
+                eq=not physical and predicate != "isfile",
+            )
+            tm.that(
+                any(
+                    inventory.root.path == directory.parent
+                    and (directory.name, predicate) in inventory.queries
+                    for inventory in receipt.source_directories
+                ),
+                eq=True,
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("changed_membership", [False, True])
+    def test_repeated_overlay_reads_retain_every_original_receipt(
+        tmp_path: Path,
+        *,
+        changed_membership: bool,
+    ) -> None:
+        """Import-once bookkeeping never skips consumer reads or epoch guards."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = package / "provider.py"
+        provider.write_text("value = 1\n", encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as observed:
+                project.source_children(package)
+                project.source_text(provider)
+            receipt = observed.receipt()
+        plan = tm.ok(FlextInfraCodegenConform.file_plan(
+            root, provider.relative_to(root).as_posix(), "value = 2\n",
+            source_states=receipt.inputs,
+        )).model_copy(update={
+            "source_directories": receipt.source_directories,
+            "source_query_topology": receipt.source_query_topology,
+        })
+        rejection = (
+            pytest.raises(ValueError, match=escape(str(package)))
+            if changed_membership else nullcontext()
+        )
+        with rejection, u.Infra.facade_source_project(root, declared_files=(plan,)) as binding:
+            project = binding[0]
+            with project.source_consumption() as first:
+                tm.that(project.source_text(provider), eq="value = 2\n")
+            with project.source_consumption() as second:
+                tm.that(project.source_text(provider), eq="value = 2\n")
+            tm.that(second.receipt().inputs, eq=first.receipt().inputs)
+            tm.that(second.receipt().source_directories, eq=first.receipt().source_directories)
+            tm.that(second.receipt().source_query_topology, eq=first.receipt().source_query_topology)
+            if changed_membership:
+                (package / "new.py").write_text("value = 3\n", encoding="utf-8")
 
     @staticmethod
     @pytest.mark.parametrize("external", [False, True])

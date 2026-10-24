@@ -17,6 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsCheck,
     FlextInfraModelsMixins,
+    FlextInfraModelsRope,
     FlextInfraModelsWorkspace,
 )
 from flext_infra._models._codegen import (
@@ -147,6 +148,27 @@ class FlextInfraModelsCodegenPipelineModels:
                 msg = "codegen phase receipt input paths must be unique"
                 raise ValueError(msg)
             return self
+
+    class RopeQueryObservation(FlextInfraModelsBase.FrozenArbitrary):
+        """Native predicate value and its exact immutable original observation."""
+
+        observed: Annotated[bool, m.Field(description="Native physical predicate result")]
+        receipt: Annotated[
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis,
+            m.Field(description="Original selectors and witnesses required by this predicate"),
+        ]
+
+    class RopeLayoutObservation(FlextInfraModelsBase.FrozenArbitrary):
+        """One epoch-local layout together with its exact native consumption."""
+
+        layout: Annotated[
+            FlextInfraModelsRope.RopeProjectLayout | None,
+            m.Field(description="Layout elected by this workspace's source owner"),
+        ]
+        receipt: Annotated[
+            FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis,
+            m.Field(description="Exact original reads and queries consumed by the layout"),
+        ]
 
     class CodegenPhaseOutcome(
         FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True

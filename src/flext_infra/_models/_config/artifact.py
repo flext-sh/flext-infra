@@ -1185,6 +1185,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ] = None
 
+        planned_ruff_format: Annotated[
+            FlextInfraModelsDepsToolConfig.RuffFormatProjection | None,
+            m.Field(description="Formatter view of this plan's composed pyproject"),
+        ] = None
+
     class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
         """Exact before state and desired state for one managed file."""
 

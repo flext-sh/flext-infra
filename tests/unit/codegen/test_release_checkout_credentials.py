@@ -44,7 +44,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             },
         )
         rendered = tm.ok(u.Cli.template_render(cls.release_template, spec))
-        return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        return u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.yaml_parse(rendered)),
         )
 
@@ -60,13 +60,13 @@ class TestsFlextInfraReleaseCheckoutCredentials:
                 persist-credentials must render as a YAML boolean.
 
         """
-        mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job)
+        mapping = u.json_mapping_adapter().validate_python(job)
         steps = mapping["steps"]
         if not isinstance(steps, list):
             msg = "workflow job steps must be a sequence"
             raise TypeError(msg)
-        checkout = t.Cli.JSON_MAPPING_ADAPTER.validate_python(steps[0])
-        inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(checkout["with"])
+        checkout = u.json_mapping_adapter().validate_python(steps[0])
+        inputs = u.json_mapping_adapter().validate_python(checkout["with"])
         value = inputs["persist-credentials"]
         if not isinstance(value, bool):
             msg = "persist-credentials must render as a YAML boolean"
@@ -76,7 +76,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
     def test_release_push_jobs_persist_declared_checkout_token(self) -> None:
         """Test release push jobs persist declared checkout token."""
         document = self.render_release()
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
+        jobs = u.json_mapping_adapter().validate_python(document["jobs"])
 
         tm.that(self.checkout_credentials(jobs["identity"]), eq=False)
         tm.that(self.checkout_credentials(jobs["version"]), eq=True)

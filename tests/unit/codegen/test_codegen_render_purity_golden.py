@@ -92,7 +92,7 @@ class TestsFlextInfraCodegenRenderPurityGolden:
 
         rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
         parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        settings = u.json_mapping_adapter().validate_python(parsed)
 
         for key, value in expected.items():
             tm.that(settings[key], eq=value, msg=f"{environment}: {key}")

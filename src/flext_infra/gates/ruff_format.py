@@ -37,11 +37,13 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = project_dir, ctx
+        _ = ctx
         return self._python_module_command(
             c.Infra.RUFF,
             c.Infra.FORMAT,
             *config.Infra.codegen.make.ruff.format_check,
+            "--config",
+            str(self.configuration_path(project_dir)),
             *check_dirs,
         )
 
@@ -126,11 +128,13 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = project_dir, ctx
+        _ = ctx
         return self._python_module_command(
             c.Infra.RUFF,
             c.Infra.FORMAT,
             *config.Infra.codegen.make.ruff.format_apply,
+            "--config",
+            str(self.configuration_path(project_dir)),
             *targets,
         )
 
@@ -158,6 +162,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             c.Infra.RUFF,
             c.Infra.FORMAT,
             *config.Infra.codegen.make.ruff.format_apply,
+            "--config",
+            str(cls.configuration_path(repository_root)),
             *(str(path) for path in paths),
         )
         run = u.Cli.run_raw(command, cwd=repository_root)
@@ -166,6 +172,40 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         if not u.Cli.process_succeeded(run.value.outcome) or run.value.stderr.strip():
             return r[bool].fail(cls._raw_output(run.value))
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def configuration_path(project_dir: Path) -> Path:
+        """Require the exact formatter view of this candidate's project policy.
+
+        Returns:
+            Its explicit native configuration path.
+
+        Raises:
+            FileNotFoundError: If the declared artifact has not been generated.
+            ValueError: If the declared projection is obsolete or contains lint policy.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
+        path = project_dir / inputs.spec.make.ruff.format_config
+        if not path.is_file():
+            msg = f"formatter projection is missing: {path}; regenerate with make gen"
+            raise FileNotFoundError(msg)
+        document = u.Cli.toml_read_document(project_dir / c.PYPROJECT_FILENAME).unwrap()
+        payload = u.validate_value(
+            u.json_mapping_adapter(),
+            u.Cli.json_walk_path(document, ("tool", "ruff")),
+        ).unwrap()
+        expected = u.Infra.ruff_format_projection(payload).unwrap()
+        observed = u.Cli.toml_read_document(path).unwrap()
+        actual = u.validate_value(
+            m.Infra.RuffFormatProjection, u.Cli.toml_as_mapping(observed)
+        ).unwrap()
+        if actual.model_dump(mode="json", by_alias=True) != expected.model_dump(
+            mode="json", by_alias=True
+        ):
+            msg = f"formatter projection is stale: {path}; regenerate with make gen"
+            raise ValueError(msg)
+        return path.absolute()
 
 
 __all__: list[str] = ["FlextInfraRuffFormatGate"]

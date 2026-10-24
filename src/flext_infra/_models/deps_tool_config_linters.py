@@ -74,6 +74,40 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
+    class RuffFormatProjection(m.ArbitraryTypesModel):
+        """Formatter input projected from the same effective Ruff document."""
+
+        model_config = m.ConfigDict(extra="forbid", frozen=True)
+
+        extend_exclude: Annotated[
+            t.StrTuple,
+            m.Field(alias="extend-exclude", description="Effective project exclusion globs"),
+        ] = m.Field(default_factory=tuple)
+        line_length: Annotated[
+            int, m.Field(alias="line-length", description="Effective project line width")
+        ]
+        preview: Annotated[bool, m.Field(description="Effective Ruff preview mode")]
+        respect_gitignore: Annotated[
+            bool,
+            m.Field(alias="respect-gitignore", description="Effective Git ignore handling"),
+        ]
+        target_version: Annotated[
+            str,
+            m.Field(alias="target-version", description="Effective Python syntax target"),
+        ]
+        format: Annotated[
+            FlextInfraModelsDepsToolConfigLinters.RuffFormatConfig,
+            m.Field(description="All schema-owned formatter settings"),
+        ]
+
+    class RuffFormatRenderSpec(m.ArbitraryTypesModel):
+        """Authenticated template input without any lint policy."""
+
+        ruff: Annotated[
+            FlextInfraModelsDepsToolConfigLinters.RuffFormatProjection,
+            m.Field(description="Validated formatter-only project projection"),
+        ]
+
     class RuffIsortConfig(m.ArbitraryTypesModel):
         """Ruff isort settings loaded from YAML."""
 

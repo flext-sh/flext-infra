@@ -94,7 +94,7 @@ class TestsFlextInfraRuffProjectPolicy:
         *,
         delegate: bool,
     ) -> None:
-        """Changing explicit policy changes only delegation, never rule selection."""
+        """Ownership metadata never changes the native lint selection or ignores."""
         tooling = config.Infra.tooling
         declared = tooling.tools.ruff.lint
         lint_payload = declared.model_dump(
@@ -126,7 +126,7 @@ class TestsFlextInfraRuffProjectPolicy:
             analysis_exclusions=(),
         )
         actual = tm.not_none(u.Cli.toml_mapping_path(payload, ("tool", "ruff", "lint")))
-        tm.that(actual["ignore"], eq=sorted(owners))
+        tm.that(actual["ignore"], eq=sorted(lint.ruling_disabled_rules))
         tm.that(actual["select"], eq=sorted(lint.select))
         tm.that(actual["unfixable"], eq=sorted(lint.unfixable))
         tm.that(
@@ -163,7 +163,7 @@ class TestsFlextInfraRuffProjectPolicy:
         ):
             tm.that(lint, lacks=retired)
         tm.that(
-            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.ruling_disabled_rules)
         )
         tm.that(lint["select"], eq=sorted(config.Infra.tooling.tools.ruff.lint.select))
         tm.that(
@@ -255,6 +255,7 @@ class TestsFlextInfraRuffProjectPolicy:
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding="utf-8",
         )
+        u.Tests.write_ruff_format_projection(project)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",

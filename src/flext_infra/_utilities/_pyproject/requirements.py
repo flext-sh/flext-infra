@@ -167,7 +167,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             section = u.Cli.toml_table_child(parent, section_name)
             if section is None:
                 continue
-            group_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            group_names = u.json_mapping_adapter().validate_python(
                 u.Cli.toml_unwrap_item(section),
             )
             for group_name in group_names:
@@ -203,7 +203,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             return normalized
         optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
         if optional is not None:
-            for group_name in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            for group_name in u.json_mapping_adapter().validate_python(
                 u.Cli.toml_unwrap_item(optional),
             ):
                 group_result = cls._normalize_requirement_field(

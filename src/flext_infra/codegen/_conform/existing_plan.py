@@ -963,6 +963,27 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         """
         result_type = r[t.Pair[m.Infra.CodegenRenderInputs, m.Infra.CodegenFilePlan]]
         root = render_inputs.target.root
+        metadata_sources: tuple[m.Cli.AtomicFileState, ...] = ()
+        if (
+            entry.destination == render_inputs.codegen.make.ruff.format_config.as_posix()
+            and render_inputs.planned_ruff_format is None
+        ):
+            # A surface that does not own its root pyproject elects the
+            # captured document, never an obsolete formatter projection.
+            metadata = u.Cli.atomic_read_binary_file_state(
+                root / c.PYPROJECT_FILENAME, required=True,
+            )
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            if metadata.value.content is None:
+                return result_type.fail("formatter projection requires captured project metadata")
+            recorded = self.with_planned_pyproject(
+                render_inputs, metadata.value.content.decode(c.DEFAULT_ENCODING),
+            )
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            render_inputs = recorded.value
+            metadata_sources = (metadata.value,)
         rendered = (
             r[m.Infra.CodegenArtifactComposition].fail(
                 f"managed render entry has no template source: {entry.destination}",
@@ -983,7 +1004,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             entry.destination,
             rendered.value.rendered,
             render_inputs=render_inputs,
-            source_states=rendered.value.source_states,
+            source_states=(*metadata_sources, *rendered.value.source_states),
         )
         if composed.failure:
             return result_type.from_failure(composed)
@@ -1665,7 +1686,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 )
                 return result_type.fail(str(error), exception=error)
             values = u.Cli.json_walk_path(projection.values, ("Infra", "codegen"))
-            validated = u.validate_value(t.Cli.JSON_MAPPING_ADAPTER, values)
+            validated = u.validate_value(u.json_mapping_adapter(), values)
             if validated.failure:
                 return result_type.from_failure(validated)
             planned = cls._codegen_declaration_plan(

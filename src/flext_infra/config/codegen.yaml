@@ -490,6 +490,7 @@ Infra:
       # whose fixes would destroy information stay declared unfixable in
       # tooling.yaml (rule selection, never disabling the unsafe channel).
       ruff:
+        format_config: &ruff_format_config config/ruff-format.toml
         format_check: [ --preview, --check ]
         format_apply: [ --preview ]
         lint_check: [ --preview, --no-fix ]
@@ -740,6 +741,10 @@ Infra:
         description: Render the retained profile of the complete workspace lane audit.
       - name: profile-mod
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
+      - name: profile-gen-pyproject
+        description: Profile the complete native pyproject generation stage before cohort reconciliation.
+      - name: profile-gen-pyproject-report
+        description: Render the retained profile of the native pyproject generation stage.
       - name: profile-mod-report
         description: Render the canonical codemod profile from the last profiling invocation.
       - name: profile-mod-rules
@@ -1276,6 +1281,9 @@ Infra:
       project_overrides: {}
 
     managed_files:
+    - path: *ruff_format_config
+      owner: codegen
+      policy: full
     - path: .github/ci-template/ci.yml
       owner: codegen
       policy: full
@@ -2145,6 +2153,10 @@ Infra:
         delegate: render
       - source: base/.mise.toml.j2
         destination: .mise.toml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/ruff-format.toml.j2
+        destination: *ruff_format_config
         profiles: [ workspace, standalone ]
         delegate: render
       - source: base/markdownlint.json.j2

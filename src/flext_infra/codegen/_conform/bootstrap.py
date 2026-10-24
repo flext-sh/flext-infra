@@ -321,7 +321,11 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         """
         return frozenset(
             path.as_posix()
-            for path in (Path(c.PYPROJECT_FILENAME), *codegen.uv_resolution_pyprojects)
+            for path in (
+                Path(c.PYPROJECT_FILENAME),
+                *codegen.uv_resolution_pyprojects,
+                codegen.make.ruff.format_config,
+            )
         )
 
 

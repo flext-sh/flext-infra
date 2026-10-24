@@ -1,0 +1,13 @@
+{% macro shared(ruff, exclusions) -%}
+extend-exclude = {{ exclusions | list | tojson }}
+line-length = {{ ruff.line_length }}
+preview = {{ ruff.preview | lower }}
+respect-gitignore = {{ ruff.respect_gitignore | lower }}
+target-version = {{ ruff.target_version | tojson }}
+{%- endmacro %}
+
+{% macro formatting(ruff) -%}
+{% for key, value in ruff.format.items() -%}
+{{ key | replace("_", "-") }} = {{ value | tojson }}
+{% endfor -%}
+{%- endmacro %}

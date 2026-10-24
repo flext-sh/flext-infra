@@ -11,6 +11,8 @@ from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 if TYPE_CHECKING:
     from flext_infra import c, m, p, t
 
@@ -18,6 +20,27 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
+
+    class RuffFormatProjection(FlextCliProtocols.Model, Protocol):
+        """Validated formatter-only view of effective project Ruff settings."""
+
+        @property
+        def extend_exclude(self) -> t.StrSequence: ...
+
+        @property
+        def line_length(self) -> int: ...
+
+        @property
+        def preview(self) -> bool: ...
+
+        @property
+        def respect_gitignore(self) -> bool: ...
+
+        @property
+        def target_version(self) -> str: ...
+
+        @property
+        def format(self) -> FlextCliProtocols.Model: ...
 
     @runtime_checkable
     class CommandPayloadContext(Protocol):

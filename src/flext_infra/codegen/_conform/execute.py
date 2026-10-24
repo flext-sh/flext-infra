@@ -1461,8 +1461,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             file.path for file in files if u.Infra.codegen_file_requires_effect(file)
         }
         groups: t.MutableMappingKV[str, Path] = {}
+        formatters = {
+            project: project
+            / u.Infra.load_codegen_inputs(project).unwrap().spec.make.ruff.format_config
+            for project in dict.fromkeys(file.project for file in files)
+        }
         for file in files:
             dependencies = {source.path for source in file.source_states} & effects
+            formatter = formatters[file.project]
+            if formatter in connections and (
+                file.path.suffix in {".py", ".pyi"}
+                or file.path == file.project / c.PYPROJECT_FILENAME
+            ):
+                dependencies.add(formatter)
             dependencies.update(set(file.tracking_dependencies) & connections.keys())
             if file.dependency_group is not None:
                 dependencies.add(groups.setdefault(file.dependency_group, file.path))

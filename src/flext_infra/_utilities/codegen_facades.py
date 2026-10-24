@@ -128,11 +128,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
         # republished site-packages/flext_cli/utilities.py otherwise).
+        elected_paths = paths | {state.path for state in source_states}
         sources = {
             **{
                 state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in source_states
-                if state.path.is_relative_to(root)
+                for state in original_states
+                if state.path in elected_paths
+                and state.path.is_relative_to(root)
                 and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 if state.content is not None
                 and state.path not in retired
@@ -434,12 +436,19 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         folder = project.get_folder(
             directory.relative_to(Path(project.root.real_path)).as_posix()
         )
+        # Observe full native membership, then elect the same tracked or
+        # explicitly supplied sources as the captured planning map.
+        elected_paths = {
+            *FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(directory),
+            *sources,
+        }
         actual = tuple(
             sorted(
                 Path(child.real_path)
                 for child in folder.get_children()
                 if not child.is_folder()
                 and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
+                and Path(child.real_path) in elected_paths
             )
         )
         expected = tuple(
@@ -450,7 +459,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
         )
         if actual != expected:
-            message = f"native facade source membership differs: {directory}"
+            message = (
+                f"native facade source membership differs: {directory}; "
+                f"actual={actual!r}; expected={expected!r}"
+            )
             raise ValueError(message)
         return actual
 

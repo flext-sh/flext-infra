@@ -53,9 +53,15 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
 
         """
         score = 0
+        project_root = u.Infra.project_root(
+            module_file, source_project=self.rope_workspace.rope_project,
+        )
         policy = u.Infra.publication_policy(
             module_file,
             rope_project=self.rope_workspace.rope_project,
+            project_layout=self.rope_workspace.layout(project_root)
+            if project_root is not None
+            else None,
         )
         if policy.expected_alias == name:
             score += 100

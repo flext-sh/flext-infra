@@ -111,8 +111,20 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         names = u.Infra.direct_source_names(document)
         if names.failure:
             return r[m.Infra.CodegenRenderInputs].from_failure(names)
+        payload = u.validate_value(
+            u.json_mapping_adapter(),
+            u.Cli.json_walk_path(document, ("tool", "ruff")),
+        )
+        if payload.failure:
+            return r[m.Infra.CodegenRenderInputs].from_failure(payload)
+        projection = u.Infra.ruff_format_projection(payload.value)
+        if projection.failure:
+            return r[m.Infra.CodegenRenderInputs].from_failure(projection)
         return r[m.Infra.CodegenRenderInputs].ok(
-            render_inputs.model_copy(update={"planned_direct_sources": names.value}),
+            render_inputs.model_copy(update={
+                "planned_direct_sources": names.value,
+                "planned_ruff_format": projection.value,
+            }),
         )
 
     @staticmethod
@@ -633,6 +645,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         codegen = render_inputs.codegen
+        if destination == codegen.make.ruff.format_config.as_posix():
+            if render_inputs.planned_ruff_format is None:
+                return r[p.Model].fail("formatter projection requires composed pyproject settings")
+            return r[p.Model].ok(
+                m.Infra.RuffFormatRenderSpec(ruff=render_inputs.planned_ruff_format)
+            )
         dist = render_inputs.target.repository.distribution
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
             return r[p.Model].ok(

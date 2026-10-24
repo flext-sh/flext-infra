@@ -452,8 +452,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-gen-pyproject profile-gen-pyproject-report profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-gen-pyproject profile-gen-pyproject-report profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -1244,6 +1244,36 @@ _activated-profile-mod: _builtin_require_environment
 
 
 
+profile-gen-pyproject: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' 'profile-gen-pyproject' "$(PROJECT_ROOT)" 'standalone'
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-gen-pyproject,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-gen-pyproject)
+
+.PHONY: _activated-profile-gen-pyproject
+
+_activated-profile-gen-pyproject: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-gen-pyproject,$(call RUN_PUBLIC,profile-gen-pyproject))
+
+
+
+
+profile-gen-pyproject-report: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' 'profile-gen-pyproject-report' "$(PROJECT_ROOT)" 'standalone'
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-gen-pyproject-report,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-gen-pyproject-report)
+
+.PHONY: _activated-profile-gen-pyproject-report
+
+_activated-profile-gen-pyproject-report: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-gen-pyproject-report,$(call RUN_PUBLIC,profile-gen-pyproject-report))
+
+
+
+
 profile-mod-report: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' 'profile-mod-report' "$(PROJECT_ROOT)" 'standalone'
 
@@ -1821,6 +1851,14 @@ profile-mod:
 	@printf '  %-16s %s\n' 'profile-mod' 'Profile the canonical mutating codemod lifecycle and retain the profile on failure.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod to execute it.'
 
+profile-gen-pyproject:
+	@printf '  %-16s %s\n' 'profile-gen-pyproject' 'Profile the complete native pyproject generation stage before cohort reconciliation.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-gen-pyproject to execute it.'
+
+profile-gen-pyproject-report:
+	@printf '  %-16s %s\n' 'profile-gen-pyproject-report' 'Render the retained profile of the native pyproject generation stage.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-gen-pyproject-report to execute it.'
+
 profile-mod-report:
 	@printf '  %-16s %s\n' 'profile-mod-report' 'Render the canonical codemod profile from the last profiling invocation.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod-report to execute it.'
@@ -2026,6 +2064,10 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'profile-lanes-report' 'Render the retained profile of the complete workspace lane audit.';
 
 	@printf '  %-16s %s\n' 'profile-mod' 'Profile the canonical mutating codemod lifecycle and retain the profile on failure.';
+
+	@printf '  %-16s %s\n' 'profile-gen-pyproject' 'Profile the complete native pyproject generation stage before cohort reconciliation.';
+
+	@printf '  %-16s %s\n' 'profile-gen-pyproject-report' 'Render the retained profile of the native pyproject generation stage.';
 
 	@printf '  %-16s %s\n' 'profile-mod-report' 'Render the canonical codemod profile from the last profiling invocation.';
 
@@ -2592,15 +2634,48 @@ _builtin_file_gate_all: _builtin_require_environment
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
-# lint repair belongs to `make fix`. Only a real tool failure (exit >= 2)
-# breaks the verb; a formatter's residual findings stay reportable and are
-# enforced by `make check`.
+# lint repair belongs to `make fix`. Every repair requires read-only native
+# verification; remaining findings and tool failures both fail the verb.
 _builtin_fmt_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "format,markdown-format" --apply
+	@set -eu; \
+		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
+		if [ "$(strip $(CI))" = "Y" ]; then \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"; \
+			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import deps index-declarations layout\n'; \
+		elif [ "$(strip $(CI))" = "N" ]; then \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
+			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
+		else \
+			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
+		fi; \
+		if [ -z "$$gates" ]; then \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
+			exit 2; \
+		fi; \
+		$(PROJECT_FLEXT_INFRA) workspace capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
+		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 
 _builtin_fix_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode apply
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,deps" --apply
+	@set -eu; \
+		gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
+		if [ "$(strip $(CI))" = "Y" ]; then \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,layout"; \
+			printf 'INFO: CI=Y runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly conflict-markers loc-cap runtime-census fresh-import deps index-declarations layout\n'; \
+		elif [ "$(strip $(CI))" = "N" ]; then \
+			gates="lint,format,security,markdown,markdown-format,markdown-code,duplication,pyrefly,mypy,pyright,conflict-markers,loc-cap,runtime-census,fresh-import,deps,index-declarations,codemod,layout,direnv"; \
+			printf 'INFO: CI=N runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
+		else \
+			printf 'INFO: default context runs check gates: lint format security markdown markdown-format markdown-code duplication pyrefly mypy pyright conflict-markers loc-cap runtime-census fresh-import deps index-declarations codemod layout direnv\n'; \
+		fi; \
+		if [ -z "$$gates" ]; then \
+			printf 'ERROR: no active check gates remain in the selected context\n' >&2; \
+			exit 2; \
+		fi; \
+		$(PROJECT_FLEXT_INFRA) workspace capture-gate --repository-root "$(PROJECT_ROOT)" --gates "$$gates"; \
+		$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check
 
 # SonarCloud server-side issue exclusions (SSOT: codegen.sonarcloud). The verb
 # writes an external service with SONAR_TOKEN from the environment; it belongs
@@ -2663,6 +2738,20 @@ profile-gen-report: _builtin_require_environment
 	@$(RUNTIME_PYTHON) -c \
 		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
 		"$(PROFILE_REPORTS_DIR)/conform.pstats"
+
+# Measure the exact pre-cohort stage without narrowing the full generation profile.
+_builtin-profile-gen-pyproject: _builtin_require_interpreter
+
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/pyproject.pstats" codegen generate \
+		--root "$(PROJECT_ROOT)" --what pyproject --scope all
+
+_builtin-profile-gen-pyproject-report: _builtin_require_environment
+
+	@$(RUNTIME_PYTHON) -c \
+		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
+		"$(PROFILE_REPORTS_DIR)/pyproject.pstats"
 
 # Measure the environment guard itself before changing its provenance checks.
 _builtin-profile-environment: _builtin_require_interpreter

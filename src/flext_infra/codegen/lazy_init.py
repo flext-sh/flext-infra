@@ -149,12 +149,19 @@ class FlextInfraCodegenLazyInit(
         report_root = (
             resolved_repository_root if evidence_root is None else evidence_root
         )
+        publish_evidence = source_project is None or evidence_root is not None
+        if publish_evidence:
+            prepared = u.Cli.ensure_dir(
+                (report_root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).parent
+            )
+            if prepared.failure:
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(prepared)
         planned = self._plan_in_workspace(source_project=source_project)
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
         # An embedded producer leaves evidence publication to its enclosing owner.
-        if source_project is None or evidence_root is not None:
+        if publish_evidence:
             evidence = u.Infra.publish_refactor_report_evidence(
                 report_root,
                 analysis,

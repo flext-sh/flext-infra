@@ -963,7 +963,7 @@ exclude-dependencies = [{exclusion}]
         ):
             tm.that(lint, lacks=key)
         tm.that(
-            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.ruling_disabled_rules)
         )
         mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
         tm.that(mypy, lacks="disable_error_code")

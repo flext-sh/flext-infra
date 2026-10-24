@@ -150,17 +150,17 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
                 TypeError: If workflow job steps must be a sequence.
 
             """
-            document = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document = FlextInfraUtilities.json_mapping_adapter().validate_python(
                 tm.ok(u.Cli.yaml_parse(rendered)),
             )
-            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
-            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+            jobs = FlextInfraUtilities.json_mapping_adapter().validate_python(document["jobs"])
+            job = FlextInfraUtilities.json_mapping_adapter().validate_python(jobs["ci"])
             steps = job["steps"]
             if not isinstance(steps, list):
                 msg = "workflow job steps must be a sequence"
                 raise TypeError(msg)
             return tuple(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(step) for step in steps
+                FlextInfraUtilities.json_mapping_adapter().validate_python(step) for step in steps
             )
 
 

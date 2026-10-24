@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Protocol, cast, override
+from typing import cast, override
 
 from rope.base.project import Project
 from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
 
-from flext_infra import m, p, t
+from flext_infra import p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 
@@ -37,8 +37,8 @@ class FlextInfraRopeRestructure(Restructure):
 
     def __init__(
         self,
-        project: p.AttributeProbe,
-        request: m.Infra.RopeRestructureRequest,
+        project: p.Infra.RopeProject,
+        request: p.Infra.RopeRestructureRequest,
     ) -> None:
         """Receive the current consumer's native match and import policies.
 
@@ -51,22 +51,7 @@ class FlextInfraRopeRestructure(Restructure):
             raise TypeError(message)
         default: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
 
-        class _NativeRestructureInit(Protocol):
-            """Typed initializer view over the fork's untyped constructor."""
-
-            def __init__(
-                self,
-                project: Project,
-                pattern: str,
-                goal: str,
-                args: (
-                    t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None
-                ) = None,
-                imports: t.StrSequence | None = None,
-                wildcards: (t.MappingKV[str, p.Infra.RopeWildcard[str]] | None) = None,
-            ) -> None: ...
-
-        cast("_NativeRestructureInit", super()).__init__(
+        cast("p.Infra.RopeRestructureInitializer", super()).__init__(
             project,
             request.pattern,
             request.goal,
@@ -99,7 +84,7 @@ class FlextInfraRopeRestructure(Restructure):
         self,
         matches: t.SequenceOf[t.Infra.RopeNativeMatch],
         pymodule: t.Infra.RopeNativeSourceModule,
-    ) -> t.Infra.RopeChangeComputer:
+    ) -> p.Infra.RopeChangeComputer:
         """Admit occurrences before the native change computer writes source.
 
         Returns:
@@ -120,16 +105,7 @@ class FlextInfraRopeRestructure(Restructure):
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
 
-        class _NativeChangeComputation(Protocol):
-            """Typed view of the fork's native change computation."""
-
-            def _compute_changes(
-                self,
-                matches: t.SequenceOf[t.Infra.RopeNativeMatch],
-                pymodule: t.Infra.RopeNativeSourceModule,
-            ) -> t.Infra.RopeChangeComputer: ...
-
-        return cast("_NativeChangeComputation", super())._compute_changes(
+        return cast("p.Infra.RopeChangeComputation", super())._compute_changes(
             selected, pymodule
         )
 
@@ -162,17 +138,7 @@ class FlextInfraRopeRestructure(Restructure):
                 if binding not in names
             )
 
-        class _NativeImportWriter(Protocol):
-            """Typed view of the fork's native import writer."""
-
-            def _add_imports(
-                self,
-                resource: t.Infra.RopeNativeResource,
-                source: str,
-                imports: t.StrSequence,
-            ) -> str: ...
-
-        return cast("_NativeImportWriter", super())._add_imports(
+        return cast("p.Infra.RopeImportWriter", super())._add_imports(
             resource, source, selected
         )
 

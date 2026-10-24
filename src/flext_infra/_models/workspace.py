@@ -165,13 +165,8 @@ class FlextInfraModelsWorkspace:
         evidence: t.MutableSequenceOf[
             FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
-            default_factory=u.empty(
-                TypeForm(
-                    t.MutableSequenceOf[
-                        "FlextInfraModelsWorkspace.NativeBindingEvidence"
-                    ]
-                )
-            ),
+            default_factory=list["FlextInfraModelsWorkspace.NativeBindingEvidence"],
+            validate_default=True,
             description="Ordered native binding and executable observations",
         )
         generated_owners: t.MutableMappingKV[

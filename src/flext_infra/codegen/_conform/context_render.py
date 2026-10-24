@@ -133,7 +133,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             frozenset(verb.name for verb in codegen.make.verbs),
         )
         try:
-            delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
+            FlextInfraGateRegistry.default().delegated_lint_rules(
                 config.Infra.tooling.tools.ruff.lint.rule_owners,
                 check_gates=codegen.make.check_gates_default,
                 repair_gates=(
@@ -157,7 +157,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 ruff_extend_exclude=(),
-                ruff_delegated_rules=delegated_rules,
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 repository_root_rel=self._repository_root_rel(workspace),

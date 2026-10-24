@@ -1059,6 +1059,20 @@ profile-gen-report: _builtin_require_environment
 		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
 		"$(PROFILE_REPORTS_DIR)/conform.pstats"
 
+# Measure the exact pre-cohort stage without narrowing the full generation profile.
+_builtin-profile-gen-pyproject: _builtin_require_interpreter
+
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/pyproject.pstats" codegen generate \
+		--root "$(PROJECT_ROOT)" --what pyproject --scope all
+
+_builtin-profile-gen-pyproject-report: _builtin_require_environment
+
+	@$(RUNTIME_PYTHON) -c \
+		'import pstats, sys; stats = pstats.Stats(sys.argv[1]); stats.sort_stats("cumtime").print_stats(50); stats.sort_stats("tottime").print_callers(15)' \
+		"$(PROFILE_REPORTS_DIR)/pyproject.pstats"
+
 # Measure the environment guard itself before changing its provenance checks.
 _builtin-profile-environment: _builtin_require_interpreter
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"

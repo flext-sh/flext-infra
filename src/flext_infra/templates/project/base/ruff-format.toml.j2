@@ -1,0 +1,6 @@
+{% from "ruff_format_config.j2" import shared, formatting -%}
+# @flext-generated -- formatter-only projection; regenerate with make gen.
+{{ shared(ruff, ruff.extend_exclude) }}
+
+[format]
+{{ formatting(ruff) }}

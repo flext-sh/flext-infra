@@ -170,8 +170,8 @@ class TestsFlextInfraVscodeOwnerMerge:
         """Memoized parsing never shares mutable values or accepts malformed edits."""
         original = b"Infra:\n  values:\n    nested: [first]\n"
         first = tm.ok(u.Infra.read_codegen_config_document(original))
-        nested = t.Cli.JSON_MAPPING_ADAPTER.validate_python(first["Infra"])
-        values = t.Cli.JSON_MAPPING_ADAPTER.validate_python(nested["values"])
+        nested = u.json_mapping_adapter().validate_python(first["Infra"])
+        values = u.json_mapping_adapter().validate_python(nested["values"])
         mutable = tm.not_none(
             first if isinstance(first, dict) else None,
             msg="the parsed document is the caller's own mutable mapping",
@@ -386,7 +386,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             rejected.unwrap()
         tm.that(raised.value is rejected.exception, eq=True)
         settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        settings = u.json_mapping_adapter().validate_python(
             tm.ok(
                 u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
             ),
@@ -494,7 +494,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                 spec=spec,
             ),
         )
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        settings = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.json_parse(rendered)),
         )
         tm.that(settings["editor.fontLigatures"], eq=True)
@@ -518,7 +518,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         result = FlextInfraCodegen.render_vscode_settings(root)
 
         tm.ok(result)
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        doc = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.json_parse(result.value)),
         )
         for key, expected_value in config.Infra.codegen.vscode.scalar_settings.items():
@@ -578,7 +578,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         result = FlextInfraCodegen.render_vscode_settings(root)
 
         tm.ok(result)
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        doc = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.json_parse(result.value)),
         )
         tm.that(
@@ -609,7 +609,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         result = FlextInfraCodegen.render_vscode_settings(root)
 
         tm.ok(result)
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        doc = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.json_parse(result.value)),
         )
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
@@ -630,7 +630,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             projected_tool.parent.resolve(),
             eq=u.Infra.runtime_python(member).parent,
         )
-        terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        terminal = u.json_mapping_adapter().validate_python(
             doc["terminal.integrated.env.linux"],
         )
         environment = u.type_adapter(str).validate_python(terminal["VIRTUAL_ENV"])
@@ -687,7 +687,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         original = path.read_text(encoding=c.DEFAULT_ENCODING)
         rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
-        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        doc = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.json_parse(rendered)),
         )
         TestsFlextInfraVscodeOwnerMerge._assert_workspace_runtime_projections(
@@ -706,7 +706,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                 spec=tm.ok(FlextInfraCodegen.load_vscode_spec(member)),
             ),
         )
-        declaration = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        declaration = u.json_mapping_adapter().validate_python(
             migrated.values["additional_settings"],
         )
         tm.that(declaration, eq={"operator.note": doc["operator.note"]})
@@ -725,7 +725,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                 runtime_root=standalone,
             ),
         )
-        standalone_doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        standalone_doc = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.json_parse(standalone_rendered)),
         )
         tm.that(

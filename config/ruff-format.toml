@@ -1,0 +1,14 @@
+# @flext-generated -- formatter-only projection; regenerate with make gen.
+extend-exclude = ["**/.archive/**", "**/.agents/aihub-hooks/**", "**/.claude/aihub-hooks/**", "**/.codex/aihub-hooks/**", "**/.cursor/aihub-hooks/**", "**/.gemini/aihub-hooks/**", "**/protos/**"]
+line-length = 88
+preview = true
+respect-gitignore = true
+target-version = "py313"
+
+[format]
+docstring-code-format = true
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
+skip-magic-trailing-comma = false
+

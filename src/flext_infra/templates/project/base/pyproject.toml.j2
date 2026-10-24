@@ -344,40 +344,27 @@ testpaths = [
 ]
 
 [tool.ruff]
-extend-exclude = [
-{% for item in ruff_extend_exclude %}
-  {{ item | tojson }},
-{% endfor %}
-]
+{% from "ruff_format_config.j2" import shared, formatting %}
+{{ shared(tooling.tools.ruff, ruff_extend_exclude) }}
 fix = {{ tooling.tools.ruff.fix | lower }}
-line-length = {{ tooling.tools.ruff.line_length }}
 namespace-packages = [
 {% for item in tooling.tools.ruff.namespace_packages %}
   {{ item | tojson }},
 {% endfor %}
 ]
-preview = {{ tooling.tools.ruff.preview | lower }}
-respect-gitignore = {{ tooling.tools.ruff.respect_gitignore | lower }}
 show-fixes = {{ tooling.tools.ruff.show_fixes | lower }}
 src = [
 {% for item in tooling_runtime.ruff_src %}
   {{ item | tojson }},
 {% endfor %}
 ]
-target-version = {{ tooling.tools.ruff.target_version | tojson }}
 
 [tool.ruff.format]
-docstring-code-format = {{ tooling.tools.ruff.format.docstring_code_format | lower }}
-indent-style = {{ tooling.tools.ruff.format.indent_style | tojson }}
-line-ending = {{ tooling.tools.ruff.format.line_ending | tojson }}
-quote-style = {{ tooling.tools.ruff.format.quote_style | tojson }}
-skip-magic-trailing-comma = {{ tooling.tools.ruff.format.skip_magic_trailing_comma | lower }}
+{{ formatting(tooling.tools.ruff) }}
 
 [tool.ruff.lint]
-{# Only native rules whose canonical checking/repair owner was elected, not
-   a free-form exemption or nonblocking catalog. #}
 ignore = [
-{% for item in ruff_delegated_rules %}
+{% for item in tooling.tools.ruff.lint.ruling_disabled_rules | sort %}
   {{ item | tojson }},
 {% endfor %}
 ]

@@ -741,7 +741,7 @@ class TestsFlextInfraCodegenConform:
         )
         if first_result.plan is None:
             pytest.fail("generation did not return its actual plan")
-        editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        editor_settings = u.json_mapping_adapter().validate_python(
             tm.ok(
                 u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
             ),

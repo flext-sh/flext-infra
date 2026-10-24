@@ -15,11 +15,63 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenGeneration
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
+
+    @staticmethod
+    def test_authenticated_layout_reuses_only_its_epoch_and_replays_exact_consumption(
+        tmp_path: Path,
+    ) -> None:
+        """A cached layout preserves its original reads without crossing epochs."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = package / "provider.py"
+        provider.write_text("__all__ = ['x']\nx = 1\n", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(root) as binding:
+            project = binding[0]
+            with (
+                project.source_consumer() as consumer,
+                FlextInfraRopeWorkspace.open_workspace(root, source_project=consumer) as workspace,
+            ):
+                with consumer.source_consumption() as first:
+                    layout = workspace.layout(root)
+                with consumer.source_consumption() as second:
+                    repeated = workspace.layout(root)
+                tm.that(repeated is layout, eq=True)
+                tm.that(second.receipt().inputs, eq=first.receipt().inputs)
+                tm.that(second.receipt().source_directories, eq=first.receipt().source_directories)
+                tm.that(second.receipt().source_query_topology, eq=first.receipt().source_query_topology)
+                tm.that(provider in {state.path for state in second.receipt().inputs}, eq=True)
+                tm.that(workspace.layout(root) is layout, eq=True)
+        provider.write_text("__all__ = ['y']\ny = 1\n", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(root) as binding:
+            with FlextInfraRopeWorkspace.open_workspace(root, source_project=binding[0]) as workspace:
+                fresh = workspace.layout(root)
+                if fresh is None:
+                    pytest.fail("The fresh epoch must elect the declared project")
+                tm.that(fresh.runtime_aliases, has="y", lacks="x")
+
+    @staticmethod
+    @pytest.mark.parametrize("membership", [False, True])
+    def test_authenticated_layout_cache_still_rejects_source_or_membership_mutation(
+        tmp_path: Path,
+        *,
+        membership: bool,
+    ) -> None:
+        """Cached decisions retain the same fail-loud epoch verifier."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = package / "provider.py"
+        provider.write_text("__all__ = ['x']\nx = 1\n", encoding=c.DEFAULT_ENCODING)
+        changed = package / "new_provider.py" if membership else provider
+        with pytest.raises(ValueError, match=escape(str(package))):
+            with u.Infra.facade_source_project(root) as binding:
+                with FlextInfraRopeWorkspace.open_workspace(root, source_project=binding[0]) as workspace:
+                    workspace.layout(root)
+                    workspace.layout(root)
+                    changed.write_text("__all__ = ['y']\ny = 1\n", encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
     @pytest.mark.parametrize("consume", [False, True])
@@ -121,6 +173,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 path=source,
                 before=original,
                 desired_content=None,
+                desired_mode=None,
                 source_states=(incoming,),
             ),
             m.Infra.CodegenFilePlan(
@@ -128,6 +181,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 path=binary,
                 before=opaque,
                 desired_content=b"\xff\x00",
+                desired_mode=opaque.mode,
                 source_states=(incoming,),
             ),
         )
@@ -636,6 +690,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, source))
+        u.Tests.initialize_git_repo(root)
         rendered = tm.not_none(u.Infra.render_utility_facade(package))
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))

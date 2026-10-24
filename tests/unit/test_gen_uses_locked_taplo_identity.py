@@ -15,7 +15,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra import config
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraGenUsesLockedTaploIdentity:
@@ -42,7 +42,7 @@ class TestsFlextInfraGenUsesLockedTaploIdentity:
                     u.Cli.toml_mapping_from_text(lock.read_text(encoding="utf-8")),
                 ),
             )
-            tools = dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["tools"]))
+            tools = dict(u.json_mapping_adapter().validate_python(payload["tools"]))
             tools.pop(strip_from_lock)
             payload["tools"] = tools
             lock.write_text(
@@ -69,7 +69,7 @@ class TestsFlextInfraGenUsesLockedTaploIdentity:
         """Assert the formatter ran and kept the document's meaning."""
         formatted = tm.ok(self._format(root))
         payload = tm.not_none(u.Cli.toml_mapping_from_text(formatted))
-        tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["tool"])
+        tool = u.json_mapping_adapter().validate_python(payload["tool"])
         tm.that(dict(tool), eq={"b": 2})
 
     def test_declared_repository_lock_satisfies_the_identity(self) -> None:

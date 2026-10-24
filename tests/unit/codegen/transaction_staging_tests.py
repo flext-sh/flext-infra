@@ -325,6 +325,117 @@ class TestsFlextInfraTransactionStaging:
             )
 
     @staticmethod
+    @pytest.mark.parametrize("package_name", ["sample", "alternate_receiver"])
+    def test_source_runtime_consumes_sealed_namespace_package(
+        tmp_path: Path,
+        package_name: str,
+    ) -> None:
+        """A real PEP 420 child imports candidate bytes without an initializer."""
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            package_name,
+            pyproject=f"[project]\nname = '{package_name}'\nversion = '1.0.0'\n",
+        )
+        namespace = package / "services"
+        namespace.mkdir()
+        leaf = namespace / "contract.py"
+        leaf.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        target = package / "__init__.py"
+        target.write_text(
+            "from .services.contract import VALUE\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in (target, leaf)
+        )
+
+        def checks(_view_root: Path, candidates: t.MappingKV[Path, Path]) -> bool:
+            return (
+                candidates[leaf].read_text(encoding=c.DEFAULT_ENCODING) == "VALUE = 2\n"
+            )
+
+        outcome = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        ).preview_sources(
+            root,
+            {
+                target: "from .services.contract import VALUE\nassert VALUE == 2\n",
+                leaf: "VALUE = 2\n",
+            },
+            checks,
+            inputs=originals,
+            runtime_root=u.Infra.runtime_environment_dir(
+                Path(__file__).resolve().parents[3]
+            ).parent,
+        )
+
+        tm.that(tm.ok(outcome), eq=True)
+        tm.that((namespace / "__init__.py").exists(), eq=False)
+        for before in originals:
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(before.path, required=True)),
+                eq=before,
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("mutation", ["foreign", "empty", "regular-no-file"])
+    def test_source_runtime_rejects_unsealed_namespace_evidence_before_checks(
+        tmp_path: Path,
+        mutation: str,
+    ) -> None:
+        """Missing file metadata cannot admit escaped, empty or forged namespaces."""
+        root = u.Tests.git_repository(tmp_path / "project")
+        package = u.Tests.src_package(
+            root,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
+        namespace = package / "services"
+        namespace.mkdir()
+        (namespace / "contract.py").write_text("VALUE = 1\n")
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        target = package / "__init__.py"
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        edits = {
+            "foreign": f"services.__path__.append({str(outside)!r})\n",
+            "empty": (
+                "services.__path__ = []\n"
+                "services.__spec__.submodule_search_locations = []\n"
+            ),
+            "regular-no-file": "contract.__file__ = None\n",
+        }
+
+        def checks(_view_root: Path, _candidates: t.MappingKV[Path, Path]) -> bool:
+            pytest.fail("checks ran before candidate namespace rejection")
+
+        outcome = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        ).preview_sources(
+            root,
+            {
+                target: (
+                    "from . import services\n"
+                    "from .services import contract\n"
+                    + edits[mutation]
+                ),
+            },
+            checks,
+            inputs=(before,),
+            runtime_root=u.Infra.runtime_environment_dir(
+                Path(__file__).resolve().parents[3]
+            ).parent,
+        )
+
+        tm.fail(outcome, has="unsealed candidate origin")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            eq=before,
+        )
+
+    @staticmethod
     def test_source_runtime_rejects_live_package_origin_before_checks(
         tmp_path: Path,
     ) -> None:

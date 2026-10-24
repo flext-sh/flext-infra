@@ -50,8 +50,8 @@ class TestsFlextInfraWorkflowDocumentContract:
             item.path.parent.mkdir(parents=True, exist_ok=True)
             item.path.write_bytes(tm.not_none(item.desired_content))
             document = u.Cli.yaml_load_mapping(item.path)
-            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
+            jobs = u.json_mapping_adapter().validate_python(document["jobs"])
             tm.that(bool(jobs), eq=True)
             for raw_job in jobs.values():
-                job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
+                job = u.json_mapping_adapter().validate_python(raw_job)
                 tm.that("steps" in job or "uses" in job, eq=True)

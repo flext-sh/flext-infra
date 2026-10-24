@@ -195,9 +195,15 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if not names:
             u.Cli.info(f"lazy-init: empty module exports module={module_path}")
         exports = {name: (module_path, name) for name in names}
+        project_root = u.Infra.project_root(
+            py_file, source_project=self.rope_workspace.rope_project,
+        )
         policy = u.Infra.publication_policy(
             py_file,
             rope_project=self.rope_workspace.rope_project,
+            project_layout=self.rope_workspace.layout(project_root)
+            if project_root is not None
+            else None,
         )
         alias = policy.expected_alias
         if alias is not None:
