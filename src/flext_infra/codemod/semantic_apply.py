@@ -340,6 +340,17 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                     if index:
                         responsibility = "_".join(words[index:]).lower()
                     break
+            else:
+                # The declaration spells the whole module stem, so its
+                # responsibility is what it adds to its family package
+                # (``_container`` + ``FlextContainerTestingOps`` -> testing_ops).
+                family = path.parent.name.lstrip("_").replace("_", "").lower()
+                prefix = ""
+                for index, word in enumerate(words[:-1]):
+                    prefix += word.lower()
+                    if prefix.endswith(family):
+                        responsibility = "_".join(words[index + 1 :]).lower()
+                        break
         if not responsibility:
             msg = (
                 f"unresolved semantic grouping: {path}; numbered split requires "
