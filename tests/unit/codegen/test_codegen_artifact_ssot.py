@@ -69,6 +69,19 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.ok(all(names))
 
     @staticmethod
+    def test_template_entries_keep_every_declared_field(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> None:
+        """Each derived entry carries its declaration verbatim plus its key."""
+        catalog = codegen.templates.catalog
+        entries = codegen.templates.entries
+        tm.that(len(entries), eq=len(catalog))
+        for entry in entries:
+            declaration = catalog[entry.destination]
+            for name in type(declaration).model_fields:
+                tm.that(getattr(entry, name), eq=getattr(declaration, name))
+
+    @staticmethod
     def test_vscode_maps_are_exact_projections(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
