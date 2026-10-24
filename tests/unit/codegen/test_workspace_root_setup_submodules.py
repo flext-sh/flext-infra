@@ -256,11 +256,11 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.ok(bool(process.stderr))
         tm.fail((workspace / "flext-core" / c.GIT_DIR_NAME).exists())
 
-    def test_make_setup_initializes_once_then_only_validates_present_checkout(
+    def test_make_setup_initializes_once_then_leaves_present_checkout_untouched(
         self,
         tmp_path: Path,
     ) -> None:
-        """Initialize the exact gitlink once; never repair a present checkout."""
+        """Initialize the exact gitlink once; never touch a present checkout."""
         rendered = self._render_repository_root_makefile(tmp_path)
         workspace = self._create_uninitialized_workspace(tmp_path, rendered)
         env = os.environ.copy()
@@ -289,201 +289,28 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "-c", "conflict"], cwd=child))
         process = self._run_setup(workspace, env)
 
-        # A present checkout on its own named change lane is validated, never
-        # repaired: containment of the recorded gitlink is the boundary, so the
-        # branch name is preserved untouched by a green setup.
+        # An initialized checkout on its own named change lane is never
+        # touched: setup only initializes gitlinks Git reports as uninitialized.
         tm.ok(u.Cli.process_succeeded(process.outcome))
         tm.that(self._git_state(child), eq=("conflict", state[1]))
 
-    def _prepare_clone_state(
-        self,
-        checkout: Path,
-        state: str,
-        tmp_path: Path,
-        *,
-        with_content: bool,
-    ) -> None:
-        git_dir = Path(self._git_stdout(checkout, "rev-parse", "--absolute-git-dir"))
-        head = self._git_stdout(checkout, "rev-parse", "HEAD")
-        if state.startswith("strategy-"):
-            self._git_stdout(
-                checkout.parent,
-                "config",
-                f"submodule.{checkout.name}.update",
-                state.removeprefix("strategy-"),
-            )
-        if state.startswith("staged-deletions"):
-            self._git_stdout(checkout, "read-tree", "--empty")
-        elif with_content:
-            if state.endswith("ignored"):
-                (git_dir / "info" / "exclude").write_text(
-                    "preserve.txt\n",
-                    encoding="utf-8",
-                )
-            (checkout / "preserve.txt").write_text("local work\n", encoding="utf-8")
-        elif state.startswith("foreign-tree"):
-            if state == "foreign-tree-index":
-                self._git_stdout(checkout, "read-tree", "--empty")
-            foreign = tmp_path / "foreign-worktree"
-            foreign.mkdir()
-            self._git_stdout(checkout, "config", "core.worktree", str(foreign))
-        elif state == "symlink-index":
-            (git_dir / "index").symlink_to(tmp_path / "foreign-index")
-        elif state == "extra-ref":
-            self._git_stdout(checkout, "branch", "preserved", head)
-        elif state == "stash-ref":
-            self._git_stdout(checkout, "update-ref", "refs/stash", head)
-
-    @pytest.mark.parametrize(
-        "state",
-        [
-            "virgin",
-            "strategy-merge",
-            "strategy-rebase",
-            "strategy-none",
-            "staged-deletions",
-            "staged-deletions-at-pin",
-            "untracked",
-            "ignored",
-            "head-at-pin",
-            "head-at-pin-untracked",
-            "head-at-pin-ignored",
-            "foreign-tree",
-            "foreign-tree-index",
-            "relocated-index",
-            "symlink-index",
-            "extra-ref",
-            "stash-ref",
-        ],
-    )
-    def test_setup_resumes_only_unfinished_initial_clone(
-        self,
-        tmp_path: Path,
-        state: str,
-    ) -> None:
-        """Resume a real unborn clone without overwriting established work."""
+    def test_setup_refuses_relocated_git_index(self, tmp_path: Path) -> None:
+        """A relocated index is refused before any gitlink is materialized."""
         workspace = self._create_uninitialized_workspace(
             tmp_path,
             self._render_repository_root_makefile(tmp_path),
         )
-        member = "flext-core"
-        pin = self._git_stdout(workspace, "rev-parse", f":{member}")
-        origin = Path.from_uri(
-            self._git_stdout(
-                workspace,
-                "config",
-                "-f",
-                ".gitmodules",
-                f"submodule.{member}.url",
-            ),
-        )
-        if not state.startswith("head-at-pin") and state != "staged-deletions-at-pin":
-            source = tmp_path / "member-source"
-            self._git_stdout(
-                source,
-                "switch",
-                self._git_stdout(origin, "symbolic-ref", "--short", "HEAD"),
-            )
-            (source / "marker.txt").write_text("newer\n", encoding="utf-8")
-            self._git_stdout(source, "add", "marker.txt")
-            self._git_stdout(
-                source,
-                "commit",
-                "-m",
-                "Advance the origin beyond the pin",
-            )
-            self._git_stdout(source, "push", c.Infra.GIT_ORIGIN, "HEAD")
-        self._git_stdout(workspace, "submodule", "init")
-        checkout = workspace / member
-        git_dir = workspace / c.GIT_DIR_NAME / "modules" / member
-        git_dir.parent.mkdir(parents=True)
-        self._git_stdout(
-            workspace,
-            "clone",
-            "--depth",
-            c.ParserBooleanToken.ONE,
-            "--no-checkout",
-            "--separate-git-dir",
-            str(git_dir),
-            origin.as_uri(),
-            str(checkout),
-        )
-        index = Path(
-            self._git_stdout(
-                checkout,
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-path",
-                "index",
-            ),
-        )
-        tm.fail(index.exists())
-        head = self._git_stdout(checkout, "rev-parse", "HEAD")
-        local_content = state in {
-            "untracked",
-            "ignored",
-            "head-at-pin-untracked",
-            "head-at-pin-ignored",
+        env = {
+            **os.environ,
+            "GIT_ALLOW_PROTOCOL": "file",
+            "GIT_INDEX_FILE": str(tmp_path / "relocated-index"),
         }
-        self._prepare_clone_state(
-            checkout,
-            state,
-            tmp_path,
-            with_content=local_content,
-        )
-        prior_index = index.read_bytes() if index.exists() else None
-        env = {**os.environ, "GIT_ALLOW_PROTOCOL": "file"}
-        if state == "relocated-index":
-            env["GIT_INDEX_FILE"] = str(tmp_path / "relocated-index")
 
         process = self._run_setup(workspace, env)
 
-        if state in {"virgin", "head-at-pin"} or state.startswith("strategy-"):
-            tm.that(
-                u.Cli.process_succeeded(process.outcome),
-                eq=True,
-                msg=process.stdout + process.stderr,
-            )
-            tm.that(self._git_stdout(checkout, "rev-parse", "HEAD"), eq=pin)
-            tm.ok((checkout / c.PYPROJECT_FILENAME).is_file())
-            tm.ok(index.is_file())
-            second = self._run_setup(workspace, env)
-            tm.that(
-                u.Cli.process_succeeded(second.outcome),
-                eq=True,
-                msg=second.stdout + second.stderr,
-            )
-            tm.that(self._git_stdout(checkout, "rev-parse", "HEAD"), eq=pin)
-            tm.that(
-                second.stdout + second.stderr,
-                lacks="resuming unfinished initial clone",
-            )
-        else:
-            tm.that(
-                u.Cli.process_succeeded(process.outcome),
-                eq=state == "staged-deletions-at-pin",
-                msg=process.stdout + process.stderr,
-            )
-            tm.that(self._git_stdout(checkout, "rev-parse", "HEAD"), eq=head)
-            tm.that(index.read_bytes() if index.exists() else None, eq=prior_index)
-            if state == "symlink-index":
-                tm.ok(index.is_symlink())
-                tm.that(index.readlink(), eq=tmp_path / "foreign-index")
-            elif state == "extra-ref":
-                tm.that(
-                    self._git_stdout(checkout, "rev-parse", "refs/heads/preserved"),
-                    eq=head,
-                )
-            elif state == "stash-ref":
-                tm.that(
-                    self._git_stdout(checkout, "rev-parse", "refs/stash"),
-                    eq=head,
-                )
-            if local_content:
-                tm.that(
-                    (checkout / "preserve.txt").read_text(encoding="utf-8"),
-                    eq="local work\n",
-                )
+        tm.that(process.outcome.raw_return_code, eq=2)
+        tm.that(process.stderr, has="relocated Git index")
+        tm.fail((workspace / "flext-core" / c.GIT_DIR_NAME).exists())
 
     def test_missing_submodule_origin_fails_without_materializing_checkout(
         self,
@@ -563,7 +390,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         )
 
     def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:
-        """A Git probe error is never reclassified as a missing remote ref."""
+        """A failing submodule status probe propagates its own cause and code."""
         workspace = self._create_uninitialized_workspace(
             tmp_path,
             self._render_repository_root_makefile(tmp_path),
@@ -571,7 +398,7 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         real_git = tm.not_none(shutil.which("git"))
         fake_bin = tmp_path / "failing-git-bin"
         fake_bin.mkdir()
-        command_fragment = "branch --show-current"
+        command_fragment = "submodule status"
         u.Tests.write_executable(
             fake_bin / "git",
             "#!/bin/sh\n"

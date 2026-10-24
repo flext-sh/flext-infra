@@ -539,6 +539,7 @@ setup: _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
+	@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,direnv allow "$(PROJECT_ROOT)")
 endif
 
 # Upgrade only resolves dependencies and writes locks. Provisioning belongs
@@ -590,10 +591,9 @@ _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
-# A project owns the sources declared by its manifest. The generated setup
-# reconciler validates every initialized checkout before mutation, initializes
-# only missing modules, and preserves declared branches that fix forward beyond
-# the recorded gitlink.
+# A project owns the sources declared by its manifest. Generated setup
+# initializes only uninitialized governed gitlinks and never touches an
+# initialized checkout.
 {{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", timeout_command, timeout_kill_after_seconds, make.submodule_timeout_seconds, make.submodule_jobs) }}
 _builtin_setup_submodules: _builtin_require_workspace
 
