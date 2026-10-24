@@ -67,7 +67,9 @@ class TestsFlextInfraCodemodTypeSetRules:
             "a = isinstance(node, ast.FunctionDef | ast.Module)\n"
             "b = isinstance(node, (ast.Lambda, ast.Module, ast.FunctionDef))\n"
         )
-        declaring = "import ast\n\nX = isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)\n"
+        declaring = (
+            "import ast\n\nX = isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)\n"
+        )
         consumer = tmp_path / "consumer.py"
         consumer.write_text(partial, encoding=c.DEFAULT_ENCODING)
         constants = tmp_path / "constants.py"
