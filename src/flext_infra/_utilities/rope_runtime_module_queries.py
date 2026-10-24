@@ -384,13 +384,15 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
     ) -> p.Infra.RopeProject:
         """Open a Rope view of the live tree with proposed sources overlaid.
 
+        ``sources`` are authoritative; ``declared_files`` contribute only the
+        paths ``sources`` does not name.
+
         Returns:
             The overlaid project; the caller owns closing it.
 
         Raises:
             TypeError: If the Rope project owner violates its contract.
-            ValueError: If a proposed source escapes the project or contradicts
-                its declared plan.
+            ValueError: If a proposed source escapes the project.
 
         """
         root = Path(project.root.real_path).resolve()
