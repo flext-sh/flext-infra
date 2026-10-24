@@ -1,0 +1,26 @@
+id: ban-manual-ast-walk-beside-library
+valid:
+  - |
+    import ast
+    values = ast.literal_eval(text)
+  - |
+    import griffe
+    module = griffe.visit("demo", filepath=path, code=source)
+  - |
+    import ast
+    class Collector(ast.NodeVisitor):
+        pass
+invalid:
+  - |
+    import ast
+    import griffe
+    literals = tuple(ast.literal_eval(element) for element in elements)
+  - |
+    import ast
+    from libcst import parse_module
+    nodes = list(ast.walk(tree))
+  - |
+    import ast
+    import rope
+    class Collector(ast.NodeVisitor):
+        pass

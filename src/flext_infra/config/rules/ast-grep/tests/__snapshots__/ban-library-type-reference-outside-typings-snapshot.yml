@@ -1,0 +1,226 @@
+id: ban-library-type-reference-outside-typings
+snapshots:
+  ? |
+    import griffe
+    def tuple_values(value: griffe.Expr) -> bool:
+        return False
+  : labels:
+    - source: griffe.Expr
+      style: primary
+      start: 38
+      end: 49
+    - source: griffe.Expr
+      style: secondary
+      start: 38
+      end: 49
+    - source: griffe
+      style: secondary
+      start: 7
+      end: 13
+    - source: import griffe
+      style: secondary
+      start: 0
+      end: 13
+    - source: |
+        import griffe
+        def tuple_values(value: griffe.Expr) -> bool:
+            return False
+      style: secondary
+      start: 0
+      end: 77
+    - source: griffe
+      style: secondary
+      start: 38
+      end: 44
+  ? |
+    import griffe
+    ok = isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
+  : labels:
+    - source: griffe.ExprTuple
+      style: primary
+      start: 37
+      end: 53
+    - source: isinstance
+      style: secondary
+      start: 19
+      end: 29
+    - source: isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
+      style: secondary
+      start: 19
+      end: 89
+    - source: (value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
+      style: secondary
+      start: 29
+      end: 89
+    - source: griffe.ExprTuple | griffe.ExprList | griffe.ExprSet
+      style: secondary
+      start: 37
+      end: 88
+    - source: griffe
+      style: secondary
+      start: 7
+      end: 13
+    - source: import griffe
+      style: secondary
+      start: 0
+      end: 13
+    - source: |
+        import griffe
+        ok = isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
+      style: secondary
+      start: 0
+      end: 90
+    - source: griffe
+      style: secondary
+      start: 37
+      end: 43
+  ? |
+    import griffe
+    ok = isinstance(value, griffe.ExprTuple)
+  : labels:
+    - source: griffe.ExprTuple
+      style: primary
+      start: 37
+      end: 53
+    - source: isinstance
+      style: secondary
+      start: 19
+      end: 29
+    - source: isinstance(value, griffe.ExprTuple)
+      style: secondary
+      start: 19
+      end: 54
+    - source: (value, griffe.ExprTuple)
+      style: secondary
+      start: 29
+      end: 54
+    - source: griffe
+      style: secondary
+      start: 7
+      end: 13
+    - source: import griffe
+      style: secondary
+      start: 0
+      end: 13
+    - source: |
+        import griffe
+        ok = isinstance(value, griffe.ExprTuple)
+      style: secondary
+      start: 0
+      end: 55
+    - source: griffe
+      style: secondary
+      start: 37
+      end: 43
+  ? |
+    import libcst
+    ok = issubclass(kind, (libcst.Module, libcst.Name))
+  : labels:
+    - source: libcst.Module
+      style: primary
+      start: 37
+      end: 50
+    - source: issubclass
+      style: secondary
+      start: 19
+      end: 29
+    - source: issubclass(kind, (libcst.Module, libcst.Name))
+      style: secondary
+      start: 19
+      end: 65
+    - source: (kind, (libcst.Module, libcst.Name))
+      style: secondary
+      start: 29
+      end: 65
+    - source: (libcst.Module, libcst.Name)
+      style: secondary
+      start: 36
+      end: 64
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: import libcst
+      style: secondary
+      start: 0
+      end: 13
+    - source: |
+        import libcst
+        ok = issubclass(kind, (libcst.Module, libcst.Name))
+      style: secondary
+      start: 0
+      end: 66
+    - source: libcst
+      style: secondary
+      start: 37
+      end: 43
+  ? |
+    import libcst
+    tree: libcst.Module = parse()
+  : labels:
+    - source: libcst.Module
+      style: primary
+      start: 20
+      end: 33
+    - source: libcst.Module
+      style: secondary
+      start: 20
+      end: 33
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: import libcst
+      style: secondary
+      start: 0
+      end: 13
+    - source: |
+        import libcst
+        tree: libcst.Module = parse()
+      style: secondary
+      start: 0
+      end: 44
+    - source: libcst
+      style: secondary
+      start: 20
+      end: 26
+  ? |
+    import libcst as cst
+    def lexical_root(node: cst.CSTNode) -> bool:
+        return isinstance(node, cst.Attribute)
+  : labels:
+    - source: cst.CSTNode
+      style: primary
+      start: 44
+      end: 55
+    - source: cst.CSTNode
+      style: secondary
+      start: 44
+      end: 55
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+    - source: cst
+      style: secondary
+      start: 17
+      end: 20
+    - source: libcst as cst
+      style: secondary
+      start: 7
+      end: 20
+    - source: import libcst as cst
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        import libcst as cst
+        def lexical_root(node: cst.CSTNode) -> bool:
+            return isinstance(node, cst.Attribute)
+      style: secondary
+      start: 0
+      end: 109
+    - source: cst
+      style: secondary
+      start: 44
+      end: 47

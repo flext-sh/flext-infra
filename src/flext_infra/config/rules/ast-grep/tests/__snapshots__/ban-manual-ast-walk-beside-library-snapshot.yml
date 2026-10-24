@@ -1,0 +1,86 @@
+id: ban-manual-ast-walk-beside-library
+snapshots:
+  ? |
+    import ast
+    from libcst import parse_module
+    nodes = list(ast.walk(tree))
+  : labels:
+    - source: ast.walk(tree)
+      style: primary
+      start: 56
+      end: 70
+    - source: libcst
+      style: secondary
+      start: 16
+      end: 22
+    - source: from libcst import parse_module
+      style: secondary
+      start: 11
+      end: 42
+    - source: |
+        import ast
+        from libcst import parse_module
+        nodes = list(ast.walk(tree))
+      style: secondary
+      start: 0
+      end: 72
+  ? |
+    import ast
+    import griffe
+    literals = tuple(ast.literal_eval(element) for element in elements)
+  : labels:
+    - source: ast.literal_eval(element)
+      style: primary
+      start: 42
+      end: 67
+    - source: griffe
+      style: secondary
+      start: 18
+      end: 24
+    - source: import griffe
+      style: secondary
+      start: 11
+      end: 24
+    - source: |
+        import ast
+        import griffe
+        literals = tuple(ast.literal_eval(element) for element in elements)
+      style: secondary
+      start: 0
+      end: 93
+  ? |
+    import ast
+    import rope
+    class Collector(ast.NodeVisitor):
+        pass
+  : labels:
+    - source: (ast.NodeVisitor)
+      style: primary
+      start: 38
+      end: 55
+    - source: |-
+        class Collector(ast.NodeVisitor):
+            pass
+      style: secondary
+      start: 23
+      end: 65
+    - source: ast.NodeVisitor
+      style: secondary
+      start: 39
+      end: 54
+    - source: rope
+      style: secondary
+      start: 18
+      end: 22
+    - source: import rope
+      style: secondary
+      start: 11
+      end: 22
+    - source: |
+        import ast
+        import rope
+        class Collector(ast.NodeVisitor):
+            pass
+      style: secondary
+      start: 0
+      end: 66

@@ -1,0 +1,37 @@
+id: report-compat-deprecated-marker
+snapshots:
+  ? |
+    @warnings.deprecated("compat: old -> u.Infra.new; fix: call u.Infra.new")
+    def old(value: str) -> str:
+        return value
+  : labels:
+    - source: '@warnings.deprecated("compat: old -> u.Infra.new; fix: call u.Infra.new")'
+      style: primary
+      start: 0
+      end: 73
+    - source: warnings.deprecated
+      style: secondary
+      start: 1
+      end: 20
+    - source: 'warnings.deprecated("compat: old -> u.Infra.new; fix: call u.Infra.new")'
+      style: secondary
+      start: 1
+      end: 73
+  ? |
+    from warnings import deprecated
+    @deprecated("compat: old -> u.Infra.new; fix: call u.Infra.new")
+    def old(value: str) -> str:
+        return value
+  : labels:
+    - source: '@deprecated("compat: old -> u.Infra.new; fix: call u.Infra.new")'
+      style: primary
+      start: 32
+      end: 96
+    - source: deprecated
+      style: secondary
+      start: 33
+      end: 43
+    - source: 'deprecated("compat: old -> u.Infra.new; fix: call u.Infra.new")'
+      style: secondary
+      start: 33
+      end: 96

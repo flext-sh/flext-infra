@@ -1,0 +1,44 @@
+id: ban-library-type-reference-outside-typings
+valid:
+  - |
+    import griffe
+    module = griffe.visit("demo", filepath=path, code=source)
+  - |
+    from flext_infra import t
+    def tuple_values(value: t.Infra.PythonExpression) -> bool:
+        return isinstance(value, t.Infra.PythonExprTuple)
+  - |
+    owner = load()
+    def f(value: owner.Kind) -> bool:
+        return isinstance(value, owner.Kind)
+  - |
+    import griffe
+    flag = isinstance(griffe.loader, Loader)
+  - |
+    import libcst as cst
+    tree = cst.parse_module(source)
+  - |
+    cst = load()
+    def f(node: cst.Node) -> bool:
+        return isinstance(node, cst.Node)
+invalid:
+  - |
+    import griffe
+    def tuple_values(value: griffe.Expr) -> bool:
+        return False
+  - |
+    import griffe
+    ok = isinstance(value, griffe.ExprTuple)
+  - |
+    import griffe
+    ok = isinstance(value, griffe.ExprTuple | griffe.ExprList | griffe.ExprSet)
+  - |
+    import libcst
+    ok = issubclass(kind, (libcst.Module, libcst.Name))
+  - |
+    import libcst
+    tree: libcst.Module = parse()
+  - |
+    import libcst as cst
+    def lexical_root(node: cst.CSTNode) -> bool:
+        return isinstance(node, cst.Attribute)
