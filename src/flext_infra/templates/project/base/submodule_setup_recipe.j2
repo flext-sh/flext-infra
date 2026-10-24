@@ -5,54 +5,51 @@
 # Source: template (submodule_setup_recipe.j2)
 # Computed: every checkout discovers governed paths from its own .gitmodules.
 #           An absent management flag participates; an explicit false does not.
-# Rule: setup PROVISIONS an absent or proven unfinished initial clone and
-#       VERIFIES an established checkout. An initial clone has no physical index,
-#       no worktree content, and only its clone reflog entry. Established work
-#       is never destroyed: git checkout, git reset,
-#       fetch, and branch attachment are forbidden. Pin validity is HEAD contains
-#       gitlink. Declared branch is the named integration line;
-#       legacy branch=. still resolves to the superproject named branch if present.
-#       A present checkout may be on its own named change lane. Its branch name is
-#       not a safety boundary: exact containment of the recorded gitlink is.
-#       Nested gitlinks belong to their own setup.
+# Rule: setup INITIALIZES only governed gitlinks that `git submodule status`
+#       reports as uninitialized (leading `-`). An initialized checkout is never
+#       touched: its branch, HEAD, index, and local work stay as they are.
+#       No fetch, no recursion; nested gitlinks belong to their own setup.
 # Free: no
 # End SECTION: submodule setup
-# Why: runners expose umask 002 and `submodule update --init`
-# materializes tracked files as 0664; canonical Mise artifact gates demand
-# exact modes, so provisioning normalizes the umask before checkout.
-# An absent gitlink is cloned at depth 1, the same flag private submodule
-# init uses. Setup's contract is the recorded commit, and a full history
-# cannot finish inside submodule_timeout_seconds when the object database
-# is large. Absent gitlinks clone submodule_jobs at a time; the deadline is
+# Why: a no-op setup costs a constant number of Git processes: one read of
+# the declared paths, one read of every management flag, and one native
+# `git submodule status`, whatever the number of submodules.
+# Runners expose umask 002 and `submodule update --init` materializes tracked
+# files as 0664; canonical Mise artifact gates demand exact modes, so
+# provisioning normalizes the umask before checkout.
+# An uninitialized gitlink is cloned at depth 1, the same flag private
+# submodule init uses: setup's contract is the recorded commit, and a full
+# history cannot finish inside submodule_timeout_seconds when the object
+# database is large. Gitlinks clone submodule_jobs at a time; the deadline is
 # one submodule_timeout_seconds per wave of concurrent clones, so a fresh
 # checkout of the whole fleet gets the same per-clone budget as one member.
-# Derive the physical index from its Git directory: --git-path resolves
-# a final symlink and cannot prove that the index entry itself is absent.
 {{ target }}:
-	@set -eu; \
+	@set -euf; \
 	umask 022; \
 	root="{{ project_root }}"; \
 	if [ ! -f "$${root}/.gitmodules" ]; then exit 0; fi; \
-	managed=""; \
-	keys=""; \
-	if keys=$$(git -C "$${root}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
-		keys_status=0; \
-	else \
-		keys_status=$$?; \
+	nl=$$(printf '\n_'); nl=$${nl%_}; \
+	if paths=$$(git -C "$${root}" config -f .gitmodules --get-regexp '^submodule\..*\.path$$'); then :; else \
+		status=$$?; [ "$${status}" -eq 1 ] || exit "$${status}"; paths=""; \
 	fi; \
-	if [ "$${keys_status}" -ne 0 ] && [ "$${keys_status}" -ne 1 ]; then \
-		printf 'ERROR: cannot enumerate governed gitlinks\n' >&2; \
-		exit "$${keys_status}"; \
+	if flags=$$(git -C "$${root}" config -f .gitmodules --type=bool --get-regexp '^submodule\..*\.flext-managed$$'); then :; else \
+		status=$$?; [ "$${status}" -eq 1 ] || exit "$${status}"; flags=""; \
 	fi; \
-	for key in $${keys}; do \
-		section=$${key%.path}; \
-		value=$$(git -C "$${root}" config -f .gitmodules --type=bool --get --default true "$${section}.flext-managed"); \
-		case "$${value}" in \
-			true) ;; \
-			false) continue ;; \
-			*) printf 'ERROR: Git returned an invalid management boolean for %s\n' "$${section}" >&2; exit 2 ;; \
+	unmanaged=""; \
+	IFS="$${nl}"; \
+	for line in $${flags}; do \
+		case "$${line}" in \
+			*" true") ;; \
+			*" false") unmanaged="$${unmanaged} $${line% false}" ;; \
+			*) printf 'ERROR: Git returned an invalid management boolean: %s\n' "$${line}" >&2; exit 2 ;; \
 		esac; \
-		path=$$(git -C "$${root}" config -f .gitmodules --get "$${key}"); \
+	done; \
+	managed=""; \
+	for line in $${paths}; do \
+		key=$${line%% *}; \
+		path=""; \
+		[ "$${key}" = "$${line}" ] || path=$${line#* }; \
+		case " $${unmanaged} " in *" $${key%.path}.flext-managed "*) continue ;; esac; \
 		case "$${path}" in \
 			""|/*|..|../*|*/../*|*/..|*[[:space:]]*) \
 				printf 'ERROR: governed gitlink path is not a safe relative Make path: %s\n' "$${path}" >&2; \
@@ -63,153 +60,25 @@
 		esac; \
 		managed="$${managed} $${path}"; \
 	done; \
+	IFS=' '; \
 	if [ -z "$${managed}" ]; then exit 0; fi; \
 	if [ "$${GIT_INDEX_FILE+x}" = x ]; then \
 		printf 'ERROR: submodule setup cannot authenticate a relocated Git index\n' >&2; \
 		exit 2; \
 	fi; \
+	state=$$(git -C "$${root}" submodule status -- $${managed}); \
 	absent=""; \
-	for path in $${managed}; do \
-		child="$${root}/$${path}"; \
-		if [ ! -e "$${child}/.git" ]; then \
-			absent="$${absent} $${path}"; \
-			continue; \
-		fi; \
-		owner=$$(git -C "$${child}" rev-parse --show-superproject-working-tree); \
-		checkout_root=$$(git -C "$${child}" rev-parse --show-toplevel); \
-		if [ "$${owner}" != "$${root}" ] || [ "$${checkout_root}" != "$${child}" ]; then \
-			printf 'ERROR: %s: checkout identity does not match the governed child\n' "$${path}" >&2; \
-			exit 2; \
-		fi; \
-		git_dir=$$(git -C "$${child}" rev-parse --absolute-git-dir); \
-		index="$${git_dir}/index"; \
-		if [ -e "$${index}" ] || [ -L "$${index}" ]; then continue; fi; \
-		content=$$(git -C "$${child}" ls-files --others --directory); \
-		reflog=$$(git -C "$${child}" reflog show --format=%gs HEAD); \
-		initial=$$(git -C "$${child}" reflog show --format=%gs -1 HEAD); \
-		if [ -n "$${content}" ] || [ "$${reflog}" != "$${initial}" ]; then \
-			printf 'ERROR: %s: missing index with unproven initial-clone state; preserve and review\n' "$${path}" >&2; \
-			exit 2; \
-		fi; \
-		case "$${initial}" in \
-			'clone: from '*) ;; \
-			*) printf 'ERROR: %s: missing index without initial clone receipt\n' "$${path}" >&2; exit 2 ;; \
-		esac; \
-		local_refs=$$(git -C "$${child}" for-each-ref --format='%(refname)' refs/heads refs/stash); \
-		if active_ref=$$(git -C "$${child}" symbolic-ref -q HEAD); then \
-			:; \
-		else \
-			ref_status=$$?; \
-			[ "$${ref_status}" -eq 1 ] || exit "$${ref_status}"; \
-		fi; \
-		if [ "$${local_refs}" != "$${active_ref}" ]; then \
-			printf 'ERROR: %s: missing index with local branch or stash work; preserve and review\n' "$${path}" >&2; \
-			exit 2; \
-		fi; \
-		entry=$$(git -C "$${root}" ls-files --stage -- "$${path}"); \
-		set -- $${entry}; \
-		if [ "$$#" -ne 4 ] || [ "$$1" != 160000 ] || [ "$$3" != 0 ] || [ "$$4" != "$${path}" ]; then \
-			printf 'ERROR: governed path is not a gitlink: %s\n' "$${path}" >&2; \
-			exit 2; \
-		fi; \
-		head=$$(git -C "$${child}" rev-parse HEAD); \
-		if [ "$${head}" = "$$2" ]; then \
-			printf 'setup: materializing unfinished initial clone at recorded pin: %s\n' "$${path}"; \
-			GIT_TERMINAL_PROMPT=0 {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "{{ submodule_timeout_seconds }}s" \
-				git -C "$${child}" -c submodule.recurse=false checkout --detach --no-overwrite-ignore "$${head}"; \
-			continue; \
-		fi; \
-		printf 'setup: resuming unfinished initial clone: %s\n' "$${path}"; \
-		absent="$${absent} $${path}"; \
+	IFS="$${nl}"; \
+	for line in $${state}; do \
+		case "$${line}" in -*) absent="$${absent} $${line#* }" ;; esac; \
 	done; \
-	if [ -n "$${absent}" ]; then \
-		credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$${GITHUB_TOKEN}"; fi; }; f'; \
-		absent_count=$$(printf '%s\n' $${absent} | wc -l); \
-		clone_waves=$$(( (absent_count + {{ submodule_jobs }} - 1) / {{ submodule_jobs }} )); \
-		GIT_TERMINAL_PROMPT=0 {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "$$(( clone_waves * {{ submodule_timeout_seconds }} ))s" \
-			git -C "$${root}" -c credential.helper= \
-			-c "credential.https://$${GH_HOST:-github.com}.helper=$${credential_helper}" \
-			submodule update --init --checkout --depth 1 --jobs "{{ submodule_jobs }}" -- $${absent}; \
-	fi; \
-	validate_submodule() { \
-		superproject="$$1"; \
-		child_path="$$2"; \
-		child_root="$${superproject}/$${child_path}"; \
-		keys=""; \
-		if keys=$$(git -C "$${superproject}" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$'); then \
-			keys_status=0; \
-		else \
-			keys_status=$$?; \
-		fi; \
-		if [ "$${keys_status}" -ne 0 ] && [ "$${keys_status}" -ne 1 ]; then \
-			printf 'ERROR: cannot enumerate submodule paths\n' >&2; \
-			exit "$${keys_status}"; \
-		fi; \
-		section=""; \
-		for key in $${keys}; do \
-			declared=$$(git -C "$${superproject}" config -f .gitmodules --get "$${key}"); \
-			if [ "$${declared}" = "$${child_path}" ]; then \
-				if [ -n "$${section}" ]; then \
-					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$${child_path}" >&2; \
-					exit 2; \
-				fi; \
-				section=$${key%.path}; \
-			fi; \
-		done; \
-		if [ -z "$${section}" ]; then \
-			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$${child_path}" >&2; \
-			exit 2; \
-		fi; \
-		branch=$$(git -C "$${superproject}" config -f .gitmodules --get --default "" "$${section}.branch"); \
-		if [ -z "$${branch}" ]; then \
-			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$${child_path}" >&2; \
-			exit 2; \
-		fi; \
-		super_branch=$$(git -C "$${superproject}" branch --show-current); \
-		if [ "$${branch}" = "." ]; then \
-			branch="$${super_branch}"; \
-			if [ -z "$${branch}" ]; then \
-				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$${child_path}" >&2; \
-				exit 1; \
-			fi; \
-		fi; \
-		validated_branch=$$(git check-ref-format --branch "$${branch}"); \
-		if [ "$${validated_branch}" != "$${branch}" ]; then \
-			printf 'ERROR: branch validator changed %s to %s\n' "$${branch}" "$${validated_branch}" >&2; \
-			exit 2; \
-		fi; \
-		gitlink_entry=$$(git -C "$${superproject}" ls-files --stage -- "$${child_path}"); \
-		if [ -z "$${gitlink_entry}" ]; then \
-			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$${child_path}" >&2; \
-			exit 2; \
-		fi; \
-		set -- $${gitlink_entry}; \
-		if [ "$$1" != 160000 ]; then \
-			printf 'ERROR: governed path is not a gitlink: %s\n' "$${child_path}" >&2; \
-			exit 2; \
-		fi; \
-		gitlink="$$2"; \
-		if [ ! -e "$${child_root}/.git" ]; then \
-			printf 'ERROR: governed gitlink is not materialized: %s\n' "$${child_path}" >&2; \
-			exit 2; \
-		fi; \
-		current=$$(git -C "$${child_root}" branch --show-current); \
-		head=$$(git -C "$${child_root}" rev-parse HEAD); \
-		if git -C "$${child_root}" merge-base --is-ancestor "$${gitlink}" HEAD; then \
-			ancestor=Y; \
-		else \
-			status=$$?; if [ "$${status}" -eq 1 ]; then ancestor=N; else exit "$${status}"; fi; \
-		fi; \
-		if [ "$${ancestor}" = N ]; then \
-			if [ -z "$${current}" ]; then \
-				printf 'ERROR: %s: detached HEAD %s does not contain recorded gitlink %s; merge the superproject gitlink into this head\n' "$${child_path}" "$${head}" "$${gitlink}" >&2; \
-			else \
-				printf 'ERROR: %s: checked-out branch %s at %s does not contain recorded gitlink %s; merge the superproject gitlink into this branch\n' "$${child_path}" "$${current}" "$${head}" "$${gitlink}" >&2; \
-			fi; \
-			exit 1; \
-		fi; \
-	}; \
-	for child_path in $${managed}; do \
-		validate_submodule "$${root}" "$${child_path}"; \
-	done
+	IFS=' '; \
+	if [ -z "$${absent}" ]; then exit 0; fi; \
+	set -- $${absent}; \
+	clone_waves=$$(( ($$# + {{ submodule_jobs }} - 1) / {{ submodule_jobs }} )); \
+	credential_helper='!f() { if [ "$$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$${GITHUB_TOKEN}"; fi; }; f'; \
+	GIT_TERMINAL_PROMPT=0 {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "$$(( clone_waves * {{ submodule_timeout_seconds }} ))s" \
+		git -C "$${root}" -c credential.helper= \
+		-c "credential.https://$${GH_HOST:-github.com}.helper=$${credential_helper}" \
+		submodule update --init --checkout --depth 1 --jobs "{{ submodule_jobs }}" -- "$$@"
 {%- endmacro %}

@@ -284,14 +284,15 @@ Infra:
       # a stale or incomplete lock never blocks install, use, setup or a verb
       # (operator-ruling-2026-10-09-setup-resilient).
       mise_lockfile: true
-      # Projection: .mise.toml [settings] lockfile_platforms. The platforms the
-      # CI matrix runs on (ubuntu, macos, windows runners, x64 and arm64);
+      # Projection: .mise.toml [settings] lockfile_platforms. Only platforms the
+      # fleet runs on: CI ubuntu-latest (linux-x64), macos-latest (macos-arm64),
+      # windows-latest (windows-x64) and the alpine container proof
+      # (linux-x64-musl). Each extra platform makes every unlocked `mise
+      # install` fetch artifacts for lock-time provenance (operator 2026-10-24).
       # `make upg` resolves these plus the current host, which mise always adds.
       mise_lockfile_platforms:
       - linux-x64
       - linux-x64-musl
-      - linux-arm64
-      - macos-x64
       - macos-arm64
       - windows-x64
       # mise self-management (F0, operator plan 2026-10-06): mise provisions

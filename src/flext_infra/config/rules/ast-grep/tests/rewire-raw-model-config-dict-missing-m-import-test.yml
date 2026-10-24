@@ -1,0 +1,18 @@
+id: rewire-raw-model-config-dict-missing-m-import
+# `valid` MUST NOT match: the module binds `m` (the fixing rule owns it) or the
+# config is already a ConfigDict call.
+valid:
+  - |
+    from flext_core import m
+    class Spec(m.FrozenModel):
+        model_config = {"frozen": False}
+  - |
+    from pydantic import BaseModel, ConfigDict
+    class Spec(BaseModel):
+        model_config = ConfigDict(frozen=True)
+# `invalid` MUST match: a raw dict config where `m` is not bound.
+invalid:
+  - |
+    from pydantic import BaseModel
+    class Spec(BaseModel):
+        model_config = {"arbitrary_types_allowed": True, "extra": "forbid"}

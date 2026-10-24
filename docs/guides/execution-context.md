@@ -2154,10 +2154,11 @@ CI retains its own project contract. The CI token does not replace native source
 declarations or select a synthetic resolver. Only explicit upgrade resolves or
 writes locks; setup preserves the first install error without another lock mode.
 
-After installation, setup validates Mise declarations and consumes published environment
-files through two in-process batch calls. Environment sync compares the physical bytes
-and mode with the declared projection; it neither creates missing files nor requires
-a Git commit or a clean worktree. Local workspaces select `all`; attached
+After installation, local setup authorizes the published `.envrc` with native
+`direnv allow`; CI skips that authorization. Setup never renders, compares or
+repairs environment files: `make check` verifies environment provenance and
+projection drift, and `make gen` owns regeneration. Repository batch operations
+such as `codegen mise-artifacts` select `all` in local workspaces; attached
 members, standalone repositories and CI select `self`. Git declarations own discovery
 order, and each operation runs serially through its original validator or consumer.
 Missing required roots remain failed inventory entries. Explicit Git management,

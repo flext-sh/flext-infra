@@ -324,7 +324,9 @@ override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
-override export MISE_LOCKED := 1
+# No global locked mode: setup installs whatever mise.lock pins and never stops
+# on a stale or incomplete lock (operator-ruling-2026-10-09-setup-resilient);
+# only the runtime reader's discovery calls run locked, scoped to those calls.
 override export MISE_AUTO_INSTALL := 0
 # Project provisioning must never install or resolve tools from host config.
 # The physical runtime owns both its environment and frozen tool identities.
@@ -539,6 +541,7 @@ setup: _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
+	@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,direnv allow "$(PROJECT_ROOT)")
 endif
 
 # Upgrade only resolves dependencies and writes locks. Provisioning belongs
@@ -566,12 +569,11 @@ _setup_native_prepare: _builtin_setup_submodules
 
 _setup_lifecycle: _builtin_require_workspace
 	+@$(INSTALL_RUNTIME_RECIPE); \
-	$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(PROJECT_ROOT)"; \
 	case "$(strip $({{ make.ci.variable }})): $(CUSTOM_DECLARED_TARGETS) " in \
 		{{ make.ci.value }}:*) ;; \
 		*" pre-setup "*) $(SELF_MAKE) pre-setup ;; \
 	esac; \
-	$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} sync-environment --repository-root "$(PROJECT_ROOT)" --scope self $(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),--no-allow-direnv,--allow-direnv); \
+	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),,direnv allow "$(PROJECT_ROOT)";) \
 	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _setup_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
 
 # Setup installs the committed locks as they are and never rewrites them.
@@ -591,10 +593,9 @@ _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
-# A project owns the sources declared by its manifest. The generated setup
-# reconciler validates every initialized checkout before mutation, initializes
-# only missing modules, and preserves declared branches that fix forward beyond
-# the recorded gitlink.
+# A project owns the sources declared by its manifest. Generated setup
+# initializes only uninitialized governed gitlinks and never touches an
+# initialized checkout.
 {{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", timeout_command, timeout_kill_after_seconds, make.submodule_timeout_seconds, make.submodule_jobs) }}
 _builtin_setup_submodules: _builtin_require_workspace
 

@@ -1,4 +1,4 @@
-"""Beads projection and workspace environment models.
+"""Beads projection models.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,12 +11,12 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
 class FlextInfraConfigModelsBeads:
-    """Beads projection and workspace environment models."""
+    """Beads projection models."""
 
     class BeadsProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -147,55 +147,6 @@ class FlextInfraConfigModelsBeads:
                 ),
             ),
         ] = None
-
-    class WorkspaceEnvironmentCliRequest(FlextInfraConfigModelsContract.ConfigContract):
-        """CLI-safe request for one Python workspace environment sync."""
-
-        model_config = m.ConfigDict(extra="forbid")
-
-        repository_root: Annotated[
-            Path,
-            m.Field(description="Repository root receiving the sync"),
-        ]
-        scope: Annotated[
-            c.Infra.CodegenConformScope,
-            m.Field(description="Sync this root or all Git-declared repository roots"),
-        ] = c.Infra.CodegenConformScope.SELF
-        allow_direnv: Annotated[
-            bool,
-            m.Field(description="Authorize the current generated .envrc with direnv"),
-        ] = True
-
-    class WorkspaceEnvironmentSyncRequest(
-        FlextInfraConfigModelsContract.ConfigContract,
-    ):
-        """Validated internal request for one workspace environment sync."""
-
-        model_config = m.ConfigDict(extra="forbid")
-
-        repository_root: Annotated[
-            Path,
-            m.Field(description="Repository root receiving the sync"),
-        ]
-        allow_direnv: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Run `direnv allow` after the existing conform planner proves "
-                    "the published physical projection matches its current declaration"
-                ),
-            ),
-        ] = True
-
-    class WorkspaceEnvironmentSyncResult(FlextInfraConfigModelsContract.ConfigContract):
-        """The consumed environment projection and its native authorization."""
-
-        environment_file: Annotated[
-            Path, m.Field(description="Existing canonical environment projection")
-        ]
-        authorized: Annotated[
-            bool, m.Field(description="Native direnv authorization completed")
-        ]
 
 
 __all__: list[str] = ["FlextInfraConfigModelsBeads"]

@@ -88,13 +88,13 @@ MISE_CONFIG_DIR="{{ d }}{reader_root}/.mise"; \
 MISE_SYSTEM_CONFIG_DIR="{{ d }}{MISE_CONFIG_DIR}"; \
 MISE_GLOBAL_CONFIG_FILE="{{ d }}{MISE_CONFIG_DIR}/config.toml"; \
 MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}{reader_root}")"; \
-MISE_LOCKED=1; MISE_AUTO_INSTALL=0; \
-export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS MISE_LOCKED MISE_AUTO_INSTALL; \
+MISE_AUTO_INSTALL=0; \
+export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS MISE_AUTO_INSTALL; \
 case "{{ d }}{OS:-}" in (Windows_NT) reader_mise="{{ d }}{reader_root}/.bin/mise.exe" ;; (*) reader_mise="{{ d }}{reader_root}/.bin/mise" ;; esac; \
 if [ -L "{{ d }}{reader_root}/.bin" ] || [ -L "{{ d }}{reader_mise}" ]; then printf 'ERROR: Mise acquisition must be physical: %s\n' "{{ d }}{reader_mise}" >&2; exit 2; fi; \
-reader_mise="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which mise)"; \
+reader_mise="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which mise)"; \
 if [ "{{ d }}{OS:-}" = Windows_NT ]; then reader_mise="{{ d }}(cygpath --unix "{{ d }}{reader_mise}")"; fi; \
-uv_binary="{{ d }}("{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}")"; \
+uv_binary="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}")"; \
 if [ "{{ d }}{OS:-}" = Windows_NT ]; then uv_binary="{{ d }}(cygpath --unix "{{ d }}{uv_binary}")"; fi; \
 if [ ! -x "{{ d }}{uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
 owner="{{ d }}("{{ d }}{uv_binary}" workspace dir --project "{{ d }}{project_root}")"; \

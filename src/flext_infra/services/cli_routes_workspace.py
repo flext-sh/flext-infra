@@ -51,25 +51,6 @@ class FlextInfraWorkspaceRoutes:
         )
 
     @staticmethod
-    def _sync_environment(
-        params: m.Infra.WorkspaceEnvironmentCliRequest,
-    ) -> p.Cli.ErasedCommandResult:
-        """Consume generated environment files through the public API binding.
-
-        Returns:
-            The canonical CLI result view.
-
-        """
-        request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
-            params.model_dump(exclude={"scope"}),
-        )
-        return workspace.FlextInfraWorkspaceEnvironmentMixin.execute_request(
-            request,
-            synchronize=flext_infra.infra.sync_environment_files,
-            scope=params.scope,
-        )
-
-    @staticmethod
     def _payload_json_formatter(payload: t.JsonPayload) -> str:
         """Serialize an erased command payload through the canonical JSON owner.
 
@@ -246,12 +227,6 @@ class FlextInfraWorkspaceRoutes:
                         "Publish this workspace's flext-infra to every member",
                         workspace.FlextInfraWorkspacePropagation,
                         flext_infra.infra.workspace_propagate,
-                    ),
-                    (
-                        "sync-environment",
-                        "Sync generated direnv/mise environment files",
-                        m.Infra.WorkspaceEnvironmentCliRequest,
-                        cls._sync_environment,
                     ),
                     (
                         c.Infra.FLEET_ROUTE_NAME,

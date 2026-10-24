@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
     from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-    from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
     from flext_infra.workspace.environment_contracts import (
         FlextInfraWorkspaceEnvironmentContracts,
     )
@@ -53,7 +52,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuntimeDependencyCollector",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentContracts",
-    "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin",
     "FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin",
@@ -76,7 +74,6 @@ install_lazy_exports(
         "FlextInfraRuntimeDependencyCollector": ".runtime_dependencies",
         "FlextInfraWorkspaceDetector": ".detector",
         "FlextInfraWorkspaceEnvironmentContracts": ".environment_contracts",
-        "FlextInfraWorkspaceEnvironmentMixin": ".environment",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
         "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin": (
             "._environment_provenance_editable"
