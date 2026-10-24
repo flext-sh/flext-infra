@@ -47,29 +47,29 @@ def _create_init_file(directory: Path, content: str) -> Path:
     return init_file
 
 
-@pytest.fixture
-def governed_project(tmp_path: Path) -> Path:
-    """Provide the project manifest every scanned package belongs to.
-
-    Lazy-init plans a package only inside a physical project, and the
-    generated notice names the manifest's first author and its license.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    (tmp_path / c.PYPROJECT_FILENAME).write_text(
-        '[project]\nname = "test-helpers"\nversion = "0.1.0"\n'
-        f'license = "{u.Tests.project_spec("test-helpers").license}"\n'
-        'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
-        encoding="utf-8",
-    )
-    return tmp_path
-
-
 @pytest.mark.usefixtures("governed_project")
 class TestsFlextInfraCodegenLazyInit:
     """Test suite for FlextInfraCodegenLazyInit directory scanning behavior."""
+
+    @staticmethod
+    @pytest.fixture
+    def governed_project(tmp_path: Path) -> Path:
+        """Provide the project manifest every scanned package belongs to.
+
+        Lazy-init plans a package only inside a physical project, and the
+        generated notice names the manifest's first author and its license.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "test-helpers"\nversion = "0.1.0"\n'
+            f'license = "{u.Tests.project_spec("test-helpers").license}"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
+            encoding="utf-8",
+        )
+        return tmp_path
 
     class TestsAllDirectoriesScanned:
         """All standard directories are always scanned."""

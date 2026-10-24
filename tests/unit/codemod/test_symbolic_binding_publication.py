@@ -21,32 +21,32 @@ _OWNED_CI_LINE = (
 )
 
 
-@pytest.fixture
-def symbolic_workspace(mod_workspace: Path) -> Path:
-    """Provide real Python modules consumed by the native engine and interpreter.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    tests = mod_workspace / "tests"
-    (tests / "unit" / "codegen").mkdir(parents=True)
-    (tests / "__init__.py").write_text(
-        "from tests.utilities import TestsFlextInfraUtilities as u\n",
-        encoding="utf-8",
-    )
-    (tests / "utilities.py").write_text(
-        "class TestsFlextInfraUtilities:\n"
-        "    class CodegenTestSupport:\n"
-        "        class Ci:\n"
-        "            value = 'owned'\n",
-        encoding="utf-8",
-    )
-    return mod_workspace
-
-
 class TestsFlextInfraSymbolicBindingPublication:
     """Binding evidence must survive until the guarded phase's source barrier."""
+
+    @staticmethod
+    @pytest.fixture
+    def symbolic_workspace(mod_workspace: Path) -> Path:
+        """Provide real Python modules consumed by the native engine and interpreter.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        tests = mod_workspace / "tests"
+        (tests / "unit" / "codegen").mkdir(parents=True)
+        (tests / "__init__.py").write_text(
+            "from tests.utilities import TestsFlextInfraUtilities as u\n",
+            encoding="utf-8",
+        )
+        (tests / "utilities.py").write_text(
+            "class TestsFlextInfraUtilities:\n"
+            "    class CodegenTestSupport:\n"
+            "        class Ci:\n"
+            "            value = 'owned'\n",
+            encoding="utf-8",
+        )
+        return mod_workspace
 
     @staticmethod
     @pytest.mark.slow

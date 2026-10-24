@@ -16,25 +16,25 @@ from flext_infra.gates.smells import FlextInfraSmellsGate
 from tests import c, m, t, tm, u
 
 
-@pytest.fixture
-def smells_project(tmp_path: Path) -> Path:
-    """One declared project inside ``tmp_path`` for qlty to scan.
-
-    Returns:
-        The resulting ``Path``.
-
-    """
-    name = f"smells-{tmp_path.name}"
-    return u.Tests.mk_project(
-        tmp_path,
-        name,
-        pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
-        with_src=True,
-    )
-
-
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
+
+    @staticmethod
+    @pytest.fixture
+    def smells_project(tmp_path: Path) -> Path:
+        """One declared project inside ``tmp_path`` for qlty to scan.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        name = f"smells-{tmp_path.name}"
+        return u.Tests.mk_project(
+            tmp_path,
+            name,
+            pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
 
     @staticmethod
     def _detector_config(root: Path) -> m.ConfigDocument:
