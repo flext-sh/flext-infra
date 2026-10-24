@@ -358,9 +358,10 @@ class FlextInfraCodegenLazyInit(
         )
         if target.failure:
             return result_type.from_failure(target)
+        target_package_dir = target.value[0] if target.value else None
         package_dirs = self._package_dirs_for_target(
             indexed_package_dirs,
-            target_package_dir=target.value,
+            target_package_dir=target_package_dir,
         )
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
         package_plans = FlextInfraCodegenLazyInitPlanner(
@@ -368,7 +369,7 @@ class FlextInfraCodegenLazyInit(
             lazy_init=config.Infra.tooling.lazy_init,
         ).plan_all_inits(
             package_dirs,
-            target_package_dir=target.value,
+            target_package_dir=target_package_dir,
         )
         if package_plans.failure:
             return result_type.from_failure(package_plans)
@@ -379,16 +380,16 @@ class FlextInfraCodegenLazyInit(
         workspace_index: m.Infra.RopeWorkspaceIndex,
         indexed_package_dirs: t.VariadicTuple[Path],
         repository_root: Path,
-    ) -> p.Result[Path | None]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Resolve the single target package dir when a target module is set.
 
         Returns:
-            The target package directory, or ``None`` when no module is set.
+            The one target package directory, or no directory when no module is set.
 
         """
-        result_type = r[Path | None]
+        result_type = r[t.VariadicTuple[Path]]
         if not self.module:
-            return result_type.ok(None)
+            return result_type.ok(())
         sorted_target_dirs = self._target_package_dirs(
             workspace_index,
             repository_root,
@@ -406,7 +407,7 @@ class FlextInfraCodegenLazyInit(
             return result_type.fail(
                 f"lazy-init target belongs to retired support: {self.module}",
             )
-        return result_type.ok(target_package_dir)
+        return result_type.ok((target_package_dir,))
 
     @staticmethod
     def _package_dirs_for_target(
