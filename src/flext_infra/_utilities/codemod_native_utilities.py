@@ -107,6 +107,32 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             ),
         }
 
+    @staticmethod
+    def codemod_generated_module_utilities(
+        project: Path,
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Generated module: a module whose first line is the generator header.
+
+        The same header ``generated_source`` reads proves a file is a
+        generator projection, so rules skip generated files through this one
+        derived fact instead of listing file names.
+
+        Returns:
+            The ``generated-module`` utility rule.
+
+        """
+        del project
+        return {
+            c.Infra.CodemodContextPredicate.GENERATED_MODULE.value: {
+                "kind": "module",
+                "has": {
+                    "kind": "comment",
+                    "nthChild": 1,
+                    "regex": rf"^{re.escape(c.Infra.AUTOGEN_HEADER)}$",
+                },
+            },
+        }
+
     @classmethod
     def codemod_runtime_package_utilities(
         cls, project: Path

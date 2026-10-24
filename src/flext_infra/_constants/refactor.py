@@ -203,6 +203,8 @@ class FlextInfraConstantsRefactor:
           package of its ``pyproject.toml`` project);
         - ``runtime-package``: it is the import package of a distribution in
           the project's runtime dependency closure;
+        - ``generated-module``: the module opens with the declared generator
+          header, so it is a generator projection no rule rewrites;
         - ``facade-package``: it is a runtime package that publishes runtime
           aliases through its generated lazy exports;
         - ``runtime-alias``: the captured name is a runtime alias published
@@ -276,6 +278,7 @@ class FlextInfraConstantsRefactor:
         STDLIB_MODULE = "stdlib-module"
         OWN_PACKAGE = "own-package"
         RUNTIME_PACKAGE = "runtime-package"
+        GENERATED_MODULE = "generated-module"
         FACADE_PACKAGE = "facade-package"
         RUNTIME_ALIAS = "runtime-alias"
         CANONICAL_STATIC_PUBLICATION = "canonical-static-publication"
