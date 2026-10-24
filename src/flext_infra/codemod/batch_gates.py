@@ -1008,7 +1008,7 @@ class FlextInfraModGateEngine:
                 )
                 else "authored",
                 source_state=snapshot,
-                range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                range=u.json_mapping_adapter().validate_python(
                     finding.get("range"),
                 ),
                 text=str(finding.get("text")),

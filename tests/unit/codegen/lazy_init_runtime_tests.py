@@ -52,10 +52,10 @@ class TestsFlextInfraLazyInitRuntime:
         ("imported_alias", "published_alias"),
         [(False, False), (True, False), (True, True)],
     )
-    def test_public_generation_owns_test_initialization_in_one_class(
+    def test_public_generation_owns_test_module_hooks(
         tmp_path: Path, imported_alias: bool, published_alias: bool
     ) -> None:
-        """Class metadata publishes precise lazy aliases without module assignments."""
+        """Module metadata publishes precise lazy aliases without eager leaves."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-owned-tests",
@@ -106,8 +106,7 @@ class TestsFlextInfraLazyInitRuntime:
             source = content.decode(c.DEFAULT_ENCODING)
             module = ast.parse(source)
             roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
-            tm.that(len(roots), eq=1)
-            tm.that(roots[0].name.startswith("TestsFlextOwnedTests"), eq=True)
+            tm.that(len(roots), eq=0)
             for node in module.body:
                 if isinstance(node, ast.If):
                     tm.that(isinstance(node.test, ast.Name), eq=True)
@@ -122,15 +121,25 @@ class TestsFlextInfraLazyInitRuntime:
                     )
                 else:
                     tm.that(
-                        isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef)),
+                        isinstance(
+                            node,
+                            (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign),
+                        )
+                        or (
+                            isinstance(node, ast.Expr)
+                            and isinstance(node.value, ast.Constant)
+                            and isinstance(node.value.value, str)
+                        ),
                         eq=True,
                     )
             tm.that(
                 any(
-                    isinstance(node, ast.Expr)
-                    and isinstance(node.value, ast.Call)
-                    and ast.unparse(node.value.func) == "install_lazy_exports"
-                    for node in roots[0].body
+                    isinstance(node, ast.Assign)
+                    and any(
+                        isinstance(target, ast.Name) and target.id == "__getattr__"
+                        for target in node.targets
+                    )
+                    for node in module.body
                 ),
                 eq=True,
             )
@@ -197,8 +206,8 @@ class TestsFlextInfraLazyInitRuntime:
                 + "print(generated.c is expected)\n"
                 "print(generated.TestsFlextOwnedTestsConstants "
                 "is TestsFlextOwnedTestsConstants)\n"
-                "print(generated.__all__ "
-                "== generated.TestsFlextOwnedTestsPackage.__all__)\n"
+                "print(set(generated.__all__) "
+                "== {'TestsFlextOwnedTestsConstants', 'c', 'unit'})\n"
                 "print('flext_owned_tests.api' not in sys.modules)\n",
                 python_paths=(
                     str(repository),
@@ -664,10 +673,15 @@ class TestsFlextInfraLazyInitRuntime:
                 "print(package.__all__ == ('FlextDemo', 'primary'))\n"
                 "print(dir(package) == list(package.__all__))\n"
                 "first = package.FlextDemo\n"
-                "print(first is package.FlextDemo is package.primary)\n",
+                "print(first is package.FlextDemo is package.primary)\n"
+                "try:\n"
+                "    package.undeclared\n"
+                "except AttributeError as error:\n"
+                "    print(str(error) == "
+                "\"module 'flext_lazy_demo' has no attribute 'undeclared'\")\n",
                 python_paths=(str(repository_root / c.Infra.DEFAULT_SRC_DIR),),
             ),
-            eq=["True"] * 4,
+            eq=["True"] * 5,
         )
         tm.that(package_root.joinpath("imports.txt").read_text(), eq="x")
 

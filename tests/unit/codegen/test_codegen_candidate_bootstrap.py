@@ -213,7 +213,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tm.ok(
                 FlextInfraCodegenConform(
                     repository_root=root,
-                    initial_workspace=workspace,
+                    state=m.Infra.CodegenConformState(
+                        repository_root=root, initial_workspace=workspace
+                    ),
                 ).plan(request),
             ).issues,
             empty=True,
@@ -233,7 +235,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root, initial_workspace=workspace
+                ),
             ).plan(request),
         )
 
@@ -1082,3 +1086,108 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.ok(infra.bootstrap_candidate(command))
         tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_dependency_campaign_elects_each_target_policy_without_lazy_sources(
+        tmp_path: Path,
+    ) -> None:
+        """Native bootstrap consumes target-local precedence, never future Python."""
+        source, _ = u.Tests.render_make_environment(
+            tmp_path / "policy-provider", c.Infra.MakeProfile.STANDALONE
+        )
+        targets: list[m.Infra.CandidateBootstrapTargetSpec] = []
+        expected: dict[Path, tuple[str, ...]] = {}
+        source_states: dict[Path, bytes] = {}
+        before: dict[Path, t.VariadicTuple[t.Pair[str, bytes]]] = {}
+        for name, profile in (
+            ("orchard", c.Infra.MakeProfile.STANDALONE),
+            ("harbor", c.Infra.MakeProfile.WORKSPACE),
+        ):
+            root, _ = u.Tests.render_make_environment(
+                tmp_path / name,
+                profile,
+                shape=u.Tests.MakeEnvironmentShape(project_name=name),
+            )
+            committed = (f"policy-{name}==1.0",)
+            local = (f"policy-{name}==2.0",)
+            declaration = (
+                tm.ok(u.Infra.load_codegen_inputs(root)).spec.repository
+                or m.Infra.RepositoryDeltaSpec()
+            )
+            for filename, overrides in (
+                ("codegen.yaml", committed),
+                ("codegen.local.yaml", local),
+            ):
+                tm.ok(
+                    u.Cli.yaml_dump(
+                        root / c.CONFIG_DIR_NAME / filename,
+                        {
+                            "Infra": {
+                                "codegen": {
+                                    "repository": declaration.model_dump(
+                                        mode="json",
+                                        exclude_none=True,
+                                        exclude_defaults=True,
+                                    ),
+                                    "toolchain": {
+                                        "uv_override_dependencies": list(overrides),
+                                    },
+                                }
+                            }
+                        },
+                    ),
+                )
+            package = root / "src" / u.Infra.project_package_name(root)
+            package.mkdir(parents=True, exist_ok=True)
+            future = package / "future_api.py"
+            future.write_text(
+                "raise RuntimeError('dependency projection imported future API')\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            source_states[future] = future.read_bytes()
+            before[root] = (
+                TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(root)
+            )
+            expected[root] = local
+            targets.append(
+                m.Infra.CandidateBootstrapTargetSpec(
+                    path=Path(os.path.relpath(root, source)),
+                    what=c.Infra.CodegenConformSurface.PYPROJECT,
+                )
+            )
+        _write_candidate_targets(source, targets)
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+
+        tm.ok(infra.bootstrap_candidate(command))
+        published: dict[Path, bytes] = {}
+        for root, overrides in expected.items():
+            inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+            tm.that(tuple(inputs.spec.toolchain.uv_override_dependencies), eq=overrides)
+            destinations = (
+                Path(c.PYPROJECT_FILENAME),
+                *inputs.spec.uv_resolution_pyprojects,
+            )
+            allowed = {path.as_posix() for path in destinations}
+            after = TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(
+                root
+            )
+            tm.that(
+                tuple(item for item in after if item[0] not in allowed),
+                eq=tuple(item for item in before[root] if item[0] not in allowed),
+            )
+            for relative in destinations:
+                path = root / relative
+                published[path] = path.read_bytes()
+                tm.that(
+                    u.Tests.toml_strings_at(
+                        published[path].decode(c.DEFAULT_ENCODING),
+                        "tool",
+                        "uv",
+                        "override-dependencies",
+                    ),
+                    eq=overrides,
+                )
+        tm.ok(infra.bootstrap_candidate(command))
+        for path, content in {**published, **source_states}.items():
+            tm.that(path.read_bytes(), eq=content)

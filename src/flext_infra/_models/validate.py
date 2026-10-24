@@ -152,22 +152,22 @@ class FlextInfraModelsCore:
         """Session-owned public collection-hook observations."""
 
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
-            m.Field(
-                default_factory=u.empty(
+            u.Field(
+                default_factory=lambda: u.empty(
                     TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownOrigin"]
+                        t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin]
                     )
-                ),
+                )(),
                 description="Independently parsed origins",
             )
         )
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(
-                default_factory=u.empty(
+            u.Field(
+                default_factory=lambda: u.empty(
                     TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                        t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem]
                     )
-                ),
+                )(),
                 description="Observed pre-selection items",
             )
         )
@@ -521,21 +521,21 @@ class FlextInfraModelsCore:
         )
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
-        ] = m.Field(
-            default_factory=u.empty(
+        ] = u.Field(
+            default_factory=lambda: u.empty(
                 TypeForm(
-                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
+                    t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownAttempt]
                 )
-            ),
+            )(),
             description="Call-phase attempt observations",
         )
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(
-                default_factory=u.empty(
+            u.Field(
+                default_factory=lambda: u.empty(
                     TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
+                        t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem]
                     )
-                ),
+                )(),
                 description="Call-phase origin observations",
             )
         )

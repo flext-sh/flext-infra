@@ -495,10 +495,6 @@ class FlextInfraModelsCodegenRender:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        owner_class: str = m.Field(
-            default="",
-            description="Namespace-layout owner of a class-owned test initializer.",
-        )
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
         runtime_import_lines: t.NonEmptyStr = m.Field(
             description=(

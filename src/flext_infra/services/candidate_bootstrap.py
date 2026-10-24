@@ -252,14 +252,21 @@ class FlextInfraCandidateBootstrapService:
                 t.VariadicTuple[m.Infra.CodegenFilePlan],
             ]
         ]
-        contract = self._planner.surface_contract(target.what, codegen=captured.spec)
+        # Bootstrap pyproject declarations elect native policy, not tooling that
+        # may require the dependency API being bootstrapped.
+        surface = (
+            c.Infra.CodegenConformSurface.DEPENDENCIES
+            if target.what is c.Infra.CodegenConformSurface.PYPROJECT
+            else target.what
+        )
+        contract = self._planner.surface_contract(surface, codegen=captured.spec)
         if contract.complete_governed:
             return result_type.fail(
                 f"candidate bootstrap requires one declared surface: {root}",
             )
         request = m.Infra.CodegenConformRequest(
             root=root,
-            what=target.what,
+            what=surface,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )

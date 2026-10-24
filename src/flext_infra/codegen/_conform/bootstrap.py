@@ -234,6 +234,8 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
+                    templates=False,
+                    tooling=False,
                     custom=False,
                 )
             case (

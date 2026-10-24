@@ -127,6 +127,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             the contract does not select one.
 
         """
+        if contract.pyproject and not (
+            contract.tooling or contract.templates or contract.custom
+        ):
+            return self._plan_native_dependencies(target, workspace, codegen)
         if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
             context = m.Infra.EnvrcRenderSpec(
                 toolchain=codegen.toolchain,
@@ -152,6 +156,57 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
+
+    def _plan_native_dependencies(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Project dependency policy without preparing API-dependent Python sources.
+
+        Returns:
+            The root manifest plan; the repository planner derives both UV views.
+
+        """
+        result = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        captured = u.Cli.atomic_read_binary_file_state(
+            target.root / c.PYPROJECT_FILENAME, required=True
+        )
+        if captured.failure:
+            return result.from_failure(captured)
+        content = captured.value.content
+        if content is None:
+            return result.fail(f"missing dependency manifest: {captured.value.path}")
+        declarations = self._member_declaration_states(target.root, workspace)
+        if declarations.failure:
+            return result.from_failure(declarations)
+        conformed = self.conformed_pyproject_source(
+            content.decode(c.DEFAULT_ENCODING),
+            target=target,
+            workspace=workspace,
+            codegen=codegen,
+            member_declarations=declarations.value[1],
+        )
+        if conformed.failure:
+            return result.from_failure(conformed)
+        formatted = u.Infra.format_toml_source(
+            conformed.value,
+            path=captured.value.path,
+            toolchain_root=target.toolchain_root,
+            taplo_version=codegen.toolchain.tool_versions["taplo"],
+        )
+        if formatted.failure:
+            return result.from_failure(formatted)
+        planned = self.file_plan(
+            target.root,
+            c.PYPROJECT_FILENAME,
+            f"{c.Infra.BANNER}{self.rendered_by_stamp()}\n{formatted.value.lstrip()}",
+            source_states=(captured.value, *declarations.value[0]),
+        )
+        if planned.failure:
+            return result.from_failure(planned)
+        return result.ok((planned.value,))
 
     def _plan_existing_managed(
         self,
@@ -1665,7 +1720,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 )
                 return result_type.fail(str(error), exception=error)
             values = u.Cli.json_walk_path(projection.values, ("Infra", "codegen"))
-            validated = u.validate_value(t.Cli.JSON_MAPPING_ADAPTER, values)
+            validated = u.validate_value(u.json_mapping_adapter(), values)
             if validated.failure:
                 return result_type.from_failure(validated)
             planned = cls._codegen_declaration_plan(

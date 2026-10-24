@@ -13,25 +13,11 @@ from typing import TYPE_CHECKING
 {{ type_checking_lines }}
 
 {% endif %}
-{% if owner_class -%}
-class {{ owner_class }}:
-    """Own the package's lazy export bindings."""
-
-    __all__: tuple[str, ...] = {{ exports_tuple | indent(4) }}
-
-    install_lazy_exports(
-        __name__,
-        globals(),
-{{ lazy_export_mapping | indent(4, true) }}
-        public_exports=__all__,
-    )
-{% else -%}
 __all__: tuple[str, ...] = {{ exports_tuple }}
 
-install_lazy_exports(
+__getattr__ = install_lazy_exports(
     __name__,
     globals(),
 {{ lazy_export_mapping }}
     public_exports=__all__,
-)
-{% endif %}
+)[0]

@@ -54,6 +54,7 @@ class FlextInfraConstantsCodegen(
     ] = SELF_SCOPE_SURFACES | frozenset((
         FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
         FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.DEPENDENCIES,
     ))
     "Self-owned configuration is planned against the declared repository target."
 

@@ -804,7 +804,12 @@ class FlextInfraStagedPackage:
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         if identity.failure:
             return r[Path].from_failure(identity)
-        return r[Path].ok(identity.value.superproject_root or identity.value.repo_root)
+        if identity.value.is_attached_submodule:
+            superproject = identity.value.superproject_root
+            if superproject is None:
+                return r[Path].fail("attached candidate has no superproject root")
+            return r[Path].ok(superproject)
+        return r[Path].ok(identity.value.repo_root)
 
     @classmethod
     def plan(

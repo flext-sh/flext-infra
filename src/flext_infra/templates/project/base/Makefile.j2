@@ -854,17 +854,17 @@ _builtin_setup_environment: $(if $(filter {{ make.uv_resolution.hosted_value }},
 	fi
 # End SECTION: setup environment
 
-# Upgrade provisions its trusted locked tool closure before its producer runs.
-# The complete setup acceptance follows projection and native lock convergence.
+# Upgrade installs the graph resolved from the early native manifest projection.
+# API-dependent source production follows this installation.
 .PHONY: _upg_install_runtime
 _upg_install_runtime:
 	@$(INSTALL_RUNTIME_RECIPE)
 
-# Resolve both native views before the first install, so the producer that
-# runs the corrective projection is the one the declarations resolve to: a
-# consumer whose lock still pins an older producer (one without the routes
-# this template calls), or that has no view lock yet, upgrades in one run.
-# The corrective projection is then re-locked by _upg_reconcile_locks.
+# Project native dependency policy with the compatible installed producer before
+# resolving either view. This surface never prepares lazy Python sources: those
+# may require the very dependency API this upgrade is about to install.
+# A cold candidate receives this same surface through candidate-bootstrap first.
+# Full tooling projection follows installation and is re-locked afterwards.
 # Only this elected runtime owner installs the resolved environment. Attached
 # members delegate before bootstrap; this owner also refreshes their own native
 # UV and tool locks for independent setup without installing member runtimes.
@@ -887,13 +887,14 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what dependencies --scope all
 	+@$(SELF_MAKE) _upg_resolve_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope all
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what makefile --scope all
 	+@$(SELF_MAKE) _upg_provision_tools
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
@@ -1328,7 +1329,7 @@ _builtin_require_examples:
 		exit 2; \
 	fi
 {% else %}
-	@printf '%s\n' 'ERROR: examples: declare repository.examples_module in config/workspace.yaml' >&2; exit 2
+	@printf '%s\n' 'ERROR: examples: declare repository.examples_module in config/codegen.yaml' >&2; exit 2
 {% endif %}
 
 _builtin-examples: _builtin_require_environment

@@ -99,7 +99,7 @@ class FlextInfraRopeRestructure(Restructure):
         self,
         matches: t.SequenceOf[t.Infra.RopeNativeMatch],
         pymodule: t.Infra.RopeNativeSourceModule,
-    ) -> t.Infra.RopeChangeComputer:
+    ) -> p.Infra.RopeChangeComputer:
         """Admit occurrences before the native change computer writes source.
 
         Returns:
@@ -127,7 +127,7 @@ class FlextInfraRopeRestructure(Restructure):
                 self,
                 matches: t.SequenceOf[t.Infra.RopeNativeMatch],
                 pymodule: t.Infra.RopeNativeSourceModule,
-            ) -> t.Infra.RopeChangeComputer: ...
+            ) -> p.Infra.RopeChangeComputer: ...
 
         return cast("_NativeChangeComputation", super())._compute_changes(
             selected, pymodule

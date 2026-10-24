@@ -88,7 +88,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return result_type.from_failure(document)
         codegen = u.Cli.json_walk_path(document.value.values, ("Infra", "codegen"))
         section = r[t.JsonMapping].create_from_callable(
-            partial(t.Cli.JSON_MAPPING_ADAPTER.validate_python, codegen),
+            partial(u.json_mapping_adapter().validate_python, codegen),
         )
         if section.failure:
             return result_type.from_failure(section)
@@ -331,7 +331,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             content.decode(c.DEFAULT_ENCODING),
         )
         return (
-            {} if parsed is None else t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+            {} if parsed is None else u.json_mapping_adapter().validate_python(parsed)
         )
 
     @staticmethod

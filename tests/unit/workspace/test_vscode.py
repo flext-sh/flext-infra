@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.services import FlextInfraCodegen
+from flext_infra.services import FlextInfraCodegenVscodeMixin
 from tests import c, tm, u
 
 
@@ -45,7 +45,9 @@ class TestsFlextInfraCodegenVscode:
             + "\n",
         )
 
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
+        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            project_root, runtime_root=project_root
+        )
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
@@ -86,7 +88,9 @@ class TestsFlextInfraCodegenVscode:
             + "\n",
         )
 
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
+        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            project_root, runtime_root=project_root
+        )
 
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
@@ -99,10 +103,14 @@ class TestsFlextInfraCodegenVscode:
         project_root = tmp_path / "project"
         project_root.mkdir()
 
-        first = FlextInfraCodegen.render_vscode_settings(project_root)
+        first = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            project_root, runtime_root=project_root
+        )
         tm.ok(first)
         self._write_settings(project_root, first.value)
-        second = FlextInfraCodegen.render_vscode_settings(project_root)
+        second = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            project_root, runtime_root=project_root
+        )
         tm.ok(second)
         tm.that(second.value, eq=first.value)
 
@@ -126,10 +134,14 @@ class TestsFlextInfraCodegenVscode:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
+        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            project_root, runtime_root=project_root
+        )
         standalone_root = tmp_path / "standalone"
         standalone_root.mkdir()
-        standalone = FlextInfraCodegen.render_vscode_settings(standalone_root)
+        standalone = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            standalone_root, runtime_root=standalone_root
+        )
 
         tm.ok(result)
         tm.ok(standalone)
@@ -150,7 +162,9 @@ class TestsFlextInfraCodegenVscode:
         project_root.mkdir()
         self._write_settings(project_root, "{ invalid json")
 
-        result = FlextInfraCodegen.render_vscode_settings(project_root)
+        result = FlextInfraCodegenVscodeMixin.render_vscode_settings(
+            project_root, runtime_root=project_root
+        )
 
         tm.fail(result)
         tm.that(result.error, none=False)

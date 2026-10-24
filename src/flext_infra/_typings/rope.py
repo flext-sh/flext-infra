@@ -73,7 +73,6 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeImportStatement = FlextInfraProtocolsRopeRuntime.RopeImportStatement
     type RopeModuleImports = FlextInfraProtocolsRopeRuntime.RopeModuleImports
     type RopeChangeSet = FlextInfraProtocolsRopeRuntime.RopeChangeSet
-    type RopeChangeComputer = FlextInfraProtocolsRopeRuntime.RopeChangeComputer
     type RopeMoveGlobal = FlextInfraProtocolsRopeRuntime.RopeMoveGlobal
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder

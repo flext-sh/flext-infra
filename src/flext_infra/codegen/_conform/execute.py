@@ -620,10 +620,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
-        if request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
-            return r[p.Infra.CodegenResult].fail(
-                "partial codegen apply is prohibited; use the complete all surface",
-            )
         u.Cli.header(
             "Code generation" if self.state.generation_only else "Project conformance"
         )

@@ -9,8 +9,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, t, tm, u
 
 
@@ -40,8 +38,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring='"""Tests package."""',
             runtime_import_lines=(
-                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
-                "install_lazy_exports"
+                f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import install_lazy_exports"
             ),
             exports_tuple="()",
             lazy_export_mapping="    MappingProxyType({}),",
@@ -132,18 +129,12 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
 
         tm.that(
             rendered,
-            has="    MappingProxyType({}),\n    public_exports=__all__,\n)",
+            has="    MappingProxyType({}),\n    public_exports=__all__,\n)[0]",
         )
 
-    @pytest.mark.parametrize("owner_class", ["", "TestsPackageBindings"])
-    def test_lazy_root_preserves_module_documentation_with_an_owner(
-        self,
-        owner_class: str,
-    ) -> None:
-        """Both package shapes retain documentation at their declaring scope."""
-        context = m.Infra.LazyInitRootRender.model_validate(
-            self._empty_root_render().model_dump() | {"owner_class": owner_class}
-        )
+    def test_lazy_root_preserves_module_documentation(self) -> None:
+        """Package metadata and hooks need no synthetic class declaration."""
+        context = self._empty_root_render()
         rendered = tm.ok(u.Cli.template_render(self._ROOT_TEMPLATE, context))
         module = ast.parse(rendered)
 
@@ -151,7 +142,5 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         owners = tuple(node for node in module.body if isinstance(node, ast.ClassDef))
         tm.that(
             tuple(node.name for node in owners),
-            eq=(owner_class,) if owner_class else (),
+            eq=(),
         )
-        for owner in owners:
-            tm.that(ast.get_docstring(owner), empty=False)

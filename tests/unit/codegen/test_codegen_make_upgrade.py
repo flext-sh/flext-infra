@@ -462,15 +462,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         self,
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
-        """A consumer behind the template upgrades from its own committed state.
-
-        Premise (7e2607f6eb regression): the lifecycle installed the producer
-        pinned by the existing view lock and ran the template's corrective
-        `codegen generate` before resolving. A consumer whose lock pinned an
-        older producer (no `generate` route), or that had no view lock yet,
-        could never upgrade. The views resolve first, the resolved producer
-        runs the corrective projection, and the reconcile re-locks it.
-        """
+        """Target policy precedes resolution; API-dependent tooling follows install."""
         _profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
@@ -480,12 +472,17 @@ class TestsFlextInfraCodegenMakeUpgrade:
         def first(needle: str) -> int:
             return next(index for index, step in enumerate(steps) if needle in step)
 
+        policy = first("--what dependencies --scope all")
         resolved = first("_upg_resolve_locks")
         installed = first("_upg_install_runtime")
         corrected = first("--what pyproject --scope all")
         reconciled = first("_upg_reconcile_locks")
 
-        tm.that(resolved < installed < corrected < reconciled, eq=True)
+        tm.that(policy < resolved < installed < corrected < reconciled, eq=True)
+        tm.that(
+            "--what mise-config --scope self" in text,
+            eq=True,
+        )
 
     def test_upg_relocks_the_manifest_gen_projected_before_installing(
         self,

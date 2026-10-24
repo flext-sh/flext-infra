@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from flext_infra.codegen import FlextInfraStagedPackage
 from tests import c, m, tm, u
 
 
@@ -75,12 +76,18 @@ class TestsFlextInfraGitIdentitySubmodules:
         parent = self._superproject(tmp_path)
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=parent)))
         tm.that(identity.has_submodules, eq=True)
+        tm.that(
+            tm.ok(FlextInfraStagedPackage.workspace_root(parent)), eq=parent.resolve()
+        )
 
     def test_plain_repository_reports_no_submodules(self, tmp_path: Path) -> None:
         """A repository without any gitlink reports no submodules."""
         plain = self._repo(tmp_path / "plain")
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=plain)))
         tm.that(identity.has_submodules, eq=False)
+        tm.that(
+            tm.ok(FlextInfraStagedPackage.workspace_root(plain)), eq=plain.resolve()
+        )
 
     def test_identity_reports_origin_and_upstream_remotes(self, tmp_path: Path) -> None:
         """Remote facts come from the canonical Git config owner."""
@@ -148,6 +155,10 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.that(identity.has_submodules, eq=False)
         tm.that(identity.is_submodule, eq=True)
         tm.that(identity.is_attached_submodule, eq=True)
+        tm.that(
+            tm.ok(FlextInfraStagedPackage.workspace_root(parent / "vendored")),
+            eq=parent.resolve(),
+        )
 
     def test_linked_worktree_of_submodule_keeps_primary_identity(
         self,
@@ -179,6 +190,7 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.that(identity.is_worktree, eq=True)
         tm.that(identity.is_submodule, eq=True)
         tm.that(identity.is_attached_submodule, eq=False)
+        tm.that(tm.ok(FlextInfraStagedPackage.workspace_root(lane)), eq=lane.resolve())
 
     def test_absorbed_submodule_with_git_dir_is_still_a_submodule(
         self,

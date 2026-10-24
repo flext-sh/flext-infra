@@ -75,8 +75,8 @@ class TestsFlextInfraCodegenGeneration:
         return source
 
     @staticmethod
-    def test_class_owned_test_root_installs_lazy_exports(tmp_path: Path) -> None:
-        """The public renderer emits a real lazy class-body initializer."""
+    def test_test_root_installs_lazy_exports(tmp_path: Path) -> None:
+        """The public renderer binds real module hooks without eager leaves."""
         repository, _ = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-rendered",
@@ -110,29 +110,25 @@ class TestsFlextInfraCodegenGeneration:
         module = ast.parse(source)
         tm.that(
             [node.name for node in module.body if isinstance(node, ast.ClassDef)],
-            eq=["TestsFlextRenderedPackage"],
+            eq=[],
         )
         tm.that(
             all(
-                isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef, ast.If))
+                isinstance(
+                    node,
+                    (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign, ast.If),
+                )
+                or (
+                    isinstance(node, ast.Expr)
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                )
                 for node in module.body
             ),
             eq=True,
         )
         testing.joinpath(c.Infra.INIT_PY).write_text(
             source, encoding=c.DEFAULT_ENCODING
-        )
-        tm.that(
-            u.Tests.run_lazy_init_probe(
-                "import sys\nimport tests as package\n"
-                "print('tests.constants' not in sys.modules)\n"
-                "from tests.constants import TestsFlextRenderedConstants\n"
-                "print(package.c is TestsFlextRenderedConstants)\n"
-                "print(package.__all__ == package.TestsFlextRenderedPackage.__all__)\n",
-                python_paths=(str(repository),),
-                cwd=repository,
-            ),
-            eq=["True", "True", "True"],
         )
         tm.that(FlextInfraCodegenGeneration.render_init(plan), eq=source)
         checked = FlextInfraRuffLintGate(repository).check_files(
@@ -151,6 +147,18 @@ class TestsFlextInfraCodegenGeneration:
             checked.result.passed,
             eq=True,
             msg=f"{plan.context.init_path}\n{source}\n{checked.raw_output}",
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import sys\nimport tests as package\n"
+                "print('tests.constants' not in sys.modules)\n"
+                "from tests.constants import TestsFlextRenderedConstants\n"
+                "print(package.c is TestsFlextRenderedConstants)\n"
+                "print(package.__all__ == ('TestsFlextRenderedConstants', 'c'))\n",
+                python_paths=(str(repository),),
+                cwd=repository,
+            ),
+            eq=["True", "True", "True"],
         )
 
     @staticmethod
@@ -581,21 +589,20 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from tests import tm")
+        tm.that(init_content, contains="from flext_tests import tm")
         tm.that(init_content, contains='"c": ".constants",')
         tm.that(init_content, contains='"u": ".utilities",')
-        import_block = init_content.split(
-            (
-                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
-                "install_lazy_exports\n"
-            ),
-            maxsplit=1,
-        )[1]
-        import_block = import_block.split("install_lazy_exports(", maxsplit=1)[0]
+        import_block = ast.unparse(
+            next(
+                node
+                for node in ast.parse(init_content).body
+                if isinstance(node, ast.If)
+            )
+        )
         module_offsets = tuple(
             import_block.index(module)
             for module in (
-                "from tests import tm",
+                "from flext_tests import tm",
                 "from tests.base import",
                 "from tests.constants import",
                 "from tests.models import",
@@ -606,7 +613,7 @@ class TestsFlextInfraCodegenGeneration:
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(import_block, contains="from tests import tm\n")
+        tm.that(import_block, contains="from flext_tests import tm\n")
         tm.that(init_content, contains="if TYPE_CHECKING:")
         tm.that(init_content, contains="install_lazy_exports")
         tm.that(init_content, lacks="TestsDemoCase")

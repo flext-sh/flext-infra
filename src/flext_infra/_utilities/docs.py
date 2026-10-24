@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         Every table row is one changed file, so the row count is the changed
         file count both reports publish.
         """
-        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
+        summary_payload = u.json_mapping_adapter().validate_python({
             c.Infra.RK_SUMMARY: {
                 c.Infra.RK_SCOPE: scope.name,
                 "changed_files": len(table.rows),
