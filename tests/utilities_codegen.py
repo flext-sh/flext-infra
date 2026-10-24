@@ -173,8 +173,6 @@ class TestsFlextInfraUtilitiesCodegenMixin(
                 ),
             )
             (root / destination).parent.mkdir(parents=True, exist_ok=True)
-        for managed in inputs.spec.managed_files:
-            (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
         # Scaffold entries create declaration family directories, and the
         # facade completeness law rejects owners without their public facade.
         package_dir = root / c.Infra.DEFAULT_SRC_DIR / package_name

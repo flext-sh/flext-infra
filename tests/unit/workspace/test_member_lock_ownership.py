@@ -53,7 +53,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         legacy.write_text("package = []\n", encoding="utf-8")
 
         tm.fail(
-            FlextInfraWorkspaceLockCompleteness.validate(project),
+            FlextInfraWorkspaceLockCompleteness.verify_lock(project),
             has=str(context.lock_path),
         )
 

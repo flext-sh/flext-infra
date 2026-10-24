@@ -180,11 +180,7 @@ class TestsFlextInfraReleaseDag:
             gitleaks = entries[c.Infra.RELEASE_GITLEAKS_CONFIG_PATH]
             tm.fail("config/build-constraints.txt" in entries)
             tm.that(set(gitleaks.profiles), eq=set(c.Infra.MakeProfile))
-            managed = {
-                item.path.as_posix(): item.policy
-                for item in config.Infra.codegen.managed_files
-            }
-            tm.that(managed[c.Infra.RELEASE_GITLEAKS_CONFIG_PATH], eq="full")
+            tm.that(tm.not_none(gitleaks.ownership).policy, eq="full")
 
     class TestsArchiveBoundary:
         """Publishable archive content policy."""
