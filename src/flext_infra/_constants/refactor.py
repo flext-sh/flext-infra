@@ -38,6 +38,8 @@ class FlextInfraConstantsRefactor:
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codemod" / "native"
     )
     "Per-stage staged sgconfig roots a native ``ast-grep scan -c`` reproduces."
+    MOD_NATIVE_CASCADE_CHANGE: ClassVar[str] = "native-cascade"
+    "Change label of a syntax plan the native ast-grep cascade produced."
     MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 4
     "Exact structured mod evidence schema version."
     MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
@@ -479,6 +481,18 @@ class FlextInfraConstantsRefactor:
     CODEMOD_PACKAGE_EXPORTS_UTILITY: ClassVar[str] = "exports"
     # Generated utility id of the project's facade-family private packages.
     CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = "facade-family-package"
+    # Generated rule shape that rewires an inline type set to the constant
+    # declaring it: 'type-set--<constant path>'.
+    CODEMOD_TYPE_SET_SHAPE: ClassVar[str] = "type-set"
+    # Generated rule shape that inserts the canonical package import of names
+    # a module uses bare without binding them: 'import-header--<package>'.
+    CODEMOD_IMPORT_HEADER_SHAPE: ClassVar[str] = "import-header"
+    # Generated rule shape that reaches a member through its package import
+    # instead of a module object: 'module-member--<package>'.
+    CODEMOD_MODULE_MEMBER_SHAPE: ClassVar[str] = "module-member"
+    # Universal catalog utility the generated shapes embed as their local
+    # utility: an identifier that binds a name in its module.
+    CODEMOD_NAME_BINDING_UTILITY: ClassVar[str] = "name-binding"
     CODEMOD_CONFIG_FILENAME: ClassVar[str] = "sgconfig.yml"
     # Static rules are data under the one rule root, config/rules: the
     # ast-grep corpus (sgconfig, rules, utils, tests with snapshots) and the

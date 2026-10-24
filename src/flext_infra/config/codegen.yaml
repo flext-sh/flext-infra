@@ -118,7 +118,15 @@ Infra:
       # Generated native rule documents: each renderer receives the typed
       # model of its producer and returns {rule id: native rule document}.
       rules_dir: config/rules/ast-grep/rules/generated
-      renderers: []
+      # make mod renders the same documents in memory for its native cascade
+      # (the header stage owns import-header, the catalog stage the rest).
+      renderers:
+        - name: codemod_import_header_rules
+          facts: codemod_package_export_facts
+          shapes: [import-header]
+        - name: codemod_module_member_rules
+          facts: codemod_package_export_facts
+          shapes: [module-member]
 
     # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
     # sites read these rows through config.Infra.codegen.modes; octal mode

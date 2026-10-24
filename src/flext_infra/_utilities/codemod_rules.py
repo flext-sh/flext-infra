@@ -167,6 +167,37 @@ class FlextInfraUtilitiesCodemodRules(
         return global_documents
 
     @classmethod
+    def codemod_provider_utility_rule(
+        cls, config_path: Path, identity: str
+    ) -> t.JsonMapping:
+        """Return the native rule of one utility a provider declares.
+
+        Returns:
+            The utility document's ``rule`` mapping.
+
+        Raises:
+            ValueError: If the provider declares no such utility or the
+                document carries no rule mapping.
+
+        """
+        documents = cls._collect_utility_documents(
+            cls._read_provider_declaration(config_path), config_path
+        )
+        matches = tuple(
+            document
+            for (_language, declared), document in documents.items()
+            if declared == identity
+        )
+        if len(matches) != 1:
+            msg = f"provider {config_path} declares no single utility {identity}"
+            raise ValueError(msg)
+        rule = matches[0].get("rule")
+        if not isinstance(rule, Mapping):
+            msg = f"utility {identity} of {config_path} declares no rule mapping"
+            raise ValueError(msg)
+        return rule
+
+    @classmethod
     def _project_provider_utilities(
         cls,
         config_path: Path,

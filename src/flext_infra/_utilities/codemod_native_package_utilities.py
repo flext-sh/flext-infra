@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import re
 from contextlib import closing
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
-from flext_infra import c, m, t
+from flext_cli import u
+
+from flext_infra import FlextInfraConfig, c, m, t
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
@@ -145,6 +148,363 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             c.Infra.CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: {
                 "regex": rf"^(?:{packages})\.(?:{families})(?:[.\s]|$)"
             },
+        }
+
+    @staticmethod
+    def _codemod_name_utils() -> t.JsonMapping:
+        """Local utilities of the generated shapes: a binding and a free use.
+
+        The binding rule is the universal catalog's ``name-binding`` utility,
+        embedded because generated rules are staged outside its provider.
+
+        Returns:
+            The ``utils`` mapping every generated name shape carries.
+
+        """
+        binding = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
+            FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
+            c.Infra.CODEMOD_NAME_BINDING_UTILITY,
+        )
+        return {
+            "binding": dict(binding),
+            "local-binding": {
+                "all": [
+                    {"matches": "binding"},
+                    *(
+                        {"not": {"inside": {"kind": kind, "stopBy": "end"}}}
+                        for kind in ("import_from_statement", "import_statement")
+                    ),
+                ],
+            },
+            "use": {
+                "all": [
+                    {"kind": "identifier"},
+                    {"not": {"matches": "binding"}},
+                    {"not": {"inside": {"kind": "attribute", "field": "attribute"}}},
+                    {"not": {"inside": {"kind": "keyword_argument", "field": "name"}}},
+                ]
+            },
+        }
+
+    @staticmethod
+    def _codemod_declaring_packages(
+        facts: m.Infra.CodemodPackageExportsFacts,
+    ) -> t.MappingKV[str, t.StrTuple]:
+        """Every public non-dunder name to the packages whose ``__all__`` declares it.
+
+        Returns:
+            Name to its declaring packages, shallowest first.
+
+        """
+        declaring: dict[str, list[str]] = {}
+        for package, names in facts.exports.items():
+            for name in names:
+                if name.isidentifier() and not name.startswith("__"):
+                    declaring.setdefault(name, []).append(package)
+        return {
+            name: tuple(sorted(packages, key=lambda item: (item.count("."), item)))
+            for name, packages in sorted(declaring.items())
+        }
+
+    @classmethod
+    def codemod_header_resolvable_names(
+        cls, facts: m.Infra.CodemodPackageExportsFacts
+    ) -> t.MappingKV[str, str]:
+        """Names whose canonical package import is unambiguous from any module.
+
+        A name resolves when exactly one shallowest package declares it; a
+        module inside a deeper declaring package imports it from that package.
+
+        Returns:
+            Resolvable name to its shallowest declaring package.
+
+        """
+        resolvable: dict[str, str] = {}
+        for name, packages in cls._codemod_declaring_packages(facts).items():
+            depth = packages[0].count(".")
+            if sum(package.count(".") == depth for package in packages) == 1:
+                resolvable[name] = packages[0]
+        return resolvable
+
+    @staticmethod
+    def _codemod_directory_glob(directory: str) -> str:
+        """Match every file under one project-relative directory, wherever staged.
+
+        Returns:
+            The native glob.
+
+        """
+        return f"**/{PurePosixPath(directory).as_posix()}/**"
+
+    @classmethod
+    def codemod_import_header_rules(
+        cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Insert the nearest declaring package's import for unbound names.
+
+        One rule per package and scope inserts, after the module's first
+        future or plain import, one ``from <package> import ...`` line with
+        every name that package resolves in that scope, when the module uses
+        one of them without binding it anywhere; the Ruff import-fix stage
+        prunes the unused names and orders the block. A module inside a
+        declaring package imports from the deepest declaring package that
+        contains it; every other module imports from the unique shallowest
+        declaring package.
+
+        Returns:
+            The generated ``import-header`` rule documents keyed by id.
+
+        """
+        del project
+        directories = facts.directories
+        groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
+        resolvable = cls.codemod_header_resolvable_names(facts)
+        for name, packages in cls._codemod_declaring_packages(facts).items():
+            if name not in resolvable:
+                continue
+            for package in packages:
+                home = PurePosixPath(directories[package])
+                nested = tuple(
+                    sorted(
+                        directories[other]
+                        for other in packages
+                        if other != package
+                        and (
+                            package == resolvable[name]
+                            or PurePosixPath(directories[other]).is_relative_to(home)
+                        )
+                    )
+                )
+                scope = None if package == resolvable[name] else home.as_posix()
+                groups.setdefault((package, scope, nested), set()).add(name)
+        utils = cls._codemod_name_utils()
+        documents: dict[str, t.JsonMapping] = {}
+        for (package, scope, nested), names in sorted(groups.items()):
+            qualifier = (
+                package
+                if scope is None and not nested
+                else f"{package}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
+                + u.Cli.sha256_content(f"{scope}\0{'\0'.join(nested)}")[:12]
+            )
+            rule_id = (
+                f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}"
+                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{qualifier}"
+            )
+            document: dict[str, t.JsonValue] = {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": f"Import the names `{package}` publishes from it.",
+                "utils": dict(utils),
+                "rule": cls._codemod_header_rule(sorted(names)),
+                "fix": f"$ANCHOR\nfrom {package} import {', '.join(sorted(names))}",
+            }
+            if scope is not None:
+                document["files"] = [cls._codemod_directory_glob(scope)]
+            if nested:
+                document["ignores"] = [
+                    cls._codemod_directory_glob(directory) for directory in nested
+                ]
+            documents[rule_id] = document
+        return documents
+
+    @classmethod
+    def _codemod_header_rule(cls, names: t.StrSequence) -> t.JsonMapping:
+        """Anchor on the first future or plain import of a module using ``names``.
+
+        Returns:
+            The native rule of one ``import-header`` document.
+
+        """
+        imports = ("import_from_statement", "import_statement")
+        return {
+            "pattern": "$ANCHOR",
+            "any": [
+                {"kind": "future_import_statement"},
+                {
+                    "all": [
+                        {"any": [{"kind": kind} for kind in imports]},
+                        {"inside": {"kind": "module"}},
+                        {
+                            "not": {
+                                "follows": {
+                                    "stopBy": "end",
+                                    "any": [
+                                        {"kind": kind}
+                                        for kind in (
+                                            *imports,
+                                            "future_import_statement",
+                                        )
+                                    ],
+                                }
+                            }
+                        },
+                    ]
+                },
+            ],
+            "inside": {
+                "kind": "module",
+                "has": {
+                    "stopBy": "end",
+                    "all": [
+                        {"matches": "use"},
+                        cls.codemod_exact_names_rule(names),
+                        {"pattern": "$USED"},
+                        {
+                            "not": {
+                                "inside": {
+                                    "kind": "module",
+                                    "stopBy": "end",
+                                    "has": {
+                                        "stopBy": "end",
+                                        "all": [
+                                            {"pattern": "$USED"},
+                                            {"matches": "binding"},
+                                        ],
+                                    },
+                                }
+                            }
+                        },
+                    ],
+                },
+            },
+        }
+
+    @classmethod
+    def codemod_module_member_rules(
+        cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Reach a member through its package import, never a module object.
+
+        For each package with child packages, one rule rewrites
+        ``<child>.<Name>`` to ``Name`` in a module that binds ``<child>`` by
+        ``from <package> import <child>``, when the child package publishes
+        ``Name``, the import header resolves it, and the module binds neither
+        name locally; the header stage then imports ``Name`` and the Ruff
+        import-fix stage prunes the module-object import.
+
+        Returns:
+            The generated ``module-member`` rule documents keyed by id.
+
+        """
+        del project
+        resolvable = cls.codemod_header_resolvable_names(facts)
+        utils = cls._codemod_name_utils()
+        documents: dict[str, t.JsonMapping] = {}
+        for package, children in sorted(facts.modules.items()):
+            branches = [
+                {
+                    "all": [
+                        {
+                            "has": {
+                                "field": "object",
+                                "kind": "identifier",
+                                **cls.codemod_exact_names_rule((child,)),
+                                "pattern": "$PKG",
+                            }
+                        },
+                        {
+                            "has": {
+                                "field": "attribute",
+                                "kind": "identifier",
+                                **cls.codemod_exact_names_rule(names),
+                                "pattern": "$NAME",
+                            }
+                        },
+                    ]
+                }
+                for child in children
+                if (
+                    names := tuple(
+                        name
+                        for name in facts.exports.get(f"{package}.{child}", ())
+                        if name in resolvable
+                    )
+                )
+            ]
+            if not branches:
+                continue
+            rule_id = (
+                f"{c.Infra.CODEMOD_MODULE_MEMBER_SHAPE}"
+                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+            )
+            documents[rule_id] = {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    f"Import the member from its package, not through a "
+                    f"`{package}` module object."
+                ),
+                "utils": dict(utils),
+                "rule": cls._codemod_member_rule(package, branches),
+                "fix": "$NAME",
+            }
+        return documents
+
+    @classmethod
+    def _codemod_member_rule(
+        cls, package: str, branches: t.SequenceOf[t.JsonMapping]
+    ) -> t.JsonMapping:
+        """Match ``<child>.<Name>`` bound by a module-object import of ``package``.
+
+        Returns:
+            The native rule of one ``module-member`` document.
+
+        """
+        return {
+            "all": [
+                {"kind": "attribute"},
+                {"any": list(branches)},
+                {
+                    "inside": {
+                        "stopBy": "end",
+                        "kind": "module",
+                        "all": [
+                            {
+                                "has": {
+                                    "stopBy": "end",
+                                    "kind": "import_from_statement",
+                                    "all": [
+                                        {
+                                            "has": {
+                                                "field": "module_name",
+                                                **cls.codemod_exact_names_rule(
+                                                    (package,)
+                                                ),
+                                            }
+                                        },
+                                        {
+                                            "has": {
+                                                "kind": "dotted_name",
+                                                "pattern": "$PKG",
+                                                "not": {
+                                                    "inside": {
+                                                        "kind": "import_from_statement",
+                                                        "field": "module_name",
+                                                    }
+                                                },
+                                            }
+                                        },
+                                    ],
+                                }
+                            },
+                            *(
+                                {
+                                    "not": {
+                                        "has": {
+                                            "stopBy": "end",
+                                            "all": [
+                                                {"pattern": variable},
+                                                {"matches": "local-binding"},
+                                            ],
+                                        }
+                                    }
+                                }
+                                for variable in ("$NAME", "$PKG")
+                            ),
+                        ],
+                    }
+                },
+            ]
         }
 
 

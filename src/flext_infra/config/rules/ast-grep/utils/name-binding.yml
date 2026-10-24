@@ -1,0 +1,45 @@
+# An identifier that binds a name in its module: an import, a class or
+# function name, a parameter, an assignment or loop target, a walrus name,
+# an `as` target, a scope declaration, a type parameter or a match capture.
+# The generated import-header and module-member shapes embed this rule as
+# their local utility to decide whether a name is already bound; every
+# other occurrence of an identifier is a use.
+id: name-binding
+language: python
+rule:
+  kind: identifier
+  any:
+    - inside: {kind: import_from_statement, stopBy: end}
+    - inside: {kind: import_statement, stopBy: end}
+    - inside: {kind: future_import_statement, stopBy: end}
+    - inside: {kind: class_definition, field: name}
+    - inside: {kind: function_definition, field: name}
+    - inside: {kind: parameters}
+    - inside: {kind: lambda_parameters}
+    - inside: {kind: typed_parameter}
+    - inside: {kind: list_splat_pattern}
+    - inside: {kind: dictionary_splat_pattern}
+    - inside: {kind: default_parameter, field: name}
+    - inside: {kind: typed_default_parameter, field: name}
+    - inside: {kind: assignment, field: left}
+    - inside: {kind: augmented_assignment, field: left}
+    - inside: {kind: for_statement, field: left}
+    - inside: {kind: for_in_clause, field: left}
+    - inside: {kind: named_expression, field: name}
+    - inside: {kind: as_pattern_target}
+    - inside: {kind: global_statement}
+    - inside: {kind: nonlocal_statement}
+    - inside: {kind: type_parameter, stopBy: end}
+    - inside: {kind: case_pattern, stopBy: end}
+    - inside:
+        any: [{kind: pattern_list}, {kind: tuple_pattern}, {kind: list_pattern}]
+        stopBy: end
+        inside: {kind: assignment, field: left}
+    - inside:
+        any: [{kind: pattern_list}, {kind: tuple_pattern}, {kind: list_pattern}]
+        stopBy: end
+        inside: {kind: for_statement, field: left}
+    - inside:
+        any: [{kind: pattern_list}, {kind: tuple_pattern}, {kind: list_pattern}]
+        stopBy: end
+        inside: {kind: for_in_clause, field: left}

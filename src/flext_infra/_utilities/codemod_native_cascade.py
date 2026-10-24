@@ -102,41 +102,20 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         }
         return shape not in claimed
 
-    @staticmethod
-    def _generated_documents(directory: Path) -> t.MappingKV[str, Path]:
-        """Index the generated rule documents of one projection directory.
-
-        Returns:
-            Rule id to its generated file, read from each document's ``id``.
-
-        Raises:
-            TypeError: If a generated document declares no string id.
-
-        """
-        if not directory.is_dir():
-            return {}
-        indexed: dict[str, Path] = {}
-        for path in sorted(directory.glob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")):
-            document = u.Cli.yaml_parse(path.read_text(c.DEFAULT_ENCODING)).unwrap()
-            identity = document.get("id")
-            if not isinstance(identity, str):
-                msg = f"generated ast-grep document declares no id: {path}"
-                raise TypeError(msg)
-            indexed[identity] = path
-        return indexed
-
     @classmethod
     def codemod_native_stage(
         cls,
         project: Path,
         plan: m.Infra.CodemodRulePlan,
         stage: m.Infra.ModStageConfig,
+        generated: m.Infra.CodemodNativeGenerated,
     ) -> m.Infra.CodemodRuleset | None:
         """Write one stage's native configuration under the project's reports.
 
         The stage directory holds the elected catalog rules the stage owns,
         their provider utilities, the project's generated utilities and the
-        generated rule documents of the stage's shapes. It replaces the
+        generated rule documents of the stage's shapes, rendered in memory
+        from the same producers ``make gen`` projects. It replaces the
         previous stage directory in one rename; a stage that owns no rule
         leaves no directory behind.
 
@@ -145,7 +124,6 @@ class FlextInfraUtilitiesCodemodNativeCascade:
 
         """
         root = project.absolute()
-        spec = config.Infra.codegen.ast_grep
         elected = frozenset(plan.project_rule_ids[root])
         rules = tuple(
             rule
@@ -155,10 +133,8 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             and cls._stage_claims(stage, rule.id)
         )
         generated_rules = {
-            identity: path
-            for identity, path in cls._generated_documents(
-                root / spec.rules_dir
-            ).items()
+            identity: document
+            for identity, document in generated.rules.items()
             if cls._stage_claims(stage, identity)
         }
         reports = root / c.Infra.MOD_NATIVE_STAGE_RELATIVE_PATH
@@ -191,20 +167,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             ),
             staging,
         )
-        utilities = staging / c.Infra.CODEMOD_UTIL_DIRS_KEY
-        for identity, path in cls._generated_documents(
-            root / spec.utilities_dir
-        ).items():
-            shutil.copyfile(
-                path, utilities / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}"
-            )
-        for identity, path in generated_rules.items():
-            shutil.copyfile(
-                path,
-                staging
-                / c.Infra.CODEMOD_RULE_DIRS_KEY
-                / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}",
-            )
+        cls.codemod_write_generated(staging, generated, frozenset(generated_rules))
         retired = reports / f".{stage.name}-retired"
         if final.exists():
             Path(final).replace(retired)
@@ -218,6 +181,33 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             rule_ids=staged_ids,
             fixable_rule_ids=staged_ids,
         )
+
+    @staticmethod
+    def codemod_write_generated(
+        staging: Path,
+        generated: m.Infra.CodemodNativeGenerated,
+        rule_ids: frozenset[str],
+    ) -> None:
+        """Write the generated utilities and the selected generated rules natively.
+
+        A staged native configuration (a cascade stage or a fixture root)
+        sees every generated utility under its ``utilDirs`` entry and the
+        selected generated rules under its ``ruleDirs`` entry, by identity.
+
+        """
+        utilities = staging / c.Infra.CODEMOD_UTIL_DIRS_KEY
+        rules = staging / c.Infra.CODEMOD_RULE_DIRS_KEY
+        u.Cli.ensure_dir(utilities).unwrap()
+        u.Cli.ensure_dir(rules).unwrap()
+        for identity, document in generated.utilities.items():
+            u.Cli.yaml_dump(
+                utilities / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}", document
+            ).unwrap()
+        for identity in sorted(rule_ids):
+            u.Cli.yaml_dump(
+                rules / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}",
+                generated.rules[identity],
+            ).unwrap()
 
     @staticmethod
     def _preview_contents(preview: Path) -> t.MappingKV[Path, bytes]:
@@ -288,13 +278,16 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         project: Path,
         plan: m.Infra.CodemodRulePlan,
         sources: t.MappingKV[Path, bytes],
+        generated: m.Infra.CodemodNativeGenerated,
     ) -> t.MappingKV[Path, bytes]:
         """Run every declared stage over a staged preview to its fixed point.
 
         ``sources`` are the project's authored Python sources (absolute path
         to current bytes); generated projections and stubs never enter the
-        preview. The stage sequence repeats until one whole pass changes no
-        byte; ``mod.phases.pass-cap`` passes without that fixed point fail.
+        preview. ``generated`` holds the project's generated utilities and
+        rules rendered in memory. The stage sequence repeats until one whole
+        pass changes no byte; ``mod.phases.pass-cap`` passes without that
+        fixed point fail.
 
         Returns:
             Absolute path to new bytes for every source the cascade changed.
@@ -306,7 +299,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         root = project.absolute()
         phases = config.Infra.tooling.mod.phases
         staged = [
-            (stage, cls.codemod_native_stage(root, plan, stage))
+            (stage, cls.codemod_native_stage(root, plan, stage, generated))
             if stage.kind is c.Infra.ModStageKind.NATIVE
             else (stage, None)
             for stage in phases.stages

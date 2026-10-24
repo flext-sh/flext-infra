@@ -10,7 +10,7 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
+from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
@@ -192,24 +192,54 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> m.Infra.StageSourcePlan:
         """Compose syntax fixes without publishing the original producer epoch.
 
+        Every fixable rule without engine context applies first through the
+        native ast-grep cascade (header, catalog, Ruff import fix) to its
+        fixed point; the engine then composes only the admitted fixes of the
+        rules that carry project context.
+
         Returns:
             The complete all-root candidate with target-only syntax effects.
 
         Raises:
-            RuntimeError: If the syntax cascade repeats a source state.
+            RuntimeError: If the syntax cascade repeats a source state, or a
+                native-eligible rule still reports an actionable finding
+                after the native cascade.
 
         """
-        after_ast = FlextInfraModGateEngine.authored(current)
         plans: dict[Path, m.Infra.SemanticFilePlan] = {}
         inputs = {state.path: state for state in seed.inputs}
-        if seed.updates:
-            after_ast = FlextInfraModGateEngine.authored(
-                self._preview_ast_candidate(root, plans, inputs, seed)
+        self._capture_ast_inputs(root, inputs)
+        rule_plan = u.Infra.codemod_rule_plan(root).unwrap()
+        native_ids = frozenset(
+            rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
+        )
+        for path, content in self._native_cascade(root, rule_plan, inputs, seed).items():
+            plans[path] = m.Infra.SemanticFilePlan(
+                project=u.Infra.project_root(path) or root,
+                path=path,
+                before=inputs[path],
+                desired_content=content,
+                desired_mode=inputs[path].mode,
+                changes=(c.Infra.MOD_NATIVE_CASCADE_CHANGE,),
             )
-        if after_ast.actionable:
-            self._capture_ast_inputs(root, inputs)
+        after_ast = FlextInfraModGateEngine.authored(
+            self._preview_ast_candidate(root, plans, inputs, seed)
+            if seed.updates or plans
+            else current
+        )
         seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
         while after_ast.actionable:
+            residue = sorted({
+                entry.rule_id
+                for entry in after_ast.entries
+                if entry.actionable and entry.rule_id in native_ids
+            })
+            if residue:
+                msg = (
+                    "native cascade left actionable findings of native rules: "
+                    f"{', '.join(residue)}"
+                )
+                raise RuntimeError(msg)
             state = tuple(
                 sorted(
                     (str(path), plan.desired_content.hex())
@@ -264,6 +294,60 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 ),
             ).unwrap()
         return seed
+
+    @staticmethod
+    def _native_cascade(
+        root: Path,
+        rule_plan: m.Infra.CodemodRulePlan,
+        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
+        seed: m.Infra.StageSourcePlan,
+    ) -> t.MappingKV[Path, bytes]:
+        """Run each governed project's native cascade over the seeded sources.
+
+        Each source belongs to its deepest governed project; the project's
+        generated utilities and rules are rendered in memory first.
+
+        Returns:
+            Absolute path to new bytes for every source a cascade changed.
+
+        """
+        current: dict[Path, bytes] = {
+            path: state.content
+            for path, state in inputs.items()
+            if state.content is not None and path.suffix == c.Infra.EXT_PYTHON
+        }
+        for path, source in seed.updates.items():
+            if source is None:
+                current.pop(path, None)
+            elif path.suffix == c.Infra.EXT_PYTHON:
+                current[path] = source.encode(c.DEFAULT_ENCODING)
+        projects = sorted(
+            rule_plan.project_rule_ids,
+            key=lambda project: len(project.parts),
+            reverse=True,
+        )
+        owned: dict[Path, dict[Path, bytes]] = {project: {} for project in projects}
+        for path, content in current.items():
+            owner = next(
+                (project for project in projects if path.is_relative_to(project)),
+                None,
+            )
+            if owner is not None:
+                owned[owner][path] = content
+        changed: dict[Path, bytes] = {}
+        spec = config.Infra.codegen.ast_grep
+        for project, sources in owned.items():
+            if not sources:
+                continue
+            changed.update(
+                u.Infra.codemod_native_cascade(
+                    project,
+                    rule_plan,
+                    sources,
+                    u.Infra.codemod_native_generated(project, spec),
+                )
+            )
+        return changed
 
     @staticmethod
     def _capture_ast_inputs(

@@ -220,6 +220,25 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         })
 
     @classmethod
+    def codemod_native_generated(
+        cls, project: Path, spec: m.Infra.CodegenAstGrepSpec
+    ) -> m.Infra.CodemodNativeGenerated:
+        """Render every generated utility, then every rule document, in memory.
+
+        ``make gen`` projects these documents; ``make mod`` stages them for
+        its native cascade without reading a projection from disk.
+
+        Returns:
+            The project's generated utility and rule documents keyed by id.
+
+        """
+        root = project.absolute()
+        return m.Infra.CodemodNativeGenerated(
+            utilities=cls.codemod_native_utilities(root, spec.producers),
+            rules=cls.codemod_native_rules(root, spec),
+        )
+
+    @classmethod
     def codemod_native_generated_sources(
         cls, project: Path, spec: m.Infra.CodegenAstGrepSpec
     ) -> t.MappingKV[Path, str]:
@@ -233,16 +252,15 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         root = project.absolute()
-        utilities = cls.codemod_native_utilities(root, spec.producers)
-        rules = cls.codemod_native_rules(root, spec)
+        generated = cls.codemod_native_generated(root, spec)
         documents = {
             **{
                 root / spec.utilities_dir / f"{key}{c.Infra.CODEMOD_RULE_SUFFIX}": doc
-                for key, doc in utilities.items()
+                for key, doc in generated.utilities.items()
             },
             **{
                 root / spec.rules_dir / f"{key}{c.Infra.CODEMOD_RULE_SUFFIX}": doc
-                for key, doc in rules.items()
+                for key, doc in generated.rules.items()
             },
         }
         return MappingProxyType({

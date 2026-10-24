@@ -338,6 +338,18 @@ class FlextInfraModelsRefactorGrep:
             ),
         ]
 
+    class CodemodNativeGenerated(FlextInfraModelsBase.FrozenArbitrary):
+        """One project's generated native documents, rendered in memory."""
+
+        utilities: Annotated[
+            t.MappingKV[str, t.JsonMapping],
+            m.Field(description="Generated utility documents keyed by utility id"),
+        ]
+        rules: Annotated[
+            t.MappingKV[str, t.JsonMapping],
+            m.Field(description="Generated rule documents keyed by rule id"),
+        ]
+
     class CodemodProjectFacts(m.ArbitraryTypesModel):
         """Project facts one admission pass reads, built from the current tree.
 
