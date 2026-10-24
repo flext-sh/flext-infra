@@ -131,12 +131,18 @@ class TestsFlextInfraFreshImport:
         tm.that(report.summary, has="import")
 
     @staticmethod
-    def test_workspace_src_package_passes(tmp_path: Path) -> None:
-        """Test workspace src package passes."""
+    def test_workspace_src_package_passes(
+        tmp_path: Path,
+        suite_runtime_root: Path,
+    ) -> None:
+        """A checkout's src package imports in its declared runtime."""
         package_root = tmp_path / "src" / "demo_external"
         package_root.mkdir(parents=True)
         package_root.joinpath("__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
-        validator = FlextInfraValidateFreshImport(repository_root=tmp_path)
+        validator = FlextInfraValidateFreshImport(
+            repository_root=tmp_path,
+            runtime_root=suite_runtime_root,
+        )
         report: m.Infra.ValidationReport = tm.ok(
             validator.build_report(packages=("demo_external",)),
         )

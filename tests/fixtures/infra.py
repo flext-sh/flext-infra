@@ -209,6 +209,21 @@ def runner_ci_context_cleared() -> Iterator[None]:
         yield
 
 
+@pytest.fixture(scope="session")
+def suite_runtime_root() -> Path:
+    """Elect the runtime that owns this suite's checkout, through its owner.
+
+    Fixture checkouts declare it as their runtime root, as a composed member
+    declares its workspace's: the probes then run in a real environment
+    holding the FLEXT packages, never in the bare runner interpreter.
+
+    Returns:
+        The physical runtime root of the suite checkout.
+
+    """
+    return tm.ok(u.Infra.runtime_owner_root(_PROJECT_ROOT))
+
+
 @pytest.fixture
 def profiling_enabled() -> Iterator[None]:
     """Opt child processes into profiling through the typed settings owner.
