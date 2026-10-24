@@ -8,52 +8,25 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, u
+from flext_infra.codegen._lazy_init_planner_parents import (
+    FlextInfraCodegenLazyInitPlannerParentsMixin,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraCodegenLazyInitPlannerAliasesMixin:
+class FlextInfraCodegenLazyInitPlannerAliasesMixin(
+    FlextInfraCodegenLazyInitPlannerParentsMixin,
+):
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
         _parent_package_cache: MutableMapping[str, t.StrSequence]
         _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
-
-        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str:
-            del pkg_dir, inherited_key
-
-        def _package_entry(
-            self,
-            pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None:
-            del pkg_dir
-
-        def _export_names_for_package(self, package_name: str) -> frozenset[str]:
-            del package_name
-
-        def _package_name_from_target(self, target: str) -> str:
-            del target
-
-        def _parents_from_constants_module(
-            self,
-            module_path: Path,
-            current_pkg: str,
-            visited: set[str] | None = None,
-        ) -> t.StrSequence:
-            del module_path, current_pkg, visited
-
-        def _resolve_inherited_alias_source(
-            self,
-            package_names: t.StrSequence,
-            alias_name: str,
-            *,
-            current_pkg: str,
-        ) -> str:
-            del package_names, alias_name, current_pkg
 
     def _resolve_aliases(
         self,
@@ -180,6 +153,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 queue.extend(self._parent_packages(package_dir))
         return tuple(ordered)
 
+    @override
     def _parent_packages(self, pkg_dir: Path) -> t.StrSequence:
         """Return the list of parent package names declared in constants.py.
 

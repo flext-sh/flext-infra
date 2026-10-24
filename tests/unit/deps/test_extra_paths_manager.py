@@ -77,7 +77,6 @@ class TestsFlextInfraExtraPathsManager:
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = TestsFlextInfraExtraPathsSupport.manager().sync_one(
             pyproject,
-            is_root="pyrefly" not in tool_doc,
         )
         tm.ok(result.success)
 
@@ -92,7 +91,6 @@ class TestsFlextInfraExtraPathsManager:
             TestsFlextInfraExtraPathsSupport.manager().sync_one(
                 pyproject,
                 dry_run=True,
-                is_root=True,
             ),
         )
         tm.that(pyproject.read_text(encoding="utf-8"), contains="old")
@@ -107,7 +105,6 @@ class TestsFlextInfraExtraPathsManager:
         tm.fail(
             TestsFlextInfraExtraPathsSupport.manager().sync_one(
                 pyproject,
-                is_root=True,
             ),
             has="TOML write",
         )

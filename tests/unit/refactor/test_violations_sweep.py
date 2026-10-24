@@ -29,9 +29,8 @@ class TestsFlextInfraRefactorViolationsSweep(
 ):
     """Behavior contract for the ``refactor violations-sweep`` verb: publication."""
 
-    @pytest.mark.parametrize("drift", ["none", "inode", "parent", "removed"])
+    @staticmethod
     def _assert_quiet_baseline(
-        self,
         root: Path,
         victim: Path,
         quiet_before: m.Infra.ModScanReport,
@@ -50,14 +49,14 @@ class TestsFlextInfraRefactorViolationsSweep(
             ),
             eq=False,
         )
-        tm.that(quiet_before.source_states, none=False)
+        source_states = tm.not_none(quiet_before.source_states)
         tm.that(
-            any(state.path == victim for state in quiet_before.source_states),
+            any(state.path == victim for state in source_states),
             eq=True,
         )
 
+    @staticmethod
     def _inject_publication_drift(
-        self,
         parent: Path,
         sample: Path,
         victim: Path,
@@ -90,8 +89,8 @@ class TestsFlextInfraRefactorViolationsSweep(
         elif drift == "removed":
             victim.unlink()
 
+    @staticmethod
     def _assert_drift_rejected(
-        self,
         root: Path,
         before: m.Infra.ModScanReport,
         chain: list[m.Infra.CodegenStagedFile],
@@ -126,6 +125,7 @@ class TestsFlextInfraRefactorViolationsSweep(
                     options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
 
+    @pytest.mark.parametrize("drift", ["none", "inode", "parent", "removed"])
     def test_actual_publication_identity_and_complete_resolution_inventory(
         self, mod_workspace: Path, drift: str
     ) -> None:
@@ -194,13 +194,11 @@ class TestsFlextInfraRefactorViolationsSweep(
                     observed,
                     options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
-                tm.that(observed.source_states, none=False)
+                source_states = tm.not_none(observed.source_states)
                 admitted = next(item for item in chain if item.before.path == sample)
                 tm.that(
                     admitted.replacement,
-                    eq=next(
-                        item for item in observed.source_states if item.path == sample
-                    ),
+                    eq=next(item for item in source_states if item.path == sample),
                 )
                 self._inject_publication_drift(parent, sample, victim, drift)
                 if drift != "none":
@@ -244,24 +242,21 @@ class TestsFlextInfraRefactorViolationsSweep(
             for stage in report.stages
             if stage.audit_before is not None
         )
-        tm.ok(snapshot.ast_report is not None)
+        ast_report = tm.not_none(snapshot.ast_report)
         tm.ok(snapshot.text_report is not None)
         tm.that(snapshot.observation_errors, empty=False)
         tm.that("\n".join(snapshot.observation_errors), has="invalid")
-        tm.that(snapshot.lint, none=False)
+        lint = tm.not_none(snapshot.lint)
         receipt = next(
             tools[c.Infra.RUFF]
-            for tools in snapshot.lint.values()
+            for tools in lint.values()
             if tools[c.Infra.RUFF].execution_error is not None
         )
-        tm.that(receipt.errors, eq=())
-        tm.that(receipt.output, none=False)
-        tm.fail(u.Cli.process_succeeded(receipt.output.outcome))
-        tm.that(snapshot.ast_report, none=False)
+        tm.that(receipt.errors, empty=True)
+        output = tm.not_none(receipt.output)
+        tm.fail(u.Cli.process_succeeded(output.outcome))
         tm.that(
-            any(
-                entry.rule_id == "sweep-growth" for entry in snapshot.ast_report.entries
-            ),
+            any(entry.rule_id == "sweep-growth" for entry in ast_report.entries),
             eq=True,
         )
 

@@ -135,7 +135,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             ),
         )
         with u.Infra.facade_source_project(
-            root, source_states=(original, incoming, opaque), declared_files=plans
+            root,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=(original, incoming, opaque), declared_files=plans
+            ),
         ) as binding:
             project = binding[0]
             with project.source_consumption() as scope:
@@ -174,7 +177,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         )
         with ExitStack() as contexts:
             project, _, _ = contexts.enter_context(
-                u.Infra.facade_source_project(root, declared_files=(plan,)),
+                u.Infra.facade_source_project(
+                    root,
+                    source_options=m.Infra.StageSourceOptions(declared_files=(plan,)),
+                ),
             )
             with project.source_consumption() as first:
                 tm.that(project.source_bytes(source), eq=proposed)
@@ -379,7 +385,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     ("second.py", "isfile"),
                 ),
             )
-            tm.ok(aggregate[0].membership_queried)
+            tm.fail(aggregate[0].membership_queried)
+            tm.that(
+                aggregate[0].membership_queries,
+                eq=(tuple(sorted(config.Infra.codegen.source_scan_ignored)),),
+            )
             separate_receipts = (
                 separate.receipt().source_query_topology
                 if absent_parent
@@ -554,6 +564,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with pytest.raises(ValueError, match="source directory"):
                 contexts.close()
 
+
+class TestsFlextInfraGeneratedRuntime:
+    """Execute generated candidates through their real public consumers."""
+
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
     @pytest.mark.parametrize("relative", [False, True])
@@ -652,7 +666,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         service = u.Tests.create_lazy_init_service(root)
         analysis = tm.ok(service.plan_files())
         with u.Infra.facade_source_project(
-            root, declared_files=analysis.files
+            root,
+            source_options=m.Infra.StageSourceOptions(declared_files=analysis.files),
         ) as binding:
             project, consumed, sources = binding
             tm.fail(any(path.is_relative_to(generated) for path in sources))
@@ -840,7 +855,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in files
         )
-        with u.Infra.facade_source_project(root, source_states=states) as binding:
+        with u.Infra.facade_source_project(
+            root, source_options=m.Infra.StageSourceOptions(inputs=states)
+        ) as binding:
             project, consumed, sources = binding
             project.get_pymodule(
                 project.get_resource(
@@ -965,7 +982,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             )
             tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
             with u.Infra.facade_source_project(
-                root, source_states=originals, declared_files=outcome.files
+                root,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=originals, declared_files=outcome.files
+                ),
             ) as binding:
                 tm.that(
                     tm.not_none(
@@ -1062,8 +1082,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         ):
             with u.Infra.facade_source_project(
                 provider_root,
-                source_states=originals,
-                declared_files=tuple(plans.values()),
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=originals, declared_files=tuple(plans.values())
+                ),
             ) as binding:
                 plans[model_facade] = m.Infra.CodegenFilePlan(
                     project=provider_root,
@@ -1081,7 +1102,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     source_states=binding[1]()[0],
                 )
             with u.Infra.facade_source_project(
-                root, source_states=originals, declared_files=tuple(plans.values())
+                root,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=originals, declared_files=tuple(plans.values())
+                ),
             ) as binding:
                 consumer = tm.not_none(
                     u.Infra.render_utility_facade(
@@ -1098,7 +1122,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 tm.that({state.path for state in binding[1]()[0]}, has=model_facade)
             with u.Infra.facade_source_project(
-                root, source_states=originals, declared_files=tuple(plans.values())
+                root,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=originals, declared_files=tuple(plans.values())
+                ),
             ) as binding:
                 plans.update(
                     (file.path, file)
@@ -1109,7 +1136,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     ).files
                 )
             with u.Infra.facade_source_project(
-                root, source_states=originals, declared_files=tuple(plans.values())
+                root,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=originals, declared_files=tuple(plans.values())
+                ),
             ) as binding:
                 tm.that(
                     u.Infra.render_utility_facade(
@@ -1218,7 +1248,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             project, consumed, sources = stack.enter_context(
                 u.Infra.facade_source_project(
                     root,
-                    declared_files=provider_analysis.files,
+                    source_options=m.Infra.StageSourceOptions(
+                        declared_files=provider_analysis.files
+                    ),
                 )
             )
             roots = u.Infra.runtime_evaluated_base_classes(

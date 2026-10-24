@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import difflib
 import sys
+import threading
 from pathlib import Path
 from types import FrameType
 from typing import Literal
@@ -143,7 +144,8 @@ class TestsFlextInfraLazyInitRuntime:
             "from flext_core import build_lazy_import_map, install_lazy_exports\n"
             "_GROUPS = MappingProxyType(build_lazy_import_map(_GROUPS))\n"
             '__all__ = ("Exported",)\n'
-            "install_lazy_exports(__name__, globals(), _GROUPS, public_exports=__all__)\n"
+            "install_lazy_exports(\n"
+            "    __name__, globals(), _GROUPS, public_exports=__all__)\n"
         )
         initializer = package / c.Infra.INIT_PY
         tm.ok(u.Cli.atomic_write_text_file(initializer, source))
@@ -190,6 +192,7 @@ class TestsFlextInfraLazyInitRuntime:
     def test_public_generation_publishes_test_exports_without_namespace_classes(
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
+        *,
         imported_alias: bool,
         published_alias: bool,
     ) -> None:
@@ -812,6 +815,10 @@ class TestsFlextInfraLazyInitRuntime:
         )
         tm.that(conftest.read_text(encoding=c.DEFAULT_ENCODING), eq=private_source)
 
+
+class TestsFlextInfraLazyInitPublishedRuntime:
+    """Consume published package identities and enforce admission before effects."""
+
     @staticmethod
     def _generate_package(tmp_path: Path) -> t.Pair[Path, Path]:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -1137,8 +1144,10 @@ class TestsFlextInfraLazyInitRuntime:
                 calls.append(frame.f_code.co_qualname)
 
         previous = sys.getprofile()
+        previous_threads = threading.getprofile()
         try:
             sys.setprofile(observe)
+            threading.setprofile(observe)
             tm.ok(infra.codegen_generate(request))
             tm.fail(initializer.read_bytes() == original)
             tm.ok((child / c.Infra.INIT_PY).is_file())
@@ -1149,6 +1158,7 @@ class TestsFlextInfraLazyInitRuntime:
             tm.ok(infra.codegen_generate(request))
         finally:
             sys.setprofile(previous)
+            threading.setprofile(previous_threads)
         for path, original in generated.items():
             current = path.read_bytes()
             tm.that(

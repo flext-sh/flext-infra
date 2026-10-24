@@ -115,7 +115,8 @@ class FlextInfraExtraPathsManager(
         paths.discard(rules.project_root)
         return paths
 
-    def pyright_extra_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
+    @staticmethod
+    def pyright_extra_paths() -> t.StrSequence:
         """Compute pyright extra paths for a project.
 
         Returns:
@@ -136,7 +137,6 @@ class FlextInfraExtraPathsManager(
         self,
         *,
         project_dir: Path,
-        is_root: bool,
     ) -> t.StrSequence:
         """Compute pyrefly search paths for a project.
 
@@ -183,7 +183,7 @@ class FlextInfraExtraPathsManager(
             return (source_root, *ordered)
         return tuple(ordered)
 
-    def mypy_search_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
+    def mypy_search_paths(self, *, project_dir: Path) -> t.StrSequence:
         """Compute mypy search paths: like pyrefly but without the project root.
 
         mypy treats each search-path entry as a package root and enumerates the
@@ -315,7 +315,6 @@ class FlextInfraExtraPathsManager(
         doc: t.Cli.TomlDocument,
         *,
         project_dir: Path,
-        is_root: bool,
     ) -> t.StrSequence:
         """Apply computed extra paths to an in-memory TOMLDocument.
 
@@ -325,7 +324,7 @@ class FlextInfraExtraPathsManager(
         """
         # Path producers and toml_as_string_list both yield immutable
         # sequences, so equal content compares equal (no list/tuple churn).
-        expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
+        expected = self.pyright_extra_paths()
         tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()
@@ -351,7 +350,6 @@ class FlextInfraExtraPathsManager(
             # paths only; the project root stays a pyrefly-only resolution aid.
             expected_mypy = self.mypy_search_paths(
                 project_dir=project_dir,
-                is_root=is_root,
             )
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
             current_mypy = u.Cli.toml_as_string_list(
@@ -371,7 +369,6 @@ class FlextInfraExtraPathsManager(
         payload: t.MutableJsonMapping,
         *,
         project_dir: Path,
-        is_root: bool,
         mypy_search_paths: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload.
@@ -380,7 +377,7 @@ class FlextInfraExtraPathsManager(
             The resulting ``t.StrSequence``.
 
         """
-        expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
+        expected = self.pyright_extra_paths()
         tool_table = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL,))
         if tool_table is None:
             return list[str]()
@@ -406,7 +403,7 @@ class FlextInfraExtraPathsManager(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
             (
-                self.mypy_search_paths(project_dir=project_dir, is_root=is_root)
+                self.mypy_search_paths(project_dir=project_dir)
                 if mypy_search_paths is None
                 else mypy_search_paths
             ),
@@ -419,7 +416,6 @@ class FlextInfraExtraPathsManager(
         pyproject_path: Path,
         *,
         dry_run: bool = False,
-        is_root: bool = False,
     ) -> p.Result[bool]:
         """Synchronize pyright and mypy paths for one pyproject.toml.
 
@@ -435,7 +431,6 @@ class FlextInfraExtraPathsManager(
         changes = self.sync_doc(
             doc_result.value,
             project_dir=pyproject_path.parent,
-            is_root=is_root,
         )
         if changes and (not dry_run):
             write_result = u.Cli.toml_write_document(pyproject_path, doc_result.value)
@@ -468,7 +463,6 @@ class FlextInfraExtraPathsManager(
                 synced = self._sync_target(
                     pyproject,
                     dry_run=dry_run,
-                    is_root=project_dir == self.root,
                 )
                 if synced.failure:
                     return r[int].from_failure(synced)
@@ -493,7 +487,6 @@ class FlextInfraExtraPathsManager(
             synced = self._sync_target(
                 pyproject,
                 dry_run=dry_run,
-                is_root=target == self.root,
             )
             if synced.failure:
                 return r[int].from_failure(synced)
@@ -505,7 +498,6 @@ class FlextInfraExtraPathsManager(
         pyproject: Path,
         *,
         dry_run: bool,
-        is_root: bool,
     ) -> p.Result[bool]:
         """Sync one project's pyproject and report whether it changed.
 
@@ -513,7 +505,7 @@ class FlextInfraExtraPathsManager(
             The resulting ``p.Result[bool]``.
 
         """
-        sync_result = self.sync_one(pyproject, dry_run=dry_run, is_root=is_root)
+        sync_result = self.sync_one(pyproject, dry_run=dry_run)
         if sync_result.failure:
             return r[bool].from_failure(sync_result)
         if sync_result.value and not dry_run:

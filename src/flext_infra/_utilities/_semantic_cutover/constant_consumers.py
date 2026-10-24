@@ -694,11 +694,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
         )
         statements = cls._constant_imports(project, module)
-        if not any(
-            name not in c.Infra.ALIAS_NAMES or (name == "c" and alias is not None)
-            for info, _source in statements
-            for name, alias in info.names_and_aliases
-        ):
+        if not cls._has_constant_imports(rope_workspace, project, module, statements):
             return source, ()
         package = cls._constant_facade_package(statements, layout.package_name, path)
         if package not in paths:
@@ -720,6 +716,41 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         return organized.get_changed_source(), (
             f"constant consumers -> {package}.c: {len(rewrites)} references",
         )
+
+    @classmethod
+    def _has_constant_imports(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        statements: t.SequenceOf[
+            t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]
+        ],
+    ) -> bool:
+        """Elect imports by their native declaration's constants role.
+
+        Returns:
+            Whether a resolved import belongs to the constants family.
+
+        """
+        bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
+        for info, _statement in statements:
+            for name, alias in info.names_and_aliases:
+                binding = bindings.get(alias or name)
+                if binding is None:
+                    continue
+                terminal = cls._constant_terminal(
+                    project, binding, f"{info.module_name}.{name}"
+                )
+                declaration, _line = terminal.get_definition_location()
+                if declaration is None:
+                    continue
+                resource = declaration.get_module().get_resource()
+                if resource is not None and cls._constant_definition_source(
+                    workspace, workspace.convention(Path(resource.real_path))
+                ):
+                    return True
+        return False
 
     @staticmethod
     def _constant_definition_source(

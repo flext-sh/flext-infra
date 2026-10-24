@@ -215,6 +215,36 @@ class FlextInfraModelsCodemod:
             ),
         ]
 
+    class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
+        """A validated owned-path finding in the native scanner wire format."""
+
+        origin: Literal["owned-path"] = m.Field(
+            default="owned-path", description="Native owned-path rule provenance"
+        )
+
+        @m.model_serializer
+        def _serialize(self) -> t.JsonMapping:
+            """Preserve the complete native record consumed by both scan routes.
+
+            Returns:
+                The native diagnostic with its original nested source range.
+
+            """
+            return {
+                "file": self.file,
+                "ruleId": self.rule_id,
+                "severity": self.severity,
+                "message": self.message,
+                "origin": self.origin,
+                "text": self.text,
+                "lines": self.lines,
+                "range": {
+                    "start": {"line": self.line, "column": self.column},
+                    "end": {"line": self.end_line, "column": self.end_column},
+                    "byteOffset": {"start": self.start_byte, "end": self.end_byte},
+                },
+            }
+
     class AstGrepReport(m.RootModel[tuple[AstGrepDiagnostic, ...]]):
         """Complete ``ast-grep scan --json=compact`` array; malformed input raises."""
 

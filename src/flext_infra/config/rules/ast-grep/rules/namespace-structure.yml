@@ -51,10 +51,10 @@ message: >-
   module that does not own the dependency (move the import under
   TYPE_CHECKING when only annotations need it).
 ---
-# ENFORCE-012: a facade's nested namespace composes, through its bases, every
-# class its family package (`_<stem>/` beside `<stem>.py`) declares in
-# __all__.
-id: require-facade-mro-completeness
+# ENFORCE-012: a facade namespace explicitly exports every original class its
+# family package (`_<stem>/` beside `<stem>.py`) declares in __all__. Native
+# class identity proves coverage; imported spellings and part mixins do not.
+id: require-facade-class-export-completeness
 language: python
 severity: error
 files:
@@ -69,15 +69,24 @@ rule:
   has:
     field: name
     pattern: $NAME
-  inside:
-    kind: block
-    inside:
-      kind: class_definition
-      inside:
+  any:
+    - inside:
+        kind: block
+        inside:
+          kind: class_definition
+          inside:
+            kind: module
+    - inside:
         kind: module
+      not:
+        has:
+          kind: block
+          has:
+            kind: class_definition
 message: >-
-  Facade namespace `$NAME` does not compose every class its family package
-  declares: add the missing mixins to its bases.
+  Facade namespace `$NAME` must explicitly reexport every declared family class
+  by its original resolved identity. Import the actual owners and bind their
+  classes; missing exports, false bindings and part mixin bases are invalid.
 ---
 # ENFORCE-014: the package publishes every canonical layer. The layers a
 # package always provides are named here; the service layers are required

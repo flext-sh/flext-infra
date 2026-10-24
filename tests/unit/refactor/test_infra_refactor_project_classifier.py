@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
-from tests import tm
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +20,26 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
 
     @staticmethod
     def _write_pyproject(project_root: Path, content: str) -> None:
+        u.Tests.initialize_git_repo(project_root)
+        u.Tests.declare_workspace_projects(
+            project_root,
+            ("flext-core", "flext-cli", "flext-ldap"),
+        )
+        for member, layer in (
+            ("flext-core", "platform"),
+            ("flext-cli", "platform"),
+            ("flext-ldap", "domain"),
+        ):
+            u.Tests.git_bootstrap(
+                project_root,
+                (
+                    "config",
+                    "--file",
+                    ".gitmodules",
+                    f"submodule.{member}.flext-layer",
+                    layer,
+                ),
+            )
         pyproject_path = project_root / "pyproject.toml"
         pyproject_path.write_text(content.strip() + "\n", encoding="utf-8")
 

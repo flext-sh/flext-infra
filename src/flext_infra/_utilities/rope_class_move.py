@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodProject,
@@ -235,7 +235,14 @@ class FlextInfraUtilitiesRopeClassMove:
                 ),
             )
         ).states
-        u.Cli.atomic_verify_directory_queries(*queries).unwrap()
+        u.Cli.atomic_verify_directory_queries(
+            *queries,
+            publications=m.Cli.AtomicDirectoryQueryEffects(
+                membership_policy=tuple(
+                    sorted(config.Infra.codegen.source_scan_ignored)
+                )
+            ),
+        ).unwrap()
         return tuple(
             plan.model_copy(
                 update={

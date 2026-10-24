@@ -320,12 +320,13 @@ class FlextInfraWorkspaceChecker(
             )
         requested = u.Infra.normalize_sequence_values(params.projects)
         if (
-            params.ruff_args is not None
+            params.apply
+            or params.ruff_args is not None
             or params.pyright_args is not None
             or (requested and tuple(requested) != (".",))
         ):
             return r[t.VariadicTuple[Path]].fail(
-                "file-gate requires local selection without tool overrides",
+                "file-gate requires read-only local selection without tool overrides",
             )
         return cls._resolve_repository_file(params.repository_root, params.file)
 

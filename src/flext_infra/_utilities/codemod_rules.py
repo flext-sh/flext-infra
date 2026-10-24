@@ -234,8 +234,8 @@ class FlextInfraUtilitiesCodemodRules(
             msg = f"elected codemod rule document is ambiguous: {path}:{rule.id}"
             raise ValueError(msg)
         document = elected[0]
-        declared = cls._validated_document_rule(rule.provider, path, document).unwrap()
-        if declared.digest != rule.digest:
+        canonical = u.Cli.json_dumps(dict(document), sort_keys=True).unwrap()
+        if u.Cli.sha256_content(canonical) != rule.digest:
             msg = f"elected codemod rule changed before projection: {path}:{rule.id}"
             raise ValueError(msg)
         owner = max(
@@ -287,6 +287,10 @@ class FlextInfraUtilitiesCodemodRules(
         for digest, document in utilities.items():
             u.Cli.yaml_dump(
                 utility_directory / f"{digest}{c.Infra.CODEMOD_RULE_SUFFIX}", document
+            ).unwrap()
+        for ruleset in plan.rulesets:
+            cls.codemod_catalog_rules(
+                ruleset.provider, ruleset.config, documents=documents
             ).unwrap()
         for rule in plan.rules:
             cls._project_rule_document(rule, documents, rule_directory, aliases)
@@ -705,6 +709,8 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         provider: str,
         config: Path,
+        *,
+        documents: t.MutableMappingKV[Path, t.SequenceOf[t.JsonMapping]] | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
         """Read every validated catalog declaration before execution election.
 
@@ -738,15 +744,41 @@ class FlextInfraUtilitiesCodemodRules(
                 return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
                     f"codemod ruleDirs entry is missing: {rule_dir}",
                 )
-            sources.extend(
-                (resource, resource.read_text(encoding=c.DEFAULT_ENCODING))
-                for resource in sorted(rule_dir.rglob("*.yml"))
-                if not any(
-                    part.startswith("_")
-                    for part in resource.relative_to(rule_dir).parts
-                )
-            )
-        return cls._cached_rules(provider, tuple(sources))
+            sources.extend(cls._catalog_file_sources(rule_dir))
+        cached = cls._cached_rules(provider, tuple(sources))
+        if documents is not None and cached.success:
+            documents.update(cached.value[1])
+        return (
+            r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(cached)
+            if cached.failure
+            else r[t.SequenceOf[m.Infra.CodemodRule]].ok(cached.value[0])
+        )
+
+    @staticmethod
+    def _catalog_file_sources(rule_dir: Path) -> list[t.Pair[Path, str]]:
+        """Read the live catalog bytes that select the existing parsed-rule memo.
+
+        Returns:
+            Atomic source observations in deterministic resource order.
+
+        Raises:
+            ValueError: If a required rule input is absent.
+
+        """
+        sources: list[t.Pair[Path, str]] = []
+        for resource in sorted(rule_dir.rglob("*.yml")):
+            if any(
+                part.startswith("_") for part in resource.relative_to(rule_dir).parts
+            ):
+                continue
+            observed = u.Cli.atomic_read_binary_file_state(
+                resource, required=True
+            ).unwrap()
+            if observed.content is None:
+                msg = f"codemod rule input is absent: {resource}"
+                raise ValueError(msg)
+            sources.append((resource, observed.content.decode(c.DEFAULT_ENCODING)))
+        return sources
 
     @staticmethod
     def _write_rule_cache(
@@ -781,38 +813,63 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         provider: str,
         sources: t.VariadicTuple[t.Pair[Path, str]],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[m.Infra.CodemodRule],
+            t.MappingKV[Path, t.SequenceOf[t.JsonMapping]],
+        ]
+    ]:
         """Serve a provider's rules from the content-keyed persistent cache.
 
         The key is the sha256 of the provider, every rule file's path and
         text, and this parser's own source: a catalog is parsed once for all
         processes, and any edit to a rule or to the parser is a new key.
 
+        The same content-keyed entry retains the parsed documents by reference for
+        native projection. Callers still read current bytes before selecting it.
+
         Returns:
-            The provider's validated rules, in resource and document order.
+            Validated rules and their original parsed document inventory.
 
         """
+        result = r[
+            t.Pair[
+                t.SequenceOf[m.Infra.CodemodRule],
+                t.MappingKV[Path, t.SequenceOf[t.JsonMapping]],
+            ]
+        ]
         identity = u.Cli.json_dumps([
             provider,
             Path(__file__).read_text(encoding=c.DEFAULT_ENCODING),
             [[str(resource), text] for resource, text in sources],
         ])
         if identity.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(identity)
+            return result.from_failure(identity)
         cache_file = (
             FlextInfraUtilitiesResourceLimits.external_cache_directory(
                 config.Infra.codegen.make.codemod_rules_cache,
             )
             / f"{u.Cli.sha256_content(identity.value)}.json"
         )
+        documents: t.MutableMappingKV[Path, t.SequenceOf[t.JsonMapping]] = {}
+        for resource, text in sources:
+            loaded = u.Cli.yaml_parse_documents(text)
+            if loaded.failure:
+                return result.from_failure(loaded)
+            documents[resource] = loaded.value
         if cache_file.is_file():
-            return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
+            parsed = r[t.SequenceOf[m.Infra.CodemodRule]].ok(
                 u.type_adapter(tuple[m.Infra.CodemodRule, ...]).validate_json(
-                    cache_file.read_text(encoding=c.DEFAULT_ENCODING),
-                ),
+                    cache_file.read_text(encoding=c.DEFAULT_ENCODING)
+                )
             )
-        parsed = cls._parse_rules(provider, sources)
-        return cls._write_rule_cache(cache_file, parsed)
+        else:
+            parsed = cls._write_rule_cache(
+                cache_file, cls._parse_rules(provider, sources, documents=documents)
+            )
+        if parsed.failure:
+            return result.from_failure(parsed)
+        return result.ok((parsed.value, documents))
 
     @classmethod
     def _rule_binding_result(
@@ -969,6 +1026,8 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         provider: str,
         sources: t.VariadicTuple[t.Pair[Path, str]],
+        *,
+        documents: t.MappingKV[Path, t.SequenceOf[t.JsonMapping]] | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
         """Validate one provider's rule documents from their exact text.
 
@@ -978,10 +1037,16 @@ class FlextInfraUtilitiesCodemodRules(
         """
         rules: list[m.Infra.CodemodRule] = []
         for resource, text in sources:
-            documents = u.Cli.yaml_parse_documents(text)
-            if documents.failure:
-                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(documents)
-            for payload in documents.value:
+            parsed_documents = (
+                r[t.SequenceOf[t.JsonMapping]].ok(documents[resource])
+                if documents is not None
+                else u.Cli.yaml_parse_documents(text)
+            )
+            if parsed_documents.failure:
+                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(
+                    parsed_documents
+                )
+            for payload in parsed_documents.value:
                 validated = cls._validated_document_rule(provider, resource, payload)
                 if validated.failure:
                     return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(validated)

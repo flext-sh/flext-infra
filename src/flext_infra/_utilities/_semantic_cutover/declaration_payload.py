@@ -521,7 +521,7 @@ class FlextInfraUtilitiesDeclarationPayload:
     def _payload_method(
         cls,
         project: p.Infra.RopeProject,
-        method: p.Infra.RopePyObject,
+        method: p.Infra.RopeScopedObject,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
     ) -> bool:
         """Admit only native declaration decorators in Rope's header region.

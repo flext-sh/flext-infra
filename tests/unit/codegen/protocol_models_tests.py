@@ -53,7 +53,8 @@ def publish(scope_root):
         desired_mode=config.Infra.codegen.modes.file_default,
     )
     with u.Infra.facade_source_project(
-        root, source_states=(original,), declared_files=(plan,)
+        root, source_options=m.Infra.StageSourceOptions(
+            inputs=(original,), declared_files=(plan,))
     ) as binding:
         assert binding[0].source_bytes(source) == original.content
         assert target in binding[0].source_children(root)
@@ -83,9 +84,9 @@ assert target.read_bytes() == b"published output\n"
 target = root / "planned-output.txt"
 requested_change = change
 if change == "membership":
-    from pytest import raises
-    with raises(ValueError, match="source directory membership changed:.*unplanned-input.txt"):
-        owner.run_files_locked(roots, publish)
+    outcome = owner.run_files_locked(roots, publish)
+    tm.fail(outcome, has="source directory membership changed:")
+    tm.that(outcome.error, contains="unplanned-input.txt")
     assert not target.exists()
 else:
     outcome = owner.run_files_locked(roots, publish)
@@ -106,6 +107,7 @@ else:
     def test_missing_parent_epoch_requires_a_journal_owned_transition(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
+        *,
         owned_parent: bool,
     ) -> None:
         """Cross-phase input absence survives only the journal's actual parent gain."""
@@ -141,7 +143,8 @@ def publish(scope_root):
         ))
     else:
         source.parent.mkdir()
-    bound = FlextInfraMiseArtifactsVerification.session_input_states((original,), session)
+    bound = FlextInfraMiseArtifactsVerification.session_input_states(
+        (original,), session)
     if owned_parent:
         accepted = tm.ok(bound)
         assert accepted[0].content is None and accepted[0].device is None
@@ -149,7 +152,8 @@ def publish(scope_root):
         candidate = tm.ok(FlextInfraStagedPackage.plan_sources(
             root, {}, options=m.Infra.StageSourceOptions(inputs=accepted)
         ))
-        assert next(item for item in candidate.inputs if item.path == source) == accepted[0]
+        assert next(item for item in candidate.inputs
+            if item.path == source) == accepted[0]
         assert original.parent_inode is None and original.content is None
     else:
         assert bound.failure
@@ -199,7 +203,9 @@ else:
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction,
+)
 from tests import c, m, tm, u
 root, _package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
 change = None if sys.argv[3] == "None" else sys.argv[3]
@@ -238,7 +244,8 @@ reader = FlextInfraCodegenTransaction(
 )
 view = reader.preview_sources(
     root, {}, lambda candidate, _: (candidate / source.name).read_bytes(),
-    options=m.Infra.CodegenSourcePreviewOptions(inputs=(original,), runtime_check=False),
+    options=m.Infra.CodegenSourcePreviewOptions(
+        inputs=(original,), runtime_check=False),
 )
 if change is None:
     assert tm.ok(view) == b"owned bytes\n"

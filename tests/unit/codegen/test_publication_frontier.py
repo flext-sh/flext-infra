@@ -22,6 +22,7 @@ class TestsPublicationFrontier:
     def test_unchanged_files_require_their_real_staged_consumer(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
+        *,
         valid_payload: bool,
     ) -> None:
         """Unchanged bytes still require native model validation before acceptance."""
@@ -119,7 +120,9 @@ tm.that(
         """Consumed inputs stay physical, and only actual batches own outputs."""
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
+from flext_infra import config
 from flext_infra.codegen import (
+    FlextInfraCodegenConform,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
@@ -129,10 +132,53 @@ from tests import c, m, tm, u
 tmp_path = Path(sys.argv[2])
 mutation = sys.argv[3]
 workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+u.Tests.write_member_package(workspace, workspace.name)
 member = workspace / "flext-a"
 guide = member / c.Infra.DIR_DOCS / "guides/operator.md"
 guide.parent.mkdir(parents=True, exist_ok=True)
 guide.write_text("# Captured guide\n", encoding="utf-8")
+for project in (workspace, member):
+    spec = u.Tests.project_spec(project.name)
+    metadata = project / c.PYPROJECT_FILENAME
+    document = tm.not_none(u.Cli.toml_parse_text(metadata.read_text(encoding="utf-8")))
+    u.Cli.toml_mapping_ensure_table(document, "project").update({
+        "authors": [{"name": spec.author_name, "email": spec.author_email}],
+        "license": spec.license,
+        "description": spec.description,
+        "dependencies": [u.Tests.flext_source(spec.upstream)],
+        "requires-python": config.Infra.codegen.toolchain.python_required_version,
+    })
+    tm.ok(u.Cli.toml_write_mapping(metadata, document))
+request = u.Tests.conform_request(
+    workspace,
+    what=c.Infra.CodegenConformSurface.ALL,
+    scope=c.Infra.CodegenConformScope.ALL,
+    mode=c.Infra.CodegenConformMode.APPLY,
+)
+planned = tm.ok(
+    FlextInfraCodegenConform(
+        repository_root=workspace,
+        state=m.Infra.CodegenConformState(
+            repository_root=workspace,
+            request=request,
+            initial_workspace=u.Tests.workspace_spec(
+                u.Tests.repository_ref(workspace.name),
+                subprojects=(
+                    u.Tests.repository_ref(member.name, path=Path(member.name)),
+                ),
+            ),
+        ),
+    ).plan(request)
+)
+tm.that(planned.issues, eq=(), msg=str(planned.issues))
+plan_report = (
+    tm.ok(u.Infra.refactor_report_evidence_root(workspace))
+    / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
+).read_bytes()
+tm.that(
+    m.Infra.CodegenPlanningReport.model_validate_json(plan_report).root,
+    eq=workspace,
+)
 generator = FlextInfraDocGenerator(
     repository_root=workspace,
     selected_projects=["flext-a"],
@@ -156,12 +202,6 @@ tm.that(
     ),
     eq=False,
 )
-request = u.Tests.conform_request(
-    workspace,
-    what=c.Infra.CodegenConformSurface.ALL,
-    scope=c.Infra.CodegenConformScope.ALL,
-    mode=c.Infra.CodegenConformMode.APPLY,
-)
 published = tm.ok(
     FlextInfraCodegenTransaction.publish_operation_receipt(
         request,
@@ -171,6 +211,10 @@ published = tm.ok(
             completed=True,
         ),
     )
+)
+tm.that(
+    (workspace / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
+    eq=plan_report,
 )
 if mutation == "input-only":
     guide.write_text("# Changed guide\n", encoding="utf-8")
@@ -220,6 +264,7 @@ else:
     def test_ordered_batches_authenticate_their_shared_destination(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
+        *,
         external_drift: bool,
     ) -> None:
         """Ordered batches share a destination, and external drift fails it."""

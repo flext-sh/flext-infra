@@ -38,6 +38,14 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
         root = target.root
         profile = target.make_profile
+        required_data_destinations = frozenset(
+            entry.destination
+            for entry in codegen.templates.entries
+            if any(
+                Path(entry.destination).is_relative_to(Path(path))
+                for path in project.packaged_data_paths
+            )
+        )
         # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
         # A declared subproject consumes the workspace root
@@ -53,12 +61,17 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             for entry in codegen.templates.entries
             if profile in entry.profiles
             and (entry.destination != c.PYPROJECT_FILENAME or contract.pyproject)
-            and (contract.delegates or entry.destination == c.PYPROJECT_FILENAME)
+            and (
+                contract.delegates
+                or entry.destination == c.PYPROJECT_FILENAME
+                or entry.destination in required_data_destinations
+            )
             and (not entry.requires_release_protocol or target.publishes_release)
             and (not entry.requires_beads or workspace.beads is not None)
             and (
                 contract.destinations is None
                 or entry.destination in contract.destinations
+                or entry.destination in required_data_destinations
             )
         )
         modernizer = FlextInfraPyprojectModernizer(
@@ -112,46 +125,56 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 analysis_exclusions=analysis_exclusions,
             ),
         )
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
             root,
             source_states=lazy_sources.value[1],
             declared_files=tuple(lazy_sources.value[0]),
+            source_publications=publications,
         ) as binding:
-            tooling_result = modernizer.resolve_tooling_context(
-                tooling_request, source_project=binding[0]
+            with binding[0].source_consumption() as consumption:
+                tooling_result = modernizer.resolve_tooling_context(
+                    tooling_request, source_project=binding[0]
+                )
+                if tooling_result.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                        tooling_result
+                    )
+                prepared = self._scaffold_render_setup(
+                    target,
+                    workspace,
+                    codegen,
+                    scaffold_entries,
+                    tooling_result.value,
+                )
+                if prepared.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                        prepared
+                    )
+                targets = self._validated_scaffold_targets(
+                    codegen, root, scaffold_entries
+                )
+                planned = targets.flat_map(
+                    lambda _validated: self._scaffold_planned_entries(
+                        prepared.value, scaffold_entries, workspace
+                    )
+                )
+                if planned.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                        planned
+                    )
+                files, render_inputs = planned.value
+            return self._qualified_existing_tooling(
+                render_inputs, contract, files, consumption, publications
+            ).flat_map(
+                lambda qualified: self._with_planned_facade_rebinds(
+                    planned=tuple(qualified),
+                    scaffold_entries=scaffold_entries,
+                    workspace=workspace,
+                    render_inputs=render_inputs,
+                    contract=contract,
+                )
             )
-            tooling_evidence = binding[1]()
-        if tooling_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
-        prepared = self._scaffold_render_setup(
-            target,
-            workspace,
-            codegen,
-            scaffold_entries,
-            tooling_result.value,
-        )
-        if prepared.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(prepared)
-        targets = self._validated_scaffold_targets(codegen, root, scaffold_entries)
-        planned = targets.flat_map(
-            lambda _validated: self._scaffold_planned_entries(
-                prepared.value, scaffold_entries, workspace
-            )
-        )
-        if planned.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        files, render_inputs = planned.value
-        return self._qualified_existing_tooling(
-            render_inputs, contract, files, tooling_evidence
-        ).flat_map(
-            lambda qualified: self._with_planned_facade_rebinds(
-                planned=tuple(qualified),
-                scaffold_entries=scaffold_entries,
-                workspace=workspace,
-                render_inputs=render_inputs,
-                contract=contract,
-            )
-        )
 
     def _scaffold_planned_entries(
         self,
@@ -360,12 +383,17 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             return result_type.ok(planned)
         root = render_inputs.target.root
         projected = {plan.path: plan for plan in planned}
+        export_publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
-            root, declared_files=tuple(projected.values())
+            root,
+            declared_files=tuple(projected.values()),
+            source_publications=export_publications,
         ) as binding:
             exports = FlextInfraCodegenLazyInit(
                 repository_root=root, project_scope_roots=(root,)
-            ).plan_files(source_project=binding[0])
+            ).plan_files(
+                source_project=binding[0], source_publications=export_publications
+            )
             if exports.failure:
                 return result_type.from_failure(exports)
             self._retain_diagnostics(
@@ -384,43 +412,48 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         projected.update((plan.path, plan) for plan in exports.value.files)
         source_states = inputs.value
         planned = tuple(projected.values())
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
         with self._source_view(
-            root, source_states=source_states, declared_files=planned
+            root,
+            source_states=source_states,
+            declared_files=planned,
+            source_publications=publications,
         ) as binding:
-            final_inputs = self.planned_source_render_inputs(
-                render_inputs, planned, source_project=binding[0]
-            )
-            evidence = binding[1]()
-        if final_inputs is render_inputs:
-            return self._qualified_existing_tooling(
-                render_inputs, contract, planned, evidence
-            )
-        context = self._project_render_context(
-            final_inputs,
-            planned_data_files=tuple(
-                destination for _, destination in scaffold_entries
-            ),
-        )
-        if context.failure:
-            return result_type.from_failure(context)
-        final = self._scaffold_entry_plan(
-            entry=pyproject_entry,
-            destination=c.PYPROJECT_FILENAME,
-            workspace=workspace,
-            render_inputs=final_inputs,
-            context=context.value,
-        )
-        return final.flat_map(
-            lambda rendered: self._qualified_existing_tooling(
+            with binding[0].source_consumption() as consumption:
+                final_inputs = self.planned_source_render_inputs(
+                    render_inputs, planned, source_project=binding[0]
+                )
+            if final_inputs is render_inputs:
+                return self._qualified_existing_tooling(
+                    render_inputs, contract, planned, consumption, publications
+                )
+            context = self._project_render_context(
                 final_inputs,
-                contract,
-                tuple(
-                    rendered[0] if plan.path == rendered[0].path else plan
-                    for plan in planned
+                planned_data_files=tuple(
+                    destination for _, destination in scaffold_entries
                 ),
-                evidence,
             )
-        )
+            if context.failure:
+                return result_type.from_failure(context)
+            final = self._scaffold_entry_plan(
+                entry=pyproject_entry,
+                destination=c.PYPROJECT_FILENAME,
+                workspace=workspace,
+                render_inputs=final_inputs,
+                context=context.value,
+            )
+            return final.flat_map(
+                lambda rendered: self._qualified_existing_tooling(
+                    final_inputs,
+                    contract,
+                    tuple(
+                        rendered[0] if plan.path == rendered[0].path else plan
+                        for plan in planned
+                    ),
+                    consumption,
+                    publications,
+                )
+            )
 
     def _scaffold_entry_plan(
         self,

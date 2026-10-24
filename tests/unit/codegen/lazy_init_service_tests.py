@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, u
+from flext_infra import config
 from tests import c, tm, u
 
 if TYPE_CHECKING:

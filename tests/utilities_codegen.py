@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
 
@@ -20,7 +21,10 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
 )
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import (
     TestsFlextInfraUtilitiesGitMixin,
     TestsFlextInfraUtilitiesProjectFixtureMixin,
@@ -34,8 +38,8 @@ from tests import (
 )
 
 
-class TestsFlextInfraUtilitiesCodegenMixin:
-    """Codegen and lazy-init workspace fixture helpers."""
+class TestsFlextInfraUtilitiesScaffold:
+    """Public conformance and scaffold fixture helpers."""
 
     @staticmethod
     def family_public_module(family: str) -> str:
@@ -115,6 +119,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         workspace: m.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
+        executor_root: Path | None = None,
     ) -> m.Infra.CodegenPlan:
         """Plan one fixture workspace through the public conform boundary.
 
@@ -125,9 +130,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root, what=what)
         return (
             FlextInfraCodegenConform(
-                repository_root=root,
+                repository_root=root if executor_root is None else executor_root,
                 state=m.Infra.CodegenConformState(
-                    repository_root=root,
+                    repository_root=root if executor_root is None else executor_root,
                     request=request,
                     initial_workspace=workspace,
                 ),
@@ -222,6 +227,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 ),
             ),
             what=what,
+            executor_root=Path.cwd(),
         )
 
     @staticmethod
@@ -280,9 +286,10 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                     f"class FixtureProject{family.capitalize()}Facade:\n    pass\n",
                     encoding="utf-8",
                 )
-        result = FlextInfraCodegenConform(repository_root=root).plan(
-            TestsFlextInfraUtilitiesCodegenMixin.conform_request(root),
-        )
+        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
+        result = FlextInfraCodegenConform(
+            state=m.Infra.CodegenConformState(repository_root=root, request=request),
+        ).plan(request)
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))
 
     @staticmethod
@@ -302,6 +309,56 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             if match is None or match.desired_content is None
             else tm.not_none(match.desired_content).decode(c.DEFAULT_ENCODING)
         )
+
+
+class TestsFlextInfraUtilitiesCodegenMixin(TestsFlextInfraUtilitiesScaffold):
+    """Lazy-init execution and publication fixture helpers."""
+
+    @staticmethod
+    def prepare_source_preview(repository_root: Path) -> None:
+        """Authenticate the real preview control plane before source receipts."""
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=repository_root)
+        )
+        tm.ok(
+            transaction.run_files_locked(
+                transaction.capability_roots(
+                    "fixture-source",
+                    tuple(
+                        dict.fromkeys((
+                            repository_root,
+                            *u.Infra.discover_rope_project_roots(repository_root),
+                        ))
+                    ),
+                ),
+                lambda _: r[bool].ok(value=True),
+            )
+        )
+
+    @staticmethod
+    def provision_source_preview(repository_root: Path) -> None:
+        """Provision a legacy fixture's physical runtime and preview authority."""
+        TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(repository_root)
+        TestsFlextInfraUtilitiesCodegenMixin.prepare_source_preview(repository_root)
+
+    @staticmethod
+    @contextmanager
+    def authenticated_rope_workspace(
+        repository_root: Path,
+    ) -> Generator[p.Infra.RopeWorkspaceDsl]:
+        """Borrow the public source capability for one native planning session.
+
+        Yields:
+            A workspace bound to the authenticated original source graph.
+
+        """
+        with (
+            u.Infra.facade_source_project(repository_root) as (project, _, _),
+            FlextInfraRopeWorkspace.open_workspace(
+                repository_root, source_project=project
+            ) as workspace,
+        ):
+            yield workspace
 
     @staticmethod
     def create_lazy_init_workspace(
@@ -408,8 +465,10 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         process.start()
         try:
             process.join()
-            assert process.exitcode == 0, (
-                f"Native test callable exited {process.exitcode}: {target}"
+            tm.that(
+                process.exitcode,
+                eq=0,
+                msg=f"Native test callable exited {process.exitcode}: {target}",
             )
         finally:
             if process.is_alive():

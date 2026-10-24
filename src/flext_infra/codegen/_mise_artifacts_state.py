@@ -13,14 +13,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, m, r, t, u
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
+from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
 from flext_infra.codegen._mise_artifacts_verification_manifest import (
-    FlextInfraMiseArtifactsVerificationManifest as manifest,
+    FlextInfraMiseArtifactsVerificationManifest,
 )
 from flext_infra.codegen._mise_artifacts_verification_topology import (
-    FlextInfraMiseArtifactsVerificationTopology as topology,
+    FlextInfraMiseArtifactsVerificationTopology,
 )
 
 if TYPE_CHECKING:
@@ -159,7 +157,10 @@ class FlextInfraMiseArtifactsState:
                 if project.config.parent != project.root
             ),
         )
-        project_roots = {item.root for item in files.transaction_participants(layout)}
+        project_roots = {
+            item.root
+            for item in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
+        }
         parents = tuple(
             dict.fromkeys((
                 *parents,
@@ -239,7 +240,9 @@ class FlextInfraMiseArtifactsState:
                 "parent_device": parent.device,
                 "parent_inode": parent.inode,
             })
-            observed = files.read_state(before.path, required=False)
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                before.path, required=False
+            )
             if observed.failure:
                 return result_type.from_failure(observed)
             if observed.value != expected:
@@ -276,7 +279,10 @@ class FlextInfraMiseArtifactsState:
         if len(set(requested)) != len(requested):
             return result_type.fail(f"duplicate {phase} directory request")
         projects = tuple(
-            sorted(files.transaction_participants(layout), key=cls._project_depth),
+            sorted(
+                FlextInfraMiseArtifactsFiles.transaction_participants(layout),
+                key=cls._project_depth,
+            ),
         )
         planned: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for target in requested:
@@ -321,7 +327,10 @@ class FlextInfraMiseArtifactsState:
         """
         result_type = r[bool]
         projects = tuple(
-            sorted(files.transaction_participants(layout), key=cls._project_depth),
+            sorted(
+                FlextInfraMiseArtifactsFiles.transaction_participants(layout),
+                key=cls._project_depth,
+            ),
         )
         for directory in chain.directories:
             owner = next(
@@ -332,7 +341,9 @@ class FlextInfraMiseArtifactsState:
                 return result_type.fail(
                     f"{phase} directory has no project owner: {directory}",
                 )
-            relative = files.transaction_relative(layout, directory)
+            relative = FlextInfraMiseArtifactsFiles.transaction_relative(
+                layout, directory
+            )
             if relative.failure:
                 return result_type.from_failure(relative)
             before = cls._anchor_witness(directory, chain)
@@ -407,7 +418,7 @@ class FlextInfraMiseArtifactsState:
         result_type = r[m.Infra.CodegenJournalDirectory]
         if entry.created is not None or entry not in directories:
             return result_type.fail(f"invalid directory creation cursor: {entry.path}")
-        target = files.resolve_transaction(
+        target = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout,
             entry.path,
             purpose="journaled generation directory",
@@ -417,7 +428,9 @@ class FlextInfraMiseArtifactsState:
         project = next(
             (
                 item
-                for item in files.transaction_participants(layout)
+                for item in FlextInfraMiseArtifactsFiles.transaction_participants(
+                    layout
+                )
                 if item.selector == entry.project
             ),
             None,
@@ -552,7 +565,9 @@ class FlextInfraMiseArtifactsState:
 
         """
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
-        snapshot = files.read_state(layout.journal_path, required=False)
+        snapshot = FlextInfraMiseArtifactsFiles.read_state(
+            layout.journal_path, required=False
+        )
         if snapshot.failure:
             return result_type.from_failure(snapshot)
         return result_type.ok((snapshot.value,))
@@ -585,7 +600,7 @@ class FlextInfraMiseArtifactsState:
 
         """
         residue: list[Path] = []
-        for project in files.transaction_participants(layout):
+        for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout):
             state_root = project.root / c.Infra.MISE_ARTIFACTS_STATE_DIRECTORY
             if not state_root.exists() and not state_root.is_symlink():
                 continue
@@ -618,7 +633,9 @@ class FlextInfraMiseArtifactsState:
             The resulting ``p.Result[bool]``.
 
         """
-        bound = topology.journal_topology(layout, journal)
+        bound = FlextInfraMiseArtifactsVerificationTopology.journal_topology(
+            layout, journal
+        )
         if bound.failure:
             return bound
         validated = cls.validate_transaction_roots(layout, journal)
@@ -649,13 +666,15 @@ class FlextInfraMiseArtifactsState:
         """
         result_type = r[frozenset[str]]
         removed_temporary_roots: set[str] = set()
-        for project in files.transaction_participants(layout):
+        for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout):
             transaction_root = project.transaction_root
             if transaction_root is None:
                 return result_type.fail("Mise recovery layout has no transaction root")
             if not transaction_root.exists() and not transaction_root.is_symlink():
                 continue
-            relative = files.transaction_relative(layout, transaction_root)
+            relative = FlextInfraMiseArtifactsFiles.transaction_relative(
+                layout, transaction_root
+            )
             if relative.failure:
                 return result_type.from_failure(relative)
             entry = next(
@@ -677,7 +696,9 @@ class FlextInfraMiseArtifactsState:
                     continue
                 removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             else:
-                observed = manifest.authorized_cleanup_manifest(layout, journal, entry)
+                observed = FlextInfraMiseArtifactsVerificationManifest.authorized_cleanup_manifest(
+                    layout, journal, entry
+                )
                 if observed.failure:
                     return result_type.from_failure(observed)
                 removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
@@ -710,7 +731,7 @@ class FlextInfraMiseArtifactsState:
             )
         )
         for entry in sorted(removable, key=cls._directory_cleanup_order, reverse=True):
-            target = files.resolve_transaction(
+            target = FlextInfraMiseArtifactsFiles.resolve_transaction(
                 layout,
                 entry.path,
                 purpose="journaled cleanup directory",
@@ -776,7 +797,9 @@ class FlextInfraMiseArtifactsState:
         if not residents:
             return r[bool].ok(value=False)
         for resident in residents:
-            selector = files.transaction_relative(layout, resident)
+            selector = FlextInfraMiseArtifactsFiles.transaction_relative(
+                layout, resident
+            )
             if selector.failure:
                 return r[bool].from_failure(selector)
             relative = selector.value
@@ -831,13 +854,15 @@ class FlextInfraMiseArtifactsState:
 
         """
         for intent in journal.staging_intents:
-            observed = files.read_state(intent.before.path, required=False)
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                intent.before.path, required=False
+            )
             if observed.failure:
                 return r[bool].from_failure(observed)
             current = observed.value
-            if current.link_count is not None and current.link_count > 1:
+            if (current.link_count or 0) > 1:
                 digest = (
-                    files.digest(current.content)
+                    FlextInfraMiseArtifactsFiles.digest(current.content)
                     if current.content is not None
                     else None
                 )
@@ -851,14 +876,16 @@ class FlextInfraMiseArtifactsState:
                     error=True,
                 )
         inputs: list[m.Cli.AtomicDirectoryState] = []
-        for intent in journal.directories:
-            if intent.disposition != "temporary" or intent.created is not None:
-                continue
+        for intent in (
+            directory
+            for directory in journal.directories
+            if directory.disposition == "temporary" and directory.created is None
+        ):
             captured = cls._pending_directory_input(layout, journal, intent)
             if captured.failure:
                 return r[bool].from_failure(captured)
-            if captured.value.exists:
-                inputs.append(captured.value)
+            inputs.append(captured.value)
+        inputs = [current for current in inputs if current.exists]
         if not inputs:
             return cls.validate_transaction_roots(layout, journal)
         proven = cls.validate_transaction_roots(
@@ -884,7 +911,7 @@ class FlextInfraMiseArtifactsState:
             Current input identity, absence, or the first refusal.
 
         """
-        target = files.resolve_transaction(
+        target = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout, intent.path, purpose="pending temporary directory"
         ).unwrap()
         captured = u.Cli.atomic_read_empty_directory_state(target, required=False)
@@ -893,7 +920,7 @@ class FlextInfraMiseArtifactsState:
         current = captured.value
         if not current.exists:
             return captured
-        return manifest.reconciliation_input_current(
+        return FlextInfraMiseArtifactsVerificationManifest.reconciliation_input_current(
             layout, journal, intent, current
         ).map(lambda _: current)
 
@@ -913,7 +940,7 @@ class FlextInfraMiseArtifactsState:
         """
         expected = {
             project.transaction_root
-            for project in files.transaction_participants(layout)
+            for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
             if project.transaction_root is not None
         }
         unexpected = sorted(set(cls.transaction_residue(layout)) - expected)
@@ -921,7 +948,7 @@ class FlextInfraMiseArtifactsState:
             return r[bool].fail(
                 f"foreign generation transaction residue exists: {unexpected[0]}",
             )
-        for project in files.transaction_participants(layout):
+        for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout):
             authenticated = cls._validated_project_transaction_root(
                 layout,
                 journal,
@@ -959,7 +986,9 @@ class FlextInfraMiseArtifactsState:
             return r[bool].from_failure(transaction)
         if transaction.value is False:
             return r[bool].ok(value=True)
-        relative = files.transaction_relative(layout, transaction_root)
+        relative = FlextInfraMiseArtifactsFiles.transaction_relative(
+            layout, transaction_root
+        )
         if relative.failure:
             return r[bool].from_failure(relative)
         recorded = next(
@@ -1014,11 +1043,13 @@ class FlextInfraMiseArtifactsState:
 
         """
         if recorded.manifest is not None:
-            authorized = manifest.authorized_cleanup_manifest(
-                layout,
-                journal,
-                recorded,
-                reconciliation_inputs=reconciliation_inputs,
+            authorized = (
+                FlextInfraMiseArtifactsVerificationManifest.authorized_cleanup_manifest(
+                    layout,
+                    journal,
+                    recorded,
+                    reconciliation_inputs=reconciliation_inputs,
+                )
             )
             if authorized.failure:
                 return r[bool].from_failure(authorized)

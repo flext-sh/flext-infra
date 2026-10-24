@@ -944,7 +944,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         declaration: ast.ClassDef,
         replacement: str,
     ) -> p.Infra.RopePyName:
-        pending = [module.get_scope()]
+        pending: list[p.Infra.RopeScope] = [module.get_scope()]
         defining: p.Infra.RopeScope | None = None
         while pending:
             scope = pending.pop()

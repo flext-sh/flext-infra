@@ -42,12 +42,13 @@ class TestsFlextInfraUtilitiesformatting:
         )
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         pyproject = root / c.PYPROJECT_FILENAME
+        document = u.Tests.toml_doc(pyproject.read_text(encoding=c.DEFAULT_ENCODING))
+        tool = u.Cli.toml_ensure_table(document, "tool")
+        u.Cli.toml_ensure_table(tool, "ruff")["line-length"] = width
         tm.ok(
             u.Cli.atomic_write_text_file(
                 pyproject,
-                pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
-                    "[tool.ruff]\n", f"[tool.ruff]\nline-length = {width}\n", 1
-                ),
+                u.Cli.toml_dumps(document),
             )
         )
         path = package / "candidate.py"
@@ -87,12 +88,13 @@ class TestsFlextInfraUtilitiesformatting:
         """Unrepairable destination policy fails without changing live source."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         pyproject = root / c.PYPROJECT_FILENAME
+        document = u.Tests.toml_doc(pyproject.read_text(encoding=c.DEFAULT_ENCODING))
+        tool = u.Cli.toml_ensure_table(document, "tool")
+        u.Cli.toml_ensure_table(tool, "ruff")["line-length"] = 1
         tm.ok(
             u.Cli.atomic_write_text_file(
                 pyproject,
-                pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
-                    "[tool.ruff]\n", "[tool.ruff]\nline-length = 1\n", 1
-                ),
+                u.Cli.toml_dumps(document),
             )
         )
         path = package / "candidate.py"

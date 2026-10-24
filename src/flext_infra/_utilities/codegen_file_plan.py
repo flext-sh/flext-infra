@@ -63,9 +63,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 )
             else:
                 validated = r[m.Infra.CodegenFilePlan].create_from_callable(
-                    partial(
-                        m.Infra.CodegenFilePlan.validate_publication_identity, plan
-                    ),
+                    partial(m.Infra.CodegenFilePlan.model_validate, plan),
                 )
             if validated.failure:
                 return r[bool].from_failure(validated)
@@ -227,10 +225,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
                             FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeoutError
                         )(lock_path) from error
                     if not waiting:
-                        print(
-                            f"codegen journal lease: waiting for {lock_path}",
-                            file=sys.stderr,
-                            flush=True,
+                        u.Cli.emit_raw(
+                            f"codegen journal lease: waiting for {lock_path}\n",
+                            error=True,
                         )
                         waiting = True
                     time.sleep(c.Infra.JOURNAL_LEASE_POLL_SECONDS)
@@ -238,11 +235,10 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 acquired = True
                 break
             if waiting:
-                print(
+                u.Cli.emit_raw(
                     "codegen journal lease: acquired "
-                    f"{lock_path} after {time.monotonic() - started:.3f}s",
-                    file=sys.stderr,
-                    flush=True,
+                    f"{lock_path} after {time.monotonic() - started:.3f}s\n",
+                    error=True,
                 )
             yield
         finally:

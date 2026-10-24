@@ -11,14 +11,176 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra
+from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraStagedPackage
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.codemod import (
+    FlextInfraCodemodSemanticApply,
+    FlextInfraModGateEngine,
+    FlextInfraModTextGateEngine,
+)
 from tests import c, m, tm, u
 
 
 class TestsFlextInfraSemanticRenameSeed:
     """Source campaigns never weaken the explicit rename artifact contract."""
+
+    @staticmethod
+    def test_text_plan_consumes_declared_move_without_reelecting_live_sources(
+        tmp_path: Path,
+    ) -> None:
+        """Text effects preserve original identities, modes and elected scope."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source, destination = package / "service.py", package / "meaningful.py"
+        outside = package / "outside.py"
+        text = 'value = "before"\n'
+        source.write_text(text, encoding=c.DEFAULT_ENCODING)
+        source.chmod(0o750)
+        outside.write_text(text, encoding=c.DEFAULT_ENCODING)
+        rules = root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
+        rules.parent.mkdir(parents=True, exist_ok=True)
+        rules.write_text(
+            "rules:\n  - id: elected-source\n    find: before\n    replace: after\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {source: None, destination: text},
+                options=m.Infra.StageSourceOptions(
+                    modes={destination: tm.not_none(original.mode)}
+                ),
+            )
+        )
+        before = tm.ok(u.Cli.atomic_inventory_physical_tree(root))
+        _report, analysis = tm.ok(
+            FlextInfraModTextGateEngine.plan(
+                root,
+                sources={destination: text},
+                source_states=plan.inputs,
+                declared_files=plan.declared_files,
+            )
+        )
+        tm.that(analysis.issues, empty=True)
+        tm.that(tuple(effect.path for effect in analysis.files), eq=(destination,))
+        tm.that(
+            analysis.files[0].desired_content,
+            eq=text.replace("before", "after").encode(c.DEFAULT_ENCODING),
+        )
+        tm.that(analysis.files[0].desired_mode, eq=original.mode)
+        tm.that(
+            analysis.files[0].before,
+            eq=next(
+                effect.before
+                for effect in plan.declared_files
+                if effect.path == destination
+            ),
+        )
+        _report, rejected = tm.ok(
+            FlextInfraModTextGateEngine.plan(
+                root,
+                sources={destination: text},
+                source_states=plan.inputs,
+                declared_files=tuple(
+                    effect.model_copy(
+                        update={
+                            "before": original.model_copy(
+                                update={"content": b"forged preimage\n"}
+                            )
+                        }
+                    )
+                    if effect.path == source
+                    else effect
+                    for effect in plan.declared_files
+                ),
+            )
+        )
+        tm.that(rejected.files, empty=True)
+        tm.ok(isinstance(rejected.exception, ValueError))
+        tm.ok(u.Cli.atomic_verify_binary_file_states(plan.inputs))
+        tm.that(tm.ok(u.Cli.atomic_inventory_physical_tree(root)), eq=before)
+
+    @staticmethod
+    def test_candidate_scan_preserves_declared_executable_move_without_live_effects(
+        tmp_path: Path,
+    ) -> None:
+        """The scan elects desired sources and keeps original absence witnesses."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "service.py"
+        destination = package / "meaningful.py"
+        text = "class Service:\n    pass\n"
+        source.write_text(text, encoding=c.DEFAULT_ENCODING)
+        source.chmod(0o750)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {source: None, destination: text},
+                options=m.Infra.StageSourceOptions(
+                    modes={destination: tm.not_none(original.mode)}
+                ),
+            )
+        )
+        report = tm.ok(
+            infra.source_preview(root).preview_sources(
+                plan.workspace,
+                plan.updates,
+                lambda view, _paths: FlextInfraModGateEngine.scan_candidate(
+                    root, view, plan
+                ).unwrap(),
+                options=m.Infra.CodegenSourcePreviewOptions(
+                    inputs=plan.inputs, modes=plan.modes, runtime_check=False
+                ),
+            )
+        )
+        states = {state.path: state for state in tm.not_none(report.source_states)}
+        tm.that(source in states, eq=False)
+        tm.that(states[destination].content, eq=original.content)
+        tm.that(states[destination].mode, eq=original.mode)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(plan.inputs))
+        tm.that(destination.exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("mismatch", ["undeclared", "preimage", "staged"])
+    def test_candidate_scan_rejects_unproven_retirement_before_effects(
+        tmp_path: Path,
+        mismatch: str,
+    ) -> None:
+        """A tombstone needs its exact original and materialized absence witnesses."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "service.py"
+        source.write_text("class Service:\n    pass\n", encoding=c.DEFAULT_ENCODING)
+        plan = tm.ok(FlextInfraStagedPackage.plan_sources(root, {source: None}))
+        if mismatch == "undeclared":
+            plan = plan.model_copy(update={"declared_files": ()})
+        elif mismatch == "preimage":
+            effect = plan.declared_files[0]
+            original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+            plan = plan.model_copy(
+                update={
+                    "declared_files": (
+                        effect.model_copy(
+                            update={
+                                "before": original.model_copy(
+                                    update={"content": b"different preimage\n"}
+                                )
+                            }
+                        ),
+                    )
+                }
+            )
+        view = tmp_path / "scan-view"
+        staged = view / source.relative_to(root)
+        staged.parent.mkdir(parents=True)
+        if mismatch == "staged":
+            staged.write_bytes(source.read_bytes())
+        before = tm.ok(u.Cli.atomic_inventory_physical_tree(root))
+        tm.fail(
+            FlextInfraModGateEngine.scan_candidate(root, view, plan),
+            has="semantic scan",
+        )
+        tm.that(tm.ok(u.Cli.atomic_inventory_physical_tree(root)), eq=before)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(plan.inputs))
 
     @staticmethod
     def test_package_preview_expands_files_modes_and_cross_root_consumers(
@@ -86,15 +248,26 @@ class TestsFlextInfraSemanticRenameSeed:
         tm.ok(u.Cli.atomic_verify_binary_file_states(artifact.source_states))
         tm.ok(
             u.Cli.atomic_verify_directory_queries(
-                artifact.source_directories, artifact.source_query_topology
+                artifact.source_directories,
+                artifact.source_query_topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
             )
         )
         (nested / "new.py").write_text("", encoding=c.DEFAULT_ENCODING)
-        tm.fail(
+        with pytest.raises(ValueError, match="source directory membership changed"):
             u.Cli.atomic_verify_directory_queries(
-                artifact.source_directories, artifact.source_query_topology
+                artifact.source_directories,
+                artifact.source_query_topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
             )
-        )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -141,11 +314,13 @@ class TestsFlextInfraSemanticRenameSeed:
             )
             diagnostic = "separate virtual waves for overlapping selections"
         selections = m.Infra.SemanticRenameSelections(decisions=tuple(decisions))
-        with infra.rope_workspace(root) as workspace:
-            with pytest.raises(ValueError, match=diagnostic):
-                FlextInfraCodemodSemanticApply.build_rename_plan(
-                    root, workspace, selections
-                )
+        with (
+            infra.rope_workspace(root) as workspace,
+            pytest.raises(ValueError, match=diagnostic),
+        ):
+            FlextInfraCodemodSemanticApply.build_rename_plan(
+                root, workspace, selections
+            )
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
         tm.ok(initializer.exists())
 
@@ -200,17 +375,19 @@ class TestsFlextInfraSemanticRenameSeed:
         hydrated = m.Infra.SemanticRenamePlan.model_validate_json(
             tm.not_none(state.content)
         )
-        tm.ok(
-            FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
-                root, hydrated, state
+        with infra.rope_workspace(root) as workspace:
+            tm.ok(
+                FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
+                    root, hydrated, state, workspace
+                )
             )
-        )
         consumer.write_bytes(consumer.read_bytes() + b"# changed source epoch\n")
-        tm.fail(
-            FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
-                root, hydrated, state
+        with infra.rope_workspace(root) as workspace:
+            tm.fail(
+                FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
+                    root, hydrated, state, workspace
+                )
             )
-        )
         tm.ok(u.Cli.atomic_verify_binary_file_states((originals[0], state)))
 
     @staticmethod
@@ -249,7 +426,13 @@ class TestsFlextInfraSemanticRenameSeed:
         tm.ok(u.Cli.atomic_verify_binary_file_states(campaign.source_states))
         tm.ok(
             u.Cli.atomic_verify_directory_queries(
-                campaign.source_directories, campaign.source_query_topology
+                campaign.source_directories,
+                campaign.source_query_topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
             )
         )
         if drift == "source":
@@ -387,6 +570,9 @@ class TestsFlextInfraSemanticRenameSeed:
             )
         tm.that(
             str(failure.value),
-            eq=f"semantic rename has no inventoried source: {package.name}.service.MissingFirst",
+            eq=(
+                "semantic rename has no inventoried source: "
+                f"{package.name}.service.MissingFirst"
+            ),
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))

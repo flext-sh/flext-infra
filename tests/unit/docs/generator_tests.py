@@ -533,7 +533,7 @@ class TestsFlextInfraDocsGenerator:
 
         result = FlextInfraDocBuilder(repository_root=workspace).execute()
 
-        tm.ok(result)
+        tm.that(tm.ok(result), eq=True)
         pages = tuple(workspace.rglob("index.html"))
         tm.that(pages, truth=True)
         tm.that(
@@ -711,7 +711,7 @@ class TestsFlextInfraDocsGenerator:
     @staticmethod
     def test_generated_file_model_is_frozen() -> None:
         """Keep generated-file report models immutable."""
-        tm.ok(m.Infra.GeneratedFile.model_config.get("frozen"))
+        tm.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
 
     @staticmethod
     def test_generate_report_tracks_written_files() -> None:

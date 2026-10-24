@@ -52,6 +52,14 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Declared file modes for the staged source updates",
         )
 
+    class CodegenSourceRuntime(FlextInfraModelsBase.FrozenArbitrary):
+        """Source ownership and its explicitly elected execution environment."""
+
+        workspace: Path = m.Field(description="Canonical source workspace root")
+        runtime_root: Path | None = m.Field(
+            default=None, description="Explicit physical runtime owner when supplied"
+        )
+
     class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticated inputs, topology and declarations for a source candidate."""
 

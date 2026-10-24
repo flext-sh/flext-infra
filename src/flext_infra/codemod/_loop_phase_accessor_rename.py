@@ -134,6 +134,7 @@ class FlextInfraAccessorRenamePhase(
                     file_path=py_file,
                     original_source=source,
                     updated_source=updated_source,
+                    source_states=source_states,
                     changes=tuple(
                         change.reason for change in rewrite_changes if change.automated
                     ),

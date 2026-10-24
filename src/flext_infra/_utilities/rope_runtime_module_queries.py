@@ -377,54 +377,47 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             ValueError: If Rope proposed source is outside its input inventory.
 
         """
-        inventory = (
+        contents = (
             {
-                Path(resource.real_path).resolve(): resource.read()
+                Path(resource.real_path).resolve(): resource.read().encode("utf-8")
                 for resource in project.get_python_files()
             }
             if captured is None
-            else dict(captured.sources)
-        )
-        contents = (
-            {path: source.encode("utf-8") for path, source in inventory.items()}
-            if captured is None
             else dict(captured.contents)
         )
-        captured_paths = (
+        captured_paths: frozenset[Path] = (
             frozenset(state.path for state in captured.snapshot.states)
             if captured is not None
             else frozenset()
         )
         root = Path(project.root.real_path).resolve()
-        declared: t.MutableMappingKV[Path, str] = {}
+        declared: set[Path] = set()
         for plan in declared_files:
-            path, content = cls.snapshot_destination(root, plan)
-            proposed = content.decode("utf-8")
-            if path in declared and declared[path] != proposed:
+            path, content = cls.snapshot_declared_effect(root, plan)
+            if path in declared and contents.get(path) != content:
                 msg = f"Rope virtual destination declarations disagree: {path}"
                 raise ValueError(msg)
-            declared[path] = proposed
-            inventory[path] = proposed
-            contents[path] = content
+            declared.add(path)
+            if content is None:
+                contents.pop(path, None)
+            else:
+                contents[path] = content
         for path, source in sources.items():
             resolved = path.resolve()
-            if resolved in declared and declared[resolved] != source:
+            content = source.encode("utf-8")
+            if resolved in declared and contents.get(resolved) != content:
                 msg = f"Rope virtual destination source disagrees with its plan: {path}"
                 raise ValueError(msg)
-            if resolved not in inventory:
-                if captured is not None:
-                    if resolved not in captured_paths:
-                        msg = f"Rope proposed source is outside its input inventory: {path}"
-                        raise ValueError(msg)
-                else:
-                    inventory[resolved] = cls._snapshot_resource_source(
-                        project,
-                        root,
-                        resolved,
-                    )
-            if resolved not in contents or inventory[resolved] != source:
-                contents[resolved] = source.encode("utf-8")
-            inventory[resolved] = source
+            if (
+                resolved not in contents
+                and captured is not None
+                and resolved not in captured_paths
+            ):
+                msg = f"Rope proposed source is outside its input inventory: {path}"
+                raise ValueError(msg)
+            if resolved not in contents and captured is None:
+                cls._snapshot_resource_source(project, root, resolved)
+            contents[resolved] = content
         owner = cls.runtime_type(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
@@ -457,24 +450,27 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         return snapshot
 
     @staticmethod
-    def snapshot_destination(
+    def snapshot_declared_effect(
         root: Path,
         plan: m.Infra.CodegenFilePlan,
-    ) -> t.Pair[Path, bytes]:
-        """Authenticate the original absence witness of one virtual destination.
+    ) -> t.Pair[Path, bytes | None]:
+        """Authenticate the original witness of a declared source effect.
 
         Returns:
-            Its physical destination and exact declared bytes.
+            Its logical path and exact desired bytes or retirement.
 
         Raises:
-            ValueError: If the destination is foreign or its absence witness changed.
+            ValueError: If the effect is foreign or its original witness changed.
 
         """
         path = plan.path.resolve()
-        if not path.is_relative_to(root) or plan.desired_content is None:
-            msg = f"Rope virtual destination is not a declared source: {path}"
+        if not path.is_relative_to(root):
+            msg = f"Rope declared effect is outside its source graph: {path}"
             raise ValueError(msg)
         if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+            if plan.desired_content is None:
+                msg = f"Rope source retirement has no original file witness: {path}"
+                raise ValueError(msg)
             directory_state = u.Cli.atomic_plan_directory_chain(
                 plan.before.target,
             ).unwrap()
@@ -486,8 +482,8 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
                 path,
                 required=False,
             ).unwrap()
-            if file_state != plan.before or file_state.content is not None:
-                msg = f"Rope virtual destination changed or already exists: {path}"
+            if file_state != plan.before:
+                msg = f"Rope declared source changed from its original witness: {path}"
                 raise ValueError(msg)
         return path, plan.desired_content
 

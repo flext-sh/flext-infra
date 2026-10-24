@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra
 from flext_infra.refactor import FlextInfraImportNormalization
 from tests import c, tm, u
 
@@ -70,8 +69,10 @@ class TestsFlextInfraModelAliasRetirement:
         }
 
     @staticmethod
+    @pytest.mark.parametrize("export_usage", [None, False, True])
     def test_public_planner_rewires_aliases_annotations_and_runtime_identity(
         tmp_path: Path,
+        export_usage: bool | None,
     ) -> None:
         """Two native aliases converge without changing ordinary string payloads."""
         root, sources = TestsFlextInfraModelAliasRetirement._workspace(
@@ -82,9 +83,15 @@ class TestsFlextInfraModelAliasRetirement:
             'def forward(value: "RedundantRelay.First") -> "RedundantRelay.Second":\n'
             "    return first(value)\n"
             'PAYLOAD = "RedundantRelay.First"\n'
-            'MARKER: Literal["RedundantRelay.Second"] = "RedundantRelay.Second"\n',
+            'MARKER: Literal["RedundantRelay.Second"] = "RedundantRelay.Second"\n'
+            + (
+                "from typing import __all__\n"
+                + ("PUBLIC_EXPORTS = __all__\n" if export_usage else "")
+                if export_usage is not None
+                else ""
+            ),
         )
-        with infra.rope_workspace(root) as workspace:
+        with u.Tests.authenticated_rope_workspace(root) as workspace:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -111,6 +118,7 @@ class TestsFlextInfraModelAliasRetirement:
             if source != sources[path]:
                 tm.fail(source.startswith(c.Infra.AUTOGEN_HEADERS))
                 path.write_text(source, encoding="utf-8")
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
         package = next(path.parent for path in sources if path.name == "consumer.py")
         consumer = (package / "consumer.py").read_text(encoding="utf-8")
         tm.ok('PAYLOAD = "RedundantRelay.First"' in consumer)
@@ -131,6 +139,17 @@ class TestsFlextInfraModelAliasRetirement:
                     "assert type(consumer.first("
                     "CanonicalPayloads.First(value=1))) "
                     "is CanonicalPayloads.Second"
+                    + (
+                        "; import typing; "
+                        "assert consumer.__all__ is typing.__all__"
+                        + (
+                            "; assert consumer.PUBLIC_EXPORTS is typing.__all__"
+                            if export_usage
+                            else ""
+                        )
+                        if export_usage is not None
+                        else ""
+                    )
                 ),
             ))
         )
@@ -155,7 +174,7 @@ class TestsFlextInfraModelAliasRetirement:
             tmp_path, consumer
         )
         with (
-            infra.rope_workspace(root) as workspace,
+            u.Tests.authenticated_rope_workspace(root) as workspace,
             pytest.raises(ValueError, match=r"model alias|model import"),
         ):
             u.Infra.plan_semantic_cutover(
@@ -182,7 +201,7 @@ class TestsFlextInfraModelAliasRetirement:
             "    def execute(self):\n        return 1\n\n    First =",
         )
         path.write_text(sources[path], encoding="utf-8")
-        with infra.rope_workspace(root) as workspace:
+        with u.Tests.authenticated_rope_workspace(root) as workspace:
             tm.that(
                 tm.ok(
                     u.Infra.plan_semantic_cutover(

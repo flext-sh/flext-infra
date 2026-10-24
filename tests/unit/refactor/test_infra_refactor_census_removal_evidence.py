@@ -55,7 +55,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=False,
         )
 
-        assert FlextInfraRefactorCensus.unused(record) is False
+        tm.that(FlextInfraRefactorCensus.unused(record), eq=False)
 
     def test_zero_references_with_evidence_is_unused(self) -> None:
         """A completed search over zero references classifies the definition."""
@@ -65,7 +65,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        assert FlextInfraRefactorCensus.unused(record) is True
+        tm.that(FlextInfraRefactorCensus.unused(record), eq=True)
 
     def test_referenced_definition_is_never_unused(self) -> None:
         """Collected references keep the definition classified as used."""
@@ -75,7 +75,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        assert FlextInfraRefactorCensus.unused(record) is False
+        tm.that(FlextInfraRefactorCensus.unused(record), eq=False)
 
     @staticmethod
     def test_service_composes_validated_options(tmp_path: Path) -> None:

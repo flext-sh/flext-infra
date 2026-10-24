@@ -110,8 +110,8 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         scanned = rows[root.name, "sweep-growth"]
         excluded = rows[member.name, "sweep-growth"]
         tm.that(scanned.status, eq="observed")
-        tm.that(scanned.delta, none=False)
-        tm.that((scanned.delta.before, scanned.delta.after), eq=(0, 0))
+        delta = tm.not_none(scanned.delta)
+        tm.that((delta.before, delta.after), eq=(0, 0))
         tm.that(excluded.status, eq="not_applicable")
         tm.that(excluded.delta, eq=None)
         tm.that(excluded.catalog_digest, eq=scanned.catalog_digest)
@@ -183,8 +183,8 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             for row in report.rule_evaluations
             if row.engine == "ast-grep" and row.rule_id == "sweep-growth"
         )
-        tm.that(row.delta, none=False)
-        tm.that((row.delta.before, row.delta.after, row.delta.persisted), eq=(1, 1, 1))
+        delta = tm.not_none(row.delta)
+        tm.that((delta.before, delta.after, delta.persisted), eq=(1, 1, 1))
         text = next(row for row in report.engine_coverage if row.engine == "text")
         tm.that(text.status, eq="NOT_EXECUTED")
         tm.ok(bool(report.repair_error))
@@ -242,15 +242,15 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         self._prepare(root, makefile=self._makefile(), local_rule=False)
         tm.that(self._sweep(root, "--audit-rules"), ne=0)
         first = self._receipt(root)
-        tm.that(first.before_evidence, none=False)
-        tm.that(first.after_evidence, none=False)
-        before_bytes = first.before_evidence.path.read_bytes()
-        after_bytes = first.after_evidence.path.read_bytes()
+        first_before = tm.not_none(first.before_evidence)
+        first_after = tm.not_none(first.after_evidence)
+        before_bytes = first_before.path.read_bytes()
+        after_bytes = first_after.path.read_bytes()
 
         tm.that(self._sweep(root, "--audit-rules"), ne=0)
 
         second = self._receipt(root)
-        tm.that(second.before_evidence, none=False)
+        second_before = tm.not_none(second.before_evidence)
         tm.that(second.after_evidence, none=False)
         tm.that(second.before, eq=first.before)
         tm.that(
@@ -263,11 +263,11 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
                 for row in first.rule_deltas
             ],
         )
-        tm.that(second.before_evidence.path, ne=first.before_evidence.path)
-        tm.that(first.before_evidence.path.read_bytes(), eq=before_bytes)
-        tm.that(first.after_evidence.path.read_bytes(), eq=after_bytes)
-        tm.that(u.Cli.sha256_bytes(before_bytes), eq=first.before_evidence.sha256)
-        tm.that(u.Cli.sha256_bytes(after_bytes), eq=first.after_evidence.sha256)
+        tm.that(second_before.path, ne=first_before.path)
+        tm.that(first_before.path.read_bytes(), eq=before_bytes)
+        tm.that(first_after.path.read_bytes(), eq=after_bytes)
+        tm.that(u.Cli.sha256_bytes(before_bytes), eq=first_before.sha256)
+        tm.that(u.Cli.sha256_bytes(after_bytes), eq=first_after.sha256)
 
     def test_growing_total_fails_and_still_publishes_the_receipt(
         self,
@@ -289,14 +289,14 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         tm.that(self._sweep(root), ne=0)
 
         report = self._receipt(root)
-        tm.that(report.before, none=False)
-        tm.that(report.after, none=False)
+        before = tm.not_none(report.before)
+        after = tm.not_none(report.after)
         tm.that(
             "findings" in report.increased_totals,
             eq=True,
         )
         tm.that(
-            report.after.findings > report.before.findings,
+            after.findings > before.findings,
             eq=True,
         )
 
@@ -356,20 +356,20 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that(delta.introduced, eq=1)
         tm.that(report.before_evidence, none=False)
-        tm.that(report.after_evidence, none=False)
-        tm.that(report.after_source_sha256, none=False)
+        after_evidence = tm.not_none(report.after_evidence)
+        after_source_sha256 = tm.not_none(report.after_source_sha256)
         tm.fail(delta.semantic_correspondence_proven)
         tm.that(len(delta.before_entries), eq=delta.before)
         tm.that(len(delta.after_entries), eq=delta.after)
         for index in delta.after_entries:
-            entry = report.after_evidence.evidence.entries[index]
+            entry = after_evidence.evidence.entries[index]
             tm.that(entry.rule_id, eq=delta.rule_id)
             tm.ok(bool(entry.range))
-            tm.that(entry.source_state, none=False)
-            tm.that(entry.source_state.content, none=False)
+            source_state = tm.not_none(entry.source_state)
+            content = tm.not_none(source_state.content)
             tm.that(
-                report.after_source_sha256[str(entry.source_state.path)],
-                eq=u.Cli.sha256_bytes(entry.source_state.content),
+                after_source_sha256[str(source_state.path)],
+                eq=u.Cli.sha256_bytes(content),
             )
 
     def test_clean_local_rule_retains_zero_inventory_and_provider_identity(
@@ -381,32 +381,30 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.that(self._sweep(root), ne=0)
         report = self._receipt(root)
-        tm.that(report.before_evidence, none=False)
-        tm.that(report.before_plan, none=False)
-        tm.that(report.before_source_sha256, none=False)
-        tm.that(report.before_evidence.evidence.totals_by_rule["sweep-growth"], eq=0)
+        before_evidence = tm.not_none(report.before_evidence)
+        before_plan = tm.not_none(report.before_plan)
+        before_source_sha256 = tm.not_none(report.before_source_sha256)
+        tm.that(before_evidence.evidence.totals_by_rule["sweep-growth"], eq=0)
         tm.that(
-            report.before_evidence.evidence.totals_by_repository[root.name],
+            before_evidence.evidence.totals_by_repository[root.name],
             eq=sum(
                 entry.repository == root.name
-                for entry in report.before_evidence.evidence.entries
+                for entry in before_evidence.evidence.entries
             ),
         )
         rows = {(row.repository, row.rule_id) for row in report.rule_deltas}
         expected = {
             (project.name, rule.id)
             for project in u.Infra.governed_project_roots(root)
-            for rule in report.before_plan.rules
+            for rule in before_plan.rules
         }
         tm.that(rows, eq=expected)
         delta = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that((delta.before, delta.after, delta.introduced), eq=(0, 0, 0))
-        rule = next(
-            rule for rule in report.before_plan.rules if rule.id == delta.rule_id
-        )
+        rule = next(rule for rule in before_plan.rules if rule.id == delta.rule_id)
         tm.ok(bool(rule.digest))
         tm.that(
-            report.before_source_sha256[str(rule.resource.resolve())],
+            before_source_sha256[str(rule.resource.resolve())],
             eq=u.Cli.sha256_bytes(rule.resource.read_bytes()),
         )
         tm.ok(bool(rule.provider))
@@ -512,6 +510,13 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         )
         tm.fail((root / "ran.txt").exists())
 
+
+@pytest.mark.slow
+class TestsFlextInfraRefactorViolationsSweepAudits(
+    TestsFlextInfraRefactorViolationsSweepSupport,
+):
+    """Behavior contract for native audit observations and operation receipts."""
+
     def test_native_rule_audit_never_invokes_make_and_keeps_collateral(
         self,
         mod_workspace: Path,
@@ -526,23 +531,23 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         stage = report.stages[0]
         tm.that(stage.verb, eq="audit-rules")
         tm.that(stage.outcome, eq=None)
-        tm.ok(stage.source_inventory_unchanged)
-        tm.that(stage.audit_before, none=False)
-        tm.that(stage.audit_after, none=False)
-        tm.ok(stage.audit_before.text_report is not None)
-        tm.ok(stage.audit_after.text_report is not None)
-        tm.ok(stage.audit_before.lint is not None)
-        tm.ok(stage.audit_after.lint is not None)
+        tm.ok(tm.not_none(stage.source_inventory_unchanged))
+        audit_before = tm.not_none(stage.audit_before)
+        audit_after = tm.not_none(stage.audit_after)
+        tm.ok(audit_before.text_report is not None)
+        tm.ok(audit_after.text_report is not None)
+        tm.ok(audit_before.lint is not None)
+        tm.ok(audit_after.lint is not None)
         tm.fail(any((stage.introduced_lint or {}).values()))
         tm.that(stage.introduced_text, eq=())
         row = next(
             row for row in stage.rule_evaluations if row.rule_id == "sweep-growth"
         )
         tm.that(row.status, eq="observed")
-        tm.that(row.delta, none=False)
-        tm.that(row.delta.persisted, eq=1)
-        tm.that(row.delta.resolved, eq=0)
-        tm.that(row.delta.introduced, eq=0)
+        delta = tm.not_none(row.delta)
+        tm.that(delta.persisted, eq=1)
+        tm.that(delta.resolved, eq=0)
+        tm.that(delta.introduced, eq=0)
 
     def test_existing_ast_cli_applies_only_the_exact_selected_rule(
         self,
@@ -576,10 +581,10 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         tm.fail((root / "ran.txt").exists())
         tm.that(self._sweep(root, "--audit-rules"), ne=0)
         report = self._receipt(root)
-        tm.that(report.before_plan, none=False)
+        before_plan = tm.not_none(report.before_plan)
         tm.that(
             {row.rule_id for row in report.stages[0].rule_evaluations},
-            eq={rule.id for rule in report.before_plan.rules},
+            eq={rule.id for rule in before_plan.rules},
         )
         tm.that(report.stages[0].inspection_error, empty=False)
         row = next(
@@ -587,9 +592,9 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             for row in report.stages[0].rule_evaluations
             if row.rule_id == "sweep-growth"
         )
-        tm.that(row.delta, none=False)
-        tm.that(row.delta.before, eq=0)
-        tm.that(row.delta.after, eq=0)
+        delta = tm.not_none(row.delta)
+        tm.that(delta.before, eq=0)
+        tm.that(delta.after, eq=0)
 
     def test_public_sequence_records_each_canonical_operation(
         self,
@@ -611,15 +616,15 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         for stage in report.stages:
             tm.that(stage.cwd, eq=root.resolve())
             tm.ok(stage.invoked)
-            tm.that(stage.outcome, none=False)
-            tm.ok(u.Cli.process_succeeded(stage.outcome))
-            tm.fail(stage.outcome.timed_out)
+            outcome = tm.not_none(stage.outcome)
+            tm.ok(u.Cli.process_succeeded(outcome))
+            tm.fail(outcome.timed_out)
             tm.ok(stage.duration >= 0)
         audit = report.stages[-1]
-        tm.ok(audit.source_inventory_unchanged)
-        tm.that(audit.audit_before, none=False)
-        tm.that(audit.audit_after, none=False)
-        tm.that(audit.audit_before.sha256, eq=audit.audit_after.sha256)
+        tm.ok(tm.not_none(audit.source_inventory_unchanged))
+        audit_before = tm.not_none(audit.audit_before)
+        audit_after = tm.not_none(audit.audit_after)
+        tm.that(audit_before.sha256, eq=audit_after.sha256)
 
     @pytest.mark.parametrize(
         ("option", "value"),
@@ -647,6 +652,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
     def test_audit_focus_keeps_cross_rule_and_mutation_failures(
         self,
         mod_workspace: Path,
+        *,
         fail: bool,
         mutation: str,
     ) -> None:
@@ -681,7 +687,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         report = self._receipt(root)
         tm.that(list(report.focused_rule_ids), eq=[focus])
         stage = report.stages[0]
-        tm.fail(stage.source_inventory_unchanged)
+        tm.fail(tm.not_none(stage.source_inventory_unchanged))
         tm.ok(bool(stage.inspection_error))
         tm.that(stage.audit_after, none=False)
         tm.that(report.after_evidence, none=False)
@@ -709,10 +715,9 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
                 catalog, LOCAL_RULE_CATALOG + "utilDirs:\n  - utils\n"
             )
         )
-        rule_path = catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                rule_path,
+                catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml",
                 LOCAL_GROWTH_RULE.replace(
                     "  pattern: marker = dict()", "  matches: sweep-match"
                 ),
@@ -748,12 +753,14 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             has="audit changed",
         )
         stage = self._receipt(root).stages[0]
-        tm.fail(stage.source_inventory_unchanged)
-        tm.that(stage.audit_before, none=False)
-        tm.that(stage.audit_after, none=False)
-        before = stage.audit_before.sha256
-        after = stage.audit_after.sha256
-        for unchanged in (catalog, rule_path, root / "sample.py"):
+        tm.fail(tm.not_none(stage.source_inventory_unchanged))
+        before = tm.not_none(stage.audit_before).sha256
+        after = tm.not_none(stage.audit_after).sha256
+        for unchanged in (
+            catalog,
+            catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml",
+            root / "sample.py",
+        ):
             tm.that(
                 before[str(unchanged.resolve())], eq=after[str(unchanged.resolve())]
             )
@@ -766,10 +773,8 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             row = next(
                 row for row in stage.rule_evaluations if row.rule_id == "sweep-growth"
             )
-            tm.that(row.delta, none=False)
-            tm.that(
-                (row.delta.before, row.delta.after, row.delta.introduced), eq=(0, 1, 1)
-            )
+            delta = tm.not_none(row.delta)
+            tm.that((delta.before, delta.after, delta.introduced), eq=(0, 1, 1))
         else:
             tm.that(changed_key in before, eq=mutation == "remove")
             tm.that(changed_key in after, eq=mutation == "add")
@@ -784,8 +789,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             root, makefile=".PHONY: audit\naudit:\n\t@true\n", local_rule=True
         )
         members = (root / "member-fails", root / "member-passes")
-        layout = u.Infra.layout(root)
-        tm.that(layout, none=False)
+        layout = tm.not_none(u.Infra.layout(root))
         declarations: list[str] = []
         for member in members:
             tm.ok(u.Cli.ensure_dir(member / c.Infra.DEFAULT_SRC_DIR))
@@ -840,10 +844,10 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         tm.that([stage.repository_root for stage in audits], eq=list(discovered))
         for stage in audits:
             tm.ok(stage.invoked)
-            tm.ok(stage.source_inventory_unchanged)
-            tm.that(stage.outcome, none=False)
+            tm.ok(tm.not_none(stage.source_inventory_unchanged))
+            outcome = tm.not_none(stage.outcome)
             tm.that(
-                stage.outcome.raw_return_code == 0,
+                outcome.raw_return_code == 0,
                 eq=stage.repository_root != members[0],
             )
         tm.fail(report.stages[-1].invoked)

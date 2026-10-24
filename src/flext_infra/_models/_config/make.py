@@ -1240,9 +1240,7 @@ class FlextInfraConfigModelsMake(
                 tuple(sorted(overrides.items())),
             )
 
-    class CustomHandlerPolicy(
-        FlextInfraConfigModelsContract.ConfigContract, frozen=True
-    ):
+    class CustomHandlerPolicy(FlextInfraConfigModelsContract.ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
         filename: Annotated[

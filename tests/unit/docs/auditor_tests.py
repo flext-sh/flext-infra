@@ -180,12 +180,12 @@ class TestsFlextInfraAuditor:
     @staticmethod
     def test_report_frozen() -> None:
         """Test report frozen."""
-        tm.ok(m.Infra.DocsPhaseReport.model_config.get("frozen"))
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     @staticmethod
     def test_issue_frozen() -> None:
         """Test issue frozen."""
-        tm.ok(m.Infra.AuditIssue.model_config.get("frozen"))
+        tm.that(m.Infra.AuditIssue.model_config.get("frozen"), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize(

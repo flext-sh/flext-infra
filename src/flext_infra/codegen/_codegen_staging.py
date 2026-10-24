@@ -71,7 +71,8 @@ class FlextInfraCodegenStaging:
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Prepare one independent component per declared owning project.
 
-        Components share no state, so they prepare across the fleet workers.
+        Immutable receipts and producer callbacks stay in their owning process;
+        independent project components share them by reference across threads.
 
         Args:
             workspace: Shared read-only workspace root of every plan.
@@ -83,21 +84,29 @@ class FlextInfraCodegenStaging:
             Prepared plans joined back into their original order.
 
         """
-        prepared_by_path = {
-            plan.path: plan
-            for component in u.Infra.fleet_map(
-                cls.prepare_project_plans,
-                tuple(
-                    (
-                        workspace,
-                        tuple(plan for plan in plans if plan.project == project),
-                        prepare,
-                    )
-                    for project in projects
+        with ThreadPoolExecutor(
+            max_workers=min(
+                len(projects),
+                u.Infra.machine_worker_capacity(
+                    config.Infra.codegen.fleet_worker_memory_gb
                 ),
             )
-            for plan in component
-        }
+        ) as executor:
+            prepared_by_path = {
+                plan.path: plan
+                for component in executor.map(
+                    cls.prepare_project_plans,
+                    (
+                        (
+                            workspace,
+                            tuple(plan for plan in plans if plan.project == project),
+                            prepare,
+                        )
+                        for project in projects
+                    ),
+                )
+                for plan in component
+            }
         return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(
             tuple(prepared_by_path[plan.path] for plan in plans)
         )
@@ -166,6 +175,14 @@ class FlextInfraCodegenStaging:
             None,
         )
         if existing is None:
+            controlplanes = (
+                codegen.FlextInfraCodegenFileLeases.prepare_source_controlplanes((
+                    workspace,
+                    project,
+                ))
+            )
+            if controlplanes.failure:
+                return result_type.from_failure(controlplanes)
             prepared = FlextInfraStagedPackage.plan_sources(
                 workspace,
                 {
@@ -266,7 +283,13 @@ class FlextInfraCodegenStaging:
         """
         try:
             queried = u.Cli.atomic_verify_directory_queries(
-                receipt.source_directories, receipt.source_query_topology
+                receipt.source_directories,
+                receipt.source_query_topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
             )
         except OSError as exc:
             return r[bool].fail(str(exc), exception=exc)
@@ -323,8 +346,7 @@ class FlextInfraCodegenStaging:
         staged_files: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        workspace: Path,
-        runtime_root: Path | None = None,
+        runtime: m.Infra.CodegenSourceRuntime,
         validator: Callable[
             [Path, m.Infra.StageSourcePlan, Path, m.Infra.ValidationReport],
             p.Result[bool],
@@ -346,7 +368,7 @@ class FlextInfraCodegenStaging:
         if not plans:
             return result_type.ok(session)
         planned = FlextInfraCodegenStaging._planned_candidate_sources(
-            workspace,
+            runtime.workspace,
             staged_files,
             plans,
             session,
@@ -363,8 +385,8 @@ class FlextInfraCodegenStaging:
                 planned.value,
                 root,
                 u.Infra.runtime_environment_dir(project).parent
-                if runtime_root is None
-                else runtime_root,
+                if runtime.runtime_root is None
+                else runtime.runtime_root,
                 project_root=project,
             )
             if consumed.failure:

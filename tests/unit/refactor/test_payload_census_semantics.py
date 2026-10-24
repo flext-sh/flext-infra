@@ -20,6 +20,34 @@ class TestsFlextInfraPayloadCensusSemantics:
     """Exercise the existing inventory and duplicate grouping public boundaries."""
 
     @staticmethod
+    def test_duplicate_definitions_retain_mutation_and_json_round_trip(
+        tmp_path: Path,
+    ) -> None:
+        """Definition elements remain validated models in a mutable JSON array."""
+        records = [
+            m.Infra.Object(
+                name="Published",
+                kind="class",
+                file_path=str(tmp_path / f"{module}.py"),
+                line=1,
+                project="demo",
+            )
+            for module in ("left", "right")
+        ]
+        group = m.Infra.DuplicateGroup(
+            name=records[0].name,
+            kind=records[0].kind,
+            definitions=records,
+        )
+        tm.ok(group.definitions[0] is records[0])
+        last = group.definitions.pop()
+        group.definitions.insert(0, last)
+        tm.ok(group.definitions[0] is records[-1])
+        restored = m.Infra.DuplicateGroup.model_validate_json(group.model_dump_json())
+        tm.that(restored, eq=group)
+        tm.that(restored.definitions[0].file_path, eq=last.file_path)
+
+    @staticmethod
     @pytest.mark.parametrize(
         ("change", "expected_candidate"),
         [

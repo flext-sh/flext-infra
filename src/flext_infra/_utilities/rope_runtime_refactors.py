@@ -400,14 +400,14 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             Native per-project changes, including module resource moves.
 
         Raises:
-            TypeError: If the native multiproject result violates its contract.
-            ValueError: If no producer project was elected.
+            ValueError: If no producer is elected or native module ownership changes.
 
         """
         if not projects:
             msg = "native rename requires a producer project"
             raise ValueError(msg)
-        module_name = projects[0].get_pymodule(resource).get_name()
+        producer: p.Infra.RopeSemanticModule = projects[0].get_pymodule(resource)
+        module_name = producer.get_name()
         changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
         for project in projects:
             # Foreign declarations must use the same authenticated resource owner

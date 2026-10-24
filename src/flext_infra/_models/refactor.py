@@ -132,7 +132,9 @@ class FlextInfraModelsRefactor(
         destination_file: Annotated[
             Path | None,
             m.Field(
-                description="Exact Python file destination for joint semantic publication"
+                description=(
+                    "Exact Python file destination for joint semantic publication"
+                )
             ),
         ] = None
 
@@ -417,9 +419,9 @@ class FlextInfraModelsRefactor(
             m.Field(description="Observed governed project topology"),
         ]
         ast_report: Annotated[
-            FlextInfraModelsScan.ModScanReport | None,
+            FlextInfraModelsScan.ModScanEvidence | None,
             m.Field(
-                description="Actual complete elected rule scan, None if unobserved"
+                description="Complete normalized scan evidence, None if unobserved"
             ),
         ] = None
         text_report: Annotated[

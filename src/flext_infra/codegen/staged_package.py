@@ -323,8 +323,7 @@ class FlextInfraStagedPackage:
         try:
             with u.Infra.facade_source_project(
                 workspace,
-                declared_files=options.declared_files,
-                source_states=options.inputs,
+                source_options=options,
                 planned_sources=updates,
                 project_roots=tuple(
                     dict.fromkeys(
@@ -337,9 +336,7 @@ class FlextInfraStagedPackage:
                 return cls._source_plan_project(
                     workspace, updates, options, source_project, root.value
                 )
-        except OSError as exc:
-            return result_type.fail(str(exc), exception=exc)
-        except c.EXC_BROAD_RUNTIME as exc:
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
             return result_type.fail(str(exc), exception=exc)
 
     @classmethod
@@ -392,7 +389,15 @@ class FlextInfraStagedPackage:
                     ),
                 ),
             )
-            queried = u.Cli.atomic_verify_directory_queries(directories, topology)
+            queried = u.Cli.atomic_verify_directory_queries(
+                directories,
+                topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
+            )
             if queried.failure:
                 return result_type.from_failure(queried)
         except OSError as exc:
@@ -432,11 +437,14 @@ class FlextInfraStagedPackage:
         """
         if options.modes is None:
             return r[m.Infra.StageSourcePlan].fail("source plan has no validated modes")
-        discovered = cls._normalized_updates(workspace, updates).flat_map(
-            lambda normalized: cls.workspace_layouts(
-                workspace, source_project=source_project
-            ).map(lambda layouts: (normalized, layouts))
-        )
+        # The provider catalog elects namespaces, not every manifest's payload.
+        # Its semantic result is sealed by workspace_packages and selected layouts.
+        with source_project.source_capture():
+            discovered = cls._normalized_updates(workspace, updates).flat_map(
+                lambda normalized: cls.workspace_layouts(
+                    workspace, source_project=source_project
+                ).map(lambda layouts: (normalized, layouts))
+            )
         if discovered.failure:
             return r[m.Infra.StageSourcePlan].from_failure(discovered)
         normalized, layouts = discovered.value
@@ -700,6 +708,9 @@ class FlextInfraStagedPackage:
             if pinned.failure:
                 return result_type.from_failure(pinned)
             selected.extend(pinned.value)
+        family = cls._pin_family_surfaces(layouts, selected, source_project)
+        if family.failure:
+            return result_type.from_failure(family)
         metadata = cls._pin_workspace_metadata(
             workspace, states, source_project=source_project
         )
@@ -880,12 +891,45 @@ class FlextInfraStagedPackage:
             return u.Cli.atomic_verify_directory_queries(
                 plan.source_directories,
                 plan.source_query_topology,
+                publications=m.Cli.AtomicDirectoryQueryEffects(
+                    membership_policy=tuple(
+                        sorted(config.Infra.codegen.source_scan_ignored)
+                    )
+                ),
                 directory_publications=plan.directory_publications,
-            )
+            ).flat_map(lambda _: cls._provider_elections_current(plan))
         except OSError as exc:
             return r[bool].fail(str(exc), exception=exc)
         except c.EXC_BROAD_RUNTIME as exc:
             return r[bool].fail(str(exc), exception=exc)
+
+    @staticmethod
+    def _provider_elections_current(plan: m.Infra.StageSourcePlan) -> p.Result[bool]:
+        """Reprove the native namespace query without freezing unused metadata.
+
+        Returns:
+            Acceptance only while membership and selected physical owners agree.
+
+        """
+        providers: t.MutableMappingKV[str, Path] = {}
+        for workspace in plan.workspaces or (plan.workspace,):
+            current = FlextInfraStagedPackage.workspace_layouts(workspace)
+            if current.failure:
+                return r[bool].from_failure(current)
+            for name, layout in current.value.items():
+                if (
+                    providers.setdefault(name, layout.project_root)
+                    != layout.project_root
+                ):
+                    return r[bool].fail(f"ambiguous elected candidate package: {name}")
+        if tuple(sorted(providers)) != plan.workspace_packages:
+            return r[bool].fail("candidate provider namespace election changed")
+        for layout in plan.layouts:
+            if providers.get(layout.package_name) != layout.project_root:
+                return r[bool].fail(
+                    f"candidate provider origin changed: {layout.package_name}"
+                )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _declared_ancestry_current(
@@ -910,6 +954,11 @@ class FlextInfraStagedPackage:
                 verified = u.Cli.atomic_verify_directory_queries(
                     (),
                     (effect.before,),
+                    publications=m.Cli.AtomicDirectoryQueryEffects(
+                        membership_policy=tuple(
+                            sorted(config.Infra.codegen.source_scan_ignored)
+                        )
+                    ),
                     directory_publications=directory_publications,
                 )
             except OSError as exc:
@@ -1034,7 +1083,7 @@ class FlextInfraStagedPackage:
             The collected physical paths, or the first symlink failure.
 
         """
-        paths = [layout.project_root / c.PYPROJECT_FILENAME]
+        paths = [layout.project_root / c.PYPROJECT_FILENAME] if governed else []
         if governed:
             paths.extend(
                 path
@@ -1145,13 +1194,29 @@ class FlextInfraStagedPackage:
                 paths.append(directory)
         return r[list[Path]].ok(paths)
 
-    @staticmethod
+    @classmethod
     def _runtime_imports(
+        cls,
         path: Path,
         content: bytes,
         *,
         runtime_only: bool = True,
     ) -> tuple[str, ...]:
+        modules: list[str] = []
+        for node in cls._runtime_import_nodes(path, content, runtime_only=runtime_only):
+            if isinstance(node, ast.ImportFrom) and not node.level and node.module:
+                modules.append(node.module)
+            elif isinstance(node, ast.Import):
+                modules.extend(alias.name for alias in node.names)
+        return tuple(modules)
+
+    @staticmethod
+    def _runtime_import_nodes(
+        path: Path,
+        content: bytes,
+        *,
+        runtime_only: bool = True,
+    ) -> tuple[ast.Import | ast.ImportFrom, ...]:
         tree = ast.parse(content.decode(c.DEFAULT_ENCODING), filename=str(path))
         excluded = {
             id(child)
@@ -1167,15 +1232,79 @@ class FlextInfraStagedPackage:
             for statement in guard.body
             for child in ast.walk(statement)
         }
-        modules: list[str] = []
-        for node in ast.walk(tree):
-            if runtime_only and id(node) in excluded:
+        return tuple(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+            and (not runtime_only or id(node) not in excluded)
+        )
+
+    @classmethod
+    def _pin_family_surfaces(
+        cls,
+        layouts: t.MappingKV[str, m.Infra.RopeProjectLayout],
+        selected: list[m.Infra.RopeProjectLayout],
+        source_project: p.Infra.RopeProject,
+    ) -> p.Result[bool]:
+        """Seal the root contracts imported by the canonical family census.
+
+        Returns:
+            Acceptance after native bindings retain the discovered family roots.
+
+        """
+        for _, name in u.family_discovery_candidates():
+            if name not in layouts or any(
+                item.package_name == name for item in selected
+            ):
                 continue
-            if isinstance(node, ast.ImportFrom) and not node.level and node.module:
-                modules.append(node.module)
-            elif isinstance(node, ast.Import):
-                modules.extend(alias.name for alias in node.names)
-        return tuple(modules)
+            layout = layouts[name]
+            resource = source_project.find_module(name)
+            if resource is None or Path(resource.real_path) not in {
+                layout.package_dir,
+                layout.init_path,
+            }:
+                return r[bool].fail(
+                    f"family surface has no elected native origin: {name}"
+                )
+            initializer = source_project.get_file(
+                layout.init_path.relative_to(source_project.root.real_path).as_posix()
+            )
+            source = source_project.source_text(layout.init_path)
+            parsed = u.Infra.build_string_module(
+                source_project,
+                source,
+                resource=initializer,
+            )
+            imports = tuple(
+                node
+                for node in cls._runtime_import_nodes(
+                    layout.init_path, source.encode(c.DEFAULT_ENCODING)
+                )
+                if not (
+                    isinstance(node, ast.ImportFrom) and node.module == "__future__"
+                )
+            )
+            scope = parsed.get_scope()
+            bindings = (
+                scope.get_names().values()
+                if any(alias.name == "*" for node in imports for alias in node.names)
+                else tuple(
+                    scope.get_inner_scope_for_line(node.lineno).get_names()[
+                        alias.asname
+                        or (
+                            alias.name.partition(".")[0]
+                            if isinstance(node, ast.Import)
+                            else alias.name
+                        )
+                    ]
+                    for node in imports
+                    for alias in node.names
+                )
+            )
+            for binding in bindings:
+                binding.get_object()
+            selected.append(layout)
+        return r[bool].ok(value=True)
 
     @classmethod
     def _pin_layout(

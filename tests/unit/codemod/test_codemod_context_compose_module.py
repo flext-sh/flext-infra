@@ -6,16 +6,232 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
 
 from flext_infra import c, m
-from tests import tm, u
+from tests import p, tm, u
 
 
 class TestsFlextInfraCodemodContextComposeModule:
     """Only ``<package>.<leaf>`` canonical compose modules are sanctioned."""
+
+    @staticmethod
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize(
+        "case",
+        [
+            "complete",
+            "complete-aliased",
+            "missing",
+            "missing-deep",
+            "false-alias",
+            "wrong-import",
+            "unresolved",
+            "unresolved-import",
+            "scalar",
+            "instance",
+            "duplicate",
+            "wrong-annotation",
+            "wrapper",
+            "mixin",
+            "explicit-with-mixin",
+            "nested-member",
+        ],
+    )
+    def test_family_coverage_requires_original_explicit_class_identities(
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+        case: str,
+        *,
+        nested: bool,
+    ) -> None:
+        """The actual rule admits missing/false exports, never complete identities."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_families()["m"]
+        facade = package / f"{family.module}.py"
+        files = {
+            package / "__init__.py": "",
+            package / family.directory / "__init__.py": "",
+            package / family.directory / "first.py": (
+                "class Owner:\n    marker = 'first'\n__all__ = ['Owner']\n"
+            ),
+            package / family.directory / "second.py": (
+                "class Another:\n    class Entity: pass\n__all__ = ['Another']\n"
+            ),
+            package / family.directory / "nested" / "__init__.py": "",
+            package / family.directory / "nested" / "deep.py": (
+                "class DeepOwner: pass\n__all__ = ['DeepOwner']\n"
+            ),
+            package / "other.py": "class Another: pass\n__all__ = ['Another']\n",
+            package / "sdk.py": (
+                "class Sdk:\n    class Sample:\n        sdk_value = 17\n"
+                "    sdk_value = 17\n"
+            ),
+        }
+        second = {
+            "missing": "",
+            "false-alias": "Second = Owner\n",
+            "unresolved": "Second = MissingName\n",
+            "scalar": "Second = 7\n",
+            "instance": "Second = Another()\n",
+            "wrong-annotation": "Second: type[Owner] = Another\n",
+            "wrapper": "class Second(Another): pass\n",
+            "nested-member": "Second = Another.Entity\n",
+        }.get(case, "Second = Another\n")
+        body = (
+            "Filesystem: ClassVar[type[Owner]] = Owner\n"
+            + second
+            + ("" if case == "missing-deep" else "Deep = DeepOwner\n")
+            + ("Filesystem = Owner\n" if case == "duplicate" else "")
+        )
+        bases = "Sdk.Sample" if nested else "Sdk"
+        if case in {"mixin", "explicit-with-mixin"}:
+            bases = f"Owner, Another, DeepOwner, {bases}"
+        if case == "mixin":
+            body = "pass\n"
+        imports = (
+            "from typing import ClassVar\n"
+            f"from {package.name}.sdk import Sdk\n"
+            f"from {package.name}.{family.directory}.first import Owner\n"
+            + (
+                ""
+                if case == "missing"
+                else f"from {package.name}."
+                + {
+                    "wrong-import": "other",
+                    "unresolved-import": "absent",
+                }.get(case, f"{family.directory}.second")
+                + " import Another\n"
+            )
+            + (
+                ""
+                if case == "missing-deep"
+                else f"from {package.name}.{family.directory}.nested.deep "
+                "import DeepOwner\n"
+            )
+        )
+        indent = "        " if nested else "    "
+        files[facade] = (
+            imports
+            + (
+                f"class Facade(Sdk):\n    class Sample({bases}):\n"
+                if nested
+                else f"class Facade({bases}):\n"
+            )
+            + "".join(indent + line + "\n" for line in body.splitlines())
+            + "m = Facade\n__all__ = ['Facade', 'm']\n"
+        )
+        if case == "complete-aliased":
+            files[facade] = (
+                files[facade]
+                .replace("import Owner\n", "import Owner as ImportedOwner\n")
+                .replace("type[Owner]", "type[ImportedOwner]")
+                .replace(" = Owner\n", " = ImportedOwner\n")
+            )
+        for path, text in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, text))
+        rule = next(
+            rule
+            for rule in tm.ok(u.Infra.codemod_rule_plan(root)).rules
+            if rule.id == "require-facade-class-export-completeness"
+        )
+        facts = u.Infra.codemod_project_facts(root, (rule,))
+        tm.that(facts.binding_rule_ids, has=rule.id)
+        # Only the finding is supplied. An unimported second/deep owner must
+        # still enter the canonical capture and prevent vacuous coverage.
+        snapshot = u.Infra.codemod_binding_snapshot(
+            root, (tm.ok(u.Cli.atomic_read_binary_file_state(facade)),)
+        )
+        tm.that(
+            {state.path for state in snapshot.states},
+            has=package / family.directory / "second.py",
+        )
+        tm.that(
+            {state.path for state in snapshot.states},
+            has=package / family.directory / "nested" / "deep.py",
+        )
+        epoch = u.Infra.codemod_source_epoch(snapshot)
+        with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
+            for _repeat in range(2):
+                tm.that(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=root,
+                            rule=rule,
+                            file_path=facade,
+                            captures={
+                                "NAME": {"text": "Sample" if nested else "Facade"}
+                            },
+                            facts=facts,
+                            snapshot=snapshot,
+                        ),
+                        project=project,
+                        sources=sources,
+                    ),
+                    eq=case not in {"complete", "complete-aliased"},
+                )
+        if case in {"complete", "complete-aliased"}:
+            native_consumer(
+                f"sys.path.insert(0, {str(package.parent)!r})\n"
+                f"from {package.name}.{family.module} import m\n"
+                f"from {package.name}.{family.directory}.first import Owner\n"
+                f"from {package.name}.{family.directory}.second import Another\n"
+                f"from {package.name}.{family.directory}.nested.deep import DeepOwner\n"
+                + ("namespace = m.Sample\n" if nested else "namespace = m\n")
+                + "assert namespace.Filesystem is Owner\n"
+                "assert namespace.Second is Another\n"
+                "assert namespace.Deep is DeepOwner\n"
+                "assert namespace.sdk_value == 17\n"
+                "assert Owner not in namespace.__mro__\n",
+                cwd=root,
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("empty_directory", [False, True])
+    def test_family_without_owners_has_no_class_export_obligation(
+        tmp_path: Path, *, empty_directory: bool
+    ) -> None:
+        """A pure upstream facade is valid with no local published components."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        facade = package / "models.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                facade,
+                "class Facade:\n    class Sample: pass\n"
+                "m = Facade\n__all__ = ['Facade', 'm']\n",
+            )
+        )
+        if empty_directory:
+            (package / "_models").mkdir()
+        rule = next(
+            rule
+            for rule in tm.ok(u.Infra.codemod_rule_plan(root)).rules
+            if rule.id == "require-facade-class-export-completeness"
+        )
+        snapshot = u.Infra.codemod_binding_snapshot(
+            root, (tm.ok(u.Cli.atomic_read_binary_file_state(facade)),)
+        )
+        epoch = u.Infra.codemod_source_epoch(snapshot)
+        with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
+            tm.that(
+                u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=root,
+                        rule=rule,
+                        file_path=facade,
+                        captures={"NAME": {"text": "Sample"}},
+                        facts=u.Infra.codemod_project_facts(root, (rule,)),
+                        snapshot=snapshot,
+                    ),
+                    project=project,
+                    sources=sources,
+                ),
+                eq=False,
+            )
 
     @staticmethod
     @pytest.mark.parametrize("changed", ["export", "directory"])
@@ -44,34 +260,35 @@ class TestsFlextInfraCodemodContextComposeModule:
             path = mod_workspace / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"class {name}: pass\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="source"):
-            with u.Infra.codemod_binding_project(mod_workspace, epoch) as (
-                project,
-                sources,
-            ):
-                for _repeat in range(2):
-                    for relative, name, expected in cases:
-                        tm.that(
-                            u.Infra.codemod_context_admits(
-                                m.Infra.CodemodAdmission(
-                                    root=mod_workspace,
-                                    rule=rule,
-                                    file_path=Path(relative),
-                                    captures={"NAME": {"text": name}},
-                                    facts=facts,
-                                    snapshot=epoch.snapshot,
-                                ),
-                                project=project,
-                                sources=sources,
+        with ExitStack() as scope:
+            project, sources = scope.enter_context(
+                u.Infra.codemod_binding_project(mod_workspace, epoch)
+            )
+            for _repeat in range(2):
+                for relative, name, expected in cases:
+                    tm.that(
+                        u.Infra.codemod_context_admits(
+                            m.Infra.CodemodAdmission(
+                                root=mod_workspace,
+                                rule=rule,
+                                file_path=Path(relative),
+                                captures={"NAME": {"text": name}},
+                                facts=facts,
+                                snapshot=epoch.snapshot,
                             ),
-                            eq=expected,
-                        )
-                target = (
-                    export
-                    if changed == "export"
-                    else layout.package_dir / "new_stem_probe.py"
-                )
-                target.write_text("__all__ = [missing]\n", encoding="utf-8")
+                            project=project,
+                            sources=sources,
+                        ),
+                        eq=expected,
+                    )
+            target = (
+                export
+                if changed == "export"
+                else layout.package_dir / "new_stem_probe.py"
+            )
+            target.write_text("__all__ = [missing]\n", encoding="utf-8")
+            with pytest.raises(ValueError, match="source"):
+                scope.close()
         with (
             pytest.raises(ValueError, match="invalid __all__"),
             u.Infra.codemod_binding_project(mod_workspace, epoch) as (project, sources),
@@ -175,6 +392,7 @@ class TestsFlextInfraCodemodContextComposeModule:
             eq=False,
         )
 
+    @staticmethod
     @pytest.mark.parametrize(
         ("relative", "module", "expected"),
         [
@@ -190,7 +408,6 @@ class TestsFlextInfraCodemodContextComposeModule:
     )
     @pytest.mark.parametrize("outside_src", [False, True])
     def test_compose_import_cannot_bypass_the_declaration_layer(
-        self,
         mod_workspace: Path,
         relative: str,
         module: str,
@@ -248,6 +465,8 @@ class TestsFlextInfraCodemodContextComposeModule:
         ("relative", "service", "expected"),
         [
             ("workspace/detector.py", True, False),
+            ("workspace/cases/parts/detector.py", True, False),
+            ("workspace/cases/parts/detector.py", False, True),
             ("base.py", True, True),
             ("workspace/detector.py", False, True),
             ("_utilities/worker.py", True, True),
@@ -280,6 +499,18 @@ class TestsFlextInfraCodemodContextComposeModule:
             "    pass\nordinary = 1\nunresolved: Unavailable\n",
             encoding="utf-8",
         )
+        if "/cases/" in relative:
+            worker.with_name("__init__.py").write_text("", encoding="utf-8")
+            worker.with_name("document.py").write_text(
+                f"from {package}.base import RootService\n"
+                f"class Parent({'RootService[bool]' if service else 'object'}): pass\n",
+                encoding="utf-8",
+            )
+            worker.write_text(
+                f"from {package}.workspace.cases.parts import document as part\n"
+                "class DetectorService(part.Parent): pass\n",
+                encoding="utf-8",
+            )
         source = base if relative == "base.py" else worker
         target = f"{package}.workspace.worker" if source == base else f"{package}.base"
         if source == base:
@@ -294,7 +525,7 @@ class TestsFlextInfraCodemodContextComposeModule:
             mod_workspace,
             tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in (base, worker)
+                for path in dict.fromkeys((base, worker, *worker.parent.glob("*.py")))
             ),
         )
         with u.Infra.codemod_binding_project(

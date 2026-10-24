@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformBeadsRoutes
+from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
 
 
 class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
@@ -194,7 +195,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         """
         result_type = r[m.Infra.CodegenPhaseAnalysis]
         legacy_path = u.Infra.workspace_manifest_path(root)
-        captured = cls._captured_declaration_migration(legacy_path)
+        project = inputs.spec.repository.project
+        resource_owned = project is not None and any(
+            legacy_path.is_relative_to(root / path)
+            for path in project.packaged_data_paths
+        )
+        captured = (
+            None if resource_owned else cls._captured_declaration_migration(legacy_path)
+        )
         if captured is None:
             return result_type.ok(
                 m.Infra.CodegenPhaseAnalysis(
@@ -206,6 +214,19 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         if captured.failure:
             return result_type.from_failure(captured)
         state, delta, legacy = captured.value
+        if delta.project is not None:
+            project = delta.project
+            selected = FlextInfraEnsurePackagingPhase.resolve_data_paths(
+                root,
+                project.package_name,
+                project.packaged_data_paths,
+            )
+            FlextInfraEnsurePackagingPhase.resolve_data_excludes(
+                root,
+                selected,
+                project.packaged_data_excludes,
+            )
+            FlextInfraEnsurePackagingPhase.config_resource(root, project.package_name)
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -423,7 +444,45 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
                     exception=exception,
                 ),
             )
-        retirement = cls._absent_file_plan(root, captured.path)
+        return cls._retire_migration_input(
+            root,
+            inputs,
+            captured,
+            declaration.value,
+            preserve=delta.project is not None
+            and any(
+                captured.path.is_relative_to(root / path)
+                for path in delta.project.packaged_data_paths
+            ),
+        )
+
+    @staticmethod
+    def _retire_migration_input(
+        root: Path,
+        inputs: m.Infra.CodegenInputs,
+        captured: m.Cli.AtomicFileState,
+        declaration: m.Infra.CodegenFilePlan,
+        *,
+        preserve: bool,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Retire governance input unless its bytes are a declared resource.
+
+        Returns:
+            The captured declaration and any authenticated retirement plan.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
+        if preserve:
+            return result_type.ok(
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+                    files=(declaration,),
+                    inputs=(*inputs.sources, captured),
+                ),
+            )
+        retirement = FlextInfraCodegenConformFilePlans._absent_file_plan(
+            root, captured.path
+        )
         if retirement.failure:
             return result_type.from_failure(retirement)
         if retirement.value.before != captured:
@@ -435,9 +494,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
                 files=(
-                    declaration.value,
+                    declaration,
                     retirement.value.model_copy(
-                        update={"tracking_dependencies": (declaration.value.path,)},
+                        update={"tracking_dependencies": (declaration.path,)},
                     ),
                 ),
                 inputs=(*inputs.sources, captured),

@@ -136,7 +136,15 @@ class FlextInfraConfigModelsRefactorCampaigns:
 
         @m.model_validator(mode="after")
         def validate_semantic_decisions(self) -> Self:
-            """Require an explicit artifact destination for declared decisions."""
+            """Require an explicit artifact destination for declared decisions.
+
+            Returns:
+                The validated campaign specification, unchanged.
+
+            Raises:
+                ValueError: If semantic_decisions is set without semantic_plan.
+
+            """
             if self.semantic_decisions is not None and self.semantic_plan is None:
                 msg = "semantic_decisions requires semantic_plan"
                 raise ValueError(msg)

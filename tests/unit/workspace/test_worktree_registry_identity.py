@@ -129,9 +129,9 @@ class TestsFlextInfraWorktreeRegistryIdentity:
             eq=registry_before,
         )
 
-    @pytest.mark.parametrize("attached", [False, True])
+    @pytest.mark.parametrize("placement", ["standalone", "nested", "attached"])
     def test_member_lane_uses_its_governing_superproject_declaration(
-        self, tmp_path: Path, *, attached: bool
+        self, tmp_path: Path, *, placement: str
     ) -> None:
         """Attached lanes read their workspace; standalone lanes retain its binding."""
         primary, standalone, _ = self._attached(tmp_path)
@@ -149,7 +149,17 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         u.Tests.commit_git_changes(parent, "Declare the member integration branch")
         member = standalone
         expected = primary_branch
-        if attached:
+        if placement == "nested":
+            member = primary / "worktrees" / "member-lane"
+            u.Tests.git_run(
+                primary,
+                "worktree",
+                "add",
+                "--detach",
+                str(member),
+                c.Infra.GIT_HEAD,
+            )
+        if placement == "attached":
             workspace_lane = u.Tests.git_linked_lane(tmp_path, parent, "workspace-lane")
             member = workspace_lane / primary.name
             u.Tests.git_run(

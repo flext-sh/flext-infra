@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -28,6 +29,114 @@ if TYPE_CHECKING:
 @pytest.mark.slow
 class TestsFlextInfraReleaseProtocol:
     """Behavior contract for the release protocol."""
+
+    class TestsMaintenanceFinalization:
+        """Explicit maintenance decisions do not reinterpret historical subjects."""
+
+        @pytest.mark.parametrize(
+            ("scenario", "outcome"),
+            [
+                (("7.4.6", "v7.4.6", "feat: existing capability"), ("7.4.7", True)),
+                (("7.4.6", "v7.4.6", "perf: existing optimization"), ("7.4.7", True)),
+                (
+                    ("7.4.6", "v7.4.6", "chore: existing administration"),
+                    ("7.4.7", True),
+                ),
+                (
+                    ("7.4.6", "v7.4.6", "Merge pull request #8 from x/y"),
+                    ("7.4.7", True),
+                ),
+                (("7.4.6", "v7.4.6", "feat!: historical marker"), ("7.4.7", True)),
+                (("7.4.6", "v7.4.6", ""), ("7.4.7", True)),
+                (("7.4.6", "", "feat: before first release"), ("7.4.6", True)),
+                (("7.4.6rc2", "", "feat!: before first release"), ("7.4.6", True)),
+                (("7.4.7", "v7.4.6", "chore(release): v7.4.7"), ("7.4.7", False)),
+                (("7.4.7", "v7.4.6", "feat: declared ahead"), ("7.4.7", True)),
+                (("7.4.7rc2", "v7.4.6", "legacy merge subject"), ("7.4.7", True)),
+            ],
+        )
+        @staticmethod
+        def test_explicit_patch_finalization_preserves_opaque_history(
+            tmp_path: Path,
+            scenario: t.Triple[str, str, str],
+            outcome: t.Pair[str, bool],
+        ) -> None:
+            """A selected closure releases its line without compatibility inference."""
+            current, tag, subject = scenario
+            workspace = u.Tests.create_release_workspace(tmp_path, version=current)
+            tm.ok(
+                u.Cli.yaml_dump(
+                    workspace / "config" / "infra.yaml",
+                    {
+                        "Infra": {
+                            "release": {
+                                "maintenance_line": [7, 4],
+                                "finalize_maintenance": True,
+                            }
+                        }
+                    },
+                )
+            )
+            u.Tests.checkout_integration(workspace)
+            if tag:
+                TestsFlextInfraReleaseProtocol._tag(workspace, tag)
+            if subject:
+                u.Tests.merge_pull_request(workspace, subject)
+            before = u.Tests.git_capture(workspace, "log", "--format=%H:%s")
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            plan = TestsFlextInfraReleaseProtocol._plan(workspace)
+            tm.that(plan.next, eq=outcome[0])
+            tm.that(
+                str(plan.bump),
+                eq="patch" if tag == f"v{current}" else "none",
+            )
+            tm.that(plan.releasable, eq=outcome[1])
+            tm.that(u.Tests.git_capture(workspace, "log", "--format=%H:%s"), eq=before)
+            tm.ok(u.Infra.current_workspace_version(workspace), eq=current)
+
+        @pytest.mark.parametrize("tag", ["", "v7.4.6", "v7.4.5"])
+        @staticmethod
+        def test_finalization_without_line_is_rejected_in_every_branch(
+            tmp_path: Path,
+            capsys: pytest.CaptureFixture[str],
+            tag: str,
+        ) -> None:
+            """Require a line for first, tagged and awaiting releases."""
+            workspace = u.Tests.create_release_workspace(tmp_path, version="7.4.6")
+            tm.ok(
+                u.Cli.yaml_dump(
+                    workspace / "config" / "infra.yaml",
+                    {"Infra": {"release": {"finalize_maintenance": True}}},
+                )
+            )
+            u.Tests.checkout_integration(workspace)
+            if tag:
+                TestsFlextInfraReleaseProtocol._tag(workspace, tag)
+                u.Tests.merge_pull_request(workspace, "chore(release): v7.4.6")
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
+            output = capsys.readouterr()
+            tm.that(output.out + output.err, has="requires a declared maintenance line")
+            tm.fail(
+                (
+                    workspace / ".reports/release" / c.Infra.RELEASE_PLAN_FILENAME
+                ).exists()
+            )
+
+        @staticmethod
+        def test_generic_mode_uses_selected_consumer_bump_map(tmp_path: Path) -> None:
+            """The generic planner uses its selected consumer's map."""
+            workspace = u.Tests.create_release_workspace(tmp_path, version="7.4.6")
+            tm.ok(
+                u.Cli.yaml_dump(
+                    workspace / "config" / "infra.yaml",
+                    {"Infra": {"release": {"bump_types": {"feat": "patch"}}}},
+                )
+            )
+            u.Tests.checkout_integration(workspace)
+            TestsFlextInfraReleaseProtocol._tag(workspace, "v7.4.6")
+            u.Tests.merge_pull_request(workspace, "feat: selected map scenario")
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            tm.that(TestsFlextInfraReleaseProtocol._plan(workspace).next, eq="7.4.7")
 
     @staticmethod
     def _plan(workspace: Path) -> m.Infra.ReleasePlan:
@@ -61,17 +170,57 @@ class TestsFlextInfraReleaseProtocol:
         return workspace
 
     @staticmethod
-    def _release_lane_workspace(tmp_path: Path) -> Path:
+    def _release_lane_workspace(
+        tmp_path: Path,
+        runtime_environment: t.StrMapping | None = None,
+    ) -> Path:
         """Return a pre-release workspace that can push to a local bare origin.
 
         Returns:
             A pre-release workspace that can push to a local bare origin.
 
         """
-        workspace = u.Tests.create_release_workspace(
-            tmp_path,
-            version=c.Tests.RELEASE_VERSION_PRERELEASE,
-        )
+        if runtime_environment is None:
+            workspace = u.Tests.create_release_workspace(
+                tmp_path,
+                version=c.Tests.RELEASE_VERSION_PRERELEASE,
+            )
+        else:
+            workspace, _ = u.Tests.render_make_environment(
+                tmp_path,
+                c.Infra.MakeProfile.STANDALONE,
+                bootstrap=True,
+                shape=u.Tests.MakeEnvironmentShape(
+                    project_name="workspace",
+                    version=c.Tests.RELEASE_VERSION_PRERELEASE,
+                ),
+            )
+            (workspace / ".gitignore").write_text(
+                tm.ok(
+                    u.Infra.render_project_gitignore(
+                        config.Infra.codegen,
+                        profile=c.Infra.MakeProfile.STANDALONE,
+                        project_name=workspace.name,
+                    )
+                ),
+                encoding="utf-8",
+            )
+            for verb in ("upg", "setup"):
+                outcome = tm.ok(
+                    u.Tests.run_isolated_make(
+                        [verb],
+                        cwd=workspace,
+                        env={**runtime_environment, "UV_OFFLINE": "0"},
+                        private_env={
+                            "GITHUB_TOKEN": t.SecretStr(os.environ["GITHUB_TOKEN"]),
+                        },
+                    )
+                )
+                tm.that(
+                    u.Cli.process_succeeded(outcome.outcome),
+                    truth=True,
+                    msg=outcome.stderr + outcome.stdout,
+                )
         u.Tests.commit_git_changes(workspace, "chore: seed release resolution inputs")
         local_origin = tmp_path / "remote"
         bare_origin = u.Tests.configure_local_origin(workspace, local_origin)
@@ -142,6 +291,7 @@ class TestsFlextInfraReleaseProtocol:
     def _lane_with_shim(
         cls,
         tmp_path: Path,
+        runtime_environment: t.StrMapping | None = None,
     ) -> Generator[t.Triple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
@@ -153,7 +303,7 @@ class TestsFlextInfraReleaseProtocol:
             The checkout, GitHub command log, and authenticated ownership receipt.
 
         """
-        workspace = cls._release_lane_workspace(tmp_path)
+        workspace = cls._release_lane_workspace(tmp_path, runtime_environment)
         snapshot = tm.ok(
             u.Infra.git_snapshot_worktree_state(
                 m.Infra.GitWorktreeStateRequest(repo_root=workspace, paths=(Path(),)),
@@ -188,7 +338,12 @@ class TestsFlextInfraReleaseProtocol:
         )
         gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
         shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-        with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+        with u.Tests.env_vars_context(
+            env_vars={
+                **(runtime_environment or {}),
+                "PATH": shim_path,
+            }
+        ):
             yield workspace, gh_log, ownership
 
     @staticmethod
@@ -344,9 +499,14 @@ class TestsFlextInfraReleaseProtocol:
                 },
             ),
         )
-        member_seed = u.Tests.create_release_workspace(
-            tmp_path / "member-seed",
-            version="3.7.8",
+        member_seed = u.Tests.WorktreeFixture.self_named_project(
+            tmp_path / "member-seed" / "member-project",
+            "member-project",
+        )
+        tm.ok(u.Infra.replace_project_version(member_seed, "3.7.8"))
+        u.Tests.commit_git_changes(
+            member_seed,
+            c.Infra.RELEASE_COMMIT_SUBJECT.format(version="3.7.8"),
         )
         (workspace / "member").mkdir()
         member = member_seed.rename(workspace / "member" / member_seed.name)
@@ -645,13 +805,31 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
         tm.fail(plan.releasable)
 
-    def test_apply_opens_the_release_pull_request(self, tmp_path: Path) -> None:
+    def test_apply_opens_the_release_pull_request(
+        self,
+        tmp_path: Path,
+        hermetic_git_environment: t.StrMapping,
+    ) -> None:
         """Stamp, commit on the release lane, push it, and open the pull request."""
-        with self._lane_with_shim(tmp_path) as (workspace, gh_log, ownership):
+        with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
+            workspace,
+            gh_log,
+            ownership,
+        ):
             integration = u.Tests.integration_branch(workspace)
             # flext-core caches the parsed pyproject per process; a warm cache
             # holding the pre-stamp document must not leak into the projections.
             tm.ok(u.Infra.read_project_metadata_result(workspace))
+            locks = tuple(
+                (workspace / name, (workspace / name).read_text(encoding="utf-8"))
+                for name in u.Tests.git_capture(
+                    workspace,
+                    "ls-files",
+                    "--",
+                    f"*{c.Infra.UV_LOCK_FILENAME}",
+                ).splitlines()
+            )
+            tm.that(locks, truth=True)
 
             result = u.Tests.run_release_main(
                 workspace,
@@ -673,19 +851,17 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
             # The docs projections render the version; the release commit
             # carries them regenerated, so the lane is a `gen check` fixed point.
-            # The committed uv.lock records the stamped version, so it rides
-            # in the same commit (operator 2026-09-24: locks are committed).
+            # Resolution stays owned by make upg, not the version operation.
             committed = tm.ok(
                 u.Cli.capture(
                     [c.Infra.GIT, "show", "--name-only", "--format=", c.Infra.GIT_HEAD],
                     cwd=workspace,
                 ),
             )
-            tm.that(committed, has=["pyproject.toml", "docs/index.md", "uv.lock"])
-            tm.that(
-                (workspace / "uv.lock").read_text(encoding="utf-8"),
-                has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
-            )
+            tm.that(committed, has=["pyproject.toml", "docs/index.md"])
+            for lock, before in locks:
+                tm.that(lock.read_text(encoding="utf-8"), eq=before)
+                tm.that(committed, lacks=lock.relative_to(workspace).as_posix())
             tm.that(
                 (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
                 has=f"- Version: `{c.Tests.RELEASE_VERSION_BASE}`",
@@ -723,9 +899,14 @@ class TestsFlextInfraReleaseProtocol:
     def test_rerun_continues_the_lane_without_a_second_commit(
         self,
         tmp_path: Path,
+        hermetic_git_environment: t.StrMapping,
     ) -> None:
         """A retry from the integration branch is idempotent on the open lane."""
-        with self._lane_with_shim(tmp_path) as (workspace, _, ownership):
+        with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
+            workspace,
+            _,
+            ownership,
+        ):
             integration = u.Tests.integration_branch(workspace)
             self._apply_release_version(workspace, integration, ownership)
 
@@ -754,108 +935,6 @@ class TestsFlextInfraReleaseProtocol:
                 u.Cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace),
             ).strip()
             tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
-
-    class TestsMaintenanceFinalization:
-        """Explicit maintenance decisions do not reinterpret historical subjects."""
-
-        @pytest.mark.parametrize(
-            ("scenario", "expected"),
-            [
-                (("7.4.6", "v7.4.6", "feat: existing capability"), "7.4.7"),
-                (("7.4.6", "v7.4.6", "perf: existing optimization"), "7.4.7"),
-                (("7.4.6", "v7.4.6", "chore: existing administration"), "7.4.7"),
-                (("7.4.6", "v7.4.6", "Merge pull request #8 from x/y"), "7.4.7"),
-                (("7.4.6", "v7.4.6", "feat!: historical marker"), "7.4.7"),
-                (("7.4.6", "v7.4.6", ""), "7.4.7"),
-                (("7.4.6", "", "feat: before first release"), "7.4.6"),
-                (("7.4.6rc2", "", "feat!: before first release"), "7.4.6"),
-                (("7.4.7", "v7.4.6", "chore(release): v7.4.7"), "7.4.7"),
-                (("7.4.7", "v7.4.6", "feat: declared ahead"), "7.4.7"),
-                (("7.4.7rc2", "v7.4.6", "legacy merge subject"), "7.4.7"),
-            ],
-        )
-        @staticmethod
-        def test_explicit_patch_finalization_preserves_opaque_history(
-            tmp_path: Path,
-            scenario: t.Triple[str, str, str],
-            expected: str,
-        ) -> None:
-            """A selected closure releases its line without compatibility inference."""
-            current, tag, subject = scenario
-            workspace = u.Tests.create_release_workspace(tmp_path, version=current)
-            tm.ok(
-                u.Cli.yaml_dump(
-                    workspace / "config" / "infra.yaml",
-                    {
-                        "Infra": {
-                            "release": {
-                                "maintenance_line": [7, 4],
-                                "finalize_maintenance": True,
-                            }
-                        }
-                    },
-                )
-            )
-            u.Tests.checkout_integration(workspace)
-            if tag:
-                TestsFlextInfraReleaseProtocol._tag(workspace, tag)
-            if subject:
-                u.Tests.merge_pull_request(workspace, subject)
-            before = u.Tests.git_capture(workspace, "log", "--format=%H:%s")
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = TestsFlextInfraReleaseProtocol._plan(workspace)
-            tm.that(plan.next, eq=expected)
-            tm.that(
-                str(plan.bump),
-                eq="patch" if tag == f"v{current}" else "none",
-            )
-            tm.ok(plan.releasable)
-            tm.that(u.Tests.git_capture(workspace, "log", "--format=%H:%s"), eq=before)
-            tm.ok(u.Infra.current_workspace_version(workspace), eq=current)
-
-        @pytest.mark.parametrize("tag", ["", "v7.4.6", "v7.4.5"])
-        @staticmethod
-        def test_finalization_without_line_is_rejected_in_every_branch(
-            tmp_path: Path,
-            capsys: pytest.CaptureFixture[str],
-            tag: str,
-        ) -> None:
-            """Missing policy authority fails for first, tagged and awaiting releases."""
-            workspace = u.Tests.create_release_workspace(tmp_path, version="7.4.6")
-            tm.ok(
-                u.Cli.yaml_dump(
-                    workspace / "config" / "infra.yaml",
-                    {"Infra": {"release": {"finalize_maintenance": True}}},
-                )
-            )
-            u.Tests.checkout_integration(workspace)
-            if tag:
-                TestsFlextInfraReleaseProtocol._tag(workspace, tag)
-                u.Tests.merge_pull_request(workspace, "chore(release): v7.4.6")
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
-            output = capsys.readouterr()
-            tm.that(output.out + output.err, has="requires a declared maintenance line")
-            tm.fail(
-                (
-                    workspace / ".reports/release" / c.Infra.RELEASE_PLAN_FILENAME
-                ).exists()
-            )
-
-        @staticmethod
-        def test_generic_mode_uses_selected_consumer_bump_map(tmp_path: Path) -> None:
-            """The generic planner reads its consumer's map, not an ambient singleton."""
-            workspace = u.Tests.create_release_workspace(tmp_path, version="7.4.6")
-            tm.ok(
-                u.Cli.yaml_dump(
-                    workspace / "config" / "infra.yaml",
-                    {"Infra": {"release": {"bump_types": {"feat": "patch"}}}},
-                )
-            )
-            u.Tests.checkout_integration(workspace)
-            TestsFlextInfraReleaseProtocol._tag(workspace, "v7.4.6")
-            u.Tests.merge_pull_request(workspace, "feat: selected map scenario")
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            tm.that(TestsFlextInfraReleaseProtocol._plan(workspace).next, eq="7.4.7")
 
     class TestsAdmission:
         """Version and tag admission against real Git state."""
@@ -977,9 +1056,15 @@ class TestsFlextInfraReleaseProtocol:
             )
 
         @staticmethod
-        def test_merged_release_commit_is_tagged_and_pushed(tmp_path: Path) -> None:
+        def test_merged_release_commit_is_tagged_and_pushed(
+            tmp_path: Path,
+            hermetic_git_environment: t.StrMapping,
+        ) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
-            with TestsFlextInfraReleaseProtocol._lane_with_shim(tmp_path) as (
+            with TestsFlextInfraReleaseProtocol._lane_with_shim(
+                tmp_path,
+                hermetic_git_environment,
+            ) as (
                 workspace,
                 _,
                 ownership,

@@ -149,7 +149,10 @@ class TestsFlextInfraRopeSnapshot:
             else ()
         )
         with u.Infra.facade_source_project(
-            root, source_states=(original,), declared_files=declarations
+            root,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=(original,), declared_files=declarations
+            ),
         ) as (project, receipts, _):
             with project.source_consumption() as consumer:
                 tm.that(
@@ -165,7 +168,10 @@ class TestsFlextInfraRopeSnapshot:
 
         def consume_changed_source() -> None:
             with u.Infra.facade_source_project(
-                root, source_states=(original,), declared_files=declarations
+                root,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=(original,), declared_files=declarations
+                ),
             ) as (project, receipts, _):
                 if consumed:
                     tm.that(project.source_state(source), eq=original)
@@ -185,7 +191,7 @@ class TestsFlextInfraRopeSnapshot:
                 else:
                     project.source_state(source)
 
-        with pytest.raises(RuntimeError, match="atomic source changed") as rejected:
+        with pytest.raises(ValueError, match="atomic source changed") as rejected:
             consume_changed_source()
         tm.that(str(rejected.value), has=str(source))
         tm.that(str(rejected.value), has="content_changed=True")
@@ -229,8 +235,9 @@ class TestsFlextInfraRopeSnapshot:
         service = u.Tests.create_lazy_init_service(root)
         with u.Infra.facade_source_project(
             root,
-            source_states=(original,),
-            declared_files=declarations,
+            source_options=m.Infra.StageSourceOptions(
+                inputs=(original,), declared_files=declarations
+            ),
             planned_sources=overlay,
         ) as (project, receipts, _):
             for _ in range(2):
@@ -252,8 +259,9 @@ class TestsFlextInfraRopeSnapshot:
         def plan_changed_source() -> None:
             with u.Infra.facade_source_project(
                 root,
-                source_states=(original,),
-                declared_files=declarations,
+                source_options=m.Infra.StageSourceOptions(
+                    inputs=(original,), declared_files=declarations
+                ),
                 planned_sources=overlay,
             ) as (project, _, _):
                 tm.ok(service.plan_files(source_project=project))
@@ -262,7 +270,7 @@ class TestsFlextInfraRopeSnapshot:
                     stream.truncate()
                 project.verify_source_states()
 
-        with pytest.raises(RuntimeError, match="atomic source changed"):
+        with pytest.raises(ValueError, match="atomic source changed"):
             plan_changed_source()
 
     @staticmethod
@@ -291,7 +299,8 @@ declaration = m.Infra.CodegenFilePlan(
     desired_content=proposed, desired_mode=c.Infra.CONFIG_SPEC[1])
 service = u.Tests.create_lazy_init_service(root)
 with u.Infra.facade_source_project(
-    root, source_states=(original,), declared_files=(declaration,)
+    root, source_options=m.Infra.StageSourceOptions(
+        inputs=(original,), declared_files=(declaration,))
 ) as (project, receipts, _):
     for _ in range(2):
         analysis = tm.ok(service.plan_files(source_project=project))

@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
 
+    class ProjectionManifestEntry(Protocol):
+        """Projected-file ordering consumed by the manifest planner."""
+
+        @property
+        def path(self) -> str: ...
+
     @runtime_checkable
     class CommandPayloadContext(Protocol):
         """Normalized command values consumed by the shared payload builder."""
@@ -1251,6 +1257,50 @@ class FlextInfraProtocolsBase(Protocol):
         def execute(self) -> p.Result[bool]:
             """Execute refactoring pass."""
             ...
+
+    class ProjectClassificationDependencies(Protocol):
+        """Composed metadata readers used by project classification."""
+
+        def _as_mapping(
+            self, raw_value: t.JsonValue | None
+        ) -> t.MappingKV[str, t.JsonValue]: ...
+
+        def _append_poetry_dependency_mapping(
+            self,
+            *,
+            raw_mapping: t.MappingKV[str, t.JsonValue],
+            dependencies: t.MutableSequenceOf[str],
+        ) -> None: ...
+
+        @staticmethod
+        def _normalize_dependency_name(raw_name: str) -> str: ...
+
+    class CensusObjectRules(Protocol):
+        """Object classification operations consumed by project reporting."""
+
+        @staticmethod
+        def _include_rule(
+            rule: str,
+            *,
+            rule_names: t.StrSequence | None,
+            selected_rules: frozenset[str] | None = None,
+        ) -> bool: ...
+
+        @staticmethod
+        def unused(item: m.Infra.Object) -> bool: ...
+
+        @staticmethod
+        def _object_key(item: m.Infra.Object) -> str: ...
+
+        @staticmethod
+        def _violation(
+            item: m.Infra.Object, *, kind: str, description: str
+        ) -> m.Infra.Violation: ...
+
+        @classmethod
+        def _removal_candidate(
+            cls, item: m.Infra.Object, *, include_unused: bool
+        ) -> m.Infra.RemovalCandidate | None: ...
 
     @runtime_checkable
     class ReleaseOrchestrator(Protocol):

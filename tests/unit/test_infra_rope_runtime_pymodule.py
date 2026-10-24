@@ -147,6 +147,31 @@ class TestsFlextInfraRopeRuntimePymodule:
         tm.that(output.stdout, eq=f"{expected_value} foreign\n")
 
     @staticmethod
+    @pytest.mark.parametrize("package", [False, True])
+    def test_selected_source_resource_preserves_native_public_scope(
+        tmp_path: Path,
+        *,
+        package: bool,
+    ) -> None:
+        """Source-resource resolution retains the elected module and bindings."""
+        provider = tmp_path / "provider"
+        if package:
+            provider.mkdir()
+        source = provider / c.Infra.INIT_PY if package else provider.with_suffix(".py")
+        source.write_text(
+            "class PublishedContract:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        with closing(u.Infra.init_rope_project(tmp_path)) as project:
+            selected = u.Infra.require_semantic_module(project.get_module("provider"))
+            resource = tm.not_none(selected.get_resource())
+            parsed = u.Infra.resolve_pymodule(project, resource)
+            tm.ok(parsed is selected)
+            tm.ok(
+                parsed.get_scope().get_names()["PublishedContract"]
+                is selected.get_attribute("PublishedContract")
+            )
+
+    @staticmethod
     @pytest.mark.parametrize("captured", [False, True])
     def test_relative_lookup_preserves_native_folder_and_missing_module(
         tmp_path: Path,

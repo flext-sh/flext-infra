@@ -209,9 +209,9 @@ class FlextInfraConstantsRefactor:
         - ``import-cycle``: the captured import (module as written, with the
           imported name as ``of``) is an edge of a runtime import cycle of the
           project's import graph;
-        - ``composes-family``: the captured class of a facade module reaches,
-          through its bases, every class the facade's family package
-          declares in ``__all__``;
+        - ``composes-family``: the captured facade namespace explicitly exports
+          every original class its family package declares in ``__all__``,
+          proven by resolved class identity; part mixins never count as exports;
         - ``class-stem``: the captured class name starts with the project's
           class stem as class nesting derives it (``Tests`` + stem under the
           tests tree; ``Examples``/``Scripts`` + stem or the bare stem under

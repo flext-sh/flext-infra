@@ -6,61 +6,30 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 
 from flext_infra import config, m, u
+from flext_infra.refactor import FlextInfraRefactorCensusCollectMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraRefactorCensusCollectHelpersMixin:
+class FlextInfraRefactorCensusCollectHelpersMixin(FlextInfraRefactorCensusCollectMixin):
     """Select the modules to inventory and drive the census collection.
 
-    Composed into FlextInfraRefactorCensus via inheritance; owns the
-    collection-gate helpers and the top-level ``_collect_report`` orchestrator
-    (scan selected modules → assemble).
+    Owns validated census options and inherits the native collection/report
+    implementation and project-selection state used by ``_collect_report``.
     """
 
-    if TYPE_CHECKING:
-        options: m.Infra.CensusOptions
+    model_config: ClassVar[m.ConfigDict] = m.Infra.CensusOptions.model_config
 
-        @property
-        def project_names(self) -> t.StrSequence | None:
-            """Selected projects of the composed census service."""
-            ...
-
-        @staticmethod
-        def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
-            """Resolve selected families through the composed object mixin."""
-            del family_names
-            ...
-
-        def _scan_module(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            module: m.Infra.RopeModuleIndexEntry,
-            scan_config: m.Infra.ScanConfig,
-            *,
-            findings: m.Infra.ScanFindings,
-        ) -> None:
-            """Scan through the composed census collection mixin."""
-            del rope, module, scan_config, findings
-            ...
-
-        def _assemble_report(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            *,
-            source_preview: p.Infra.SourcePreview,
-            findings: m.Infra.ScanFindings,
-            scan_config: m.Infra.ScanConfig,
-        ) -> m.Infra.WorkspaceReport:
-            """Assemble through the composed census collection mixin."""
-            del rope, source_preview, findings, scan_config
-            ...
+    options: m.Infra.CensusOptions = m.Field(
+        default_factory=m.Infra.CensusOptions,
+        description="Validated census filters and report destinations",
+    )
 
     @staticmethod
     def _should_collect_object_references(rule_names: t.StrSequence | None) -> bool:
@@ -73,24 +42,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         if rule_names is None:
             return True
         return "unused" in rule_names
-
-    @staticmethod
-    def project_name_for_module(
-        module: m.Infra.RopeModuleIndexEntry,
-        convention: m.Infra.RopeModuleConvention,
-    ) -> str:
-        """Project name for a module entry.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        layout = convention.project_layout
-        if layout is not None:
-            return layout.project_name
-        if module.project_root is not None:
-            return module.project_root.name
-        return ""
 
     @staticmethod
     def production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:

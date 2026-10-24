@@ -2,8 +2,8 @@
 
 ast-grep matches one file's syntax. Some laws are verdicts over the whole
 project: whether a module takes part in an import cycle, whether a facade's
-namespace composes every class its family package declares. The engine owns
-building those project facts once per admission pass, from the tree as it is
+namespace explicitly exports every original class its family declares. The
+engine owns building those project facts once per admission pass, from the tree as it is
 then (a pass after a rewrite reads the rewritten project); rule
 documents name the verdict they need through ``metadata.context`` predicates.
 No rule lives here: the rule data decides where a fact is asked and what it
@@ -324,82 +324,26 @@ class FlextInfraUtilitiesCodemodProject(
         return target is not None and target != source and target in members
 
     @classmethod
-    def composes_family_package(cls, facade_file: Path, namespace: str) -> bool:
-        """Return whether ``namespace`` in a facade module composes its family.
+    def composes_family_package(
+        cls,
+        facade_file: Path,
+        namespace: str,
+        *,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+    ) -> bool:
+        """Prove explicit class exports through the admission's native graph.
 
-        The family package of ``<pkg>/<stem>.py`` is ``<pkg>/_<stem>/``. Every
-        class a module of that package declares in its ``__all__`` must be
-        reachable through the bases of the facade's ``namespace`` class,
-        following the bases each package class declares. A facade without a
-        family package composes nothing and holds.
-
-        Returns:
-            Whether ``namespace`` in a facade module composes its family.
-
-        """
-        package = facade_file.parent / f"_{facade_file.stem}"
-        if not package.is_dir():
-            return True
-        bases_by_class: MutableMapping[str, t.StrSequence] = {}
-        exported: set[str] = set()
-        for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
-            if module.name == c.Infra.INIT_PY:
-                continue
-            source = module.read_text(encoding=c.DEFAULT_ENCODING)
-            declared = frozenset(
-                FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                    source,
-                ),
-            )
-            for (
-                info
-            ) in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source(
-                source,
-            ):
-                bases_by_class[info.name] = tuple(info.bases)
-                if info.name in declared:
-                    exported.add(info.name)
-        pending = list(cls._nested_class_bases(facade_file, namespace))
-        reached: set[str] = set()
-        while pending:
-            name = pending.pop()
-            if name in reached:
-                continue
-            reached.add(name)
-            pending.extend(bases_by_class.get(name, ()))
-        return exported <= reached
-
-    @staticmethod
-    def _nested_class_bases(facade_file: Path, namespace: str) -> t.StrSequence:
-        """Return the base names of class ``namespace`` nested in the facade.
+        Family coverage is original class identity, never spelling or inherited
+        mixins. Families without local owners impose no export obligation.
 
         Returns:
-            The base names of class ``namespace`` nested in the facade.
-
-        Raises:
-            ValueError: If class.
+            Whether the facade explicitly publishes every original family class.
 
         """
-        tree = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(
-            facade_file.read_text(encoding=c.DEFAULT_ENCODING),
-        ).get_ast()
-        for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(tree):
-            if (
-                FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) == "ClassDef"
-                and getattr(node, "name", "") == namespace
-            ):
-                return tuple(
-                    name
-                    for base in getattr(node, "bases", ()) or ()
-                    if (
-                        name
-                        := FlextInfraUtilitiesRopeAnalysisAstHelpers.class_base_name(
-                            base,
-                        )
-                    )
-                )
-        msg = f"class {namespace} is not declared in {facade_file}"
-        raise ValueError(msg)
+        return FlextInfraUtilitiesCodegenFacades.facade_class_exports_complete(
+            facade_file, namespace, project=project, sources=sources
+        )
 
     @classmethod
     def codemod_project_facts(
@@ -486,6 +430,7 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
             c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
             c.Infra.CodemodContextPredicate.CANONICAL_STATIC_PUBLICATION,
+            c.Infra.CodemodContextPredicate.COMPOSES_FAMILY,
         }
         selected = tuple(
             rule
@@ -535,7 +480,7 @@ class FlextInfraUtilitiesCodemodProject(
         root: Path,
         paths: t.SequenceOf[Path],
         rules: t.SequenceOf[m.Infra.CodemodRule],
-    ) -> tuple[t.JsonMapping, ...]:
+    ) -> t.VariadicTuple[m.Infra.AstGrepOwnedPathDiagnostic]:
         """Admit owned-path policy from the shared inventory, without parsing bytes.
 
         Returns:
@@ -543,7 +488,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         return tuple(
-            {
+            m.Infra.AstGrepOwnedPathDiagnostic.model_validate({
                 "file": path.relative_to(root.resolve()).as_posix(),
                 "ruleId": rule.id,
                 "severity": "error",
@@ -556,7 +501,7 @@ class FlextInfraUtilitiesCodemodProject(
                     "end": {"line": 0, "column": 0},
                     "byteOffset": {"start": 0, "end": 0},
                 },
-            }
+            })
             for path in paths
             for rule in rules
             if rule.owned_path_suffix is not None
@@ -677,6 +622,18 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If a native predicate lacks its original source epoch.
 
         """
+        if condition.predicate is c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:
+            if project is None or sources is None:
+                message = f"{admission.rule.id}: family exports require their native epoch"
+                raise ValueError(message)
+            return cls.composes_family_package(
+                source,
+                cls._captured_text(
+                    admission.rule, condition.variable, admission.captures, source
+                ),
+                project=project,
+                sources=sources,
+            )
         if condition.predicate in {
             c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
             c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
@@ -1450,7 +1407,7 @@ class FlextInfraUtilitiesCodemodProject(
     @classmethod
     def identity_source_epoch(
         cls,
-        root: Path,
+        project: p.Infra.RopeProject,
         source_paths: t.SequenceOf[Path],
         identities: t.StrSequence,
     ) -> m.Infra.CodemodSourceEpoch:
@@ -1460,7 +1417,8 @@ class FlextInfraUtilitiesCodemodProject(
         ``pydantic.BaseModel`` resolves only when its module closure was
         captured before planning. Every dotted prefix of each identity is
         offered; a prefix that is not a module resolves to nothing and captures
-        nothing. The sources' own import closure is captured with them.
+        nothing. The current native graph elects the desired import closure;
+        file receipts retain the original physical preimages for authentication.
 
         Returns:
             The immutable epoch every snapshot of one planning pass shares.
@@ -1473,15 +1431,20 @@ class FlextInfraUtilitiesCodemodProject(
                 for end in range(1, len(parts) + 1)
             )
         )
-        return cls.codemod_source_epoch(
-            cls.codemod_binding_snapshot(
-                root,
-                projects=(
-                    m.Infra.CodemodBindingProject(
-                        root=root, source_paths=tuple(source_paths), modules=modules
-                    ),
+        states = {state.path: state for state in project.consumed_source_states()}
+        with project.source_consumption(), project.frozen_layout():
+            cls._snapshot_project_imports(
+                project,
+                m.Infra.CodemodBindingProject(
+                    root=Path(project.root.real_path),
+                    source_paths=tuple(source_paths),
+                    modules=modules,
                 ),
+                states,
+                ({}, {}),
             )
+        return cls.codemod_source_epoch(
+            m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
         )
 
     @classmethod
@@ -1593,7 +1556,16 @@ class FlextInfraUtilitiesCodemodProject(
         )
         for selection in selections:
             with (
-                FlextInfraUtilitiesRopeCore.open_project(selection.root) as project,
+                FlextInfraUtilitiesCodegenFacades.facade_source_project(
+                    selection.root,
+                    source_options=m.Infra.StageSourceOptions(
+                        inputs=tuple(
+                            state
+                            for path, state in states.items()
+                            if path.is_relative_to(selection.root.resolve())
+                        ),
+                    ),
+                ) as (project, _, _),
                 project.frozen_layout(),
             ):
                 cls._snapshot_project_imports(project, selection, states, ({}, {}))
@@ -1657,6 +1629,31 @@ class FlextInfraUtilitiesCodemodProject(
             project.get_resource(path.relative_to(selection.root.resolve()).as_posix())
             for path in selection.source_paths
         ]
+        # Missing owners are evidence too: import closure alone cannot capture
+        # an unimported family component. Elect those declarations in the same
+        # graph once, before freezing the admission epoch.
+        for path in selection.source_paths:
+            if path.suffix != c.Infra.EXT_PYTHON or not (
+                set(FlextInfraUtilitiesCodegenNamespace.facade_families())
+                & set(
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        project.source_text(path)
+                    )
+                )
+            ):
+                continue
+            family = path.parent / f"_{path.stem}"
+            directories = [family] if project.source_query(family, "isdir") else []
+            while directories:
+                for child in project.source_children(directories.pop()):
+                    if project.source_query(child, "isdir"):
+                        directories.append(child)
+                    elif child.suffix == c.Infra.EXT_PYTHON:
+                        pending.append(
+                            project.get_resource(
+                                child.relative_to(selection.root.resolve()).as_posix()
+                            )
+                        )
         for name in dict.fromkeys(selection.modules):
             owner = cls._snapshot_imported_resource(
                 project, project.root.parent, name, level=0, lookup=lookup
@@ -1700,11 +1697,11 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             TypeError: If binding package has no source resource contract.
-            ValueError: If binding source is absent.
+            ValueError: If a closed binding dependency is outside its captured epoch.
 
         """
         path = Path(resource.real_path).resolve()
-        if resource.is_folder() if closed else path.is_dir():
+        if resource.is_folder():
             if not isinstance(resource, p.Infra.RopeRoot):
                 msg = f"binding package has no source resource contract: {path}"
                 raise TypeError(msg)
@@ -1724,7 +1721,7 @@ class FlextInfraUtilitiesCodemodProject(
                 return None
             resource = resource.get_child(initializer)
             path = Path(resource.real_path).resolve()
-        if (not closed and not path.is_file()) or path.suffix not in {
+        if not project.source_query(path, "isfile") or path.suffix not in {
             c.Infra.EXT_PYTHON,
             c.Infra.EXT_PYTHON_STUB,
         }:
@@ -1734,17 +1731,13 @@ class FlextInfraUtilitiesCodemodProject(
             if closed:
                 msg = f"rule binding dependency is outside its captured epoch: {path}"
                 raise ValueError(msg)
-            state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            state = project.source_state(path, required=False)
             states[path] = state
-        if state.content is None:
-            msg = f"binding source is absent: {path}"
-            raise ValueError(msg)
-        digest = u.Cli.sha256_bytes(state.content)
+        source = project.source_text(path)
+        digest = u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING))
         if digest not in cls._import_targets:
             cls._import_targets[digest] = (
-                FlextInfraUtilitiesRopeImports.source_import_targets(
-                    project, state.content.decode("utf-8")
-                )
+                FlextInfraUtilitiesRopeImports.source_import_targets(project, source)
             )
         return path, tuple(
             (imported.real_path, imported)
@@ -2273,8 +2266,6 @@ class FlextInfraUtilitiesCodemodProject(
                 )
             case c.Infra.CodemodContextPredicate.IMPORT_CYCLE:
                 return cls.import_closes_cycle(root, file_path, value, of, facts)
-            case c.Infra.CodemodContextPredicate.COMPOSES_FAMILY:
-                return cls.composes_family_package(file_path, value)
             case c.Infra.CodemodContextPredicate.FAMILY_MEMBER:
                 return cls._family_member(root, file_path, value)
             case _:
@@ -2447,18 +2438,30 @@ class FlextInfraUtilitiesCodemodProject(
         module = located[1]
         return module in {family, facade} or module.startswith(f"{family}.")
 
-    @staticmethod
-    def _module_exports(file_path: Path) -> frozenset[str]:
-        """Names one module source declares in its own ``__all__``.
+    @classmethod
+    def _module_exports(cls, file_path: Path) -> frozenset[str]:
+        """Read exports from the active admission epoch, or a standalone source.
 
         Returns:
             The resulting ``frozenset[str]``.
 
+        Raises:
+            ValueError: If the active admission epoch does not contain the source.
+
         """
+        shared = cls._closed_walk_cache.get()
+        if shared is None:
+            source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
+        else:
+            state = next(
+                (state for state in shared[1].states if state.path == file_path), None
+            )
+            if state is None or state.content is None:
+                msg = f"module exports lack an authenticated source: {file_path}"
+                raise ValueError(msg)
+            source = state.content.decode(c.DEFAULT_ENCODING)
         return frozenset(
-            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                file_path.read_text(encoding=c.DEFAULT_ENCODING),
-            ),
+            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(source),
         )
 
     @classmethod
@@ -2476,6 +2479,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         letters = frozenset(config.Infra.tooling.lazy_init.import_layer_order)
+        shared = cls._closed_walk_cache.get()
         facades = (
             file_path,
             *(
@@ -2488,7 +2492,11 @@ class FlextInfraUtilitiesCodemodProject(
         return frozenset(
             letter
             for facade in facades
-            if facade.is_file()
+            if (
+                facade.is_file()
+                if shared is None
+                else shared[0].source_query(facade, "isfile")
+            )
             for letter in letters.intersection(cls._module_exports(facade))
         )
 
@@ -2611,7 +2619,13 @@ class FlextInfraUtilitiesCodemodProject(
                     project.get_resource(source_path.relative_to(root).as_posix())
                 )
             )
-            name = module.get_name()
+            name = (
+                source_path.stem
+                if source_path.parent == root
+                else FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
+                    source_path, project_root=root
+                )
+            )
             modules[name] = source_path, text
             namespace = ".".join(source_path.relative_to(root).with_suffix("").parts)
             if (

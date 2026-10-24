@@ -185,14 +185,14 @@ class TestsFlextInfraGithubGateAttestation:
                 read_runtime_identity=self._runtime_identity,
             )
         )
-        tm.that(first.receipt, none=False)
-        tm.that(second.receipt, none=False)
-        tm.that(first.receipt != second.receipt, truth=True)
+        first_receipt = tm.not_none(first.receipt)
+        second_receipt = tm.not_none(second.receipt)
+        tm.that(first_receipt != second_receipt, truth=True)
         first_evidence = m.Infra.GateCommandEvidence.model_validate_json(
-            first.receipt.read_bytes(),
+            first_receipt.read_bytes(),
         )
         second_evidence = m.Infra.GateCommandEvidence.model_validate_json(
-            second.receipt.read_bytes(),
+            second_receipt.read_bytes(),
         )
         tm.that(first_evidence.process == first.process, truth=True)
         tm.that(second_evidence.process == second.process, truth=True)
@@ -206,15 +206,15 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(first.issues, truth=False)
         for report in first_evidence.reports:
             tm.that(
-                report.path.is_relative_to(first.receipt.parent.relative_to(tmp_path)),
+                report.path.is_relative_to(first_receipt.parent.relative_to(tmp_path)),
                 truth=True,
             )
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             tm.that(report.digest == f"sha256:{digest}", truth=True)
 
+    @staticmethod
     @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
     def test_signing_identity_reads_only_native_public_references(
-        self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
         literal_prefix: str | None,
@@ -261,8 +261,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         for item in report.observations:
             tm.that(item.scope, eq="local")
-            tm.that(item.origin, none=False)
-            tm.that(item.origin.startswith("file:"), truth=True)
+            tm.that(tm.not_none(item.origin).startswith("file:"), truth=True)
             tm.that(item.process.raw_return_code, eq=0)
         encoded = report.model_dump_json(round_trip=True)
         tm.that(encoded, lacks=["BEGIN OPENSSH PRIVATE KEY", '"value"'])
@@ -271,13 +270,13 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(restored.key_path, eq=report.key_path)
         tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
 
+    @staticmethod
     @pytest.mark.parametrize("literal_prefix", ["", "key::"])
     @pytest.mark.parametrize(
         "corruption",
         ["empty", "missing-payload", "encoding", "type", "truncated"],
     )
     def test_signing_identity_rejects_malformed_inline_public_declarations(
-        self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
         literal_prefix: str,
@@ -313,10 +312,11 @@ class TestsFlextInfraGithubGateAttestation:
             m.Infra.GitRepoRequest(repo_root=tmp_path)
         )
         tm.fail(failed)
-        tm.that(failed.error, none=False)
+        error = tm.not_none(failed.error)
         if payload:
-            tm.that(payload not in failed.error, truth=True)
+            tm.that(payload not in error, truth=True)
 
+    @staticmethod
     @pytest.mark.parametrize(
         "declarations",
         [
@@ -327,7 +327,6 @@ class TestsFlextInfraGithubGateAttestation:
         ],
     )
     def test_public_signing_observation_preserves_undeclared_native_facts(
-        self,
         tmp_path: Path,
         declarations: t.VariadicTuple[t.Pair[str, str]],
     ) -> None:
@@ -399,22 +398,29 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that('"value"' not in native.stdout, truth=True)
         tm.that(isolated.read_bytes(), truth=False)
 
-    @pytest.mark.parametrize("key", c.Infra.GIT_SIGNING_CONFIGURATION_KEYS)
-    def test_signing_identity_rejects_declared_empty_values(
-        self,
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("key", "value"),
+        [
+            *((key, "") for key in c.Infra.GIT_SIGNING_CONFIGURATION_KEYS),
+            ("gpg.format", "unsupported"),
+        ],
+    )
+    def test_signing_identity_rejects_invalid_native_declarations(
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
         key: str,
+        value: str,
     ) -> None:
-        """A real empty declaration never becomes an absent fact or Path('.')."""
+        """Empty references and unsupported formats never become absent facts."""
         signed_repository_factory(tmp_path)
-        u.Tests.git_bootstrap(tmp_path, ("config", key, ""))
+        u.Tests.git_bootstrap(tmp_path, ("config", key, value))
         tm.fail(
             u.Infra.git_signing_identity(m.Infra.GitRepoRequest(repo_root=tmp_path))
         )
 
+    @staticmethod
     def test_signing_identity_preserves_native_invalid_configuration_failure(
-        self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
@@ -451,18 +457,6 @@ class TestsFlextInfraGithubGateAttestation:
         tm.fail(failed)
         tm.that(failed.error, eq=native.stderr)
 
-    def test_signing_identity_rejects_unsupported_native_format(
-        self,
-        tmp_path: Path,
-        signed_repository_factory: Callable[[Path], Path],
-    ) -> None:
-        """Discovery does not accept an unsupported native signing protocol."""
-        signed_repository_factory(tmp_path)
-        u.Tests.git_bootstrap(tmp_path, ("config", "gpg.format", "unsupported"))
-        tm.fail(
-            u.Infra.git_signing_identity(m.Infra.GitRepoRequest(repo_root=tmp_path))
-        )
-
     def test_capture_uses_target_policy_and_configuration_context(
         self,
         tmp_path: Path,
@@ -494,15 +488,15 @@ class TestsFlextInfraGithubGateAttestation:
                     read_runtime_identity=self._runtime_identity,
                 )
             )
-            tm.that(captured.receipt, none=False)
+            receipt = tm.not_none(captured.receipt)
             tm.that(
-                captured.receipt.is_relative_to(
+                receipt.is_relative_to(
                     tmp_path / inputs.spec.make.gate_receipts_directory
                 ),
                 truth=True,
             )
             evidence = m.Infra.GateCommandEvidence.model_validate_json(
-                captured.receipt.read_bytes(),
+                receipt.read_bytes(),
             )
             tm.that(
                 evidence.policy,
@@ -510,15 +504,15 @@ class TestsFlextInfraGithubGateAttestation:
             )
             tm.that(evidence.process, eq=captured.process)
             tm.that(
-                captured.receipt.read_text(encoding="utf-8"),
+                receipt.read_text(encoding="utf-8"),
                 lacks=[str(tmp_path), "gate_acceptance_policy:"],
             )
             observed.append(evidence)
         tm.that(len({item.context_digest for item in observed}), eq=len(observed))
         tm.that(len({item.commit_sha for item in observed}) == 1, truth=True)
 
+    @staticmethod
     def test_signing_identity_does_not_open_missing_key_or_trust_files(
-        self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
     ) -> None:
@@ -565,8 +559,7 @@ class TestsFlextInfraGithubGateAttestation:
             self._context(tmp_path),
         )
         tm.fail(failed)
-        tm.that(failed.error, none=False)
-        tm.that(str(unavailable) in failed.error, truth=True)
+        tm.that(str(unavailable) in tm.not_none(failed.error), truth=True)
         tm.that(unavailable.exists(), truth=False)
         if missing == "trust":
             verification = u.Infra.git_verify_gate_attestation(
@@ -582,8 +575,7 @@ class TestsFlextInfraGithubGateAttestation:
                 self._context(tmp_path),
             )
             tm.fail(verification)
-            tm.that(verification.error, none=False)
-            tm.that(str(unavailable) in verification.error, truth=True)
+            tm.that(str(unavailable) in tm.not_none(verification.error), truth=True)
 
     @pytest.mark.parametrize("has_origin", [False, True])
     def test_dirty_workspace_publishes_original_execution_evidence(
@@ -611,11 +603,9 @@ class TestsFlextInfraGithubGateAttestation:
             )
         )
         tm.that(captured.process.raw_return_code != 0, truth=True)
-        tm.that(captured.receipt, none=False)
+        receipt = tm.not_none(captured.receipt)
         tm.that(captured.issues, empty=True)
-        evidence = m.Infra.GateCommandEvidence.model_validate_json(
-            captured.receipt.read_bytes()
-        )
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
         tm.that(evidence.scope, eq="workspace")
         tm.that(evidence.dirty, eq=True)
         tm.that(evidence.after_dirty, eq=True)
@@ -651,10 +641,8 @@ class TestsFlextInfraGithubGateAttestation:
                 read_runtime_identity=self._runtime_identity,
             )
         )
-        tm.that(captured.receipt, none=False)
-        evidence = m.Infra.GateCommandEvidence.model_validate_json(
-            captured.receipt.read_bytes()
-        )
+        receipt = tm.not_none(captured.receipt)
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
         tm.that(evidence.commit_sha, none=True)
         tm.that(evidence.tree_sha, none=True)
         tm.that(evidence.dirty, none=True)
@@ -677,7 +665,7 @@ class TestsFlextInfraGithubGateAttestation:
             workspace=str(tmp_path),
             signer="attester@example.test",
             gates=(evidence.gate,),
-            receipt=captured.receipt,
+            receipt=receipt,
             allowed_signers=str(allowed),
             context_digest=evidence.context_digest,
             policy=evidence.policy,
@@ -760,47 +748,62 @@ class TestsFlextInfraGithubGateAttestation:
             TestsFlextInfraGithubGateAttestation._context(root),
         )
 
+    @pytest.mark.parametrize("change", ["none", "republish", "remote-suffix", "commit"])
     def test_signed_gate_attestation_round_trip_is_local(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        change: str,
     ) -> None:
-        """Test signed gate attestation round trip is local."""
+        """Original receipt proof survives republication and unrelated Git changes."""
         allowed_signers = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
-        created = u.Infra.git_create_gate_attestation(
-            request,
-            self._context(tmp_path),
-        )
-
-        tm.ok(created)
-        tm.that(
-            self._rev_parse(tmp_path, f"{created.unwrap().tag}^{{}}"),
-            eq=created.unwrap().anchor_oid,
-        )
-        verified = self._verify(
-            tmp_path, allowed_signers, request.receipt, c.Infra.VERB_CHECK
-        )
-        tm.ok(verified)
-        tm.that(verified.unwrap().signer, eq="attester@example.test")
-
-    def test_publication_reuses_original_proof_without_running_make_again(
-        self,
-        tmp_path: Path,
-        signed_repository_factory: Callable[[Path], Path],
-    ) -> None:
-        """Repeated publication verifies the object and leaves execution untouched."""
-        signed_repository_factory(tmp_path)
-        request = self._request(tmp_path)
-        before = (tmp_path / "invocations.txt").read_bytes()
         context = self._context(tmp_path)
-        created = tm.ok(u.Infra.git_create_gate_attestation(request, context))
-        reused = tm.ok(u.Infra.git_create_gate_attestation(request, context))
-
-        tm.fail(created.reused)
-        tm.ok(reused.reused)
-        tm.that(reused.tag, eq=created.tag)
-        tm.that((tmp_path / "invocations.txt").read_bytes(), eq=before)
+        created = tm.ok(
+            u.Infra.git_create_gate_attestation(request, context),
+        )
+        tm.that(
+            self._rev_parse(tmp_path, f"{created.tag}^{{}}"),
+            eq=created.anchor_oid,
+        )
+        if change == "republish":
+            before = (tmp_path / "invocations.txt").read_bytes()
+            reused = tm.ok(u.Infra.git_create_gate_attestation(request, context))
+            tm.fail(created.reused)
+            tm.ok(reused.reused)
+            tm.that(reused.tag, eq=created.tag)
+            tm.that((tmp_path / "invocations.txt").read_bytes(), eq=before)
+        elif change == "remote-suffix":
+            remote = tm.ok(
+                u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path)),
+            ).text
+            u.Tests.git_bootstrap(
+                tmp_path,
+                ("remote", "set-url", c.Infra.GIT_ORIGIN, remote.removesuffix(".git")),
+            )
+        elif change == "commit":
+            selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
+            unrelated = tmp_path / "another-lane.txt"
+            unrelated.write_text("new work\n", encoding=c.DEFAULT_ENCODING)
+            tm.ok(
+                u.Infra.git_add_paths(
+                    m.Infra.GitPathsRequest(repo_root=tmp_path, paths=(unrelated.name,))
+                )
+            )
+            tm.ok(
+                u.Infra.git_commit(
+                    m.Infra.GitCommitRequest(
+                        repo_root=tmp_path,
+                        message="test: later unrelated fixture commit",
+                    ),
+                ),
+            )
+            tm.that(self._rev_parse(tmp_path, "HEAD^{tree}"), ne=selected_tree)
+        verified = tm.ok(
+            self._verify(tmp_path, allowed_signers, request.receipt, c.Infra.VERB_CHECK)
+        )
+        tm.that(verified.signer, eq="attester@example.test")
+        tm.that(verified.anchor_oid, eq=created.anchor_oid)
 
     @pytest.mark.parametrize("has_origin", [False, True])
     def test_original_findings_keep_their_real_nonzero_exit_in_signed_evidence(
@@ -852,43 +855,61 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(predicate.commands[0].native_outcome, eq=source.native_outcome)
         tm.that(destination.read_text(encoding="utf-8"), lacks=str(tmp_path))
 
-    def test_modified_original_report_cannot_publish_a_proof(
+    @pytest.mark.parametrize("corruption", ["modified", "missing"])
+    def test_original_report_integrity_is_required_for_proof(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        corruption: str,
     ) -> None:
-        """The signer refuses changed producer bytes instead of recomputing a gate."""
-        signed_repository_factory(tmp_path)
+        """Publication and signed reuse require unchanged original producer bytes."""
+        allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         source = m.Infra.GateCommandEvidence.model_validate_json(
             request.receipt.read_bytes()
         )
         report = tmp_path / source.reports[0].path
-        report.write_text("{}\n", encoding="utf-8")
-
-        tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
+        if corruption == "modified":
+            report.write_text("{}\n", encoding="utf-8")
+            tm.fail(
+                u.Infra.git_create_gate_attestation(request, self._context(tmp_path))
+            )
+        else:
+            tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
+            report.unlink()
+            tm.fail(
+                self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK)
+            )
         tm.that(
             (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
             eq=["executed"],
         )
 
-    def test_context_change_does_not_reuse_the_original_stage(
+    @pytest.mark.parametrize("mismatch", ["context", "stage"])
+    def test_verification_requires_original_context_and_stage(
         self,
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
+        mismatch: str,
     ) -> None:
-        """A proof for another exact context remains outside required coverage."""
+        """Another exact context or unpublished stage remains outside coverage."""
         allowed = signed_repository_factory(tmp_path)
         request = self._request(tmp_path)
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
-        digest = f"sha256:{cli_u.Cli.sha256_content('different runtime context')}"
+        digest = (
+            f"sha256:{cli_u.Cli.sha256_content('different runtime context')}"
+            if mismatch == "context"
+            else request.context_digest
+        )
 
         tm.fail(
             u.Infra.git_verify_gate_attestation(
                 m.Infra.GateAttestationVerifyRequest(
                     workspace=str(tmp_path),
                     allowed_signers=str(allowed),
-                    expected_gates=request.gates,
+                    expected_gates=(
+                        request.gates if mismatch == "context" else (c.Infra.VERB_TEST,)
+                    ),
                     receipt=request.receipt,
                     context_digest=digest,
                     policy=request.policy,
@@ -897,22 +918,6 @@ class TestsFlextInfraGithubGateAttestation:
                 self._context(tmp_path),
             ),
         )
-
-    def test_missing_original_report_cannot_reuse_a_signed_stage(
-        self,
-        tmp_path: Path,
-        signed_repository_factory: Callable[[Path], Path],
-    ) -> None:
-        """A valid signature cannot replace the required original artifacts."""
-        allowed = signed_repository_factory(tmp_path)
-        request = self._request(tmp_path)
-        source = m.Infra.GateCommandEvidence.model_validate_json(
-            request.receipt.read_bytes()
-        )
-        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
-        (tmp_path / source.reports[0].path).unlink()
-
-        tm.fail(self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK))
 
     def test_untrusted_signing_key_cannot_verify_an_existing_stage(
         self,
@@ -977,89 +982,6 @@ class TestsFlextInfraGithubGateAttestation:
             (tmp_path / "invocations.txt").read_text(encoding="utf-8").splitlines(),
             eq=["executed", "executed"],
         )
-
-    def test_gate_attestation_normalizes_network_remote_git_suffix(
-        self,
-        tmp_path: Path,
-        signed_repository_factory: Callable[[Path], Path],
-    ) -> None:
-        """Test gate attestation normalizes network remote git suffix."""
-        allowed_signers = signed_repository_factory(tmp_path)
-        request = self._request(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
-        remote = tm.ok(
-            u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path)),
-        ).text
-        u.Tests.git_bootstrap(
-            tmp_path,
-            ("remote", "set-url", c.Infra.GIT_ORIGIN, remote.removesuffix(".git")),
-        )
-
-        tm.ok(
-            self._verify(
-                tmp_path,
-                allowed_signers,
-                request.receipt,
-                c.Infra.VERB_CHECK,
-            ),
-        )
-
-    def test_workspace_proof_survives_head_and_tree_movement(
-        self,
-        tmp_path: Path,
-        signed_repository_factory: Callable[[Path], Path],
-    ) -> None:
-        """Unrelated commits cannot change receipt-anchored workspace proof."""
-        allowed_signers = signed_repository_factory(tmp_path)
-        request = self._request(tmp_path)
-        created = tm.ok(
-            u.Infra.git_create_gate_attestation(request, self._context(tmp_path))
-        )
-        selected_tree = self._rev_parse(tmp_path, "HEAD^{tree}")
-        unrelated = tmp_path / "another-lane.txt"
-        unrelated.write_text("new work\n", encoding=c.DEFAULT_ENCODING)
-        tm.ok(
-            u.Infra.git_add_paths(
-                m.Infra.GitPathsRequest(repo_root=tmp_path, paths=(unrelated.name,))
-            )
-        )
-        tm.ok(
-            u.Infra.git_commit(
-                m.Infra.GitCommitRequest(
-                    repo_root=tmp_path,
-                    message="test: later unrelated fixture commit",
-                ),
-            ),
-        )
-        tm.that(self._rev_parse(tmp_path, "HEAD^{tree}"), ne=selected_tree)
-
-        verified = self._verify(
-            tmp_path,
-            allowed_signers,
-            request.receipt,
-            c.Infra.VERB_CHECK,
-        )
-        tm.ok(verified)
-        tm.that(verified.unwrap().anchor_oid, eq=created.anchor_oid)
-
-    def test_gate_attestation_keeps_an_unpublished_stage_out_of_coverage(
-        self,
-        tmp_path: Path,
-        signed_repository_factory: Callable[[Path], Path],
-    ) -> None:
-        """Test gate attestation rejects incomplete coverage."""
-        allowed_signers = signed_repository_factory(tmp_path)
-        request = self._request(tmp_path)
-        tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
-
-        verified = self._verify(
-            tmp_path,
-            allowed_signers,
-            request.receipt,
-            c.Infra.VERB_TEST,
-        )
-
-        tm.fail(verified)
 
     def test_gate_attestation_rejects_duplicate_gate_coverage(
         self,

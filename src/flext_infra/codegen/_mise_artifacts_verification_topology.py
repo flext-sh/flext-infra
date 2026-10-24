@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -64,7 +64,9 @@ class FlextInfraMiseArtifactsVerificationTopology:
         """
         if layout.transaction_id != journal.transaction_id:
             return r[bool].fail("generation journal transaction id differs from layout")
-        scope = files.physical_directory_identity(layout.scope_root)
+        scope = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            layout.scope_root
+        )
         if scope.failure:
             return r[bool].from_failure(scope)
         if scope.value != (journal.scope_device, journal.scope_inode):
@@ -94,7 +96,7 @@ class FlextInfraMiseArtifactsVerificationTopology:
         """
         directory_targets: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for directory in journal.directories:
-            target = files.resolve_transaction(
+            target = FlextInfraMiseArtifactsFiles.resolve_transaction(
                 layout,
                 directory.path,
                 purpose="journaled generation directory",
@@ -137,14 +139,16 @@ class FlextInfraMiseArtifactsVerificationTopology:
             m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant,
         ] = {
             project.selector: project
-            for project in files.transaction_participants(layout)
+            for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
         }
         recorded_participants: t.VariadicTuple[
             m.Infra.CodegenJournalProject | m.Infra.CodegenFileParticipant
         ] = (*journal.projects, *journal.file_participants)
         for recorded in recorded_participants:
             project = by_selector[recorded.selector]
-            identity = files.physical_directory_identity(project.root)
+            identity = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                project.root
+            )
             if identity.failure:
                 return result_type.from_failure(identity)
             if identity.value != (recorded.device, recorded.inode):
@@ -290,7 +294,7 @@ class FlextInfraMiseArtifactsVerificationTopology:
         """
         for entry in journal.entries:
             project = by_selector[entry.project]
-            target = files.resolve_transaction(
+            target = FlextInfraMiseArtifactsFiles.resolve_transaction(
                 layout,
                 entry.path,
                 purpose="generated destination",
@@ -335,7 +339,7 @@ class FlextInfraMiseArtifactsVerificationTopology:
 
         """
         for role, selector in staging_paths:
-            staging = files.resolve_transaction(
+            staging = FlextInfraMiseArtifactsFiles.resolve_transaction(
                 layout,
                 selector,
                 purpose=f"generation {role} staging",
@@ -369,21 +373,25 @@ class FlextInfraMiseArtifactsVerificationTopology:
         if topology.failure:
             return topology
         for entry in journal.entries:
-            path = files.resolve_transaction(
+            path = FlextInfraMiseArtifactsFiles.resolve_transaction(
                 layout,
                 entry.path,
                 purpose="published destination",
             )
             if path.failure:
                 return r[bool].from_failure(path)
-            observed = files.read_state(path.value, required=entry.desired_exists)
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                path.value, required=entry.desired_exists
+            )
             if observed.failure:
                 return r[bool].from_failure(observed)
             current = observed.value
             identity = (
                 current.parent_device,
                 current.parent_inode,
-                None if current.content is None else files.digest(current.content),
+                None
+                if current.content is None
+                else FlextInfraMiseArtifactsFiles.digest(current.content),
                 current.mode,
                 current.device,
                 current.inode,

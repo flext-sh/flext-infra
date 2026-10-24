@@ -23,6 +23,7 @@ class TestsFlextInfraPytestCollectionManifest:
         project: Path,
         *options: str,
         markdown: str | None = None,
+        reportlog: bool = True,
     ) -> str:
         """Collect with the real collection plugin as the only external plugin.
 
@@ -55,8 +56,7 @@ class TestsFlextInfraPytestCollectionManifest:
                     "tests",
                     "--collect-only",
                     "-q",
-                    "-p",
-                    "pytest_reportlog.plugin",
+                    *(("-p", "pytest_reportlog.plugin") if reportlog else ()),
                     "-p",
                     config.Infra.tooling.tools.pytest.enforcement_plugin,
                     "-p",
@@ -77,17 +77,23 @@ class TestsFlextInfraPytestCollectionManifest:
         )
         return (project / "models-loaded.txt").read_text(encoding="utf-8")
 
+    @pytest.mark.parametrize("reportlog", [False, True])
     def test_unrequested_manifest_never_imports_the_model_facade(
         self,
         tmp_path: Path,
+        *,
+        reportlog: bool,
     ) -> None:
         """Test unrequested manifest never imports the model facade."""
-        tm.that(self._collect(tmp_path), eq="False")
+        tm.that(self._collect(tmp_path, reportlog=reportlog), eq="False")
         tm.that(list(tmp_path.glob("*.json")), eq=[])
 
+    @pytest.mark.parametrize("reportlog", [False, True])
     def test_runner_requested_manifest_publishes_the_collected_items(
         self,
         tmp_path: Path,
+        *,
+        reportlog: bool,
     ) -> None:
         """Test runner requested manifest publishes the collected items."""
         target = tmp_path / "collection.json"
@@ -95,6 +101,7 @@ class TestsFlextInfraPytestCollectionManifest:
         loaded = self._collect(
             tmp_path,
             f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}={target}",
+            reportlog=reportlog,
         )
 
         tm.that(loaded, eq="False")

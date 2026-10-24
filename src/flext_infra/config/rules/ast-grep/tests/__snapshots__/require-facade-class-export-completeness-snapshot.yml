@@ -1,4 +1,4 @@
-id: require-facade-mro-completeness
+id: require-facade-class-export-completeness
 snapshots:
   ? |
     class FlextFooModels(FlextCliModels):

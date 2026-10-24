@@ -141,12 +141,14 @@ package_name = "flext_infra"
 scan_dirs = ["src"]
 
 [tool.hatch.build.targets.wheel]
+exclude = ["/src/flext_infra/config"]
 only-include = ["src/flext_infra"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/flext_infra" = "flext_infra"
 
 [tool.hatch.build.targets.wheel.force-include]
+"src/flext_infra/config" = "flext_infra/config"
 "pyproject.toml" = "flext_infra/pyproject.toml"
 
 [tool.hatch.build.targets.sdist]

@@ -17,8 +17,11 @@ dependency lists are CUSTOM afterwards, so the declaration then rules. -#}
 
 {%- macro hatch_target_declaration(target) -%}
 [tool.hatch.build.targets.{{ target }}]
-{% if packaged_data_excludes %}
+{% if packaged_data_excludes or (target == "wheel" and package_config_resource) %}
 exclude = [
+{% if target == "wheel" and package_config_resource %}
+  {{ ("/" ~ package_config_resource[0]) | tojson }},
+{% endif %}
 {% for data_path in packaged_data_excludes %}
   {{ ("/" ~ data_path) | tojson }},
 {% endfor %}
@@ -133,9 +136,12 @@ path = {{ hatch_build_hook_path | tojson }}
 {% for namespace in repository_namespace_packages %}
 {{ namespace | tojson }} = {{ namespace | tojson }}
 {% endfor %}
-{% if packaged_data_files or root_modules or project_declaration_resource %}
+{% if packaged_data_files or root_modules or project_declaration_resource or package_config_resource %}
 
 [tool.hatch.build.targets.wheel.force-include]
+{% if package_config_resource %}
+{{ package_config_resource[0] | tojson }} = {{ package_config_resource[1] | tojson }}
+{% endif %}
 {% if project_declaration_resource %}
 {{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
 {% endif %}

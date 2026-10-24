@@ -9,63 +9,38 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import m
+from flext_infra.refactor import (
+    FlextInfraRefactorCensusProjectMixin,
+    FlextInfraRefactorCensusRemovalMixin,
+)
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
-class FlextInfraRefactorCensusCollectMixin:
+class FlextInfraRefactorCensusCollectMixin(
+    FlextInfraRefactorCensusRemovalMixin,
+    FlextInfraRefactorCensusProjectMixin,
+):
     """Inventory one module and assemble the WorkspaceReport."""
 
-    if TYPE_CHECKING:
+    @staticmethod
+    def project_name_for_module(
+        module: m.Infra.RopeModuleIndexEntry,
+        convention: m.Infra.RopeModuleConvention,
+    ) -> str:
+        """Resolve the project owning an inventoried module.
 
-        @property
-        def effective_dry_run(self) -> bool: ...
+        Returns:
+            The convention's project name or the module's project-root name.
 
-        def _validated_project_reports(
-            self,
-            rope: p.Infra.RopeWorkspaceDsl,
-            project_reports: t.VariadicTuple[m.Infra.ProjectReport],
-            *,
-            source_preview: p.Infra.SourcePreview,
-        ) -> t.VariadicTuple[m.Infra.ProjectReport]:
-            del rope, project_reports, source_preview
-
-        @staticmethod
-        def project_name_for_module(
-            module: m.Infra.RopeModuleIndexEntry,
-            convention: m.Infra.RopeModuleConvention,
-        ) -> str:
-            del module, convention
-
-        @staticmethod
-        def _include_object(
-            item: m.Infra.Object,
-            *,
-            selected_families: frozenset[str],
-            selected_kinds: frozenset[str] | None,
-        ) -> bool:
-            del item, selected_families, selected_kinds
-
-        @staticmethod
-        def duplicate_groups(
-            project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
-        ) -> t.VariadicTuple[m.Infra.DuplicateGroup]:
-            del project_objects
-
-        @staticmethod
-        def _object_key(item: m.Infra.Object) -> str:
-            del item
-
-        def _project_report(
-            self,
-            project: str,
-            *,
-            findings: m.Infra.ScanFindings,
-            duplicate_keys: frozenset[str],
-            scan_config: m.Infra.ScanConfig,
-        ) -> m.Infra.ProjectReport:
-            del project, findings, duplicate_keys, scan_config
+        """
+        layout = convention.project_layout
+        if layout is not None:
+            return layout.project_name
+        if module.project_root is not None:
+            return module.project_root.name
+        return ""
 
     def _scan_module(
         self,

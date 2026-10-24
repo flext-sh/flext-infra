@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from re import escape
 
 import pytest
 
@@ -32,6 +33,9 @@ class TestsFlextInfraCodemodGate:
         tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
         project = installed_dependency_path / "scanner_contract"
         (project / "src").mkdir(parents=True)
+        package = project / "src" / "scanner_contract"
+        package.mkdir()
+        (package / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
         metadata = installed_dependency_path / "scanner_contract-1.0.0.dist-info"
         metadata.mkdir()
         (metadata / "METADATA").write_text(
@@ -40,7 +44,9 @@ class TestsFlextInfraCodemodGate:
         )
         (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "scanner-contract"\nversion = "1.0.0"\n'
-            "dependencies = []\n",
+            "dependencies = []\n"
+            '[tool.uv.build-backend]\nmodule-root = "src"\n'
+            'module-name = "scanner_contract"\n',
             encoding="utf-8",
         )
         u.Tests.declare_codemod_rules(
@@ -260,14 +266,16 @@ class TestsFlextInfraCodemodGate:
         declared = config.Infra.codegen.model_copy(
             update={"artifacts": (*config.Infra.codegen.artifacts, custom)},
         )
-        delta = {
-            "codegen": u.Tests.json_payload(
-                declared.model_dump_json(include={"artifacts"}),
-            ),
+        delta: t.JsonValue = {
+            "codegen": declared.model_dump(mode="json", include={"artifacts"}),
         }
+        prefix = type(config).model_config.get("env_prefix")
+        if prefix is None:
+            msg = "The config owner must declare its environment prefix"
+            raise AssertionError(msg)
         try:
             with u.Tests.env_vars_context({
-                f"{type(config).model_config['env_prefix']}Infra": tm.ok(
+                f"{prefix}Infra": tm.ok(
                     u.Cli.json_dumps(delta),
                 ),
             }):
@@ -352,7 +360,7 @@ class TestsFlextInfraCodemodGate:
             [issue.file for issue in gate.issues if issue.code == "ban-stub-file"],
             eq=[stub.relative_to(project).as_posix()],
         )
-        with pytest.raises(OSError) as original_guard:
+        with pytest.raises(OSError, match=escape(str(stub))) as original_guard:
             u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
         with pytest.raises(type(original_guard.value)) as mod_guard:
             FlextInfraModGateEngine.scan(
@@ -362,7 +370,7 @@ class TestsFlextInfraCodemodGate:
                 source_files=(stub,),
             )
         tm.that(mod_guard.value.args, eq=original_guard.value.args)
-        tm.that(mod_guard.value.filename, eq=str(stub))
+        tm.that(mod_guard.value.filename, eq=original_guard.value.filename)
         tm.that(stub.is_symlink(), eq=True)
         tm.that(stub.readlink(), eq=link_before)
         identity_after = stub.lstat()
@@ -554,7 +562,9 @@ class TestsFlextInfraCodemodGate:
         result = results[0]
         tm.fail(result.passed)
         receipt = result.gates["codemod"].raw_receipt
-        tm.that(receipt, none=False)
+        if receipt is None:
+            msg = "A failed codemod gate must retain its native receipt"
+            raise AssertionError(msg)
         reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",

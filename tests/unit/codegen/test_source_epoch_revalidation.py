@@ -14,12 +14,79 @@ from types import FrameType
 
 import pytest
 
-from flext_infra import p
+from flext_infra import config, p
+from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraStagedPackage
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraSourceEpochRevalidation:
     """Observe real filesystem edits through the public authenticated planner."""
+
+    @staticmethod
+    @pytest.mark.parametrize("dependent", [False, True])
+    def test_original_publications_select_consumed_sources(
+        tmp_path: Path, *, dependent: bool
+    ) -> None:
+        """Shared finalization replays original outputs, not the warmed read union."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        unrelated = root / "unrelated.py"
+        original = "class Published: pass\n__all__ = ['Published']\n"
+        source.write_text(original, encoding=c.DEFAULT_ENCODING)
+        unrelated.write_text(original, encoding=c.DEFAULT_ENCODING)
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
+        with u.Infra.facade_source_project(
+            root, source_publications=(publications, failures)
+        ) as (project, _, _):
+            tm.that(project.source_text(unrelated), eq=original)
+            analysis = tm.ok(
+                FlextInfraCodegenLazyInit(
+                    repository_root=root,
+                    project_scope_roots=(root,),
+                    target_module=package.name,
+                ).plan_files(source_project=project, source_publications=publications)
+            )
+            tm.that(analysis.exception, none=True)
+            tm.that(len(publications), gt=0)
+            (source if dependent else unrelated).write_text(
+                "class Changed: pass\n", encoding=c.DEFAULT_ENCODING
+            )
+        tm.that(bool(failures), eq=dependent)
+        if dependent:
+            failure = failures[0]
+            tm.that(str(failure.exception), has=str(source))
+            tm.that(tm.not_none(failure.exception).__traceback__, none=False)
+            tm.that(
+                failure.failed_targets[0][1],
+                where=lambda receipt: any(
+                    receipt is original_receipt for _, original_receipt in publications
+                ),
+            )
+        tm.that(len(analysis.files), gt=0)
+
+    @staticmethod
+    def test_publication_handoff_rejects_copied_native_receipt(tmp_path: Path) -> None:
+        """A data-equivalent copy cannot replace the source issuer's evidence."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        publications: list[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
+        with ExitStack() as contexts:
+            project, _, _ = contexts.enter_context(
+                u.Infra.facade_source_project(
+                    root, source_publications=(publications, failures)
+                )
+            )
+            with project.source_consumption() as consumption:
+                project.source_text(source)
+            publications.append((package, consumption.receipt().model_copy()))
+            with pytest.raises(
+                ValueError, match="does not belong to this original epoch"
+            ):
+                contexts.close()
+        tm.that(failures, eq=[])
 
     @staticmethod
     def test_warm_empty_exports_retain_source_dependency(tmp_path: Path) -> None:
@@ -63,19 +130,70 @@ class TestsFlextInfraSourceEpochRevalidation:
     ) -> None:
         """Native child enumeration must not elect volatile interpreter byproducts."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        cache = package / "__pycache__"
-        cache.mkdir()
+        excluded = tuple(
+            package / name for name in config.Infra.codegen.source_scan_ignored
+        )
+        for cache in excluded:
+            cache.mkdir()
         with ExitStack() as lifecycle:
             project, _, _ = lifecycle.enter_context(u.Infra.facade_source_project(root))
             resource = project.get_folder(package.relative_to(root).as_posix())
             children = {child.name for child in resource.get_children()}
-            tm.that(cache.name in children, truth=False)
+            tm.that(any(cache.name in children for cache in excluded), truth=False)
             project.verify_source_states()
-            cache.rmdir()
+            for cache in excluded:
+                cache.rmdir()
             tm.that(
                 {child.name for child in resource.get_children()},
                 eq=children,
             )
+            project.verify_source_states()
+            for cache in excluded:
+                cache.mkdir()
+            project.verify_source_states()
+            lifecycle.close()
+
+    @staticmethod
+    @pytest.mark.parametrize("suffix", [".py", ".pyi"])
+    def test_native_source_membership_rejects_added_source(
+        tmp_path: Path, suffix: str
+    ) -> None:
+        """Source and prohibited stub additions remain membership changes."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        with ExitStack() as lifecycle:
+            project, _, _ = lifecycle.enter_context(u.Infra.facade_source_project(root))
+            resource = project.get_folder(package.relative_to(root).as_posix())
+            resource.get_children()
+            inputs = project.consumed_source_states()
+            directories = project.consumed_source_directories()
+            topology = project.consumed_source_topology()
+            source_name = f"new_source{suffix}"
+            destination = package / source_name
+            destination.write_text("", encoding=c.DEFAULT_ENCODING)
+            tampered = tuple(
+                inventory.model_copy(
+                    update={
+                        "membership_queries": tuple(
+                            tuple(sorted({*selection, source_name}))
+                            for selection in inventory.membership_queries
+                        ),
+                    }
+                )
+                for inventory in directories
+            )
+            tm.fail(
+                FlextInfraStagedPackage.plan_sources(
+                    root,
+                    {destination: "value = 1\n"},
+                    options=m.Infra.StageSourceOptions(
+                        inputs=inputs,
+                        source_directories=tampered,
+                        source_query_topology=topology,
+                    ),
+                ),
+                has="differs from admitted policy",
+            )
+            tm.that(destination.read_text(encoding=c.DEFAULT_ENCODING), eq="")
             with pytest.raises(ValueError, match="source directory membership changed"):
                 lifecycle.close()
 
@@ -171,8 +289,9 @@ class TestsFlextInfraSourceEpochRevalidation:
         )
         with u.Infra.facade_source_project(
             root,
-            source_states=(original,),
-            declared_files=(declaration,),
+            source_options=m.Infra.StageSourceOptions(
+                inputs=(original,), declared_files=(declaration,)
+            ),
         ) as (project, _, _):
             with project.source_consumption() as consumed:
                 tm.that(project.source_text(source), eq=desired)
@@ -215,12 +334,12 @@ class TestsFlextInfraSourceEpochRevalidation:
 
     @staticmethod
     @pytest.mark.parametrize("topology", [False, True])
-    def test_planner_raises_original_source_change(
+    def test_planner_retains_original_source_change(
         tmp_path: Path,
         *,
         topology: bool,
     ) -> None:
-        """A real edit after planning raises once; no package is planned again."""
+        """A failed dependency keeps its original cause and independent plans."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         left = package / "left"
         right = package / "right"
@@ -235,16 +354,18 @@ class TestsFlextInfraSourceEpochRevalidation:
             encoding=c.DEFAULT_ENCODING,
         )
         destination = left / "born.py" if topology else source
-        with (
-            TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
-                lambda: destination.write_text(
-                    "class After: pass\n__all__ = ['After']\n",
-                    encoding=c.DEFAULT_ENCODING,
-                )
-            ) as counts,
-            pytest.raises(ValueError, match="source"),
-        ):
-            u.Tests.create_lazy_init_service(root).plan_files()
+        with TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+            lambda: destination.write_text(
+                "class After: pass\n__all__ = ['After']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        ) as counts:
+            analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+        tm.that(analysis.exception, none=False)
+        tm.that(tm.not_none(analysis.exception).__traceback__, none=False)
+        tm.that(str(analysis.exception), has="source")
+        tm.that({path for path, _ in analysis.failed_targets}, has=left)
+        tm.that({file.path for file in analysis.files}, has=right / c.Infra.INIT_PY)
         tm.that(counts["plan_all_inits"], eq=1)
         tm.that(counts[str(left)], eq=1)
         tm.that(counts[str(right)], eq=1)
@@ -277,7 +398,7 @@ class TestsFlextInfraSourceEpochRevalidation:
     def test_planner_does_not_retry_unreadable_repository_metadata(
         tmp_path: Path,
     ) -> None:
-        """A failed metadata read escapes with its native cause, without retry."""
+        """A failed metadata read retains its native cause, without retry."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / c.PYPROJECT_FILENAME
         (package / "provider.py").write_text(
@@ -286,20 +407,20 @@ class TestsFlextInfraSourceEpochRevalidation:
         )
         mode = metadata.stat().st_mode
         try:
-            with (
-                TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
-                    lambda: metadata.chmod(0)
-                ) as counts,
-                pytest.raises(PermissionError, match="Permission denied"),
-            ):
-                u.Tests.create_lazy_init_service(root).plan_files()
+            with TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+                lambda: metadata.chmod(0)
+            ) as counts:
+                analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+            tm.that(isinstance(analysis.exception, PermissionError), truth=True)
+            tm.that(tm.not_none(analysis.exception).__traceback__, none=False)
+            tm.that(str(analysis.exception), has=metadata.name)
         finally:
             metadata.chmod(mode)
         tm.that(counts["plan_all_inits"], eq=1)
 
     @staticmethod
-    def test_planner_raises_changed_repository_metadata(tmp_path: Path) -> None:
-        """A real metadata edit during planning raises once and is kept on disk."""
+    def test_planner_retains_changed_repository_metadata(tmp_path: Path) -> None:
+        """A real metadata edit retains its original failure and stays on disk."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / c.PYPROJECT_FILENAME
         edited = (
@@ -310,12 +431,12 @@ class TestsFlextInfraSourceEpochRevalidation:
             "class Published: pass\n__all__ = ['Published']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with (
-            TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
-                lambda: metadata.write_text(edited, encoding=c.DEFAULT_ENCODING)
-            ) as counts,
-            pytest.raises(ValueError, match="source"),
-        ):
-            u.Tests.create_lazy_init_service(root).plan_files()
+        with TestsFlextInfraSourceEpochRevalidation._edit_after_package_planning(
+            lambda: metadata.write_text(edited, encoding=c.DEFAULT_ENCODING)
+        ) as counts:
+            analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+        tm.that(analysis.exception, none=False)
+        tm.that(tm.not_none(analysis.exception).__traceback__, none=False)
+        tm.that(str(analysis.exception), has=str(metadata))
         tm.that(counts["plan_all_inits"], eq=1)
         tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=edited)

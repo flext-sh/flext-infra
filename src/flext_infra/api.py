@@ -87,7 +87,6 @@ class FlextInfra(
             ),
         ).execute(source_root, workspace.value, request, inputs.value.sources)
 
-    @override
     def rope_workspace(
         self,
         repository_root: Path | None = None,

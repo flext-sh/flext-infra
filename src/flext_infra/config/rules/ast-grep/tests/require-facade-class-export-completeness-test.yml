@@ -1,0 +1,11 @@
+id: require-facade-class-export-completeness
+valid:
+  - |
+    def run() -> None:
+        class Local:
+            pass
+invalid:
+  - |
+    class FlextFooModels(FlextCliModels):
+        class Foo(FlextFooModelsBase):
+            pass

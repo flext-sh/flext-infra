@@ -41,7 +41,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
         if project_dir is not None and paths_manager is not None:
             expected_search: t.StrSequence = paths_manager.pyrefly_search_paths(
                 project_dir=project_dir,
-                is_root=context.is_root,
             )
             expected_includes: t.StrSequence = paths_manager.pyrefly_project_includes(
                 project_dir=project_dir,

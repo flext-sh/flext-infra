@@ -217,7 +217,6 @@ class TestsFlextInfraDepsExtraPathsSync:
         tm.ok(
             self._manager(tmp_path).sync_one(
                 pyproject,
-                is_root=True,
                 dry_run=scenario.dry_run,
             ),
         )
@@ -229,11 +228,11 @@ class TestsFlextInfraDepsExtraPathsSync:
         """Equal path content must not report changes across list/tuple forms."""
         (tmp_path / "src").mkdir()
         manager = self._manager(tmp_path)
-        expected_extra = manager.pyright_extra_paths(project_dir=tmp_path, is_root=True)
+        expected_extra = manager.pyright_extra_paths()
         # mypy derives independently of pyrefly since cosmos-45hiv: mypy must
         # not receive the project root (it enumerates roots and aborts on the
         # same file resolving under two module names).
-        expected_mypy = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
+        expected_mypy = manager.mypy_search_paths(project_dir=tmp_path)
         tm.ok(isinstance(expected_extra, tuple))
         tm.ok(isinstance(expected_mypy, tuple))
         doc = u.Cli.toml_document()
@@ -245,7 +244,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         tool["pyright"] = pyright
         tool["mypy"] = mypy
         doc["tool"] = tool
-        changes = manager.sync_doc(doc, project_dir=tmp_path, is_root=True)
+        changes = manager.sync_doc(doc, project_dir=tmp_path)
         tm.that(changes, eq=[])
-        changes_again = manager.sync_doc(doc, project_dir=tmp_path, is_root=True)
+        changes_again = manager.sync_doc(doc, project_dir=tmp_path)
         tm.that(changes_again, eq=[])

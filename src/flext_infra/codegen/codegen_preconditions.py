@@ -17,6 +17,7 @@ from importlib.machinery import (
 from importlib.metadata import packages_distributions
 from json import dumps
 from operator import itemgetter
+from os.path import normcase
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
@@ -1385,14 +1386,16 @@ class FlextInfraCodegenPreconditions:
             Path(str(distribution.locate_file(item))).absolute() for item in declared
         )
         root_depths = {len(root.parts) for root in roots.values()}
-        # Native prefixes preserve anchor, case and lexical parent semantics.
+        # Match native Path equality without constructing every prefix Path.
         ownership_prefixes = {
-            Path(*parts[:depth])
-            for parts in (path.parts for path in paths)
+            parts[:depth]
+            for parts in (tuple(map(normcase, path.parts)) for path in paths)
             for depth in root_depths
         }
         namespaces = {
-            namespace for namespace, root in roots.items() if root in ownership_prefixes
+            namespace
+            for namespace, root in roots.items()
+            if tuple(map(normcase, root.parts)) in ownership_prefixes
         }
         editable = cls._editable_distribution_namespaces(paths, roots)
         if editable.failure:

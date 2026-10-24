@@ -80,7 +80,8 @@ class FlextInfraModelsGitIdentity:
             bool,
             m.Field(
                 description=(
-                    "Whether this checkout is physically nested in its superproject"
+                    "Whether Git directly binds this checkout to its superproject, "
+                    "rather than inheriting the primary checkout's binding"
                 ),
             ),
         ] = False

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import m, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 from flext_infra.codegen._mise_artifacts_comparison import (
     FlextInfraMiseArtifactsComparison,
 )
@@ -48,7 +48,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 project.transaction_root is not None
                 and receipt.path != project.transaction_root
                 and receipt.path.is_relative_to(project.transaction_root)
-                for project in files.transaction_participants(layout)
+                for project in FlextInfraMiseArtifactsFiles.transaction_participants(
+                    layout
+                )
             ):
                 return result_type.fail(
                     (
@@ -89,10 +91,10 @@ class FlextInfraMiseArtifactsVerificationManifest:
         result_type = r[t.Pair[m.Infra.CodegenJournalDirectory, bool]]
         project = next(
             item
-            for item in files.transaction_participants(layout)
+            for item in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
             if item.selector == directory.project
         )
-        target = files.resolve_transaction(
+        target = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout,
             directory.path,
             purpose="temporary tree manifest",
@@ -324,12 +326,12 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The intent, original parent and mode proof, or the first refusal.
 
         """
-        target = files.resolve_transaction(
+        target = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout, intent.path, purpose="pending temporary directory input"
         ).unwrap()
         roots = {
             project.transaction_root
-            for project in files.transaction_participants(layout)
+            for project in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
         }
         owner = next(
             (
@@ -358,7 +360,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             *(item.before.path for item in journal.staging_intents),
             *(path for entry in journal.entries for path in entry.source_paths),
             *(
-                files.resolve_transaction(
+                FlextInfraMiseArtifactsFiles.resolve_transaction(
                     layout, selector, purpose="pending directory consumer"
                 ).unwrap()
                 for entry in journal.entries
@@ -445,7 +447,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         consumable = set(file_specs.value)
         for entry in journal.entries:
             if entry.recover_group and entry.original_staging is not None:
-                preimage = files.resolve_transaction(
+                preimage = FlextInfraMiseArtifactsFiles.resolve_transaction(
                     layout, entry.original_staging, purpose="group preimage consumption"
                 )
                 if preimage.failure:
@@ -497,7 +499,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         remaining = dict(current)
         roots = frozenset(
             item.transaction_root
-            for item in files.transaction_participants(layout)
+            for item in FlextInfraMiseArtifactsFiles.transaction_participants(layout)
             if item.transaction_root is not None
         )
         for intent in journal.staging_intents:
@@ -663,7 +665,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             return (
                 entry.kind == "file"
                 and receipt.content is not None
-                and entry.sha256 == files.digest(receipt.content)
+                and entry.sha256 == FlextInfraMiseArtifactsFiles.digest(receipt.content)
                 and entry.link_count == receipt.link_count
             )
         return entry.kind == "directory" and receipt.exists is True
@@ -690,7 +692,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             for role, selector in selectors:
                 if selector is None:
                     continue
-                resolved = files.resolve_transaction(
+                resolved = FlextInfraMiseArtifactsFiles.resolve_transaction(
                     layout,
                     selector,
                     purpose=f"{role} staging file",

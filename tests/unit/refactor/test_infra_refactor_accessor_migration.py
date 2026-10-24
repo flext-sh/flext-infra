@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-import json
+import ast
 import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import t
+    from tests import p
 
 _SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
 _REPLACEMENT_NAME = c.ENFORCEMENT_ACCESSOR_RENAMES[_SOURCE_NAME][0]
@@ -72,7 +73,7 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
     _ = (foreign_pkg / "__init__.py").write_text("", encoding="utf-8")
     foreign_file = foreign_pkg / "legacy.py"
     _ = foreign_file.write_text(_legacy_module_source(), encoding="utf-8")
-    u.Tests.provision_checkout(workspace)
+    u.Tests.provision_source_preview(workspace)
     return workspace, origin_file, foreign_file
 
 
@@ -173,18 +174,104 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
 
     @staticmethod
+    @pytest.mark.parametrize("captured", [False, True])
+    def test_model_receiver_retains_declaring_parameter_identity(
+        tmp_path: Path,
+        *,
+        captured: bool,
+    ) -> None:
+        """Captured parameters retain their annotation's original import binding.
+
+        Raises:
+            TypeError: If Rope does not retain the module's native syntax tree.
+
+        """
+        workspace, project, package = u.Tests.namespace_workspace(tmp_path)
+        source = "from flext_infra import m as declared_models\n\n"
+        source += "def outer(value: declared_models.Infra.ScopeMixin):\n"
+        source += (
+            "    def inner(declared_models):\n        return value\n    return inner\n"
+            if captured
+            else "    return value\n"
+        )
+        path = package / "consumer.py"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        u.Tests.provision_source_preview(workspace)
+        with u.Tests.authenticated_rope_workspace(project) as rope:
+            resolver = FlextInfraAccessorOriginResolver(rope.rope_project)
+            module = resolver.module(path)
+            tree = module.get_ast()
+            if not isinstance(tree, ast.AST):
+                msg = "Native receiver module has no source syntax tree"
+                raise TypeError(msg)
+            receiver = next(
+                node.value
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Return)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "value"
+            )
+            lexical = u.Infra.scope_at(module, u.Infra.source_offset(source, receiver))
+            binding = u.Infra.resolve_symbol(lexical, receiver)
+            expected = (
+                tm
+                .not_none(
+                    u.Infra.expression_name(
+                        module.get_scope(), "declared_models.Infra.ScopeMixin"
+                    )
+                )
+                .get_object()
+                .get_attributes()
+            )
+            attributes = resolver.receiver_attributes(path, source, receiver)
+            tm.ok(bool(attributes))
+            tm.that(set(attributes), eq=set(expected))
+            tm.ok(all(attributes[name] is value for name, value in expected.items()))
+            tm.ok(u.Infra.resolve_symbol(lexical, receiver) is binding)
+        program = (
+            "import sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            f"from {package.name} import consumer\n"
+            "from flext_infra import m\n"
+            "value = m.Infra.ScopeMixin()\n"
+            "result = consumer.outer(value)\n"
+            + ("result = result(None)\n" if captured else "")
+            + "assert result is value\n"
+        )
+        u.Cli.run((sys.executable, "-c", program, str(package.parent))).unwrap()
+
+    @staticmethod
     def test_removed_model_accessors_migrate_real_public_consumers(
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Owned accesses migrate; real fields and literal payloads keep behavior."""
         rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "accessor-migrations.yaml",
-            ).unwrap(),
+            u.Yaml.safe_load(
+                (
+                    type(config).ssot_config_dir().parent
+                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
+                    / "accessor-migrations.yaml"
+                ).read_text(encoding=c.DEFAULT_ENCODING)
+            ),
         )
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
+        _ = u.Tests.src_package(
+            project,
+            package.name,
+            pyproject=(project / "pyproject.toml").read_text(
+                encoding=c.DEFAULT_ENCODING
+            )
+            + "dependencies=['flext-infra']\n",
+        )
+        u.Tests.initialize_git_repo(workspace)
+        tm.ok(
+            u.Tests.create_python_environment(
+                workspace,
+                dependency_projects=u.Tests.python_dependency_projects(project),
+                session_runtime=session_runtime,
+            )
+        )
         source = "from flext_infra import m\n\n"
         program = (
             "import sys\n"
@@ -224,18 +311,17 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 f"assert consumer.overridden_{index}(overridden) == "
                 "'property_override_marker'\n"
             )
-        literal = tuple(rule.source_name for rule in rules)
         source += (
             "def optional(value: m.Infra.ProjectNamesOptionalMixin):\n"
             "    return value.project_names\n\n"
             "def concrete(value: m.Infra.ProjectNamesListMixin):\n"
             "    return value.project_names\n\n"
             "def payload():\n"
-            f"    return {literal!r}\n"
+            f"    return {tuple(rule.source_name for rule in rules)!r}\n"
         )
         (package / "consumer.py").write_text(source, encoding="utf-8")
-        u.Tests.provision_checkout(workspace)
-        with infra.rope_workspace(project) as rope:
+        u.Tests.provision_source_preview(workspace)
+        with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraAccessorRenamePhase(
                 source_preview=infra.source_preview(workspace),
@@ -278,7 +364,8 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             "m.Infra.ProjectNamesOptionalMixin(project_names=names)) == names\n"
             "assert consumer.concrete("
             "m.Infra.ProjectNamesListMixin(project_names=names)) == names\n"
-            f"assert consumer.payload() == {literal!r}\n"
+            "assert consumer.payload() == "
+            f"{tuple(rule.source_name for rule in rules)!r}\n"
             "print('consumer_verified')\n"
         )
         tm.that(
@@ -290,7 +377,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             .stdout,
             eq="consumer_verified\n",
         )
-        with infra.rope_workspace(project) as rope:
+        with u.Tests.authenticated_rope_workspace(project) as rope:
             tm.fail(phase.apply(project, preflight, rope).unwrap())
         planned = (
             FlextInfraAccessorMigrationOrchestrator(
@@ -310,18 +397,20 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """An unresolved receiver cannot silently become an accepted skip."""
         rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "accessor-migrations.yaml",
-            ).unwrap(),
+            u.Yaml.safe_load(
+                (
+                    type(config).ssot_config_dir().parent
+                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
+                    / "accessor-migrations.yaml"
+                ).read_text(encoding=c.DEFAULT_ENCODING)
+            ),
         )
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         consumer = package / "consumer.py"
         source = f"def unresolved(value):\n    return value.{rules[0].source_name}\n"
         consumer.write_text(source, encoding="utf-8")
-        u.Tests.provision_checkout(workspace)
-        with infra.rope_workspace(project) as rope:
+        u.Tests.provision_source_preview(workspace)
+        with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraAccessorRenamePhase(
                 source_preview=infra.source_preview(workspace),
@@ -336,11 +425,13 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """An inherited removed accessor cannot disappear behind a field override."""
         rules = u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "accessor-migrations.yaml",
-            ).unwrap(),
+            u.Yaml.safe_load(
+                (
+                    type(config).ssot_config_dir().parent
+                    / c.Infra.CODEMOD_ROPE_RULES_RELPATH
+                    / "accessor-migrations.yaml"
+                ).read_text(encoding=c.DEFAULT_ENCODING)
+            ),
         )
         for index, rule in enumerate(rules):
             workspace, project, package = u.Tests.namespace_workspace(
@@ -358,7 +449,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 f"    return value.{rule.source_name}\n"
             )
             consumer.write_text(source, encoding="utf-8")
-            u.Tests.provision_checkout(workspace)
+            u.Tests.provision_source_preview(workspace)
             program = (
                 "import sys\n"
                 "sys.path.insert(0, sys.argv[1])\n"
@@ -366,7 +457,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 f"assert consumer.FieldOverride().{field} is None\n"
             )
             u.Cli.run((sys.executable, "-c", program, str(package.parent))).unwrap()
-            with infra.rope_workspace(project) as rope:
+            with u.Tests.authenticated_rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
                 phase = FlextInfraAccessorRenamePhase(
                     source_preview=infra.source_preview(workspace),
@@ -390,14 +481,14 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         result = orchestrator.execute()
 
-        tm.fail(result.failure)
+        tm.fail(result.failure, msg=result.error)
         tm.ok(result.value.dry_run)
         tm.ok(result.value.automated_change_count > 0)
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source_before)
 
     @staticmethod
     def test_dry_run_publishes_the_report_receipt(tmp_path: Path) -> None:
-        """Every run publishes the structured receipt under ``.reports``."""
+        """Every run publishes a typed receipt in the Git-owned evidence root."""
         workspace, _origin_file, _foreign_file = _materialize_fixture(tmp_path)
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
@@ -409,12 +500,15 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         tm.that(result.failure, eq=False, msg=result.error)
         receipt = (
-            workspace / c.Infra.ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH
+            tm.ok(u.Infra.refactor_report_evidence_root(workspace))
+            / c.Infra.ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH
         ).resolve()
         tm.ok(receipt.exists())
-        published = json.loads(receipt.read_text(encoding="utf-8"))
-        tm.ok(published["dry_run"])
-        tm.that(published["workspace"], eq=str(workspace))
+        published = m.Infra.AccessorMigrationReport.model_validate_json(
+            receipt.read_bytes(),
+        )
+        tm.ok(published.dry_run)
+        tm.that(published.workspace, eq=str(workspace))
 
     @staticmethod
     def test_apply_renames_origin_owned_and_leaves_foreign_homonym(
@@ -508,6 +602,14 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             ),
         )
         advisory_file = pkg / "advisory.py"
+        _ = u.Tests.src_package(
+            workspace,
+            "workspace_root",
+            pyproject=(
+                "[project]\nname='workspace-root'\n"
+                f"version='{config.Infra.initial_project_version}'\n"
+            ),
+        )
         _ = advisory_file.write_text(
             "from __future__ import annotations\n"
             "from rope.base.project import Project\n"
@@ -522,7 +624,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             "        return super().get_source_folders()\n",
             encoding="utf-8",
         )
-        u.Tests.provision_checkout(workspace)
+        u.Tests.provision_source_preview(workspace)
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
             repository_root=workspace,
@@ -788,7 +890,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=True,
         ).execute()
 
-        tm.fail(result.failure)
+        tm.fail(result.failure, msg=result.error)
         tm.that(owned_file.read_text(encoding="utf-8"), has=f"def {_REPLACEMENT_NAME}(")
         tm.that(
             consumer.read_text(encoding="utf-8"), has=f"u().{_REPLACEMENT_NAME}(True)"

@@ -18,10 +18,175 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
+    FlextInfraStagedPackage,
     codegen_transaction as transaction,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
+
+
+class TestsLazyInitScopedSourceElection:
+    """Keep native catalog observation distinct from semantic source consumption."""
+
+    @staticmethod
+    def _observe(
+        observer: p.Infra.RopeResourceObserver, resource: p.Infra.RopeResource
+    ) -> None:
+        """Register the real native observer through its consumed typed contract."""
+        observer.add_resource(resource)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "change", ["unrelated", "producer", "provider", "collision"]
+    )
+    def test_admission_retains_namespace_queries_not_unrelated_manifest_payloads(
+        tmp_path: Path, change: str
+    ) -> None:
+        """Member metadata is a namespace query unless a checker consumes its bytes."""
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "scoped_receiver",
+            pyproject="[project]\nname = 'scoped-receiver'\nversion = '1.0.0'\n",
+        )
+        member = root / "unrelated"
+        u.Tests.src_package(
+            member,
+            "unrelated_provider",
+            pyproject="[project]\nname = 'unrelated-provider'\nversion = '1.0.0'\n",
+        )
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "unrelated"]\n\tpath = unrelated\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        source = package / c.Infra.INIT_PY
+        original = (
+            "from unrelated_provider import VALUE\n"
+            if change == "provider"
+            else "VALUE = 1\n"
+        )
+        source.write_text(original, encoding=c.DEFAULT_ENCODING)
+        plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(root, {source: original + "\n"})
+        )
+        if change == "provider":
+            tm.that(
+                any(layout.project_root == member for layout in plan.layouts), eq=True
+            )
+        metadata = (root if change == "producer" else member) / c.PYPROJECT_FILENAME
+        before = metadata.read_text(encoding=c.DEFAULT_ENCODING)
+        metadata.write_text(
+            before
+            + (
+                '[tool.hatch.build.targets.wheel]\npackages = ["src/scoped_receiver"]\n'
+                if change == "collision"
+                else (
+                    "[tool.hatch.build.targets.wheel]\n"
+                    'packages = ["src/changed_provider"]\n'
+                )
+                if change == "provider"
+                else "description = 'unrelated metadata edit'\n"
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        result = FlextInfraStagedPackage.source_inputs_current(plan)
+        if change == "unrelated":
+            tm.fail(metadata in {state.path for state in plan.inputs})
+            tm.ok(result)
+        else:
+            tm.fail(result)
+            tm.that(
+                result.error,
+                has=(
+                    "ambiguous candidate package"
+                    if change == "collision"
+                    else "provider namespace election changed"
+                    if change == "provider"
+                    else str(metadata)
+                ),
+            )
+        tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+
+    @staticmethod
+    def test_original_target_error_is_not_replaced_by_unrelated_epoch_reads(
+        tmp_path: Path,
+    ) -> None:
+        """A prior independent query cannot replace this target's original error."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        unrelated = root / c.Infra.DIR_TESTS / "unrelated.py"
+        unrelated.parent.mkdir()
+        unrelated.write_text("VALUE = 'original'\n", encoding=c.DEFAULT_ENCODING)
+        publications: list[tuple[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
+        with u.Infra.facade_source_project(
+            root, project_roots=(root,), source_publications=(publications, failures)
+        ) as (project, _, _):
+            project.source_text(unrelated)
+            unrelated.write_text("VALUE = 'changed'\n", encoding=c.DEFAULT_ENCODING)
+            result = FlextInfraCodegenLazyInit(
+                repository_root=root, target_module=f"{package.name}.absent"
+            ).plan_files(source_project=project, source_publications=publications)
+            tm.fail(result)
+            tm.that(result.error, has="target module not found")
+        tm.that(failures, eq=[])
+
+    @staticmethod
+    @pytest.mark.parametrize("location", ["tests", "module"])
+    def test_observed_catalog_payload_is_not_a_semantic_dependency(
+        tmp_path: Path, location: str
+    ) -> None:
+        """An observed but unread module can change without invalidating an artifact."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = root / c.Infra.DIR_TESTS if location == "tests" else package
+        directory.mkdir(exist_ok=True)
+        source = directory / "unrelated.py"
+        source.write_text("VALUE = 'original'\n", encoding=c.DEFAULT_ENCODING)
+        publications: list[tuple[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
+        with u.Infra.facade_source_project(
+            root, project_roots=(root,), source_publications=(publications, failures)
+        ) as (project, _, _):
+            with project.source_consumption() as consumption:
+                resource = project.get_file(source.relative_to(root).as_posix())
+                TestsLazyInitScopedSourceElection._observe(
+                    project.get_pycore().observer, resource
+                )
+            receipt = consumption.receipt()
+            publications.append((package, receipt))
+            tm.fail(source in {state.path for state in receipt.inputs})
+            tm.that(bool(receipt.source_directories), eq=True)
+            source.write_text("VALUE = 'changed'\n", encoding=c.DEFAULT_ENCODING)
+            project.verify_source_states(receipt)
+        tm.that(failures, eq=[])
+
+    @staticmethod
+    def test_scoped_semantic_read_retains_original_caller_evidence(
+        tmp_path: Path,
+    ) -> None:
+        """Real source reads remain authenticated even after observer registration."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "producer.py"
+        source.write_text("VALUE = 'original'\n", encoding=c.DEFAULT_ENCODING)
+        publications: list[tuple[Path, m.Infra.CodegenPhaseAnalysis]] = []
+        failures: list[m.Infra.CodegenPhaseAnalysis] = []
+        with u.Infra.facade_source_project(
+            root, project_roots=(root,), source_publications=(publications, failures)
+        ) as (project, _, _):
+            with project.source_consumption() as consumption:
+                resource = project.get_file(source.relative_to(root).as_posix())
+                TestsLazyInitScopedSourceElection._observe(
+                    project.get_pycore().observer, resource
+                )
+                tm.that(project.source_text(source), has="original")
+            receipt = consumption.receipt()
+            publications.append((package, receipt))
+            tm.that(source in {state.path for state in receipt.inputs}, eq=True)
+            source.write_text("VALUE = 'changed'\n", encoding=c.DEFAULT_ENCODING)
+            with pytest.raises(ValueError, match=escape(str(source))):
+                project.verify_source_states(receipt)
+        tm.that(len(failures), eq=1)
+        tm.that(str(failures[0].exception), has=str(source))
+        tm.not_none(tm.not_none(failures[0].exception).__traceback__)
 
 
 class TestsFlextInfraCodegenLazyInitFilePlans:
@@ -225,7 +390,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             )
             with u.Infra.facade_source_project(
                 tmp_path,
-                source_states=inputs,
+                source_options=m.Infra.StageSourceOptions(inputs=inputs),
                 project_roots=(root, provider_root),
             ) as binding:
                 analysis = tm.ok(
@@ -281,12 +446,20 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     @staticmethod
     def test_authored_initializer_keeps_executable_declarations_after_generation(
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Retain a real JSON loader, model and value through the public generator."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
+        )
         u.Tests.write_lazy_init_namespace_module(
             package / "models.py",
-            class_name="FlextTestsModels",
+            class_name=u.derive_class_stem(root.name) + "Models",
             alias="m",
         )
         resource_package = package / "resource_owner"
@@ -296,8 +469,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             '"""Load authored package data."""\n'
             "from importlib.resources import files\n"
             "from flext_core import m\n\n"
-            "class Payload(m.ContractModel):\n"
-            "    value: int\n\n"
+            f"class {u.derive_class_stem(root.name)}Payload(m.ContractModel):\n"
+            "    value: int = m.Field(description='Loaded resource value')\n\n"
+            f"Payload = {u.derive_class_stem(root.name)}Payload\n\n"
             "def load() -> Payload:\n"
             "    return Payload.model_validate_json(\n"
             "        files(__package__).joinpath('payload.json').read_text()\n"
@@ -411,9 +585,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
     @staticmethod
-    def _seed_conform_scope_repositories(
+    @pytest.fixture
+    def seed_conform_scope_repositories(
         tmp_path: Path,
         scope: c.Infra.CodegenConformScope,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> tuple[Path, Path, list[Path]]:
         """Seed the root/member pair with runtime, git and lazy-init fixtures.
 
@@ -446,9 +622,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 alias="m",
             )
             u.Tests.commit_git_changes(repository, "Seed scope fixture")
-            # Conform's fresh-import stage runs in the checkout's own runtime,
-            # which a real checkout gets from make setup.
-            u.Tests.provision_checkout(repository)
         if scope is c.Infra.CodegenConformScope.DECLARED:
             # A members-only run meets a root that already carries its runtime
             # Mise declaration, launchers and pin: each member's launchers are
@@ -460,6 +633,16 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             distribution=member.name,
             relative_path=member.relative_to(root).as_posix(),
         )
+        # Attached members share the containing workspace's physical runtime.
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
+        )
+        for repository in (root, member):
+            u.Tests.provision_checkout(repository)
         return root, member, packages
 
     @staticmethod
@@ -498,19 +681,22 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("scope", tuple(c.Infra.CodegenConformScope))
-    def test_lazy_publication_owns_exact_conform_repositories(
-        tmp_path: Path,
+    def test_lazy_planning_owns_exact_conform_repositories(
         scope: c.Infra.CodegenConformScope,
+        seed_conform_scope_repositories: tuple[Path, Path, list[Path]],
     ) -> None:
-        """Root and nested Git repositories retain their selected publication scope."""
-        seed = TestsFlextInfraCodegenLazyInitFilePlans._seed_conform_scope_repositories
-        root, member, packages = seed(tmp_path, scope)
+        """Read-only planning elects exactly the selected physical repositories."""
+        root, member, packages = seed_conform_scope_repositories
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = u.Tests.conform_request(
             root,
             scope=scope,
             mode=c.Infra.CodegenConformMode.CHECK,
         ).model_copy(update={"what": c.Infra.CodegenConformSurface.LAZY_INIT})
+        before = {
+            package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
+            for package in packages
+        }
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
@@ -532,24 +718,58 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             else {root.resolve(), member.resolve()}
         )
         tm.that(set(selected), eq=expected)
-        before = {
-            package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
-            for package in packages
-        }
         tm.that(
             {file.project for file in plan.files},
             eq=expected,
         )
         tm.that({path: path.read_bytes() for path in before}, eq=before)
-        applied = request.model_copy(update={"mode": c.Infra.CodegenConformMode.APPLY})
-        tm.ok(infra.codegen_conform(applied, workspace))
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("scope", tuple(c.Infra.CodegenConformScope))
+    def test_lazy_publication_owns_exact_conform_repositories(
+        scope: c.Infra.CodegenConformScope,
+        seed_conform_scope_repositories: tuple[Path, Path, list[Path]],
+    ) -> None:
+        """Publication and its public observation retain exact repository scope."""
+        root, member, packages = seed_conform_scope_repositories
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        request = u.Tests.conform_request(
+            root,
+            scope=scope,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        ).model_copy(update={"what": c.Infra.CodegenConformSurface.LAZY_INIT})
+        before = {
+            package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
+            for package in packages
+        }
+        published = tm.ok(infra.codegen_conform(request, workspace))
+        expected = {
+            (root / repository.path).resolve()
+            for repository in tm.not_none(published.plan).repositories
+        }
+        tm.that(
+            expected,
+            eq=(
+                {root.resolve()}
+                if scope is c.Infra.CodegenConformScope.SELF
+                else {member.resolve()}
+                if scope is c.Infra.CodegenConformScope.DECLARED
+                else {root.resolve(), member.resolve()}
+            ),
+        )
         for repository, package in zip((root, member), packages, strict=True):
             initializer = package / c.Infra.INIT_PY
             tm.that(
                 initializer.read_bytes() != before[initializer],
                 eq=repository.resolve() in expected,
             )
-        tm.ok(infra.codegen_conform(request, workspace))
+        tm.ok(
+            infra.codegen_conform(
+                request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
+                workspace,
+            )
+        )
 
     @staticmethod
     def test_scope_outside_workspace_is_a_scoped_plan_issue(
@@ -730,13 +950,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 ).plan_files(source_project=binding[0]),
             )
             receipt = analysis.failed_targets[0][1]
-            if isinstance(receipt, m.Infra.CodegenPhaseAnalysis):
-                with binding[0].source_consumption():
-                    binding[0].replay_source_consumption(receipt)
-            else:
-                pytest.fail(
-                    "failed-target evidence replaced the original native receipt"
-                )
+            tm.that(receipt, is_=m.Infra.CodegenPhaseAnalysis)
+            with binding[0].source_consumption():
+                binding[0].replay_source_consumption(receipt)
             plan = next(
                 file
                 for file in analysis.files
@@ -756,9 +972,18 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     def test_multi_root_issue_retains_independent_guarded_publication(
         tmp_path: Path,
         invalid: str,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Keep healthy effects and aggregate evidence despite invalid targets."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path / "workspace")
+        u.Tests.initialize_git_repo(root.parent)
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
+        )
         (package / "service.py").write_text(
             "class Published: pass\n__all__ = ['Published']\n",
             encoding=c.DEFAULT_ENCODING,
@@ -777,18 +1002,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     "class Shared: pass\n__all__ = ['Shared']\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-        analysis = tm.ok(
-            FlextInfraCodegenLazyInit(
-                repository_root=root.parent,
-                project_scope_roots=(invalid_root, root),
-            ).plan_files(),
-        )
-        tm.that(tuple(issue.file for issue in analysis.issues), eq=(str(invalid_root),))
-        tm.that({file.project for file in analysis.files}, eq={root})
-        tm.that(
-            (root.parent / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
-            eq=False,
-        )
         owner = transaction.FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root.parent),
         )
@@ -796,20 +1009,37 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             c.Infra.CodegenStagedFilePhase.LAZY_INIT.value,
             (root,),
         )
-        outcome = owner.run_files_locked(
-            roots,
-            lambda scope_root: owner.publish_file_phase_locked(
+        analyses: list[m.Infra.CodegenPhaseAnalysis] = []
+
+        def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
+            analysis = tm.ok(
+                FlextInfraCodegenLazyInit(
+                    repository_root=root.parent,
+                    project_scope_roots=(invalid_root, root),
+                ).plan_files()
+            )
+            analyses.append(analysis)
+            tm.that(
+                tuple(issue.file for issue in analysis.issues), eq=(str(invalid_root),)
+            )
+            tm.that({file.project for file in analysis.files}, eq={root})
+            tm.that(
+                (root.parent / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
+                eq=False,
+            )
+            return owner.publish_file_phase_locked(
                 scope_root,
                 roots,
                 analysis,
                 m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            ),
-        )
+            )
+
+        outcome = owner.run_files_locked(roots, publish)
         tm.ok(outcome.failure)
         plan = next(
-            file for file in analysis.files if file.path == package / c.Infra.INIT_PY
+            file for file in analyses[0].files if file.path == package / c.Infra.INIT_PY
         )
-        tm.that(plan.path.read_bytes(), eq=plan.desired_content)
+        tm.that(plan.path.read_bytes(), eq=plan.desired_content, msg=outcome.error)
 
     @staticmethod
     def test_plan_files_binds_init_and_sidecar_effects_without_writing(

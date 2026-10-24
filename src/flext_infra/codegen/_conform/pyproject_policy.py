@@ -57,10 +57,14 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         if projects.failure:
             return result_type.from_failure(projects)
         suppliers: list[m.Infra.UvResolutionProject] = []
-        runtime = FlextInfraWorkspaceDetector.runtime_election(root)
-        if runtime.failure:
-            return result_type.from_failure(runtime)
-        supplier_root = runtime.value.editable_supplier_root
+        supplier_root: Path | None = None
+        # A declared scaffold owns its future resolver inputs; its executor
+        # supplies generation tools, not editable dependency membership.
+        if self.state.initial_workspace is None:
+            runtime = FlextInfraWorkspaceDetector.runtime_election(root)
+            if runtime.failure:
+                return result_type.from_failure(runtime)
+            supplier_root = runtime.value.editable_supplier_root
         if supplier_root is not None:
             requirements: list[str] = []
             for project in projects.value:

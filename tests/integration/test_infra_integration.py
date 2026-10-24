@@ -23,6 +23,8 @@ from tests import tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import p
+
 pytestmark = [pytest.mark.integration]
 
 
@@ -131,6 +133,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
     @staticmethod
     def test_census_test_only_evidence_does_not_block_unused_classification(
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """An untracked test consumer supplies evidence, not runtime reachability."""
         root, package = u.Tests.create_lazy_init_workspace(
@@ -149,6 +152,14 @@ class TestsFlextInfraIntegrationInfraIntegration:
         )
         status = tm.ok(u.Cli.capture(["git", "status", "--porcelain"], cwd=root))
         tm.that(status, has=f"?? {c.Infra.DIR_TESTS}/")
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
+        )
+        u.Tests.prepare_source_preview(root)
 
         report = FlextInfraRefactorCensus(
             workspace_factory=infra.rope_workspace,

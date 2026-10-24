@@ -13,11 +13,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
-from flext_infra import config, u
+from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraRuffLintGate
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -71,7 +72,9 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             list(
                 u.Tests.toml_strings_at(pyproject, "tool", "ruff", "lint", "unfixable"),
             ),
-            eq=sorted(policy.unfixable),
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff.lint", "unfixable", TypeForm(t.StrSequence)
+            ),
         )
         tm.that(
             list(
@@ -83,11 +86,22 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                     "extend-safe-fixes",
                 ),
             ),
-            eq=sorted(policy.extend_safe_fixes),
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling,
+                "ruff.lint",
+                "extend-safe-fixes",
+                TypeForm(t.StrSequence),
+            ),
         )
         tm.that(
             list(u.Tests.toml_strings_at(pyproject, "tool", "ruff", "lint", "ignore")),
-            eq=sorted(set(delegated) | set(policy.ruling_disabled_rules)),
+            eq=sorted({
+                *delegated,
+                *policy.ruling_disabled_rules,
+                *u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                ),
+            }),
         )
         tm.that(
             list(
@@ -100,7 +114,12 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                     "allow-dunder-method-names",
                 ),
             ),
-            eq=sorted(policy.pylint.allow_dunder_method_names),
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling,
+                "ruff.lint.pylint",
+                "allow-dunder-method-names",
+                TypeForm(t.StrSequence),
+            ),
         )
 
     @staticmethod

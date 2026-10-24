@@ -1371,6 +1371,10 @@ Infra:
     - path: config/beads.yaml
       owner: codegen
       policy: full
+    - path: config/infra.yaml
+      owner: codegen
+      policy: merge
+      conflict_sections: [Infra.release.maintenance_line, Infra.release.finalize_maintenance]
     - path: .envrc
       owner: codegen
       policy: full
@@ -2159,6 +2163,11 @@ Infra:
       - source: base/config/gitleaks-release.toml.j2
         destination: config/gitleaks-release.toml
         profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/config/infra.yaml.j2
+        destination: config/infra.yaml
+        # Workspace policy is authored SSOT, never its own projection input/output.
+        profiles: [ standalone ]
         delegate: render
       # Repository-owned audit policy is validated from workspace.yaml,
       # rendered per project, and parsed into DocsAuditPolicySpec by the auditor.

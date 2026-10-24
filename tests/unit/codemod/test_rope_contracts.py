@@ -10,6 +10,7 @@ import ast
 import runpy
 from contextlib import redirect_stderr
 from io import StringIO
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import pytest
@@ -122,8 +123,11 @@ class TestsFlextInfraRopeContracts:
         tm.that(rules[-1].source_states[0].path, eq=overlay)
 
     @staticmethod
+    @pytest.mark.parametrize("readonly", [False, True])
     def test_constructor_target_preserves_arguments_and_noncall_references(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        *,
+        readonly: bool,
     ) -> None:
         """Replace native callees without a signature catalogue or argument rewrite."""
         workspace, path = rope_contract_consumer
@@ -159,7 +163,14 @@ class TestsFlextInfraRopeContracts:
             call_target="service",
             missing_keywords=("registry",),
         )
-        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
+        sources = {path: source}
+        edits = tm.ok(
+            u.Infra.plan_contract_rules(
+                workspace,
+                MappingProxyType(sources) if readonly else sources,
+                (rule,),
+            )
+        )
         tm.that(len(edits), eq=1)
         updated = edits[0].updated_source
         tm.that(updated, contains="result = Api(load(), label=tag())")

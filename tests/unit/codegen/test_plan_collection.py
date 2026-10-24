@@ -264,8 +264,7 @@ class TestsFlextInfraPlanCollection:
         config = self._config()
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
-            tm.that(plan.desired_content, none=False)
-            self._write(plan.path, plan.desired_content.decode())
+            self._write(plan.path, tm.not_none(plan.desired_content).decode())
         revision = first.revisions[0]
         generated = (
             tmp_path
@@ -291,8 +290,7 @@ class TestsFlextInfraPlanCollection:
         self._write(tmp_path / "input" / "design.md", "# Private source\n")
         published = u.Infra.docs_collect_plan_files(tmp_path, self._config())
         for plan in published.files:
-            tm.that(plan.desired_content, none=False)
-            self._write(plan.path, plan.desired_content.decode())
+            self._write(plan.path, tm.not_none(plan.desired_content).decode())
         disabled = m.Infra.PlanCollectionConfig(
             enabled=False,
             canonical_dir=Path("docs/plans"),
@@ -342,7 +340,7 @@ class TestsFlextInfraPlanCollection:
         tm.fail(any(state.path == session for state in bundle.source_states))
         for plan in bundle.files:
             tm.that(
-                private_session_text.encode() not in (plan.desired_content or b""),
+                private_session_text.encode() not in tm.not_none(plan.desired_content),
                 eq=True,
             )
 
@@ -378,8 +376,7 @@ class TestsFlextInfraPlanCollection:
         config = _projection_config(projection)
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
-            tm.that(plan.desired_content, none=False)
-            self._write(plan.path, plan.desired_content.decode())
+            self._write(plan.path, tm.not_none(plan.desired_content).decode())
         u.Infra.verify_plan_collection_publication(tmp_path, config, first)
 
         second = u.Infra.docs_collect_plan_files(tmp_path, config)
@@ -406,22 +403,31 @@ class TestsFlextInfraPlanCollection:
             eq="# Original home plan\n",
         )
         for plan in third.files:
-            tm.that(plan.desired_content, none=False)
-            self._write(plan.path, plan.desired_content.decode())
+            self._write(plan.path, tm.not_none(plan.desired_content).decode())
         fourth = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(fourth.revisions, eq=third.revisions)
         for plan in fourth.files:
             tm.fail(u.Infra.codegen_file_requires_effect(plan))
 
+    @pytest.mark.parametrize(
+        ("additional_path", "content"),
+        [
+            ("input/additional.md", "# Additional\n"),
+            ("input/design/new.md", "# Research\n"),
+        ],
+        ids=["plan", "companion"],
+    )
     def test_source_topology_change_fails_publication_preflight(
         self,
         tmp_path: Path,
+        additional_path: str,
+        content: str,
     ) -> None:
         """Test source topology change fails publication preflight."""
         self._write(tmp_path / "input" / "design.md", "# Design\n")
         config = self._config()
         bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
-        self._write(tmp_path / "input" / "additional.md", "# Additional\n")
+        self._write(tmp_path / additional_path, content)
 
         with pytest.raises(ValueError, match="topology changed"):
             u.Infra.verify_plan_collection_sources(tmp_path, config, bundle)
@@ -465,16 +471,6 @@ class TestsFlextInfraPlanCollection:
         if value in {"2026-09-14", "2026-09-14T14:20:28"}:
             tm.that(bundle.revisions[0].source_updated_at_utc, eq=None)
 
-    def test_new_companion_file_changes_source_topology(self, tmp_path: Path) -> None:
-        """Test new companion file changes source topology."""
-        self._write(tmp_path / "input" / "design.md", "# Design\n")
-        config = self._config()
-        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
-        self._write(tmp_path / "input" / "design" / "new.md", "# Research\n")
-
-        with pytest.raises(ValueError, match="topology changed"):
-            u.Infra.verify_plan_collection_sources(tmp_path, config, bundle)
-
     def test_projected_attachment_edit_is_collected_when_plan_is_unchanged(
         self,
         tmp_path: Path,
@@ -486,8 +482,7 @@ class TestsFlextInfraPlanCollection:
         config = _projection_config(projection)
         initial = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in initial.files:
-            tm.that(plan.desired_content, none=False)
-            self._write(plan.path, plan.desired_content.decode())
+            self._write(plan.path, tm.not_none(plan.desired_content).decode())
         revision = initial.revisions[0]
         attachment = (
             projection
@@ -510,8 +505,7 @@ class TestsFlextInfraPlanCollection:
         )
         u.Infra.verify_plan_collection_sources(tmp_path, config, changed)
         for plan in changed.files:
-            tm.that(plan.desired_content, none=False)
-            self._write(plan.path, plan.desired_content.decode())
+            self._write(plan.path, tm.not_none(plan.desired_content).decode())
         u.Infra.verify_plan_collection_publication(tmp_path, config, changed)
         stable = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(stable.revisions, eq=changed.revisions)
@@ -542,10 +536,9 @@ class TestsFlextInfraPlanCollection:
             self._write(root / "input" / "design.md", "# Portable source\n")
         first = u.Infra.docs_collect_plan_files(first_root, config)
         for plan in first.files:
-            tm.that(plan.desired_content, none=False)
             self._write(
                 next_root / plan.path.relative_to(first_root),
-                plan.desired_content.decode(),
+                tm.not_none(plan.desired_content).decode(),
             )
 
         relocated = u.Infra.docs_collect_plan_files(next_root, config)
@@ -557,6 +550,6 @@ class TestsFlextInfraPlanCollection:
         for plan in relocated.files:
             tm.fail(u.Infra.codegen_file_requires_effect(plan))
             tm.that(
-                str(first_root).encode() not in (plan.desired_content or b""),
+                str(first_root).encode() not in tm.not_none(plan.desired_content),
                 eq=True,
             )

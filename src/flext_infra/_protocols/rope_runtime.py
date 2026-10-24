@@ -44,6 +44,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, name: str, /
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
 
+    class RopeResourceObserver(Protocol):
+        """Native observer registration without claiming a semantic payload read."""
+
+        def add_resource(
+            self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        ) -> None: ...
+
     class RopeProjectInitializer(Protocol):
         """Native initialization with its documented nullable state folder."""
 
@@ -147,6 +154,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
         def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
+
+    class RopeScopedObject(RopePyObject, Protocol):
+        """Source-defined object retained by a native lexical scope."""
+
+        def get_module(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeParsedModule | None: ...
 
     @runtime_checkable
     class RopeSourceDefinition(Protocol):
@@ -313,7 +327,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
 
         @property
-        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
+        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopeScopedObject: ...
 
         @property
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
@@ -718,6 +732,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope mutable module-import collection shape."""
 
         imports: list[FlextInfraProtocolsRopeRuntime.RopeImportStatement]
+
+        def get_used_imports(
+            self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeImportInfo]: ...
 
         def add_import(
             self,

@@ -43,6 +43,29 @@ class FlextInfraEnsurePackagingPhase:
         )
 
     @staticmethod
+    def config_resource(
+        project_dir: Path,
+        package_name: str,
+        planned_files: t.StrSequence = (),
+    ) -> t.Pair[str, str] | None:
+        """Elect package-owned defaults for standard and editable wheels.
+
+        Returns:
+            The existing or planned config directory and installed destination.
+
+        """
+        source = Path(c.Infra.DEFAULT_SRC_DIR) / package_name / c.CONFIG_DIR_NAME
+        if not (project_dir / source).is_dir() and not any(
+            Path(planned).is_relative_to(source) for planned in planned_files
+        ):
+            return None
+        if (project_dir / source).exists():
+            FlextInfraEnsurePackagingPhase._validate_data_tree(
+                project_dir.resolve(), project_dir / source, frozenset()
+            )
+        return source.as_posix(), f"{package_name}/{c.CONFIG_DIR_NAME}"
+
+    @staticmethod
     def _validate_data_tree(
         root: Path,
         source: Path,
@@ -204,6 +227,7 @@ class FlextInfraEnsurePackagingPhase:
         data: m.Infra.PackagedDataSelection,
         data_excludes: t.StrSequence,
         topology: m.Infra.PyprojectDeclaredTopology,
+        package_config_resource: t.Pair[str, str] | None,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
 
@@ -229,10 +253,19 @@ class FlextInfraEnsurePackagingPhase:
             *repository_namespace_packages,
         )
         toml = m.Infra.DepsToml
+        wheel_excludes = (
+            *(f"/{item}" for item in data_excludes),
+            *((f"/{package_config_resource[0]}",) if package_config_resource else ()),
+        )
         force_include = (
             (
                 (project_declaration_resource,)
                 if project_declaration_resource is not None
+                else ()
+            )
+            + (
+                (package_config_resource,)
+                if package_config_resource is not None
                 else ()
             )
             + tuple(
@@ -249,7 +282,9 @@ class FlextInfraEnsurePackagingPhase:
             )
         )
         sdist_force_include = tuple(
-            (source, source) for source, _destination in force_include
+            (source, source)
+            for source, destination in force_include
+            if (source, destination) != package_config_resource
         ) + (
             (
                 (
@@ -272,30 +307,43 @@ class FlextInfraEnsurePackagingPhase:
                         toml.ListOp(
                             key="only-include",
                             values=selected_directories,
+                            strategy=c.Infra.TomlMergeMode.MERGE,
                         ),
                         toml.RemoveOp(key="packages"),
-                        toml.RemoveOp(key="include"),
-                        toml.SetOp(
-                            key="sources",
-                            value={
-                                **dict(
-                                    zip(
-                                        package_paths,
-                                        (package_name, *root_packages),
-                                        strict=True,
-                                    ),
+                        *(
+                            (
+                                toml.ListOp(
+                                    key="exclude",
+                                    values=wheel_excludes,
+                                    strategy=c.Infra.TomlMergeMode.MERGE,
                                 ),
-                                **{
-                                    directory: f"{package_name}/{directory}"
-                                    for directory in data.directories
-                                },
-                                **{
-                                    namespace: namespace
-                                    for namespace in repository_namespace_packages
-                                },
-                            },
+                            )
+                            if wheel_excludes
+                            else ()
                         ),
-                        toml.RemoveOp(key="force-include"),
+                    ),
+                ),
+                toml.PhaseConfig(
+                    name="packaging",
+                    root_path=(),
+                    table_path=("wheel", "sources"),
+                    operations=tuple(
+                        toml.SetOp(key=source, value=destination)
+                        for source, destination in (
+                            *zip(
+                                package_paths,
+                                (package_name, *root_packages),
+                                strict=True,
+                            ),
+                            *(
+                                (directory, f"{package_name}/{directory}")
+                                for directory in data.directories
+                            ),
+                            *(
+                                (namespace, namespace)
+                                for namespace in repository_namespace_packages
+                            ),
+                        )
                     ),
                 ),
                 toml.PhaseConfig(
@@ -306,18 +354,20 @@ class FlextInfraEnsurePackagingPhase:
                         toml.ListOp(
                             key="only-include",
                             values=selected_directories,
+                            strategy=c.Infra.TomlMergeMode.MERGE,
                         ),
                         toml.RemoveOp(key="packages"),
-                        toml.RemoveOp(key="include"),
-                        (
-                            toml.ListOp(
-                                key="exclude",
-                                values=tuple(f"/{item}" for item in data_excludes),
+                        *(
+                            (
+                                toml.ListOp(
+                                    key="exclude",
+                                    values=tuple(f"/{item}" for item in data_excludes),
+                                    strategy=c.Infra.TomlMergeMode.MERGE,
+                                ),
                             )
                             if data_excludes
-                            else toml.RemoveOp(key="exclude")
+                            else ()
                         ),
-                        toml.RemoveOp(key="force-include"),
                     ),
                 ),
                 (
@@ -335,7 +385,7 @@ class FlextInfraEnsurePackagingPhase:
                         name="packaging",
                         root_path=(),
                         table_path=("sdist",),
-                        operations=(toml.RemoveOp(key="force-include"),),
+                        operations=(),
                     )
                 ),
                 (
@@ -353,7 +403,7 @@ class FlextInfraEnsurePackagingPhase:
                         name="packaging",
                         root_path=(),
                         table_path=("wheel",),
-                        operations=(toml.RemoveOp(key="force-include"),),
+                        operations=(),
                     )
                 ),
             ),
@@ -474,6 +524,9 @@ class FlextInfraEnsurePackagingPhase:
                 data=data_paths,
                 data_excludes=data_excludes,
                 topology=topology,
+                package_config_resource=self.config_resource(
+                    project_dir, package_name, topology.planned_data_files
+                ),
             ),
         )
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 from tests import c, tm, u
 
 
@@ -108,6 +110,91 @@ class TestsFlextInfraLazyInitProcessing:
         generated = initializer.read_bytes()
         tm.ok(u.Tests.materialize_lazy_init(service))
         tm.that(initializer.read_bytes(), eq=generated)
+        tm.that(service.modified_files, empty=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("rename", [False, True])
+    def test_retired_private_package_follows_real_source_removal(
+        tmp_path: Path, rename: bool
+    ) -> None:
+        """Retire orphan outputs and parent exports in one publication plan."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        utilities = package / "_utilities"
+        utilities.mkdir()
+        (utilities / "filesystem.py").write_text(
+            "class UtilitiesOwner: pass\n__all__ = ('UtilitiesOwner',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        retired = utilities / "_filesystem_parts"
+        retired.mkdir()
+        source = retired / "base.py"
+        declaration = (
+            "class FilesystemOwner: pass\n"
+            "__all__ = ('FilesystemOwner',)\n"
+        )
+        source.write_text(declaration, encoding=c.DEFAULT_ENCODING)
+        service = u.Tests.create_lazy_init_service(repository)
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        initializer = retired / c.Infra.INIT_PY
+        tm.that(initializer.is_file(), eq=True)
+        if rename:
+            replacement = utilities / "_host_runtime_parts"
+            replacement.mkdir()
+            moved_source = source.rename(replacement / "runtime.py")
+            moved_source.write_text(
+                "class FilesystemOwner: pass\n__all__ = ()\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            public_source = (
+                "from ._utilities._host_runtime_parts.runtime import "
+                "FilesystemOwner\n"
+                "__all__ = ('FilesystemOwner',)\n"
+            )
+        else:
+            source.unlink()
+            public_source = "class PublicOwner: pass\n__all__ = ('PublicOwner',)\n"
+        (package / "api.py").write_text(public_source, encoding=c.DEFAULT_ENCODING)
+
+        result = service.plan_files()
+        planned = tm.ok(result)
+        tm.that(initializer.is_file(), eq=True)
+        tm.that(
+            any(
+                file.path == initializer.resolve() and file.desired_content is None
+                for file in planned.files
+            ),
+            eq=True,
+        )
+        tm.ok(
+            u.Tests.materialize_codegen_plans(result.map(lambda phase: phase.files))
+        )
+        tm.that(initializer.exists(), eq=False)
+        probe = (
+            f"import {package.name} as public\n"
+            f"import {package.name}._utilities as utilities\n"
+            "print('FilesystemOwner' not in utilities.__all__)\n"
+            "print('_filesystem_parts' not in utilities.__all__)\n"
+        )
+        if rename:
+            probe += (
+                f"from {package.name}._utilities._host_runtime_parts.runtime "
+                "import FilesystemOwner\n"
+                "print(public.FilesystemOwner is FilesystemOwner)\n"
+            )
+        else:
+            probe += (
+                f"from {package.name}.api import PublicOwner\n"
+                "print(public.PublicOwner is PublicOwner)\n"
+            )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                probe,
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["True", "True", "True"],
+        )
+        tm.ok(service.plan_files())
         tm.that(service.modified_files, empty=True)
 
     @staticmethod

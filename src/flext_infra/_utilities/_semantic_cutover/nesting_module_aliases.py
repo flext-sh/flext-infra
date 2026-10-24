@@ -63,9 +63,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         ):
             return module, owner
         package = origin.get_name().partition(".")[0]
-        inventory = cls._public_owner_inventory(project, package, sources)
+        inventory, public_resource = cls._public_owner_inventory(
+            project, package, sources
+        )
         return cls._public_owner_route(
-            project, (module, package), (origin, original_owner), owner, inventory
+            project,
+            (module, package),
+            (origin, original_owner),
+            owner,
+            inventory,
+            public_resource,
         )
 
     @staticmethod
@@ -73,7 +80,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         project: p.Infra.RopeProject,
         package: str,
         sources: t.MappingKV[Path, str],
-    ) -> t.MappingKV[str, t.Pair[str, bool]]:
+    ) -> t.Pair[t.MappingKV[str, t.Pair[str, bool]], p.Infra.RopeResource]:
         native_package = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(package),
         )
@@ -99,7 +106,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
                 msg = f"ambiguous native public owner module: {name}"
                 raise ValueError(msg)
             inventory[name] = source, module_resource.name == c.Infra.INIT_PY
-        return inventory
+        return inventory, resource
 
     @staticmethod
     def _public_owner_route(
@@ -108,6 +115,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         original: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyName | None],
         owner: str,
         inventory: t.MappingKV[str, t.Pair[str, bool]],
+        public_resource: p.Infra.RopeResource,
     ) -> t.Pair[str, str]:
         module, package = names
         origin, original_owner = original
@@ -133,8 +141,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
             class_bases=FlextInfraUtilitiesPrivateImportAncestry.class_bases(inventory),
         )
         if reference is not None and original_owner is not None:
-            public = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                project.get_module(package),
+            public = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project, public_resource
             )
             exposed_owner = runtime.expression_name(public.get_scope(), reference)
             if exposed_owner is not None and original_owner.get_object() in (

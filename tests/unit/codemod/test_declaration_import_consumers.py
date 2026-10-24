@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra
+from flext_infra import codemod, infra
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -20,6 +20,94 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDeclarationImportConsumers:
     """Keep real external utility behavior, aliases and lexical shadows."""
+
+    @staticmethod
+    @pytest.mark.parametrize("binding", ["Service", "c"])
+    def test_constants_phase_elects_native_roles_without_inventing_facades(
+        tmp_path: Path,
+        binding: str,
+    ) -> None:
+        """Service-only imports are lawful; an unresolved declared c still fails."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        service = package / "service.py"
+        service.write_text("class Service:\n    pass\n", encoding=c.DEFAULT_ENCODING)
+        consumer = package / "consumer.py"
+        source = (
+            f"from {package.name}.service import Service\n"
+            if binding == "Service"
+            else f"from {package.name} import c as constants\n"
+        )
+        consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        sources = {
+            service: service.read_text(encoding=c.DEFAULT_ENCODING),
+            consumer: source,
+        }
+        with infra.rope_workspace(root) as rope:
+            if binding == "c":
+                with pytest.raises(
+                    ValueError, match="unresolved constant import chain"
+                ):
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                        rope_workspace=rope,
+                        sources=sources,
+                    )
+            else:
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_semantic_cutover(
+                            c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                            rope_workspace=rope,
+                            sources=sources,
+                        )
+                    ),
+                    empty=True,
+                )
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        tm.that((package / c.Infra.CONSTANTS_PY).exists(), eq=False)
+
+    @staticmethod
+    def test_explicit_external_source_owner_uses_authenticated_graph(
+        tmp_path: Path,
+    ) -> None:
+        """A sibling consumer retains its manifest owner without becoming a producer."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        receiver, receiver_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="explicit-receiver",
+            package_name="explicit_receiver",
+        )
+        source = package / "service.py"
+        consumer = receiver_package / "consumer.py"
+        source.write_text("class Service:\n    pass\n", encoding=c.DEFAULT_ENCODING)
+        consumer.write_text(
+            f"from {package.name}.service import Service\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        seed = tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.build_source_plan(root, (receiver,))
+        )
+        sources = u.Infra.candidate_python_sources(seed.candidate, seed.source_states)
+        with codemod.FlextInfraCodemodSemanticApply.planning_workspace(
+            root, seed, sources
+        ) as rope:
+            tm.that(rope.repository_root, eq=root)
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+            tm.that(edits, empty=True)
+            tm.ok(
+                any(
+                    state.path == receiver / c.PYPROJECT_FILENAME
+                    for state in rope.rope_project.consumed_source_states()
+                )
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(seed.source_states))
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[consumer])
 
     @staticmethod
     @pytest.mark.parametrize(

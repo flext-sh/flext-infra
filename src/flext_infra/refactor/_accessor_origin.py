@@ -564,6 +564,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If its resource or binding is unavailable.
+            TypeError: If a parameter's scope has no native source definition.
 
         """
         resource = u.Infra.resolve_resource_from_path(self._rope_project, py_file)
@@ -577,6 +578,36 @@ class FlextInfraAccessorOriginResolver:
         if binding is None:
             msg = f"Unresolved accessor receiver: {py_file}:{receiver.lineno}"
             raise ValueError(msg)
+        if u.Infra.parameter_name(binding):
+            module, line = binding.get_definition_location()
+            if not u.Infra.source_module(module) or line is None:
+                msg = f"Unresolved accessor parameter declaration: {py_file}"
+                raise ValueError(msg)
+            scope = module.get_scope().get_inner_scope_for_line(line)
+            if not isinstance(scope.pyobject, p.Infra.RopeSourceDefinition):
+                msg = "Accessor receiver scope has no native source definition"
+                raise TypeError(msg)
+            declaration = scope.pyobject.get_ast()
+            if isinstance(declaration, ast.FunctionDef | ast.AsyncFunctionDef):
+                for argument in (
+                    *declaration.args.posonlyargs,
+                    *declaration.args.args,
+                    *declaration.args.kwonlyargs,
+                ):
+                    if (
+                        argument.annotation is not None
+                        and scope.get_names().get(argument.arg) is binding
+                    ):
+                        declared = u.Infra.annotation_origin(
+                            self._rope_project, argument.annotation, scope
+                        )
+                        if declared is None:
+                            msg = (
+                                "Unresolved accessor receiver annotation: "
+                                f"{py_file}:{argument.lineno}"
+                            )
+                            raise ValueError(msg)
+                        return declared.get_object()
         return binding.get_object()
 
     def receiver_inherits(

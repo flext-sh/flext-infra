@@ -1466,12 +1466,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             listed = {
                 directory.root.path
                 for directory in file.source_directories
-                if directory.membership_queried
+                if directory.membership_queried or directory.membership_queries
             }
             listed.update(
                 topology.target
                 for topology in file.source_query_topology
-                if topology.membership_queried
+                if topology.membership_queried or topology.membership_queries
             )
             dependencies = {
                 owner for path in queried for owner in candidates.get(path, ())
@@ -1766,8 +1766,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             session,
             publications,
             plans=plans,
-            workspace=workspace,
-            runtime_root=runtime_root,
+            runtime=m.Infra.CodegenSourceRuntime(
+                workspace=workspace,
+                runtime_root=runtime_root,
+            ),
         )
 
     def _publish_docs_batches(

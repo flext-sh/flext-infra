@@ -440,7 +440,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         destination: Path,
     ) -> p.Result[
         t.Triple[
-            m.Infra.ModScanReport,
+            m.Infra.ModScanEvidence,
             m.Infra.ModScanEvidenceReceipt,
             m.Infra.ViolationsSweepSources,
         ]
@@ -453,7 +453,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         """
         result = r[
             t.Triple[
-                m.Infra.ModScanReport,
+                m.Infra.ModScanEvidence,
                 m.Infra.ModScanEvidenceReceipt,
                 m.Infra.ViolationsSweepSources,
             ]
@@ -484,7 +484,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         if digests.failure:
             return result.from_failure(digests)
         repositories = tuple(project.name for project in snapshot.repository_roots)
-        receipt = u.Infra.publish_mod_scan_evidence(
+        receipt = u.Infra.publish_mod_scan_evidence_receipt(
             root,
             report,
             publication=m.Infra.ModScanPublication(
@@ -499,7 +499,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
     @staticmethod
     def _verify_entry_digests(
-        report: m.Infra.ModScanReport,
+        report: m.Infra.ModScanEvidence,
         snapshot: m.Infra.ViolationsSweepSources,
     ) -> p.Result[bool]:
         """Require every native finding to carry its authenticated source digest.
@@ -664,13 +664,26 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         ast_scan = (
-            r[m.Infra.ModScanReport].ok(previous.ast_report)
+            r[m.Infra.ModScanEvidence].ok(previous.ast_report)
             if previous is not None
             and previous.ast_report is not None
             and previous.sha256 == snapshot.sha256
             and previous.plan == snapshot.plan
             and previous.scope == snapshot.scope
-            else FlextInfraModGateEngine.scan(root, fix=False)
+            else FlextInfraModGateEngine.scan(root, fix=False).map(
+                lambda report: u.Infra.mod_scan_evidence(
+                    root,
+                    report,
+                    publication=m.Infra.ModScanPublication(
+                        command=c.Infra.ModScanCommand.SCAN,
+                        scope=snapshot.scope,
+                        repositories=tuple(
+                            project.name for project in snapshot.repository_roots
+                        ),
+                        rule_ids=tuple(rule.id for rule in snapshot.plan.rules),
+                    ),
+                )
+            )
         )
         text_scan = FlextInfraModTextGateEngine.scan(root, fix=False)
         lint = u.Infra.lint_snapshots(
