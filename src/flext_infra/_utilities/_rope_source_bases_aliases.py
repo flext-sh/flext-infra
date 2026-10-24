@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -26,35 +25,6 @@ from flext_infra._utilities.rope_runtime_types import (
 
 class FlextInfraUtilitiesRopeSourceBasesAliases:
     """Alias and lazy-module resolution part of the source-bases composite."""
-
-    @classmethod
-    def _stdlib_backing_module(cls, target: str) -> str | None:
-        """Return the importable real module backing one virtual stdlib module.
-
-        Returns:
-            The backing module name when the target imports at runtime and its
-            declaration file is importable under its own stem; otherwise None.
-
-        """
-        if cls._stdlib_backing_cache is None:
-            cls._stdlib_backing_cache = {}
-        cached = cls._stdlib_backing_cache.get(target, "")
-        if cached:
-            return cached or None
-        backing: str | None = None
-        try:
-            runtime = importlib.import_module(target)
-        except ImportError:
-            runtime = None
-        file = getattr(runtime, "__file__", None)
-        if file:
-            stem = Path(file).stem
-            if stem != target.rpartition(".")[-1] and importlib.util.find_spec(stem):
-                backing = stem
-        cls._stdlib_backing_cache[target] = backing or ""
-        return backing
-
-    _stdlib_backing_cache: t.StrDict | None = None
 
     @classmethod
     def lazy_module_aliases(

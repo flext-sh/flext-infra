@@ -833,28 +833,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> str:
             """Resolve one external qualified target through Rope.
 
-            Rope raises its own ModuleNotFoundError (not the builtin). Virtual
-            stdlib submodules (collections.abc since 3.13, and aliases like
-            os.path) exist only through runtime module aliasing, so static file
-            lookup cannot see them. Their declarations live in the backing real
-            module, which rope resolves normally.
+            Sourceless stdlib modules (``collections.abc``) are native extension
+            modules of every FLEXT Rope project, so Rope resolves them itself.
             Native Rope resolution and attribute errors propagate unchanged.
 
             Returns:
                 The resolved declaration identity.
 
             """
-            errors: t.VariadicTuple[type[BaseException]] = (
-                *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
-                ModuleNotFoundError,
-            )
-            try:
-                module = self._project.get_module(target)
-            except errors:
-                real = self._stdlib_backing_module(target)
-                if real is None:
-                    raise
-                module = self._project.get_module(real)
+            module = self._project.get_module(target)
             resource = self._project.find_module(target)
             if resource is not None and not isinstance(
                 module,
@@ -1217,35 +1204,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 attributes=tuple(parts[index:]),
                 qualified_base=root,
             )
-
-        def _stdlib_backing_module(self, target: str) -> str | None:
-            """Return the importable real module backing one virtual stdlib module.
-
-            Returns:
-                The backing module name when the target's import specification
-                declares a file importable under its own stem; otherwise None.
-
-            """
-            if self._stdlib_backing_cache is None:
-                self._stdlib_backing_cache = {}
-            if target in self._stdlib_backing_cache:
-                return self._stdlib_backing_cache[target] or None
-            backing: str | None = None
-            try:
-                spec = importlib.util.find_spec(target)
-            except ImportError:
-                spec = None
-            file = spec.origin if spec is not None else None
-            if file:
-                stem = Path(file).stem
-                if stem != target.rpartition(".")[-1] and importlib.util.find_spec(
-                    stem,
-                ):
-                    backing = stem
-            self._stdlib_backing_cache[target] = backing or ""
-            return backing
-
-        _stdlib_backing_cache: t.MutableMappingKV[str, str] | None = None
 
     @classmethod
     def source_class_order(
