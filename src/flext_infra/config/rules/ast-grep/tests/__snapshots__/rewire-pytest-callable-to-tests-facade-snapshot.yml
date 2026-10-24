@@ -1,0 +1,40 @@
+id: rewire-pytest-callable-to-tests-facade
+snapshots:
+  ? |
+    @pytest.mark.parametrize("value", [1, 2])
+    def test_value(value: int) -> None: ...
+  : fixed: |
+      @u.Tests.mark.parametrize("value", [1, 2])
+      def test_value(value: int) -> None: ...
+    labels:
+    - source: pytest.mark
+      style: primary
+      start: 1
+      end: 12
+    - source: pytest
+      style: secondary
+      start: 1
+      end: 7
+    - source: mark
+      style: secondary
+      start: 8
+      end: 12
+  ? |
+    with pytest.raises(c.ValidationError):
+        build()
+  : fixed: |
+      with u.Tests.raises(c.ValidationError):
+          build()
+    labels:
+    - source: pytest.raises
+      style: primary
+      start: 5
+      end: 18
+    - source: pytest
+      style: secondary
+      start: 5
+      end: 11
+    - source: raises
+      style: secondary
+      start: 12
+      end: 18

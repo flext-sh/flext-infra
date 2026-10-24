@@ -1,0 +1,36 @@
+id: rewire-pytest-type-to-tests-facade
+snapshots:
+  ? |
+    def test_env(monkeypatch: pytest.MonkeyPatch) -> None: ...
+  : fixed: |
+      def test_env(monkeypatch: t.Tests.MonkeyPatch) -> None: ...
+    labels:
+    - source: pytest.MonkeyPatch
+      style: primary
+      start: 26
+      end: 44
+    - source: pytest
+      style: secondary
+      start: 26
+      end: 32
+    - source: MonkeyPatch
+      style: secondary
+      start: 33
+      end: 44
+  ? |
+    def test_tmp(factory: pytest.TempPathFactory) -> None: ...
+  : fixed: |
+      def test_tmp(factory: t.Tests.TempPathFactory) -> None: ...
+    labels:
+    - source: pytest.TempPathFactory
+      style: primary
+      start: 22
+      end: 44
+    - source: pytest
+      style: secondary
+      start: 22
+      end: 28
+    - source: TempPathFactory
+      style: secondary
+      start: 29
+      end: 44

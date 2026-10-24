@@ -1,0 +1,9 @@
+id: rewire-pytest-type-to-tests-facade
+valid:
+  - |
+    def test_env(monkeypatch: t.Tests.MonkeyPatch) -> None: ...
+invalid:
+  - |
+    def test_env(monkeypatch: pytest.MonkeyPatch) -> None: ...
+  - |
+    def test_tmp(factory: pytest.TempPathFactory) -> None: ...
