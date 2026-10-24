@@ -213,7 +213,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         native_ids = frozenset(
             rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
         )
-        for path, content in self._native_cascade(root, rule_plan, inputs, seed).items():
+        for path, content in self._native_cascade(
+            root, rule_plan, inputs, seed
+        ).items():
             plans[path] = m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,

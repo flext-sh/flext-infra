@@ -476,9 +476,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                                         {
                                             "has": {
                                                 "field": "module_name",
-                                                **cls.codemod_exact_names_rule(
-                                                    (package,)
-                                                ),
+                                                **cls.codemod_exact_names_rule((
+                                                    package,
+                                                )),
                                             }
                                         },
                                         {

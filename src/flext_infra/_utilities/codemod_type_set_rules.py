@@ -45,15 +45,11 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             return {}
         owners: dict[frozenset[type], str] = {}
         documents: dict[str, t.JsonMapping] = {}
-        for path, classes in cls._type_set_constants(
-            facade, (c.Infra.FacadeFamily.C,)
-        ):
+        for path, classes in cls._type_set_constants(facade, (c.Infra.FacadeFamily.C,)):
             reference = ".".join(path)
             members = frozenset(classes)
             if members in owners:
-                msg = (
-                    f"type set declared twice: {owners[members]} and {reference}"
-                )
+                msg = f"type set declared twice: {owners[members]} and {reference}"
                 raise ValueError(msg)
             owners[members] = reference
             spelled = tuple(cls._public_spelling(item) for item in classes)
@@ -78,9 +74,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         """
         members = [{"pattern": spelling} for spelling in spelled]
         present = [{"has": member} for member in members]
-        present_anywhere = [
-            {"has": {"stopBy": "end", **member}} for member in members
-        ]
+        present_anywhere = [{"has": {"stopBy": "end", **member}} for member in members]
         operand = {"any": [{"kind": "attribute"}, {"kind": "identifier"}]}
         return {
             "id": rule_id,
