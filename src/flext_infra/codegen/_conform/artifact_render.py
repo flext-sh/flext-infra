@@ -187,17 +187,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             msg = "Python source rendering requires elected tooling inputs"
             raise ValueError(msg)
         policy = tool_config.tools.ruff.lint.flake8_type_checking
-        runtime_bases = (
-            tuple(current_runtime)
-            if not any(
-                u.Infra.codegen_file_requires_effect(plan) for plan in python_plans
-            )
-            else u.Infra.runtime_evaluated_base_classes(
-                root,
-                sources,
-                policy.runtime_evaluated_roots,
-                source_project=source_project,
-            )
+        # The one runtime-base derivation of generation, over the final sources.
+        runtime_bases = u.Infra.runtime_evaluated_base_classes(
+            root,
+            sources,
+            policy.runtime_evaluated_roots,
+            source_project=source_project,
         )
         first_party: list[t.JsonValue] = list(
             FlextInfraToolTablesPhase.first_party_namespaces(

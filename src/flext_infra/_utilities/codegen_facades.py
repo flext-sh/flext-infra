@@ -2598,10 +2598,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         cls._facade_source_membership(project, owners_dir)
         sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
         declarations: list[m.Infra.SourceClassReference] = []
+        package_prefix = f"{pkg_dir}/"
         captured = {
             path: source
             for path, source in contents.items()
-            if path.is_relative_to(pkg_dir) and path.suffix == c.Infra.EXT_PYTHON
+            if str(path).startswith(package_prefix)
+            and path.suffix == c.Infra.EXT_PYTHON
         }
         for path, content in sorted(captured.items()):
             # Conflict-marked projections belong to recovery, not source analysis.

@@ -120,14 +120,12 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectDocument,
         FlextInfraUtilitiesPyprojectOverlay,
         FlextInfraUtilitiesPyprojectRequirements,
-        FlextInfraUtilitiesPyprojectSession,
         FlextInfraUtilitiesPyprojectTomlPhases,
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope import (
         FlextInfraRopeProject,
         FlextInfraRopeRestructure,
-        Restructure,
     )
     from flext_infra._utilities._rope_analysis import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -495,7 +493,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPyprojectDocument",
     "FlextInfraUtilitiesPyprojectOverlay",
     "FlextInfraUtilitiesPyprojectRequirements",
-    "FlextInfraUtilitiesPyprojectSession",
     "FlextInfraUtilitiesPyprojectTomlPhases",
     "FlextInfraUtilitiesPyprojectUvSources",
     "FlextInfraUtilitiesPyrefly",
@@ -579,7 +576,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
-    "Restructure",
     "_git",
     "_promoted",
     "_pyproject",
@@ -723,7 +719,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyprojectDocument": "._pyproject.document",
         "FlextInfraUtilitiesPyprojectOverlay": "._pyproject.overlay",
         "FlextInfraUtilitiesPyprojectRequirements": "._pyproject.requirements",
-        "FlextInfraUtilitiesPyprojectSession": "._pyproject.session",
         "FlextInfraUtilitiesPyprojectTomlPhases": "._pyproject.toml_phases",
         "FlextInfraUtilitiesPyprojectUvSources": "._pyproject.uv_sources",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
@@ -851,7 +846,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesWorkspaceManifest": ".workspace_manifest",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",
-        "Restructure": "._rope._sdk",
         "_git": "._git",
         "_promoted": "._promoted",
         "_pyproject": "._pyproject",

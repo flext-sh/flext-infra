@@ -79,14 +79,10 @@ class TestsFlextInfraRuntimeRoot:
 
     @staticmethod
     @pytest.mark.parametrize("excluded", [False, True])
-    @pytest.mark.parametrize("hosted", [False, True])
-    @pytest.mark.parametrize("ci", [False, True])
     def test_native_monorepo_owner_retains_the_requested_project(
         tmp_path: Path,
         *,
         excluded: bool,
-        hosted: bool,
-        ci: bool,
     ) -> None:
         """UV membership and exclusions elect runtime without flattening a child."""
         root = tmp_path / "monorepo"
@@ -105,30 +101,13 @@ class TestsFlextInfraRuntimeRoot:
             "[project]\nname = 'fixture-child'\nversion = '1.0'\n",
             encoding="utf-8",
         )
-        gates = config.Infra.codegen.make.ci
-        policy = config.Infra.codegen.make.uv_resolution
-        previous_ci = os.environ.get(gates.variable)
-        previous_hosted = os.environ.get(policy.hosted_variable)
-        try:
-            os.environ[gates.variable] = gates.value if ci else gates.local_value
-            u.Tests.restore_env(
-                policy.hosted_variable,
-                policy.hosted_value if hosted else None,
-            )
+        observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(child))
 
-            observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(child))
-
-            owner = child if excluded or hosted else root
-            directory = (
-                policy.standalone_directory if hosted else policy.local_directory
-            )
-            tm.that(observed.project_root, eq=child.resolve())
-            tm.that(observed.runtime_root, eq=owner.resolve())
-            tm.that(observed.resolution_root, eq=owner / directory)
-            tm.that(observed.environment_path, eq=owner / c.Infra.ENVIRONMENT_DIRECTORY)
-        finally:
-            u.Tests.restore_env(gates.variable, previous_ci)
-            u.Tests.restore_env(policy.hosted_variable, previous_hosted)
+        owner = child if excluded else root
+        tm.that(observed.project_root, eq=child.resolve())
+        tm.that(observed.runtime_root, eq=owner.resolve())
+        tm.that(observed.resolution_root, eq=owner.resolve())
+        tm.that(observed.environment_path, eq=owner / c.Infra.ENVIRONMENT_DIRECTORY)
 
     @staticmethod
     def test_independent_nested_git_checkout_keeps_its_runtime(tmp_path: Path) -> None:
@@ -192,16 +171,12 @@ class TestsFlextInfraRuntimeRoot:
 
     @staticmethod
     @pytest.mark.parametrize("attached", [False, True])
-    @pytest.mark.parametrize("hosted", [False, True])
-    @pytest.mark.parametrize("ci", [False, True])
     def test_resolution_view_preserves_physical_environment(
         tmp_path: Path,
         *,
         attached: bool,
-        hosted: bool,
-        ci: bool,
     ) -> None:
-        """Hosted execution selects resolver input without changing ownership."""
+        """The elected runtime owns its manifest, lock and physical environment."""
         workspace = tmp_path / "runtime"
         workspace.mkdir()
         u.Tests.initialize_git_repo(workspace)
@@ -233,33 +208,15 @@ class TestsFlextInfraRuntimeRoot:
                 "[project]\nname = 'fixture-member'\nversion = '1.0'\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-        policy = config.Infra.codegen.make.uv_resolution
-        gates = config.Infra.codegen.make.ci
-        previous_hosted = os.environ.get(policy.hosted_variable)
-        previous_ci = os.environ.get(gates.variable)
-        try:
-            u.Tests.restore_env(
-                policy.hosted_variable,
-                policy.hosted_value if hosted else None,
-            )
-            os.environ[gates.variable] = gates.value if ci else gates.local_value
-            observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
-            directory = (
-                policy.standalone_directory if hosted else policy.local_directory
-            )
-            owner = project if hosted else workspace
-            expected = owner.resolve() / directory
+        observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
+        expected = workspace.resolve()
 
-            tm.that(observed.project_root, eq=project.resolve())
-            tm.that(observed.runtime_root, eq=owner.resolve())
-            tm.that(observed.environment_path, eq=owner / c.Infra.ENVIRONMENT_DIRECTORY)
-            tm.that(observed.resolution_root, eq=expected)
-            tm.that(observed.pyproject_path, eq=expected / c.PYPROJECT_FILENAME)
-            tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)
-            tm.that(observed.standalone, eq=hosted)
-        finally:
-            u.Tests.restore_env(policy.hosted_variable, previous_hosted)
-            u.Tests.restore_env(gates.variable, previous_ci)
+        tm.that(observed.project_root, eq=project.resolve())
+        tm.that(observed.runtime_root, eq=expected)
+        tm.that(observed.environment_path, eq=workspace / c.Infra.ENVIRONMENT_DIRECTORY)
+        tm.that(observed.resolution_root, eq=expected)
+        tm.that(observed.pyproject_path, eq=expected / c.PYPROJECT_FILENAME)
+        tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)
 
     @staticmethod
     def test_project_context_exposes_the_same_runtime_election(tmp_path: Path) -> None:
@@ -279,16 +236,6 @@ class TestsFlextInfraRuntimeRoot:
         observed = tm.ok(infra.project_context(repository))
 
         tm.that(observed.runtime, eq=expected)
-
-    @staticmethod
-    @pytest.mark.parametrize("directory", [Path(), Path(".."), Path("/outside")])
-    def test_resolution_directories_stay_within_the_runtime(directory: Path) -> None:
-        """Configuration cannot redirect a resolver view to a foreign runtime."""
-        payload = config.Infra.codegen.make.uv_resolution.model_dump()
-        payload["local_directory"] = directory
-
-        with pytest.raises(m.ValidationError):
-            m.Infra.MakeUvResolutionSpec.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize("ci", [False, True])

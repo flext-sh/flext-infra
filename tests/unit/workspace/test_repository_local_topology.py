@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 
@@ -375,7 +375,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         first = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -403,7 +403,7 @@ class TestsFlextInfraRepositoryLocalTopology:
 
         after = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         second = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -541,7 +541,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,

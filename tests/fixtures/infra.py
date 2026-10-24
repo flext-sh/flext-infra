@@ -414,7 +414,7 @@ def _provision_consumer_template(
         root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
     )
-    conform = codegen.FlextInfraCodegenConform(
+    conform = codegen.FlextInfraCodegenConformExecute(
         repository_root=root,
         state=m.Infra.CodegenConformState(
             repository_root=root,
@@ -430,33 +430,16 @@ def _provision_consumer_template(
     tm.ok(
         u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)),
     )
-    # Use the PYPROJECT planner's native view producer without replacing the
-    # consumer's authored metadata with an unrelated full-package scaffold.
     tm.ok(
-        u.Tests.materialize_codegen_plans(
-            conform.native_resolution_plans(
+        infra.codegen_conform(
+            u.Tests.conform_request(
                 root,
-                workspace,
-                tm.ok(u.Infra.load_codegen_inputs(root)),
-                plan.files,
-            ).map(tuple),
+                what=c.Infra.CodegenConformSurface.ENVRC,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
         ),
     )
-    environment_plan = tm.not_none(
-        tm.ok(
-            infra.codegen_conform(
-                u.Tests.conform_request(
-                    root,
-                    what=c.Infra.CodegenConformSurface.ENVRC,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                ),
-            ),
-        ).plan,
-    )
-    if environment_plan.exception is not None:
-        raise environment_plan.exception
-    tm.that(environment_plan.issues, empty=True, msg=str(environment_plan.issues))
     tm.ok(
         infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root),
@@ -757,7 +740,6 @@ def _provision_make_template(
                 **git_environment,
                 **u.Tests.hostile_uv_environment(hostile_venv),
                 make.ci.variable: make.ci.value,
-                make.uv_resolution.hosted_variable: make.uv_resolution.hosted_value,
                 c.Tests.MISE_DATA_DIR_ENV: str(parent / c.Tests.COLD_MISE_STORAGE),
             },
         ),
@@ -772,7 +754,6 @@ def _provision_make_template(
             env={
                 **git_environment,
                 make.ci.variable: make.ci.value,
-                make.uv_resolution.hosted_variable: make.uv_resolution.hosted_value,
                 c.Tests.MISE_DATA_DIR_ENV: str(parent / c.Tests.COLD_MISE_STORAGE),
             },
         ),

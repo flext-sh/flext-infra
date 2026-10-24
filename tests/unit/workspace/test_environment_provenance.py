@@ -138,8 +138,10 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             Whether this test invocation selects locked CI provenance.
 
         """
-        policy = config.Infra.codegen.make.uv_resolution
-        return u.Infra.env_value(policy.hosted_variable).strip() == policy.hosted_value
+        return (
+            u.Infra.env_value(c.Infra.ENV_VAR_GITHUB_ACTIONS).strip()
+            == c.ParserBooleanToken.TRUE
+        )
 
     @staticmethod
     @pytest.fixture
