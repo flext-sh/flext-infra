@@ -72,7 +72,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 if self._source_views is not None:
                     for binding in self._source_views[1].values():
                         for failure in binding[3][1]:
-                            self._retain_diagnostics(
+                            self.retain_diagnostics(
                                 failure.exception,
                                 issues=failure.issues,
                                 failed_targets=failure.failed_targets,
@@ -143,10 +143,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 u.Infra.facade_source_project(
                     root,
                     source_options=m.Infra.StageSourceOptions(
-                        inputs=source_states, declared_files=declared_files
+                        inputs=source_states,
+                        declared_files=declared_files,
+                        original_project=original_project,
                     ),
                     source_publications=publications,
-                    original_project=original_project,
                 )
             )
             opened[key] = (*source_binding, publications)
@@ -624,7 +625,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ).plan_files(source_project=projected[0], source_publications=publications)
             if exports.failure:
                 return result_type.from_failure(exports)
-            self._retain_diagnostics(
+            self.retain_diagnostics(
                 exports.value.exception,
                 issues=exports.value.issues,
                 failed_targets=exports.value.failed_targets,
@@ -869,7 +870,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         ).plan_files()
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        self._retain_diagnostics(
+        self.retain_diagnostics(
             planned.value.exception,
             issues=planned.value.issues,
             failed_targets=planned.value.failed_targets,

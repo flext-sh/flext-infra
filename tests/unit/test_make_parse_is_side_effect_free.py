@@ -22,7 +22,6 @@ from pathlib import Path
 import pytest
 
 import flext_infra
-from flext_infra import c
 from tests import c, t, tm
 
 

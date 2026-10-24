@@ -9,7 +9,7 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from flext_infra import c, infra, m, p, t, u
+from flext_infra import infra, m, p, t, u
 from tests import c, tm
 
 

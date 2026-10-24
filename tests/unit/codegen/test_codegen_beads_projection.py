@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, codegen, config, workspace
+from flext_infra import codegen, config, workspace
 from tests import c, m, t, tm, u
 
 
@@ -66,17 +66,6 @@ class TestsFlextInfraCodegenBeadsProjection:
                                 "kind": kind.value,
                                 "project": project.model_dump(mode="json"),
                             },
-                            "managed_files": [
-                                *(
-                                    managed.model_dump(mode="json")
-                                    for managed in catalogue.managed_files
-                                ),
-                                {
-                                    "path": f"project-artifacts/{distribution}/policy.txt",
-                                    "owner": "codegen",
-                                    "policy": "full",
-                                },
-                            ],
                         },
                     },
                 },
@@ -96,7 +85,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(plan.workspace.repository.kind, eq=kind)
         tm.that(plan.workspace.repository.package, eq=True)
         tm.that(plan.workspace.project, eq=declared.project)
-        for managed in inputs.spec.managed_files:
+        for managed in inputs.spec.managed_file_specs:
             tm.that((root / managed.path).parent.is_dir(), eq=True)
         package_dir = root / c.Infra.DEFAULT_SRC_DIR / project.package_name
         for family in u.Infra.facade_families().values():

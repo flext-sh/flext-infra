@@ -281,13 +281,10 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
         base_oid, head_oid = resolved.value
         if base_oid == head_oid:
             return r[bool].ok(value=True)
-        content = u.Cli.capture(
+        base = u.Cli.capture(
             [c.Infra.GIT, "show", f"{base_oid}:{c.PYPROJECT_FILENAME}"],
             cwd=root,
-        )
-        if content.failure:
-            return r[bool].from_failure(content)
-        base = u.Infra.project_version_from_text(content.value)
+        ).flat_map(u.Infra.project_version_from_text)
         if base.failure:
             return r[bool].from_failure(base)
         base_version = base.value

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
@@ -306,7 +306,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             ),
         )
         tm.that(result.finding_count > 0, eq=unformatted)
-        tm.that(result.raw_output.strip() != "", eq=unformatted)
+        tm.that(bool(result.raw_output.strip()), eq=unformatted)
         tm.that(source.read_text(encoding="utf-8"), eq=original)
 
     @staticmethod

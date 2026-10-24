@@ -25,13 +25,17 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         repository_root: Path,
         *,
         projects: t.StrSequence | None = None,
-        output_dir: Path | str | None = None,
+        output_dir: Path | None = None,
         apply: bool = False,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+
+        Raises:
+            ValueError: When a managed merge-policy file owns a selected path or a
+                planned repair carries no proposed bytes.
 
         """
         root = repository_root.expanduser().absolute()
@@ -135,7 +139,15 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         tuple[m.Infra.SemanticFilePlan, ...],
         tuple[m.Infra.DocsPhaseItemModel, ...],
     ]:
-        """Compose authored repairs against captured bytes without publication."""
+        """Compose authored repairs against captured bytes without publication.
+
+        Returns:
+            The planned file repairs and their phase items.
+
+        Raises:
+            FileNotFoundError: When a captured source has no content.
+
+        """
         planned: list[m.Infra.SemanticFilePlan] = []
         collected: list[m.Infra.DocsPhaseItemModel] = []
         for before in sources:

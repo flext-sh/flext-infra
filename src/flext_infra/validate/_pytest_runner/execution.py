@@ -871,20 +871,11 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         Raises:
-            RuntimeError: If empty incremental selection requires an integrity-checked
-                cache; or if testmon cache is unusable; or if testmon preflight rejected
-                cache.
+            RuntimeError: If the testmon cache is unusable.
 
         """
         pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
-        cache_restored = False
-        if pre_digest is not None:
-            pre_state = self._inspect_cache(digest=pre_digest).unwrap()
-            self._record_cache_state(report_dir, "cache-before", pre_state)
-            cache_restored = pre_state.restored_accepted
-            if not cache_restored:
-                msg = f"testmon preflight rejected cache: {pre_state.reason}"
-                raise RuntimeError(msg)
+        cache_restored = self._preflight_cache(pre_digest, report_dir)
         selection_plan = (
             None
             if execution_mode == c.Infra.PytestExecutionMode.FULL
@@ -904,22 +895,9 @@ class FlextInfraPytestRunnerExecution(
         if selection_plan is not None:
             if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
                 return r.ok(selection_plan.raw_return_code)
-            u.Cli.atomic_write_text_file(
-                report_dir / "selection-plan.json",
-                selection_plan.model_dump_json(indent=2) + "\n",
-            ).unwrap()
-            # A declared file executes its complete collected scope even when
-            # incremental selection would be empty.
-            if (
-                not selection_plan.node_ids
-                and not cache_restored
-                and not selection_plan.owns_no_tests
-                and not (
-                    self.target_file is not None and selection_plan.inventory_collected
-                )
-            ):
-                msg = "empty incremental selection requires an integrity-checked cache"
-                raise RuntimeError(msg)
+            self._record_selection_plan(
+                selection_plan, report_dir, cache_restored=cache_restored
+            )
         # A selected run enforces its existing manifest; whole-project FULL
         # publishes its inventory from the suite's own native collection.
         command = self.build_command(
@@ -962,15 +940,7 @@ class FlextInfraPytestRunnerExecution(
             and not completed_zero_tests
             and not self._completed_failure(outcome, report_dir)
         ):
-            if (
-                self.target_file is not None
-                and outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
-            ):
-                msg = (
-                    f"file phase exited 5 without a completed empty scope: {report_dir}"
-                )
-                raise RuntimeError(msg)
-            return r.ok(outcome.raw_return_code)
+            return self._unfinished_result(outcome, report_dir)
         state = self._inspect_cache(digest=pre_digest).unwrap()
         self._record_cache_state(report_dir, "cache-after", state)
         policy = config.Infra.codegen.make.testmon_cache_policy
@@ -988,6 +958,79 @@ class FlextInfraPytestRunnerExecution(
         if result.success:
             self._publish_cache_publication(report_dir, state, policy)
         return result
+
+    def _preflight_cache(self, pre_digest: str | None, report_dir: Path) -> bool:
+        """Require a restored cache whenever a testmon database already exists.
+
+        Returns:
+            True when an existing database was inspected and accepted.
+
+        Raises:
+            RuntimeError: If testmon preflight rejected the cache.
+
+        """
+        if pre_digest is None:
+            return False
+        pre_state = self._inspect_cache(digest=pre_digest).unwrap()
+        self._record_cache_state(report_dir, "cache-before", pre_state)
+        if not pre_state.restored_accepted:
+            msg = f"testmon preflight rejected cache: {pre_state.reason}"
+            raise RuntimeError(msg)
+        return True
+
+    def _record_selection_plan(
+        self,
+        selection_plan: m.Infra.PytestSelectionPlan,
+        report_dir: Path,
+        *,
+        cache_restored: bool,
+    ) -> None:
+        """Persist the resolved plan and require a cache for an empty selection.
+
+        A declared file executes its complete collected scope even when
+        incremental selection would be empty.
+
+        Raises:
+            RuntimeError: If empty incremental selection requires an integrity-checked
+                cache.
+
+        """
+        u.Cli.atomic_write_text_file(
+            report_dir / "selection-plan.json",
+            selection_plan.model_dump_json(indent=2) + "\n",
+        ).unwrap()
+        if (
+            not selection_plan.node_ids
+            and not cache_restored
+            and not selection_plan.owns_no_tests
+            and not (
+                self.target_file is not None and selection_plan.inventory_collected
+            )
+        ):
+            msg = "empty incremental selection requires an integrity-checked cache"
+            raise RuntimeError(msg)
+
+    def _unfinished_result(
+        self,
+        outcome: p.Cli.ProcessOutcome,
+        report_dir: Path,
+    ) -> p.Result[int]:
+        """Return the native exit of a suite that did not reach its finalizer.
+
+        Returns:
+            The original native return code.
+
+        Raises:
+            RuntimeError: If a file phase exited 5 without a completed empty scope.
+
+        """
+        if (
+            self.target_file is not None
+            and outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+        ):
+            msg = f"file phase exited 5 without a completed empty scope: {report_dir}"
+            raise RuntimeError(msg)
+        return r.ok(outcome.raw_return_code)
 
     def _selection_from_suite(
         self,

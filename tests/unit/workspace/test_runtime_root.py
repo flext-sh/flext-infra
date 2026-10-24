@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ class TestsFlextInfraRuntimeRoot:
     @pytest.mark.parametrize("malformed_parent_git", [False, True])
     def test_python_parent_does_not_invent_a_containing_git_owner(
         tmp_path: Path,
+        *,
         malformed_parent_git: bool,
     ) -> None:
         """A Git child stays independent, while a malformed parent marker is red."""
@@ -81,6 +83,7 @@ class TestsFlextInfraRuntimeRoot:
     @pytest.mark.parametrize("ci", [False, True])
     def test_native_monorepo_owner_retains_the_requested_project(
         tmp_path: Path,
+        *,
         excluded: bool,
         hosted: bool,
         ci: bool,
@@ -193,6 +196,7 @@ class TestsFlextInfraRuntimeRoot:
     @pytest.mark.parametrize("ci", [False, True])
     def test_resolution_view_preserves_physical_environment(
         tmp_path: Path,
+        *,
         attached: bool,
         hosted: bool,
         ci: bool,
@@ -290,6 +294,7 @@ class TestsFlextInfraRuntimeRoot:
     @pytest.mark.parametrize("ci", [False, True])
     def test_attached_member_runtime_owner(
         tmp_path: Path,
+        *,
         ci: bool,
     ) -> None:
         """Attached members inherit independently of the gate partition."""
@@ -334,6 +339,7 @@ class TestsFlextInfraRuntimeRoot:
     @pytest.mark.parametrize("ci", [False, True])
     def test_standalone_runtime_owner(
         tmp_path: Path,
+        *,
         ci: bool,
     ) -> None:
         """An independent checkout always owns its locks and environment."""
@@ -426,10 +432,18 @@ class TestsFlextInfraRuntimeRoot:
             ),
             desired_mode=0o644,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match=rf"{re.escape(c.PYPROJECT_FILENAME)}' not found"
+        ):
             u.Infra.workspace_dependency_order(tmp_path, (consumer, provider))
         if invalid:
-            with pytest.raises(ValueError):
+            messages = {
+                "malformed": "invalid planned manifest",
+                "duplicate": "duplicate planned manifest paths",
+                "cycle": "cyclic dependency graph",
+                "foreign": "planned manifest has no owning payload",
+            }
+            with pytest.raises(ValueError, match=messages[invalid]):
                 u.Infra.workspace_dependency_order(
                     tmp_path,
                     (consumer, provider),

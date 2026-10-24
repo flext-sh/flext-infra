@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from tests import c, tm, u
 
 

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
@@ -39,7 +40,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     )
 
     @classmethod
-    def _from_request(
+    def from_request(
         cls: type[Self],
         request: m.Infra.CodegenGenerateRequest,
         *,
@@ -114,7 +115,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         admitted = m.Infra.CodegenGenerateRequest.model_validate(
             request, from_attributes=True
         )
-        bound = cls._from_request(
+        bound = cls.from_request(
             admitted,
             execution_context=execution_context,
             repository_root=repository_root,
@@ -140,12 +141,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             raise ValueError(msg)
         u.Cli.info(
             f"operation=generate stage=inputs root={request.root} "
-            f"scope={request.scope} surface={request.what}"
+            f"scope={request.scope} surface={request.what} pid={os.getpid()}"
         )
         if request.what in c.Infra.FILE_ONLY_SURFACES:
             return self._execute_lazy_init(request)
         if request.what is c.Infra.CodegenConformSurface.ALL:
-            return self._execute_managed(request)
+            return self.execute_managed(request)
         return self.execute_plan(request)
 
     def _plan_or_report(
@@ -515,7 +516,34 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         u.Cli.info("stage=mise-config-staged-validation files=1 installs=0")
         return result_type.ok(session)
 
-    def _execute_managed(
+    def _publish_documents_stage(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        planned: m.Infra.CodegenPlan,
+        batches: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+        *,
+        published: p.Result[bool],
+        written: t.VariadicTuple[Path],
+    ) -> p.Result[bool]:
+        """Publish documents unless a new scaffold failed before its metadata.
+
+        Returns:
+            The document stage outcome, or the original publication failure when
+            the scaffold never wrote its project metadata.
+
+        """
+        if (
+            self.state.initial_workspace is not None
+            and published.failure
+            and request.root.expanduser().resolve() / c.PYPROJECT_FILENAME
+            not in written
+        ):
+            return r[bool].from_failure(published)
+        return self._settle_generation_stage(
+            lambda: self._publish_docs_batches(planned, batches),
+        )
+
+    def execute_managed(
         self,
         request: p.Infra.CodegenGenerateRequest,
         *,
@@ -585,21 +613,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             self._settle_generation_stage(partial(operation, written))
             for operation in after_publication
         )
-        missing_scaffold_metadata = (
-            self.state.initial_workspace is not None
-            and published.failure
-            and request.root.expanduser().resolve() / c.PYPROJECT_FILENAME
-            not in written
-        )
-        documents = (
-            r[bool].from_failure(published)
-            if missing_scaffold_metadata
-            else self._settle_generation_stage(
-                lambda: self._publish_docs_batches(
-                    planned.value,
-                    batches,
-                ),
-            )
+        documents = self._publish_documents_stage(
+            request, planned.value, batches, published=published, written=written
         )
         failures: list[p.FailureLike] = [
             item for item in (published, *repaired, documents) if item.failure

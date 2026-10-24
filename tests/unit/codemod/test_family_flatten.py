@@ -460,7 +460,7 @@ class TestsFlextInfraFamilyFlatten:
         tm.that(flattened[path], has='"""Owner doc."""')
         tm.that(flattened[path], has="type WrapperGrouped = WrapperEntity")
         tm.that(flattened[consumer], has="member: Part.WrapperGrouped")
-        assert '"""Wrapper doc."""' not in flattened[path], flattened[path]
+        tm.that(flattened[path], lacks='"""Wrapper doc."""')
 
     @staticmethod
     def test_composed_facade_keeps_the_wrapper_callers_still_use(

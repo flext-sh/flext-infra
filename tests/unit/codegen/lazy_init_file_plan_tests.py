@@ -15,7 +15,7 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen import (
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraStagedPackage,
@@ -68,7 +68,7 @@ class TestsLazyInitScopedSourceElection:
             analysis = tm.ok(
                 FlextInfraCodegenLazyInit(
                     repository_root=root,
-                    target_module=f"{c.Infra.DIR_TESTS}.fixtures",
+                    module=f"{c.Infra.DIR_TESTS}.fixtures",
                 ).plan_files(source_project=project, source_publications=publications)
             )
             tm.that(tuple(file.path for file in analysis.files), eq=(target,))
@@ -183,7 +183,7 @@ class TestsLazyInitScopedSourceElection:
             project.source_text(unrelated)
             unrelated.write_text("VALUE = 'changed'\n", encoding=c.DEFAULT_ENCODING)
             result = FlextInfraCodegenLazyInit(
-                repository_root=root, target_module=f"{package.name}.absent"
+                repository_root=root, module=f"{package.name}.absent"
             ).plan_files(source_project=project, source_publications=publications)
             tm.fail(result)
             tm.that(result.error, has="target module not found")
@@ -562,7 +562,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
             eq=False,
         )
-        workspace = u.Tests.standalone_workspace(root, root.name)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -570,7 +569,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
 
-        tm.ok(infra.codegen_conform(request, workspace))
+        tm.ok(infra.codegen_conform(request))
 
         tm.that(initializer.read_bytes(), eq=before)
         consumer = tm.ok(
@@ -614,7 +613,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
 
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -757,7 +756,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             for package in packages
         }
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -792,7 +791,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     ) -> None:
         """Publication and its public observation retain exact repository scope."""
         root, member, packages = seed_conform_scope_repositories
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = u.Tests.conform_request(
             root,
             scope=scope,
@@ -802,7 +800,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
             for package in packages
         }
-        published = tm.ok(infra.codegen_conform(request, workspace))
+        published = tm.ok(infra.codegen_conform(request))
         expected = {
             (root / repository.path).resolve()
             for repository in tm.not_none(published.plan).repositories
@@ -826,7 +824,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.ok(
             infra.codegen_conform(
                 request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
-                workspace,
             )
         )
 
@@ -913,7 +910,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             tuple((file.path, file.desired_content) for file in analysis.files),
             eq=tuple((file.path, file.desired_content) for file in repeated.files),
         )
-        service.target_module = "shared_package"
+        service.module = "shared_package"
         repeated = tm.ok(service.plan_files())
         tm.that(repeated.files, eq=())
         tm.that(repeated.publications, eq=())
@@ -952,7 +949,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             FlextInfraCodegenLazyInit(
                 repository_root=tmp_path,
                 project_scope_roots=tuple(reversed(roots)),
-                target_module="shared_package",
+                module="shared_package",
             ).plan_files(),
         )
         tm.that(analysis.files, eq=())
@@ -1229,7 +1226,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         """A missing target fails instead of widening to the workspace."""
         _, init_path, service = u.Tests.lazy_init_scenario(tmp_path)
         before = init_path.read_bytes()
-        service.target_module = "flext_missing"
+        service.module = "flext_missing"
 
         result = service.plan_files()
 

@@ -233,7 +233,15 @@ class FlextInfraConfigModelsTemplates:
 
         @m.model_validator(mode="after")
         def validate_source_closure(self) -> Self:
-            """Retain the primary original inside one complete nonempty closure."""
+            """Retain the primary original inside one complete nonempty closure.
+
+            Returns:
+                Self: the validated closure declaration.
+
+            Raises:
+                ValueError: when captured closure bytes are missing or duplicated.
+
+            """
             if (
                 self.source not in self.source_states
                 or any(state.content is None for state in self.source_states)
@@ -351,12 +359,14 @@ class FlextInfraConfigModelsTemplates:
             ) and self.source_kind != "resource":
                 msg = "source_package and source_closure require a resource declaration"
                 raise ValueError(msg)
+            full_ownership = (
+                self.ownership is not None and self.ownership.policy == "full"
+            )
             if self.source_kind == "resource" and (
                 self.source is None
                 or self.source_package is None
                 or self.source not in self.source_closure
-                or self.ownership is None
-                or self.ownership.policy != "full"
+                or not full_ownership
             ):
                 msg = (
                     "resource requires an explicit package, source closure and "

@@ -28,7 +28,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         ),
     ] = m.Field(default_factory=m.Infra.CodegenConformState, validate_default=True)
 
-    def _retain_diagnostics(
+    def retain_diagnostics(
         self,
         *exceptions: BaseException | None,
         issues: t.SequenceOf[m.Infra.Issue] = (),
@@ -51,7 +51,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         exception: BaseException | None = None,
     ) -> None:
         """Retain an actual target failure through the shared diagnostic model."""
-        self._retain_diagnostics(
+        self.retain_diagnostics(
             exception,
             issues=(
                 m.Infra.Issue(

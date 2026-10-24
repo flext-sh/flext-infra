@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, r, settings
+from flext_infra import config, infra, settings
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, r, t, tm, u
 

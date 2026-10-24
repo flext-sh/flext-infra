@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, config, infra, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.conform import FlextInfraCodegenConformExecute
 from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
 from tests import c, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -92,7 +92,7 @@ class TestsFlextInfraCodegenCiMatrix:
             tm.ok(service.execute(), eq=True)
         else:
             tm.ok(
-                FlextInfraCodegenConform.execute_request(
+                FlextInfraCodegenConformExecute.execute_request(
                     u.Tests.conform_request(
                         root,
                         what=c.Infra.CodegenConformSurface.ALL,
@@ -1062,7 +1062,9 @@ class TestsFlextInfraCodegenCiMatrixAnalysis:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        plan = tm.ok(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+        )
         managed_tests_files = [
             item.path.as_posix()
             for item in config.Infra.codegen.managed_files

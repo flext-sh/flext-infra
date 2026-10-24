@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, infra
+from flext_infra import infra
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -130,6 +130,7 @@ class TestsFlextInfraConstantsCensusOwnership:
     @pytest.mark.parametrize("nested", [False, True])
     def test_exported_constants_keep_their_declared_family(
         tmp_path: Path,
+        *,
         nested: bool,
     ) -> None:
         """Exporting a class does not rename the family of its constants."""

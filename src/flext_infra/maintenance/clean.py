@@ -68,17 +68,14 @@ class FlextInfraCleanService(s[int]):
         t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
         t.VariadicTuple[m.Cli.AtomicFileState],
     ]:
-        """Elect physical targets while retaining every foreign/runtime boundary."""
+        """Elect physical targets while retaining every foreign/runtime boundary.
+
+        Returns:
+            The disposable directory manifests and file states.
+
+        """
         policy = codegen.make.clean
-        for name in (*policy.cache_dirs, *policy.root_dirs, *policy.root_files):
-            if Path(name).name != name or name in {".", ".."}:
-                msg = f"clean declarations require one relative resource name: {name}"
-                raise ValueError(msg)
-            cls._require_runtime_scope(root, root / name, codegen)
-        for pattern in policy.trace_globs:
-            if Path(pattern).name != pattern or pattern in {".", ".."}:
-                msg = f"clean trace patterns require one filename glob: {pattern}"
-                raise ValueError(msg)
+        cls._require_declarations(root, codegen)
         declarations = u.Infra.git_submodule_declarations(root).unwrap()
         members = tuple(root / member.path for member in declarations)
         protected = cls._protected_names(codegen)
@@ -110,36 +107,104 @@ class FlextInfraCleanService(s[int]):
                     fnmatchcase(entry.name, pattern) for pattern in policy.trace_globs
                 )
                 if directory_target:
-                    if entry.kind != "directory":
-                        msg = f"clean requires a physical disposable directory: {path}"
-                        raise ValueError(msg)
-                    cls._require_owned(root, path, codegen)
-                    manifest = u.Cli.atomic_inventory_physical_tree(path).unwrap()
-                    for child in manifest.entries:
-                        cls._require_runtime_scope(root, child.path, codegen)
-                        if child.path in members:
-                            msg = f"clean target contains protected runtime state: {child.path}"
-                            raise ValueError(msg)
-                    directories.append(manifest)
-                elif file_target:
-                    if entry.kind != "file":
-                        msg = f"clean requires a regular disposable file: {path}"
-                        raise ValueError(msg)
-                    cls._require_owned(root, path, codegen)
-                    files.append(
-                        u.Cli.atomic_read_binary_file_state(
-                            path, required=True
-                        ).unwrap(),
+                    directories.append(
+                        cls._directory_manifest(
+                            root, path, entry.kind, members, codegen
+                        )
                     )
+                elif file_target:
+                    files.append(cls._file_state(root, path, entry.kind, codegen))
                 elif entry.kind == "directory" and not any(
                     fnmatchcase(entry.name, pattern) for pattern in excluded
                 ):
                     pending.append(path)
         return tuple(directories), tuple(files)
 
+    @classmethod
+    def _require_declarations(
+        cls,
+        root: Path,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> None:
+        """Require single-name resources and filename globs in the clean policy.
+
+        Raises:
+            ValueError: When a declaration is not one relative name or filename glob.
+
+        """
+        policy = codegen.make.clean
+        for name in (*policy.cache_dirs, *policy.root_dirs, *policy.root_files):
+            if Path(name).name != name or name in {".", ".."}:
+                msg = f"clean declarations require one relative resource name: {name}"
+                raise ValueError(msg)
+            cls._require_runtime_scope(root, root / name, codegen)
+        for pattern in policy.trace_globs:
+            if Path(pattern).name != pattern or pattern in {".", ".."}:
+                msg = f"clean trace patterns require one filename glob: {pattern}"
+                raise ValueError(msg)
+
+    @classmethod
+    def _directory_manifest(
+        cls,
+        root: Path,
+        path: Path,
+        kind: str,
+        members: t.VariadicTuple[Path],
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> m.Cli.AtomicPhysicalTreeManifest:
+        """Authenticate one disposable directory and inventory its physical tree.
+
+        Returns:
+            The physical tree manifest of the owned directory.
+
+        Raises:
+            ValueError: When the target is not a physical directory or contains
+                protected runtime state.
+
+        """
+        if kind != "directory":
+            msg = f"clean requires a physical disposable directory: {path}"
+            raise ValueError(msg)
+        cls._require_owned(root, path, codegen)
+        manifest = u.Cli.atomic_inventory_physical_tree(path).unwrap()
+        for child in manifest.entries:
+            cls._require_runtime_scope(root, child.path, codegen)
+            if child.path in members:
+                msg = f"clean target contains protected runtime state: {child.path}"
+                raise ValueError(msg)
+        return manifest
+
+    @classmethod
+    def _file_state(
+        cls,
+        root: Path,
+        path: Path,
+        kind: str,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> m.Cli.AtomicFileState:
+        """Authenticate one disposable regular file and capture its state.
+
+        Returns:
+            The captured state of the owned file.
+
+        Raises:
+            ValueError: When the target is not a regular file.
+
+        """
+        if kind != "file":
+            msg = f"clean requires a regular disposable file: {path}"
+            raise ValueError(msg)
+        cls._require_owned(root, path, codegen)
+        return u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+
     @staticmethod
     def _protected_names(codegen: m.Infra.CodegenConfigSpec) -> frozenset[str]:
-        """Derive runtime identities that disposable declarations cannot retire."""
+        """Derive runtime identities that disposable declarations cannot retire.
+
+        Returns:
+            The protected runtime names.
+
+        """
         return frozenset({
             c.Infra.GIT_DIR,
             c.Infra.ENVIRONMENT_DIRECTORY,
@@ -159,7 +224,13 @@ class FlextInfraCleanService(s[int]):
         target: Path,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
-        """Refuse source inputs, nested owners, locks and persistent test history."""
+        """Refuse source inputs, nested owners, locks and persistent test history.
+
+        Raises:
+            ValueError: When the target holds source, a declared member, or
+                protected runtime state.
+
+        """
         cls._require_runtime_scope(root, target, codegen)
         sources = u.Infra.git_source_scope_paths(root)
         if sources is None:
@@ -180,7 +251,12 @@ class FlextInfraCleanService(s[int]):
         target: Path,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
-        """Keep every selected physical leaf inside its disposable owner."""
+        """Keep every selected physical leaf inside its disposable owner.
+
+        Raises:
+            ValueError: When the target is protected ownership or runtime state.
+
+        """
         lock_suffix = Path(c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME).suffix
         database = codegen.make.testmon_cache.database_filename
         if (

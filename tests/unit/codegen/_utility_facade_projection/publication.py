@@ -14,7 +14,7 @@ from typing import Literal
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, p, t, tm, u
 
 
@@ -207,7 +207,7 @@ class UtilityFacadePublication:
                 )
             )
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 state=m.Infra.CodegenConformState(repository_root=root),
             ).plan(
                 u.Tests.conform_request(
@@ -1051,7 +1051,7 @@ class UtilityFacadePublication:
 
         service = u.Tests.create_lazy_init_service(root)
         family = u.Infra.facade_family_declared_by(facade.name)
-        service.target_module = f"{package.name}.{family.directory}"
+        service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         updated = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
@@ -1173,7 +1173,7 @@ class UtilityFacadePublication:
 
         service = u.Tests.create_lazy_init_service(root)
         family = u.Infra.facade_family_declared_by(facade.name)
-        service.target_module = f"{package.name}.{family.directory}"
+        service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         updated = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
         self._write(facade, updated)
@@ -1254,7 +1254,7 @@ class UtilityFacadePublication:
             "__all__ = ['FlextSampleProtocols', 'p']\n",
         )
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}._protocols"
+        service.module = f"{package.name}._protocols"
         tm.ok(u.Tests.materialize_lazy_init(service))
         if managed:
             rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
@@ -1346,7 +1346,7 @@ class UtilityFacadePublication:
             + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n",
         )
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{directory}"
+        service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
         self._write(facade, rendered)
@@ -1508,7 +1508,7 @@ class UtilityFacadePublication:
             + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n",
         )
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{directory}"
+        service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
         self._write(facade, rendered)

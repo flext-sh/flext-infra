@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 from tests import t
 
+_MIN_EDITS = 2
+
 
 class TestsFlextInfraModelAliasRetirement:
     """The public semantic planner preserves canonical class identity."""
@@ -72,6 +74,7 @@ class TestsFlextInfraModelAliasRetirement:
     @pytest.mark.parametrize("export_usage", [None, False, True])
     def test_public_planner_rewires_aliases_annotations_and_runtime_identity(
         tmp_path: Path,
+        *,
         export_usage: bool | None,
     ) -> None:
         """Two native aliases converge without changing ordinary string payloads."""
@@ -102,7 +105,7 @@ class TestsFlextInfraModelAliasRetirement:
             )
             updated = dict(sources)
             updated.update((edit.file_path, edit.updated_source) for edit in edits)
-            tm.ok(len(edits) >= 2)
+            tm.ok(len(edits) >= _MIN_EDITS)
             tm.that(
                 tm.ok(
                     u.Infra.plan_semantic_cutover(

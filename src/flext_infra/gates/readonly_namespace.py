@@ -11,7 +11,7 @@ import builtins
 from pathlib import Path
 from typing import TYPE_CHECKING, is_protocol
 
-from flext_infra import p, u
+from flext_infra import c, p, u
 
 if TYPE_CHECKING:
     from flext_infra import m, t

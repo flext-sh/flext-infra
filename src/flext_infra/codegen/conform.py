@@ -45,7 +45,7 @@ class FlextInfraCodegenConform:
         if admitted.mode is c.Infra.CodegenConformMode.CHECK:
             with FlextInfraWorkspaceNativeReference.compilation_scope():
                 return cls._observe_publication(admitted)
-        bound = FlextInfraCodegenConformExecute._from_request(
+        bound = FlextInfraCodegenConformExecute.from_request(
             admitted,
             execution_context=execution_context,
             repository_root=repository_root,
@@ -53,30 +53,49 @@ class FlextInfraCodegenConform:
         if bound.failure:
             return r[p.Infra.CodegenResult].from_failure(bound)
         executor = bound.value
-        inputs = u.Infra.load_codegen_inputs(admitted.root.expanduser().resolve())
-        if inputs.failure:
-            return r[p.Infra.CodegenResult].from_failure(inputs)
-        contract = executor.surface_contract(admitted.what, codegen=inputs.value.spec)
-        if contract.complete_governed or admitted.declaration_kind is not None:
-            migrated = cls._migrate_repository_declarations(executor, admitted)
-            if migrated.failure and (
-                migrated.error_code != c.Infra.ToolOutcome.ERROR.value
-                or not executor.state.planning_issues
-            ):
-                return r[p.Infra.CodegenResult].from_failure(migrated)
+        governed = cls._migrate_governed_declarations(executor, admitted)
+        if governed.failure:
+            return r[p.Infra.CodegenResult].from_failure(governed)
         if admitted.what is not c.Infra.CodegenConformSurface.ALL:
             return executor.execute()
         seeded = cls._seed_declared_beads_identity(executor, admitted.root)
         if seeded.failure:
             return r[p.Infra.CodegenResult].from_failure(seeded)
-        return executor._execute_managed(
+        return executor.execute_managed(
             admitted,
             after_publication=(
                 lambda written: cls.conform_workspace_beads_routes(
                     executor, admitted
-                ).flat_map(lambda _: cls._allow_direnv_after_apply(admitted, written)),
+                ).flat_map(lambda _: cls._allow_direnv_after_apply(written)),
             ),
         )
+
+    @classmethod
+    def _migrate_governed_declarations(
+        cls,
+        executor: FlextInfraCodegenConformExecute,
+        request: p.Infra.CodegenConformRequest,
+    ) -> p.Result[bool]:
+        """Migrate declarations when the surface is governed or kind-declared.
+
+        Returns:
+            Success when no migration is due or its only failure is a retained
+            planning issue, otherwise the migration failure.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        if inputs.failure:
+            return r[bool].from_failure(inputs)
+        contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
+        if not (contract.complete_governed or request.declaration_kind is not None):
+            return r[bool].ok(value=True)
+        migrated = cls._migrate_repository_declarations(executor, request)
+        if migrated.failure and (
+            migrated.error_code != c.Infra.ToolOutcome.ERROR.value
+            or not executor.state.planning_issues
+        ):
+            return migrated
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _observe_publication(
@@ -288,7 +307,7 @@ class FlextInfraCodegenConform:
                 "completed migration failure has no residual issue",
                 exception=published.exception,
             )
-        executor._retain_diagnostics(published.exception, issues=parsed.value)
+        executor.retain_diagnostics(published.exception, issues=parsed.value)
         return r[bool].ok(value=True)
 
     @staticmethod
@@ -442,7 +461,6 @@ class FlextInfraCodegenConform:
 
     @staticmethod
     def _allow_direnv_after_apply(
-        request: p.Infra.CodegenConformRequest,
         written_files: t.VariadicTuple[Path],
     ) -> p.Result[bool]:
         """Heal the direnv allow for every ``.envrc`` this apply published.

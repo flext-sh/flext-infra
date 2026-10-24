@@ -18,10 +18,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities._semantic_cutover.nesting_types import (
     FlextInfraUtilitiesSemanticNestingTypes,
 )
 

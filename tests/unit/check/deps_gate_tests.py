@@ -668,7 +668,7 @@ class TestsFlextInfraDepsGate:
             '[{"error":{},"module":"x","location":{}}]',
             (
                 '[{"error":{"code":"DEP001","message":"missing"},"module":"x",'
-                '"location":{"file":"src/x.py","line":c.ParserBooleanToken.ONE,"column":0}}]'
+                '"location":{"file":"src/x.py","line":"1","column":0}}]'
             ),
         ],
     )
@@ -691,7 +691,7 @@ class TestsFlextInfraDepsGate:
         report = tmp_path / "deptry.json"
         report.write_text(
             '[{"error":{"code":"DEP002","message":"dependency is unused"},'
-            '"module":"unused","location":{"file": c.PYPROJECT_FILENAME,'
+            f'"module":"unused","location":{{"file":"{c.PYPROJECT_FILENAME}",'
             '"line":null,"column":null}}]',
             encoding="utf-8",
         )

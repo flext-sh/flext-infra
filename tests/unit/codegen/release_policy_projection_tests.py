@@ -30,7 +30,7 @@ class TestsFlextInfraReleasePolicyProjection:
         destination = tmp_path / "config" / "infra.yaml"
         destination.parent.mkdir()
         destination.write_text(document, encoding="utf-8")
-        result = codegen.FlextInfraCodegenConform.compose_project_artifact(
+        result = codegen.FlextInfraCodegenConformExecute.compose_project_artifact(
             tmp_path,
             destination="config/infra.yaml",
             rendered="Infra:\n  release: {}\n",

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import os
 import sysconfig
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from typing_extensions import TypeForm
@@ -17,12 +18,21 @@ from typing_extensions import TypeForm
 from flext_infra import FlextInfraConfig, check, config, deps
 from tests import c, m, t, tm, u
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for the Ruff phase and analyzer surface policy."""
+
+    @staticmethod
+    def _pairs(
+        entries: Sequence[tuple[str, t.JsonValue]],
+    ) -> list[t.JsonValue]:
+        """Render native option pairs as YAML sequences.
+
+        Returns:
+            One two-element sequence per option pair.
+
+        """
+        return [[key, value] for key, value in entries]
 
     @staticmethod
     def _yaml_settings_payload(
@@ -141,39 +151,37 @@ class TestsFlextInfraDepsModernizerTooling:
         tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """Search-path option names are not banned, nor are installed third-party stubs."""
-        paths = [
+        """Search-path option names and installed third-party stubs stay legal."""
+        paths: list[t.JsonValue] = [
             "src",
             "../member/src",
             "src/pkg/_typings",
             f"{sysconfig.get_path('purelib')}/vendor-stubs",
         ]
-        payload = {
-            **tool_config_document.model_dump(
-                by_alias=True, exclude_computed_fields=True
-            ),
-            "derived-settings": {
-                **tool_config_document.derived_settings,
-                "mypy": tuple(
-                    key
-                    for key in tool_config_document.derived_settings["mypy"]
-                    if key != "mypy_path"
-                ),
-                "pyright": tuple(
-                    key
-                    for key in tool_config_document.derived_settings["pyright"]
-                    if key != "extraPaths"
-                ),
-            },
-            "settings": {
-                **tool_config_document.settings,
-                "mypy": (*tool_config_document.settings["mypy"], ("mypy_path", paths)),
-                "pyright": (
-                    *tool_config_document.settings["pyright"],
-                    ("extraPaths", paths),
-                ),
-            },
+        document = tool_config_document
+        payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(document)
+        self_owned = {("mypy", "mypy_path"), ("pyright", "extraPaths")}
+        derived: t.JsonDict = {
+            table: [
+                key
+                for key in keys
+                if (table, key)
+                not in {("mypy", "mypy_path"), ("pyright", "extraPaths")}
+            ]
+            for table, keys in document.derived_settings.items()
         }
+        extra: Mapping[str, tuple[str, t.JsonValue]] = {
+            "mypy": ("mypy_path", paths),
+            "pyright": ("extraPaths", paths),
+        }
+        settings: t.JsonDict = {
+            table: TestsFlextInfraDepsModernizerTooling._pairs(
+                (*entries, extra[table]) if table in extra else entries,
+            )
+            for table, entries in document.settings.items()
+        }
+        payload["derived-settings"] = derived
+        payload["settings"] = settings
         root = u.Tests.git_repository(tmp_path, "source-policy")
         declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
         declaration.parent.mkdir(parents=True, exist_ok=True)
@@ -193,7 +201,7 @@ class TestsFlextInfraDepsModernizerTooling:
         root = u.Tests.git_repository(tmp_path, "member-policy")
         path = os.path.relpath(
             f"{sysconfig.get_path('purelib')}/vendor-stubs",
-            start=root if relative_to_project else os.getcwd(),
+            start=root if relative_to_project else Path.cwd(),
         )
         declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
         declaration.parent.mkdir(parents=True, exist_ok=True)

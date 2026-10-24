@@ -169,7 +169,7 @@ class TestsFlextInfraSelfFacadeCutover:
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="self-facade|cyclic facade"),
+            pytest.raises(ValueError, match=r"self-facade|cyclic facade"),
         ):
             FlextInfraCodemodSemanticApply.census_constants(
                 root,

@@ -62,7 +62,7 @@ class TestsFlextInfraCodegenLazyInitService:
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = "flext_test_project"
+        service.module = "flext_test_project"
         service.check_only = check_only
         service.apply_changes = apply_changes
         service.dry_run = dry_run
@@ -106,7 +106,7 @@ class TestsFlextInfraCodegenLazyInitService:
         unrelated_init = unrelated_root / c.Infra.INIT_PY
         unrelated_before = unrelated_init.read_bytes()
         service = u.Tests.create_lazy_init_service(selected_repo)
-        service.target_module = "flext_test_selected"
+        service.module = "flext_test_selected"
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -154,7 +154,7 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         unrelated_before = unrelated_init.read_bytes()
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = "flext_test_selected"
+        service.module = "flext_test_selected"
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -243,7 +243,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = "flext_test_selected"
+        service.module = "flext_test_selected"
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -274,7 +274,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = c.Infra.DIR_EXAMPLES
+        service.module = c.Infra.DIR_EXAMPLES
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -323,7 +323,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = c.Infra.DIR_TESTS
+        service.module = c.Infra.DIR_TESTS
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -379,13 +379,13 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         init_path = package_root / c.Infra.INIT_PY
         apply_service = u.Tests.create_lazy_init_service(repository_root)
-        apply_service.target_module = "flext_test_project"
+        apply_service.module = "flext_test_project"
         apply_service.apply_changes = True
 
         apply_result = u.Tests.materialize_lazy_init(apply_service)
         generated_init = init_path.read_bytes()
         check_service = u.Tests.create_lazy_init_service(repository_root)
-        check_service.target_module = "flext_test_project"
+        check_service.module = "flext_test_project"
         check_service.check_only = True
         check_result = check_service.execute()
 
@@ -409,7 +409,7 @@ class TestsFlextInfraCodegenLazyInitService:
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = "flext_missing"
+        service.module = "flext_missing"
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -453,7 +453,7 @@ class TestsFlextInfraCodegenLazyInitService:
         first_before = first_init.read_bytes()
         second_before = second_init.read_bytes()
         service = u.Tests.create_lazy_init_service(tmp_path)
-        service.target_module = "flext_shared"
+        service.module = "flext_shared"
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -481,7 +481,7 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         init_path = package_root / c.Infra.INIT_PY
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = "flext_test_project"
+        service.module = "flext_test_project"
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -525,7 +525,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = "flext_test_project"
+        service.module = "flext_test_project"
         service.apply_changes = True
         result = u.Tests.materialize_lazy_init(service)
         tm.ok(result.success)
@@ -581,7 +581,7 @@ class TestsFlextInfraCodegenLazyInitService:
                 encoding=c.DEFAULT_ENCODING,
             )
         service = u.Tests.create_lazy_init_service(repository_root)
-        service.target_module = c.Infra.DIR_TESTS
+        service.module = c.Infra.DIR_TESTS
         service.apply_changes = True
 
         result = u.Tests.materialize_lazy_init(service)
@@ -621,14 +621,14 @@ class TestsFlextInfraCodegenLazyInitService:
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
         apply_service = u.Tests.create_lazy_init_service(repository_root)
-        apply_service.target_module = "flext_test_project"
+        apply_service.module = "flext_test_project"
         apply_service.apply_changes = True
 
         apply_result = apply_service.execute()
         applied_init = init_path.read_bytes()
         materialized = u.Tests.materialize_lazy_init(apply_service)
         check_service = u.Tests.create_lazy_init_service(repository_root)
-        check_service.target_module = "flext_test_project"
+        check_service.module = "flext_test_project"
         check_service.check_only = True
 
         check_result = check_service.execute()
@@ -683,13 +683,13 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         init_path = nested_root / c.Infra.INIT_PY
         apply_service = u.Tests.create_lazy_init_service(repository_root)
-        apply_service.target_module = "flext_test_project.servers._base"
+        apply_service.module = "flext_test_project.servers._base"
         apply_service.apply_changes = True
 
         apply_result = u.Tests.materialize_lazy_init(apply_service)
         applied_init = init_path.read_text(encoding=c.DEFAULT_ENCODING)
         check_service = u.Tests.create_lazy_init_service(repository_root)
-        check_service.target_module = "flext_test_project.servers._base"
+        check_service.module = "flext_test_project.servers._base"
         check_service.check_only = True
 
         check_result = check_service.execute()
@@ -744,13 +744,13 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
         apply_service = u.Tests.create_lazy_init_service(repository_root)
-        apply_service.target_module = c.Infra.DIR_TESTS
+        apply_service.module = c.Infra.DIR_TESTS
         apply_service.apply_changes = True
 
         apply_result = u.Tests.materialize_lazy_init(apply_service)
         generated_tests_init = tests_init.read_text(encoding=c.DEFAULT_ENCODING)
         check_service = u.Tests.create_lazy_init_service(repository_root)
-        check_service.target_module = c.Infra.DIR_TESTS
+        check_service.module = c.Infra.DIR_TESTS
         check_service.check_only = True
 
         check_result = check_service.execute()

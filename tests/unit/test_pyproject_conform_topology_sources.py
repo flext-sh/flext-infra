@@ -303,7 +303,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
 
     @pytest.mark.parametrize("package", [False, True])
     def test_packaged_root_renders_workspace_source_without_self_override(
-        self, package: bool
+        self, *, package: bool
     ) -> None:
         """A packaged root renders its native workspace identity source only.
 
@@ -424,6 +424,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
     def test_retired_development_requirements_do_not_reappear(
         self,
         tmp_path: Path,
+        *,
         attached: bool,
     ) -> None:
         """The public generator removes retired items and preserves other inputs."""

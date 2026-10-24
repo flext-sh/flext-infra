@@ -4,7 +4,7 @@
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
 	mkdir -p "{{ project_root }}/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_MODIFY_PATH=0 MISE_INSTALL_HELP=0; \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
 {% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
 {% else %}	export MISE_VERSION="{{ toolchain.mise_version }}"; \
 {% endif %}	case "$${OS:-}" in \
@@ -94,6 +94,6 @@
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
-	MISE_AUTO_INSTALL=0 "$${mise_binary}" -C "{{ project_root }}" exec -- env "PATH=$$(dirname "$${mise_binary}"):$${MISE_SHIMS_DIR}:$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}; \
+	MISE_AUTO_INSTALL=0 "$${mise_binary}" -C "{{ project_root }}" exec -- env "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}; \
 	bootstrap_stage=complete; bootstrap_completed=true
 {%- endmacro %}

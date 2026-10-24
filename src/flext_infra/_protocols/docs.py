@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
 
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror

@@ -18,8 +18,8 @@ class TestsNativeCodeConstants:
     @pytest.mark.parametrize(
         ("initial", "replacement"),
         [
-            ("True", c.ParserBooleanToken.ONE),
-            (c.ParserBooleanToken.ONE, "True"),
+            ("True", "1"),
+            ("1", "True"),
             ("0.0", "-0.0"),
             ("-0.0", "0.0"),
             ("0j", "-0j"),

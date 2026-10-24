@@ -28,7 +28,12 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Run one native owner and retain its unmodified causal outcome."""
+        """Run one native owner and retain its unmodified causal outcome.
+
+        Returns:
+            The native execution result.
+
+        """
         started = time.monotonic()
         native = self._run(command, project_dir)
         passed = u.Cli.process_succeeded(native.outcome)
@@ -63,7 +68,12 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Execute the four original owners through this check invocation."""
+        """Execute the four original owners through this check invocation.
+
+        Returns:
+            The combined execution of the original owners.
+
+        """
         started = time.monotonic()
         runtime_root = (
             FlextInfraWorkspaceDetector
@@ -157,7 +167,12 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
     def _get_check_dirs(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
-        """A declared module checks its project without invented file arguments."""
+        """A declared module checks its project without invented file arguments.
+
+        Returns:
+            The single project directory argument.
+
+        """
         del ctx
         return (str(project_dir),)
 
@@ -165,7 +180,12 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
     def _build_check_command(
         self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
-        """Bind the declared command to the elected physical environment."""
+        """Bind the declared command to the elected physical environment.
+
+        Returns:
+            The command bound to the elected interpreter.
+
+        """
         del check_dirs
         return (
             str(u.Infra.runtime_python(project_dir, runtime_root=ctx.runtime_root)),
@@ -177,7 +197,12 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
-        """Retain the native result without interpreting or suppressing output."""
+        """Retain the native result without interpreting or suppressing output.
+
+        Returns:
+            The execution parsed from the native result.
+
+        """
         del ctx
         passed = u.Cli.process_succeeded(result.outcome)
         return (
@@ -203,7 +228,12 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         started: float,
     ) -> m.Infra.GateExecution:
-        """Add the original process to the shared parsed execution."""
+        """Add the original process to the shared parsed execution.
+
+        Returns:
+            The shared parsed execution including the original process.
+
+        """
         return (
             super()
             ._parsed_gate_execution(project_dir, ctx, result, started)

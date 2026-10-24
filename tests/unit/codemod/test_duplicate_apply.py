@@ -64,9 +64,9 @@ class TestsFlextInfraCodemodDuplicateApply:
             copies=(),
             edits=(),
         )
-        assert planned.owner is copy
-        assert planned.owner.definition is definition
-        assert planned.owner.definition.statement is statement
+        tm.that(planned.owner is copy, eq=True)
+        tm.that(planned.owner.definition is definition, eq=True)
+        tm.that(planned.owner.definition.statement is statement, eq=True)
         tm.that(
             planned.owner.definition.source
             == path.read_text(

@@ -1,4 +1,8 @@
-"""Native constant declaration providers, independent of consumer orchestration."""
+"""Native constant declaration providers, independent of consumer orchestration.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
 
@@ -27,7 +31,15 @@ class FlextInfraUtilitiesSemanticConstantSources:
         candidate: p.Infra.RopePyName,
         qualified: str,
     ) -> bool:
-        """Resolve a member's declaring ancestry through native class identity."""
+        """Resolve a member's declaring ancestry through native class identity.
+
+        Returns:
+            Whether the native declaring class has the requested ancestor.
+
+        Raises:
+            TypeError: The declaration has no native source module.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = cls._constant_terminal(project, candidate, "enum member")
         module, line = binding.get_definition_location()
@@ -51,7 +63,15 @@ class FlextInfraUtilitiesSemanticConstantSources:
         Path,
         t.Pair[p.Infra.RopePyModule, list[t.Pair[p.Infra.RopePyName, int]]],
     ]:
-        """Group unique assignments by their native module and definition line."""
+        """Group unique assignments by their native module and definition line.
+
+        Returns:
+            Native modules with their unique assignment bindings and lines.
+
+        Raises:
+            TypeError: A declaration has no native source module.
+
+        """
         declarations: t.MutableMappingKV[
             Path,
             t.Pair[
@@ -85,12 +105,17 @@ class FlextInfraUtilitiesSemanticConstantSources:
     @classmethod
     def _binding_statement_matches(
         cls,
-        module: p.Infra.RopePyModule,
+        module: p.Infra.RopeParsedModule,
         statement: m.Infra.LogicalStatement,
         binding: p.Infra.RopePyName,
         line: int,
     ) -> bool:
-        """Match class assignment targets by native identity and definition line."""
+        """Match class assignment targets by native identity and definition line.
+
+        Returns:
+            Whether the statement declares the selected native binding.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         structure = FlextInfraUtilitiesRopeStructure
         if (
@@ -120,7 +145,12 @@ class FlextInfraUtilitiesSemanticConstantSources:
         literal_type: str = "__builtin__.str",
         frozen: bool = False,
     ) -> t.VariadicTuple[t.Pair[str, str]]:
-        """Prove exact literal boundaries, decimal tokens and native constructors."""
+        """Prove exact literal boundaries, decimal tokens and native constructors.
+
+        Returns:
+            Literal source expressions and their unique public references.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
         found: list[t.Pair[str, str]] = []
@@ -188,7 +218,15 @@ class FlextInfraUtilitiesSemanticConstantSources:
         binding: p.Infra.RopePyName,
         qualified: str,
     ) -> p.Infra.RopePyName:
-        """Prove import provenance, rejecting cycles, ambiguity and missing targets."""
+        """Prove import provenance, rejecting cycles, ambiguity and missing targets.
+
+        Returns:
+            The native declaration at the end of the import chain.
+
+        Raises:
+            ValueError: Import provenance is cyclic, ambiguous or unresolved.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         visited: set[t.Pair[Path, str]] = set()
         while isinstance(binding, p.Infra.RopeImportedName):
@@ -237,7 +275,16 @@ class FlextInfraUtilitiesSemanticConstantSources:
         resource: p.Infra.RopeResource,
         qualified: str,
     ) -> p.Infra.RopePyModule:
-        """Inspect package declarations natively without evaluating their targets."""
+        """Inspect package declarations natively without evaluating their targets.
+
+        Returns:
+            The native source module declaring the import's bindings.
+
+        Raises:
+            TypeError: A package has no native folder resource.
+            ValueError: A package has no source initializer.
+
+        """
         if resource.is_folder():
             if not isinstance(resource, p.Infra.RopeRoot):
                 message = f"constant import has no package resource: {qualified}"
@@ -260,7 +307,15 @@ class FlextInfraUtilitiesSemanticConstantSources:
         binding: p.Infra.RopePyName,
         path: Path,
     ) -> str | None:
-        """Elect a unique published identity or proven class ancestry owner."""
+        """Elect a unique published identity or proven class ancestry owner.
+
+        Returns:
+            The unique published reference, or no constant publication.
+
+        Raises:
+            ValueError: Several published owners have the same native identity.
+
+        """
         references = tuple(
             reference
             for reference, candidate in paths.items()
@@ -279,7 +334,12 @@ class FlextInfraUtilitiesSemanticConstantSources:
         project: p.Infra.RopeProject,
         package: str,
     ) -> t.MappingKV[str, p.Infra.RopePyName]:
-        """Enumerate native public facade members without importing the target."""
+        """Enumerate native public facade members without importing the target.
+
+        Returns:
+            Public reference paths bound to their native declaration identities.
+
+        """
         module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
         )
@@ -310,7 +370,12 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _constant_owner_binding(
         candidate: p.Infra.RopePyName, binding: p.Infra.RopePyName
     ) -> bool:
-        """Prove a published identity or a native class ancestry owner."""
+        """Prove a published identity or a native class ancestry owner.
+
+        Returns:
+            Whether publication directly names or inherits the native owner.
+
+        """
         return FlextInfraUtilitiesRopeRuntimeModules.same_name(candidate, binding) or (
             FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object()

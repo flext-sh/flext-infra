@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, MutableMapping, Sequence
 from hashlib import sha256
 from importlib.metadata import version
 from pathlib import Path
@@ -493,10 +493,11 @@ class FlextInfraPytestCollection:
             return
         manifest = FlextInfraPytestCollection._collection_manifest(session)
         if not collect_only and hasattr(session.config, "workerinput"):
-            if not isinstance(session.config, p.Infra.PytestWorkerConfig):
+            worker_output = vars(session.config).get("workeroutput")
+            if not isinstance(worker_output, MutableMapping):
                 msg = "native pytest worker has no output channel"
                 raise TypeError(msg)
-            session.config.workeroutput[c.Infra.PYTEST_WORKER_COLLECTION_KEY] = (
+            worker_output[c.Infra.PYTEST_WORKER_COLLECTION_KEY] = (
                 manifest.model_dump_json()
             )
             return

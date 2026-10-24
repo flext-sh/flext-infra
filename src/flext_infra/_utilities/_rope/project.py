@@ -25,7 +25,7 @@ from rope.base.resources import File, Folder
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModuleQueries
-from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
+from flext_infra._utilities._rope import FlextInfraRopeNativeProject
 
 
 class FlextInfraRopeProject(FlextInfraRopeNativeProject):
@@ -638,64 +638,20 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             tuple[m.Cli.AtomicDirectoryInventory, ...],
             tuple[m.Cli.AtomicDirectoryChainPlan, ...],
         ]:
-            """Finalize selectors only over the exact same original native witness.
+            """Pass original witnesses and mutable selectors to the CLI merge owner.
+
+            Selection accumulation never clones a frozen physical receipt. The
+            canonical merge validates every selected query, even for one input.
 
             Returns:
                 Merged inventories and ancestry with complete consumed selectors.
 
             """
-            directory_receipts: list[m.Cli.AtomicDirectoryInventory] = []
-            for inventory in (*directories, *self._directories.values()):
-                selected_queries = tuple(
-                    sorted({*inventory.queries, *self._queries.get(id(inventory), ())})
-                )
-                selected_membership = tuple(
-                    sorted({
-                        *inventory.membership_queries,
-                        *self._membership_queries.get(id(inventory), ()),
-                    })
-                )
-                directory_receipts.append(
-                    inventory
-                    if selected_queries == inventory.queries
-                    and selected_membership == inventory.membership_queries
-                    else m.Cli.AtomicDirectoryInventory(
-                        root=inventory.root,
-                        entries=inventory.entries,
-                        queries=selected_queries,
-                        membership_queried=inventory.membership_queried,
-                        membership_queries=selected_membership,
-                    )
-                )
-            topology_receipts: list[m.Cli.AtomicDirectoryChainPlan] = []
-            for witness in (*topology, *self._topology.values()):
-                selected_queries = tuple(
-                    sorted({*witness.queries, *self._queries.get(id(witness), ())})
-                )
-                selected_membership = tuple(
-                    sorted({
-                        *witness.membership_queries,
-                        *self._membership_queries.get(id(witness), ()),
-                    })
-                )
-                topology_receipts.append(
-                    witness
-                    if selected_queries == witness.queries
-                    and selected_membership == witness.membership_queries
-                    else m.Cli.AtomicDirectoryChainPlan(
-                        target=witness.target,
-                        anchor_path=witness.anchor_path,
-                        anchor_device=witness.anchor_device,
-                        anchor_inode=witness.anchor_inode,
-                        anchor_ancestry=witness.anchor_ancestry,
-                        directories=witness.directories,
-                        queries=selected_queries,
-                        membership_queried=witness.membership_queried,
-                        membership_queries=selected_membership,
-                    )
-                )
             return u.Cli.atomic_merge_directory_query_receipts(
-                tuple(directory_receipts), tuple(topology_receipts)
+                (*directories, *self._directories.values()),
+                (*topology, *self._topology.values()),
+                queries=self._queries,
+                membership_queries=self._membership_queries,
             )
 
         def seal(
@@ -707,6 +663,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             The issuer's declaration, overlay and issuance phase must still be
             identical to both scope entry and original issuance. Otherwise retain
             the complete existing snapshot, directory merge and model validation.
+            Canonical input deduplication runs without a transient binding model.
 
             Returns:
                 The sealed original consumption receipt.
@@ -733,9 +690,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self._receipt = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=(),
-                inputs=m.Infra.CodemodBindingSnapshot(
-                    states=tuple(self._states.values()),
-                ).states,
+                inputs=m.Infra.CodemodBindingSnapshot.unique_inputs(
+                    tuple(self._states.values()),
+                ),
                 source_directories=directories,
                 source_query_topology=topology,
             )
@@ -918,10 +875,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             Returns:
                 The independent candidate read owner.
-
-            Raises:
-                ValueError: Candidate inputs contradict the pinned originals
-                    or declared physical absence witnesses.
 
             """
             return type(self)(
@@ -1773,12 +1726,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self,
             receipt: m.Infra.CodegenPhaseAnalysis | None = None,
         ) -> None:
-            """Reprove an issued scope, or all original inputs for direct consumers.
-
-            Raises:
-                ValueError: An original source or directory query changed.
-
-            """
+            """Reprove an issued scope, or all original inputs for direct consumers."""
             self._verify(receipt, {}, {})
 
         def verify_many(
@@ -1788,9 +1736,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             Returns:
                 Physical failures in original receipt order.
-
-            Raises:
-                ValueError: A receipt was not issued by this read owner.
 
             """
             for receipt in receipts:
@@ -1826,7 +1771,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 Path, m.Cli.AtomicDirectoryChainPlan
             ],
         ) -> None:
-            """Compare every original receipt at one owner-local physical boundary."""
+            """Compare every original receipt at one owner-local physical boundary.
+
+            Raises:
+                ValueError: If an original source or directory query changed.
+
+            """
             if receipt is not None:
                 issued, effects, _context = self._issued_receipt(receipt)
                 if not (
@@ -2076,9 +2026,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         Returns:
             The project owning the original input epoch and proposed sources.
-
-        Raises:
-            ValueError: A virtual import root lacks its internal declared effect.
 
         """
         files = cls.AtomicReadFiles(

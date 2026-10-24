@@ -32,16 +32,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverEdits,
-)
-from flext_infra._utilities._semantic_cutover.constant_sources import (
-    FlextInfraUtilitiesSemanticConstantSources,
-)
-from flext_infra._utilities._semantic_cutover.contracts import (
-    FlextInfraUtilitiesSemanticContracts,
-)
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticConstantSources,
+    FlextInfraUtilitiesSemanticContracts,
+    FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
 
@@ -125,7 +119,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Retire flat facts only at equivalent explicit authored class owners."""
+        """Retire flat facts only at equivalent explicit authored class owners.
+
+        Returns:
+            Authenticated declaration retirements for the shared candidate.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         project = runtime.snapshot_project(workspace.rope_project, sources)
         try:
@@ -136,11 +135,14 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     return source, ()
                 public = cls._constant_public_paths(project, convention.package_name)
                 facade = public.get("c")
-                if facade is None:
+                if (
+                    facade is None
+                    or (owner_module := facade.get_object().get_module()) is None
+                ):
                     return source, ()
                 edits: list[m.Infra.SourceRewrite] = []
                 for flat, destinations in cls._constant_destinations(
-                    public, facade.get_object().get_module()
+                    public, owner_module
                 ).items():
                     binding = public.get(flat)
                     if binding is None:
@@ -167,13 +169,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             end=statement.end_offset,
                             text="",
                         )
-                        for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
-                            source
+                        for statement in (
+                            FlextInfraUtilitiesRopeStructure.logical_statements(source)
                         )
                         if cls._binding_statement_matches(
-                            FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                                module
-                            ),
+                            module,
                             statement,
                             binding,
                             line,
@@ -206,7 +206,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         original: p.Infra.RopePyName,
         target: p.Infra.RopePyName,
     ) -> bool:
-        """Compare complete native inert values and ClassVar type identities."""
+        """Compare complete native inert values and ClassVar type identities.
+
+        Returns:
+            Whether both declarations preserve the complete value and type.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         signatures: list[t.Pair[str, p.Infra.RopePyName]] = []
         for binding in (original, target):
@@ -224,12 +229,14 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 or not isinstance(assignment.type_hint, ast.Subscript)
             ):
                 return False
-            resource = module.get_module().get_resource()
+            resource = module.get_resource()
             if resource is None or Path(resource.real_path) not in sources:
                 return False
             scope = runtime.scope_at(
-                FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(module),
-                module.get_module().lines.get_line_start(line),
+                module,
+                runtime.source_offset(
+                    sources[Path(resource.real_path)], assignment.ast_node
+                ),
             )
             if not runtime.same_name(
                 runtime.qualified_name(project, "ClassVar", module_name="typing"),
@@ -310,7 +317,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         project: p.Infra.RopeProject,
         paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
-        """Admit scalar returns, singleton Literal fields and frozen predicates."""
+        """Admit scalar returns, singleton Literal fields and frozen predicates.
+
+        Returns:
+            Proposed source with only identity-proven literal consumer edits.
+
+        """
         convention = workspace.convention(path)
         layout = convention.project_layout
         if cls._constant_definition_source(workspace, convention) or layout is None:
@@ -413,7 +425,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         returns_by_type: t.MappingKV[str, t.VariadicTuple[t.Pair[int, int]]],
         path: Path,
     ) -> t.MappingKV[t.Pair[int, int], str]:
-        """Match native scalar returns, refusing competing public owners."""
+        """Match native scalar returns, refusing competing public owners.
+
+        Returns:
+            Native source regions mapped to unique constant publications.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"literal return has ambiguous public constant owners in {path}"
@@ -448,7 +465,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         candidate: p.Infra.RopePyName,
         qualified: str,
     ) -> bool:
-        """Resolve a member's declaring ancestry through native class identity."""
+        """Resolve a member's declaring ancestry through native class identity.
+
+        Returns:
+            Whether the native declaring class has the requested ancestor.
+
+        Raises:
+            TypeError: The declaration has no native source module.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding = cls._constant_terminal(project, candidate, "enum member")
         module, line = binding.get_definition_location()
@@ -471,7 +496,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         offset: int,
         path: Path,
     ) -> None:
-        """Reject shadowing or a missing preceding unconditional facade import."""
+        """Reject shadowing or a missing preceding unconditional facade import.
+
+        Raises:
+            ValueError: The source does not admit the requested facade binding.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         existing = runtime.scope_at(module, offset).lookup("c")
         if existing is not None and not runtime.same_name(facade, existing):
@@ -493,7 +523,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         reference: str,
         scope: str,
     ) -> None:
-        """Record one matched region, refusing ambiguous public owners."""
+        """Record one matched region, refusing ambiguous public owners.
+
+        Raises:
+            ValueError: The same region has competing native owners.
+
+        """
         previous = matched.get(region)
         if previous is not None and previous != reference:
             message = f"{scope}: {previous}, {reference}"
@@ -509,7 +544,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         arguments: t.StrMapping,
         path: Path,
     ) -> t.MappingKV[t.Pair[int, int], str]:
-        """Match native frozen predicates, refusing competing public owners."""
+        """Match native frozen predicates, refusing competing public owners.
+
+        Returns:
+            Frozen-predicate regions mapped to unique constant publications.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"frozenset predicate has ambiguous public owners in {path}"
         matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
@@ -553,7 +593,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         source: str,
         path: Path,
     ) -> t.MappingKV[t.Pair[int, int], str]:
-        """Match StrEnum members to singleton Literal annotations by identity."""
+        """Match StrEnum members to singleton Literal annotations by identity.
+
+        Returns:
+            Annotation regions mapped to their native enum members.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         scope = f"literal annotation has ambiguous enum owners in {path}"
         matched: t.MutableMappingKV[t.Pair[int, int], str] = {}
@@ -603,7 +648,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Path,
         t.Pair[p.Infra.RopePyModule, list[t.Pair[p.Infra.RopePyName, int]]],
     ]:
-        """Group unique assignments by their native module and definition line."""
+        """Group unique assignments by their native module and definition line.
+
+        Returns:
+            Native modules with their unique assignment bindings and lines.
+
+        Raises:
+            TypeError: A declaration has no native source module.
+
+        """
         declarations: t.MutableMappingKV[
             Path,
             t.Pair[
@@ -637,12 +690,17 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @classmethod
     def _binding_statement_matches(
         cls,
-        module: p.Infra.RopePyModule,
+        module: p.Infra.RopeParsedModule,
         statement: m.Infra.LogicalStatement,
         binding: p.Infra.RopePyName,
         line: int,
     ) -> bool:
-        """Match class assignment targets by native identity and definition line."""
+        """Match class assignment targets by native identity and definition line.
+
+        Returns:
+            Whether the statement declares the selected native binding.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         structure = FlextInfraUtilitiesRopeStructure
         if (
@@ -672,7 +730,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         literal_type: str = "__builtin__.str",
         frozen: bool = False,
     ) -> t.VariadicTuple[t.Pair[str, str]]:
-        """Prove exact literal boundaries, decimal tokens and native constructors."""
+        """Prove exact literal boundaries, decimal tokens and native constructors.
+
+        Returns:
+            Literal source expressions and their unique public references.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
         found: list[t.Pair[str, str]] = []
@@ -742,7 +805,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         project: p.Infra.RopeProject,
         paths: t.MutableMappingKV[str, t.MappingKV[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
-        """Rebind one consumer using its complete native import plan."""
+        """Rebind one consumer using its complete native import plan.
+
+        Returns:
+            Proposed source and descriptions of its native reference edits.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         convention = rope_workspace.convention(path)
@@ -795,7 +863,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]
         ],
     ) -> str:
-        """Apply correlated reference/removal edits through native import owners."""
+        """Apply correlated reference/removal edits through native import owners.
+
+        Returns:
+            Proposed source with one canonical facade import binding.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         changed = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource, source, plan[0]
@@ -885,7 +958,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         public: t.MappingKV[str, p.Infra.RopePyName],
         owner_module: p.Infra.RopeSemanticModule,
     ) -> t.MutableMappingKV[str, list[str]]:
-        """Elect component destinations beneath natively published namespaces."""
+        """Elect component destinations beneath natively published namespaces.
+
+        Returns:
+            Candidate class-owned references for each namespace member.
+
+        """
         namespaces = {
             reference
             for reference, binding in public.items()
@@ -915,7 +993,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]
         ],
     ) -> bool:
-        """Elect imported constants through their native declaration's role."""
+        """Elect imported constants through their native declaration's role.
+
+        Returns:
+            Whether a resolved import declares the constants family.
+
+        """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         for info, _statement in statements:
             for name, alias in info.names_and_aliases:
@@ -940,7 +1023,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         workspace: p.Infra.RopeWorkspaceDsl,
         convention: m.Infra.RopeModuleConvention,
     ) -> bool:
-        """Exclude constants and configured layer-zero owners from consumer edits."""
+        """Exclude constants and configured layer-zero owners from consumer edits.
+
+        Returns:
+            Whether this module owns declarations rather than consuming them.
+
+        """
         path = convention.file_path
         policy = convention.module_policy
         layout = convention.project_layout
@@ -976,7 +1064,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _constant_imports(
         project: p.Infra.RopeProject, module: p.Infra.RopePyModule
     ) -> t.VariadicTuple[t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]]:
-        """Elect declared constants imports before resolving native suppliers."""
+        """Elect declared constants imports before resolving native suppliers.
+
+        Returns:
+            Native from-import declarations participating in constant ownership.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         found: list[t.Pair[p.Infra.RopeFromImport, m.Infra.LogicalStatement]] = []
         for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
@@ -1036,7 +1129,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         paths: t.MappingKV[str, p.Infra.RopePyName],
         path: Path,
     ) -> t.Pair[t.VariadicTuple[m.Infra.SourceRewrite], t.MappingKV[int, set[str]]]:
-        """Plan every native reference before removing its import binding."""
+        """Plan every native reference before removing its import binding.
+
+        Returns:
+            Source edits and the imported bindings they retire.
+
+        """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         rewrites: list[m.Infra.SourceRewrite] = []
         removals: t.MutableMappingKV[int, set[str]] = {}
@@ -1072,7 +1170,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         binding: p.Infra.RopePyName,
         qualified: str,
     ) -> p.Infra.RopePyName:
-        """Prove import provenance, rejecting cycles, ambiguity and missing targets."""
+        """Prove import provenance, rejecting cycles, ambiguity and missing targets.
+
+        Returns:
+            The native declaration at the end of the import chain.
+
+        Raises:
+            ValueError: Import provenance is cyclic, ambiguous or unresolved.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         visited: set[t.Pair[Path, str]] = set()
         while isinstance(binding, p.Infra.RopeImportedName):
@@ -1121,7 +1227,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource: p.Infra.RopeResource,
         qualified: str,
     ) -> p.Infra.RopePyModule:
-        """Inspect package declarations natively without evaluating their targets."""
+        """Inspect package declarations natively without evaluating their targets.
+
+        Returns:
+            The native source module declaring the import's bindings.
+
+        Raises:
+            TypeError: A package has no native folder resource.
+            ValueError: A package has no source initializer.
+
+        """
         if resource.is_folder():
             if not isinstance(resource, p.Infra.RopeRoot):
                 message = f"constant import has no package resource: {qualified}"
@@ -1144,7 +1259,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         binding: p.Infra.RopePyName,
         path: Path,
     ) -> str | None:
-        """Elect a unique published identity or proven class ancestry owner."""
+        """Elect a unique published identity or proven class ancestry owner.
+
+        Returns:
+            The unique published reference, or no constant publication.
+
+        Raises:
+            ValueError: Several published owners have the same native identity.
+
+        """
         references = tuple(
             reference
             for reference, candidate in paths.items()
@@ -1166,7 +1289,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         reference: str,
         facade: p.Infra.RopePyName,
     ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
-        """Rewrite native imported occurrences without crossing local rebindings."""
+        """Rewrite native imported occurrences without crossing local rebindings.
+
+        Returns:
+            Proven occurrence edits, or no admissible binding retirement.
+
+        Raises:
+            ValueError: The resource or canonical facade binding is unavailable.
+
+        """
         name, binding = imported
         if cls._constant_composition_base(module, binding):
             return ()
@@ -1201,7 +1332,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         module: p.Infra.RopePyModule,
         removals: t.MappingKV[int, set[str]],
     ) -> str:
-        """Remove proven imports and empty suites, preserving unrelated comments."""
+        """Remove proven imports and empty suites, preserving unrelated comments.
+
+        Returns:
+            Source preserving unrelated import bindings and comments.
+
+        Raises:
+            ValueError: The consumer has no native source resource.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         resource = module.get_resource()
         if resource is None:
@@ -1252,7 +1391,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         edits: t.SequenceOf[m.Infra.SourceRewrite],
         emptied: frozenset[int] | set[int],
     ) -> list[m.Infra.SourceRewrite]:
-        """Remove empty TYPE_CHECKING suites without stubs or comment loss."""
+        """Remove empty TYPE_CHECKING suites without stubs or comment loss.
+
+        Returns:
+            Source edits retaining the empty suites' documentation comments.
+
+        """
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         result = list(edits)
         for index, guard in enumerate(statements):
@@ -1287,7 +1431,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource: p.Infra.RopeResource,
         source: str,
     ) -> str:
-        """Remove annotation-guard imports natively after their last reference."""
+        """Remove annotation-guard imports natively after their last reference.
+
+        Returns:
+            Proposed source without unused TYPE_CHECKING imports.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = runtime.build_string_module(project, source, resource=resource)
         imports = runtime.module_imports_for_pymodule(project, module)
@@ -1320,7 +1469,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         project: p.Infra.RopeProject,
         package: str,
     ) -> t.MappingKV[str, p.Infra.RopePyName]:
-        """Enumerate native public facade members without importing the target."""
+        """Enumerate native public facade members without importing the target.
+
+        Returns:
+            Public reference paths bound to their native declaration identities.
+
+        """
         module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
         )
@@ -1351,7 +1505,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     def _constant_owner_binding(
         candidate: p.Infra.RopePyName, binding: p.Infra.RopePyName
     ) -> bool:
-        """Prove a published identity or a native class ancestry owner."""
+        """Prove a published identity or a native class ancestry owner.
+
+        Returns:
+            Whether publication directly names or inherits the native owner.
+
+        """
         return FlextInfraUtilitiesRopeRuntimeModules.same_name(candidate, binding) or (
             FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object()
@@ -1365,7 +1524,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         module: p.Infra.RopePyModule,
         binding: p.Infra.RopePyName,
     ) -> bool:
-        """Keep native provider imports used in class composition headers."""
+        """Keep native provider imports used in class composition headers.
+
+        Returns:
+            Whether the reference belongs to a class's composition header.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         for scope in runtime.scope_at(module, 0).get_scopes():
             if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
@@ -1387,7 +1551,15 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         declared_package: str,
         path: Path,
     ) -> str:
-        """Elect one declared facade package, rejecting competing c bindings."""
+        """Elect one declared facade package, rejecting competing c bindings.
+
+        Returns:
+            The package owning the consumer's canonical constants facade.
+
+        Raises:
+            ValueError: Several constants facades are bound as c.
+
+        """
         public_packages = {
             info.module_name
             for info, _source in statements

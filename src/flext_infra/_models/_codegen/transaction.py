@@ -81,6 +81,10 @@ class FlextInfraModelsCodegenTransactionModels:
         source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
             default=(), description="Original native source query ancestry"
         )
+        original_project: p.Infra.RopeProject | None = m.Field(
+            default=None,
+            description="Original Rope read owner a derived candidate view extends",
+        )
 
     class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""

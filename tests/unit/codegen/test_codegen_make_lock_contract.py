@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, r
+from flext_infra import config
 from tests import c, m, r, tm, u
 
 pytestmark = pytest.mark.slow

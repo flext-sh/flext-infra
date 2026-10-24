@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, p, r, t
+from flext_infra import m, p, t
 from flext_infra.codegen import FlextInfraCodegenTransaction, FlextInfraStagedPackage
 from flext_infra.gates.runtime_census import FlextInfraRuntimeCensusGate
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator

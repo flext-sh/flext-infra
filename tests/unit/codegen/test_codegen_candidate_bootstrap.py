@@ -14,7 +14,7 @@ import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen import (
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
@@ -210,7 +210,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.that(
             tm.ok(
-                FlextInfraCodegenConform(
+                FlextInfraCodegenConformExecute(
                     repository_root=root,
                     state=m.Infra.CodegenConformState(
                         repository_root=root,
@@ -231,7 +231,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -314,7 +314,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -405,7 +405,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         state = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         destination = root / "publication-output.txt"
         before = tm.ok(u.Infra.codegen_target_snapshot(destination))
-        planner = FlextInfraCodegenConform(
+        planner = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(repository_root=root, ports=None),
         )
@@ -1020,7 +1020,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
         destinations = tm.not_none(
-            FlextInfraCodegenConform.surface_contract(
+            FlextInfraCodegenConformExecute.surface_contract(
                 c.Infra.CodegenConformSurface.PYPROJECT,
                 codegen=inputs.spec,
             ).destinations,
@@ -1088,7 +1088,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             (candidate / relative).unlink(missing_ok=True)
         before = TestsFlextInfraConformSupport.project_tree(candidate)
         destinations = tm.not_none(
-            FlextInfraCodegenConform.surface_contract(
+            FlextInfraCodegenConformExecute.surface_contract(
                 c.Infra.CodegenConformSurface.DEPENDENCIES,
                 codegen=inputs.spec,
             ).destinations,

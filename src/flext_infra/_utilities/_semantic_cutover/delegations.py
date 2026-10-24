@@ -12,24 +12,16 @@ from pathlib import Path
 from textwrap import indent
 
 from flext_infra import m, p, t
-from flext_infra._utilities._semantic_cutover.declaration_relocation import (
-    FlextInfraUtilitiesSemanticDeclarationRelocation,
-)
-from flext_infra._utilities._semantic_cutover.declaration_retirement import (
-    FlextInfraUtilitiesSemanticDeclarationRetirement,
-)
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_runtime_modules import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities.rope_runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticDeclarationRetirement,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 

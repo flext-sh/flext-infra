@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, m, main, r
+from flext_infra import infra, m, main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import c, r, t, tm, u
 

@@ -11,7 +11,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import m, t
+from flext_infra import c, m, t
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStateSnapshotMixin,
     FlextInfraUtilitiesGitWorktreeIO,

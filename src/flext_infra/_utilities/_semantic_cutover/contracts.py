@@ -34,19 +34,11 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverClassScope,
     FlextInfraUtilitiesSemanticCutoverModelFields,
-    FlextInfraUtilitiesSemanticDeclarationRelocation,
-)
-from flext_infra._utilities._semantic_cutover.declaration_retirement import (
-    FlextInfraUtilitiesSemanticDeclarationRetirement,
-)
-from flext_infra._utilities._semantic_cutover.delegations import (
-    FlextInfraUtilitiesSemanticDelegations,
-)
-from flext_infra._utilities._semantic_cutover.family_type_references import (
-    FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
-from flext_infra._utilities._semantic_cutover.private_imports import (
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticDeclarationRetirement,
+    FlextInfraUtilitiesSemanticDelegations,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 

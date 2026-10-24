@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from flext_infra import c, config, m, t
+from flext_infra import config, m, t
 from tests import c, tm, u
 
 

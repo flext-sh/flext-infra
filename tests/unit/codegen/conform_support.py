@@ -11,7 +11,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, t, tm, u
 
 
@@ -65,7 +65,7 @@ class TestsFlextInfraConformSupport:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
                     request=request,
@@ -184,11 +184,11 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def self_check_conform_service(
         root: Path,
-    ) -> t.Pair[FlextInfraCodegenConform, m.Infra.CodegenConformRequest]:
+    ) -> t.Pair[FlextInfraCodegenConformExecute, m.Infra.CodegenConformRequest]:
         """Materialize the standalone root fixture and its CHECK-mode conform service.
 
         Returns:
-            The resulting ``t.Pair[FlextInfraCodegenConform,
+            The resulting ``t.Pair[FlextInfraCodegenConformExecute,
                 m.Infra.CodegenConformRequest]``.
 
         """
@@ -214,11 +214,11 @@ class TestsFlextInfraConformSupport:
         workspace: m.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-    ) -> t.Pair[FlextInfraCodegenConform, m.Infra.CodegenConformRequest]:
+    ) -> t.Pair[FlextInfraCodegenConformExecute, m.Infra.CodegenConformRequest]:
         """Build the CHECK-mode conform service bound to one declared workspace.
 
         Returns:
-            The resulting ``t.Pair[FlextInfraCodegenConform,
+            The resulting ``t.Pair[FlextInfraCodegenConformExecute,
                 m.Infra.CodegenConformRequest]``.
 
         """
@@ -228,7 +228,7 @@ class TestsFlextInfraConformSupport:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(
+        service = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,

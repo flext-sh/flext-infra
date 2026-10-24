@@ -131,7 +131,8 @@ class TestsFlextInfraWorktreeBinding:
                         f"assert selected.editable_supplier_root == {expected_source}\n"
                         "assert selected.environment_path == "
                         f"Path({str(environment)!r})\n"
-                        "assert selected.runtime_root == consumer.resolve(strict=True)\n"
+                        "assert selected.runtime_root == "
+                        "consumer.resolve(strict=True)\n"
                         "assert selected.resolution_root == "
                         f"Path({str(expected_resolution)!r})\n"
                     ),

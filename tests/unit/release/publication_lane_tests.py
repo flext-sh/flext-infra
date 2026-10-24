@@ -16,8 +16,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-
 from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:

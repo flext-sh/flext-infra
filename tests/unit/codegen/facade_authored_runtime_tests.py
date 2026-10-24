@@ -21,6 +21,20 @@ class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
 
     @staticmethod
+    def consumer_base_count(module: p.Infra.RopeSemanticModule) -> int:
+        """Count the native superclasses of the module's ``Consumer`` class.
+
+        Returns:
+            The number of declared base classes.
+
+        """
+        return len(
+            u.Infra.require_class_object(
+                module.get_attribute("Consumer").get_object(), "consumer class"
+            ).get_superclasses()
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("consume", [False, True])
     def test_capture_pins_originals_without_promoting_unused_inputs(
         tmp_path: Path,
@@ -229,7 +243,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 project.get_module(f"{package.name}.first"),
             )
             tm.that(
-                len(warmed.get_attribute("Consumer").get_object().get_superclasses()),
+                TestsFlextInfraFacadeAuthoredRuntime.consumer_base_count(warmed),
                 eq=1,
             )
             with (
@@ -240,9 +254,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     consumer.get_module(f"{package.name}.first"),
                 )
                 tm.that(
-                    len(
-                        module.get_attribute("Consumer").get_object().get_superclasses()
-                    ),
+                    TestsFlextInfraFacadeAuthoredRuntime.consumer_base_count(module),
                     eq=1,
                 )
             with (
@@ -253,9 +265,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     consumer.get_module(f"{package.name}.second"),
                 )
                 tm.that(
-                    len(
-                        module.get_attribute("Consumer").get_object().get_superclasses()
-                    ),
+                    TestsFlextInfraFacadeAuthoredRuntime.consumer_base_count(module),
                     eq=1,
                 )
             first_provider = tuple(
@@ -949,7 +959,7 @@ class TestsFlextInfraGeneratedRuntime:
                 root, inputs=inputs
             )
         )
-        outcome = codegen.FlextInfraCodegenConform.plan_repository_task(
+        outcome = codegen.FlextInfraCodegenConformExecute.plan_repository_task(
             m.Infra.CodegenRepositoryPlanTask(
                 root=root,
                 workspace=spec,

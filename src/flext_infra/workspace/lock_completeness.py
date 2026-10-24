@@ -17,7 +17,12 @@ class FlextInfraWorkspaceLockCompleteness:
 
     @classmethod
     def execute_request(cls, request: p.Infra.WorkspaceRequest) -> p.Result[int]:
-        """Verify the native project elected for the supplied checkout."""
+        """Verify the native project elected for the supplied checkout.
+
+        Returns:
+            Zero after native validation, or its original execution failure.
+
+        """
         return cls.verify_lock(request.repository_root)
 
     @staticmethod

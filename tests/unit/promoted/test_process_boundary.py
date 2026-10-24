@@ -211,7 +211,7 @@ raise SystemExit(
             )
             if not ready:
                 pytest.fail("child did not reach the completion barrier")
-            if os.read(probe.ready_read, 1) != bc.ParserBooleanToken.ONE:
+            if os.read(probe.ready_read, 1) != b"1":
                 pytest.fail("child completion barrier emitted an invalid marker")
             stdout, stderr = self._read_ready({
                 probe.stdout_read: "stdout",
@@ -221,7 +221,7 @@ raise SystemExit(
                 pytest.fail(f"stdout was not streamed live: {stdout!r}")
             if stderr != "stderr-live\n":
                 pytest.fail(f"stderr was not streamed live: {stderr!r}")
-            os.write(probe.release_write, bc.ParserBooleanToken.ONE)
+            os.write(probe.release_write, b"1")
             if self._wait_status(probe.pid) != 0:
                 pytest.fail("successful child exit status was not preserved")
             reaped = True
@@ -279,7 +279,7 @@ raise SystemExit(
             ready, _, _ = select.select((ready_read,), (), (), self.BARRIER_TIMEOUT)
             if not ready:
                 pytest.fail("child did not reach the SIGINT barrier")
-            if os.read(ready_read, 1) != bc.ParserBooleanToken.ONE:
+            if os.read(ready_read, 1) != b"1":
                 pytest.fail("child SIGINT barrier emitted an invalid marker")
             child = int(child_pid.read_text(encoding="utf-8"))
             os.killpg(pid, signal.SIGINT)

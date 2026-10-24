@@ -209,7 +209,15 @@ class FlextInfraModelsCodegenRender:
 
         @m.model_validator(mode="after")
         def require_elected_release_commands(self) -> Self:
-            """Require the complete elected product protocol before rendering."""
+            """Require the complete elected product protocol before rendering.
+
+            Returns:
+                Self: the validated render specification.
+
+            Raises:
+                ValueError: when an elected release phase command is missing.
+
+            """
             if self.publishes_release:
                 required = {f"release-{phase.value}" for phase in c.Infra.ReleasePhase}
                 missing = required - {verb.name for verb in self.extra_verbs}

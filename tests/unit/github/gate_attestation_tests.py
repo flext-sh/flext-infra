@@ -13,7 +13,6 @@ from pathlib import Path
 from shlex import quote
 
 import pytest
-from flext_cli import u
 
 from flext_infra import config, m, p
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
@@ -360,7 +359,7 @@ class TestsFlextInfraGithubGateAttestation:
             native.outcome,
             from_attributes=True,
         )
-        tm.that(cli_u.Cli.process_succeeded(process), truth=True, msg=native.stderr)
+        tm.that(u.Cli.process_succeeded(process), truth=True, msg=native.stderr)
         report = m.Infra.GitSigningIdentityReport.model_validate_json(native.stdout)
         tm.that(
             tuple(item.key for item in report.observations)
@@ -446,7 +445,7 @@ class TestsFlextInfraGithubGateAttestation:
             native.outcome,
             from_attributes=True,
         )
-        tm.that(cli_u.Cli.process_succeeded(process), truth=False)
+        tm.that(u.Cli.process_succeeded(process), truth=False)
         tm.that(native.stderr, empty=False)
         failed = u.Infra.git_signing_identity(
             m.Infra.GitRepoRequest(repo_root=tmp_path)
@@ -706,7 +705,7 @@ class TestsFlextInfraGithubGateAttestation:
             / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
         )
         previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
-        tm.ok(cli_u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
+        tm.ok(u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
         published = (
             set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)) - previous
         )
@@ -899,7 +898,7 @@ class TestsFlextInfraGithubGateAttestation:
         request = self._request(tmp_path)
         tm.ok(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
         digest = (
-            f"sha256:{cli_u.Cli.sha256_content('different runtime context')}"
+            f"sha256:{u.Cli.sha256_content('different runtime context')}"
             if mismatch == "context"
             else request.context_digest
         )
@@ -958,8 +957,8 @@ class TestsFlextInfraGithubGateAttestation:
         )
         started = datetime.now(UTC)
         command = ["make", c.Infra.VERB_CHECK, "ATTEST_PROBE_DELAY=2"]
-        command_digest = f"sha256:{cli_u.Cli.sha256_content(' '.join(command))}"
-        interrupted = tm.ok(cli_u.Cli.run_raw(command, cwd=tmp_path, timeout=1))
+        command_digest = f"sha256:{u.Cli.sha256_content(' '.join(command))}"
+        interrupted = tm.ok(u.Cli.run_raw(command, cwd=tmp_path, timeout=1))
         tm.ok(interrupted.outcome.timed_out)
         updated = source.model_copy(
             update={

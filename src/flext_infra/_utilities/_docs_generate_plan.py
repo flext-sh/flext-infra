@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsContract,

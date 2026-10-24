@@ -227,48 +227,9 @@ class FlextInfraPyprojectModernizerDocument(
                 preserve_layout=True,
             )
         else:
-            inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent)
-            if inputs.failure:
-                return r[t.StrSequence].from_failure(inputs)
-            repository = inputs.value.spec.repository
-            project = repository.project
-            build_changes = self._normalize_build_payload(state.payload)
-            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(
-                state.payload
-            )
-            topology = m.Infra.PyprojectDeclaredTopology.model_validate({
-                **(
-                    project.model_dump(
-                        include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
-                    )
-                    if project is not None
-                    else {}
-                ),
-                "project_declaration_resource": (
-                    FlextInfraEnsurePackagingPhase.declaration_resource(
-                        package_name=(
-                            project.package_name
-                            if project is not None
-                            else u.Infra.package_name_from_payload(
-                                state.pyproject_path.parent,
-                                state.payload,
-                                u.Infra.docs_meta_from_payload(state.payload),
-                            )
-                        ),
-                        package=u.Infra.project_package_participation(packaging),
-                    )
-                ),
-            })
-            rendered = self._render_document_state(
+            rendered = self._render_declared_state(
                 state,
-                (
-                    *build_changes,
-                    *self._apply_document_phases(
-                        state,
-                        canonical_dev=canonical_dev,
-                        topology=topology,
-                    ),
-                ),
+                canonical_dev=canonical_dev,
                 skip_comments=skip_comments,
             )
         if rendered.failure:
@@ -282,6 +243,62 @@ class FlextInfraPyprojectModernizerDocument(
         if not rendered.value:
             return r[t.StrSequence].ok(("canonical pyproject rendering changed bytes",))
         return rendered
+
+    def _render_declared_state(
+        self,
+        state: m.Infra.PyprojectDocumentState,
+        *,
+        canonical_dev: t.StrSequence,
+        skip_comments: bool,
+    ) -> p.Result[t.StrSequence]:
+        """Run every managed phase against the declared repository topology.
+
+        Returns:
+            The rendered change list, or the first declaration failure.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent)
+        if inputs.failure:
+            return r[t.StrSequence].from_failure(inputs)
+        repository = inputs.value.spec.repository
+        project = repository.project
+        build_changes = self._normalize_build_payload(state.payload)
+        packaging = m.Infra.ProjectPackagingDeclaration.model_validate(state.payload)
+        topology = m.Infra.PyprojectDeclaredTopology.model_validate({
+            **(
+                project.model_dump(
+                    include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+                )
+                if project is not None
+                else {}
+            ),
+            "project_declaration_resource": (
+                FlextInfraEnsurePackagingPhase.declaration_resource(
+                    package_name=(
+                        project.package_name
+                        if project is not None
+                        else u.Infra.package_name_from_payload(
+                            state.pyproject_path.parent,
+                            state.payload,
+                            u.Infra.docs_meta_from_payload(state.payload),
+                        )
+                    ),
+                    package=u.Infra.project_package_participation(packaging),
+                )
+            ),
+        })
+        return self._render_document_state(
+            state,
+            (
+                *build_changes,
+                *self._apply_document_phases(
+                    state,
+                    canonical_dev=canonical_dev,
+                    topology=topology,
+                ),
+            ),
+            skip_comments=skip_comments,
+        )
 
     def _apply_document_phases(
         self,

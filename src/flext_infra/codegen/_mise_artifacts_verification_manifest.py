@@ -169,8 +169,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         transition = cls._validate_manifest_transition(
             layout,
             journal,
-            manifest,
-            observed.value,
+            (manifest, observed.value),
             entry_matches=cls._physical_manifest_entry_matches,
             created=created,
         )
@@ -247,8 +246,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 lambda compared: cls._validate_manifest_transition(
                     layout,
                     journal,
-                    authorized,
-                    compared,
+                    (authorized, compared),
                     entry_matches=cls._retirement_manifest_entry_matches,
                 ),
             )
@@ -434,8 +432,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-        authorized: m.Cli.AtomicPhysicalTreeManifest,
-        observed: m.Cli.AtomicPhysicalTreeManifest,
+        transition: t.Pair[
+            m.Cli.AtomicPhysicalTreeManifest, m.Cli.AtomicPhysicalTreeManifest
+        ],
         *,
         entry_matches: _ManifestEntryMatches,
         created: t.VariadicTuple[
@@ -447,10 +446,13 @@ class FlextInfraMiseArtifactsVerificationManifest:
         An addition is admitted only as a registered transition: a created
         receipt, a directory above a journaled file, or a journaled file.
 
+        ``transition`` pairs the authorized manifest with the observed one.
+
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
+        authorized, observed = transition
         if not entry_matches(observed.root, authorized.root):
             return r[bool].fail(
                 f"temporary tree root identity changed: {authorized.root.path}",
@@ -486,8 +488,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         registered = cls._registered_staging_intents(
             layout,
             journal,
-            authorized.root,
-            expected,
+            authorized,
             current,
             entry_matches=entry_matches,
         )
@@ -495,7 +496,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
             return r[bool].from_failure(registered)
         return cls._verified_tree_additions(
             authorized,
-            expected,
             registered.value,
             file_specs.value,
             created_by_path,
@@ -507,8 +507,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-        root: m.Cli.AtomicPhysicalTreeEntry,
-        expected: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
+        authorized: m.Cli.AtomicPhysicalTreeManifest,
         current: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         *,
         entry_matches: _ManifestEntryMatches,
@@ -520,6 +519,8 @@ class FlextInfraMiseArtifactsVerificationManifest:
 
         """
         result_type = r[t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry]]
+        root = authorized.root
+        expected = {entry.path: entry for entry in authorized.entries}
         remaining = dict(current)
         roots = frozenset(
             item.transaction_root
@@ -597,7 +598,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
     def _verified_tree_additions(
         cls,
         authorized: m.Cli.AtomicPhysicalTreeManifest,
-        expected: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         current: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         file_specs: t.MappingKV[
             Path,
@@ -619,6 +619,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The resulting ``p.Result[bool]``.
 
         """
+        expected = {entry.path: entry for entry in authorized.entries}
         additions = tuple(
             entry for path, entry in current.items() if path not in expected
         )

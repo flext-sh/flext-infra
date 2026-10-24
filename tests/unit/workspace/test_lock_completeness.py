@@ -150,7 +150,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
     @pytest.mark.parametrize(
         "marker",
         [
-            "python_version < c.ParserBooleanToken.ZERO",
+            'python_version < "0"',
             'extra == "unselected-audit-extra"',
         ],
     )
@@ -203,7 +203,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             "package = []",
             'package = ["invalid"]',
             (
-                '[[package]]\nname = ""\nversion = c.ParserBooleanToken.ONE\n'
+                '[[package]]\nname = ""\nversion = "1"\n'
                 'source = {registry = "https://example.com"}'
             ),
         ],

@@ -32,7 +32,7 @@ class TestsFlextInfraRootArtifactOwnership:
     @staticmethod
     def test_governed_artifacts_have_one_explicit_policy() -> None:
         """Test governed artifacts have one explicit policy."""
-        configured = config.Infra.codegen.managed_files
+        configured = config.Infra.codegen.managed_file_specs
         paths = tuple(item.path.as_posix() for item in configured)
 
         tm.that(len(paths), eq=len(set(paths)))
@@ -76,44 +76,16 @@ class TestsFlextInfraRootArtifactOwnership:
         tm.that(physical, eq=declared)
 
     @staticmethod
-    def test_github_template_without_managed_owner_is_rejected() -> None:
-        """Reject any config where a GitHub projection escapes full ownership."""
-        spec = config.Infra.codegen
-        github_managed = tuple(
-            item for item in spec.managed_files if item.path.parts[:1] == (".github",)
-        )
-        target = github_managed[0]
-        mutated = spec.model_copy(
-            update={
-                "managed_files": tuple(
-                    item for item in spec.managed_files if item.path != target.path
-                ),
-            },
-        )
-
-        with pytest.raises(ValueError, match="ownership mismatch"):
-            type(spec).model_validate(mutated)
-
-    @staticmethod
     def test_github_managed_owner_must_be_full() -> None:
         """Reject weaker policies for every config-declared GitHub artifact."""
         spec = config.Infra.codegen
-        target = next(
-            item for item in spec.managed_files if item.path.parts[:1] == (".github",)
-        )
-        mutated = spec.model_copy(
-            update={
-                "managed_files": tuple(
-                    item.model_copy(update={"policy": "merge"})
-                    if item.path == target.path
-                    else item
-                    for item in spec.managed_files
-                ),
-            },
-        )
+        payload = spec.model_dump(exclude_computed_fields=True)
+        for destination, entry in payload["templates"]["entries"].items():
+            if Path(destination).parts[:1] == (".github",):
+                entry["ownership"]["policy"] = "merge"
 
         with pytest.raises(ValueError, match="must be full-managed"):
-            type(spec).model_validate(mutated)
+            type(spec).model_validate(payload)
 
     @staticmethod
     def test_conform_uses_one_fixed_point_plan(infra_git_repo: Path) -> None:
@@ -152,13 +124,13 @@ class TestsFlextInfraRootArtifactOwnership:
         (root / "custom.mk").write_bytes(manual["custom.mk"])
         configured_policies = {
             root / item.path: item.policy
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path.as_posix() in c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS
         }
         before = conform_support.TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
-            codegen.FlextInfraCodegenConform(
+            codegen.FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -224,7 +196,7 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                codegen.FlextInfraCodegenConform(
+                codegen.FlextInfraCodegenConformExecute(
                     repository_root=root,
                     state=m.Infra.CodegenConformState(
                         repository_root=root,

@@ -125,6 +125,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
     def test_suite_stop_instant_persists_the_executed_prefix(
         self,
         cached_runner_project: Path,
+        *,
         distributed: bool,
     ) -> None:
         """A run reaching its stop instant ends itself and testmon keeps progress.

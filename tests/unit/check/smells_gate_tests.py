@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.smells import FlextInfraSmellsGate

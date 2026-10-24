@@ -42,9 +42,6 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
         Returns:
             The module's explicit lexical bindings, including value shadowing.
 
-        Raises:
-            ValueError: If a required binding has unsupported source semantics.
-
         """
         parsed = cls._parsed_module(request, provider)
         package = (

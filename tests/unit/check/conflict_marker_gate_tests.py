@@ -10,9 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
 from flext_infra.check import FlextInfraGateRegistry
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraConflictMarkerGate:

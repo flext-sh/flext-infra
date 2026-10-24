@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, c, r
+from flext_infra import FlextInfraConfig
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenStaging,
     FlextInfraMisePublication,
 )
@@ -86,7 +86,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
-        planned = FlextInfraCodegenConform(
+        planned = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,

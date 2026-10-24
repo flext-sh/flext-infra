@@ -237,9 +237,6 @@ class FlextInfraUtilitiesResourceLimits:
         Returns:
             The resulting ``Path``.
 
-        Raises:
-            OSError: If the selected physical project root cannot be resolved.
-
         """
         physical = project_dir.resolve(strict=True)
         return (

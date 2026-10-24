@@ -48,7 +48,9 @@ class FlextInfraValidationCommandRoutes:
     validate_command_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
         m.Cli.ResultCommandRoute(
             name="producer",
-            help_text="Authenticate the real semantic publisher against its cold source",
+            help_text=(
+                "Authenticate the real semantic publisher against its cold source"
+            ),
             model_cls=m.Infra.WorkspaceRequest,
             handler=lambda request: FlextInfraValidateProducer.execute_request(
                 request,

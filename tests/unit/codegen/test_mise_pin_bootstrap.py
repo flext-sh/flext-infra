@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 import pytest
 from packaging.version import Version
 
-from flext_infra import c, config, m
+from flext_infra import config, m
 from tests import c, t, tm, u
 
 

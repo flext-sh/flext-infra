@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_cli import m as cli_m
 
-from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from tests import c, t, tm, u
+from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
 

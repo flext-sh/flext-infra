@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, main
+from flext_infra import config, main
 from flext_infra.services import FlextInfraCliRouteService
 from tests import c, m, t, tm, u
 

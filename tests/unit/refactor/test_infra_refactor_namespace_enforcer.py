@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from tests import c, tm, u

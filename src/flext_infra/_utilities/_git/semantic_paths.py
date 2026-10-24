@@ -12,6 +12,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from flext_cli import u
 from git import (
     GitCommandError,
     HookExecutionError,
@@ -21,7 +22,7 @@ from git import (
 )
 from gitdb.util import LockedFD
 
-from flext_infra import m, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticPublishMixin,
     FlextInfraUtilitiesGitStateFilesMixin,
@@ -460,7 +461,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         index = state.index_before.content
         return u.Cli.sha256_content(
             state.model_dump_json()
-            + (cli_u.Cli.sha256_bytes(index) if index is not None else "absent")
+            + (u.Cli.sha256_bytes(index) if index is not None else "absent")
         )
 
     @classmethod

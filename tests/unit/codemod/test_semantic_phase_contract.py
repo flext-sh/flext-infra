@@ -1013,6 +1013,7 @@ class TestsFlextInfraSemanticPhaseContract:
     @pytest.mark.parametrize("inherited_import", [False, True])
     def test_relocated_behavior_runs_through_its_real_consumer(
         tmp_path: Path,
+        *,
         inherited_import: bool,
     ) -> None:
         """Repeated typing references relocate while the real utility runs."""

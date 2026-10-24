@@ -461,10 +461,6 @@ define _dispatch
 endef
 {% endif %}
 
-# `make upg` is the only verb that writes uv.lock (`uv lock --upgrade
-# --refresh`, then `uv lock` of the manifest `gen` projected and `uv lock
-# --check`). Setup never writes it (lock law above).
-
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_all
 
@@ -566,7 +562,7 @@ _setup_native_prepare: _builtin_setup_submodules
 	+@$(SELF_MAKE) _setup_lifecycle
 
 _setup_lifecycle: _builtin_require_workspace
-	@$(INSTALL_RUNTIME_RECIPE); \
+	+@$(INSTALL_RUNTIME_RECIPE); \
 	$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-environment --repository-root "$(PROJECT_ROOT)"; \
 	case "$(strip $({{ make.ci.variable }})): $(CUSTOM_DECLARED_TARGETS) " in \
 		{{ make.ci.value }}:*) ;; \
@@ -582,7 +578,7 @@ _setup_lifecycle: _builtin_require_workspace
 .PHONY: _setup_activated
 # Check owns quality verdicts after provisioning.
 _setup_activated:
-	@set -eu; \
+	+@set -eu; \
 	case "$(strip $({{ make.ci.variable }})): $(CUSTOM_DECLARED_TARGETS) " in \
 		{{ make.ci.value }}:*) ;; \
 		*" post-setup "*) $(SELF_MAKE) post-setup ;; \
@@ -646,7 +642,7 @@ _builtin_require_environment: _builtin_require_interpreter
 # generating projections, or auditing the running environment.
 .PHONY: _upg_lifecycle
 _upg_lifecycle:
-	@set -eu; \
+	+@set -eu; \
 	{{ mise_network_admission() }} \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \

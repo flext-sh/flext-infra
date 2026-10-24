@@ -433,7 +433,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         before = tm.ok(u.Cli.atomic_read_binary_file_state(config_path, required=True))
         desired_mode = next(
             item.mode
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path == Path(config_path.name)
         )
         stage = tmp_path / "stage"
@@ -476,7 +476,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         config_path = layout.projects[0].config
         declared_mode = next(
             item.mode
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path == Path(config_path.name)
         )
         desired_mode = declared_mode ^ stat.S_IWGRP if alternate_mode else declared_mode
@@ -717,7 +717,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
         declared_mode = next(
             item.mode
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path == Path(config_path.name)
         )
         desired_mode = declared_mode ^ stat.S_IWGRP

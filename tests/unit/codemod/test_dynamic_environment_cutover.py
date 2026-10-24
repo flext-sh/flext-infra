@@ -84,8 +84,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         with infra.rope_workspace(root) as rope:
             if not declared_owner_present:
                 with pytest.raises(ValueError, match="declared settings owner"):
-                    u.Infra.plan_semantic_cutover(
-                        c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                    u.Infra.plan_dynamic_environment_cutover(
                         rope_workspace=rope,
                         sources=sources,
                         findings=(self._finding(path.relative_to(root), access),),
@@ -94,8 +93,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                 tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
                 return
             with pytest.raises(ValueError, match="policy belongs to another root"):
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                u.Infra.plan_dynamic_environment_cutover(
                     rope_workspace=rope,
                     sources=sources,
                     findings=(self._finding(path.relative_to(root), access),),
@@ -130,8 +128,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                     tm.that(captured.rope_project.source_text(owner), eq=sources[owner])
                     tm.that(captured.rope_project.source_query(owner, "isfile"))
                     edits = tm.ok(
-                        u.Infra.plan_semantic_cutover(
-                            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                        u.Infra.plan_dynamic_environment_cutover(
                             rope_workspace=captured,
                             sources=sources,
                             findings=(self._finding(path.relative_to(root), access),),
@@ -154,8 +151,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                 sources[path] = edits[0].updated_source
                 tm.that(
                     tm.ok(
-                        u.Infra.plan_semantic_cutover(
-                            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+                        u.Infra.plan_dynamic_environment_cutover(
                             rope_workspace=captured,
                             sources=sources,
                             findings=(self._finding(path.relative_to(root), access),),

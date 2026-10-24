@@ -18,6 +18,7 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenMiseToolchainProof,
     FlextInfraCodegenTransaction,
@@ -48,7 +49,7 @@ def _assert_conform_check_reaches_fixed_point(root: Path) -> None:
     tm.that(fixed_point.value.written_files, eq=())
 
 
-class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
+class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecute):
     """Exercise native planning and publication failures without replacing owners."""
 
     __test__ = False
@@ -367,7 +368,6 @@ class TestsFlextInfraCodegenConform:
                 TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
                     request,
                     execution_context=infra,
-                    generation_only=True,
                 )
             tm.ok(raised.value is _LIFECYCLE_EXCEPTION)
         else:
@@ -375,7 +375,6 @@ class TestsFlextInfraCodegenConform:
                 TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
                     request,
                     execution_context=infra,
-                    generation_only=True,
                 )
             tm.that(str(changed.value), has=str(root / ".lifecycle-source"))
             tm.that(
@@ -477,7 +476,7 @@ class TestsFlextInfraCodegenConform:
             )
             roots = owner.capability_roots("bootstrap", (root,))
             planned = tm.ok(
-                FlextInfraCodegenConform(repository_root=root).plan(request)
+                FlextInfraCodegenConformExecute(repository_root=root).plan(request)
             )
             target = next(file for file in planned.files if file.path == published)
 
@@ -811,7 +810,9 @@ class TestsFlextInfraCodegenConform:
         published = tm.ok(
             FlextInfraMiseArtifactsVerification.publication_current(request)
         )
-        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        plan = tm.ok(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+        )
         editor_settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(
             settings_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -1109,7 +1110,7 @@ class TestsFlextInfraCodegenConform:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(request),
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files

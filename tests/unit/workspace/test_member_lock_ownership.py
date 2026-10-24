@@ -42,6 +42,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
     def test_verification_uses_selected_owner_without_repair(
         self,
         tmp_path: Path,
+        *,
         attached: bool,
     ) -> None:
         """Attached and standalone validation name their own selected missing lock."""
@@ -63,6 +64,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
     def test_conform_preserves_existing_locks(
         self,
         tmp_path: Path,
+        *,
         attached: bool,
     ) -> None:
         """Conform a real project while retaining each owner's exact lock bytes."""
@@ -94,6 +96,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
     def test_conform_does_not_create_missing_uv_lock(
         self,
         tmp_path: Path,
+        *,
         attached: bool,
     ) -> None:
         """Projection generation succeeds without becoming a dependency resolver."""

@@ -70,6 +70,9 @@ class FlextInfraUtilitiesDocsFix:
         Returns:
             Repaired source bytes without publishing the source file.
 
+        Raises:
+            RuntimeError: If ruff cannot fix or verify a fenced block.
+
         """
         rel = path.relative_to(scope.path).as_posix()
         common = (

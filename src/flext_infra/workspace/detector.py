@@ -408,8 +408,9 @@ class FlextInfraWorkspaceDetector(
             ),
         )
 
-    @staticmethod
+    @classmethod
     def _declared_scaffold_project(
+        cls,
         repository_root: Path,
     ) -> p.Result[m.Infra.ProjectSpec]:
         """Admit a prepared tree with its complete own generation declaration.
@@ -419,13 +420,37 @@ class FlextInfraWorkspaceDetector(
 
         """
         result_type = r[m.Infra.ProjectSpec]
-        identity = u.Infra.exact_worktree_root(repository_root)
-        if identity.failure:
-            return result_type.from_failure(identity)
-        inputs = u.Infra.load_codegen_inputs(repository_root)
+        inputs = u.Infra.exact_worktree_root(repository_root).flat_map(
+            lambda _: u.Infra.load_codegen_inputs(repository_root)
+        )
         if inputs.failure:
             return result_type.from_failure(inputs)
-        declaration = inputs.value.spec.repository
+        project = cls._scaffold_project_declaration(repository_root, inputs.value)
+        if project.failure:
+            return project
+        provenance = cls._scaffold_provenance(
+            repository_root, inputs.value, project.value
+        )
+        if provenance.failure:
+            return result_type.from_failure(provenance)
+        fresh = cls._require_new_scaffold(repository_root)
+        if fresh.failure:
+            return result_type.from_failure(fresh)
+        return project
+
+    @staticmethod
+    def _scaffold_project_declaration(
+        repository_root: Path,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[m.Infra.ProjectSpec]:
+        """Require the project, integration, kind and dependency declarations.
+
+        Returns:
+            The declared project, or the typed declaration failure.
+
+        """
+        result_type = r[m.Infra.ProjectSpec]
+        declaration = inputs.spec.repository
         if declaration.project is None:
             error = FileNotFoundError(
                 f"repository has no {c.PYPROJECT_FILENAME} or explicit "
@@ -440,65 +465,93 @@ class FlextInfraWorkspaceDetector(
                 "new project requires its own integration and kind declarations: "
                 f"{repository_root}",
             )
-        project = declaration.project
-        if project.flext_source is None:
+        if declaration.project.flext_source is None:
             return result_type.fail(
-                f"new project requires explicit dependency provenance: {repository_root}",
+                "new project requires explicit dependency provenance: "
+                f"{repository_root}",
             )
-        source = u.Infra.declared_git_source(project.flext_source)
+        return result_type.ok(declaration.project)
+
+    @staticmethod
+    def _scaffold_provenance(
+        repository_root: Path,
+        inputs: m.Infra.CodegenInputs,
+        project: m.Infra.ProjectSpec,
+    ) -> p.Result[bool]:
+        """Require infrastructure provenance on an integration line.
+
+        Returns:
+            Success when the declared source resolves to an integration line.
+
+        """
+        flext_source = project.flext_source
+        if flext_source is None:
+            return r[bool].fail(
+                "new project requires explicit dependency provenance: "
+                f"{repository_root}",
+            )
+        source = u.Infra.declared_git_source(flext_source)
         if source.failure:
-            return result_type.from_failure(source)
-        if u.Infra.dep_name(project.flext_source) != (
-            inputs.value.spec.infra_repository.distribution
-        ):
-            return result_type.fail(
+            return r[bool].from_failure(source)
+        if u.Infra.dep_name(flext_source) != inputs.spec.infra_repository.distribution:
+            return r[bool].fail(
                 "new project provenance must declare its infrastructure dependency: "
-                f"{project.flext_source}",
+                f"{flext_source}",
             )
         source_url, source_ref = source.value
         if u.Infra.ref_is_commit(source_ref):
-            return result_type.fail(
+            return r[bool].fail(
                 "new project provenance requires an integration line, not a commit: "
-                f"{project.flext_source}",
+                f"{flext_source}",
             )
         line = u.Infra.flext_integration_line(
-            codegen=inputs.value.spec,
+            codegen=inputs.spec,
             repository_root=repository_root,
             bootstrap_source=m.Infra.CodegenBootstrapSource(
                 url=source_url, ref=source_ref
             ),
         )
         if line.failure:
-            return result_type.from_failure(line)
+            return r[bool].from_failure(line)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _require_new_scaffold(repository_root: Path) -> p.Result[bool]:
+        """Require a tree with no manifest history and no authored Python sources.
+
+        Returns:
+            Success for a new scaffold, or the typed rejection.
+
+        """
         path_request = m.Infra.GitRelativePathRequest(
             repo_root=repository_root,
             relative_path=c.PYPROJECT_FILENAME,
         )
         tracked = u.Infra.git_is_tracked(path_request)
         if tracked.failure:
-            return result_type.from_failure(tracked)
+            return r[bool].from_failure(tracked)
         history = u.Infra.git_path_has_history(path_request)
         if history.failure:
-            return result_type.from_failure(history)
+            return r[bool].from_failure(history)
         if tracked.value.value or history.value.value:
-            return result_type.fail(
+            return r[bool].fail(
                 f"established repository is missing {c.PYPROJECT_FILENAME}: "
                 f"{repository_root}",
             )
         sources = u.Infra.git_source_scope_paths(repository_root)
         if sources is None:
-            return result_type.fail(
+            return r[bool].fail(
                 f"new-project source inventory has no Git owner: {repository_root}",
             )
         authored = tuple(
             path for path in sources if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
         )
         if authored:
-            return result_type.fail(
+            return r[bool].fail(
                 "repository with existing Python sources is not a new scaffold: "
                 f"{', '.join(str(path) for path in authored)}",
             )
-        return result_type.ok(project)
+        return r[bool].ok(value=True)
 
     @classmethod
     def _load_subprojects(
@@ -775,6 +828,9 @@ class FlextInfraWorkspaceDetector(
         inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[m.Infra.WorkspaceSpec]:
         """Load local identity and validate local, read-only Git topology.
+
+        Existing manifests need no bootstrap source. Success carries the complete
+        workspace, never an optional value transported as a Result payload.
 
         Returns:
             The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
@@ -1146,6 +1202,23 @@ class FlextInfraWorkspaceDetector(
         return r[str].ok(repository.name)
 
     @classmethod
+    def _canonical_project_name(cls, resolved_root: Path) -> p.Result[str]:
+        """Resolve the canonical project name from its manifest or scaffold.
+
+        Returns:
+            The canonical project name, or the original metadata failure.
+
+        """
+        metadata_path = resolved_root / c.PYPROJECT_FILENAME
+        if metadata_path.exists() or metadata_path.is_symlink():
+            return u.Infra.read_project_metadata_result(resolved_root).map(
+                lambda metadata: metadata.project.name
+            )
+        return cls._declared_scaffold_project(resolved_root).map(
+            lambda scaffold: scaffold.constant_name
+        )
+
+    @classmethod
     def conform_target(
         cls,
         repository_root: Path,
@@ -1172,17 +1245,10 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 "local workspace repository path must be '.'",
             )
-        metadata_path = resolved_root / c.PYPROJECT_FILENAME
-        if metadata_path.exists() or metadata_path.is_symlink():
-            metadata = u.Infra.read_project_metadata_result(resolved_root)
-            if metadata.failure:
-                return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
-            canonical_project_name = metadata.value.project.name
-        else:
-            scaffold = cls._declared_scaffold_project(resolved_root)
-            if scaffold.failure:
-                return r[m.Infra.RepositoryConformTarget].from_failure(scaffold)
-            canonical_project_name = scaffold.value.constant_name
+        canonical = cls._canonical_project_name(resolved_root)
+        if canonical.failure:
+            return r[m.Infra.RepositoryConformTarget].from_failure(canonical)
+        canonical_project_name = canonical.value
         if canonical_project_name != workspace.repository.distribution:
             return r[m.Infra.RepositoryConformTarget].fail(
                 "project metadata and repository identity differ: "

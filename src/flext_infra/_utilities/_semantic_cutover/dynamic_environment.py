@@ -21,17 +21,17 @@ from libcst.metadata import (
 )
 
 from flext_infra import FlextInfraConfig, c
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeCore,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from collections.abc import Callable

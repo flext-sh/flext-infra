@@ -94,13 +94,18 @@ class FlextInfraGateRegistry:
 
     @property
     def gate_ids(self) -> t.StrTuple:
-        """Return the exact built-in and repository-declared vocabulary."""
+        """Exact built-in and repository-declared gate vocabulary."""
         return tuple(self._gates)
 
     def applicable_gate_ids(
         self, gate_ids: t.StrSequence, project_dir: Path
     ) -> t.StrTuple:
-        """Elect applicability through each registered gate's existing owner."""
+        """Elect applicability through each registered gate's existing owner.
+
+        Returns:
+            The gate identifiers selected for the project directory.
+
+        """
         return tuple(
             gate_id
             for gate_id in gate_ids

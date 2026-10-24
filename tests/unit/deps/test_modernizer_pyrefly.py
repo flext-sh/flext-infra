@@ -317,8 +317,6 @@ class TestsFlextInfraModernizerPyrefly:
         tooling_runtime = tm.ok(modernizer.resolve_tooling_context(request))
         runtime_pyrefly = tooling_runtime.tool_options["pyrefly"]
         runtime_includes = u.Tests.strings(runtime_pyrefly[c.Infra.PROJECT_INCLUDES])
-        runtime_search = u.Tests.strings(runtime_pyrefly["search-path"])
-        runtime_excludes = u.Tests.strings(runtime_pyrefly[c.Infra.PROJECT_EXCLUDES])
 
         tm.that(
             runtime_includes,
@@ -334,32 +332,14 @@ class TestsFlextInfraModernizerPyrefly:
             ),
         )
         pyrefly = u.Tests.toml_table_at(rendered, c.Infra.TOOL, "pyrefly")
-        tm.that(
-            list(runtime_includes),
-            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
-            msg=(
-                f"runtime={list(runtime_includes)!r}; "
-                "rendered="
-                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES]))!r}"
-            ),
-        )
-        tm.that(
-            list(runtime_search),
-            eq=list(u.Tests.strings(pyrefly["search-path"])),
-            msg=(
-                f"runtime={list(runtime_search)!r}; "
-                f"rendered={list(u.Tests.strings(pyrefly['search-path']))!r}"
-            ),
-        )
-        tm.that(
-            list(runtime_excludes),
-            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES])),
-            msg=(
-                f"runtime={list(runtime_excludes)!r}; "
-                "rendered="
-                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES]))!r}"
-            ),
-        )
+        for key in (c.Infra.PROJECT_INCLUDES, "search-path", c.Infra.PROJECT_EXCLUDES):
+            runtime = list(u.Tests.strings(runtime_pyrefly[key]))
+            rendered_values = list(u.Tests.strings(pyrefly[key]))
+            tm.that(
+                runtime,
+                eq=rendered_values,
+                msg=f"{key}: runtime={runtime!r}; rendered={rendered_values!r}",
+            )
 
     def test_pyright_include_feeds_project_includes(self, tmp_path: Path) -> None:
         """Existing Pyright roots feed project-scoped Pyrefly includes."""

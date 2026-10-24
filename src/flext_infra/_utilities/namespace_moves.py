@@ -10,6 +10,8 @@ import ast
 from collections.abc import MutableMapping
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
@@ -632,7 +634,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         Raises:
             RuntimeError: If the destination imports conflict.
-            SyntaxError: If either final candidate has invalid Python syntax.
 
         """
         source = source_file.read_text(encoding=c.DEFAULT_ENCODING)

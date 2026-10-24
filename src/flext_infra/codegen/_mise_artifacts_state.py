@@ -701,7 +701,8 @@ class FlextInfraMiseArtifactsState:
                     u.Cli.atomic_delete_empty_directory_guarded
                 )
             else:
-                observed = FlextInfraMiseArtifactsVerificationManifest.authorized_cleanup_manifest(
+                manifest_owner = FlextInfraMiseArtifactsVerificationManifest
+                observed = manifest_owner.authorized_cleanup_manifest(
                     layout, journal, entry
                 )
                 if observed.failure:

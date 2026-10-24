@@ -16,6 +16,7 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticConstantConsumers,
+    FlextInfraUtilitiesSemanticContracts,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
@@ -24,9 +25,6 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
-)
-from flext_infra._utilities._semantic_cutover.contracts import (
-    FlextInfraUtilitiesSemanticContracts,
 )
 from flext_infra._utilities._semantic_cutover.model_aliases import (
     FlextInfraUtilitiesSemanticModelAliases,
@@ -61,8 +59,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
         import_normalizer: p.Infra.SourceImportNormalizer | None = None,
-        codegen: m.Infra.CodegenConfigSpec | None = None,
-        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None = None,
     ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan one phase without effects; the first exception escapes unchanged.
 
@@ -71,8 +67,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         Finding-driven phases select their own rule findings from ``findings``.
         Original policy and layout reads share authenticated source authority;
         the exploratory Rope SDK retains its independent mutable lifetime.
-        ``dependency_codegen`` supplies explicitly projected, captured policy by
-        owning project root; absent entries are captured through source authority.
 
         Returns:
             The immutable result view of the selected phase's source edits.
@@ -91,30 +85,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING
             or phase is c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
         ):
-            with cls._semantic_source_project(
-                rope_workspace.rope_project
-            ) as source_project:
-                if codegen is None:
-                    captured = (
-                        FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                            root, source_project=source_project
-                        )
-                    )
-                    if captured.failure:
-                        return r[
-                            t.VariadicTuple[m.Infra.SemanticMigrationEdit]
-                        ].from_failure(captured)
-                    codegen = captured.value.spec
-                if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
-                    return cls._plan_class_nesting(rope_workspace, sources, codegen)
-                return cls._plan_dynamic_environment(
-                    sources,
-                    frozenset((root / finding.file).resolve() for finding in selected),
-                    source_project=source_project,
-                    owner_context=cls._settings_owner_contexts(
-                        root, codegen, source_project, dependency_codegen
-                    ),
-                )
+            return cls._plan_source_project_phase(
+                phase, rope_workspace, sources, selected, None
+            )
         match phase:
             case (
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
@@ -137,6 +110,69 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
+
+    @classmethod
+    def plan_dynamic_environment_cutover(
+        cls,
+        *,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs],
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        """Plan the dynamic-environment phase over explicitly projected policy.
+
+        ``dependency_codegen`` supplies captured policy by owning project root;
+        roots absent from it are captured through source authority.
+
+        Returns:
+            The immutable result view of the phase's source edits.
+
+        """
+        phase = c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
+        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS.get(phase)
+        selected = tuple(finding for finding in findings if finding.rule_id == rule_id)
+        return cls._plan_source_project_phase(
+            phase, rope_workspace, sources, selected, dependency_codegen
+        )
+
+    @classmethod
+    def _plan_source_project_phase(
+        cls,
+        phase: c.Infra.SemanticCutoverPhase,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        selected: t.SequenceOf[m.Infra.ModOccurrence],
+        dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        """Plan a phase whose policy is captured through one source project.
+
+        Returns:
+            The immutable result view of the selected phase's source edits.
+
+        """
+        root = rope_workspace.repository_root
+        with cls._semantic_source_project(
+            rope_workspace.rope_project
+        ) as source_project:
+            captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                root, source_project=source_project
+            )
+            if captured.failure:
+                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
+                    captured
+                )
+            codegen = captured.value.spec
+            if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
+                return cls._plan_class_nesting(rope_workspace, sources, codegen)
+            return cls._plan_dynamic_environment(
+                sources,
+                frozenset((root / finding.file).resolve() for finding in selected),
+                source_project=source_project,
+                owner_context=cls._settings_owner_contexts(
+                    root, codegen, source_project, dependency_codegen
+                ),
+            )
 
     @classmethod
     def _plan_behavior_and_declarations(

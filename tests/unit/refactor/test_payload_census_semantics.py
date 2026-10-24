@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, p
+from flext_infra import p
 from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import c, m, tm, u
 

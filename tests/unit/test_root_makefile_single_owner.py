@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config
+from flext_infra import config
 from tests import c, tm
 
 

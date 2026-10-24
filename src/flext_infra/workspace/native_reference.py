@@ -3994,179 +3994,22 @@ class FlextInfraWorkspaceNativeReference:
         Returns:
             The original category evidence or its first native failure.
 
-        Raises:
-            ValueError: If the value cannot be observed as a native callable.
-
         """
-        observe_value = partial(
-            cls._value, context=context, binding=context.binding_context
-        )
         if type(value) is ReferenceType:
-            # Calling an exact interpreter weak reference only dereferences it
-            # natively; a live executable referent continues the graph as its own
-            # edge, while data referents (registries, self references) end here.
-            referent = value()
-            context.evidence.append(
-                m.Infra.NativeBindingEvidence(
-                    binding=context.binding,
-                    kind="weak_reference",
-                    supplier="weakref",
-                    name="ref",
-                    qualname="ReferenceType",
-                    operands=(("referent", "dead" if referent is None else "live"),),
-                ),
-            )
-            if referent is not None and cls._executable_binding(referent):
-                context.pending.append((
-                    f"{context.binding}.referent",
-                    referent,
-                    context.supplier,
-                    context.owner_source,
-                    "execution",
-                ))
-            return r.ok(value=True)
-        native_builtin = value if cls._native_builtin(value) else None
+            return cls._capture_weak_reference(context, value)
         if cls._native_callable_instance(value) or cls._python_callable_instance(value):
-            native = type(value)
-            context.evidence.append(
-                m.Infra.NativeBindingEvidence(
-                    binding=context.binding,
-                    kind="callable_instance",
-                    supplier=vars(type)["__module__"].__get__(native, type(native)),
-                    name=vars(type)["__name__"].__get__(native, type(native)),
-                    qualname=vars(type)["__qualname__"].__get__(native, type(native)),
-                    operands=(
-                        (
-                            "storage",
-                            observe_value(value, construction=True),
-                        ),
-                    ),
-                ),
-            )
-            context.pending.append((
-                f"{context.binding}.native_class",
-                native,
-                context.supplier,
-                context.owner_source,
-                "execution",
-            ))
-            return r.ok(value=True)
-        if native_builtin is None:
-            extension = cls._extension_callback(value, context.binding)
-            if extension.failure:
-                return r[bool].fail(
-                    f"{extension.error}; binding={context.binding}; "
-                    f"binding_supplier={context.supplier}; "
-                    f"native_type={cls._symbol(type(value))}; "
-                    f"native_ancestry={
-                        tuple(
-                            cls._symbol(owner) for owner in cls._native_mro(type(value))
-                        )
-                    }"
-                )
-            actual_supplier, native_name, qualified = extension.value
-            origin = FlextInfraWorkspaceEnvironmentProvenance.module_source(
-                actual_supplier,
-            )
-            if origin.failure:
-                return r[bool].from_failure(origin)
-            context.sources.add((
-                f"{actual_supplier}::{qualified}",
-                str(cls._source_path(origin.value, context.paths)),
-                "",
-            ))
-        else:
-            actual_supplier, _, qualified = cls._symbol(native_builtin).partition("::")
-            native_name = native_builtin.__name__
-            elected = FlextInfraWorkspaceEnvironmentProvenance.module_source(
-                actual_supplier,
-            )
-            if elected.failure:
-                return r[bool].from_failure(elected)
-            context.sources.add((
-                f"{actual_supplier}::{qualified}",
-                str(cls._source_path(elected.value, context.paths)),
-                "",
-            ))
+            return cls._capture_callable_instance(context, value)
+        native_builtin = value if cls._native_builtin(value) else None
+        origin = cls._native_callable_origin(context, value, native_builtin)
+        if origin.failure:
+            return r[bool].from_failure(origin)
+        actual_supplier, native_name, qualified = origin.value
         receiver_operands: t.VariadicTuple[t.Pair[str, str]] = ()
         receiver_operational: t.VariadicTuple[t.Pair[str, str]] = ()
         if native_builtin is not None:
-            receiver = native_builtin.__self__
-            if cls._native_iterator_receiver(native_builtin):
-                receiver_inputs = cls._native_instance_referents(receiver)
-                receiver_operands = (
-                    ("receiver_type", cls._symbol(type(receiver))),
-                    (
-                        "receiver_inputs",
-                        observe_value(receiver_inputs, construction=True),
-                    ),
-                )
-                receiver_operational = (
-                    (
-                        "receiver",
-                        dumps((cls._symbol(type(receiver)), id(receiver))),
-                    ),
-                )
-                context.pending.append((
-                    f"{context.binding}.receiver_type",
-                    type(receiver),
-                    actual_supplier,
-                    context.owner_source,
-                    "storage_type",
-                ))
-                context.pending.extend(
-                    (edge, item, actual_supplier, context.owner_source, role)
-                    for edge, item, role in cls._executable_operands(
-                        f"{context.binding}.receiver_inputs", receiver_inputs
-                    )
-                )
-            else:
-                try:
-                    receiver_operands = (
-                        (
-                            "receiver",
-                            observe_value(
-                                receiver,
-                                construction=True,
-                                binding=(
-                                    f"{context.binding}; supplier={actual_supplier}; "
-                                    f"method={native_name}"
-                                ),
-                            ),
-                        ),
-                    )
-                except ValueError as error:
-                    breadcrumb: list[str] = []
-                    edge = context.incoming
-                    while edge and edge not in breadcrumb:
-                        breadcrumb.append(edge)
-                        parent = edge.partition(".")[0]
-                        if not parent.startswith("@"):
-                            break
-                        edge = next(
-                            (
-                                alias
-                                for alias, target in context.edges.items()
-                                if target == parent
-                            ),
-                            "",
-                        )
-                    BaseException.add_note(
-                        error,
-                        "native receiver ownership context: "
-                        + dumps({
-                            "incoming": context.incoming,
-                            "binding_context": context.binding_context,
-                            "supplier": context.supplier,
-                            "owner_source": context.owner_source,
-                            "role": context.role,
-                            "native_supplier": actual_supplier,
-                            "native_method": native_name,
-                            "native_qualname": qualified,
-                            "ownership_edges_leaf_first": breadcrumb,
-                        }),
-                    )
-                    raise
+            receiver_operands, receiver_operational = cls._receiver_evidence(
+                context, native_builtin, origin.value
+            )
         context.evidence.append(
             m.Infra.NativeBindingEvidence(
                 binding=context.binding,
@@ -4179,6 +4022,235 @@ class FlextInfraWorkspaceNativeReference:
             ),
         )
         return r.ok(value=True)
+
+    @classmethod
+    def _capture_weak_reference(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: ReferenceType[t.Infra.NativeOperand],
+    ) -> p.Result[bool]:
+        """Observe an exact interpreter weak reference without keeping it alive.
+
+        Calling it only dereferences it natively; a live executable referent
+        continues the graph as its own edge, while data referents (registries,
+        self references) end here.
+
+        Returns:
+            Success after the weak-reference evidence is recorded.
+
+        """
+        referent = value()
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="weak_reference",
+                supplier="weakref",
+                name="ref",
+                qualname="ReferenceType",
+                operands=(("referent", "dead" if referent is None else "live"),),
+            ),
+        )
+        if referent is not None and cls._executable_binding(referent):
+            context.pending.append((
+                f"{context.binding}.referent",
+                referent,
+                context.supplier,
+                context.owner_source,
+                "execution",
+            ))
+        return r.ok(value=True)
+
+    @classmethod
+    def _capture_callable_instance(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+    ) -> p.Result[bool]:
+        """Observe a callable instance through its storage and native class.
+
+        Returns:
+            Success after the callable-instance evidence is recorded.
+
+        """
+        native = type(value)
+        context.evidence.append(
+            m.Infra.NativeBindingEvidence(
+                binding=context.binding,
+                kind="callable_instance",
+                supplier=vars(type)["__module__"].__get__(native, type(native)),
+                name=vars(type)["__name__"].__get__(native, type(native)),
+                qualname=vars(type)["__qualname__"].__get__(native, type(native)),
+                operands=(
+                    (
+                        "storage",
+                        cls._value(
+                            value,
+                            construction=True,
+                            context=context,
+                            binding=context.binding_context,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        context.pending.append((
+            f"{context.binding}.native_class",
+            native,
+            context.supplier,
+            context.owner_source,
+            "execution",
+        ))
+        return r.ok(value=True)
+
+    @classmethod
+    def _native_callable_origin(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        value: t.Infra.NativeOperand,
+        native_builtin: t.Infra.NativeBuiltinCallable | None,
+    ) -> p.Result[t.Triple[str, str, str]]:
+        """Elect the actual supplier of a native callable and record its source.
+
+        Returns:
+            Supplier, name and qualified name, or the first admission failure.
+
+        """
+        result_type = r[t.Triple[str, str, str]]
+        if native_builtin is None:
+            extension = cls._extension_callback(value, context.binding)
+            if extension.failure:
+                return result_type.fail(
+                    f"{extension.error}; binding={context.binding}; "
+                    f"binding_supplier={context.supplier}; "
+                    f"native_type={cls._symbol(type(value))}; "
+                    f"native_ancestry={
+                        tuple(
+                            cls._symbol(owner) for owner in cls._native_mro(type(value))
+                        )
+                    }"
+                )
+            actual_supplier, native_name, qualified = extension.value
+        else:
+            actual_supplier, _, qualified = cls._symbol(native_builtin).partition("::")
+            native_name = native_builtin.__name__
+        origin = FlextInfraWorkspaceEnvironmentProvenance.module_source(
+            actual_supplier,
+        )
+        if origin.failure:
+            return result_type.from_failure(origin)
+        context.sources.add((
+            f"{actual_supplier}::{qualified}",
+            str(cls._source_path(origin.value, context.paths)),
+            "",
+        ))
+        return result_type.ok((actual_supplier, native_name, qualified))
+
+    @classmethod
+    def _receiver_evidence(
+        cls,
+        context: m.Infra.NativeObservationContext,
+        native_builtin: t.Infra.NativeBuiltinCallable,
+        origin: t.Triple[str, str, str],
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, str]], t.VariadicTuple[t.Pair[str, str]]]:
+        """Observe the receiver a native builtin is bound to.
+
+        Receiver failures retain their exception and gain only stored graph context.
+
+        Returns:
+            The receiver operands and operational identities.
+
+        Raises:
+            ValueError: If the receiver cannot be observed as a native input.
+
+        """
+        actual_supplier, native_name, qualified = origin
+        receiver = native_builtin.__self__
+        if cls._native_iterator_receiver(native_builtin):
+            receiver_inputs = cls._native_instance_referents(receiver)
+            operands = (
+                ("receiver_type", cls._symbol(type(receiver))),
+                (
+                    "receiver_inputs",
+                    cls._value(
+                        receiver_inputs,
+                        construction=True,
+                        context=context,
+                        binding=context.binding_context,
+                    ),
+                ),
+            )
+            context.pending.append((
+                f"{context.binding}.receiver_type",
+                type(receiver),
+                actual_supplier,
+                context.owner_source,
+                "storage_type",
+            ))
+            context.pending.extend(
+                (edge, item, actual_supplier, context.owner_source, role)
+                for edge, item, role in cls._executable_operands(
+                    f"{context.binding}.receiver_inputs", receiver_inputs
+                )
+            )
+            return (
+                operands,
+                (("receiver", dumps((cls._symbol(type(receiver)), id(receiver)))),),
+            )
+        try:
+            observed = cls._value(
+                receiver,
+                construction=True,
+                context=context,
+                binding=(
+                    f"{context.binding}; supplier={actual_supplier}; "
+                    f"method={native_name}"
+                ),
+            )
+        except ValueError as error:
+            BaseException.add_note(
+                error,
+                cls._receiver_failure_note(
+                    context, actual_supplier, native_name, qualified
+                ),
+            )
+            raise
+        return (("receiver", observed),), ()
+
+    @staticmethod
+    def _receiver_failure_note(
+        context: m.Infra.NativeObservationContext,
+        supplier: str,
+        native_name: str,
+        qualified: str,
+    ) -> str:
+        """Describe the stored ownership graph around a failed receiver.
+
+        Returns:
+            The ownership context note, leaf edge first.
+
+        """
+        breadcrumb: list[str] = []
+        edge = context.incoming
+        while edge and edge not in breadcrumb:
+            breadcrumb.append(edge)
+            parent = edge.partition(".")[0]
+            if not parent.startswith("@"):
+                break
+            edge = next(
+                (alias for alias, target in context.edges.items() if target == parent),
+                "",
+            )
+        return "native receiver ownership context: " + dumps({
+            "incoming": context.incoming,
+            "binding_context": context.binding_context,
+            "supplier": context.supplier,
+            "owner_source": context.owner_source,
+            "role": context.role,
+            "native_supplier": supplier,
+            "native_method": native_name,
+            "native_qualname": qualified,
+            "ownership_edges_leaf_first": breadcrumb,
+        })
 
     @classmethod
     def _receiver_path(

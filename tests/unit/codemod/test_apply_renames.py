@@ -21,12 +21,16 @@ from flext_infra.codemod import (
 )
 from tests import c, m, tm, u
 
+_SECOND_RECEIVER = 2
+_MIN_CHANGED_FILES = 2
 
+
+@pytest.mark.usefixtures("campaign_runtime")
 class TestsFlextInfraApplyRenames:
     """Campaigns change declared sources, preserve drivers, and prove convergence."""
 
     @staticmethod
-    @pytest.fixture(autouse=True)
+    @pytest.fixture
     def campaign_runtime(mod_workspace: Path) -> None:
         """Every publication consumes its checkout's independently owned runtime."""
         u.Tests.provision_checkout(mod_workspace)
@@ -185,7 +189,9 @@ class TestsFlextInfraApplyRenames:
             encoding=c.DEFAULT_ENCODING,
         )
         first = packages[1] if len(packages) > 1 else package
-        second = packages[2] if len(packages) > 2 else package
+        second = (
+            packages[_SECOND_RECEIVER] if len(packages) > _SECOND_RECEIVER else package
+        )
         (first / "receiver.py").write_text(
             '"""Direct and aliased public provider consumers."""\n'
             "from __future__ import annotations\n"
@@ -335,7 +341,9 @@ class TestsFlextInfraApplyRenames:
         """Exercise provider identity and local test imports in fresh interpreters."""
         package = packages[0]
         first = packages[1] if len(packages) > 1 else package
-        second = packages[2] if len(packages) > 2 else package
+        second = (
+            packages[_SECOND_RECEIVER] if len(packages) > _SECOND_RECEIVER else package
+        )
         code = (
             "from typing import get_args, get_type_hints\n"
             f"from provider_pkg import {exported_name} as CanonicalProvider\n"
@@ -617,7 +625,7 @@ class TestsFlextInfraApplyRenames:
         first = tm.ok(
             FlextInfraApplyRenames.run(request.model_copy(update={"apply": True})),
         )
-        tm.ok(first.files_changed >= 2)
+        tm.ok(first.files_changed >= _MIN_CHANGED_FILES)
         tm.that(first.occurrences, eq=0)
         tm.that(
             target.read_text(),
@@ -870,7 +878,7 @@ class TestsFlextInfraApplyRenames:
         report = tm.ok(
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True)),
         )
-        tm.ok(report.files_changed >= 2)
+        tm.ok(report.files_changed >= _MIN_CHANGED_FILES)
         tm.that(authored.read_text(), eq="campaign_renamed_token")
         tm.that(projected.read_text(), eq=generated)
 

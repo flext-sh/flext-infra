@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, c, config, infra
+from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services._codegen import (
     FlextInfraCodegenVscodeMixin as FlextInfraCodegen,

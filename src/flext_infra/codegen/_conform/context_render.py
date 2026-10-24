@@ -160,7 +160,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _release_product_verbs(
         repository: m.Infra.RepositoryRef,
     ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
-        """Derive the opted-in product surface from the native release phases."""
+        """Derive the opted-in product surface from the native release phases.
+
+        Returns:
+            One generated verb per native release phase.
+
+        """
         return (
             tuple(
                 m.Infra.MakeVerbSpec(
@@ -188,7 +193,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         root: Path,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
-        """Compose authored commands and elected product capabilities once."""
+        """Compose authored commands and elected product capabilities once.
+
+        Returns:
+            The merged authored, discovered and release verbs.
+
+        """
         release_verbs = self._release_product_verbs(repository)
         return (
             *self._merge_extra_verbs(

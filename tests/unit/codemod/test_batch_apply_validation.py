@@ -53,6 +53,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
     def test_census_publishes_joint_factory_and_constants_candidate(
         tmp_path: Path,
         entry: str,
+        *,
         broken: bool,
         capsys: pytest.CaptureFixture[str],
     ) -> None:

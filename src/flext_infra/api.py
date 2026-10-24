@@ -152,7 +152,12 @@ class FlextInfra(
 
     @staticmethod
     def check_integrity(request: m.Infra.RunCommand) -> p.Result[bool]:
-        """Run the same check engine over its declared runtime-integrity subset."""
+        """Run the same check engine over its declared runtime-integrity subset.
+
+        Returns:
+            p.Result[bool]: the integrity verdict of the declared subset.
+
+        """
         return FlextInfraWorkspaceChecker(
             repository_root=request.repository_root
         ).execute_integrity(request)
@@ -161,7 +166,12 @@ class FlextInfra(
     def check_report(
         request: m.Infra.RunCommand,
     ) -> p.Result[m.Infra.CheckReportSummary]:
-        """Collect typed invocation facts; each gate retains its actual verdict."""
+        """Collect typed invocation facts; each gate retains its actual verdict.
+
+        Returns:
+            p.Result[m.Infra.CheckReportSummary]: the collected check report.
+
+        """
         return FlextInfraWorkspaceChecker(
             repository_root=request.repository_root
         ).execute_report(request)

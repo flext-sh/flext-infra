@@ -278,11 +278,14 @@ class TestsFlextInfraEditableSupplierInput:
             supplier.symlink_to(tmp_path / "missing", target_is_directory=True)
         elif kind == "file":
             supplier.write_bytes(b"not a directory\n")
-        with pytest.raises(OSError) as native:
-            if kind == "file":
+        with pytest.raises(
+            NotADirectoryError if kind == "file" else FileNotFoundError
+        ) as native:
+            (
                 (supplier / "child").stat()
-            else:
-                supplier.resolve(strict=True)
+                if kind == "file"
+                else supplier.resolve(strict=True)
+            )
         expected_errno = native.value.errno
         tm.that(expected_errno, eq=errno.ENOTDIR if kind == "file" else errno.ENOENT)
         policy = tm.ok(u.Infra.load_codegen_inputs(consumer)).spec.make.uv_resolution
@@ -307,7 +310,8 @@ class TestsFlextInfraEditableSupplierInput:
                 "assert isinstance(result.exception, NotADirectoryError)\n"
                 if kind == "file"
                 else "assert isinstance(result.exception, FileNotFoundError)\n"
-                f"assert str(result.exception.filename) == {str(native.value.filename)!r}\n"
+                "assert str(result.exception.filename) == "
+                f"{str(native.value.filename)!r}\n"
             ),
             {policy.hosted_variable: c.ParserBooleanToken.FALSE},
         )

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, FlextInfraWorktreeService, c, m, main, t
+from flext_infra import FlextInfraGitService, FlextInfraWorktreeService, m, main, t
 from tests import c, tm, u
 
 

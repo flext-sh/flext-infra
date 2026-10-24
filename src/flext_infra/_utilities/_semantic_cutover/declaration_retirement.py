@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -29,7 +30,6 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
     FlextInfraUtilitiesSemanticNestingTypes,
 )
-from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 
 
 class FlextInfraUtilitiesSemanticDeclarationRetirement(

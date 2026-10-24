@@ -21,11 +21,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverAliasCst,
     FlextInfraUtilitiesSemanticCutoverEdits,
-)
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
-    FlextInfraUtilitiesDeclarationPayload,
 )
 
 

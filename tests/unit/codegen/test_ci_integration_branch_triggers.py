@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import config, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, t, tm, u
 

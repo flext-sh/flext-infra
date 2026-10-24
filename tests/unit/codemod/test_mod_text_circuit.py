@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, infra, m, p, r, t
+from flext_infra import config, infra, m, p, t
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,

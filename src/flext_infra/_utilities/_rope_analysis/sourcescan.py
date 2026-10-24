@@ -11,8 +11,8 @@ from collections.abc import MutableMapping
 from functools import cache
 from typing import ClassVar
 
-from flext_infra import t
-from flext_infra._utilities._rope_analysis.asthelpers import (
+from flext_infra import c, t
+from flext_infra._utilities._rope_analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 

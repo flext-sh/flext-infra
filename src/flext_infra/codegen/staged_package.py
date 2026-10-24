@@ -73,6 +73,29 @@ class FlextInfraStagedPackage:
                 ))
         return tuple(writes)
 
+    @staticmethod
+    def _resource_differs_from_original(
+        plan: m.Infra.StageSourcePlan,
+        file: m.Infra.CodegenFilePlan,
+    ) -> bool:
+        """Report whether a validated resource departs from its captured original.
+
+        Returns:
+            True when the captured closure, source bytes or desired bytes differ.
+
+        """
+        context = file.validation_context
+        if context is None:
+            return False
+        if context.source not in plan.inputs or context.source.content is None:
+            return True
+        if any(state not in plan.inputs for state in context.source_states):
+            return True
+        desired = plan.updates[file.path]
+        return desired is None or desired.encode(c.DEFAULT_ENCODING) != (
+            context.source.content
+        )
+
     @classmethod
     def prepare_sources(
         cls,
@@ -105,17 +128,7 @@ class FlextInfraStagedPackage:
                 if file.validation_context is not None
             }
             for file in plan.declared_files:
-                if file.validation_context is not None and (
-                    file.validation_context.source not in plan.inputs
-                    or any(
-                        state not in plan.inputs
-                        for state in file.validation_context.source_states
-                    )
-                    or file.validation_context.source.content is None
-                    or (desired := plan.updates[file.path]) is None
-                    or desired.encode(c.DEFAULT_ENCODING)
-                    != file.validation_context.source.content
-                ):
+                if cls._resource_differs_from_original(plan, file):
                     return result_type.fail(
                         f"resource differs from its captured original: {file.path}",
                     )
@@ -1282,7 +1295,12 @@ class FlextInfraStagedPackage:
         *,
         runtime_only: bool = True,
     ) -> tuple[ast.Import | ast.ImportFrom, ...]:
-        """Retain import order and inspect type-only guards only when excluded."""
+        """Retain import order and inspect type-only guards only when excluded.
+
+        Returns:
+            The parsed import statements in source order.
+
+        """
         tree = ast.parse(content.decode(c.DEFAULT_ENCODING), filename=str(path))
         imports = tuple(
             node

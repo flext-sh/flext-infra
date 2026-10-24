@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import stat
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from os.path import commonpath
 from pathlib import Path
@@ -699,10 +699,9 @@ class FlextInfraCodegenStaging:
         phase: str,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
-        directories: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
-        intents: t.VariadicTuple[m.Infra.CodegenStagingIntent] = (),
+        journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
-        """Stage one exact phase without changing any live destination.
+        """Stage flat phase-qualified leaves under authenticated transaction roots.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]``.
@@ -724,24 +723,13 @@ class FlextInfraCodegenStaging:
             layout,
             phase,
             changed,
-            directories=directories,
+            journal=journal,
         )
         if verified.failure:
             return result_type.from_failure(verified)
-        prepared, phase_roots = verified.value
-        # Reject every invalid destination before creating any phase artifact.
-        # Recovery cannot authorize partial staging absent from the durable
-        # journal.
-        for phase_root_state in phase_roots.values():
-            if phase_root_state.exists:
-                continue
-            created = u.Cli.atomic_create_empty_directory_guarded(
-                phase_root_state,
-                permission_mode=config.Infra.codegen.modes.directory_private,
-            )
-            if created.failure:
-                return result_type.from_failure(created)
-        return cls._write_staged_publications(phase, prepared, intents=intents)
+        return cls._write_staged_publications(
+            phase, verified.value, intents=journal.staging_intents
+        )
 
     @classmethod
     def plan_file_staging(
@@ -750,9 +738,24 @@ class FlextInfraCodegenStaging:
         phase: str,
         changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
-        directories: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
+        journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[
-        t.Pair[
+        t.VariadicTuple[
+            tuple[
+                m.Infra.CodegenFilePlan,
+                m.Cli.AtomicFileState,
+                tuple[Path, bytes, int],
+                bool,
+            ]
+        ]
+    ]:
+        """Authenticate existing transaction manifests and collect stageable inputs.
+
+        Returns:
+            The ordered plans, destination states and phase-qualified leaf inputs.
+
+        """
+        result_type = r[
             t.VariadicTuple[
                 tuple[
                     m.Infra.CodegenFilePlan,
@@ -760,32 +763,13 @@ class FlextInfraCodegenStaging:
                     tuple[Path, bytes, int],
                     bool,
                 ]
-            ],
-            t.MappingKV[Path, m.Cli.AtomicDirectoryState],
-        ]
-    ]:
-        """Prove every changed plan is stageable and collect its inputs.
-
-        Returns:
-            The resulting ``p.Result[t.Pair[t.VariadicTuple[tuple[
-                m.Infra.CodegenFilePlan, m.Cli.AtomicFileState, tuple[Path,
-                bytes, int], bool]], t.MappingKV[Path,
-                m.Cli.AtomicDirectoryState]]]``.
-
-        """
-        result_type = r[
-            t.Pair[
-                t.VariadicTuple[
-                    tuple[
-                        m.Infra.CodegenFilePlan,
-                        m.Cli.AtomicFileState,
-                        tuple[Path, bytes, int],
-                        bool,
-                    ]
-                ],
-                t.MappingKV[Path, m.Cli.AtomicDirectoryState],
             ]
         ]
+        manifested = FlextInfraMiseArtifactsVerification.register_transaction_manifests(
+            layout, journal
+        )
+        if manifested.failure:
+            return result_type.from_failure(manifested)
         prepared: list[
             tuple[
                 m.Infra.CodegenFilePlan,
@@ -794,54 +778,86 @@ class FlextInfraCodegenStaging:
                 bool,
             ]
         ] = []
-        phase_roots: MutableMapping[Path, m.Cli.AtomicDirectoryState] = {}
-        for file_plan in changed:
-            project = next(
-                (
-                    item
-                    for item in FlextInfraMiseArtifactsFiles.transaction_participants(
-                        layout
-                    )
-                    if item.root == file_plan.project
-                ),
-                None,
-            )
-            if project is None or project.transaction_root is None:
-                return result_type.fail(
-                    f"{phase} file has no transaction participant: {file_plan.path}",
+        for index, file_plan in enumerate(changed):
+            stage = cls._file_stage(layout, phase, index, file_plan)
+            if stage.failure:
+                return result_type.from_failure(stage)
+            prepared.append(stage.value)
+        return result_type.ok(tuple(prepared))
+
+    @classmethod
+    def _file_stage(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        phase: str,
+        index: int,
+        file_plan: m.Infra.CodegenFilePlan,
+    ) -> p.Result[
+        tuple[
+            m.Infra.CodegenFilePlan,
+            m.Cli.AtomicFileState,
+            tuple[Path, bytes, int],
+            bool,
+        ]
+    ]:
+        """Authenticate one planned file against its transaction participant.
+
+        Returns:
+            The plan, its live destination state and its staged replacement input.
+
+        """
+        result_type = r[
+            tuple[
+                m.Infra.CodegenFilePlan,
+                m.Cli.AtomicFileState,
+                tuple[Path, bytes, int],
+                bool,
+            ]
+        ]
+        project = next(
+            (
+                item
+                for item in FlextInfraMiseArtifactsFiles.transaction_participants(
+                    layout
                 )
-            current = FlextInfraMiseArtifactsFiles.read_state(
-                file_plan.path, required=False
+                if item.root == file_plan.project
+            ),
+            None,
+        )
+        if project is None or project.transaction_root is None:
+            return result_type.fail(
+                f"{phase} file has no transaction participant: {file_plan.path}",
             )
-            if current.failure:
-                return result_type.from_failure(current)
-            before = current.value
-            planned = cls._verified_planned_state(phase, file_plan, before)
-            if planned.failure:
-                return result_type.from_failure(planned)
-            physical = cls._verified_staging_filesystem(
-                phase,
-                file_plan,
-                project.transaction_root,
-            )
-            if physical.failure:
-                return result_type.from_failure(physical)
-            replacement_input = cls._staged_replacement_input(
-                phase,
-                file_plan,
-                project.transaction_root,
-                phase_roots,
-                directories,
-            )
-            if replacement_input.failure:
-                return result_type.from_failure(replacement_input)
-            prepared.append((
-                file_plan,
-                before,
-                replacement_input.value[0],
-                replacement_input.value[1],
-            ))
-        return result_type.ok((tuple(prepared), phase_roots))
+        current = FlextInfraMiseArtifactsFiles.read_state(
+            file_plan.path, required=False
+        )
+        if current.failure:
+            return result_type.from_failure(current)
+        before = current.value
+        planned = cls._verified_planned_state(phase, file_plan, before)
+        if planned.failure:
+            return result_type.from_failure(planned)
+        physical = cls._verified_staging_filesystem(
+            phase,
+            file_plan,
+            project.transaction_root,
+        )
+        if physical.failure:
+            return result_type.from_failure(physical)
+        replacement_input = cls._staged_replacement_input(
+            phase,
+            index,
+            file_plan,
+            project.transaction_root,
+        )
+        if replacement_input.failure:
+            return result_type.from_failure(replacement_input)
+        return result_type.ok((
+            file_plan,
+            before,
+            replacement_input.value[0],
+            replacement_input.value[1],
+        ))
 
     @staticmethod
     def _verified_planned_state(
@@ -917,12 +933,11 @@ class FlextInfraCodegenStaging:
     @staticmethod
     def _staged_replacement_input(
         phase: str,
+        index: int,
         file_plan: m.Infra.CodegenFilePlan,
         transaction_root: Path,
-        phase_roots: MutableMapping[Path, m.Cli.AtomicDirectoryState],
-        directories: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[t.Pair[tuple[Path, bytes, int], bool]]:
-        """Reserve the phase staging root for a content-bearing plan.
+        """Select a phase-qualified leaf stem in the durable transaction root.
 
         Returns:
             The resulting ``p.Result[t.Pair[tuple[Path, bytes, int],
@@ -942,27 +957,12 @@ class FlextInfraCodegenStaging:
             )
         if desired_mode is None:
             return result_type.fail(f"{phase} desired mode is absent: {file_plan.path}")
-        phase_root = transaction_root / f"phase-{phase}"
-        if phase_root not in phase_roots:
-            # Distinct name: the plan's `before` is this file's
-            # AtomicFileState and is published below; reusing it here bound a
-            # Result and the staged-file model rejected it.
-            phase_root_before = u.Cli.atomic_read_empty_directory_state(
-                phase_root,
-                required=False,
-            )
-            if phase_root_before.failure:
-                return result_type.from_failure(phase_root_before)
-            if (
-                phase_root_before.value.exists
-                and phase_root_before.value not in directories
-            ):
-                return result_type.fail(
-                    f"{phase} staging root already exists: {phase_root}",
-                )
-            phase_roots[phase_root] = phase_root_before.value
         return result_type.ok((
-            (phase_root, file_plan.desired_content or b"", desired_mode),
+            (
+                transaction_root / f"phase-{phase}-{index:06d}",
+                file_plan.desired_content or b"",
+                desired_mode,
+            ),
             file_plan.desired_content is not None,
         ))
 
@@ -1002,7 +1002,6 @@ class FlextInfraCodegenStaging:
             original_replacement: m.Cli.AtomicFileState | None = None
             if file_plan.dependency_group is not None and before.content is not None:
                 original = FlextInfraCodegenStaging._write_group_preimage(
-                    index,
                     replacement_input,
                     before.content,
                     before.mode,
@@ -1013,7 +1012,6 @@ class FlextInfraCodegenStaging:
                 original_replacement = original.value
             if staged_present:
                 staged = FlextInfraCodegenStaging._write_staged_replacement(
-                    index,
                     replacement_input,
                     intents,
                 )
@@ -1045,7 +1043,6 @@ class FlextInfraCodegenStaging:
 
     @staticmethod
     def _write_group_preimage(
-        index: int,
         replacement_input: tuple[Path, bytes, int],
         content: bytes,
         mode: int | None,
@@ -1054,8 +1051,7 @@ class FlextInfraCodegenStaging:
         """Write the dependency-group preimage and read back its state.
 
         Args:
-            index: Staged-file index used to derive the preimage path.
-            replacement_input: Staged replacement tuple carrying the phase root.
+            replacement_input: Staged replacement tuple carrying its unique leaf stem.
             content: Pre-staging content bytes to preserve as the preimage.
             mode: Pre-staging permission bits, or None when absent.
             intents: Durable staging intents consulted for the write.
@@ -1065,7 +1061,7 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[m.Cli.AtomicFileState]
-        original_path = replacement_input[0] / f"{index:06d}.original"
+        original_path = replacement_input[0].with_suffix(".original")
         intent = next(
             (item for item in intents if item.before.path == original_path),
             None,
@@ -1087,15 +1083,13 @@ class FlextInfraCodegenStaging:
 
     @staticmethod
     def _write_staged_replacement(
-        index: int,
         replacement_input: tuple[Path, bytes, int],
         intents: t.VariadicTuple[m.Infra.CodegenStagingIntent] = (),
     ) -> p.Result[m.Cli.AtomicFileState]:
         """Write the staged replacement file and read back its state.
 
         Args:
-            index: Staged-file index used to derive the replacement path.
-            replacement_input: Staged replacement tuple with phase root, content,
+            replacement_input: Staged replacement tuple with unique leaf stem, content,
                 and mode.
             intents: Durable staging intents consulted for the write.
 
@@ -1104,13 +1098,13 @@ class FlextInfraCodegenStaging:
 
         """
         result_type = r[m.Cli.AtomicFileState]
-        phase_root, desired_content, desired_mode = replacement_input
-        staged_path = phase_root / f"{index:06d}.replacement"
+        stem, desired_content, desired_mode = replacement_input
+        staged_path = stem.with_suffix(".replacement")
         intent = next(
             (item for item in intents if item.before.path == staged_path),
             None,
         )
-        if intents and intent is None:
+        if intent is None:
             return result_type.fail(
                 f"replacement has no durable intention: {staged_path}",
             )

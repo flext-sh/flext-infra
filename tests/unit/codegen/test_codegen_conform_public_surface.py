@@ -15,7 +15,7 @@ import pytest
 
 from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import (
-    FlextInfraCodegenConform,
+    FlextInfraCodegenConformExecute,
     FlextInfraCodegenMakeBootstrap,
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
@@ -63,7 +63,9 @@ class TestsFlextInfraCodegenConformPublicSurface:
             what=c.Infra.CodegenConformSurface.ALL,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        plan = tm.ok(
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+        )
         tm.that(plan.issues, eq=())
         tm.that(plan.exception, eq=None)
         projected = next(file for file in plan.files if file.path == initializer)
@@ -398,7 +400,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         tm.ok(infra.codegen_conform(request))
         repeated = tm.ok(
-            FlextInfraCodegenConform(
+            FlextInfraCodegenConformExecute(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
                     repository_root=root,
@@ -873,7 +875,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = FlextInfraCodegenConform(
+        planned = FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(repository_root=root, request=request),
         ).plan(

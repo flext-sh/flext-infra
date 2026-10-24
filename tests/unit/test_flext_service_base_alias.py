@@ -111,6 +111,7 @@ class TestsFlextInfraServiceBaseAlias:
     @pytest.mark.parametrize("check", [False, True])
     @pytest.mark.parametrize("dry_run", [False, True])
     def test_command_write_mode_is_request_local(
+        *,
         apply: bool,
         check: bool,
         dry_run: bool,

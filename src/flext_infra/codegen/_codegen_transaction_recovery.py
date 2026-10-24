@@ -1023,7 +1023,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         identity: m.Infra.GitIdentityReport,
     ) -> p.Result[m.Infra.CodegenFootprint]:
-        """Capture current journal facts and bound topology in one final footprint."""
+        """Capture current journal facts and bound topology in one final footprint.
+
+        Returns:
+            The observed footprint, or the first journal observation failure.
+
+        """
         result_type = r[m.Infra.CodegenFootprint]
         layout = self._planner.journal_layout(identity)
         if layout.failure:

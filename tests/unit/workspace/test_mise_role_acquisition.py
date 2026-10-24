@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, p
+from flext_infra import config, p
 from flext_infra.codegen import FlextInfraCodegenMiseToolchainProof
 from tests import c, m, tm, u
 

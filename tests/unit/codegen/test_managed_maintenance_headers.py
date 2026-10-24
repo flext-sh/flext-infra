@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
+from flext_infra import config
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:

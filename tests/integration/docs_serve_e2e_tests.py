@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, r
+from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
-from tests import r, tm
+from tests import c, r, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

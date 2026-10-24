@@ -522,8 +522,8 @@ class TestsFlextInfraTypeGates:
     def test_pyright_incomplete_counts() -> None:
         """Test pyright incomplete counts."""
         payload = (
-            '{"version":"1.1.411","time":c.ParserBooleanToken.ONE,"generalDiagnostics":[], '
-            'c.MetricType.SUMMARY:{"filesAnalyzed":1,"errorCount":0,"warningCount":1,'
+            '{"version":"1.1.411","time":"1","generalDiagnostics":[], '
+            '"summary":{"filesAnalyzed":1,"errorCount":0,"warningCount":1,'
             '"informationCount":0,"timeInSec":0.1}}'
         )
         with pytest.raises(c.ValidationError, match="warning count"):
@@ -539,9 +539,9 @@ class TestsFlextInfraTypeGates:
     def test_pyright_information_without_location() -> None:
         """Test pyright information without location."""
         report = m.Infra.PyrightReport.model_validate_json(
-            '{"version":"1.1.411","time":c.ParserBooleanToken.ONE,"generalDiagnostics":['
+            '{"version":"1.1.411","time":"1","generalDiagnostics":['
             '{"file":"source.py","severity":"information","message":"type info"}],'
-            'c.MetricType.SUMMARY:{"filesAnalyzed":1,"errorCount":0,"warningCount":0,'
+            '"summary":{"filesAnalyzed":1,"errorCount":0,"warningCount":0,'
             '"informationCount":1,"timeInSec":0.1}}',
             strict=True,
         )
@@ -552,8 +552,8 @@ class TestsFlextInfraTypeGates:
     def test_pyright_zero_collection() -> None:
         """filesAnalyzed=0 parses; the gate, not the model, judges it."""
         report = m.Infra.PyrightReport.model_validate_json(
-            '{"version":"1.1.411","time":c.ParserBooleanToken.ONE,"generalDiagnostics":[], '
-            'c.MetricType.SUMMARY:{"filesAnalyzed":0,"errorCount":0,"warningCount":0,'
+            '{"version":"1.1.411","time":"1","generalDiagnostics":[], '
+            '"summary":{"filesAnalyzed":0,"errorCount":0,"warningCount":0,'
             '"informationCount":0,"timeInSec":0.1}}',
             strict=True,
         )

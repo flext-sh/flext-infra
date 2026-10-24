@@ -273,8 +273,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         defect: str,
-        inherited: bool,
         *,
+        inherited: bool,
         installed_layout: bool,
     ) -> None:
         """Relative imports retain raw alias identity and both physical declarations."""
@@ -494,6 +494,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     def test_inherited_property_authenticates_its_physical_provider(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
+        *,
         changed: bool,
     ) -> None:
         """Inherited accessors retain the physical supplier of their implementation."""
@@ -780,6 +781,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
     def test_generated_defaults_do_not_invoke_foreign_equality(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
+        *,
         keyword_only: bool,
     ) -> None:
         """Reject altered default values without executing their equality method."""

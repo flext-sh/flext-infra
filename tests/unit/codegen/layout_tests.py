@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, c, m
+from flext_infra import FlextInfraConfig, m
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from tests import c, t, tm, u
 from tests.unit.codegen.layout_fixture import (

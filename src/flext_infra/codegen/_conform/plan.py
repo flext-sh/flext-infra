@@ -656,7 +656,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
         else:
             outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
-        self._retain_diagnostics(*(outcome.exception for outcome in outcomes))
+        self.retain_diagnostics(*(outcome.exception for outcome in outcomes))
         # A consumer may use a provider whose unrelated managed planning failed.
         # Keep only the successfully planned lazy inputs it actually consumed;
         # their own publication admission and dependency edges remain mandatory.
@@ -768,7 +768,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 for task in tasks
             ),
         )
-        self._retain_diagnostics(*(outcome.exception for outcome in lazy))
+        self.retain_diagnostics(*(outcome.exception for outcome in lazy))
         providers = tuple(
             file
             for outcome in lazy
@@ -803,7 +803,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             failed = next((item for item in metadata if item.failed), None)
             if failed is not None:
-                self._retain_diagnostics(failed.exception)
+                self.retain_diagnostics(failed.exception)
                 return self._cohort_failure(failed, lazy), ()
             metadata_files = tuple(file for item in metadata for file in item.files)
         try:
@@ -811,7 +811,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 tasks, scaffold_tasks, metadata_files
             )
         except (OSError, ValueError, TypeError) as exc:
-            self._retain_diagnostics(exc)
+            self.retain_diagnostics(exc)
             failure = self._failed_outcome(tasks[0].repository.name, exc)
             return self._cohort_failure(failure, lazy), ()
         planned, providers = self._managed_plan_outcomes(
@@ -830,7 +830,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             for manifest in manifests:
                 self._verify_root_manifest(manifest, outcomes, tasks)
         except (OSError, ValueError, TypeError, RuntimeError) as exc:
-            self._retain_diagnostics(exc)
+            self.retain_diagnostics(exc)
             failure = self._failed_outcome(tasks[0].repository.name, exc)
             return self._cohort_failure(failure, outcomes), providers
         return outcomes, providers
@@ -1025,7 +1025,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             for task, planned_outcome in zip(wave, outcomes, strict=True):
                 outcome = planned_outcome
-                self._retain_diagnostics(outcome.exception)
+                self.retain_diagnostics(outcome.exception)
                 files = outcome.files
                 if outcome.failed and not self._plannable_outcome(outcome):
                     project_root = (task.root / task.repository.path).resolve()
@@ -1216,11 +1216,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         for index, outcome in enumerate(outcomes, start=1):
             issues.extend(outcome.issues)
             files.extend(outcome.files)
-            self._retain_diagnostics(
+            self.retain_diagnostics(
                 outcome.exception,
                 failed_targets=outcome.failed_targets,
             )
-            u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
+            u.Cli.progress(index, len(outcomes), outcome.repository, "plan")
             if (
                 outcome.error
                 or outcome.error_type
@@ -1228,7 +1228,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 or outcome.exception is not None
             ):
                 u.Cli.status(
-                    "conform",
+                    "plan",
                     outcome.repository,
                     result=False,
                     elapsed=outcome.elapsed,
@@ -1254,7 +1254,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             for issue in outcome.issues:
                 u.Cli.error(issue.formatted)
             u.Cli.status(
-                "conform",
+                "plan",
                 outcome.repository,
                 result=not outcome.failed,
                 elapsed=outcome.elapsed,
@@ -1397,7 +1397,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     ),
                 )
                 if planned.failure:
-                    planner._retain_diagnostics(planned.exception)
+                    planner.retain_diagnostics(planned.exception)
         except (OSError, ValueError, TypeError, RuntimeError) as exc:
             return cls._failed_outcome(
                 repository.name, exc, time.monotonic() - started

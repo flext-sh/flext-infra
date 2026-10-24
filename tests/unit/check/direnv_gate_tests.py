@@ -10,17 +10,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, m
 from flext_infra.gates.direnv import FlextInfraDirenvGate
 from flext_infra.workspace.environment_contracts import (
     FlextInfraWorkspaceEnvironmentContracts,
 )
-from tests import c, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import t
 
 
 class TestsFlextInfraDirenvGate:

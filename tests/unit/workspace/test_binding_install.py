@@ -286,6 +286,7 @@ class TestsFlextInfraBindingInstall:
     @pytest.mark.parametrize("attached", [False, True])
     @pytest.mark.parametrize("origin_case", ["compiler", "nested", "valid"])
     def test_checkout_generator_consumes_the_provisioned_public_sdk(
+        *,
         attached: bool,
         origin_case: str,
     ) -> None:

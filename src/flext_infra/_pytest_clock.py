@@ -17,12 +17,13 @@ import sys
 import tempfile
 import time
 import traceback
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 from threading import get_ident
-from types import BuiltinMethodType, FrameType, MethodType
-from typing import ClassVar
+from types import BuiltinMethodType, FrameType, MethodType, TracebackType
+from typing import IO, ClassVar, Self
 from uuid import uuid4
 
 
@@ -44,46 +45,80 @@ class FlextInfraPytestClock:
 
         return dispatch
 
+    class FailureCapture:
+        """Retain the first failure of a guarded step for later surfacing."""
+
+        def __init__(self) -> None:
+            self.failure: BaseException | None = None
+
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            exc_traceback: TracebackType | None,
+        ) -> bool:
+            if exc is None:
+                return False
+            self.failure = exc
+            return True
+
     @classmethod
     def create_profiler(cls) -> cProfile.Profile:
-        """Return a native profiler gated before any productive stack events."""
+        """Gate native callbacks before productive events.
+
+        Returns:
+            The actual owning-thread cProfile engine.
+
+        """
         profile = cProfile.Profile()
         owner = cls._threads[profile] = get_ident()
-        tool = sys.monitoring.PROFILER_ID
         try:
             profile.enable()
-            mask = sys.monitoring.get_events(tool)
-            sys.monitoring.set_events(tool, 0)
-            if not mask:
-                msg = "native profiler enabled no monitoring events"
-                raise RuntimeError(msg)
-            remaining = mask
-            if mask & sys.monitoring.events.CALL:
-                remaining |= (
-                    sys.monitoring.events.C_RETURN | sys.monitoring.events.C_RAISE
-                )
-            while remaining:
-                event = remaining & -remaining
-                remaining ^= event
-                callback = sys.monitoring.register_callback(tool, event, None)
-                if not isinstance(callback, (BuiltinMethodType, MethodType)) or (
-                    callback.__self__ is not profile
-                ):
-                    sys.monitoring.register_callback(tool, event, callback)
-                    msg = "monitoring callback belongs to another engine"
-                    raise RuntimeError(msg)
-                sys.monitoring.register_callback(
-                    tool, event, cls._gate(callback, owner)
-                )
-            profile.clear()
-            sys.monitoring.set_events(tool, mask)
+            cls._gate_monitoring_events(profile, owner)
         except BaseException as failure:
             failure.add_note(
-                "native profiler acquisition failed; registration state is unrecovered; "
-                "retained engine, no foreign-owner cleanup attempted"
+                "native profiler acquisition failed; registration state is "
+                "unrecovered; retained engine, no foreign-owner cleanup attempted"
             )
             raise
         return profile
+
+    @staticmethod
+    def _gate_monitoring_events(profile: cProfile.Profile, owner: int) -> None:
+        """Restrict every native monitoring callback to the owning thread.
+
+        Raises:
+            RuntimeError: If the engine enabled no events or a callback belongs to
+                another engine.
+
+        """
+        tool = sys.monitoring.PROFILER_ID
+        mask = sys.monitoring.get_events(tool)
+        sys.monitoring.set_events(tool, 0)
+        if not mask:
+            msg = "native profiler enabled no monitoring events"
+            raise RuntimeError(msg)
+        remaining = mask
+        if mask & sys.monitoring.events.CALL:
+            remaining |= sys.monitoring.events.C_RETURN | sys.monitoring.events.C_RAISE
+        while remaining:
+            event = remaining & -remaining
+            remaining ^= event
+            callback = sys.monitoring.register_callback(tool, event, None)
+            if not isinstance(callback, (BuiltinMethodType, MethodType)) or (
+                callback.__self__ is not profile
+            ):
+                sys.monitoring.register_callback(tool, event, callback)
+                msg = "monitoring callback belongs to another engine"
+                raise RuntimeError(msg)
+            sys.monitoring.register_callback(
+                tool, event, FlextInfraPytestClock._gate(callback, owner)
+            )
+        profile.clear()
+        sys.monitoring.set_events(tool, mask)
 
     class SignalCheckpoint:
         """Observe once, preserving native actions and deferred publication failure."""
@@ -110,7 +145,8 @@ class FlextInfraPytestClock:
             if next(self._attempt, False) and (
                 self.profile not in FlextInfraPytestClock._publishing
             ):
-                try:
+                capture = FlextInfraPytestClock.FailureCapture()
+                with capture:
                     if frame is not None:
                         traceback.print_stack(frame)
                     FlextInfraPytestClock.publish_profile(
@@ -120,25 +156,28 @@ class FlextInfraPytestClock:
                         immutable_output=self.immutable_output,
                         previous_output=self.previous_output,
                     )
-                except BaseException as failure:
-                    self._failure = failure
+                self._failure = capture.failure
             handler: Callable[[int, FrameType | None], None] = self
             if signal.getsignal(signum) is handler:
                 signal.signal(signum, self.previous)
             try:
-                if callable(self.previous):
-                    self.previous(signum, frame)
-                else:
-                    try:
-                        failure = self._failure
-                        if self.previous == signal.SIG_DFL and failure is not None:
-                            traceback.print_exception(failure, chain=False)
-                    finally:
-                        signal.raise_signal(signum)
+                self._invoke_previous(signum, frame)
             except BaseException as primary:
                 self._surface_failure(primary)
                 raise
             self._surface_failure(None)
+
+        def _invoke_previous(self, signum: int, frame: FrameType | None) -> None:
+            """Run the previous native action, or re-raise the default signal."""
+            if callable(self.previous):
+                self.previous(signum, frame)
+                return
+            try:
+                failure = self._failure
+                if self.previous == signal.SIG_DFL and failure is not None:
+                    traceback.print_exception(failure, chain=False)
+            finally:
+                signal.raise_signal(signum)
 
         def retire(self) -> None:
             """Release only owned registration and surface failure after cleanup."""
@@ -163,12 +202,7 @@ class FlextInfraPytestClock:
                 + "".join(traceback.format_exception(failure, chain=False))
             )
             if isinstance(primary, SystemExit):
-                try:
-                    traceback.print_exception(failure, chain=False)
-                except (OSError, ValueError) as diagnostic_failure:
-                    primary.add_note(
-                        f"profile failure diagnostic failed: {diagnostic_failure}"
-                    )
+                FlextInfraPytestClock._print_diagnostic(failure, primary, chain=False)
 
     @staticmethod
     def profile_command(command: Callable[[], int], output: Path) -> int:
@@ -195,6 +229,8 @@ class FlextInfraPytestClock:
         failed = False
         completed = False
 
+        retire: Callable[[], None] | None = None
+        profile_token = FlextInfraPytestClock._operation_profile.set(profiler)
         try:
             retire = FlextInfraPytestClock.register_signal_checkpoint(
                 profiler,
@@ -202,60 +238,81 @@ class FlextInfraPytestClock:
                 immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
                 previous_output=previous_output.with_suffix(".checkpoint.pstats"),
             )
-        except BaseException as primary:
-            try:
-                profiler.disable()
-            except BaseException as cleanup_failure:
-                primary.add_note(
-                    "profile setup cleanup failed:\n"
-                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
-                )
-            raise
-        profile_token = FlextInfraPytestClock._operation_profile.set(profiler)
-        try:
             value = operation()
             failed = is_failure(value)
             completed = True
             return value
         finally:
             FlextInfraPytestClock._operation_profile.reset(profile_token)
-            primary = None if completed else sys.exception()
-            if isinstance(primary, SystemExit) and (
-                primary.code is None or primary.code == 0
-            ):
-                primary = None
-            for finalize in (
-                retire,
-                lambda: FlextInfraPytestClock.publish_profile(
-                    profiler,
-                    output,
-                    immutable_output=immutable_output,
-                    previous_output=previous_output,
+            FlextInfraPytestClock._finalize_steps(
+                (
+                    *((retire,) if retire is not None else ()),
+                    lambda: FlextInfraPytestClock.publish_profile(
+                        profiler,
+                        output,
+                        immutable_output=immutable_output,
+                        previous_output=previous_output,
+                    ),
                 ),
-            ):
-                try:
-                    finalize()
-                except BaseException as failure:
-                    if primary is not None:
-                        primary.add_note(
-                            "profile finalization failed:\n"
-                            + "".join(traceback.format_exception(failure, chain=False))
-                        )
-                    elif failed:
-                        try:
-                            traceback.print_exception(failure)
-                        except (OSError, ValueError) as diagnostic_failure:
-                            failure.add_note(
-                                f"profile failure diagnostic failed: {diagnostic_failure}"
-                            )
-                    else:
-                        primary = failure
-            if primary is not None and primary is not sys.exception():
-                raise primary
+                completed=completed,
+                failed=failed,
+            )
+
+    @staticmethod
+    def _print_diagnostic(
+        failure: BaseException,
+        note_target: BaseException,
+        *,
+        chain: bool,
+    ) -> None:
+        """Print a failure, noting on the target when the diagnostic itself fails."""
+        try:
+            traceback.print_exception(failure, chain=chain)
+        except (OSError, ValueError) as diagnostic_failure:
+            note_target.add_note(
+                f"profile failure diagnostic failed: {diagnostic_failure}"
+            )
+
+    @staticmethod
+    def _finalize_steps(
+        steps: tuple[Callable[[], None], ...],
+        *,
+        completed: bool,
+        failed: bool,
+    ) -> None:
+        """Run every finalization step, keeping the first failure primary."""
+        primary = None if completed else sys.exception()
+        if isinstance(primary, SystemExit) and (
+            primary.code is None or primary.code == 0
+        ):
+            primary = None
+        for finalize in steps:
+            capture = FlextInfraPytestClock.FailureCapture()
+            with capture:
+                finalize()
+            failure = capture.failure
+            if failure is None:
+                continue
+            if primary is not None:
+                primary.add_note(
+                    "profile finalization failed:\n"
+                    + "".join(traceback.format_exception(failure, chain=False))
+                )
+            elif failed:
+                FlextInfraPytestClock._print_diagnostic(failure, failure, chain=True)
+            else:
+                primary = failure
+        if primary is not None and primary is not sys.exception():
+            raise primary
 
     @classmethod
     def start_profiler(cls) -> cProfile.Profile:
-        """Share the owning thread's native profiler across startup and entrypoint."""
+        """Share the owning thread's native profiler across startup and entrypoint.
+
+        Returns:
+            The profiler owned by the current thread.
+
+        """
         current = cls._operation_profile.get()
         if current is not None and cls._threads[current] == get_ident():
             return current
@@ -266,7 +323,12 @@ class FlextInfraPytestClock:
 
     @staticmethod
     def _guard_staging_identity(staging: Path, identity: os.stat_result) -> None:
-        """Reject a staging path that no longer names the captured device/inode."""
+        """Reject a staging path that no longer names the captured device/inode.
+
+        Raises:
+            OSError: If the staging identity changed.
+
+        """
         current = staging.stat(follow_symlinks=False)
         if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
             msg = "profile staging identity changed"
@@ -274,7 +336,12 @@ class FlextInfraPytestClock:
 
     @staticmethod
     def _discard_staging(staging: Path, identity: os.stat_result) -> None:
-        """Remove only owned staging; retain the original failure on cleanup error."""
+        """Remove only owned staging; retain the original failure on cleanup error.
+
+        Raises:
+            OSError: If cleanup fails and no other failure is in flight.
+
+        """
         failure = sys.exception()
         try:
             if staging.exists() or staging.is_symlink():
@@ -286,6 +353,20 @@ class FlextInfraPytestClock:
             failure.add_note(f"profile staging cleanup failed: {cleanup_failure}")
 
     @staticmethod
+    @contextmanager
+    def _staging(output: Path) -> Generator[tuple[IO[bytes], Path, os.stat_result]]:
+        """Own a native temporary descriptor and remove only its recorded inode."""
+        with tempfile.NamedTemporaryFile(
+            dir=output.parent, prefix=f".{output.name}.", suffix=".tmp", delete=False
+        ) as resource:
+            staging = Path(resource.name)
+            identity = os.fstat(resource.fileno())
+            try:
+                yield resource.file, staging, identity
+            finally:
+                FlextInfraPytestClock._discard_staging(staging, identity)
+
+    @staticmethod
     def publish_profile(
         profile: cProfile.Profile,
         output: Path,
@@ -294,7 +375,14 @@ class FlextInfraPytestClock:
         previous_output: Path | None = None,
         partial: bool = False,
     ) -> None:
-        """Atomically publish native stats; partial checkpoints keep frames active."""
+        """Atomically publish native stats; partial checkpoints keep frames active.
+
+        Raises:
+            RuntimeError: If publication belongs to another thread or is already
+                active.
+            OSError: If staging, immutable linking or atomic publication fails.
+
+        """
         if FlextInfraPytestClock._threads[profile] != get_ident():
             msg = "profile publication belongs to another thread"
             raise RuntimeError(msg)
@@ -304,86 +392,97 @@ class FlextInfraPytestClock:
         FlextInfraPytestClock._publishing.add(profile)
         try:
             if not partial:
-                profile.disable()
-                if FlextInfraPytestClock._operation_profile.get() is profile:
-                    FlextInfraPytestClock._operation_profile.set(None)
-                if FlextInfraPytestClock.profiler is profile:
-                    FlextInfraPytestClock.profiler = None
+                FlextInfraPytestClock._retire_profile(profile)
             profile.snapshot_stats()
-            descriptor, name = tempfile.mkstemp(
-                dir=output.parent,
-                prefix=f".{output.name}.",
-                suffix=".tmp",
-            )
-            staging = Path(name)
-            identity = os.fstat(descriptor)
-            try:
-                with os.fdopen(descriptor, "wb") as stream:
-                    marshal.dump(profile.stats, stream)
-                    stream.flush()
-                    os.fsync(stream.fileno())
+            with FlextInfraPytestClock._staging(output) as (stream, staging, identity):
+                marshal.dump(profile.stats, stream)
+                stream.flush()
+                os.fsync(stream.fileno())
                 FlextInfraPytestClock._guard_staging_identity(staging, identity)
                 if immutable_output is not None:
                     immutable_output.hardlink_to(staging)
-                    report = immutable_output.with_name(f"{immutable_output.name}.txt")
-                    report_descriptor, report_name = tempfile.mkstemp(
-                        dir=report.parent,
-                        prefix=f".{report.name}.",
-                        suffix=".tmp",
+                    FlextInfraPytestClock._publish_report(
+                        profile, immutable_output, identity, partial=partial
                     )
-                    report_staging = Path(report_name)
-                    report_identity = os.fstat(report_descriptor)
-                    try:
-                        with os.fdopen(
-                            report_descriptor, "w", encoding="utf-8"
-                        ) as report_stream:
-                            report_stream.write(
-                                "Native profile snapshot, not operation acceptance.\n"
-                                f"Raw capture: {immutable_output.name}\n"
-                                f"Process ID: {os.getpid()}\n"
-                                f"Owner thread: {FlextInfraPytestClock._threads[profile]}\n"
-                                f"Partial completed-entry checkpoint: {partial}\n"
-                                "Owner-thread wall timing, not worker CPU "
-                                "or elapsed-time proof.\n"
-                                f"Capture monotonic ns: {time.monotonic_ns()}\n\n"
-                            )
-                            FlextInfraPytestClock._guard_staging_identity(
-                                immutable_output, identity
-                            )
-                            pstats.Stats(
-                                str(immutable_output), stream=report_stream
-                            ).sort_stats(pstats.SortKey.CUMULATIVE).print_stats()
-                            FlextInfraPytestClock._guard_staging_identity(
-                                immutable_output, identity
-                            )
-                            report_stream.flush()
-                            os.fsync(report_stream.fileno())
-                        FlextInfraPytestClock._guard_staging_identity(
-                            report_staging, report_identity
-                        )
-                        report.hardlink_to(report_staging)
-                    finally:
-                        FlextInfraPytestClock._discard_staging(
-                            report_staging, report_identity
-                        )
                 if previous_output is not None:
-                    try:
-                        previous = output.lstat()
-                    except FileNotFoundError:
-                        previous = None
-                    if previous is not None:
-                        if not stat.S_ISREG(previous.st_mode):
-                            msg = "previous profile artifact is not a regular file"
-                            raise OSError(errno.EINVAL, msg)
-                        os.link(output, previous_output, follow_symlinks=False)
-                        FlextInfraPytestClock._guard_staging_identity(
-                            previous_output, previous
-                        )
-                Path(staging).replace(output)
-            finally:
-                FlextInfraPytestClock._discard_staging(staging, identity)
+                    FlextInfraPytestClock._preserve_previous(output, previous_output)
+                staging.replace(output)
         finally:
             FlextInfraPytestClock._publishing.remove(profile)
+
+    @classmethod
+    def _retire_profile(cls, profile: cProfile.Profile) -> None:
+        """Disable a completed profiler and release its process-local ownership."""
+        profile.disable()
+        if cls._operation_profile.get() is profile:
+            cls._operation_profile.set(None)
+        if cls.profiler is profile:
+            cls.profiler = None
+
+    @staticmethod
+    def _publish_report(
+        profile: cProfile.Profile,
+        immutable_output: Path,
+        identity: os.stat_result,
+        *,
+        partial: bool,
+    ) -> None:
+        """Publish the text report beside the immutable raw capture."""
+        report = immutable_output.with_name(f"{immutable_output.name}.txt")
+        owner_thread = FlextInfraPytestClock._threads[profile]
+        with FlextInfraPytestClock._staging(report) as (
+            stream,
+            staging,
+            report_identity,
+        ):
+            with open(
+                stream.fileno(), "w", encoding="utf-8", closefd=False
+            ) as report_stream:
+                report_stream.write(
+                    "Native profile snapshot, not operation acceptance.\n"
+                    f"Raw capture: {immutable_output.name}\n"
+                    f"Process ID: {os.getpid()}\n"
+                    f"Owner thread: {owner_thread}\n"
+                    f"Partial completed-entry checkpoint: {partial}\n"
+                    "Owner-thread wall timing, not worker CPU "
+                    "or elapsed-time proof.\n"
+                    f"Capture monotonic ns: {time.monotonic_ns()}\n\n"
+                )
+                FlextInfraPytestClock._guard_staging_identity(
+                    immutable_output, identity
+                )
+                pstats.Stats(str(immutable_output), stream=report_stream).sort_stats(
+                    pstats.SortKey.CUMULATIVE
+                ).print_stats()
+                FlextInfraPytestClock._guard_staging_identity(
+                    immutable_output, identity
+                )
+                report_stream.flush()
+                os.fsync(report_stream.fileno())
+            FlextInfraPytestClock._guard_staging_identity(staging, report_identity)
+            report.hardlink_to(staging)
+        sys.stderr.write(
+            f"cProfile capture: pid={os.getpid()} owner_thread={owner_thread} "
+            f"partial={partial} immutable={immutable_output}\n"
+        )
+
+    @staticmethod
+    def _preserve_previous(output: Path, previous_output: Path) -> None:
+        """Link the previous regular profile artifact before it is replaced.
+
+        Raises:
+            OSError: If the previous artifact is not a regular file.
+
+        """
+        try:
+            previous = output.lstat()
+        except FileNotFoundError:
+            return
+        if not stat.S_ISREG(previous.st_mode):
+            msg = "previous profile artifact is not a regular file"
+            raise OSError(errno.EINVAL, msg)
+        os.link(output, previous_output, follow_symlinks=False)
+        FlextInfraPytestClock._guard_staging_identity(previous_output, previous)
 
     @classmethod
     def register_signal_checkpoint(
@@ -394,7 +493,12 @@ class FlextInfraPytestClock:
         immutable_output: Path | None = None,
         previous_output: Path | None = None,
     ) -> Callable[[], None]:
-        """Return retirement for one partial checkpoint and its previous signal action."""
+        """Return retirement for one partial checkpoint and its previous action.
+
+        Raises:
+            RuntimeError: If the native termination handler cannot be observed.
+
+        """
         previous = signal.getsignal(signal.SIGTERM)
         if previous is None:
             msg = "cannot observe native profiler termination handler"

@@ -11,12 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.gates.duplication import FlextInfraDuplicationGate
+from flext_infra import config
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.gates import FlextInfraDuplicationGate
 from tests import c, m, tm, u
 
 
+@pytest.mark.usefixtures("_ci_context")
 class TestsFlextInfraDuplicationGate:
     """Exercise observable gate behavior with the real setup-provisioned tool.
 
@@ -25,7 +26,7 @@ class TestsFlextInfraDuplicationGate:
     """
 
     @staticmethod
-    @pytest.fixture(autouse=True)
+    @pytest.fixture
     def _ci_context() -> Generator[None]:
         ci = config.Infra.codegen.make.ci
         with u.Tests.env_vars_context({ci.variable: ci.value}):
@@ -376,7 +377,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             package = member / "src" / f"peer_{name}"
             package.mkdir(parents=True, exist_ok=True)
             (member / c.PYPROJECT_FILENAME).write_text(
-                f'[project]\nname = "peer-{name}"\nversion = c.ParserBooleanToken.ZERO\n',
+                f'[project]\nname = "peer-{name}"\nversion = "0"\n',
                 encoding="utf-8",
             )
             (package / "duplicated.py").write_text(block, encoding="utf-8")

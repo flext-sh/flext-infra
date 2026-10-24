@@ -451,7 +451,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         """Explicit empty policies survive default resolution of the other policy."""
         spec = next(
             item
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path.as_posix() == c.PYPROJECT_FILENAME
         )
         project_key = spec.preserve_project_keys[0]

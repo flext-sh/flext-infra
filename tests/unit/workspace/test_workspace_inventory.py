@@ -28,7 +28,7 @@ class TestsFlextInfraWorkspaceInventory:
             ("printf", "%s", text)
             if text
             else (c.ParserBooleanToken.FALSE,)
-            if text == ""
+            if text is not None
             else ()
         )
         inputs = m.Infra.CodegenInputs(

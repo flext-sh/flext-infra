@@ -96,6 +96,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         ValueError: If requires_engine arguments must be canonical engine names.
 
     """
+    for item in items:
+        item.add_marker(pytest.mark.usefixtures("runner_ci_context_cleared"))
     policy = config.Infra.codegen.make.ci
     if u.Infra.env_value(policy.variable).strip() != policy.value:
         return

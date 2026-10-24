@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 from tests import c, tm
 
 

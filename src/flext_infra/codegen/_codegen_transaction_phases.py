@@ -663,7 +663,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         phase: str,
         changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
-        """Authorize staging for the actual staging or prepared journal lifecycle.
+        """Authorize flat staging leaves without new intermediate directories.
 
         Returns:
             The persisted journal and its exact physical receipt.
@@ -682,34 +682,15 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.fail(
                 "generation journal changed before staging intentions",
             )
-        writes = self._phase_staging_writes(layout, phase, changed)
+        writes = self._phase_staging_writes(layout, phase, changed, journal)
         if writes.failure:
             return result_type.from_failure(writes)
-        planned = FlextInfraMiseArtifactsState.plan_directories(
-            layout,
-            phase=c.Infra.CodegenStagedFilePhase.TRANSACTION,
-            requested=writes.value[1],
-            disposition="temporary",
-        )
-        if planned.failure:
-            return result_type.from_failure(planned)
-        if planned.value:
-            recorded = self._persist_directory_journal(
-                layout,
-                journal,
-                journal_state,
-                c.Infra.CodegenStagedFilePhase.TRANSACTION,
-                planned.value,
-            )
-            if recorded.failure:
-                return result_type.from_failure(recorded)
-            journal, journal_state = recorded.value
         return self._persist_staging_journal(
             layout,
             journal,
             journal_state,
             phase,
-            writes.value[0],
+            writes.value,
         )
 
     @staticmethod
@@ -717,39 +698,36 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         phase: str,
         changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> p.Result[
-        t.Pair[t.VariadicTuple[tuple[Path, bytes, int]], t.VariadicTuple[Path]]
-    ]:
-        """Plan ordered writes, including authenticated dependent-group preimages.
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[t.VariadicTuple[tuple[Path, bytes, int]]]:
+        """Plan flat writes, including authenticated dependent-group preimages.
 
         Returns:
-            The ordered writes and sorted transaction directories they require.
+            The ordered writes beneath already journaled transaction roots.
 
         """
-        result_type = r[
-            t.Pair[t.VariadicTuple[tuple[Path, bytes, int]], t.VariadicTuple[Path]]
-        ]
-        checked = FlextInfraCodegenStaging.plan_file_staging(layout, phase, changed)
+        result_type = r[t.VariadicTuple[tuple[Path, bytes, int]]]
+        checked = FlextInfraCodegenStaging.plan_file_staging(
+            layout, phase, changed, journal=journal
+        )
         if checked.failure:
             return result_type.from_failure(checked)
-        prepared, phase_roots = checked.value
         writes: list[tuple[Path, bytes, int]] = []
-        directories = set(phase_roots)
-        for index, (plan, before, replacement, present) in enumerate(prepared):
+        for plan, before, replacement, present in checked.value:
             if plan.dependency_group is not None and before.content is not None:
                 if before.mode is None:
                     return result_type.fail(
                         f"group preimage has no authenticated mode: {before.path}"
                     )
                 writes.append((
-                    replacement[0] / f"{index:06d}.original",
+                    replacement[0].with_suffix(".original"),
                     before.content,
                     before.mode,
                 ))
             if present:
-                root, content, mode = replacement
-                writes.append((root / f"{index:06d}.replacement", content, mode))
-        return result_type.ok((tuple(writes), tuple(sorted(directories))))
+                stem, content, mode = replacement
+                writes.append((stem.with_suffix(".replacement"), content, mode))
+        return result_type.ok(tuple(writes))
 
     def _persist_staging_intents(
         self,
@@ -788,7 +766,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         phase: str,
         writes: t.VariadicTuple[tuple[Path, bytes, int]],
     ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
-        """Persist absent leaf authority without inventing a prepared session.
+        """Bind absent leaves to original created parents before durable intent CAS.
 
         Returns:
             The journal with its durable staging intentions and physical receipt.
@@ -802,6 +780,20 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             absent = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
             if absent.failure:
                 return result_type.from_failure(absent)
+            parent = next(
+                (
+                    directory.created
+                    for directory in current.directories
+                    if directory.created is not None
+                    and directory.created.path == path.parent
+                ),
+                None,
+            )
+            if parent is None or (
+                absent.value.parent_device,
+                absent.value.parent_inode,
+            ) != (parent.device, parent.inode):
+                return result_type.fail(f"staging parent differs from journal: {path}")
             if absent.value.content is not None:
                 return result_type.fail(
                     f"staging intention leaf already exists: {path}",
@@ -951,12 +943,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             layout,
             phase,
             changed,
-            intents=session.journal.staging_intents,
-            directories=tuple(
-                directory.created
-                for directory in session.journal.directories
-                if directory.created is not None
-            ),
+            journal=session.journal,
         )
         if staged.failure:
             return r[t.VariadicTuple[m.Infra.CodegenStagedFile]].from_failure(

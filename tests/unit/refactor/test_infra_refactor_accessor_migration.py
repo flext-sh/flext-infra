@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, infra, m
+from flext_infra import config, infra, m
 from flext_infra.codemod import FlextInfraAccessorRenamePhase, FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor.accessor_migration import (

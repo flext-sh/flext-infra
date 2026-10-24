@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, main
+from flext_infra import config, m, main
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests import c, tm, u
 

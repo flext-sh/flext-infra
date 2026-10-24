@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p
+from flext_infra import p
 from tests import c, tm, u
 
 if TYPE_CHECKING:

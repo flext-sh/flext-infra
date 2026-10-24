@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import gates, m
-from tests import tm
+from flext_infra import gates
+from tests import m, tm
 
 
 class TestsFlextInfraDuplicationEvidence:
@@ -155,7 +155,7 @@ class TestsFlextInfraDuplicationEvidence:
     ) -> None:
         """No path, hash, golden spelling or data format proves independence."""
         source = (
-            '{c.HandlerType.COMMAND: "run_real_operation"}\n'
+            '{"command": "run_real_operation"}\n'
             if format_name == "json"
             else "command: run_real_operation\n"
         )

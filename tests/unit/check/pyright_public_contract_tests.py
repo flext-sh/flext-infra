@@ -189,7 +189,7 @@ class TestsFlextInfraPyrightPublicContract:
         private_issues = tuple(
             issue for issue in result.issues if issue.code == "reportPrivateUsage"
         )
-        assert bool(private_issues) is private
-        assert result.result.passed is not private, result.raw_output
+        tm.that(bool(private_issues), eq=private)
+        tm.that(result.result.passed, eq=not private, msg=result.raw_output)
         if private:
             tm.that(len(private_issues), eq=len(roots), msg=result.raw_output)

@@ -104,6 +104,12 @@ runtime owner's physical `.venv`. No authored Python script, inline admission,
 copied bootstrap resource or installed FLEXT operation runs before provisioning
 succeeds. Python executed by uv's native build backend is package installation,
 not an authored bootstrap. Make sequences native operations and preserves failures.
+`mise exec` owns the lifecycle's tool environment and `PATH`; Make must not replace
+that result with the caller's pre-execution path. UV owns creation of `.venv`.
+The shared native environment boundary removes an inherited
+`MISE_PYTHON_UV_VENV_AUTO` request so executable discovery cannot start a second
+environment creator. Acquisition passes only options supported by the official
+installer; its native temporary-file defaults remain tool-owned.
 
 Native executable discovery uses `mise which <binary>` in the authenticated
 configuration root with locked mode retained. It must not turn the resolved active
@@ -1330,7 +1336,12 @@ checkouts and worktrees own their physical environment.
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. Setup
 provisions its recorded release asset and verifies the checksum before entering
-the recursive Make lifecycle. A complete self-pin does not require a host Mise.
+the recursive Make lifecycle. The `_setup_lifecycle`, `_setup_activated` and
+`_upg_lifecycle` recipes call `SELF_MAKE` indirectly and must carry GNU Make's `+`
+recipe prefix so the native jobserver descriptors reach child Make processes.
+Preserve those descriptors and `MAKEFLAGS` through native Mise execution, without
+another wrapper or clearing the inherited jobserver contract.
+A complete self-pin does not require a host Mise.
 Without that pin, setup stops before provisioning; `make upg` can establish it
 using an available native Mise. Setup qualifies the final self-pin before
 installing tools. Every later `mise` resolved
@@ -1418,6 +1429,14 @@ publication report, and the final error verdict retains the original causal exce
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
+
+File phases share each participant's already journaled transaction root. Flat,
+phase-qualified staging leaves replace intermediate phase directories; the existing
+manifest verifier authenticates the root and its residents before staging. Each leaf's
+absent-parent identity must match that original created-root receipt before its intent
+is durably persisted. Directory creation receipts, file intents, CAS writes and fsync
+remain required at their existing boundaries. Recovery consumes recorded paths, not
+the staging filename layout, including paths in previously prepared journals.
 
 Interrupted no-clobber staging can leave the atomic writer's temporary name and
 its intended staging leaf linked to one inode. Physical equivalence, matching
@@ -1795,6 +1814,13 @@ certifies successful generation or replaces its first failure.
 A failed operation's return value also survives a secondary profile diagnostic
 write failure on closed or unavailable stderr. Profile finalization still fails an
 otherwise successful operation; missing evidence never becomes capture acceptance.
+Publication emits one stderr identity line containing the PID, owning thread and
+exact immutable raw path, without argv or credentials. Bind that line to the real
+command receipt; mutable latest paths and unassociated older captures are not
+performance evidence. Native temporary-file contexts own descriptors and staging
+cleanup for both raw and text publication, preserving captured inode checks and
+the original failure. Finalization also releases a successfully acquired profiler
+when signal registration fails; a cleanup diagnostic cannot replace that cause.
 
 The existing opt-in public CLI form is
 `FLEXT_INFRA_PROFILE=true flext-infra codegen generate ...`. Raw profiles,

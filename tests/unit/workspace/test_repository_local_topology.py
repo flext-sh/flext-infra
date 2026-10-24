@@ -23,6 +23,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     def test_packaging_ingress_retains_native_declarations_without_exports(
         self,
         tmp_path: Path,
+        *,
         uv_package: bool | None,
     ) -> None:
         """Native package flags and build backend remain distinct metadata facts."""

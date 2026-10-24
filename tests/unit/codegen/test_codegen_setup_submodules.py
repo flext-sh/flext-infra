@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config
+from flext_infra import config
 from tests import c, p, t, tm, u
 
 # The run-scoped template resolves a real toolchain through Make upg before any

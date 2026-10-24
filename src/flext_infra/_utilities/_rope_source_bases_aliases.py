@@ -10,6 +10,7 @@ import ast
 import importlib.util
 from pathlib import Path
 
+from flext_cli import u
 from flext_core import build_lazy_import_map
 from typing_extensions import TypeForm
 

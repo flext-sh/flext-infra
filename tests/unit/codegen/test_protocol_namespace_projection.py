@@ -83,7 +83,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{family.directory}"
+        service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -191,7 +191,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{directory}"
+        service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
@@ -286,7 +286,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{directory}"
+        service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         with pytest.raises(ValueError, match=r"ambiguous .* class attribute"):
@@ -334,7 +334,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
-        service.target_module = f"{package.name}.{family.directory}"
+        service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
         tm.that(

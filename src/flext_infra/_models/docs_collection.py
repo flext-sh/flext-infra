@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
-from flext_core import m
 
 from flext_infra import t
 from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
@@ -249,7 +248,7 @@ class FlextInfraModelsDocsCollection:
         files: tuple[FlextInfraConfigModelsArtifact.CodegenFilePlan, ...] = m.Field(
             description="Effects for the existing docs transaction"
         )
-        source_states: tuple[cli_m.Cli.AtomicFileState, ...] = m.Field(
+        source_states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Authenticated inputs and ownership reads including absence",
         )
         required_directories: tuple[Path, ...] = m.Field(

@@ -167,6 +167,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     @pytest.mark.parametrize("reuse_config", [False, True])
     def test_generated_source_tree_is_outside_the_scan_targets(
         tmp_path: Path,
+        *,
         reuse_config: bool,
     ) -> None:
         """`make mod` targets only the inventory its semantic phases index.
@@ -203,6 +204,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     @pytest.mark.parametrize("git_project", [False, True])
     def test_active_sources_share_one_inventory(
         tmp_path: Path,
+        *,
         git_project: bool,
     ) -> None:
         """Root modules and arbitrary tiers cannot disappear behind configured roots."""

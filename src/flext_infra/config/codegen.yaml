@@ -580,6 +580,7 @@ Infra:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
       native_environment_unset:
+        - MISE_PYTHON_UV_VENV_AUTO
         - UV_PROJECT
         - UV_WORKING_DIR
         - UV_CONFIG_FILE

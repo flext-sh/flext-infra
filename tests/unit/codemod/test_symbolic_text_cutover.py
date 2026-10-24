@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
@@ -179,6 +179,7 @@ class TestsFlextInfraSymbolicTextCutover:
         binding: str,
         body: str,
         runtime_output: str,
+        *,
         proven: bool,
     ) -> None:
         """Point-specific class names retain real identity and reject rebindings."""
@@ -655,11 +656,7 @@ class TestsFlextInfraSymbolicTextCutover:
             encoding="utf-8",
         )
         consumer = codegen / "consumer.py"
-        imports = (
-            "from tests import c, r, u, utilities\n"
-            if binding == "same"
-            else "from tests import c, r, u, utilities\n"
-        )
+        imports = "from tests import c, r, u, utilities\n"
         separate = (
             "class SeparateFacade:\n    pass\nu = SeparateFacade\n"
             if binding == "independent"

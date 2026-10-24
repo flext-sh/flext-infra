@@ -537,8 +537,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(
             report,
             has=[
-                "errors=c.ParserBooleanToken.ZERO",
-                "skipped=c.ParserBooleanToken.ZERO",
+                'errors="0"',
+                'skipped="0"',
             ],
         )
         executed = int(report.split(' tests="', 1)[1].split('"', 1)[0])

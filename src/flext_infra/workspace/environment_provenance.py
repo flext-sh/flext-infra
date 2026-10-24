@@ -666,10 +666,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             The resulting ``p.Result[int]``.
 
         """
-        consistency = FlextInfraWorkspaceLockCompleteness.verify_lock(repository_root)
-        if consistency.failure:
-            return r[int].from_failure(consistency)
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        context = FlextInfraWorkspaceLockCompleteness.verify_lock(
+            repository_root
+        ).flat_map(
+            lambda _: FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        )
         if context.failure:
             return r[int].from_failure(context)
         repository_root = context.value.runtime_root
@@ -699,17 +700,6 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                     update={"path": Path()},
                 )
             )
-        # Native sources, including explicit suppliers outside this workspace,
-        # come from the elected lock rather than an independently selected graph.
-        required = set(members)
-        required.update(
-            item.name
-            for item in locked.package
-            if item.source.git is not None
-            or item.source.editable is not None
-            or item.source.directory is not None
-            or item.source.url is not None
-        )
         observation: m.Infra.PythonEnvironmentObservation | None = None
         if metadata_paths is None:
             native = FlextInfraBindingService.consumer_package_environment(
@@ -734,14 +724,53 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 return r[int].from_failure(native)
             observation = native.value
             metadata_paths = tuple(str(path) for path in observation.metadata_paths)
+        return cls._validate_required(
+            members,
+            locked,
+            context.value,
+            metadata_paths=metadata_paths,
+            observation=observation,
+        )
+
+    @classmethod
+    def _validate_required(
+        cls,
+        members: t.MappingKV[str, m.Infra.RepositoryRef],
+        locked: m.Infra.LockedEnvironment,
+        context: m.Infra.WorkspaceRuntimeContext,
+        *,
+        metadata_paths: t.StrSequence | None,
+        observation: m.Infra.PythonEnvironmentObservation | None,
+    ) -> p.Result[int]:
+        """Prove every declared member and natively sourced lock entry.
+
+        Native sources, including explicit suppliers outside this workspace,
+        come from the elected lock rather than an independently selected graph.
+
+        Returns:
+            The number of validated installed distributions.
+
+        """
+        required = set(members)
+        required.update(
+            item.name
+            for item in locked.package
+            if item.source.git is not None
+            or item.source.editable is not None
+            or item.source.directory is not None
+            or item.source.url is not None
+        )
         validated = 0
         for name in sorted(required):
+            installed = cls._locked_installation(name, locked, context, metadata_paths)
+            if installed.failure:
+                return r[int].from_failure(installed)
+            item, distribution = installed.value
             provenance = cls._validate_locked_provenance(
-                name,
-                locked,
-                context.value,
+                item,
+                distribution,
+                context,
                 repository=members.get(name),
-                metadata_paths=metadata_paths,
                 observation=observation,
             )
             if provenance.failure:
@@ -749,32 +778,29 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             validated += int(provenance.value)
         return r[int].ok(validated)
 
-    @classmethod
-    def _validate_locked_provenance(
-        cls,
+    @staticmethod
+    def _locked_installation(
         name: str,
         locked: m.Infra.LockedEnvironment,
         context: m.Infra.WorkspaceRuntimeContext,
-        *,
-        repository: m.Infra.RepositoryRef | None,
         metadata_paths: t.StrSequence | None,
-        observation: m.Infra.PythonEnvironmentObservation | None = None,
-    ) -> p.Result[bool]:
-        """Prove one locked dependency's installed origin and path containment.
+    ) -> p.Result[t.Pair[m.Infra.LockedPackage, Distribution]]:
+        """Bind one installed distribution inside the owned environment to its lock.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The unique locked package and its installed distribution.
 
         """
+        result_type = r[t.Pair[m.Infra.LockedPackage, Distribution]]
         distributions = u.installed_distributions(name=name, path=metadata_paths)
         if len(distributions) != 1:
-            return r[bool].fail(
+            return result_type.fail(
                 f"locked provenance needs one installed distribution: {name}",
             )
         distribution = distributions[0]
         location = Path(str(distribution.locate_file(""))).resolve()
         if not location.is_relative_to(context.environment_path.resolve()):
-            return r[bool].fail(
+            return result_type.fail(
                 f"locked dependency is outside the owned environment: {name}",
             )
         matches = tuple(
@@ -783,10 +809,27 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             if item.name == name and item.version == distribution.version
         )
         if len(matches) != 1:
-            return r[bool].fail(
+            return result_type.fail(
                 f"installed version differs from committed lock: {name}",
             )
-        item = matches[0]
+        return result_type.ok((matches[0], distribution))
+
+    @classmethod
+    def _validate_locked_provenance(
+        cls,
+        item: m.Infra.LockedPackage,
+        distribution: Distribution,
+        context: m.Infra.WorkspaceRuntimeContext,
+        *,
+        repository: m.Infra.RepositoryRef | None,
+        observation: m.Infra.PythonEnvironmentObservation | None = None,
+    ) -> p.Result[bool]:
+        """Prove one locked dependency's installed origin and path containment.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         local_source = (
             item.source.editable
             if item.source.editable is not None
@@ -810,14 +853,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 repository=repository,
             )
         origin = cls.locked_origin_verdict(
-            name,
-            matches[0],
+            item.name,
+            item,
             distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
         )
         if origin.failure:
             return r[bool].from_failure(origin)
         return cls._locked_pth_verdict(
-            name,
+            item.name,
             distribution,
             environment_root=context.environment_path,
         )
@@ -858,37 +901,9 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             )
         receipt = m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True)
         if receipt.dir_info is not None and receipt.dir_info.editable:
-            if item.source.editable is None:
-                return r[bool].fail(
-                    f"editable installation differs from native lock: {item.name}",
-                )
-            declaration = u.Cli.toml_read_document(expected_root / c.PYPROJECT_FILENAME)
-            if declaration.failure:
-                return r[bool].from_failure(declaration)
-            project = u.Cli.toml_table_path(declaration.value, ("project",))
-            name = None if project is None else u.Cli.toml_value(project, "name")
-            if not isinstance(name, str) or u.Infra.dep_name(name) != u.Infra.dep_name(
-                item.name,
-            ):
-                return r[bool].fail(
-                    f"editable declaration differs from native lock: {item.name}",
-                )
-            origin = cls._workspace_origin_verdict(
-                item.name,
-                raw,
-                expected_root,
-                editable=True,
+            return cls._validate_editable_installation(
+                item, distribution, expected_root, raw, observation
             )
-            if origin.failure:
-                return r[bool].from_failure(origin)
-            inventory = cls._validate_pth_inventory(
-                item.name,
-                distribution,
-                expected_root,
-            )
-            if inventory.failure:
-                return r[bool].from_failure(inventory)
-            return cls._editable_import_verdict(item.name, expected_root, observation)
         if repository is not None:
             return cls._validate_workspace_build(
                 item, repository, context, distribution
@@ -901,6 +916,53 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             distribution,
             environment_root=context.environment_path,
         )
+
+    @classmethod
+    def _validate_editable_installation(
+        cls,
+        item: m.Infra.LockedPackage,
+        distribution: Distribution,
+        expected_root: Path,
+        raw: str,
+        observation: m.Infra.PythonEnvironmentObservation | None,
+    ) -> p.Result[bool]:
+        """Authenticate an editable installation against its native lock entry.
+
+        Returns:
+            The editable import verdict, or the first provenance failure.
+
+        """
+        if item.source.editable is None:
+            return r[bool].fail(
+                f"editable installation differs from native lock: {item.name}",
+            )
+        declaration = u.Cli.toml_read_document(expected_root / c.PYPROJECT_FILENAME)
+        if declaration.failure:
+            return r[bool].from_failure(declaration)
+        project = u.Cli.toml_table_path(declaration.value, ("project",))
+        name = None if project is None else u.Cli.toml_value(project, "name")
+        if not isinstance(name, str) or u.Infra.dep_name(name) != u.Infra.dep_name(
+            item.name,
+        ):
+            return r[bool].fail(
+                f"editable declaration differs from native lock: {item.name}",
+            )
+        origin = cls._workspace_origin_verdict(
+            item.name,
+            raw,
+            expected_root,
+            editable=True,
+        )
+        if origin.failure:
+            return r[bool].from_failure(origin)
+        inventory = cls._validate_pth_inventory(
+            item.name,
+            distribution,
+            expected_root,
+        )
+        if inventory.failure:
+            return r[bool].from_failure(inventory)
+        return cls._editable_import_verdict(item.name, expected_root, observation)
 
     @classmethod
     def _validate_workspace_build(
@@ -976,11 +1038,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             source_kinds != 1
             or local_source is None
             or not expected_root.is_relative_to(repository_root)
+            or (resolution_root / local_source).resolve() != expected_root
         ):
-            return r[bool].fail(
-                f"locked workspace source differs from declaration: {item.name}",
-            )
-        if (resolution_root / local_source).resolve() != expected_root:
             return r[bool].fail(
                 f"locked workspace source differs from declaration: {item.name}",
             )
@@ -1082,13 +1141,16 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             and not parsed.fragment
         )
         actual_root = Path(url2pathname(unquote(parsed.path)))
+        located = (
+            local_url
+            and actual_root.is_absolute()
+            and actual_root.resolve() == expected_root
+        )
         if (
             receipt.dir_info is None
             or receipt.dir_info.editable != editable
             or receipt.vcs_info is not None
-            or not local_url
-            or not actual_root.is_absolute()
-            or actual_root.resolve() != expected_root
+            or not located
         ):
             return r[bool].fail(
                 f"locked workspace build direct_url mismatch: {name} "
@@ -1133,25 +1195,26 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             and item.source.url is None
         ):
             return r[bool].fail(f"CI member needs a locked artifact source: {name}")
-        if item.source.git is not None:
-            expected = urlparse(item.source.git.removeprefix("git+"))
-            if (
-                receipt is None
-                or receipt.vcs_info is None
-                or receipt.vcs_info.vcs != "git"
-                or receipt.vcs_info.commit_id != expected.fragment
-                or u.Infra.git_remote_identity(receipt.url)
-                != u.Infra.git_remote_identity(expected.geturl())
-            ):
-                return r[bool].fail(
-                    f"installed dependency origin differs from committed lock: {name}",
-                )
-        if item.source.url is not None and (
+        expected = (
+            urlparse(item.source.git.removeprefix("git+"))
+            if item.source.git is not None
+            else None
+        )
+        git_differs = expected is not None and (
+            receipt is None
+            or receipt.vcs_info is None
+            or receipt.vcs_info.vcs != "git"
+            or receipt.vcs_info.commit_id != expected.fragment
+            or u.Infra.git_remote_identity(receipt.url)
+            != u.Infra.git_remote_identity(expected.geturl())
+        )
+        url_differs = item.source.url is not None and (
             receipt is None
             or receipt.url != item.source.url
             or receipt.dir_info is not None
             or receipt.vcs_info is not None
-        ):
+        )
+        if git_differs or url_differs:
             return r[bool].fail(
                 f"installed dependency origin differs from committed lock: {name}",
             )

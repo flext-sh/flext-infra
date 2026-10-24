@@ -224,7 +224,7 @@ def deptry_report_payload() -> t.JsonPayload:
     return parsed.value
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def runner_ci_context_cleared() -> Iterator[None]:
     """Keep the runner's CI context out of every test body.
 
@@ -316,6 +316,51 @@ def _consumer_pyproject_source(distribution: str) -> str:
     )
 
 
+def _declare_fleet_members(
+    root: Path,
+    distribution: str,
+    member_dependencies: t.MappingKV[str, t.StrSequence],
+) -> None:
+    """Commit each fleet member with its runtime requirements and attach it."""
+    beads = u.Tests.BeadsIdentity(
+        workspace=distribution,
+        database=distribution.replace("-", "_"),
+        issue_prefix="fleet",
+    )
+    for name, requirements in member_dependencies.items():
+        member = root / name
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            member,
+            name,
+            beads=beads,
+        )
+        manifest = member / c.PYPROJECT_FILENAME
+        payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
+        project = u.Tests.toml_mapping(payload["project"])
+        tm.ok(
+            u.Cli.toml_write_mapping(
+                manifest,
+                {
+                    **payload,
+                    "project": {
+                        **project,
+                        "dependencies": [
+                            *u.Tests.toml_strings(project["dependencies"]),
+                            *requirements,
+                        ],
+                    },
+                },
+            ),
+        )
+        u.Tests.commit_git_changes(member, "declare fleet runtime requirements")
+        u.Tests.WorktreeFixture.attach_submodule(
+            root,
+            member,
+            distribution=name,
+            relative_path=name,
+        )
+
+
 def _provision_consumer_template(
     parent: Path,
     *,
@@ -356,43 +401,7 @@ def _provision_consumer_template(
     ).model_copy(update={"editable": True})
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
     if member_dependencies:
-        beads = u.Tests.BeadsIdentity(
-            workspace=distribution,
-            database=distribution.replace("-", "_"),
-            issue_prefix="fleet",
-        )
-        for name, requirements in member_dependencies.items():
-            member = root / name
-            u.Tests.WorktreeFixture.initialize_governed_project(
-                member,
-                name,
-                beads=beads,
-            )
-            manifest = member / c.PYPROJECT_FILENAME
-            payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
-            project = u.Tests.toml_mapping(payload["project"])
-            tm.ok(
-                u.Cli.toml_write_mapping(
-                    manifest,
-                    {
-                        **payload,
-                        "project": {
-                            **project,
-                            "dependencies": [
-                                *u.Tests.toml_strings(project["dependencies"]),
-                                *requirements,
-                            ],
-                        },
-                    },
-                ),
-            )
-            u.Tests.commit_git_changes(member, "declare fleet runtime requirements")
-            u.Tests.WorktreeFixture.attach_submodule(
-                root,
-                member,
-                distribution=name,
-                relative_path=name,
-            )
+        _declare_fleet_members(root, distribution, member_dependencies)
     workspace = u.Tests.workspace_spec(
         repository,
         project=u.Tests.project_spec(root.name),

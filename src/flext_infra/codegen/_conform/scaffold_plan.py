@@ -384,7 +384,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
             if exports.failure:
                 return result_type.from_failure(exports)
-            self._retain_diagnostics(
+            self.retain_diagnostics(
                 exports.value.exception, issues=exports.value.issues
             )
             inputs = u.Infra.unique_states((

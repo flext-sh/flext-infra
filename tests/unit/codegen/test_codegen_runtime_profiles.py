@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from packaging.requirements import Requirement
 
-from flext_infra import c, config, m
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra import config, m
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import c, t, tm, u
 
@@ -226,7 +226,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             ),
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(
+        service = FlextInfraCodegenConformExecute(
             repository_root=request_root,
             state=m.Infra.CodegenConformState(
                 repository_root=request_root,

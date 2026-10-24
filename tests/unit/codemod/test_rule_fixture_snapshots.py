@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from typing_extensions import TypeForm
 
-from flext_infra import c, main
+from flext_infra import main
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from tests import c, m, t, tm, u

@@ -113,7 +113,12 @@ class FlextInfraWorkspaceChecker(
         return self._execute_report(params)
 
     def execute_integrity(self, params: m.Infra.RunCommand) -> p.Result[bool]:
-        """Select runtime and declared project integrity in the same checker."""
+        """Select runtime and declared project integrity in the same checker.
+
+        Returns:
+            Success flag of the integrity check execution.
+
+        """
         policy = u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make
         gates = (
             c.Infra.RUNTIME_INTEGRITY,
@@ -268,7 +273,12 @@ class FlextInfraWorkspaceChecker(
         candidate_files: t.VariadicTuple[Path] = (),
         candidate_runtime_report: m.Infra.ValidationReport | None = None,
     ) -> p.Result[bool]:
-        """Judge the typed report produced by the one native execution."""
+        """Judge the typed report produced by the one native execution.
+
+        Returns:
+            Success flag from the summarized project results.
+
+        """
         report = self._execute_report(
             params,
             runtime_root=runtime_root,
@@ -319,7 +329,8 @@ class FlextInfraWorkspaceChecker(
         if destination is not None:
             if not destination.is_absolute() or not destination.parent.is_dir():
                 return r[m.Infra.CheckReportSummary].fail(
-                    "check report output requires an absolute path in an existing directory"
+                    "check report output requires an absolute path "
+                    "in an existing directory"
                 )
             before = u.Cli.atomic_read_binary_file_state(
                 destination, required=False
@@ -358,7 +369,6 @@ class FlextInfraWorkspaceChecker(
             projects=project_targets,
             gates=gates,
             reports_dir=params.reports_dir_path,
-            fail_fast=params.fail_fast,
             ctx=gate_ctx,
             report_output_state=before,
         )
@@ -561,13 +571,26 @@ class FlextInfraWorkspaceChecker(
         fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
         ctx: m.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
-        """Expose project results from the same invocation-owned report."""
+        """Expose project results from the same invocation-owned report.
+
+        Returns:
+            The project results of the invocation report.
+
+        """
+        if ctx is not None and ctx.fail_fast != fail_fast:
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+                "gate context fail_fast disagrees with the requested project policy",
+            )
         return self.run_projects_report(
             projects,
             gates,
             reports_dir=reports_dir,
-            fail_fast=fail_fast,
-            ctx=ctx,
+            ctx=ctx
+            or m.Infra.GateContext(
+                repository_root=self._repository_root,
+                reports_dir=reports_dir or self._default_reports_dir,
+                fail_fast=fail_fast,
+            ),
         ).map(lambda summary: summary.results)
 
     def run_projects_report(
@@ -576,7 +599,6 @@ class FlextInfraWorkspaceChecker(
         gates: t.StrSequence,
         *,
         reports_dir: Path | None = None,
-        fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
         ctx: m.Infra.GateContext | None = None,
         report_output_state: m.Cli.AtomicFileState | None = None,
     ) -> p.Result[m.Infra.CheckReportSummary]:
@@ -618,12 +640,8 @@ class FlextInfraWorkspaceChecker(
         effective_ctx = ctx or m.Infra.GateContext(
             repository_root=self._repository_root,
             reports_dir=report_base,
-            fail_fast=fail_fast,
+            fail_fast=c.Infra.CHECK_FAIL_FAST_DEFAULT,
         )
-        if effective_ctx.fail_fast != fail_fast:
-            return r[m.Infra.CheckReportSummary].fail(
-                "gate context fail_fast disagrees with the requested project policy",
-            )
         effective_ctx = effective_ctx.model_copy(update={"reports_dir": report_base})
         requested_gates = tuple(resolved_gates)
         report_targets = tuple(
@@ -685,7 +703,7 @@ class FlextInfraWorkspaceChecker(
             targets,
             resolved_gates,
             effective_ctx,
-            fail_fast=fail_fast,
+            fail_fast=effective_ctx.fail_fast,
         )
         summary = m.Infra.CheckReportSummary(
             requested_gates=requested_gates,
