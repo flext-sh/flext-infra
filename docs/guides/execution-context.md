@@ -263,6 +263,34 @@ the variable or a BuildKit secret explicitly.
 
 ## Evidence and checkpoints
 
+The operator's 2026-10-24 maintenance authorization is limited to retiring the
+prepared v8 transaction `ad1c00b704d18eb06a7012e4508eaadb` in
+`~/cosmos-docgen`. This isolated source tree is the last known v8 owner, not a
+proven exact producer. Its causal correction admits the current exact Git journal
+anchor, original transaction paths and complete original temporary-tree manifest
+instead of treating historical device/inode/mount observations as durable
+identity. Manifested files retain content, size, mode, owner/group, link count and
+timestamps; directories retain their original recorded metadata and complete
+membership closure. This logical retirement does not prove physical continuity
+across indistinguishable clones or snapshots.
+
+This maintenance instrument admits only that exact prepared journal with the sole
+root project, empty destination entries, no file participants, no staging
+intentions and an original manifest for every temporary tree. The public one-shot
+holds the existing mutation lease and preserves the exact journal CAS throughout.
+Only manifest-backed root/entry comparison uses durable content authorization;
+registration, commit, rollback/restore staging, additions, incomplete intentions
+and unmanifested directories retain their original physical guards. The complete
+newly observed manifest reaches the unchanged native guarded cleanup. Original
+records and device values are never rewritten.
+
+Review this source delta before rebuilding its own noneditable wheel with the
+committed frozen lock in its existing exclusive physical environment. Do not
+patch an installed package, run historical general setup/generation, change the
+journal version, copy a decoder into the current engine or remove state directly.
+This bounded maintenance provides no permanent v8 compatibility path. No runtime
+or retirement success is established by this source note.
+
 Each piece of evidence identifies command, directory, observed revision, exit code, and
 decisive result. A run that is in progress, interrupted, or missing its exit code is not
 green. Concurrent changes require a fresh read before writing and revalidation of the

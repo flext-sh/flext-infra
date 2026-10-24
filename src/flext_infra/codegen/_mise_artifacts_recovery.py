@@ -33,7 +33,7 @@ class FlextInfraMiseRecovery:
         Returns:
             The cleanup outcome, preserving its original failure.
         """
-        topology = verify.journal_topology(layout, journal)
+        topology = verify.journal_retirement_topology(layout, journal)
         if topology.failure:
             return topology
         authorized = state.validate_transaction_roots(layout, journal)

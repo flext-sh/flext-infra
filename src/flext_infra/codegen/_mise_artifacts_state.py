@@ -588,7 +588,7 @@ class FlextInfraMiseArtifactsState:
             The resulting ``p.Result[bool]``.
 
         """
-        topology = verify.journal_topology(layout, journal)
+        topology = verify.journal_retirement_topology(layout, journal)
         if topology.failure:
             return topology
         validated = cls.validate_transaction_roots(layout, journal)
@@ -857,7 +857,11 @@ class FlextInfraMiseArtifactsState:
         if (
             recorded is None
             or recorded.created is None
-            or (recorded.created.device, recorded.created.inode) != transaction.value
+            or (
+                recorded.manifest is None
+                and (recorded.created.device, recorded.created.inode)
+                != transaction.value
+            )
         ):
             return r[bool].fail(
                 (f"Mise transaction root identity is not journaled: {relative.value}"),

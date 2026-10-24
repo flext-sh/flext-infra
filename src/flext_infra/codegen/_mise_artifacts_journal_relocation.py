@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 
 
 class FlextInfraMiseArtifactsJournalRelocation:
-    """Rebind paths only after proving the journal's unchanged physical owners."""
+    """Bind original journal paths to their currently authorized Git anchor."""
 
     @classmethod
     def _relocate_journal(
@@ -21,7 +21,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[m.Infra.CodegenTransactionJournal]:
-        """Rebind authenticated paths when the same physical worktree was moved.
+        """Rebind original paths within the currently authorized Git worktree.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionJournal]``.
@@ -66,12 +66,12 @@ class FlextInfraMiseArtifactsJournalRelocation:
             the current scope, nothing to relocate).
 
         """
-        identity = files.physical_directory_identity(layout.scope_root)
+        identity = u.Infra.exact_worktree_root(layout.scope_root)
         if identity.failure:
             return r[t.Pair[Path, bool]].from_failure(identity)
-        if identity.value != (journal.scope_device, journal.scope_inode):
+        if identity.value.git_dir / c.Infra.JOURNAL_NAME != layout.journal_path:
             return r[t.Pair[Path, bool]].fail(
-                "generation journal belongs to another physical scope",
+                "generation journal differs from the authenticated Git anchor",
             )
         recorded_root = cls._recorded_scope_root(journal, layout.scope_root)
         if recorded_root.failure:

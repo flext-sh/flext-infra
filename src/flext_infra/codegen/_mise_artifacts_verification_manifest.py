@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Set as AbstractSet
+from collections.abc import Callable, MutableMapping, Set as AbstractSet
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 type _JournalFileRole = Literal["desired", "backup", "rollback", "restore"]
+type _ManifestEntryMatches = Callable[
+    [m.Cli.AtomicPhysicalTreeEntry, m.Cli.AtomicPhysicalTreeEntry], bool
+]
 
 
 class FlextInfraMiseArtifactsVerificationManifest:
@@ -155,6 +158,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             journal,
             manifest,
             observed.value,
+            entry_matches=cls._physical_manifest_entry_matches,
             created=created,
         )
         if transition.failure:
@@ -223,6 +227,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             journal,
             directory.manifest,
             observed.value,
+            entry_matches=cls._retirement_manifest_entry_matches,
         )
         if transition.failure:
             return result_type.from_failure(transition)
@@ -236,6 +241,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         authorized: m.Cli.AtomicPhysicalTreeManifest,
         observed: m.Cli.AtomicPhysicalTreeManifest,
         *,
+        entry_matches: _ManifestEntryMatches,
         created: t.VariadicTuple[
             m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState
         ] = (),
@@ -249,7 +255,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The resulting ``p.Result[bool]``.
 
         """
-        if not cls._same_directory_identity(authorized.root, observed.root):
+        if not entry_matches(authorized.root, observed.root):
             return r[bool].fail(
                 f"temporary tree root identity changed: {authorized.root.path}",
             )
@@ -263,7 +269,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
             for path, (role, _entry) in file_specs.value.items()
             if role in {"desired", "rollback", "restore"}
         }
-        expected_check = cls._verified_expected_entries(expected, current, consumable)
+        expected_check = cls._verified_expected_entries(
+            expected, current, consumable, entry_matches=entry_matches
+        )
         if expected_check.failure:
             return expected_check
         created_by_path = {receipt.path: receipt for receipt in created}
@@ -361,6 +369,8 @@ class FlextInfraMiseArtifactsVerificationManifest:
         expected: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         current: t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry],
         consumable: AbstractSet[Path],
+        *,
+        entry_matches: _ManifestEntryMatches,
     ) -> p.Result[bool]:
         """Prove every authorized entry survived with a stable identity.
 
@@ -376,14 +386,74 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 return r[bool].fail(
                     f"journaled temporary-tree entry is missing: {path}",
                 )
-            if entry.kind == "directory":
-                if not cls._same_directory_identity(entry, current_entry):
-                    return r[bool].fail(
-                        f"temporary-tree directory identity changed: {path}",
-                    )
-            elif current_entry != entry:
-                return r[bool].fail(f"temporary-tree file identity changed: {path}")
+            if not entry_matches(entry, current_entry):
+                return r[bool].fail(
+                    f"temporary-tree {entry.kind} identity changed: {path}"
+                )
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _physical_manifest_entry_matches(
+        cls,
+        expected: m.Cli.AtomicPhysicalTreeEntry,
+        observed: m.Cli.AtomicPhysicalTreeEntry,
+    ) -> bool:
+        """Preserve the exact physical comparison used by active registration.
+
+        Returns:
+            Whether the original physical entry remains current.
+
+        """
+        return (
+            cls._same_directory_identity(expected, observed)
+            if expected.kind == "directory"
+            else observed == expected
+        )
+
+    @staticmethod
+    def _retirement_manifest_entry_matches(
+        expected: m.Cli.AtomicPhysicalTreeEntry,
+        observed: m.Cli.AtomicPhysicalTreeEntry,
+    ) -> bool:
+        """Authorize the complete original manifest for bounded native retirement.
+
+        Returns:
+            Whether original logical entry content and durable metadata survive.
+
+        """
+        if (
+            observed.path,
+            observed.kind,
+            observed.mode,
+            observed.uid,
+            observed.gid,
+            observed.file_attributes,
+            observed.reparse_tag,
+        ) != (
+            expected.path,
+            expected.kind,
+            expected.mode,
+            expected.uid,
+            expected.gid,
+            expected.file_attributes,
+            expected.reparse_tag,
+        ):
+            return False
+        if expected.kind == "directory":
+            return True
+        return observed.kind == "file" and (
+            observed.size,
+            observed.sha256,
+            observed.link_count,
+            observed.mtime_ns,
+            observed.ctime_ns,
+        ) == (
+            expected.size,
+            expected.sha256,
+            expected.link_count,
+            expected.mtime_ns,
+            expected.ctime_ns,
+        )
 
     @classmethod
     def _verified_tree_additions(
