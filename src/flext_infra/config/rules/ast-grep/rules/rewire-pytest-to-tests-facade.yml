@@ -8,12 +8,17 @@
 # never from a list. `conftest.py` and `tests/fixtures/**` keep the tests-tier
 # delta and import pytest directly.
 #
+# Activation: the three documents stay `severity: off` until flext-tests
+# publishes pytest's public names under u.Tests/t.Tests; the commit that
+# consumes that surface flips them to `error`, so `make mod` never rewrites a
+# test to a member that does not exist yet.
+#
 # Autofix order: this rule rewrites references only; the import-header stage
 # binds the missing `t`/`u` letters, and retire-pytest-import drops the import
 # once no bare `pytest` reference remains.
 id: rewire-pytest-callable-to-tests-facade
 language: python
-severity: error
+severity: off
 files:
   - "tests/**/*.py"
 ignores:
@@ -39,7 +44,7 @@ message: >-
 ---
 id: rewire-pytest-type-to-tests-facade
 language: python
-severity: error
+severity: off
 files:
   - "tests/**/*.py"
 ignores:
@@ -65,7 +70,7 @@ message: >-
 ---
 id: retire-pytest-import
 language: python
-severity: error
+severity: off
 files:
   - "tests/**/*.py"
 ignores:
