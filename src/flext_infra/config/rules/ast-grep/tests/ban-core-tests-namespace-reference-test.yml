@@ -1,0 +1,11 @@
+id: ban-core-tests-namespace-reference
+valid:
+  - |
+    def send(request: t.Tests.DispatchRequest) -> p.Result[str]: ...
+  - |
+    union = t.Core.Types
+invalid:
+  - |
+    def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
+  - |
+    members = (t.Core.Tests.CentralizedUnion,)

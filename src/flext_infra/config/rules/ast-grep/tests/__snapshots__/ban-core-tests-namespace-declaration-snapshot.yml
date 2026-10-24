@@ -1,0 +1,29 @@
+id: ban-core-tests-namespace-declaration
+snapshots:
+  ? |
+    class TestsFlextCoreTypes(FlextTestsTypes):
+        class Core:
+            class Tests(FlextTestsTypes.Tests):
+                type DispatchRequest = str
+  : labels:
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    type DispatchRequest = str
+      style: primary
+      start: 68
+      end: 142
+    - source: Core
+      style: secondary
+      start: 54
+      end: 58
+    - source: |-
+        class Core:
+                class Tests(FlextTestsTypes.Tests):
+                    type DispatchRequest = str
+      style: secondary
+      start: 48
+      end: 142
+    - source: Tests
+      style: secondary
+      start: 74
+      end: 79

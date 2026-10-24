@@ -1,0 +1,17 @@
+id: ban-core-tests-namespace-declaration
+valid:
+  - |
+    class TestsFlextCoreTypes(FlextTestsTypes):
+        class Tests(FlextTestsTypes.Tests):
+            type DispatchRequest = str
+  - |
+    class Core:
+        class Inner:
+            class Tests:
+                pass
+invalid:
+  - |
+    class TestsFlextCoreTypes(FlextTestsTypes):
+        class Core:
+            class Tests(FlextTestsTypes.Tests):
+                type DispatchRequest = str

@@ -1,0 +1,16 @@
+id: ban-core-tests-namespace-reference
+snapshots:
+  ? |
+    def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
+  : labels:
+    - source: t.Core.Tests
+      style: primary
+      start: 18
+      end: 30
+  ? |
+    members = (t.Core.Tests.CentralizedUnion,)
+  : labels:
+    - source: t.Core.Tests
+      style: primary
+      start: 11
+      end: 23
