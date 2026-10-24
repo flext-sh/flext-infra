@@ -16,8 +16,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/__init__.py"
 metadata:
   context:
     MODULE:
