@@ -32,7 +32,6 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
@@ -247,10 +246,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         cycles: MutableMapping[str, frozenset[str]] = {}
-        for component in FlextInfraUtilitiesBase.strongly_connected_components({
-            name: set(targets) for name, targets in graph.items()
-        }):
-            members = frozenset(component)
+        for members in u.Cli.dag_strongly_connected(graph):
             if len(members) > 1:
                 cycles.update(dict.fromkeys(members, members))
         return cycles

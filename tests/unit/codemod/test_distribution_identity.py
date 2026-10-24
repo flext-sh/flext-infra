@@ -89,6 +89,12 @@ class TestsFlextInfraDistributionIdentity:
             )
         with (
             tm.scope(python_paths=(str(site),)),
-            pytest.raises(ValueError, match=r"^cyclic dependency graph:"),
+            pytest.raises(
+                ValueError,
+                match=(
+                    r"^cyclic dependency graph: catalog-cycle-first -> "
+                    r"catalog-cycle-second -> catalog-cycle-first$"
+                ),
+            ),
         ):
             u.Infra.codemod_rule_plan(tmp_path)

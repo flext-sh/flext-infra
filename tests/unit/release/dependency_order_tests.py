@@ -97,8 +97,8 @@ class TestsFlextInfraReleaseDependencyOrder:
         tm.that(len(flattened), eq=3)
         tm.that(len(set(flattened)), eq=3)
 
-    def test_cycle_fails_naming_its_members(self, tmp_path: Path) -> None:
-        """Reject a cyclic graph and name the projects that cannot be ordered."""
+    def test_cycle_fails_naming_its_path(self, tmp_path: Path) -> None:
+        """Reject a cyclic graph and name the cycle path that cannot be ordered."""
         self._write_project(tmp_path, "flext-alpha", ("flext-beta>=0.1.0",))
         self._write_project(tmp_path, "flext-beta", ("flext-alpha>=0.1.0",))
 
@@ -107,9 +107,10 @@ class TestsFlextInfraReleaseDependencyOrder:
             ("flext-beta", tmp_path / "flext-beta"),
         ))
 
-        tm.ok(result.failure)
-        tm.that(result.error or "", has="flext-alpha")
-        tm.that(result.error or "", has="flext-beta")
+        tm.fail(
+            result,
+            has="cyclic dependency graph: flext-alpha -> flext-beta -> flext-alpha",
+        )
 
     def test_dependency_outside_the_selection_is_not_an_edge(
         self,

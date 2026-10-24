@@ -36,6 +36,31 @@ class TestsFlextInfraCodegenArtifactSsot:
         return config.Infra.codegen
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("dependencies", "error"),
+        [
+            pytest.param("cycle", "cyclic dependency graph:", id="cycle"),
+            pytest.param("unknown", "outside the graph:", id="unknown"),
+        ],
+    )
+    def test_template_artifact_dependencies_form_a_closed_dag(
+        codegen: m.Infra.CodegenConfigSpec,
+        dependencies: str,
+        error: str,
+    ) -> None:
+        """A cyclic or undeclared artifact dependency rejects the catalog."""
+        payload = codegen.templates.model_dump(
+            mode="json", by_alias=True, exclude_computed_fields=True
+        )
+        first, second = sorted(payload["entries"])[:2]
+        payload["entries"][first]["requires_artifacts"] = [second]
+        payload["entries"][second]["requires_artifacts"] = (
+            [first] if dependencies == "cycle" else [f"{second}.undeclared"]
+        )
+        with pytest.raises(c.ValidationError, match=error):
+            m.Infra.TemplatesSpec.model_validate(payload)
+
+    @staticmethod
     def test_artifact_names_are_unique(codegen: m.Infra.CodegenConfigSpec) -> None:
         """Reject ambiguous projection keys at the typed owner."""
         names = tuple(artifact.name for artifact in codegen.artifacts)

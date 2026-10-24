@@ -462,15 +462,14 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             ),
         )
         declared = (*runtime_entries, *toolchain.tools)
-        waves = u.Infra.dependency_waves({
-            entry.selector or entry.name: tuple(dict.fromkeys(entry.depends))
-            for entry in declared
+        order = u.Cli.dag_order({
+            entry.selector or entry.name: entry.depends for entry in declared
         })
-        if waves.failure:
-            return r[bool].from_failure(waves)
+        if order.failure:
+            return r[bool].from_failure(order)
         proven: frozenset[str] = frozenset()
         entries = {entry.selector or entry.name: entry for entry in declared}
-        for key in (key for wave in waves.value for key in wave):
+        for key in order.value:
             entry = entries[key]
             receipt = self._prove_declared(
                 m.Infra.MiseToolchainProofOptions(

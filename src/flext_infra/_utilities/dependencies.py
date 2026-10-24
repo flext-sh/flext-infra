@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
 from json import dumps
 from pathlib import Path
 from types import MappingProxyType
@@ -464,67 +464,6 @@ class FlextInfraUtilitiesDependencies(
             names.append(dependency_name)
         return tuple(names)
 
-    @staticmethod
-    def dependency_order(
-        direct_names: t.StrSequence,
-        *,
-        dependencies: Callable[[str], t.StrSequence],
-        prefix: str = "",
-        normalize: Callable[[str], str] = canonicalize_name,
-    ) -> t.StrSequence:
-        """Return a dependency-first order for any named dependency graph.
-
-        Returns:
-            A dependency-first order for any named dependency graph.
-
-        """
-        graph: MutableMapping[str, t.VariadicTuple[str]] = {}
-
-        def collect(dependency_name: str) -> None:
-            normalized = normalize(dependency_name)
-            if normalized in graph:
-                return
-            children = tuple(
-                child
-                for raw_child in dependencies(normalized)
-                if (child := normalize(raw_child))
-                and (not prefix or child.startswith(prefix))
-            )
-            graph[normalized] = children
-            for dependency in children:
-                collect(dependency)
-
-        roots = tuple(
-            normalized
-            for name in direct_names
-            if (normalized := normalize(name))
-            and (not prefix or normalized.startswith(prefix))
-        )
-        for root in roots:
-            collect(root)
-        ordered: list[str] = []
-        visited: set[str] = set()
-        active: list[str] = []
-
-        def visit(distribution_name: str) -> None:
-            if distribution_name in visited:
-                return
-            if distribution_name in active:
-                cycle_start = active.index(distribution_name)
-                cycle = " -> ".join((*active[cycle_start:], distribution_name))
-                msg = f"cyclic dependency graph: {cycle}"
-                raise ValueError(msg)
-            active.append(distribution_name)
-            for dependency in graph[distribution_name]:
-                visit(dependency)
-            active.pop()
-            visited.add(distribution_name)
-            ordered.append(distribution_name)
-
-        for root in roots:
-            visit(root)
-        return tuple(ordered)
-
     @classmethod
     def workspace_dependency_order(
         cls,
@@ -587,7 +526,7 @@ class FlextInfraUtilitiesDependencies(
             )
             for name, repository in by_name.items()
         }
-        waves = cls.dependency_waves(graph)
+        waves = u.Cli.dag_waves(graph)
         if waves.failure:
             raise ValueError(waves.error)
         return tuple(
@@ -630,52 +569,6 @@ class FlextInfraUtilitiesDependencies(
             msg = f"invalid planned manifest: {path}"
             raise ValueError(msg)
         return payload
-
-    @staticmethod
-    def dependency_waves[NameT: str](
-        edges: Mapping[NameT, t.StrSequence],
-    ) -> p.Result[t.SequenceOf[t.SequenceOf[NameT]]]:
-        """Split a closed named dependency graph into dependency-first waves.
-
-        Wave ``n`` contains only names whose dependencies all live in earlier
-        waves, so each wave may proceed in parallel while the sequence between
-        waves stays strict. The graph is closed: every referenced name must be
-        a key of ``edges``; an unknown reference or a cycle fails the result
-        instead of raising, so callers (release publish ordering, codemod
-        provider ordering) compose it through ``p.Result`` chaining.
-
-        Returns:
-            The resulting ``p.Result[t.SequenceOf[t.SequenceOf[NameT]]]``.
-
-        """
-        unknown = sorted({
-            dependency
-            for deps in edges.values()
-            for dependency in deps
-            if dependency not in edges
-        })
-        if unknown:
-            return r[t.SequenceOf[t.SequenceOf[NameT]]].fail(
-                "dependency graph references names outside the graph: "
-                + ", ".join(unknown),
-            )
-        pending: Mapping[NameT, set[str]] = {
-            name: set(deps) for name, deps in edges.items()
-        }
-        waves: list[tuple[NameT, ...]] = []
-        while pending:
-            ready = frozenset(name for name, deps in pending.items() if not deps)
-            if not ready:
-                return r[t.SequenceOf[t.SequenceOf[NameT]]].fail(
-                    "cyclic dependency graph: " + ", ".join(sorted(pending)),
-                )
-            waves.append(tuple(sorted(ready)))
-            pending = {
-                name: {dependency for dependency in deps if dependency not in ready}
-                for name, deps in pending.items()
-                if name not in ready
-            }
-        return r[t.SequenceOf[t.SequenceOf[NameT]]].ok(tuple(waves))
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Self
 
 import flext_core
-from flext_cli import m
+from flext_cli import m, u
 from typing_extensions import TypeForm
 
 from flext_infra import c, t
@@ -413,25 +413,13 @@ class FlextInfraConfigModelsTemplates:
                 for destination, declaration in self.catalog.items()
             )
 
-        def required_destinations(self, destinations: frozenset[str]) -> frozenset[str]:
-            """Expand selected catalog keys through their explicit dependencies.
-
-            Returns:
-                Selected keys and their transitive artifact dependencies.
-
-            """
-            selected = set(destinations)
-            pending = list(destinations)
-            while pending:
-                destination = pending.pop()
-                declaration = self.catalog.get(destination)
-                if declaration is None:
-                    continue
-                for dependency in declaration.requires_artifacts:
-                    if dependency not in selected:
-                        selected.add(dependency)
-                        pending.append(dependency)
-            return frozenset(selected)
+        @property
+        def artifact_requirements(self) -> t.MappingKV[str, t.StrSequence]:
+            """Expose each catalog key's declared artifact dependencies."""
+            return {
+                destination: declaration.requires_artifacts
+                for destination, declaration in self.catalog.items()
+            }
 
         @m.model_validator(mode="after")
         def validate_unique_destinations(self) -> Self:
@@ -451,12 +439,13 @@ class FlextInfraConfigModelsTemplates:
             if len(set(paths)) != len(paths):
                 msg = "artifact destinations must have exactly one declaration"
                 raise ValueError(msg)
-            for destination, declaration in self.catalog.items():
+            waves = u.Cli.dag_waves(self.artifact_requirements)
+            if waves.failure:
+                msg = f"artifact dependencies are invalid: {waves.error}"
+                raise ValueError(msg)
+            for declaration in self.catalog.values():
                 for dependency in declaration.requires_artifacts:
-                    required = self.catalog.get(dependency)
-                    if required is None:
-                        msg = f"artifact dependency is not declared: {dependency}"
-                        raise ValueError(msg)
+                    required = self.catalog[dependency]
                     unavailable_capability = (
                         required.requires_beads and not declaration.requires_beads
                     ) or (
@@ -471,11 +460,6 @@ class FlextInfraConfigModelsTemplates:
                         msg = (
                             f"artifact dependency is not always available: {dependency}"
                         )
-                        raise ValueError(msg)
-                    if destination in self.required_destinations(
-                        frozenset({dependency}),
-                    ):
-                        msg = f"artifact dependency cycle: {destination}"
                         raise ValueError(msg)
             return self
 

@@ -215,7 +215,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return None
         plans: list[m.Infra.CodegenFilePlan] = []
         for required in sorted(
-            codegen.templates.required_destinations(frozenset({destination})),
+            u.Cli.dag_closure(
+                codegen.templates.artifact_requirements, frozenset({destination})
+            ).unwrap(),
         ):
             planned = self._bootstrap_destination_plan(
                 target,
@@ -693,9 +695,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context)
         plans: list[m.Infra.CodegenFilePlan] = []
         for destination in sorted(
-            codegen.templates.required_destinations(
+            u.Cli.dag_closure(
+                codegen.templates.artifact_requirements,
                 c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
-            ),
+            ).unwrap(),
         ):
             planned = self._bootstrap_destination_plan(
                 target,
@@ -953,9 +956,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if (
             contract.destinations is not None
             and managed.path.as_posix()
-            not in codegen.templates.required_destinations(
+            not in u.Cli.dag_closure(
+                codegen.templates.artifact_requirements,
                 contract.destinations,
-            )
+            ).unwrap()
         ):
             return True
         return managed.path == Path(c.PYPROJECT_FILENAME) and not contract.pyproject
