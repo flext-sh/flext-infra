@@ -311,18 +311,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             project, module, scope = frame
+            target, _, emitted = condition.arg[2].partition(".")
             if (
-                condition.arg[2] != f"m.{reference[1]}"
+                emitted != reference[1]
+                or target == reference[0]
                 or condition.arg[4] != condition.arg[2]
             ):
                 return False
             if not (
-                cls.stable_binding_chain(frame, "m", start, sources)
+                cls.stable_binding_chain(frame, target, start, sources)
                 and cls.single_reaching_binding(module, scope, condition.arg[2], start)
             ):
                 return False
             actual = tuple(
-                runtime.expression_name(scope, name) for name in (reference[0], "m")
+                runtime.expression_name(scope, name) for name in (reference[0], target)
             )
             if actual[0] is None or actual[1] is None:
                 return False
@@ -330,7 +332,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 runtime.qualified_name(
                     project, condition.arg[1], module_name=condition.arg[0]
                 ),
-                runtime.qualified_name(project, "m", module_name=condition.arg[3]),
+                runtime.qualified_name(project, target, module_name=condition.arg[3]),
             )
             if not all(
                 FlextInfraUtilitiesRopeRuntime.abstract_class(binding.get_object())
@@ -404,13 +406,18 @@ class FlextInfraUtilitiesCodemodBindingChain:
             condition: m.Infra.CodemodContextCondition,
             occurrence: t.Triple[str, int, int],
         ) -> bool:
-            """Permit only a complete canonical BeforeValidator metadata call.
+            """Permit an executable reference or a complete metadata call.
+
+            Inside ``Annotated`` metadata the relocated member must be the
+            callable of a complete call (``m.BeforeValidator(...)``); bare type
+            data stays protected.
 
             Returns:
                 Whether the reference is executable outside protected type data.
 
             """
             text, start, end = occurrence
+            member = condition.arg[4].partition(".")[2]
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
             for match in finder.get_matches(
                 "${relocation_literal}[${relocation_values}]",
@@ -436,11 +443,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 if not left <= start < end <= right:
                     continue
                 annotated = True
-                if (
-                    condition.arg[3] != "flext_core"
-                    or condition.arg[4] != "m.BeforeValidator"
-                ):
-                    return False
                 metadata = (
                     FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
                         text, left, right, ","
@@ -451,7 +453,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     and FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
                         call, "relocation_callable"
                     )
-                    == (start, end + len(".BeforeValidator"))
+                    == (start, end + len(f".{member}"))
                     for call in finder.get_matches(
                         "${relocation_callable}(${relocation_call_arguments})",
                         {},

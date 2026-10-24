@@ -125,12 +125,18 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def source_children(
         self, path: Path, *, follow_aliases: bool = True
     ) -> tuple[Path, ...]:
-        """Enumerate original native membership with its exact query receipt.
+        """Enumerate the declared snapshot or original native membership.
+
+        A closed planning snapshot owns its captured inventory exactly like
+        ``source_query``: its children are the captured entries, never a
+        newer disk listing.
 
         Returns:
-            The original direct child paths.
+            The direct child paths of the owning source inventory.
 
         """
+        if isinstance(self.fscommands, FlextInfraRopeProject.SnapshotFiles):
+            return tuple(path / name for name in self.fscommands.listdir(str(path)))
         return self._authenticated_reads.children(
             str(path),
             follow_aliases=follow_aliases,
