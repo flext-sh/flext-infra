@@ -560,7 +560,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             path = Path(resource.real_path).resolve()
             if path not in observed:
                 source = resource.read()
-                if not source.startswith(c.Infra.AUTOGEN_HEADERS):
+                if not source.startswith(c.Infra.AUTOGEN_HEADER):
                     message = (
                         "ownership transfer requires complete governed inventory: "
                         f"{path}"
@@ -607,7 +607,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         span: tuple[Path, int, int],
     ) -> None:
         path, source = entry
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
             return
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding, container = owners

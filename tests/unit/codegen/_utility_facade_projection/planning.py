@@ -284,7 +284,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             package_name="flext_sample",
         )
         conflicted = (
-            c.Infra.AUTOGEN_HEADERS[0] + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
+            c.Infra.AUTOGEN_HEADER + "\n<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         )
         self._write(package / "__init__.py", conflicted)
         self._write(
@@ -851,7 +851,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         self._write(package / "utilities.py", original)
         conflicted = (
-            c.Infra.AUTOGEN_HEADERS[0] + "\n" if generated else ""
+            c.Infra.AUTOGEN_HEADER + "\n" if generated else ""
         ) + "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n"
         initializer = package / c.Infra.INIT_PY
         self._write(initializer, conflicted)

@@ -36,7 +36,7 @@ class TestsFlextInfraRuleBindingInputs:
         )
         consumer = mod_workspace / "consumer.py"
         source = (
-            c.Infra.AUTOGEN_HEADERS[0]
+            c.Infra.AUTOGEN_HEADER
             + "\n"
             + """from abc import ABC as Abstract, abstractmethod as required
 from typing import TYPE_CHECKING as types_only, Protocol as Contract

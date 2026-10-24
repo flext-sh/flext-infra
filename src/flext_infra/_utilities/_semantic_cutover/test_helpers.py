@@ -65,7 +65,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         editable = {
             path.resolve(): source
             for path, source in sources.items()
-            if not source.startswith(c.Infra.AUTOGEN_HEADERS)
+            if not source.startswith(c.Infra.AUTOGEN_HEADER)
         }
         candidates = tuple(
             path
@@ -257,7 +257,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             candidate
             for candidate, source in sources.items()
             if candidate.parent in path.parents
-            and not source.startswith(c.Infra.AUTOGEN_HEADERS)
+            and not source.startswith(c.Infra.AUTOGEN_HEADER)
             and (policy := workspace.convention(candidate).module_policy).expected_alias
             == "u"
             and policy.project_prefix == prefix

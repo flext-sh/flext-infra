@@ -232,7 +232,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 None if text is None else text.encode(c.DEFAULT_ENCODING)
             ):
                 continue
-            generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADERS)
+            generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
             if any(
                 module.suffix == c.Infra.EXT_PYTHON
                 and module.name != c.Infra.INIT_PY
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 current_pkg=name,
                 surface=name.split(".", maxsplit=1)[0],
                 generated_init=init is not None
-                and init.startswith(c.Infra.AUTOGEN_HEADERS),
+                and init.startswith(c.Infra.AUTOGEN_HEADER),
                 importable=bool(name)
                 and all(
                     part.isidentifier() and not iskeyword(part)

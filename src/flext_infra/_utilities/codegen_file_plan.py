@@ -43,10 +43,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             content is not None
             and bool(content.strip())
             and not content.startswith(
-                tuple(
-                    header.encode(c.DEFAULT_ENCODING)
-                    for header in c.Infra.AUTOGEN_HEADERS
-                ),
+                c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING),
             )
         )
 
@@ -63,7 +60,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
         """
         with path.open(encoding=c.DEFAULT_ENCODING) as handle:
-            return handle.readline().startswith(c.Infra.AUTOGEN_HEADERS)
+            return handle.readline().startswith(c.Infra.AUTOGEN_HEADER)
 
     @staticmethod
     def required_file_states(

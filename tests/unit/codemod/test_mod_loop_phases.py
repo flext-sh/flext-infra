@@ -282,7 +282,7 @@ class TestsFlextInfraCodemodLoopPhases:
         _workspace, project, _service, legacy, _foreign = _phase_fixture(tmp_path)
         source = legacy.read_text(encoding="utf-8")
         _ = legacy.write_text(
-            c.Infra.AUTOGEN_HEADERS[0] + "\n" + source,
+            c.Infra.AUTOGEN_HEADER + "\n" + source,
             encoding="utf-8",
         )
         consumer = legacy.parent / "consumer.py"

@@ -205,7 +205,7 @@ class TestsFlextInfraCodemodGate:
             "root.pyi": b"",
             "tests/boundary.pyi": b"invalid [\n",
             "examples/boundary.pyi": b"def load() -> bytes: ...\n",
-            "scripts/boundary.pyi": f"{c.Infra.AUTOGEN_HEADERS[0]}\n".encode(),
+            "scripts/boundary.pyi": f"{c.Infra.AUTOGEN_HEADER}\n".encode(),
             "infra/contracts/boundary.pyi": b"\xff\n",
             "src/pkg/.typecache/boundary.pyi": b"",
             f"src/pkg/{generated}/boundary.pyi": b"",

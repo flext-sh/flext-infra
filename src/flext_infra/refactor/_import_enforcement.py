@@ -77,7 +77,7 @@ class FlextInfraImportNormalization(
                     f"import declaration is outside its selected project: {path}"
                 )
             source = sources[path]
-            if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
             normalized = cls._normalize_source(
                 location=(project_root, path),

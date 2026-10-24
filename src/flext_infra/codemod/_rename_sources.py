@@ -251,7 +251,7 @@ class FlextInfraRenameSources:
                     raise ValueError(msg)
                 source = state.content.decode(c.DEFAULT_ENCODING)
                 if (
-                    source.startswith(c.Infra.AUTOGEN_HEADERS)
+                    source.startswith(c.Infra.AUTOGEN_HEADER)
                     and path.resolve() not in templates
                 ):
                     continue

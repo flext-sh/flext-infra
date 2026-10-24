@@ -910,7 +910,7 @@ class FlextInfraUtilitiesRopeClassMove:
                     if (
                         path in virtual_paths
                         or path == request.source_file
-                        or sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
+                        or sources[path].startswith(c.Infra.AUTOGEN_HEADER)
                     ):
                         continue
                     updated = FlextInfraUtilitiesRopeImports.plan_from_import_aliases(
@@ -1015,7 +1015,7 @@ class FlextInfraUtilitiesRopeClassMove:
                 raise ValueError(msg)
             if state.content is not None and state.content.decode(
                 c.DEFAULT_ENCODING,
-            ).startswith(c.Infra.AUTOGEN_HEADERS):
+            ).startswith(c.Infra.AUTOGEN_HEADER):
                 if path.name != c.Infra.INIT_PY:
                     msg = f"module move requires joint facade projection: {path}"
                     raise ValueError(

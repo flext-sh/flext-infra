@@ -190,7 +190,7 @@ class FlextInfraExtractDuplicatePhase:
         if not path.is_file():
             return None
         source = path.read_text(encoding=c.DEFAULT_ENCODING)
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
             return None
         updated = cls.plan_source(source, spans)
         if updated is None or updated == source:

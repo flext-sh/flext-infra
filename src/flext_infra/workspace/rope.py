@@ -216,7 +216,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         current_pkg = package_entry.package_name if package_entry is not None else ""
         init_resource = self.resource(init_path)
         generated_init = init_resource is not None and init_resource.read().startswith(
-            c.Infra.AUTOGEN_HEADERS,
+            c.Infra.AUTOGEN_HEADER,
         )
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=resolved_dir,

@@ -40,7 +40,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         auxiliary.mkdir()
         initializer = auxiliary / c.Infra.INIT_PY
         initializer.write_text(
-            f"{c.Infra.AUTOGEN_HEADERS[0]}\n"
+            f"{c.Infra.AUTOGEN_HEADER}\n"
             "from .removed import Replacement\n"
             "__all__ = ['Replacement']\n",
             encoding=c.DEFAULT_ENCODING,

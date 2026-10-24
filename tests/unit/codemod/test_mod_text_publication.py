@@ -143,7 +143,7 @@ class TestsFlextInfraModTextPublication:
     ) -> None:
         """A rejected generated target leaves authored siblings unpublished."""
         first, second = self._publication_inputs(mod_workspace)
-        generated = f'{c.Infra.AUTOGEN_HEADERS[0]}\nvalue = "before"\n'
+        generated = f'{c.Infra.AUTOGEN_HEADER}\nvalue = "before"\n'
         u.Cli.atomic_write_text_file(second, generated).unwrap()
         tm.fail(
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=False),

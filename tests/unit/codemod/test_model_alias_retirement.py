@@ -56,7 +56,7 @@ class TestsFlextInfraModelAliasRetirement:
             encoding="utf-8",
         )
         (utilities / "__init__.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0] + "\n"
+            c.Infra.AUTOGEN_HEADER + "\n"
             "from .relay import RedundantRelay\n"
             '__all__ = ["RedundantRelay"]\n',
             encoding="utf-8",
@@ -119,7 +119,7 @@ class TestsFlextInfraModelAliasRetirement:
             )
         for path, source in updated.items():
             if source != sources[path]:
-                tm.fail(source.startswith(c.Infra.AUTOGEN_HEADERS))
+                tm.fail(source.startswith(c.Infra.AUTOGEN_HEADER))
                 path.write_text(source, encoding="utf-8")
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         package = next(path.parent for path in sources if path.name == "consumer.py")

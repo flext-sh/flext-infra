@@ -873,7 +873,7 @@ class TestsFlextInfraApplyRenames:
         authored = mod_workspace / 'untracked "space"\nname.md'
         authored.write_text("campaign_token", encoding="utf-8")
         projected = mod_workspace / "generated.py"
-        generated = f'{c.Infra.AUTOGEN_HEADERS[0]}\n"""campaign_token"""\n'
+        generated = f'{c.Infra.AUTOGEN_HEADER}\n"""campaign_token"""\n'
         projected.write_text(generated, encoding="utf-8")
         report = tm.ok(
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True)),

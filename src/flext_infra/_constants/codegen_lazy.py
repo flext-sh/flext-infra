@@ -21,12 +21,7 @@ class FlextInfraConstantsCodegenLazy:
     MAX_ALIAS_LENGTH: ClassVar[int] = 2
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: ClassVar[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
-    "Header prepended to every auto-generated ``__init__.py`` file."
-    AUTOGEN_HEADERS: ClassVar[t.Pair[str, str]] = (
-        AUTOGEN_HEADER,
-        "# @generated AUTO-GENERATED FILE — Regenerate with: make gen",
-    )
-    "Current and former generated initializer headers accepted during migration."
+    "Header opening every generator projection; it identifies generated files."
     GENERATED_EXPORT_SIDECAR_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$",
     )

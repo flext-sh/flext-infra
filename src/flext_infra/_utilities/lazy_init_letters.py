@@ -332,7 +332,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         init_path = package_dir / c.Infra.INIT_PY
         text = cls.lazy_init_text(run, init_path)
         names: t.StrSequence = ()
-        generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADERS)
+        generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
         if text is not None and not (
             indexed
             and generated

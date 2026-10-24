@@ -177,7 +177,7 @@ class TestsFlextInfraSemanticPublicationPlans:
         first, second = TestsFlextInfraSemanticPublicationPlans._plans(mod_workspace)
         u.Cli.atomic_write_text_file(
             second.path,
-            f'{c.Infra.AUTOGEN_HEADERS[0]}\nvalue = "before"\n',
+            f'{c.Infra.AUTOGEN_HEADER}\nvalue = "before"\n',
         ).unwrap()
         generated = second.model_copy(
             update={
@@ -235,7 +235,7 @@ class TestsFlextInfraSemanticPublicationPlans:
         declared = template_root / "declared.j2"
         arbitrary = template_root / "arbitrary.j2"
         projection = mod_workspace / "projection.py"
-        content = f"{c.Infra.AUTOGEN_HEADERS[0]}\nbefore\n"
+        content = f"{c.Infra.AUTOGEN_HEADER}\nbefore\n"
         for path in (declared, arbitrary, projection):
             path.write_text(content, encoding="utf-8")
         entry = next(

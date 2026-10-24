@@ -418,7 +418,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         package = tmp_path / "src" / "generated_contract"
         package.mkdir(parents=True)
         (package / "__init__.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0]
+            c.Infra.AUTOGEN_HEADER
             + "\nfrom types import MappingProxyType\n"
             + "from typing import TYPE_CHECKING\n"
             + "from flext_core.lazy import (\n"
@@ -489,7 +489,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         package = tmp_path / "src" / "flext"
         package.mkdir(parents=True)
         (package / "__init__.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0]
+            c.Infra.AUTOGEN_HEADER
             + "\nfrom types import MappingProxyType\n"
             + "from typing import TYPE_CHECKING\n"
             + "from flext_core.lazy import install_lazy_exports\n"

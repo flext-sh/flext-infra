@@ -596,7 +596,7 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         facade = package / module
         self._write(
             facade,
-            c.Infra.AUTOGEN_HEADERS[0]
+            c.Infra.AUTOGEN_HEADER
             + "\n"
             + ("from typing import Protocol, runtime_checkable\n" if protocol else "")
             + f"from {package.name}.{directory} import PayloadOwner\n"
@@ -777,7 +777,7 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         )
         self._write(
             facade,
-            (c.Infra.AUTOGEN_HEADERS[0] + "\n" if generated else "")
+            (c.Infra.AUTOGEN_HEADER + "\n" if generated else "")
             + f"from {package.name}.{directory}.owners import LeftPart, RightPart\n"
             "class Facade(LeftPart, RightPart):"
             + (

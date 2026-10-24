@@ -1181,7 +1181,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 message = f"ambiguous constant import chain: {qualified}"
                 raise ValueError(message)
             if binding.imported_name == "c" and module.source_code.startswith(
-                c.Infra.AUTOGEN_HEADERS
+                c.Infra.AUTOGEN_HEADER
             ):
                 owner = module.get_resource()
                 if owner is None:

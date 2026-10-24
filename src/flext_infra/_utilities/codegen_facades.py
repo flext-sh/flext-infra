@@ -912,7 +912,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     .code
                 )
         source = cls._wrap_facade_imports(cls._merged_facade_imports(source))
-        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
             return source
         return f"{c.Infra.AUTOGEN_HEADER}\n{source}"
 
@@ -1357,7 +1357,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     for attribute in owner.get_attributes().values()
                 )
             )
-            if source.startswith(c.Infra.AUTOGEN_HEADERS) and inherited_class:
+            if source.startswith(c.Infra.AUTOGEN_HEADER) and inherited_class:
                 # A projection cannot turn an inherited declaration into a new
                 # alias or replace a different canonical member with its value.
                 shadows.append(member)
@@ -2140,7 +2140,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             return frozenset()
         contents = dict(sources.values())
         projection_is_autogen = contents[facade_path].startswith(
-            c.Infra.AUTOGEN_HEADERS
+            c.Infra.AUTOGEN_HEADER
         )
         barrel = contents.get(roots[1] / c.Infra.INIT_PY)
         scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
@@ -2276,7 +2276,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         return (
             provider in {owners_dir.resolve(), (owners_dir / c.Infra.INIT_PY).resolve()}
             and barrel is not None
-            and barrel.startswith(c.Infra.AUTOGEN_HEADERS)
+            and barrel.startswith(c.Infra.AUTOGEN_HEADER)
             and binding.imported_name not in declared_names
         )
 
@@ -2437,9 +2437,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             # Conflict-marked projections belong to recovery, not source analysis.
             if (
                 path.name == c.Infra.INIT_PY
-                and any(
-                    content.startswith(header) for header in c.Infra.AUTOGEN_HEADERS
-                )
+                and content.startswith(c.Infra.AUTOGEN_HEADER)
                 and any(line.startswith("<<<<<<<") for line in content.splitlines())
             ):
                 continue
@@ -2557,7 +2555,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             # Generated initializers propagate declarations; they are not
             # authored consumers and may await replacement in this plan.
             if path.name == c.Infra.INIT_PY and source.startswith(
-                c.Infra.AUTOGEN_HEADERS,
+                c.Infra.AUTOGEN_HEADER,
             ):
                 continue
             tree = ast.parse(source, filename=str(path))

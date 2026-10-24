@@ -1010,9 +1010,8 @@ class FlextInfraModGateEngine:
                 source_owner="generator"
                 if snapshot is not None
                 and snapshot.content is not None
-                and any(
-                    snapshot.content.startswith(header.encode(c.DEFAULT_ENCODING))
-                    for header in c.Infra.AUTOGEN_HEADERS
+                and snapshot.content.startswith(
+                    c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
                 )
                 else "authored",
                 source_state=snapshot,

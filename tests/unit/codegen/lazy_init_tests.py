@@ -387,7 +387,7 @@ class TestsFlextInfraCodegenLazyInit:
             tm.that(u.Tests.run_lazy_init(governed_project), eq=0)
 
             initializer = (tree / c.Infra.INIT_PY).read_text(encoding="utf-8")
-            tm.ok(initializer.startswith(c.Infra.AUTOGEN_HEADERS))
+            tm.ok(initializer.startswith(c.Infra.AUTOGEN_HEADER))
             tm.that(initializer, lacks="wire_pb2")
             replanned = tm.ok(
                 FlextInfraCodegenLazyInit(

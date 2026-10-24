@@ -367,7 +367,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         """Test unsafe sources refuse the whole plan."""
         root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         path = next(path for path in sources if path.name == "consumer.py")
-        sources[path] = c.Infra.AUTOGEN_HEADERS[0] + "\n" + sources[path]
+        sources[path] = c.Infra.AUTOGEN_HEADER + "\n" + sources[path]
         expected = "generated consumer"
         path.write_text(sources[path], encoding="utf-8")
         with (

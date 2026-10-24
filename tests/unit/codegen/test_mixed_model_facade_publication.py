@@ -65,7 +65,7 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
     password_annotation = ": ClassVar[type[Credential]]" if annotated else ""
     facade = package / f"{family.module}.py"
     facade.write_text(
-        c.Infra.AUTOGEN_HEADERS[0]
+        c.Infra.AUTOGEN_HEADER
         + "\nfrom typing import ClassVar\n"
         + imports
         + "class Public:\n"
