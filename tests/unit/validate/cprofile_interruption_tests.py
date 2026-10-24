@@ -97,10 +97,11 @@ class TestsFlextInfraCProfileInterruption:
                 command, tmp_path / "missing" / "command.pstats"
             )
         tm.ok(raised.value is failure)
-        tm.that("\n".join(failure.__notes__), has="profile publication failed")
+        tm.that("\n".join(failure.__notes__), has="profile finalization failed")
         tm.fail((tmp_path / "missing").exists())
 
     @staticmethod
+    @pytest.mark.usefixtures("profiling_enabled")
     @pytest.mark.parametrize("handler", ["default", "raise", "return", "ignore"])
     def test_cli_termination_replaces_stale_report_and_preserves_previous_run(
         tmp_path: Path,
@@ -172,8 +173,8 @@ class TestsFlextInfraCProfileInterruption:
         elif handler in {"return", "ignore"}:
             rendered.truncate(0)
             rendered.seek(0)
-            measured.print_stats(r"/flext_infra/cli\.py:\d+\(main\)")
-            tm.that(rendered.getvalue(), has="(main)")
+            measured.print_stats(r"/flext_infra/cli\.py:\d+\(infra_main\)")
+            tm.that(rendered.getvalue(), has="(infra_main)")
         if handler != "default":
             completed = tuple(
                 path

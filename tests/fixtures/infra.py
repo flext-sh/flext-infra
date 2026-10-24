@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, workspace
+from flext_infra import config, settings, workspace
 from tests import c, m, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
@@ -205,6 +205,25 @@ def runner_ci_context_cleared() -> Iterator[None]:
     """
     with u.Tests.env_vars_context(
         vars_to_clear=(config.Infra.codegen.make.ci.variable,),
+    ):
+        yield
+
+
+@pytest.fixture
+def profiling_enabled() -> Iterator[None]:
+    """Opt child processes into profiling through the typed settings owner.
+
+    Profiling is opt-in; the variable is the settings field's own declared
+    alias, so a renamed setting cannot leave the scenario silently unprofiled.
+
+    Yields:
+        Control while spawned processes inherit the enabled setting.
+
+    """
+    alias = type(settings.Infra).model_fields["profile"].validation_alias
+    tm.that(alias, is_=str)
+    with u.Tests.env_vars_context(
+        env_vars={str(alias): c.ParserBooleanToken.TRUE},
     ):
         yield
 
