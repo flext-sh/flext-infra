@@ -4,10 +4,10 @@ Infra:
     raw-check-receipt-suffix: .raw.log
     derived-tool-roots: [deptry, mypy, pyrefly, pyright, pytest, ruff, vulture]
     derived-settings:
-      mypy: [python_version, mypy_path, overrides, disable_error_code]
+      mypy: [python_version, mypy_path, exclude, overrides, disable_error_code]
       pyrefly: [python-version]
       pyright: [pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath]
-      pytest.ini_options: [flext_slow_timeout_seconds, markers]
+      pytest.ini_options: [flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value]
       ruff: [target-version]
     # Native options are free key/value pairs, grouped by their tool table.
     # The same catalog drives modernization and every projected template.

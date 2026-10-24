@@ -187,6 +187,10 @@ class FlextInfraToolTablesPhase:
             config.Infra.codegen.toolchain.python_version
         )
         payload["mypy_path"] = list(mypy_search_paths)
+        # One exclusion owner: the codegen artifact registry, as Mypy's regex.
+        payload["exclude"] = u.Infra.native_exclude_regex(
+            config.Infra.codegen.analyzer_exclude_globs
+        )
         if policy.ruling_disable_error_codes:
             payload["disable_error_code"] = list(policy.ruling_disable_error_codes)
         payload["overrides"] = [
@@ -210,10 +214,10 @@ class FlextInfraToolTablesPhase:
         options = u.Cli.toml_mapping_ensure_table(payload, c.Infra.INI_OPTIONS)
         options[c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS] = str(policy.slow_timeout_seconds)
         options[c.Infra.MARKERS] = list(policy.standard_markers)
-        # pytester sandboxes copy scenario trees from the one declared root
-        # (ADR-028 point 6); pytest accepts a single example directory.
+        # fixture_tree materializes scenario trees from the one declared root
+        # (ADR-028 point 6); the flext-tests plugin registers and reads the key.
         (scenario_root,) = config.Infra.codegen.exclusions.scenario_data_roots
-        options[c.Infra.PYTESTER_EXAMPLE_DIR] = scenario_root
+        options[c.Infra.FLEXT_FIXTURE_TREES_ROOT] = scenario_root
         # Test plugins read the Make CI context through these ini keys, so no
         # test runtime imports flext-infra to learn it.
         ci = config.Infra.codegen.make.ci

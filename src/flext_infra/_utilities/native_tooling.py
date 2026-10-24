@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import glob
 import sysconfig
 from collections.abc import Mapping
 from copy import deepcopy
@@ -172,6 +173,22 @@ class FlextInfraUtilitiesNativeTooling:
         """
         return FlextInfraUtilitiesNativeTooling.native_tool_setting(
             document, table, key, t.TypeForm(t.StrSequence)
+        )
+
+    @staticmethod
+    def native_exclude_regex(globs: t.StrSequence) -> str:
+        """Translate exclusion globs into one regex for regex-only tools.
+
+        Mypy's ``exclude`` takes a single regular expression; the stdlib
+        translation of the same globs every analyzer excludes keeps one owner.
+
+        Returns:
+            The alternation of every translated glob.
+
+        """
+        return "|".join(
+            glob.translate(pattern, recursive=True, include_hidden=True)
+            for pattern in globs
         )
 
 

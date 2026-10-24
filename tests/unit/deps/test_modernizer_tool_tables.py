@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -64,6 +65,15 @@ class TestsFlextInfraDepsModernizerToolTables:
         for segment in path:
             table = u.Tests.toml_mapping(table[segment])
         return table
+
+    def test_mypy_exclude_skips_scenario_trees_only(self, tmp_path: Path) -> None:
+        """Mypy excludes scenario trees but keeps typed fixture modules governed."""
+        payload, _ = self._applied(tmp_path)
+        exclude = re.compile(str(self._table(payload, "mypy")["exclude"]))
+        for root in config.Infra.codegen.exclusions.scenario_data_roots:
+            tm.that(exclude.match(f"{root}/scenario/module.py"), none=False)
+            tm.that(exclude.match(f"{root}/module.py"), none=True)
+            tm.that(exclude.match(f"{root}/"), none=True)
 
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
         """Render toolchain Python plus config-owned plugins and overrides."""
