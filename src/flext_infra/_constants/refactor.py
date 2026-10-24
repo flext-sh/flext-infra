@@ -94,6 +94,13 @@ class FlextInfraConstantsRefactor:
     layer-zero exception beside config/settings. It is not an importable root
     singleton, so alias routing keeps reading ``IMPORT_LAW_ROOT_SINGLETONS``.
     """
+    IMPORT_LAW_PYTEST_PLUGIN_GROUP: ClassVar[str] = "pytest11"
+    """Entry-point group whose registered modules are layer zero for pytest.
+
+    pytest loads these plugin modules before any project facade exists, so
+    they import pytest/hypothesis directly (ADR-028 Decision 10 ruling). The
+    module set is read from the installed distributions, never listed.
+    """
     IMPORT_LAW_GUARD_ERRORS: ClassVar[frozenset[str]] = frozenset({
         "ImportError",
         "ModuleNotFoundError",

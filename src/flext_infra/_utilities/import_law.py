@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 from functools import cache
+from importlib.metadata import entry_points
 from pathlib import Path
 from time import monotonic
 from types import MappingProxyType
@@ -856,6 +857,20 @@ class FlextInfraUtilitiesImportLaw:
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
 
     @staticmethod
+    @cache
+    def pytest_plugin_modules() -> frozenset[str]:
+        """Modules the installed distributions register as pytest11 plugins.
+
+        Returns:
+            The plugin module names read from installed entry-point metadata.
+
+        """
+        return frozenset(
+            entry.module
+            for entry in entry_points(group=c.Infra.IMPORT_LAW_PYTEST_PLUGIN_GROUP)
+        )
+
+    @staticmethod
     def import_module_role(module: str) -> Literal["layer0", "family", "consumer"]:
         """Classify a module from the canonical singleton and family vocabulary.
 
@@ -863,11 +878,14 @@ class FlextInfraUtilitiesImportLaw:
         through a typing guard. Family assembly may retain canonical private
         imports; it cannot consume the facade it produces. Singleton names
         identify namespace roots only; nested declarations require native ancestry.
+        Modules registered as pytest11 plugins are layer zero for pytest.
 
         Returns:
             The resulting ``Literal['layer0', 'family', 'consumer']``.
 
         """
+        if module in FlextInfraUtilitiesImportLaw.pytest_plugin_modules():
+            return "layer0"
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         for index, part in enumerate(module.split(".")[1:]):
             stem = part.lstrip("_")

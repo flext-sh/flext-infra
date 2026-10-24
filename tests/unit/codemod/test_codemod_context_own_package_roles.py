@@ -553,3 +553,15 @@ class TestsFlextInfraCodemodContextOwnPackageRoles:
                     eq=admitted,
                     msg=relative,
                 )
+
+    @staticmethod
+    def test_pytest_plugin_modules_are_layer_zero() -> None:
+        """Installed pytest11 plugins are layer zero; ordinary modules stay consumers."""
+        plugins = u.Infra.pytest_plugin_modules()
+        tm.that(plugins, empty=False)
+        for module in plugins:
+            tm.that(u.Infra.import_module_role(module), eq="layer0", msg=module)
+        packaged = sorted(module for module in plugins if "." in module)
+        ordinary = f"{packaged[0].partition('.')[0]}.ordinary_pytest_consumer"
+        tm.that(ordinary in plugins, eq=False)
+        tm.that(u.Infra.import_module_role(ordinary), eq="consumer")
