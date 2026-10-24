@@ -36,6 +36,23 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
             tm.that(triggers, lacks=forbidden)
 
     @staticmethod
+    def test_fresh_render_projects_native_utilities_of_its_planned_manifest(
+        rendered_project: Path,
+    ) -> None:
+        """A fresh render derives the ast-grep utilities from its own candidate.
+
+        The manifest did not exist before the render, so the utilities come
+        from the planned declaration; rendering again from the published tree
+        reproduces the same bytes (fixed point).
+        """
+        root = rendered_project.absolute()
+        spec = config.Infra.codegen.ast_grep
+        expected = u.Infra.codemod_native_generated_sources(root, spec)
+        tm.that(len(expected), gt=0)
+        for path, text in expected.items():
+            tm.that(path.read_text(c.DEFAULT_ENCODING), eq=text)
+
+    @staticmethod
     def test_dependabot_applies_the_fleet_cooldown_everywhere(
         rendered_project: Path,
     ) -> None:

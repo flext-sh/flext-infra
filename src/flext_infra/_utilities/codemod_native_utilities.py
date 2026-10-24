@@ -15,7 +15,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import shutil
 import sys
+import tempfile
 from functools import cache
 from importlib.metadata import packages_distributions
 from pathlib import Path
@@ -25,10 +27,13 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, settings, t
 from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
+from flext_infra._utilities.iteration_directory import (
+    FlextInfraUtilitiesIterationDirectory,
+)
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
@@ -94,16 +99,19 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     def codemod_stdlib_module_utilities(
         cls, project: Path
     ) -> t.MappingKV[str, t.JsonMapping]:
-        """Standard library: the interpreter's ``sys.stdlib_module_names``.
+        """Standard library: ``sys.stdlib_module_names`` plus declared backports.
 
         Returns:
             The ``stdlib-module`` utility rule.
 
         """
         del project
+        backports = config.Infra.tooling.lazy_init.stdlib_backports
         return {
             c.Infra.CodemodContextPredicate.STDLIB_MODULE.value: (
-                cls.codemod_module_names_rule(tuple(sys.stdlib_module_names))
+                cls.codemod_module_names_rule(
+                    tuple(sorted({*sys.stdlib_module_names, *backports}))
+                )
             ),
         }
 
@@ -244,6 +252,57 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             )
             for path, document in sorted(documents.items())
         })
+
+    @classmethod
+    def codemod_native_candidate_sources(
+        cls,
+        project: Path,
+        spec: m.Infra.CodegenAstGrepSpec,
+        planned: t.MappingKV[Path, bytes],
+    ) -> t.MappingKV[Path, str]:
+        """Render the generated sources from the candidate the generation plans.
+
+        The utilities are a projection of the project's declarations. When the
+        plan declares a manifest the disk does not hold yet (a fresh render)
+        or holds differently, the producers read a candidate view: the
+        project's Python sources and configuration with every planned file
+        written over them. Otherwise they read the project itself.
+
+        Returns:
+            Absolute live destination to its generated YAML text.
+
+        """
+        root = project.absolute()
+        manifest = root / c.PYPROJECT_FILENAME
+        declared = planned.get(manifest)
+        if declared is None or (
+            manifest.is_file() and manifest.read_bytes() == declared
+        ):
+            return cls.codemod_native_generated_sources(root, spec)
+        configuration = root / c.CONFIG_DIR_NAME
+        disk = (
+            *FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(root),
+            *(path for path in sorted(configuration.rglob("*")) if path.is_file()),
+        )
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="ast-grep-candidate-", dir=settings.work_dir
+        ) as directory:
+            view = Path(directory) / root.name
+            for path in disk:
+                target = view / path.relative_to(root)
+                u.Cli.ensure_dir(target.parent).unwrap()
+                shutil.copyfile(path, target)
+            for path, content in planned.items():
+                if not path.is_relative_to(root):
+                    continue
+                target = view / path.relative_to(root)
+                u.Cli.ensure_dir(target.parent).unwrap()
+                target.write_bytes(content)
+            rendered = cls.codemod_native_generated_sources(view, spec)
+            return MappingProxyType({
+                root / path.relative_to(view): text for path, text in rendered.items()
+            })
 
     @staticmethod
     def codemod_native_generated_stale(

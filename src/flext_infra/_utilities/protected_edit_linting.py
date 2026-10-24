@@ -72,11 +72,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         declared = config.Infra.codegen.make.ruff
         introduced = sorted(after_codes.value - before_codes.value)
         if introduced:
-            repaired = cls._ruff_stdin_pass(
-                path,
-                source,
-                (c.Infra.CHECK, *declared.lint_fix, "--select", ",".join(introduced)),
-            )
+            repaired = cls.ruff_select_fix(path, source, introduced)
             if repaired.failure:
                 return repaired
             source = repaired.value
@@ -193,6 +189,26 @@ class FlextInfraUtilitiesProtectedEditLinting:
             lambda repaired: cls._ruff_stdin_pass(
                 path, repaired, (c.Infra.FORMAT, *declared.format_apply)
             )
+        )
+
+    @classmethod
+    def ruff_select_fix(
+        cls, path: Path, source: str, select: t.StrSequence
+    ) -> p.Result[str]:
+        """Repair exactly the selected Ruff codes of one candidate on stdin.
+
+        ``path`` is the destination; it selects the owning project's Ruff
+        configuration. The flags are the declared ``make.ruff`` repair surface.
+
+        Returns:
+            The repaired source, or Ruff's native failure.
+
+        """
+        declared = config.Infra.codegen.make.ruff
+        return cls._ruff_stdin_pass(
+            path,
+            source,
+            (c.Infra.CHECK, *declared.lint_fix, "--select", ",".join(select)),
         )
 
     @classmethod

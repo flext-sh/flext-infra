@@ -1424,7 +1424,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             if retired.failure:
                 return result_type.from_failure(retired)
-            utilities = self._ast_grep_utility_plans(target.root, config_spec)
+            utilities = self._ast_grep_utility_plans(
+                target.root, config_spec, governed.value
+            )
             if utilities.failure:
                 return result_type.from_failure(utilities)
             written, stale = utilities.value
@@ -1440,6 +1442,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         self,
         root: Path,
         codegen: m.Infra.CodegenConfigSpec,
+        governed: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Infra.CodegenFilePlan],
@@ -1447,6 +1450,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         ]
     ]:
         """Plan the generated native ast-grep utilities and their retirements.
+
+        The producers read the governed candidate, so a fresh render derives
+        the utilities from the manifest it plans in the same generation.
 
         Returns:
             The written utility file plans and the stale generated removals.
@@ -1459,7 +1465,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ]
         ]
         project = root.absolute()
-        sources = u.Infra.codemod_native_generated_sources(project, codegen.ast_grep)
+        sources = u.Infra.codemod_native_candidate_sources(
+            project,
+            codegen.ast_grep,
+            {
+                plan.path: plan.desired_content
+                for plan in governed
+                if plan.desired_content is not None
+            },
+        )
         written: list[m.Infra.CodegenFilePlan] = []
         for path, rendered in sources.items():
             planned = self.file_plan(

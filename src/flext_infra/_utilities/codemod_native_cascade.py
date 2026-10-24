@@ -1,4 +1,4 @@
-"""Native ast-grep cascade: staged sgconfig per stage, ``--update-all`` to a fixed point.
+"""Native ast-grep cascade: one staged sgconfig per stage, applied to a fixed point.
 
 Every fixable rule that carries no ``metadata.context`` (and is neither an
 owned-path rule nor a rope relocation) applies through ast-grep's own
@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -23,11 +22,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, settings, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
-from flext_infra._utilities.project_discovery import (
-    FlextInfraUtilitiesProjectDiscovery,
-)
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
@@ -78,13 +76,13 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             The shape, or ``None`` for a catalog rule id without a separator.
 
         """
-        shape, separator, _rest = rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)
+        shape, separator, _rest = rule_id.partition(
+            c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        )
         return shape if separator else None
 
     @classmethod
-    def _stage_claims(
-        cls, stage: m.Infra.ModStageConfig, rule_id: str
-    ) -> bool:
+    def _stage_claims(cls, stage: m.Infra.ModStageConfig, rule_id: str) -> bool:
         """Whether a native stage owns one rule id.
 
         A stage with shapes owns exactly those generated shapes; the catalog
@@ -158,7 +156,9 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         )
         generated_rules = {
             identity: path
-            for identity, path in cls._generated_documents(root / spec.rules_dir).items()
+            for identity, path in cls._generated_documents(
+                root / spec.rules_dir
+            ).items()
             if cls._stage_claims(stage, identity)
         }
         reports = root / c.Infra.MOD_NATIVE_STAGE_RELATIVE_PATH
@@ -195,7 +195,9 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         for identity, path in cls._generated_documents(
             root / spec.utilities_dir
         ).items():
-            shutil.copyfile(path, utilities / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}")
+            shutil.copyfile(
+                path, utilities / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}"
+            )
         for identity, path in generated_rules.items():
             shutil.copyfile(
                 path,
@@ -205,8 +207,8 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             )
         retired = reports / f".{stage.name}-retired"
         if final.exists():
-            os.replace(final, retired)
-        os.replace(staging, final)
+            Path(final).replace(retired)
+        Path(staging).replace(final)
         if retired.exists():
             shutil.rmtree(retired)
         staged_ids = tuple(sorted({*rule_ids, *generated_rules}))
@@ -240,7 +242,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             RuntimeError: If ast-grep does not exit successfully.
 
         """
-        command = u.Infra.ast_grep_scan_command(
+        command = FlextInfraUtilitiesBase.ast_grep_scan_command(
             ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=(".",),
@@ -314,10 +316,12 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             for path, content in sorted(sources.items())
             if path.suffix == c.Infra.EXT_PYTHON
             and path.is_relative_to(root)
-            and not content.startswith(c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING))
+            and not content.startswith(
+                c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
+            )
         }
         if not originals or all(
-            stage.kind is c.Infra.ModStageKind.NATIVE and ruleset is None
+            ruleset is None
             for stage, ruleset in staged
             if stage.kind is c.Infra.ModStageKind.NATIVE
         ):
