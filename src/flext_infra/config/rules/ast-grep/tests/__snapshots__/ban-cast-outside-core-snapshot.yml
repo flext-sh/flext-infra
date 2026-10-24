@@ -1,0 +1,22 @@
+id: ban-cast-outside-core
+snapshots:
+  value = cast(int, raw):
+    labels:
+    - source: cast(int, raw)
+      style: primary
+      start: 8
+      end: 22
+    - source: cast
+      style: secondary
+      start: 8
+      end: 12
+  value = typing.cast('str', raw):
+    labels:
+    - source: typing.cast('str', raw)
+      style: primary
+      start: 8
+      end: 31
+    - source: typing.cast
+      style: secondary
+      start: 8
+      end: 19

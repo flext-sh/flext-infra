@@ -1,0 +1,10 @@
+id: ban-sys-path-mutation
+valid:
+  - "paths = list(sys.path)"
+  - "items.append(sys.path[0])"
+invalid:
+  - "sys.path.insert(0, str(root))"
+  - "sys.path.append('/opt/lib')"
+  - "sys.path = [str(root)]"
+  - "sys.path += extra"
+  - "site.addsitedir(path)"

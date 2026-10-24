@@ -1,0 +1,44 @@
+# Utilities are stateless: every public method of a utilities-family class is
+# a staticmethod or classmethod (properties and overload stubs declare no
+# instance behaviour). A Protocol nested in a utilities module describes a
+# structure, not a utility. FlextUtilitiesLogging is the p.Logger protocol
+# adapter: fetch_logger returns stateful instances whose bound name and
+# structlog logger are the state the protocol's logging methods require.
+id: require-static-utility-method
+language: python
+severity: error
+files:
+  - "**/utilities.py"
+  - "**/_utilities.py"
+  - "**/_utilities/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  matches: class-body-method
+  has:
+    field: name
+    pattern: $NAME
+  not:
+    any:
+      - inside:
+          kind: decorated_definition
+          has:
+            kind: decorator
+            regex: "^@(?:staticmethod|classmethod|property|(?:[A-Za-z_][A-Za-z0-9_]*\\.)*(?:setter|deleter|cached_property|overload))\\b"
+      - inside:
+          kind: class_definition
+          stopBy: end
+          any:
+            - has:
+                field: superclasses
+                regex: "\\bProtocol\\b"
+            - has:
+                field: name
+                regex: "^FlextUtilitiesLogging$"
+message: >-
+  Utility method `$NAME` reads instance state: declare it @staticmethod or
+  @classmethod.

@@ -1,0 +1,33 @@
+id: require-static-utility-method
+snapshots:
+  ? |
+    class FlextDemoUtilities:
+        @override
+        def build(self, value):
+            return value
+  : labels:
+    - source: |-
+        def build(self, value):
+                return value
+      style: primary
+      start: 44
+      end: 88
+    - source: build
+      style: secondary
+      start: 48
+      end: 53
+  ? |
+    class FlextDemoUtilities:
+        def build(self, value):
+            return value
+  : labels:
+    - source: |-
+        def build(self, value):
+                return value
+      style: primary
+      start: 30
+      end: 74
+    - source: build
+      style: secondary
+      start: 34
+      end: 39

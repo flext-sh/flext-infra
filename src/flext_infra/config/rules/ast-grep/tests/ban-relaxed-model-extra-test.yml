@@ -1,0 +1,19 @@
+id: ban-relaxed-model-extra
+valid:
+  - |
+    class Order(m.FrozenModel):
+        model_config = m.ConfigDict(extra="forbid")
+  - |
+    class FlexibleModel(BaseModel):
+        model_config = ConfigDict(extra="allow")
+  - |
+    class Payload(m.FlexibleModel):
+        model_config = m.ConfigDict(extra="allow")
+  - "settings = load(extra='allow')"
+invalid:
+  - |
+    class Order(m.FrozenModel):
+        model_config = m.ConfigDict(extra="allow")
+  - |
+    class Order(BaseModel, extra="ignore"):
+        total: int

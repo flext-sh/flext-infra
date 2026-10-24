@@ -1,0 +1,17 @@
+id: ban-bare-collection-field-annotation
+valid:
+  - |
+    class Order(m.FrozenModel):
+        items: t.SequenceOf[str]
+        tags: frozenset[str] = frozenset()
+        names: Annotated[t.StrSequence, m.Field(default_factory=list)]
+  - |
+    class Order(m.FrozenModel):
+        _items: list[str] = []
+invalid:
+  - |
+    class Order(m.FrozenModel):
+        items: list[str]
+  - |
+    class Order(m.FrozenModel):
+        tags: Annotated[set[str] | None, m.Field(description="x")] = None

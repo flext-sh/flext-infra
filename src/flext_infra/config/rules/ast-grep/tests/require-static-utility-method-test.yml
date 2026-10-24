@@ -1,0 +1,37 @@
+id: require-static-utility-method
+valid:
+  - |
+    class FlextDemoUtilities:
+        @staticmethod
+        def build(value):
+            return value
+
+        @classmethod
+        def create(cls):
+            return cls
+
+        def _helper(self):
+            return self
+  - |
+    class FlextDemoUtilities:
+        @property
+        def label(self):
+            return "x"
+  - |
+    class FlextDemoUtilities:
+        class Reader(Protocol):
+            def read(self) -> str: ...
+  - |
+    class FlextUtilitiesLogging:
+        def info(self, message):
+            return message
+invalid:
+  - |
+    class FlextDemoUtilities:
+        def build(self, value):
+            return value
+  - |
+    class FlextDemoUtilities:
+        @override
+        def build(self, value):
+            return value

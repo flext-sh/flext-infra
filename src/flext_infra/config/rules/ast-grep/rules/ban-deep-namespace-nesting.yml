@@ -1,0 +1,38 @@
+# A facade nests one domain level: `Facade.Domain.Declaration`. A class with
+# three enclosing classes (`Facade.Domain.Declaration.Inner`) is a namespace
+# deeper than the single-nesting law allows; prefix-merge the inner class into
+# its parent domain class. Classes declared inside a function are local data.
+id: ban-deep-namespace-nesting
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  kind: class_definition
+  has:
+    field: name
+    pattern: $NAME
+  inside:
+    kind: class_definition
+    stopBy: end
+    inside:
+      kind: class_definition
+      stopBy: end
+      inside:
+        kind: class_definition
+        stopBy: end
+  not:
+    inside:
+      kind: function_definition
+      stopBy: end
+message: >-
+  `$NAME` nests a namespace three classes deep: flatten it by prefix-merging the
+  inner class into its parent domain class.

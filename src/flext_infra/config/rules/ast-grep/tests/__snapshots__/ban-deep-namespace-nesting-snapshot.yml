@@ -1,0 +1,43 @@
+id: ban-deep-namespace-nesting
+snapshots:
+  ? |
+    class FlextDemoModels:
+        class Demo:
+            class Order:
+                class Line:
+                    total: int
+  : labels:
+    - source: |-
+        class Line:
+                        total: int
+      style: primary
+      start: 72
+      end: 110
+    - source: |-
+        class FlextDemoModels:
+            class Demo:
+                class Order:
+                    class Line:
+                        total: int
+      style: secondary
+      start: 0
+      end: 110
+    - source: |-
+        class Demo:
+                class Order:
+                    class Line:
+                        total: int
+      style: secondary
+      start: 27
+      end: 110
+    - source: |-
+        class Order:
+                    class Line:
+                        total: int
+      style: secondary
+      start: 47
+      end: 110
+    - source: Line
+      style: secondary
+      start: 78
+      end: 82

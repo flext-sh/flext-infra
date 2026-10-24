@@ -1,0 +1,17 @@
+id: ban-inline-union-field-annotation
+valid:
+  - |
+    class Order(m.FrozenModel):
+        value: str | int | None = None
+        total: t.Scalar
+        items: t.SequenceOf[str | int | float]
+  - |
+    class Order(m.FrozenModel):
+        value: Annotated[str | None, m.Field(description="x")] = None
+invalid:
+  - |
+    class Order(m.FrozenModel):
+        value: str | int | float
+  - |
+    class Order(m.FrozenModel):
+        value: Annotated[str | int | bytes | None, m.Field(description="x")] = None

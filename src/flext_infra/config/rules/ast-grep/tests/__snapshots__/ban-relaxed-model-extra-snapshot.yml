@@ -1,0 +1,56 @@
+id: ban-relaxed-model-extra
+snapshots:
+  ? |
+    class Order(BaseModel, extra="ignore"):
+        total: int
+  : labels:
+    - source: extra="ignore"
+      style: primary
+      start: 23
+      end: 37
+    - source: extra
+      style: secondary
+      start: 23
+      end: 28
+    - source: '"ignore"'
+      style: secondary
+      start: 29
+      end: 37
+    - source: |-
+        class Order(BaseModel, extra="ignore"):
+            total: int
+      style: secondary
+      start: 0
+      end: 54
+    - source: (BaseModel, extra="ignore")
+      style: secondary
+      start: 11
+      end: 38
+  ? |
+    class Order(m.FrozenModel):
+        model_config = m.ConfigDict(extra="allow")
+  : labels:
+    - source: extra="allow"
+      style: primary
+      start: 60
+      end: 73
+    - source: extra
+      style: secondary
+      start: 60
+      end: 65
+    - source: '"allow"'
+      style: secondary
+      start: 66
+      end: 73
+    - source: m.ConfigDict
+      style: secondary
+      start: 47
+      end: 59
+    - source: m.ConfigDict(extra="allow")
+      style: secondary
+      start: 47
+      end: 74
+    - source: (extra="allow")
+      style: secondary
+      start: 59
+      end: 74

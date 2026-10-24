@@ -1,0 +1,71 @@
+id: ban-mutable-constant-value
+snapshots:
+  ? |
+    class FlextDemoConstants:
+        NAMES: ClassVar[list[str]] = ["a", "b"]
+  : labels:
+    - source: 'NAMES: ClassVar[list[str]] = ["a", "b"]'
+      style: primary
+      start: 30
+      end: 69
+    - source: '["a", "b"]'
+      style: secondary
+      start: 59
+      end: 69
+    - source: NAMES
+      style: secondary
+      start: 30
+      end: 35
+  ? |
+    class FlextDemoConstants:
+        SQUARES = [value * value for value in range(3)]
+  : labels:
+    - source: SQUARES = [value * value for value in range(3)]
+      style: primary
+      start: 30
+      end: 77
+    - source: '[value * value for value in range(3)]'
+      style: secondary
+      start: 40
+      end: 77
+    - source: SQUARES
+      style: secondary
+      start: 30
+      end: 37
+  ? |
+    class FlextDemoConstants:
+        TABLE = {"a": 1}
+  : labels:
+    - source: 'TABLE = {"a": 1}'
+      style: primary
+      start: 30
+      end: 46
+    - source: '{"a": 1}'
+      style: secondary
+      start: 38
+      end: 46
+    - source: TABLE
+      style: secondary
+      start: 30
+      end: 35
+  ? |
+    class FlextDemoConstants:
+        class Demo:
+            KINDS = set()
+  : labels:
+    - source: KINDS = set()
+      style: primary
+      start: 50
+      end: 63
+    - source: set
+      style: secondary
+      start: 58
+      end: 61
+    - source: set()
+      style: secondary
+      start: 58
+      end: 63
+    - source: KINDS
+      style: secondary
+      start: 50
+      end: 55

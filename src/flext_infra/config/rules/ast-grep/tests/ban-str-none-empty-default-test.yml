@@ -1,0 +1,17 @@
+id: ban-str-none-empty-default
+valid:
+  - |
+    class Order(m.FrozenModel):
+        label: str = ""
+        note: str | None = None
+        code: str | int | None = ""
+invalid:
+  - |
+    class Order(m.FrozenModel):
+        label: str | None = ""
+  - |
+    class Order(m.FrozenModel):
+        label: Annotated[str | None, m.Field(description="x")] = ''
+  - |
+    class Order(m.FrozenModel):
+        label: str | None = m.Field(default="", description="x")

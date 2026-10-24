@@ -1,0 +1,27 @@
+# An import is a declared dependency: catching ImportError or
+# ModuleNotFoundError turns a missing dependency into a silent alternate
+# path. Declare the dependency and let the import fail loudly.
+id: ban-import-error-fallback
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  kind: identifier
+  regex: "^(?:ImportError|ModuleNotFoundError)$"
+  pattern: $ERROR
+  inside:
+    kind: except_clause
+    stopBy:
+      kind: block
+message: >-
+  `except $ERROR` turns a missing dependency into an alternate path: declare
+  the dependency and let the import fail.

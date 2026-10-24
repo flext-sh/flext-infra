@@ -1,0 +1,19 @@
+# Coverage measures what runs. A `pragma: no cover` comment removes code from
+# the measurement instead of testing it or deleting it.
+id: ban-pragma-no-cover
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  kind: comment
+  regex: "pragma:\\s*no\\s*cover"
+message: >-
+  `pragma: no cover` hides code from coverage: test the code through its public
+  behaviour or delete it.

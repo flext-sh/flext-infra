@@ -1,0 +1,18 @@
+id: require-model-extra-forbid
+valid:
+  - |
+    class Order(m.FrozenModel):
+        total: int
+  - |
+    class Order(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+  - |
+    class Order(BaseModel, extra="forbid"):
+        total: int
+invalid:
+  - |
+    class Order(BaseModel):
+        total: int
+  - |
+    class Order(pydantic.BaseModel):
+        model_config = ConfigDict(frozen=True)

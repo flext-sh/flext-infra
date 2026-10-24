@@ -1,0 +1,31 @@
+# Import resolution is owned by the installed environment. Mutating
+# `sys.path` (or adding a site directory) at runtime makes imports depend on
+# the caller's location and hides undeclared dependencies.
+id: ban-sys-path-mutation
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  any:
+    - kind: call
+      has:
+        field: function
+        regex: "^(?:sys\\.path\\.(?:append|insert|extend|remove|pop|clear)|site\\.addsitedir)$"
+    - kind: assignment
+      has:
+        field: left
+        regex: "^sys\\.path(?:\\[.*\\])?$"
+    - kind: augmented_assignment
+      has:
+        field: left
+        regex: "^sys\\.path$"
+message: >-
+  Runtime `sys.path` mutation: declare the dependency in the project manifest
+  and import it from the installed environment.

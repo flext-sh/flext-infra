@@ -1,0 +1,47 @@
+# A constants-family attribute is a constant and spells its name in
+# UPPER_SNAKE_CASE. Enumeration members belong to their enum's own naming,
+# pydantic configuration names are framework bindings, and a CamelCase value
+# rebinds a type rather than declaring a constant.
+id: require-uppercase-constant-name
+language: python
+severity: error
+files:
+  - "**/constants.py"
+  - "**/_constants.py"
+  - "**/_constants/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+constraints:
+  NAME:
+    all:
+      - regex: "[a-z]"
+      - not:
+          regex: "^model_(?:config|computed_fields|extra|fields|post_init)$"
+rule:
+  matches: class-body-assignment
+  has:
+    field: left
+    pattern: $NAME
+  not:
+    any:
+      - has:
+          field: right
+          regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$"
+      - has:
+          field: right
+          kind: lambda
+      - inside:
+          kind: expression_statement
+          inside:
+            kind: block
+            inside:
+              kind: class_definition
+              has:
+                field: superclasses
+                regex: "Enum\\b"
+message: >-
+  Constant `$NAME` is not UPPER_SNAKE_CASE: rename it to its upper-case form.

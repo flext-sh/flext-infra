@@ -1,0 +1,36 @@
+# A protocol is the structural contract of a dependency boundary, and its
+# conformance is checked at runtime (pydantic `InstanceOf`, isinstance
+# guards): every class listing `Protocol` among its bases is decorated with
+# `@runtime_checkable`.
+id: require-runtime-checkable-protocol
+language: python
+severity: error
+files:
+  - "**/protocols.py"
+  - "**/_protocols.py"
+  - "**/_protocols/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  kind: class_definition
+  has:
+    field: name
+    pattern: $NAME
+  all:
+    - has:
+        field: superclasses
+        has:
+          regex: "^(?:typing\\.)?Protocol(?:\\[.*\\])?$"
+    - not:
+        inside:
+          kind: decorated_definition
+          has:
+            kind: decorator
+            regex: "^@(?:typing\\.)?runtime_checkable$"
+message: >-
+  Protocol `$NAME` is not runtime-checkable: decorate it with
+  `@runtime_checkable`.

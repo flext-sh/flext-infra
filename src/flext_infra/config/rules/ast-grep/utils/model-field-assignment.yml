@@ -1,0 +1,24 @@
+# A model field declaration: a public annotated assignment written directly in
+# a class body (`name: Annotation [= default]`). ClassVar and Final
+# annotations declare class attributes, not fields; underscore names are
+# private attributes. The field-shape rules scope this util to the models
+# family files, where every annotated class-body assignment is a field.
+id: model-field-assignment
+language: python
+rule:
+  kind: assignment
+  all:
+    - has:
+        field: left
+        kind: identifier
+        regex: "^[a-z][a-z0-9_]*$"
+    - has:
+        field: type
+        not:
+          regex: "^(?:typing\\.)?(?:ClassVar|Final)\\b"
+    - inside:
+        kind: expression_statement
+        inside:
+          kind: block
+          inside:
+            kind: class_definition

@@ -1,0 +1,39 @@
+# A constant never changes: a constants-family attribute bound to a list,
+# dict or set (literal, comprehension or constructor call) is shared mutable
+# state every consumer can corrupt. Bind a tuple, a frozenset or a
+# MappingProxyType instead.
+id: ban-mutable-constant-value
+language: python
+severity: error
+files:
+  - "**/constants.py"
+  - "**/_constants.py"
+  - "**/_constants/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  matches: class-body-assignment
+  has:
+    field: left
+    pattern: $NAME
+  all:
+    - has:
+        field: right
+        any:
+          - kind: list
+          - kind: dictionary
+          - kind: set
+          - kind: list_comprehension
+          - kind: dictionary_comprehension
+          - kind: set_comprehension
+          - kind: call
+            has:
+              field: function
+              regex: "^(?:collections\\.)?(?:list|dict|set|bytearray|defaultdict|deque|OrderedDict|Counter)$"
+message: >-
+  Constant `$NAME` binds a mutable value: use a tuple, a frozenset or a
+  MappingProxyType.

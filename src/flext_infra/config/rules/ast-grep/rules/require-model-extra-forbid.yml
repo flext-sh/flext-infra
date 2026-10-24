@@ -1,0 +1,48 @@
+# A model declared on the raw pydantic base inherits no configured preset, so
+# it must state `extra="forbid"` itself: an undeclared key is a contract
+# violation, never silently ignored. Models on an `m.*` preset inherit the
+# preset's declared extra policy.
+id: require-model-extra-forbid
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  kind: class_definition
+  has:
+    field: name
+    pattern: $NAME
+  all:
+    - has:
+        field: superclasses
+        has:
+          regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*BaseModel$"
+    - not:
+        has:
+          field: superclasses
+          has:
+            kind: keyword_argument
+            regex: "^extra\\s*="
+    - not:
+        has:
+          field: body
+          has:
+            kind: expression_statement
+            has:
+              kind: assignment
+              all:
+                - has:
+                    field: left
+                    regex: "^model_config$"
+                - has:
+                    field: right
+                    regex: "\\bextra\\s*="
+message: >-
+  Model `$NAME` extends the raw pydantic base without an extra policy: inherit
+  an `m.*` preset or declare `extra="forbid"`.

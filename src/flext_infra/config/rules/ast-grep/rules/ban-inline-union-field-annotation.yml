@@ -1,0 +1,67 @@
+# A model field annotation names one contract. A union with more than two
+# non-None arms, written inline at the top of the annotation (directly or as
+# the first argument of Annotated), is a type vocabulary entry that belongs in
+# typings.py as a named `t.*` alias.
+id: ban-inline-union-field-annotation
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+rule:
+  kind: binary_operator
+  all:
+    - has:
+        field: operator
+        regex: "^\\|$"
+    - has:
+        field: left
+        kind: binary_operator
+        has:
+          field: operator
+          regex: "^\\|$"
+    - any:
+        - has:
+            field: left
+            has:
+              field: left
+              kind: binary_operator
+        - all:
+            - not:
+                has:
+                  field: right
+                  kind: none
+            - not:
+                has:
+                  field: left
+                  has:
+                    kind: none
+    - any:
+        - inside:
+            kind: type
+            inside:
+              matches: model-field-assignment
+        - inside:
+            kind: type
+            nthChild: 1
+            inside:
+              kind: type_parameter
+              inside:
+                kind: generic_type
+                has:
+                  kind: identifier
+                  regex: "^Annotated$"
+                inside:
+                  kind: type
+                  inside:
+                    matches: model-field-assignment
+message: >-
+  Inline union with more than two arms in a model field: declare it once as a
+  named `t.*` alias in typings.py and annotate the field with that alias.

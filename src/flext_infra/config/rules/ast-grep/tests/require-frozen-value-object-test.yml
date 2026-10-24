@@ -1,0 +1,15 @@
+id: require-frozen-value-object
+valid:
+  - |
+    class Money(m.FrozenValueModel):
+        amount: int
+  - |
+    class State(m.ManagedModel):
+        model_config = m.ConfigDict(frozen=False)
+invalid:
+  - |
+    class Money(m.FrozenValueModel):
+        model_config = m.ConfigDict(frozen=False)
+  - |
+    class Money(m.ImmutableValueModel, frozen=False):
+        amount: int

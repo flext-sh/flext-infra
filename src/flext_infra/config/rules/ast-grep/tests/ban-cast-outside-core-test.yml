@@ -1,0 +1,9 @@
+id: ban-cast-outside-core
+valid:
+  - "value = result.unwrap()"
+  - "if isinstance(value, str):\n    text = value"
+  - "self.cast(value)"
+  - "message = 'cast(int, value) is banned'"
+invalid:
+  - "value = cast(int, raw)"
+  - "value = typing.cast('str', raw)"

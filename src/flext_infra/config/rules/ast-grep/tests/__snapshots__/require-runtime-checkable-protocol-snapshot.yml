@@ -1,0 +1,47 @@
+id: require-runtime-checkable-protocol
+snapshots:
+  ? |
+    class FlextDemoProtocols:
+        class Reader(Protocol):
+            def read(self) -> str: ...
+  : labels:
+    - source: |-
+        class Reader(Protocol):
+                def read(self) -> str: ...
+      style: primary
+      start: 30
+      end: 88
+    - source: Protocol
+      style: secondary
+      start: 43
+      end: 51
+    - source: Protocol
+      style: secondary
+      start: 43
+      end: 51
+    - source: Reader
+      style: secondary
+      start: 36
+      end: 42
+  ? |
+    class Writer(typing.Protocol[T]):
+        def write(self, value: T) -> None: ...
+  : labels:
+    - source: |-
+        class Writer(typing.Protocol[T]):
+            def write(self, value: T) -> None: ...
+      style: primary
+      start: 0
+      end: 76
+    - source: typing.Protocol[T]
+      style: secondary
+      start: 13
+      end: 31
+    - source: typing.Protocol[T]
+      style: secondary
+      start: 13
+      end: 31
+    - source: Writer
+      style: secondary
+      start: 6
+      end: 12
