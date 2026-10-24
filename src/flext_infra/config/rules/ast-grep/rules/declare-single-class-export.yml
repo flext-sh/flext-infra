@@ -5,16 +5,19 @@
 #
 # Test-suite modules publish nothing (ban-test-suite-module-all): they are
 # pytest collection targets, never import sources, so this rule must not ask
-# them for the `__all__` that rule deletes. The ignores mirror its suite scope.
+# them for the `__all__` that rule deletes. The ignores mirror its suite scope
+# and are the only exception data; they still declare their single Tests class
+# under ban-loose-module-object. Globs are anchored with `**/` so a scan from a
+# workspace root and from the project root elect the same files.
 id: declare-single-class-export
 language: python
 severity: error
 ignores:
-  - "tests/unit/**/*.py"
-  - "tests/integration/**/*.py"
-  - "tests/e2e/**/*.py"
-  - "tests/performance/**/*.py"
-  - "tests/benchmark/**/*.py"
+  - "**/tests/unit/**/*.py"
+  - "**/tests/integration/**/*.py"
+  - "**/tests/e2e/**/*.py"
+  - "**/tests/performance/**/*.py"
+  - "**/tests/benchmark/**/*.py"
 metadata:
   context:
     NAME:

@@ -49,3 +49,9 @@ snapshots:
       style: primary
       start: 9
       end: 38
+  source = f"value = {name!r}\n" f"other = 1\n" f"third = 2\n":
+    labels:
+    - source: f"value = {name!r}\n" f"other = 1\n" f"third = 2\n"
+      style: primary
+      start: 9
+      end: 60

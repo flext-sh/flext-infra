@@ -34,10 +34,42 @@ valid:
         type _PrivateAlias = str
   - |
     __version__ = "1"
+  - |
+    def main() -> int:
+        return FlextFooCli.run()
+    if __name__ == "__main__":
+        raise SystemExit(main())
+  - |
+    @pytest.fixture
+    def workspace(tmp_path: Path) -> Path:
+        return tmp_path
+  - |
+    @fixture(scope="session")
+    def session_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
+        return tmp_path_factory.mktemp("root")
+  - |
+    def pytest_sessionstart(session: pytest.Session) -> None:
+        return None
+  - |
+    pytest_plugins = ["tests.fixtures.git"]
 invalid:
   - |
     def main() -> None:
         return None
+  - |
+    def main() -> None:
+        return None
+    if __name__ != "__main__":
+        main()
+  - |
+    def _read_fixture(*parts: str) -> str:
+        return ""
+  - |
+    @cache
+    def workspace_fixture() -> Path:
+        return Path()
+  - |
+    _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
   - |
     T = TypeVar("T")
   - |

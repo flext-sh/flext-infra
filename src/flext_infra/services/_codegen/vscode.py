@@ -58,48 +58,6 @@ class FlextInfraCodegenVscodeMixin:
         return u.Infra.configuration_pairs(spec.settings)
 
     @classmethod
-    def vscode_local_declaration_delta(
-        cls,
-        repository_root: Path,
-        indexed: t.JsonMapping,
-        live: t.JsonMapping,
-        *,
-        spec: m.Infra.CodegenVscodeSpec,
-    ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
-        """Preserve actual local changes against the versioned editor document.
-
-        Returns:
-            Local declarations without promoting unchanged indexed defaults.
-
-        """
-        result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
-        loaded = u.Infra.load_codegen_inputs(repository_root)
-        if loaded.failure:
-            return result_type.from_failure(loaded)
-        original = indexed
-        current = live
-        retired = {
-            key
-            for key in original.keys() - current.keys()
-            if key not in cls.vscode_settings(spec)
-            and key not in spec.map_union_settings
-            and key not in spec.stripped_keys
-            and key not in cls._artifact_settings(loaded.value.spec)
-        }
-        if retired:
-            error = ValueError(
-                "local editor deletions cannot be represented by configuration merge: "
-                + ", ".join(sorted(retired)),
-            )
-            return result_type.fail(str(error), exception=error)
-        changed = {
-            key: value
-            for key, value in current.items()
-            if key not in original or value != original[key]
-        }
-        return cls.vscode_declaration_delta(repository_root, changed, spec=spec)
-
-    @classmethod
     def vscode_declaration_delta(
         cls,
         repository_root: Path,

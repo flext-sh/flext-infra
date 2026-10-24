@@ -915,17 +915,6 @@ class FlextInfraGate:
         raise NotImplementedError(msg)
 
     @staticmethod
-    def _fix_raw_output(result: p.Cli.CommandOutput) -> str:
-        """Assemble raw output from fix result. Default: stderr only.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        stderr: str = result.stderr
-        return stderr
-
-    @staticmethod
     def _raw_output(result: p.Cli.CommandOutput) -> str:
         """Preserve diagnostics regardless of the stream selected by a tool.
 

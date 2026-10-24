@@ -110,29 +110,6 @@ message: >-
   rope, libcst and griffe are owned by flext-infra: use its refactor, codemod
   and codegen facades.
 ---
-# Inside flext-infra itself the owner exemption above does not open the
-# package: a library flext-infra owns or depends on directly is imported only
-# by its owning family modules -- behavior in `_utilities`, its types in
-# `_typings` and `_protocols`. Every other module is an orchestrator that
-# composes `c`/`t`/`p`/`m`/`u` members.
-id: ban-flext-infra-library-outside-owner-family
-language: python
-severity: error
-files:
-- "**/flext_infra/**/*.py"
-ignores:
-- "**/flext_infra/_utilities/**"
-- "**/flext_infra/_typings/**"
-- "**/flext_infra/_protocols/**"
-rule:
-  all:
-  - matches: library-import-name
-  - regex: "^(?:rope|libcst|griffe|packaging)(?:\\.|$)"
-message: >-
-  Inside flext-infra, rope, libcst, griffe and packaging are imported only by
-  the owning `_utilities` module (behavior) and `_typings`/`_protocols` (their
-  types); orchestrators consume them through u.Infra and t.Infra members.
----
 id: ban-direct-ldap3-import
 language: python
 severity: error

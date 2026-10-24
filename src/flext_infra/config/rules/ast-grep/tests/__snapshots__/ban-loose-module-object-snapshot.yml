@@ -30,6 +30,35 @@ snapshots:
       start: 0
       end: 40
   ? |
+    @cache
+    def workspace_fixture() -> Path:
+        return Path()
+  : labels:
+    - source: |-
+        def workspace_fixture() -> Path:
+            return Path()
+      style: primary
+      start: 7
+      end: 57
+    - source: workspace_fixture
+      style: secondary
+      start: 11
+      end: 28
+    - source: |
+        @cache
+        def workspace_fixture() -> Path:
+            return Path()
+      style: secondary
+      start: 0
+      end: 58
+    - source: |-
+        @cache
+        def workspace_fixture() -> Path:
+            return Path()
+      style: secondary
+      start: 0
+      end: 57
+  ? |
     Alias: TypeAlias = int
   : labels:
     - source: 'Alias: TypeAlias = int'
@@ -125,6 +154,30 @@ snapshots:
       style: secondary
       start: 0
       end: 16
+  ? |
+    _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
+  : labels:
+    - source: _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
+      style: primary
+      start: 0
+      end: 49
+    - source: |
+        _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
+      style: secondary
+      start: 0
+      end: 50
+    - source: _SESSION_ISOLATION
+      style: secondary
+      start: 0
+      end: 18
+    - source: pytest.StashKey[ExitStack]()
+      style: secondary
+      start: 21
+      end: 49
+    - source: _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
+      style: secondary
+      start: 0
+      end: 49
   ? |
     class First:
         pass
@@ -352,6 +405,26 @@ snapshots:
       start: 28
       end: 79
   ? |
+    def _read_fixture(*parts: str) -> str:
+        return ""
+  : labels:
+    - source: |-
+        def _read_fixture(*parts: str) -> str:
+            return ""
+      style: primary
+      start: 0
+      end: 52
+    - source: _read_fixture
+      style: secondary
+      start: 4
+      end: 17
+    - source: |
+        def _read_fixture(*parts: str) -> str:
+            return ""
+      style: secondary
+      start: 0
+      end: 53
+  ? |
     def helper() -> int:
         return 1
   : labels:
@@ -391,6 +464,30 @@ snapshots:
       style: secondary
       start: 0
       end: 36
+  ? |
+    def main() -> None:
+        return None
+    if __name__ != "__main__":
+        main()
+  : labels:
+    - source: |-
+        def main() -> None:
+            return None
+      style: primary
+      start: 0
+      end: 35
+    - source: main
+      style: secondary
+      start: 4
+      end: 8
+    - source: |
+        def main() -> None:
+            return None
+        if __name__ != "__main__":
+            main()
+      style: secondary
+      start: 0
+      end: 74
   ? |
     logger = u.fetch_logger(__name__)
   : labels:

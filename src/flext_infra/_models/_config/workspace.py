@@ -376,28 +376,22 @@ class FlextInfraConfigModelsWorkspace:
                     if the local group inclusions form a cycle.
 
             """
-            names = {
-                t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(name): name
-                for name in groups
-            }
+            canonical = t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python
+            names = {canonical(name): name for name in groups}
             if len(names) != len(groups):
                 msg = "dependency group names have colliding normalized identities"
                 raise ValueError(msg)
             graph: dict[str, tuple[str, ...]] = {}
             for name, entries in groups.items():
                 references = tuple(
-                    t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
-                        entry.include_group
-                    )
+                    canonical(entry.include_group)
                     for entry in entries
                     if not isinstance(entry, str)
                 )
                 if any(reference not in names for reference in references):
                     msg = f"dependency group includes an undeclared group: {name}"
                     raise ValueError(msg)
-                graph[t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(name)] = (
-                    references
-                )
+                graph[canonical(name)] = references
             active: list[str] = []
             visited: set[str] = set()
 

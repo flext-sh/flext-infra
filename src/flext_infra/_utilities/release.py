@@ -430,13 +430,11 @@ class FlextInfraUtilitiesRelease:
             # on the index or out of scope, and treating it as an edge would
             # deadlock the graph on a package this release never publishes.
             edges[name] = tuple(
-                sorted(
-                    dependency
-                    for dependency in declared.value
-                    if dependency in selected and dependency != name
-                ),
+                dependency
+                for dependency in declared.value
+                if dependency in selected and dependency != name
             )
-        return FlextInfraUtilitiesDependencies.dependency_waves(edges)
+        return u.Cli.dag_waves(edges)
 
     @staticmethod
     def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
@@ -484,13 +482,10 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def release_specifier(version: str) -> p.Result[str]:
-        """Return the compatible-release range a sibling's declared version earns.
-
-        The same minor line before 1.0, the same major line after: exactly
-        what semantic versioning promises is compatible.
+        """Return the semver-compatible range (minor line before 1.0, else major).
 
         Returns:
-            The compatible-release range a sibling's declared version earns.
+            The compatible-release specifier for the declared version.
 
         """
         try:
@@ -503,8 +498,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def release_identity_verdict(
-        identity: t.Pair[str | None, str],
-        expectation: m.Infra.ArtifactExpectation,
+        identity: t.Pair[str | None, str], expectation: m.Infra.ArtifactExpectation
     ) -> p.Result[bool]:
         """Prove one artifact's core metadata ``(Name, Version)`` identity.
 
@@ -516,7 +510,7 @@ class FlextInfraUtilitiesRelease:
         project, version = expectation.project, expectation.version
         if name is None or canonicalize_name(name) != canonicalize_name(project):
             return r[bool].fail(
-                f"artifact Name mismatch: expected {project}, found {name}",
+                f"artifact Name mismatch: expected {project}, found {name}"
             )
         try:
             expected, actual = Version(version), Version(raw_version)
@@ -530,9 +524,7 @@ class FlextInfraUtilitiesRelease:
 
     @classmethod
     def release_requirement_pins_verdict(
-        cls,
-        requirements: t.StrSequence,
-        versions: t.StrMapping,
+        cls, requirements: t.StrSequence, versions: t.StrMapping
     ) -> p.Result[bool]:
         """Prove every internal ``Requires-Dist`` carries its declared fleet pin.
 
@@ -564,20 +556,12 @@ class FlextInfraUtilitiesRelease:
 
     @classmethod
     def release_pinned_requirement(
-        cls,
-        requirement: str,
-        versions: t.StrMapping,
+        cls, requirement: str, versions: t.StrMapping
     ) -> p.Result[t.Pair[str, bool]]:
-        """Render one requirement, pinning internal dependencies to their versions.
-
-        Args:
-            requirement: The unpinned requirement string.
-            versions: Internal distribution versions declared by their repos.
+        """Pin one requirement's internal dependency to its declared version.
 
         Returns:
-            The rendered requirement text with whether it retains a direct
-            reference, or a failure when the requirement is unparseable or
-            an internal dependency version is unknown to this release.
+            The rendered text and whether it keeps a direct reference.
 
         """
         result_type = r[t.Pair[str, bool]]
