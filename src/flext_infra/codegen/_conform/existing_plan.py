@@ -467,9 +467,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             contract.destinations is not None
             and contract.destinations <= self._pyproject_destinations(codegen)
         )
-        if metadata_only:
-            # Metadata-only planning keeps managed projections and authenticated
-            # source capture, but does not elect Python lazy initializers.
+        if metadata_only or contract.custom:
+            # Metadata-only planning elects no initializer; custom planning elects
+            # them exactly once, over the sources its facades project.
             lazy_result = r[
                 t.Pair[
                     t.SequenceOf[m.Infra.CodegenFilePlan],
@@ -559,22 +559,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             f"elapsed={time.monotonic() - started:.2f}s"
         )
         projected_files = {plan.path: plan for plan in (*cohort, *custom_result.value)}
-        exported: t.SequenceOf[m.Infra.CodegenFilePlan] = ()
-        projected_inputs = custom_inputs.value
-        # Exports re-derive only when this surface elected no initializer yet or
-        # custom planning changed a Python source; otherwise the elected
-        # initializers already describe these exact sources.
-        if metadata_only or any(
-            plan.path.suffix == c.Infra.EXT_PYTHON
-            and u.Infra.codegen_file_requires_effect(plan)
-            for plan in custom_result.value
-        ):
-            planned_exports = self._projected_exports(
-                root, projected_inputs, tuple(projected_files.values())
-            )
-            if planned_exports.failure:
-                return result_type.from_failure(planned_exports)
-            exported, projected_inputs = planned_exports.value
+        planned_exports = self._projected_exports(
+            root, custom_inputs.value, tuple(projected_files.values())
+        )
+        if planned_exports.failure:
+            return result_type.from_failure(planned_exports)
+        exported, projected_inputs = planned_exports.value
         projected_files.update((plan.path, plan) for plan in exported)
         initializers = tuple(
             {
