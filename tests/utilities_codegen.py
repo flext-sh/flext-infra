@@ -208,45 +208,18 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         )
 
     @staticmethod
-    def prepare_source_preview(repository_root: Path) -> None:
-        """Authenticate the real preview control plane before source receipts."""
-        transaction = codegen.FlextInfraCodegenTransaction(
-            codegen.FlextInfraCodegenMiseArtifacts(repository_root=repository_root)
-        )
-        tm.ok(
-            transaction.run_files_locked(
-                transaction.capability_roots(
-                    "fixture-source",
-                    tuple(
-                        dict.fromkeys((
-                            repository_root,
-                            *u.Infra.discover_rope_project_roots(repository_root),
-                        ))
-                    ),
-                ),
-                lambda _: r[bool].ok(value=True),
-            )
-        )
-
-    @staticmethod
-    def provision_source_preview(repository_root: Path) -> None:
-        """Provision a legacy fixture's physical runtime and preview authority."""
-        TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(repository_root)
-        TestsFlextInfraUtilitiesCodegenMixin.prepare_source_preview(repository_root)
-
-    @staticmethod
     @contextmanager
     def authenticated_rope_workspace(
         repository_root: Path,
     ) -> Generator[p.Infra.RopeWorkspaceDsl]:
-        """Borrow the public source capability for one native planning session.
+        """Borrow the public source view for one native planning session.
 
         Yields:
-            A workspace bound to the authenticated original source graph.
+            A workspace bound to the overlaid source view.
 
         """
         with (
-            u.Infra.facade_source_project(repository_root) as (project, _, _),
+            u.Infra.facade_source_project(repository_root) as (project, _),
             workspace.FlextInfraRopeWorkspace.open_workspace(
                 repository_root, source_project=project
             ) as rope_workspace,
@@ -424,7 +397,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         service = codegen.FlextInfraCodegenLazyInit(repository_root=repository_root)
         planned = service.plan_files().unwrap()
         changed = tuple(
-            plan for plan in planned.files if u.Infra.codegen_file_requires_effect(plan)
+            plan for plan in planned if u.Infra.codegen_file_requires_effect(plan)
         )
         if check_only:
             return len(changed)
@@ -434,8 +407,10 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         return 0 if materialized.success else 1
 
     @staticmethod
-    def plan_lazy_init(repository_root: Path) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Return the lazy-init planning receipt WITHOUT unwrapping it.
+    def plan_lazy_init(
+        repository_root: Path,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Return the lazy-init file plans WITHOUT unwrapping them.
 
         Refusing to plan is a first-class planning outcome — ambiguous export
         ownership stops the phase before a single file plan is built. A helper
@@ -443,7 +418,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         pre-effect contract unobservable through the public surface.
 
         Returns:
-            The lazy-init planning receipt WITHOUT unwrapping it.
+            The lazy-init file plans WITHOUT unwrapping them.
 
         """
         return codegen.FlextInfraCodegenLazyInit(
@@ -460,11 +435,8 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The resulting ``p.Result[bool]``.
 
         """
-        planned = service.plan_files()
-        if planned.failure:
-            return r[bool].from_failure(planned)
         return TestsFlextInfraUtilitiesCodegenMixin.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(planned.value.files),
+            service.plan_files(),
         )
 
     @staticmethod
@@ -482,33 +454,14 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         changed = tuple(
             plan for plan in planned.value if u.Infra.codegen_file_requires_effect(plan)
         )
-        for plan in changed:
-            before = u.Infra.codegen_file_before_state(plan)
-            if plan.desired_content is not None and (
-                before.failure or before.value.parent_inode is None
-            ):
-                # Planning is read-only, so a destination planned into an absent
-                # directory chain carries no parent identity. Like the
-                # transaction owner at apply, the publisher materializes the
-                # chain and reads the destination again before publishing.
-                plan.path.parent.mkdir(parents=True, exist_ok=True)
-                before = u.Cli.atomic_read_binary_file_state(plan.path)
-            if before.failure:
-                return r[bool].from_failure(before)
-            if plan.desired_content is None:
-                result = u.Cli.atomic_delete_binary_file_guarded(before.value)
-            else:
-                if plan.desired_mode is None:
-                    return r[bool].fail(
-                        f"lazy-init plan has no desired mode: {plan.path}",
-                    )
-                result = u.Cli.atomic_write_binary_file_guarded(
-                    before.value,
-                    plan.desired_content,
-                    permission_mode=plan.desired_mode,
-                )
-            if result.failure:
-                return r[bool].from_failure(result)
+        if not changed:
+            return r[bool].ok(value=True)
+        lock = u.Infra.mutation_lock_path(changed[0].project)
+        if lock.failure:
+            return r[bool].from_failure(lock)
+        published = u.Cli.publish_file_changes(changed, lock_path=lock.value)
+        if published.failure:
+            return r[bool].from_failure(published)
         for project in sorted({plan.project for plan in changed}):
             TestsFlextInfraUtilitiesCodegenMixin._stage_changed_codegen_plans(
                 changed, project

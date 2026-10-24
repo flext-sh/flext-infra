@@ -189,25 +189,22 @@ class FlextInfraRopeNativeProject(Project):
         """
         project = cast("p.Infra.RopeProject", self)
         resources: t.SequenceOf[p.Infra.RopeResource]
-        if project.authenticated_sources:
-            root = Path(self.root.real_path)
-            paths = {
-                path
-                for folder in self._custom_source_folders
-                if isinstance(folder, Folder)
-                for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                    Path(folder.real_path),
-                    workspace_excluded_top_dirs=frozenset(),
-                    source_project=project,
-                )
-                if path.suffix == c.Infra.EXT_PYTHON
-            }
-            resources = tuple(
-                project.get_resource(path.relative_to(root).as_posix())
-                for path in sorted(paths)
+        root = Path(self.root.real_path)
+        paths = {
+            path
+            for folder in self._custom_source_folders
+            if isinstance(folder, Folder)
+            for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                Path(folder.real_path),
+                workspace_excluded_top_dirs=frozenset(),
+                source_project=project,
             )
-        else:
-            resources = cast("p.Infra.RopeProject", super()).get_python_files()
+            if path.suffix == c.Infra.EXT_PYTHON
+        }
+        resources = tuple(
+            project.get_resource(path.relative_to(root).as_posix())
+            for path in sorted(paths)
+        )
         files: list[File] = []
         for resource in resources:
             if not isinstance(resource, File):

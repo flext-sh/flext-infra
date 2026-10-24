@@ -60,7 +60,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             return r[t.JsonMapping].from_failure(lazy_plans)
         pending_lazy = tuple(
             plan
-            for plan in lazy_plans.value.files
+            for plan in lazy_plans.value
             if u.Infra.codegen_file_requires_effect(plan)
         )
         if pending_lazy:

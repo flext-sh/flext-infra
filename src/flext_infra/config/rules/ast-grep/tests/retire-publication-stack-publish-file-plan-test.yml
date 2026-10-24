@@ -1,0 +1,12 @@
+id: retire-publication-stack-publish-file-plan
+valid:
+  - |
+    written = u.Cli.publish_file_changes((planned,), lock_path=lock)
+invalid:
+  - |
+    written = FlextInfraMisePublication.publish_file_plan(
+        planned,
+        phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
+    )
+  - |
+    published = FlextInfraMisePublication.publish_file_plan(planned, phase="version-file")

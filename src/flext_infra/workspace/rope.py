@@ -24,9 +24,6 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         m.Field(description="Optional Rope project root; defaults to repository_root"),
     ] = None
 
-    _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
-        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
-    )
     _codegen_projects: t.VariadicTuple[p.Infra.ProjectInfo] | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -69,7 +66,6 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         rope_repository_root: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
         workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
-        index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> Self:
         """Create one ready-to-use Rope workspace session.
 
@@ -81,7 +77,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
 
         Raises:
             ValueError: If an explicit source project does not match the
-                declared workspace root.
+                declared workspace root, or an index is reused without it.
 
         """
         # Scan policy is owned only by the
@@ -100,12 +96,10 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             workspace._rope_project = source_project
             workspace._owns_rope_project = False
         if workspace_index is not None:
-            if source_project is None or index_receipt is None:
-                msg = "Rope structural index reuse requires its original source receipt"
+            if source_project is None:
+                msg = "Rope structural index reuse requires its source project"
                 raise ValueError(msg)
             workspace._workspace_index = workspace_index
-            workspace._index_receipt = index_receipt
-            workspace._reused_index = True
         _ = workspace.rope_project
         return workspace
 
@@ -147,7 +141,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         preview flows so cleanup does not rescan an already-restored project.
         Normal refresh also invalidates module inventory and project discovery;
         reverted previews retain those unchanged indexes. Layouts always
-        invalidate with their query receipts.
+        invalidate.
 
         Returns:
             The resulting ``m.Infra.RopeWorkspaceSession``.
@@ -160,7 +154,6 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
-        self._query_receipts.clear()
         self._project_layout_cache.clear()
         if not preserve_indexes:
             self._workspace_index = None
@@ -201,34 +194,11 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         """
         resolved_root = project_root.resolve()
         cache_key = str(resolved_root)
-        if self.rope_project.authenticated_sources:
-            with u.Infra.cached_source_query(
-                self.rope_project,
-                self._project_layout_cache,
-                cache_key,
-                self._query_receipts,
-                f"layout:{cache_key}",
-            ) as cached:
-                if not cached:
-                    self._project_layout_cache[cache_key] = u.Infra.layout(
-                        resolved_root, rope_project=self.rope_project
-                    )
-                return self._project_layout_cache[cache_key]
-        if not self._owns_rope_project:
-            return u.Infra.layout(resolved_root, rope_project=self.rope_project)
-        if cache_key in self._project_layout_cache:
-            return self._project_layout_cache[cache_key]
-        project_info = next(
-            (
-                project
-                for project in self.projects()
-                if project.path.resolve() == resolved_root
-            ),
-            None,
-        )
-        layout = u.Infra.layout(resolved_root, project=project_info)
-        self._project_layout_cache[cache_key] = layout
-        return layout
+        if cache_key not in self._project_layout_cache:
+            self._project_layout_cache[cache_key] = u.Infra.layout(
+                resolved_root, rope_project=self.rope_project
+            )
+        return self._project_layout_cache[cache_key]
 
     def package_context(self, package_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return one centralized lazy-init package context for a package dir.
@@ -239,41 +209,29 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         """
         resolved_dir = package_dir.resolve()
         cache_key = str(resolved_dir)
-        with u.Infra.cached_source_query(
-            self.rope_project,
-            self._package_context_cache,
-            cache_key,
-            self._query_receipts,
-            f"context:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._package_context_cache[cache_key]
-            package_entry = self.package(resolved_dir)
-            init_path = resolved_dir / c.Infra.INIT_PY
-            current_pkg = (
-                package_entry.package_name if package_entry is not None else ""
-            )
-            init_resource = self.resource(init_path)
-            generated_init = (
-                init_resource is not None
-                and init_resource.read().startswith(
-                    c.Infra.AUTOGEN_HEADERS,
-                )
-            )
-            context = m.Infra.LazyInitPackageContext(
-                pkg_dir=resolved_dir,
-                init_path=init_path,
-                current_pkg=current_pkg,
-                surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
-                generated_init=generated_init,
-                importable=bool(current_pkg)
-                and all(
-                    part.isidentifier() and not iskeyword(part)
-                    for part in current_pkg.split(".")
-                ),
-            )
-            self._package_context_cache[cache_key] = context
-            return context
+        if cache_key in self._package_context_cache:
+            return self._package_context_cache[cache_key]
+        package_entry = self.package(resolved_dir)
+        init_path = resolved_dir / c.Infra.INIT_PY
+        current_pkg = package_entry.package_name if package_entry is not None else ""
+        init_resource = self.resource(init_path)
+        generated_init = init_resource is not None and init_resource.read().startswith(
+            c.Infra.AUTOGEN_HEADERS,
+        )
+        context = m.Infra.LazyInitPackageContext(
+            pkg_dir=resolved_dir,
+            init_path=init_path,
+            current_pkg=current_pkg,
+            surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
+            generated_init=generated_init,
+            importable=bool(current_pkg)
+            and all(
+                part.isidentifier() and not iskeyword(part)
+                for part in current_pkg.split(".")
+            ),
+        )
+        self._package_context_cache[cache_key] = context
+        return context
 
     def policy(
         self,
@@ -293,32 +251,25 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             rel_path if rel_path is not None else Path(resolved_file.name)
         )
         cache_key = (str(resolved_file), str(resolved_rel_path), current_pkg)
-        with u.Infra.cached_source_query(
-            self.rope_project,
-            self._module_policy_cache,
-            cache_key,
-            self._query_receipts,
-            f"policy:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._module_policy_cache[cache_key]
-            module_entry = self.module(resolved_file)
-            project_root = (
-                module_entry.project_root
-                if module_entry is not None and module_entry.project_root is not None
-                else u.Infra.project_root(resolved_file)
-            )
-            policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
-                resolved_file,
-                rope_project=self.rope_project,
-                rel_path=resolved_rel_path,
-                current_pkg=current_pkg,
-                project_layout=self.layout(project_root)
-                if project_root is not None
-                else None,
-            )
-            self._module_policy_cache[cache_key] = policy
-            return policy
+        if cache_key in self._module_policy_cache:
+            return self._module_policy_cache[cache_key]
+        module_entry = self.module(resolved_file)
+        project_root = (
+            module_entry.project_root
+            if module_entry is not None and module_entry.project_root is not None
+            else u.Infra.project_root(resolved_file)
+        )
+        policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
+            resolved_file,
+            rope_project=self.rope_project,
+            rel_path=resolved_rel_path,
+            current_pkg=current_pkg,
+            project_layout=self.layout(project_root)
+            if project_root is not None
+            else None,
+        )
+        self._module_policy_cache[cache_key] = policy
+        return policy
 
     def convention(
         self,
@@ -334,56 +285,47 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         """
         resolved_file = file_path.resolve()
         cache_key = f"{resolved_file}::{rel_path or ''}"
-        with u.Infra.cached_source_query(
-            self.rope_project,
-            self._module_convention_cache,
-            cache_key,
-            self._query_receipts,
-            f"convention:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._module_convention_cache[cache_key]
-            module_entry = self.module(resolved_file)
-            package_dir = (
-                module_entry.package_dir.resolve()
-                if module_entry is not None
-                else resolved_file.parent.resolve()
-            )
-            resolved_rel_path = (
-                rel_path
-                if rel_path is not None
-                else resolved_file.relative_to(package_dir)
-                if resolved_file.is_relative_to(package_dir)
-                else Path(resolved_file.name)
-            )
-            package_context = self.package_context(package_dir)
-            policy = self.policy(
-                resolved_file,
-                rel_path=resolved_rel_path,
-                current_pkg=package_context.current_pkg,
-            )
-            project_root = (
-                module_entry.project_root
-                if module_entry is not None and module_entry.project_root is not None
-                else u.Infra.project_root(resolved_file)
-            )
-            project_layout = (
-                self.layout(project_root) if project_root is not None else None
-            )
-            convention = m.Infra.RopeModuleConvention(
-                file_path=resolved_file,
-                relative_path=resolved_rel_path,
-                module_name=module_entry.module_name
-                if module_entry is not None
-                else resolved_file.stem,
-                package_name=package_context.current_pkg,
-                package_dir=package_dir,
-                package_context=package_context,
-                module_policy=policy,
-                project_layout=project_layout,
-            )
-            self._module_convention_cache[cache_key] = convention
-            return convention
+        if cache_key in self._module_convention_cache:
+            return self._module_convention_cache[cache_key]
+        module_entry = self.module(resolved_file)
+        package_dir = (
+            module_entry.package_dir.resolve()
+            if module_entry is not None
+            else resolved_file.parent.resolve()
+        )
+        resolved_rel_path = (
+            rel_path
+            if rel_path is not None
+            else resolved_file.relative_to(package_dir)
+            if resolved_file.is_relative_to(package_dir)
+            else Path(resolved_file.name)
+        )
+        package_context = self.package_context(package_dir)
+        policy = self.policy(
+            resolved_file,
+            rel_path=resolved_rel_path,
+            current_pkg=package_context.current_pkg,
+        )
+        project_root = (
+            module_entry.project_root
+            if module_entry is not None and module_entry.project_root is not None
+            else u.Infra.project_root(resolved_file)
+        )
+        project_layout = self.layout(project_root) if project_root is not None else None
+        convention = m.Infra.RopeModuleConvention(
+            file_path=resolved_file,
+            relative_path=resolved_rel_path,
+            module_name=module_entry.module_name
+            if module_entry is not None
+            else resolved_file.stem,
+            package_name=package_context.current_pkg,
+            package_dir=package_dir,
+            package_context=package_context,
+            module_policy=policy,
+            project_layout=project_layout,
+        )
+        self._module_convention_cache[cache_key] = convention
+        return convention
 
     def exports(
         self,
@@ -416,7 +358,6 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
-        self._query_receipts.clear()
         self._name_index = None
         self._import_dependents_index = None
 
@@ -455,23 +396,16 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         """
         resolved_file = file_path.resolve()
         cache_key = (str(resolved_file), include_local_scopes, include_references)
-        with u.Infra.cached_source_query(
-            self.rope_project,
-            self._module_object_cache,
-            cache_key,
-            self._query_receipts,
-            f"objects:{cache_key}",
-        ) as cached:
-            if cached:
-                return self._module_object_cache[cache_key]
-            objects = u.Infra.objects(
-                self,
-                resolved_file,
-                include_local_scopes=include_local_scopes,
-                include_references=include_references,
-            )
-            self._module_object_cache[cache_key] = objects
-            return objects
+        if cache_key in self._module_object_cache:
+            return self._module_object_cache[cache_key]
+        objects = u.Infra.objects(
+            self,
+            resolved_file,
+            include_local_scopes=include_local_scopes,
+            include_references=include_references,
+        )
+        self._module_object_cache[cache_key] = objects
+        return objects
 
 
 __all__: t.StrSequence = ("FlextInfraRopeWorkspace",)

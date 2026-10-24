@@ -53,7 +53,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
                 encoding="utf-8",
             )
             expected.add(self._inline_requirement(member))
-        options = self._conform_options(tmp_path, workspace)
+        options = self._conform_options(workspace)
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 source,
@@ -102,7 +102,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
             '[dependency-groups]\ncodegen = ["build>=1"]\n'
             f"dev = [\"{custom_member}\", '{custom_bound}']\n"
         )
-        options = self._conform_options(tmp_path, workspace)
+        options = self._conform_options(workspace)
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
@@ -117,7 +117,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
             encoding="utf-8",
         )
         remaining = self._workspace(consumer)
-        options = self._conform_options(tmp_path, remaining)
+        options = self._conform_options(remaining)
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
@@ -168,7 +168,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
             'dev = ["hypothesis>=6"]\n'
         )
         workspace = self._workspace(member)
-        options = self._conform_options(tmp_path, workspace)
+        options = self._conform_options(workspace)
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
@@ -232,7 +232,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
             '[dependency-groups]\ncodegen = ["ruff>=1"]\ndev = []\n'
         )
         workspace = self._workspace(member)
-        options = self._conform_options(tmp_path, workspace)
+        options = self._conform_options(workspace)
         initial = tm.ok(u.Infra.overlay_preserved(template, source))
         tm.that(
             set(u.Tests.toml_strings_at(initial, "dependency-groups", "codegen")),
@@ -345,7 +345,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
             encoding="utf-8",
         )
         seed = '[project]\nname = "workspace"\nversion = "1.0.0"\n'
-        options = self._conform_options(tmp_path, self._workspace(member))
+        options = self._conform_options(self._workspace(member))
         owned = tm.ok(
             u.Infra.pyproject_conform(
                 seed,

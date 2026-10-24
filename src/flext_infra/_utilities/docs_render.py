@@ -806,8 +806,6 @@ class FlextInfraUtilitiesDocsRender:
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: t.SequenceOf[str],
-        *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
@@ -863,7 +861,6 @@ class FlextInfraUtilitiesDocsRender:
             .template_render_authenticated(
                 template_path,
                 context,
-                source_states=source_states,
             )
             .unwrap()
             .rendered,
@@ -1016,7 +1013,6 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.JsonMapping,
         src_paths: t.SequenceOf[str] = (),
         *,
-        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
         documentation_language: t.Infra.DocumentationLanguage = "en",
     ) -> str:
         """Return the managed mkdocs.yml for the repository root.
@@ -1068,7 +1064,6 @@ class FlextInfraUtilitiesDocsRender:
             .template_render_authenticated(
                 template_path,
                 context,
-                source_states=source_states,
             )
             .unwrap()
             .rendered,

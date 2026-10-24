@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from flext_infra.validate.loc_delta import FlextInfraLocDeltaValidator
     from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-    from flext_infra.validate.producer import FlextInfraValidateProducer
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
     from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
     from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
@@ -52,7 +51,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraTextPatternScanner",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateLazyMapFreshness",
-    "FlextInfraValidateProducer",
     "FlextInfraValidateTestImportDag",
 )
 
@@ -76,7 +74,6 @@ install_lazy_exports(
         "FlextInfraTextPatternScanner": ".scanner",
         "FlextInfraValidateFreshImport": ".fresh_import",
         "FlextInfraValidateLazyMapFreshness": ".lazy_map_freshness",
-        "FlextInfraValidateProducer": ".producer",
         "FlextInfraValidateTestImportDag": ".test_import_dag",
     }),
     public_exports=__all__,

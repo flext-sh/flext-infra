@@ -272,7 +272,6 @@ class FlextInfraUtilitiesVersioning:
                 before=captured.value,
                 desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
                 desired_mode=captured.value.mode,
-                source_states=(captured.value,),
             )
         )
 
@@ -292,8 +291,6 @@ class FlextInfraUtilitiesVersioning:
         if planned.value.desired_content is None:
             return r[bool].fail("project version plan cannot delete its version anchor")
         before = planned.value.before
-        if not isinstance(before, m.Cli.AtomicFileState):
-            return r[bool].fail("project version anchor must be a regular file")
         written = u.Cli.atomic_write_binary_file_guarded(
             before,
             planned.value.desired_content,

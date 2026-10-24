@@ -18,11 +18,7 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace import (
-    FlextInfraBindingService,
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceLockCompleteness,
-)
+from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
 from flext_infra.workspace._environment_provenance_editable import (
     FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
 )
@@ -662,15 +658,16 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     ) -> p.Result[int]:
         """Prove locked artifacts and declared local members match their origins.
 
+        Provenance compares the installed environment with the committed lock;
+        it does not judge the lock's freshness against the manifests. Setup
+        installs the lock frozen and never fails on lock drift (operator order
+        2026-10-24); freshness is the ``deps verify-locks`` check gate.
+
         Returns:
             The resulting ``p.Result[int]``.
 
         """
-        context = FlextInfraWorkspaceLockCompleteness.verify_lock(
-            repository_root
-        ).flat_map(
-            lambda _: FlextInfraWorkspaceDetector.resolution_context(repository_root)
-        )
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
         if context.failure:
             return r[int].from_failure(context)
         repository_root = context.value.runtime_root

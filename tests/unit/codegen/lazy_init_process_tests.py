@@ -90,7 +90,7 @@ class TestsFlextInfraLazyInitProcessing:
         tm.ok(planned)
         initializer = helpers / c.Infra.INIT_PY
         tm.ok(str(initializer) in service.modified_files)
-        tm.ok(u.Tests.materialize_codegen_plans(planned.map(lambda phase: phase.files)))
+        tm.ok(u.Tests.materialize_codegen_plans(planned))
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=declaration)
         tm.that(
             u.Tests.run_lazy_init_probe(

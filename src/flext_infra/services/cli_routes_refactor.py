@@ -66,8 +66,7 @@ class FlextInfraRefactorRoutes:
                     repository_root=root, rename_plan=request.plan, check=True
                 ),
                 workspace,
-                infra.source_preview(root),
-            ).map(lambda accepted: accepted)
+            )
 
     @staticmethod
     def execute_move_module(
@@ -121,7 +120,6 @@ class FlextInfraRefactorRoutes:
                         repository_root=root,
                         options=m.Infra.SemanticPublicationOptions(
                             projection_roots=(root,),
-                            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                         ),
                     )
                 )

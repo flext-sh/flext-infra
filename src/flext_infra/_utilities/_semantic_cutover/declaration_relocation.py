@@ -46,27 +46,22 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         *,
         source_project: p.Infra.RopeProject,
     ) -> t.Infra.RopeSourcePath:
-        """Bind retirement to the project owning its authenticated catalogue.
+        """Bind retirement to the project owning the rule's declaring catalogue.
 
         Returns:
-            The unique project owner, or the repository when no inputs are declared.
+            The catalogue's project owner, or the repository for packaged rules.
 
         Raises:
-            ValueError: If the catalogue has no unique owner inside the workspace.
+            ValueError: If the catalogue has no project owner inside the workspace.
 
         """
-        owners = {
-            FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                repository_root, state.path, source_project=source_project
-            )
-            for state in rule.source_states
-        }
-        if not owners:
+        if rule.owner_root is None:
             return repository_root
-        if len(owners) != 1 or None in owners:
-            msg = f"{rule.id}: contract catalogue has no unique project owner"
-            raise ValueError(msg)
-        owner = owners.pop()
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            repository_root,
+            rule.owner_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH,
+            source_project=source_project,
+        )
         if owner is None or not owner.is_relative_to(repository_root):
             msg = f"{rule.id}: contract owner is outside its workspace"
             raise ValueError(msg)
@@ -111,15 +106,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
-        # One closed epoch serves every snapshot of this pass: the sources, their
-        # import closure and the identities payload relocation resolves.
-        epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
-            workspace.rope_project,
-            tuple(sources),
-            c.Infra.DECLARATION_RELOCATION_IDENTITIES,
-        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, sources, captured=epoch
+            workspace.rope_project,
+            sources,
         )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
@@ -132,7 +121,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if working != sources:
                 project.close()
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project, working, captured=epoch
+                    workspace.rope_project,
+                    working,
                 )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -183,7 +173,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working, captured=epoch
+                        workspace.rope_project,
+                        working,
                     )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (

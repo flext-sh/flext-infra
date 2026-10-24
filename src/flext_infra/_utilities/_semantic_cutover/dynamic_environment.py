@@ -26,7 +26,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
-    FlextInfraUtilitiesRopeRuntimeBase,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
@@ -227,7 +226,6 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 item for item in cls._editable_sources(sources) if item[0] in selected
             ),
             rewrite,
-            source_project=source_project,
         )
 
     @classmethod
@@ -238,33 +236,25 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         source_project: p.Infra.RopeProject,
         dependency_codegen: t.MappingKV[Path, m.Infra.CodegenInputs] | None,
     ) -> Callable[[Path], t.Triple[str, str, m.Infra.CodegenConfigSpec]]:
-        """Own one phase's metadata elections and their replayable query receipts.
+        """Own one phase's memoized metadata elections.
 
         Returns:
             A lazy settings-owner election bound to the original source authority.
 
         """
         contexts: dict[Path, t.Triple[str, str, m.Infra.CodegenConfigSpec]] = {}
-        receipts: dict[str, m.Infra.CodegenPhaseAnalysis] = {}
 
         def owner_context(
             owner_root: Path,
         ) -> t.Triple[str, str, m.Infra.CodegenConfigSpec]:
-            with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
-                source_project,
-                contexts,
-                owner_root,
-                receipts,
-                str(owner_root),
-            ) as cached:
-                if not cached:
-                    contexts[owner_root] = cls._settings_owner_context(
-                        owner_root,
-                        source_project,
-                        repository_root,
-                        codegen,
-                        dependency_codegen,
-                    )
+            if owner_root not in contexts:
+                contexts[owner_root] = cls._settings_owner_context(
+                    owner_root,
+                    source_project,
+                    repository_root,
+                    codegen,
+                    dependency_codegen,
+                )
             return contexts[owner_root]
 
         return owner_context

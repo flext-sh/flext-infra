@@ -174,7 +174,7 @@ class FlextInfraModHandlers:
                     FlextInfraImportNormalizationPhase(),
                     FlextInfraNamespaceRelocationPhase(),
                     FlextInfraDuplicateApplyPhase(),
-                    FlextInfraAccessorRenamePhase(source_preview=source_preview),
+                    FlextInfraAccessorRenamePhase(),
                 ),
             ).execute()
 

@@ -64,7 +64,6 @@ class TestsFlextInfraStaticClassExports:
         with u.Infra.facade_source_project(repository, project_roots=(repository,)) as (
             project,
             _,
-            _,
         ):
             plan = m.Infra.LazyInitPlan(
                 context=m.Infra.LazyInitPackageContext(

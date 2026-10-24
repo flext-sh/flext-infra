@@ -15,8 +15,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenExecutionBase,
-    FlextInfraCodegenFileLeases,
-    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -97,10 +95,12 @@ class FlextInfraCodegenMakeBootstrap(
                 return admitted
             request = m.Infra.CodegenGenerateRequest(root=requested)
             if self.effective_dry_run:
-                with FlextInfraCodegenFileLeases.mutation_lease(requested):
-                    return FlextInfraMiseArtifactsVerification.publication_current(
-                        request,
-                    ).map(lambda _: True)
+                return (
+                    FlextInfraCodegenConformExecute
+                    .from_request(request, execution_context=self)
+                    .flat_map(lambda executor: executor.check_managed(request))
+                    .map(lambda _: True)
+                )
             conformed = FlextInfraCodegenConformExecute.execute_request(
                 request, execution_context=self
             )
@@ -108,10 +108,6 @@ class FlextInfraCodegenMakeBootstrap(
             conformed = self._conform_existing_target(requested)
             if self.effective_dry_run:
                 return conformed.map(lambda _: True)
-        if conformed.success and conformed.value.publication_receipt is None:
-            return r[bool].fail(
-                f"Makefile bootstrap has no completed publication receipt: {requested}",
-            )
         return conformed.map(lambda _: True)
 
 

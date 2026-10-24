@@ -1,4 +1,4 @@
-"""Project-local initializer presentation and original publication evidence.
+"""Project-local initializer presentation and guarded publication.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,8 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import codegen
-from tests import c, m, p, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitDocumentationLanguage:
@@ -80,10 +79,9 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
         declaration.parent.mkdir(exist_ok=True)
         service = u.Tests.create_lazy_init_service(root)
         baseline = tm.ok(service.plan_files())
-        tm.that(baseline.exception, eq=None)
         english = {
             file.path: tm.not_none(file.desired_content)
-            for file in baseline.files
+            for file in baseline
             if file.path in {package / c.Infra.INIT_PY, child / c.Infra.INIT_PY}
         }
         tm.that(len(english), eq=2)
@@ -101,9 +99,7 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
                 ),
                 encoding=c.DEFAULT_ENCODING,
             )
-            analysis = tm.ok(service.plan_files())
-            tm.that(analysis.exception, eq=None)
-            for file in analysis.files:
+            for file in tm.ok(service.plan_files()):
                 if file.path not in english:
                     continue
                 content = tm.not_none(file.desired_content)
@@ -117,13 +113,11 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
                 else:
                     package_name = " ".join(
                         word.capitalize()
-                        for word in next(
-                            plan.context.current_pkg
-                            for plan in analysis.publications
-                            if plan.context.init_path == file.path
-                        )
+                        for word in file.path.parent
+                        .relative_to(package.parent)
+                        .as_posix()
+                        .replace("/", ".")
                         .replace("_", " ")
-                        .replace("-", " ")
                         .split()
                     )
                     tm.that(
@@ -134,7 +128,6 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
                             "pt-BR"
                         ).format(package_name=package_name),
                     )
-                    tm.ok(declaration in {state.path for state in file.source_states})
         tm.that((package / c.Infra.INIT_PY).read_bytes(), eq=b"")
 
     @staticmethod
@@ -171,10 +164,10 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
 
     @staticmethod
     @pytest.mark.parametrize("changed", [False, True])
-    def test_publication_uses_original_declaration_and_converges(
+    def test_publication_rejects_edited_destination_and_converges(
         tmp_path: Path, *, changed: bool
     ) -> None:
-        """Reject changed input bytes; unchanged publication reaches a fixed point."""
+        """Reject a destination edited after planning; otherwise reach a fixed point."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         (package / "service.py").write_text(
             "class Published: pass\n__all__ = ['Published']\n",
@@ -193,44 +186,17 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
             encoding=c.DEFAULT_ENCODING,
         )
         target = package / c.Infra.INIT_PY
-        before = target.read_bytes()
-        phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT
-        owner = codegen.FlextInfraCodegenTransaction(
-            codegen.FlextInfraCodegenMiseArtifacts(repository_root=root),
-        )
-        roots = owner.capability_roots(phase.value, (root,))
-
-        def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
-            analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
-            tm.that(analysis.exception, eq=None)
-            planned = next(file for file in analysis.files if file.path == target)
-            original = next(
-                state for state in planned.source_states if state.path == declaration
-            )
-            tm.that(original.content, eq=declaration.read_bytes())
-            if changed:
-                declaration.write_bytes(tm.not_none(original.content) + b"\n")
-            return owner.publish_file_phase_locked(
-                scope_root,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            )
-
-        outcome = owner.run_files_locked(roots, publish)
+        plans = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+        tm.ok(any(file.path == target for file in plans))
         if changed:
-            tm.ok(outcome.failure)
-            tm.that(outcome.error, has=str(declaration))
-            tm.that(target.read_bytes(), eq=before)
-        else:
-            tm.ok(outcome)
-            second = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
-            tm.that(second.exception, eq=None)
-            tm.that(
-                [
-                    file.path
-                    for file in second.files
-                    if u.Infra.codegen_file_requires_effect(file)
-                ],
-                eq=[],
+            edited = target.read_bytes() + b"# concurrent edit\n"
+            target.write_bytes(edited)
+            tm.fail(
+                u.Infra.publish_codegen_plans(root, plans),
+                has=f"atomic source changed: {target}",
             )
+            tm.that(target.read_bytes(), eq=edited)
+            return
+        tm.ok(u.Infra.publish_codegen_plans(root, plans))
+        second = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+        tm.fail(any(u.Infra.codegen_file_requires_effect(file) for file in second))

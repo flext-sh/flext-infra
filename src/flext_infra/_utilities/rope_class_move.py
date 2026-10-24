@@ -12,10 +12,9 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeImports,
@@ -57,13 +56,13 @@ class FlextInfraUtilitiesRopeClassMove:
             ValueError: If input identity or a native relocation proof differs.
 
         """
-        sources, source_states = inputs
+        sources = inputs[0]
         if destination_file is not None:
             if destination_directory is not None:
                 msg = "module move requires exactly one destination"
                 raise ValueError(msg)
             return cls._plan_module_resource_move(
-                rope_project, source_file, destination_file, sources, source_states
+                rope_project, source_file, destination_file, inputs
             )
         if destination_directory is None:
             msg = "module move requires a destination"
@@ -74,21 +73,17 @@ class FlextInfraUtilitiesRopeClassMove:
         if source == target:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
-        before, captured = cls._module_input_epoch(root, source, sources, source_states)
+        states = cls._module_input_states(source, inputs)
         request, target_plan, proposed, virtual, source_module_name = (
-            cls._module_move_preparation(
-                rope_project, source, target, sources, captured
-            )
+            cls._module_move_preparation(rope_project, source, target, sources, states)
         )
-        source_states = target_plan.source_states
         return cls._module_file_plans(
             target_plan,
             source,
-            before,
             cls._module_completed_changes(
-                request, source_module_name, sources, proposed, (captured, virtual)
+                request, source_module_name, sources, proposed, virtual
             ),
-            source_states,
+            states,
         )
 
     @classmethod
@@ -97,8 +92,7 @@ class FlextInfraUtilitiesRopeClassMove:
         project: p.Infra.RopeProject,
         source_file: Path,
         destination_file: Path,
-        sources: t.MappingKV[Path, str],
-        source_states: tuple[m.Cli.AtomicFileState, ...],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose native resource rename and move in lookup-only source views.
 
@@ -116,32 +110,7 @@ class FlextInfraUtilitiesRopeClassMove:
             msg = f"module move source and target are identical: {source}"
             raise ValueError(msg)
         cls._validate_module_resource_paths(root, source, target)
-        parents = {
-            root,
-            *(path.parent for path in sources if path.is_relative_to(root)),
-        }
-        parents.update(
-            path
-            for path in target.parents
-            if path.is_relative_to(root) and path.is_dir()
-        )
-        directories = tuple(
-            u.Cli
-            .atomic_inventory_physical_directory(path)
-            .unwrap()
-            .model_copy(update={"membership_queried": True})
-            for path in sorted(parents)
-        )
-        topology = tuple(
-            u.Cli.atomic_plan_directory_chain(path).unwrap() for path in sorted(parents)
-        )
-        return cls._module_resource_move_plans(
-            project,
-            root,
-            (source, target),
-            (sources, source_states),
-            (directories, topology),
-        )
+        return cls._module_resource_move_plans(project, root, (source, target), inputs)
 
     @staticmethod
     def _validate_module_resource_paths(root: Path, source: Path, target: Path) -> None:
@@ -176,19 +145,15 @@ class FlextInfraUtilitiesRopeClassMove:
         root: Path,
         paths: t.Pair[Path, Path],
         inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
-        queries: t.Pair[
-            tuple[m.Cli.AtomicDirectoryInventory, ...],
-            tuple[m.Cli.AtomicDirectoryChainPlan, ...],
-        ],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
-        """Compose authenticated native resource changes and publication plans.
+        """Compose native resource changes and publication plans.
 
         Returns:
-            File plans retaining the captured directory queries.
+            File plans for the destination, the retired source and consumers.
 
         Raises:
             ValueError: If the source inventory is incomplete.
-            FileNotFoundError: If the source has no captured mode.
+            FileNotFoundError: If the source has no observed mode.
             FileExistsError: If an intermediate module is occupied.
 
         """
@@ -200,26 +165,20 @@ class FlextInfraUtilitiesRopeClassMove:
         if not inventory.issubset(sources):
             msg = "module resource move requires the complete source inventory"
             raise ValueError(msg)
-        before, captured = cls._module_input_epoch(
-            root, source, sources, inputs[1], class_only=False
-        )
-        if before.mode is None:
+        states = cls._module_input_states(source, inputs, class_only=False)
+        mode = states[source].mode
+        if mode is None:
             raise FileNotFoundError(source)
-        states = captured.snapshot.states
-        target_plan = cls._module_destination_plan(
-            root, target, "", before.mode, states
-        )
+        target_plan = cls._module_destination_plan(root, target, "", mode)
         if target.with_suffix("").exists():
             raise FileExistsError(target.with_suffix(""))
         candidate = dict(sources)
         virtual = [target_plan]
         initializer = target.parent / c.Infra.INIT_PY
         if initializer not in candidate:
-            virtual.append(
-                cls._module_destination_plan(root, initializer, "", before.mode, states)
-            )
-        intermediate, virtual = cls._module_resource_relocation(
-            project, paths, candidate, virtual, (captured, before.mode)
+            virtual.append(cls._module_destination_plan(root, initializer, "", mode))
+        intermediate = cls._module_resource_relocation(
+            project, paths, candidate, virtual, mode
         )
         changed = {
             path: text
@@ -227,35 +186,7 @@ class FlextInfraUtilitiesRopeClassMove:
             if path == target or (path in sources and text != sources[path])
         }
         changed.pop(intermediate if intermediate != target else source, None)
-        states = m.Infra.CodemodBindingSnapshot(
-            states=(
-                *states,
-                *(
-                    plan.before
-                    for plan in virtual
-                    if isinstance(plan.before, m.Cli.AtomicFileState)
-                ),
-            )
-        ).states
-        u.Cli.atomic_verify_directory_queries(
-            *queries,
-            publications=m.Cli.AtomicDirectoryQueryEffects(
-                membership_policy=tuple(
-                    sorted(config.Infra.codegen.source_scan_ignored)
-                )
-            ),
-        ).unwrap()
-        return tuple(
-            plan.model_copy(
-                update={
-                    "source_directories": queries[0],
-                    "source_query_topology": queries[1],
-                }
-            )
-            for plan in cls._module_file_plans(
-                target_plan, source, before, changed, states
-            )
-        )
+        return cls._module_file_plans(target_plan, source, changed, states)
 
     @classmethod
     def _module_resource_relocation(
@@ -264,12 +195,12 @@ class FlextInfraUtilitiesRopeClassMove:
         paths: t.Pair[Path, Path],
         candidate: t.MutableMappingKV[Path, str],
         virtual: list[m.Infra.CodegenFilePlan],
-        source_epoch: t.Pair[m.Infra.CodemodSourceEpoch, int],
-    ) -> t.Pair[Path, list[m.Infra.CodegenFilePlan]]:
+        mode: int,
+    ) -> Path:
         """Compose lookup-only native Rename followed by native Move.
 
         Returns:
-            The intermediate path and updated virtual declarations.
+            The intermediate path.
 
         Raises:
             FileExistsError: If the intermediate name is occupied.
@@ -277,18 +208,15 @@ class FlextInfraUtilitiesRopeClassMove:
         """
         root = Path(project.root.real_path).resolve()
         source, target = paths
-        captured, mode = source_epoch
         intermediate = source.with_name(target.name)
         if intermediate != source:
             if intermediate.with_suffix("").exists():
                 raise FileExistsError(intermediate.with_suffix(""))
-            declaration = cls._module_destination_plan(
-                root, intermediate, "", mode, captured.snapshot.states
-            )
+            declaration = cls._module_destination_plan(root, intermediate, "", mode)
             if intermediate != target:
                 virtual.append(declaration)
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                project, candidate, captured=captured, declared_files=tuple(virtual)
+                project, candidate, declared_files=tuple(virtual)
             )
             try:
                 changes = FlextInfraUtilitiesRopeRuntime.rename_changes(
@@ -308,25 +236,13 @@ class FlextInfraUtilitiesRopeClassMove:
                     candidate,
                     source,
                     intermediate,
-                    snapshot=(captured, tuple(virtual)),
+                    declared_files=tuple(virtual),
                 )
             finally:
                 native.close()
-            virtual = [
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[intermediate].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                if plan.path == intermediate
-                else plan
-                for plan in virtual
-            ]
         if intermediate.parent != target.parent:
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                project, candidate, captured=captured, declared_files=tuple(virtual)
+                project, candidate, declared_files=tuple(virtual)
             )
             try:
                 mover = FlextInfraUtilitiesRopeRuntime.create_move(
@@ -344,11 +260,11 @@ class FlextInfraUtilitiesRopeClassMove:
                     candidate,
                     intermediate,
                     target,
-                    snapshot=(captured, tuple(virtual)),
+                    declared_files=tuple(virtual),
                 )
             finally:
                 native.close()
-        return intermediate, virtual
+        return intermediate
 
     @classmethod
     def _module_quoted_sources(
@@ -358,9 +274,7 @@ class FlextInfraUtilitiesRopeClassMove:
         source: Path,
         target: Path,
         *,
-        snapshot: t.Pair[
-            m.Infra.CodemodSourceEpoch, tuple[m.Infra.CodegenFilePlan, ...]
-        ],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
     ) -> None:
         """Rewire only quoted type prefixes with the native source module identity.
 
@@ -368,7 +282,6 @@ class FlextInfraUtilitiesRopeClassMove:
             ValueError: If native module election or a consumer binding conflicts.
 
         """
-        captured, declared_files = snapshot
         root = Path(project.root.real_path).resolve()
         expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
             project, cls._resource(project, root, source)
@@ -386,23 +299,9 @@ class FlextInfraUtilitiesRopeClassMove:
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
 
-        def virtual_files() -> tuple[m.Infra.CodegenFilePlan, ...]:
-            return tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                if plan.path in candidate
-                else plan
-                for plan in declared_files
-            )
-
         checks: t.DictKV[Path, t.DictKV[tuple[int, str], int]] = {}
         composed = runtime.snapshot_project(
-            project, candidate, captured=captured, declared_files=virtual_files()
+            project, candidate, declared_files=declared_files
         )
         try:
             destination_module = (
@@ -428,7 +327,7 @@ class FlextInfraUtilitiesRopeClassMove:
         finally:
             composed.close()
         verified = runtime.snapshot_project(
-            project, candidate, captured=captured, declared_files=virtual_files()
+            project, candidate, declared_files=declared_files
         )
         try:
             relocated = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
@@ -828,7 +727,7 @@ class FlextInfraUtilitiesRopeClassMove:
         source: Path,
         target: Path,
         sources: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> tuple[
         m.Infra.ClassMoveRequest,
         m.Infra.CodegenFilePlan,
@@ -836,9 +735,8 @@ class FlextInfraUtilitiesRopeClassMove:
         t.VariadicTuple[m.Infra.CodegenFilePlan],
         str,
     ]:
-        source_states = captured.snapshot.states
         canonical, source_module_name, reexports = cls._canonical_module_metadata(
-            rope_project, source, sources, captured
+            rope_project, source, sources
         )
         declaration = cls._module_class_declaration(canonical, source)
         prelude = cls._module_prelude(canonical, source, declaration)
@@ -850,70 +748,37 @@ class FlextInfraUtilitiesRopeClassMove:
             line=declaration.lineno,
             apply=False,
         )
-        target_plan, virtual, source_states = cls._module_virtual_destinations(
-            request, prelude, source_states, sources
+        mode = states[source].mode
+        if mode is None:
+            msg = f"module move source is absent: {source}"
+            raise ValueError(msg)
+        root = Path(rope_project.root.real_path).resolve()
+        target_plan = cls._module_destination_plan(root, target, prelude, mode)
+        # Package identity is needed by native Rope before any directory exists.
+        # This lookup-only initializer is never returned for semantic publication:
+        # the existing lazy-init phase owns the real generated file.
+        initializer = target.parent / c.Infra.INIT_PY
+        virtual = (
+            (target_plan,)
+            if initializer in sources
+            else (
+                target_plan,
+                cls._module_destination_plan(root, initializer, "", mode),
+            )
         )
         proposed = dict(sources)
         proposed[source] = canonical
         proposed[target] = prelude
         for plan in virtual[1:]:
             proposed[plan.path] = ""
-        cls._module_reexport_sources(request, proposed, captured, virtual, reexports)
+        cls._module_reexport_sources(request, proposed, sources, virtual, reexports)
         return (
             request,
-            target_plan.model_copy(update={"source_states": source_states}),
+            target_plan,
             proposed,
             virtual,
             source_module_name,
         )
-
-    @classmethod
-    def _module_virtual_destinations(
-        cls,
-        request: m.Infra.ClassMoveRequest,
-        prelude: str,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        sources: t.MappingKV[Path, str],
-    ) -> t.Triple[
-        m.Infra.CodegenFilePlan,
-        t.VariadicTuple[m.Infra.CodegenFilePlan],
-        t.VariadicTuple[m.Cli.AtomicFileState],
-    ]:
-        root = Path(request.rope_project.root.real_path).resolve()
-        target = request.target_file
-        before = next(
-            state
-            for state in source_states
-            if state.path.resolve() == request.source_file
-        )
-        if before.mode is None:
-            msg = f"module move source is absent: {request.source_file}"
-            raise ValueError(msg)
-        target_plan = cls._module_destination_plan(
-            root, target, prelude, before.mode, source_states
-        )
-        virtual = [target_plan]
-        # Package identity is needed by native Rope before any directory exists.
-        # This lookup-only initializer is never returned for semantic publication:
-        # the existing lazy-init phase owns the real generated file.
-        initializer = target.parent / c.Infra.INIT_PY
-        if initializer not in sources:
-            initializer_plan = cls._module_destination_plan(
-                root,
-                initializer,
-                "",
-                before.mode,
-                source_states,
-            )
-            if isinstance(initializer_plan.before, m.Cli.AtomicFileState):
-                source_states = m.Infra.CodemodBindingSnapshot(
-                    states=(*source_states, initializer_plan.before),
-                ).states
-            elif initializer_plan.before != target_plan.before:
-                msg = f"module move destination parent snapshots disagree: {target}"
-                raise ValueError(msg)
-            virtual.append(initializer_plan)
-        return target_plan, tuple(virtual), source_states
 
     @classmethod
     def _module_completed_changes(
@@ -922,18 +787,13 @@ class FlextInfraUtilitiesRopeClassMove:
         source_module_name: str,
         sources: t.MappingKV[Path, str],
         proposed: t.MappingKV[Path, str],
-        view: t.Pair[
-            m.Infra.CodemodSourceEpoch, t.VariadicTuple[m.Infra.CodegenFilePlan]
-        ],
+        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.DictKV[Path, str]:
-        captured, virtual = view
-        changed = cls._module_reference_changes(
-            request, sources, proposed, captured, virtual
-        )
+        changed = cls._module_reference_changes(request, sources, proposed, virtual)
         candidate = dict(proposed)
         candidate.update(changed)
         metadata_removed = cls._module_metadata_cleanup(
-            request, source_module_name, candidate, captured, virtual
+            request, source_module_name, candidate, virtual
         )
         if metadata_removed is not None:
             changed[request.target_file] = metadata_removed
@@ -948,48 +808,33 @@ class FlextInfraUtilitiesRopeClassMove:
         return changed
 
     @classmethod
-    def _module_input_epoch(
+    def _module_input_states(
         cls,
-        root: Path,
         source: Path,
-        sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        inputs: t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
         *,
         class_only: bool = True,
-    ) -> t.Pair[m.Cli.AtomicFileState, m.Infra.CodemodSourceEpoch]:
-        states = {
-            state.path.resolve(): state
-            for state in m.Infra.CodemodBindingSnapshot(states=source_states).states
-        }
-        if source not in states or source not in sources:
-            msg = f"module move source is not authenticated: {source}"
+    ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
+        sources, source_states = inputs
+        states = {state.path.resolve(): state for state in source_states}
+        before = states.get(source)
+        if before is None or source not in sources:
+            msg = f"module move source is not among its inputs: {source}"
             raise ValueError(msg)
-        before = states[source]
         if before.content is None or before.mode is None:
             msg = f"module move source is absent: {source}"
             raise ValueError(msg)
         for path, text in sources.items():
             state = states.get(path.resolve())
             if state is None or state.content is None:
-                msg = f"module move input is not authenticated: {path}"
+                msg = f"module move input has no observed state: {path}"
                 raise ValueError(msg)
             if state.content.decode(c.DEFAULT_ENCODING) != text:
-                msg = f"module move input disagrees with its snapshot: {path}"
+                msg = f"module move input disagrees with its observed state: {path}"
                 raise ValueError(msg)
         if class_only:
             cls._module_class_declaration(sources[source], source)
-        captured = FlextInfraUtilitiesCodemodProject.codemod_binding_snapshot(
-            root, tuple(states[path.resolve()] for path in sources)
-        )
-        for state in captured.states:
-            path = state.path.resolve()
-            if path in states and states[path] != state:
-                msg = f"module move dependency snapshot disagrees: {path}"
-                raise ValueError(msg)
-            states[path] = state
-        return before, FlextInfraUtilitiesCodemodProject.codemod_source_epoch(
-            m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
-        )
+        return states
 
     @classmethod
     def _canonical_module_metadata(
@@ -997,11 +842,10 @@ class FlextInfraUtilitiesRopeClassMove:
         rope_project: p.Infra.RopeProject,
         source: Path,
         sources: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
     ) -> t.Triple[str, str, t.VariadicTuple[str]]:
         root = Path(rope_project.root.real_path).resolve()
         original = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            rope_project, sources, captured=captured
+            rope_project, sources
         )
         try:
             source_resource = cls._resource(original, root, source)
@@ -1043,7 +887,7 @@ class FlextInfraUtilitiesRopeClassMove:
         cls,
         request: m.Infra.ClassMoveRequest,
         proposed: t.MutableMappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
+        sources: t.MappingKV[Path, str],
         virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
         reexports: t.VariadicTuple[str],
     ) -> None:
@@ -1053,7 +897,6 @@ class FlextInfraUtilitiesRopeClassMove:
             package_plan = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                 request.rope_project,
                 proposed,
-                captured=captured,
                 declared_files=virtual,
             )
             try:
@@ -1067,7 +910,7 @@ class FlextInfraUtilitiesRopeClassMove:
                     if (
                         path in virtual_paths
                         or path == request.source_file
-                        or captured.sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
+                        or sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
                     ):
                         continue
                     updated = FlextInfraUtilitiesRopeImports.plan_from_import_aliases(
@@ -1088,13 +931,11 @@ class FlextInfraUtilitiesRopeClassMove:
         request: m.Infra.ClassMoveRequest,
         sources: t.MappingKV[Path, str],
         proposed: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
         virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> t.DictKV[Path, str]:
         planned = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             proposed,
-            captured=captured,
             declared_files=virtual,
         )
         try:
@@ -1121,24 +962,13 @@ class FlextInfraUtilitiesRopeClassMove:
         request: m.Infra.ClassMoveRequest,
         source_module_name: str,
         candidate: t.MappingKV[Path, str],
-        captured: m.Infra.CodemodSourceEpoch,
         virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> str | None:
         root = Path(request.rope_project.root.real_path).resolve()
         metadata_project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             candidate,
-            captured=captured,
-            declared_files=tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        )
-                    }
-                )
-                for plan in virtual
-            ),
+            declared_files=virtual,
         )
         try:
             return FlextInfraUtilitiesRopeImports.remove_import_names(
@@ -1156,26 +986,24 @@ class FlextInfraUtilitiesRopeClassMove:
         cls,
         target_plan: m.Infra.CodegenFilePlan,
         source: Path,
-        before: m.Cli.AtomicFileState,
         changed: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        states: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         root, target = target_plan.project, target_plan.path
-        states = {state.path.resolve(): state for state in source_states}
         files = [
-            target_plan.model_copy(
-                update={
-                    "desired_content": changed[target].encode(c.DEFAULT_ENCODING),
-                    "source_states": source_states,
-                }
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=target_plan.before,
+                desired_content=changed[target].encode(c.DEFAULT_ENCODING),
+                desired_mode=target_plan.desired_mode,
             ),
             m.Infra.CodegenFilePlan(
                 project=root,
                 path=source,
-                before=before,
+                before=states[source],
                 desired_content=None,
                 desired_mode=None,
-                source_states=source_states,
             ),
         ]
         for path, content in changed.items():
@@ -1183,7 +1011,7 @@ class FlextInfraUtilitiesRopeClassMove:
                 continue
             state = states.get(path)
             if state is None or state.mode is None:
-                msg = f"module move consumer is not authenticated: {path}"
+                msg = f"module move consumer has no observed state: {path}"
                 raise ValueError(msg)
             if state.content is not None and state.content.decode(
                 c.DEFAULT_ENCODING,
@@ -1201,7 +1029,6 @@ class FlextInfraUtilitiesRopeClassMove:
                     before=state,
                     desired_content=content.encode(c.DEFAULT_ENCODING),
                     desired_mode=state.mode,
-                    source_states=source_states,
                 ),
             )
         return tuple(files)
@@ -1324,34 +1151,25 @@ class FlextInfraUtilitiesRopeClassMove:
         target: Path,
         source: str,
         mode: int,
-        source_states: tuple[m.Cli.AtomicFileState, ...],
     ) -> m.Infra.CodegenFilePlan:
-        """Capture an absent file or absent parent chain without creating either.
+        """Plan an absent destination file; publication creates its parents.
 
         Returns:
-            The authenticated plan for the absent destination.
+            The plan for the absent destination.
 
         Raises:
             FileExistsError: If the destination already has file content.
 
         """
-        parents = u.Cli.atomic_plan_directory_chain(target.parent).unwrap()
-        before: m.Cli.AtomicDirectoryChainPlan | m.Cli.AtomicFileState
-        if parents.directories:
-            before = parents
-        else:
-            before = u.Cli.atomic_read_binary_file_state(
-                target, required=False
-            ).unwrap()
-            if before.content is not None:
-                raise FileExistsError(target)
+        before = u.Cli.atomic_read_binary_file_state(target, required=False).unwrap()
+        if before.content is not None:
+            raise FileExistsError(target)
         return m.Infra.CodegenFilePlan(
             project=root,
             path=target,
             before=before,
             desired_content=source.encode(c.DEFAULT_ENCODING),
             desired_mode=mode,
-            source_states=source_states,
         )
 
     @classmethod

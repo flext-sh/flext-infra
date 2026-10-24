@@ -282,8 +282,12 @@ class TestsFlextInfraPytestFullInventory:
             eq=expected_sources,
         )
         tm.that(
-            {item.origin for item in manifest.markdown_collected},
-            eq=set(manifest.markdown_eligible),
+            sorted({
+                item.origin.model_dump_json() for item in manifest.markdown_collected
+            }),
+            eq=sorted({
+                origin.model_dump_json() for origin in manifest.markdown_eligible
+            }),
         )
         excluded = tuple(
             item.node_id

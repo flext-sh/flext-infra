@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra, m, p
-from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
@@ -19,7 +18,6 @@ from flext_infra.codemod import (
     FlextInfraModGateEngine,
     FlextInfraNamespaceRelocationPhase,
 )
-from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, tm, u
 
 _SOURCE_NAME = next(iter(c.ENFORCEMENT_ACCESSOR_RENAMES))
@@ -121,9 +119,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
         ).map(lambda report: bool(report.automated_change_count))
     with infra.rope_workspace(project) as rope:
         preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-        return FlextInfraAccessorRenamePhase(
-            source_preview=infra.source_preview(project)
-        ).apply(project, preflight, rope)
+        return FlextInfraAccessorRenamePhase().apply(project, preflight, rope)
 
 
 class TestsFlextInfraCodemodLoopPhases:
@@ -171,23 +167,12 @@ class TestsFlextInfraCodemodLoopPhases:
                 for state in states
             }
             frozen = dict(sources)
-            analysis = phase.plan(
-                project,
-                preflight,
-                rope,
-                sources=sources,
-                receipt=m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                    inputs=states,
-                    files=(),
-                ),
-            ).unwrap()
-            tm.that(analysis.files, empty=False)
-            tm.that(analysis.issues, empty=True)
+            files = tm.ok(phase.plan(project, preflight, rope, sources=sources))
+            tm.that(files, empty=False)
             tm.that(sources, eq=frozen)
             for state in states:
                 tm.that(state.path.read_bytes(), eq=state.content)
-            for plan in analysis.files:
+            for plan in files:
                 if plan.path in sources:
                     tm.that(
                         plan.before,
@@ -216,9 +201,7 @@ class TestsFlextInfraCodemodLoopPhases:
         )
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase(
-                source_preview=infra.source_preview(project)
-            )
+            phase = FlextInfraAccessorRenamePhase()
 
             changed = phase.apply(project, preflight, rope)
 
@@ -332,55 +315,6 @@ class TestsFlextInfraCodemodLoopPhases:
             tm.that(path.read_bytes(), eq=content)
 
     @staticmethod
-    def test_added_consumer_rejects_the_authenticated_batch(tmp_path: Path) -> None:
-        """The final leased guard detects a new consumer before either CAS write."""
-        _workspace, project, _service, legacy, _foreign = _phase_fixture(tmp_path)
-        consumer = legacy.parent / "consumer.py"
-        _ = consumer.write_text(
-            f"from flext_core.legacy import {_SOURCE_NAME}\n\n"
-            f"value = {_SOURCE_NAME}(True)\n",
-            encoding="utf-8",
-        )
-        states = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            for path in (legacy, consumer)
-        )
-        before = {path: path.read_bytes() for path in (legacy, consumer)}
-        updates = {
-            path: content.decode("utf-8").replace(_SOURCE_NAME, _REPLACEMENT_NAME)
-            for path, content in before.items()
-        }
-        candidate = tm.ok(
-            FlextInfraStagedPackage.plan_sources(
-                project, updates, options=m.Infra.StageSourceOptions(inputs=states)
-            )
-        )
-        plans = tuple(
-            m.Infra.SemanticFilePlan(
-                project=project,
-                path=state.path,
-                before=state,
-                desired_content=updates[state.path].encode("utf-8"),
-                desired_mode=state.mode,
-                source_states=candidate.inputs,
-            )
-            for state in states
-        )
-        added = legacy.parent / "added_consumer.py"
-        _ = added.write_text(consumer.read_text(encoding="utf-8"), encoding="utf-8")
-        added_before = added.read_bytes()
-
-        result = FlextInfraSemanticPublication.publish_source_candidate(
-            plans,
-            candidate=candidate,
-        )
-
-        tm.ok(result.failure)
-        for path, content in before.items():
-            tm.that(path.read_bytes(), eq=content)
-        tm.that(added.read_bytes(), eq=added_before)
-
-    @staticmethod
     @pytest.mark.slow
     def test_batch_loop_runs_callback_phases_to_the_fixed_point(
         tmp_path: Path,
@@ -404,9 +338,7 @@ class TestsFlextInfraCodemodLoopPhases:
                 rename_inputs=(),
                 phase_callbacks=(
                     FlextInfraNamespaceRelocationPhase(),
-                    FlextInfraAccessorRenamePhase(
-                        source_preview=infra.source_preview(project)
-                    ),
+                    FlextInfraAccessorRenamePhase(),
                 ),
             ).execute()
 

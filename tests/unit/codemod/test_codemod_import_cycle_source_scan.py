@@ -274,7 +274,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         with u.Infra.facade_source_project(project, project_roots=(project,)) as (
             source_project,
             _,
-            _,
         ):
             authenticated = set(
                 u.Infra.discover_python_files(
@@ -336,7 +335,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         with u.Infra.facade_source_project(project, project_roots=(project,)) as (
             source_project,
             _,
-            _,
         ):
             for reader in (None, source_project):
                 discovered = u.Infra.discover_python_files(
@@ -360,7 +358,6 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         os.mkfifo(project / "worker.py")
         with u.Infra.facade_source_project(project, project_roots=(project,)) as (
             source_project,
-            _,
             _,
         ):
             for reader in (None, source_project):

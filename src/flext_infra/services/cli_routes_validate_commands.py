@@ -19,26 +19,11 @@ from flext_infra.validate import (
     FlextInfraTextPatternScanner,
     FlextInfraValidateFreshImport,
     FlextInfraValidateLazyMapFreshness,
-    FlextInfraValidateProducer,
 )
 
 
 class FlextInfraValidationCommandRoutes:
     """Own the complete validate command tuple."""
-
-    @staticmethod
-    def _validate_producer_command(
-        request: m.Infra.WorkspaceRequest,
-    ) -> p.Result[bool]:
-        """Authenticate the real semantic publisher against its cold source.
-
-        Returns:
-            Success after authentication, or the first native failure.
-
-        """
-        return FlextInfraValidateProducer.execute_request(request).map(
-            lambda _analysis: True
-        )
 
     @staticmethod
     def _validate_namespace_command(
@@ -60,15 +45,6 @@ class FlextInfraValidationCommandRoutes:
         return r[m.Infra.ValidationReport].fail(details)
 
     validate_command_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
-        m.Cli.ResultCommandRoute(
-            name="producer",
-            help_text=(
-                "Authenticate the real semantic publisher against its cold source"
-            ),
-            model_cls=m.Infra.WorkspaceRequest,
-            handler=_validate_producer_command,
-            success_message="Native producer authentication complete",
-        ),
         *tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,

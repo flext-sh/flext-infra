@@ -1,0 +1,135 @@
+# Pydantic declaration law (pydantic-development skill, operator order
+# 2026-10-24): model configuration is a typed `ConfigDict` owned by the `m.*`
+# presets. Every rule here carries a fix or a zero-occurrence detection so
+# `make mod` stays at a green fixed point.
+#
+# `model_config` is a `ConfigDict`; a raw dict bypasses the typed key set. In a
+# module that binds the models facade `m`, the dict literal is rewritten to the
+# equivalent `m.ConfigDict(key=value, ...)` call (each string-keyed pair becomes a
+# keyword argument). The existing pydantic-model-config-*-classvar rules then add
+# the `ClassVar[...]` annotation in the same `make mod` fixed point. Modules that
+# do not bind `m` are reported by the companion rule below.
+id: rewire-raw-model-config-dict
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  all:
+    - kind: assignment
+    - has:
+        field: left
+        regex: ^model_config$
+    - has:
+        field: right
+        kind: dictionary
+        pattern: $DICT
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: m-imported-from-flext
+rewriters:
+  - id: string-pair-to-keyword
+    rule:
+      kind: pair
+      all:
+        - has:
+            field: key
+            kind: string
+            pattern: $KEY
+        - has:
+            field: value
+            pattern: $VALUE
+    transform:
+      NAME:
+        replace:
+          source: $KEY
+          replace: "^[\"'](?<name>[A-Za-z_][A-Za-z0-9_]*)[\"']$"
+          by: "$name"
+    fix: $NAME=$VALUE
+transform:
+  KEYWORDS:
+    rewrite:
+      rewriters: [string-pair-to-keyword]
+      source: $DICT
+  KWARGS:
+    replace:
+      source: $KEYWORDS
+      replace: "(?s)^\\{\\s*(?<body>.*?)\\s*,?\\s*\\}$"
+      by: "$body"
+fix: "model_config = m.ConfigDict($KWARGS)"
+message: >-
+  `model_config` as a raw dict skips the typed `ConfigDict` contract; it becomes
+  `m.ConfigDict(...)`. Prefer inheriting the `m.*` preset that already encodes
+  this configuration.
+---
+# Detection-only companion: a raw `model_config` dict in a module that does not
+# bind `m`. A blind fix would emit an undefined name.
+id: rewire-raw-model-config-dict-missing-m-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  all:
+    - kind: assignment
+    - has:
+        field: left
+        regex: ^model_config$
+    - has:
+        field: right
+        kind: dictionary
+    - inside:
+        kind: module
+        stopBy: end
+        not:
+          has:
+            stopBy: end
+            matches: m-imported-from-flext
+message: >-
+  where: this `model_config` is a raw dict. why: the typed `ConfigDict` contract
+  owns model configuration. fix: bind the models facade `m` (or, inside a
+  flext-core preset owner, import pydantic's `ConfigDict`) so the rewrite to
+  `ConfigDict(...)` applies, or inherit the `m.*` preset that encodes it.
+---
+# `t.Port[P]` validates the value with `isinstance` (pydantic `InstanceOf`), which
+# needs one class. An optional port keeps `None` outside the port so each union
+# member owns its own schema and no model needs `arbitrary_types_allowed`.
+id: hoist-optional-out-of-port
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  pattern: t.Port[$A | None]
+fix: t.Port[$A] | None
+message: >-
+  `t.Port[X | None]` asks `isinstance` to check a union. Write
+  `t.Port[X] | None` so the port validates one class and `None` stays a plain
+  union member.

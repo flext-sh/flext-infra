@@ -23,7 +23,7 @@ class TestsFlextInfraCodegenConformProgress:
         infra_git_repo: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Publication reports its work and check verifies the resulting receipt."""
+        """Publication reports its work and check finds nothing left to write."""
         root = infra_git_repo
         # The check pass re-detects the checkout, so the manifest must declare
         # the identity the fixture's Git origin carries.
@@ -61,5 +61,4 @@ class TestsFlextInfraCodegenConformProgress:
             ),
         )
         tm.that(checked.plan, eq=None)
-        tm.ok(checked.verified_publication is not None)
         tm.that(checked.written_files, eq=())

@@ -25,11 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenJournalModels,
-    FlextInfraModelsCodegenPipelineModels,
-    FlextInfraModelsCodegenTransactionModels,
-)
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransactionModels
 
 
 class FlextInfraModelsRefactor(
@@ -52,23 +48,15 @@ class FlextInfraModelsRefactor(
         ] = m.Field(description="Native relocation selections")
         py_files: t.SequenceOf[Path] = m.Field(description="Selected Python sources")
         sources: t.MappingKV[Path, str] = m.Field(description="Immutable input sources")
-        receipt: FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis = m.Field(
-            description="Authenticated source states and prior declarations"
-        )
 
     class NamespaceRelocationState(m.ArbitraryTypesModel):
-        """Mutable candidate bytes retaining their native authentication receipts."""
+        """Mutable candidate bytes with the original states they replace."""
 
         working: t.MutableMappingKV[Path, str] = m.Field(
             description="Candidate sources changed only by native planning effects"
         )
         originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = m.Field(
             description="Complete original dependency closure"
-        )
-        befores: t.MutableMappingKV[
-            Path, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
-        ] = m.Field(
-            description="Original file or absent-parent receipt for each output"
         )
         modes: t.MutableMappingKV[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
@@ -254,13 +242,6 @@ class FlextInfraModelsRefactor(
         projects: t.SequenceOf[Path] = m.Field(
             default=(),
             description="Declared project topology owning text findings.",
-        )
-        publication_chain: (
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagedFile]
-            | None
-        ) = m.Field(
-            default=None,
-            description="Authenticated staged publication receipts.",
         )
 
     class ViolationsTotals(m.ContractModel):
@@ -990,7 +971,7 @@ class FlextInfraModelsRefactor(
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[
-            t.Infra.RopePyModule,
+            t.Port[t.Infra.RopePyModule],
             m.Field(description="Parsed PyObject module representation"),
         ]
 
@@ -1054,13 +1035,13 @@ class FlextInfraModelsRefactor(
             FlextInfraModelsRefactor.ImportLawScope,
             m.Field(description="Module facts of the pass"),
         ]
-        tree: Annotated[ast.Module, m.Field(description="Parsed module")]
+        tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed module")]
         parents: Annotated[
-            t.MappingKV[int, ast.AST],
+            t.MappingKV[int, t.Port[ast.AST]],
             m.Field(description="Child node id to parent node map"),
         ]
         bindings: Annotated[
-            t.MappingKV[str, ast.stmt],
+            t.MappingKV[str, t.Port[ast.stmt]],
             m.Field(description="Module-level statement binding each top name"),
         ]
         root_exports: Annotated[

@@ -100,11 +100,9 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         facade_plans: list[m.Infra.CodegenFilePlan] = []
         with u.Infra.facade_source_project(
             tmp_path,
-            source_options=m.Infra.StageSourceOptions(
-                inputs=originals, declared_files=plans
-            ),
+            declared_files=plans,
             project_roots=tuple(layout.project_root for layout in layouts),
-        ) as binding:
+        ) as (project, sources):
             for layout in layouts:
                 package = layout.package_dir
                 if scope == "collision":
@@ -112,8 +110,8 @@ class UtilityFacadePlanning(UtilityFacadePublication):
                         partial(
                             u.Infra.render_utility_facade,
                             package,
-                            project=binding[0],
-                            sources=binding[2],
+                            project=project,
+                            sources=sources,
                         ),
                     )
                     tm.fail(rejected, has="Owner")
@@ -122,7 +120,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
                 facade = package / c.Infra.UTILITIES_PY
                 rendered = tm.not_none(
                     u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[2]
+                        package, project=project, sources=sources
                     ),
                 )
                 facade_plans.append(
@@ -137,7 +135,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         return facade_plans
 
     @pytest.mark.parametrize("scope", ["single", "independent", "collision"])
-    def test_future_exposure_uses_planned_owners_and_original_receipts(
+    def test_future_exposure_uses_planned_owners(
         self, tmp_path: Path, scope: str
     ) -> None:
         """Project future MRO exports without publishing or conflating providers."""
@@ -174,29 +172,29 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         service.project_scope_roots = tuple(roots)
         with u.Infra.facade_source_project(
             tmp_path,
-            source_options=m.Infra.StageSourceOptions(
-                inputs=originals, declared_files=(*plans, *facade_plans)
-            ),
+            declared_files=(*plans, *facade_plans),
             project_roots=tuple(roots),
-        ) as binding:
-            analysis = tm.ok(service.plan_files(source_project=binding[0]))
-        combined = {
-            plan.path: plan for plan in (*plans, *facade_plans, *analysis.files)
-        }
-        analysis = analysis.model_copy(update={"files": tuple(combined.values())})
+        ) as (project, _):
+            combined = {
+                plan.path: plan
+                for plan in (
+                    *plans,
+                    *facade_plans,
+                    *tm.ok(service.plan_files(source_project=project)),
+                )
+            }
+        files = tuple(combined.values())
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
         for plan in plans:
-            projected = next(file for file in analysis.files if file.path == plan.path)
+            projected = combined[plan.path]
             tm.that(projected.before, eq=plan.before)
             tm.that(projected.desired_content, eq=plan.desired_content)
         with u.Infra.facade_source_project(
             tmp_path,
-            source_options=m.Infra.StageSourceOptions(
-                inputs=originals, declared_files=analysis.files
-            ),
+            declared_files=files,
             project_roots=tuple(roots),
-        ) as binding:
-            for file in tm.ok(service.plan_files(source_project=binding[0])).files:
+        ) as (project, _):
+            for file in tm.ok(service.plan_files(source_project=project)):
                 tm.that(file.desired_content, eq=combined[file.path].desired_content)
                 tm.that(file.desired_mode, eq=combined[file.path].desired_mode)
         candidate = tmp_path / "candidate"
@@ -206,7 +204,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
                     candidate / state.path.relative_to(tmp_path),
                     state.content.decode(c.DEFAULT_ENCODING),
                 )
-        for file in analysis.files:
+        for file in files:
             path = candidate / file.path.relative_to(tmp_path)
             if file.desired_content is None:
                 path.unlink(missing_ok=True)
@@ -228,19 +226,6 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         tm.that(u.Cli.process_succeeded(cold.outcome), eq=True, msg=cold.stderr)
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
-        path = next(iter(desired))
-        self._write(path, desired[path])
-        with (
-            pytest.raises(ValueError, match="atomic source changed"),
-            u.Infra.facade_source_project(
-                tmp_path,
-                source_options=m.Infra.StageSourceOptions(
-                    inputs=originals, declared_files=plans
-                ),
-                project_roots=tuple(roots),
-            ),
-        ):
-            pass
 
     @classmethod
     def _render_and_execute_constants_consumer(
@@ -698,7 +683,6 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         }
         with u.Infra.facade_source_project(root, planned_sources=planned) as (
             project,
-            _,
             sources,
         ):
             rendered = tm.not_none(
@@ -708,7 +692,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         with u.Infra.facade_source_project(
             root, planned_sources={**planned, facade: rendered}
-        ) as (project, _, sources):
+        ) as (project, sources):
             tm.that(
                 u.Infra.render_utility_facade(
                     package, project=project, sources=sources
@@ -749,7 +733,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         with (
             u.Infra.facade_source_project(
                 tmp_path, planned_sources={owner: source} if virtual else {}
-            ) as (project, _, sources),
+            ) as (project, sources),
             pytest.raises(ValueError, match="have no public facade"),
         ):
             u.Infra.render_utility_facade(package, project=project, sources=sources)

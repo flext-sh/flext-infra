@@ -22,10 +22,10 @@ class TestsFlextInfraDepsDetectorModels:
     @staticmethod
     def test_workspace_dependency_report_creation() -> None:
         """Verify workspace dependency report creation."""
-        report = m.Infra.WorkspaceDependencyReport(
-            workspace="test-workspace",
-            projects={},
-        )
+        report = m.Infra.WorkspaceDependencyReport.model_validate({
+            "workspace": "test-workspace",
+            "projects": {},
+        })
         tm.that(report.workspace, eq="test-workspace")
         tm.that(report.projects, empty=True)
         tm.that(report.pip_check, eq=None)

@@ -10,8 +10,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, settings, t, u
-from flext_infra.codegen import FlextInfraCodegenFileLeases, FlextInfraStagedPackage
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraAccessorOriginResolver,
@@ -120,7 +120,6 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
                         desired_content=updated_source.encode(c.DEFAULT_ENCODING),
                         desired_mode=state.mode,
                         changes=tuple(change.original_name for change in automated),
-                        source_states=tuple(states.values()),
                     )
                 )
         return result_type.ok((tuple(plans), tuple(reports)))
@@ -152,17 +151,7 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             for plan in plans
             if plan.desired_content is not None
         }
-        controlplanes = FlextInfraCodegenFileLeases.prepare_source_controlplanes((
-            params.repository_root,
-            *(plan.project for plan in plans),
-        ))
-        staged = controlplanes.flat_map(
-            lambda _: FlextInfraStagedPackage.plan_sources(
-                params.repository_root,
-                updates,
-                options=m.Infra.StageSourceOptions(inputs=plans[0].source_states),
-            )
-        )
+        staged = FlextInfraStagedPackage.plan_sources(params.repository_root, updates)
         if staged.failure:
             return result_type.from_failure(staged)
         gates = tuple(params.gates) or tuple(u.Infra.snapshot_lint_gates())
@@ -170,9 +159,8 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
         if checked.failure:
             return result_type.from_failure(checked)
         if params.apply:
-            published = FlextInfraSemanticPublication.publish_source_candidate(
-                plans,
-                candidate=staged.value,
+            published = FlextInfraSemanticPublication.publish_semantic_file_plans(
+                plans, repository_root=params.repository_root
             )
             if published.failure:
                 return result_type.from_failure(published)
@@ -276,11 +264,6 @@ class FlextInfraAccessorMigrationReportMixin(FlextInfraAccessorMigrationRewriteM
             plan.updates,
             validate,
             options=m.Infra.CodegenSourcePreviewOptions(
-                inputs=plan.inputs,
-                runtime_root=u.Infra.runtime_environment_dir(
-                    scopes[0],
-                    runtime_root=type(settings).fetch_global().Infra.runtime_root,
-                ).parent,
                 workspaces=plan.workspaces,
                 modes=plan.modes,
             ),

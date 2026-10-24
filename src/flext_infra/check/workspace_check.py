@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, codegen, m, p, r, t, u
+from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.check import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
@@ -126,152 +126,9 @@ class FlextInfraWorkspaceChecker(
         )
         return self._execute_payload(params.model_copy(update={"gates": gates}))
 
-    def execute_candidate(
-        self,
-        params: m.Infra.RunCommand,
-        source_plan: m.Infra.StageSourcePlan,
-        *,
-        project_root: Path,
-        runtime_report: m.Infra.ValidationReport,
-    ) -> p.Result[bool]:
-        """Check a sealed candidate using its original physical runtime owner.
-
-        This service boundary is not a CLI field. The original source plan,
-        never a caller-selected interpreter path, owns runtime derivation.
-
-        Returns:
-            Full native admission, or the original authority/check failure.
-
-        """
-        if not self._candidate_keeps_default_gates(params):
-            return r[bool].fail(
-                "candidate admission requires all default read-only gates"
-            )
-        environment = self._candidate_runtime_environment(source_plan, project_root)
-        if environment.failure:
-            return r[bool].from_failure(environment)
-        runtime_directory, identity = environment.value
-        checked = self._execute_payload(
-            params,
-            runtime_root=runtime_directory.parent,
-            candidate_runtime_report=runtime_report,
-            candidate_files=tuple(
-                sorted({
-                    params.repository_root / source.relative_to(project_root)
-                    for source in (
-                        *(state.path for state in source_plan.inputs),
-                        *source_plan.updates,
-                    )
-                    if source.is_relative_to(project_root)
-                    and (
-                        params.repository_root / source.relative_to(project_root)
-                    ).is_file()
-                })
-            ),
-        )
-        if checked.failure:
-            return r[bool].from_failure(checked)
-        verified = self._candidate_runtime_current(
-            source_plan,
-            runtime_directory,
-            identity,
-        )
-        if verified.failure:
-            return r[bool].from_failure(verified)
-        return verified.map(lambda _: checked.value)
-
-    @staticmethod
-    def _candidate_keeps_default_gates(params: m.Infra.RunCommand) -> bool:
-        """Report whether a candidate keeps every default read-only selection.
-
-        Args:
-            params: The canonical check command payload of the candidate.
-
-        Returns:
-            Whether no apply, project, file, or tool-override selection exists.
-
-        """
-        inherited_defaults = (
-            not params.apply
-            and params.check_only
-            and not params.gates
-            and not params.projects
-        )
-        explicit_selection = (
-            params.file is None
-            and params.ruff_args is None
-            and params.pyright_args is None
-        )
-        return inherited_defaults and explicit_selection
-
-    @staticmethod
-    def _candidate_runtime_environment(
-        source_plan: m.Infra.StageSourcePlan,
-        project_root: Path,
-    ) -> p.Result[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]:
-        """Resolve the physical candidate runtime and its pre-check identity.
-
-        Args:
-            source_plan: The sealed candidate plan owning runtime derivation.
-            project_root: The original project root requesting the check.
-
-        Returns:
-            The physical runtime directory with its observed chain identity.
-
-        """
-        result_type = r[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]
-        current = codegen.FlextInfraStagedPackage.source_inputs_current(source_plan)
-        if current.failure:
-            return result_type.from_failure(current)
-        if project_root not in {
-            layout.project_root for layout in source_plan.candidate_layouts
-        }:
-            return result_type.fail(
-                "candidate checker project has no declared source authority"
-            )
-        environment = u.Infra.runtime_environment_dir(project_root)
-        if environment.is_symlink() or not environment.is_dir():
-            return result_type.fail(
-                f"candidate runtime must be physical: {environment}",
-            )
-        identity = u.Cli.atomic_plan_directory_chain(environment)
-        if identity.failure:
-            return result_type.from_failure(identity)
-        return result_type.ok((environment, identity.value))
-
-    @staticmethod
-    def _candidate_runtime_current(
-        source_plan: m.Infra.StageSourcePlan,
-        environment: Path,
-        identity: m.Cli.AtomicDirectoryChainPlan,
-    ) -> p.Result[bool]:
-        """Reprove the runtime identity and source currency after the check.
-
-        Args:
-            source_plan: The sealed candidate plan owning runtime derivation.
-            environment: The physical runtime directory consumed by the check.
-            identity: The pre-check observed chain identity of the runtime.
-
-        Returns:
-            Whether the runtime and sources stayed current, or the failure.
-
-        """
-        observed = u.Cli.atomic_plan_directory_chain(environment)
-        if observed.failure:
-            return r[bool].from_failure(observed)
-        if environment.is_symlink() or observed.value != identity:
-            return r[bool].fail(
-                "candidate physical runtime identity changed during check"
-            )
-        return codegen.FlextInfraStagedPackage.source_inputs_current(source_plan)
-
     def _execute_payload(
         self,
         params: m.Infra.RunCommand,
-        *,
-        runtime_root: Path | None = None,
-        candidate_files: t.VariadicTuple[Path] = (),
-        candidate_runtime_report: m.Infra.ValidationReport | None = None,
     ) -> p.Result[bool]:
         """Judge the typed report produced by the one native execution.
 
@@ -279,12 +136,7 @@ class FlextInfraWorkspaceChecker(
             Success flag from the summarized project results.
 
         """
-        report = self._execute_report(
-            params,
-            runtime_root=runtime_root,
-            candidate_files=candidate_files,
-            candidate_runtime_report=candidate_runtime_report,
-        )
+        report = self._execute_report(params)
         if report.failure:
             return r[bool].from_failure(report)
         if not report.value.complete:
@@ -296,12 +148,8 @@ class FlextInfraWorkspaceChecker(
     def _execute_report(
         self,
         params: m.Infra.RunCommand,
-        *,
-        runtime_root: Path | None = None,
-        candidate_files: t.VariadicTuple[Path] = (),
-        candidate_runtime_report: m.Infra.ValidationReport | None = None,
     ) -> p.Result[m.Infra.CheckReportSummary]:
-        """Execute the same native gates with an optional service-owned runtime.
+        """Execute the native gates in the invoking runtime.
 
         Returns:
             The complete native checker result.
@@ -346,7 +194,6 @@ class FlextInfraWorkspaceChecker(
             )
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
-            runtime_root=runtime_root,
             reports_dir=params.reports_dir_path,
             apply_fixes=params.apply,
             check_only=params.check_only,
@@ -354,14 +201,8 @@ class FlextInfraWorkspaceChecker(
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
-            candidate_files=candidate_files,
-            candidate_runtime_report=candidate_runtime_report,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
-                python=(
-                    Path(sys.executable)
-                    if runtime_root is None
-                    else u.Infra.runtime_python(runtime_root)
-                ),
+                python=Path(sys.executable),
                 development_only=(),
             ),
         )

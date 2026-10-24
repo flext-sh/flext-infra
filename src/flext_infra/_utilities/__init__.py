@@ -202,9 +202,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
     )
-    from flext_infra._utilities.codegen_path_cutover import (
-        FlextInfraUtilitiesCodegenPathCutover,
-    )
     from flext_infra._utilities.codemod_binding_chain import (
         FlextInfraUtilitiesCodemodBindingChain,
     )
@@ -228,9 +225,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_collection import FlextInfraUtilitiesDocsCollection
     from flext_infra._utilities.docs_collection_sources import (
         FlextInfraUtilitiesDocsCollectionSources,
-    )
-    from flext_infra._utilities.docs_collection_verify import (
-        FlextInfraUtilitiesDocsCollectionVerify,
     )
     from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
     from flext_infra._utilities.docs_fix import FlextInfraUtilitiesDocsFix
@@ -382,7 +376,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
-    "FlextInfraUtilitiesCodegenPathCutover",
     "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
@@ -401,7 +394,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsBuild",
     "FlextInfraUtilitiesDocsCollection",
     "FlextInfraUtilitiesDocsCollectionSources",
-    "FlextInfraUtilitiesDocsCollectionVerify",
     "FlextInfraUtilitiesDocsCommandContractMixin",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
@@ -596,7 +588,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
-        "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
@@ -623,7 +614,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsBuild": ".docs_build",
         "FlextInfraUtilitiesDocsCollection": ".docs_collection",
         "FlextInfraUtilitiesDocsCollectionSources": ".docs_collection_sources",
-        "FlextInfraUtilitiesDocsCollectionVerify": ".docs_collection_verify",
         "FlextInfraUtilitiesDocsCommandContractMixin": "._docs_command_contract",
         "FlextInfraUtilitiesDocsContract": ".docs_contract",
         "FlextInfraUtilitiesDocsFix": ".docs_fix",

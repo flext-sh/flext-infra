@@ -22,7 +22,6 @@ from flext_cli import cli
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeCore,
@@ -61,11 +60,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         working = dict(sources)
         originals = dict(cls._editable_sources(sources))
         changes: t.MutableMappingKV[Path, list[str]] = {}
-        states: list[p.Infra.SemanticSourceState] = []
         retired: set[Path] = set()
+        source_project = rope_workspace.rope_project
         with (
-            cls._semantic_source_project(rope_workspace.rope_project) as source_project,
-            source_project.source_consumption() as consumption,
             rope_workspace.open_workspace(
                 rope_workspace.repository_root,
                 rope_repository_root=rope_workspace.rope_repository_root,
@@ -84,20 +81,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     originals.setdefault(edit.file_path, sources[edit.file_path])
                     working[edit.file_path] = edit.updated_source
                     changes.setdefault(edit.file_path, []).extend(edit.changes)
-                    states.extend(edit.source_states)
                     if edit.retire_file:
                         retired.add(edit.file_path)
-        states.extend(consumption.receipt().inputs)
-        inputs = FlextInfraUtilitiesCodegenFilePlan.unique_states(
-            tuple(
-                m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
-                for state in states
-            )
-        )
-        if inputs.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                inputs
-            )
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
@@ -105,7 +90,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     original_source=source,
                     updated_source=working[path],
                     retire_file=path in retired,
-                    source_states=inputs.value,
                     changes=tuple(changes.get(path, ())),
                 )
                 for path, source in sorted(originals.items())
@@ -191,11 +175,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     else (),
                 )
 
-            return cls._semantic_edits(
-                cls._editable_sources(sources),
-                rewrite,
-                source_project=workspace.rope_project,
-            )
+            return cls._semantic_edits(cls._editable_sources(sources), rewrite)
         finally:
             project.close()
 

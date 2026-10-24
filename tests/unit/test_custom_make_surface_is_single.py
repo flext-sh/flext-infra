@@ -32,7 +32,7 @@ class TestsFlextInfraCustomMakeSurfaceIsSingle:
         operator's own verb hooks.
         """
         managed = tuple(
-            item.path.as_posix() for item in config.Infra.codegen.managed_files
+            item.path.as_posix() for item in config.Infra.codegen.managed_file_specs
         )
         custom_surfaces = sorted(path for path in managed if path.endswith("custom.mk"))
 

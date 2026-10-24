@@ -76,7 +76,6 @@ class TestsFlextInfraSelfFacadeCutover:
         with u.Infra.facade_source_project(root, project_roots=(root,)) as (
             project,
             _,
-            _,
         ):
             sources[context / c.Infra.INIT_PY] = (
                 FlextInfraCodegenGeneration.render_init(plan, source_project=project)
@@ -91,7 +90,6 @@ class TestsFlextInfraSelfFacadeCutover:
                         root,
                         workspace,
                         apply=False,
-                        source_preview=infra.source_preview(root),
                         workspace_factory=infra.rope_workspace,
                     )
                 )
@@ -175,7 +173,6 @@ class TestsFlextInfraSelfFacadeCutover:
                 root,
                 workspace,
                 apply=True,
-                source_preview=infra.source_preview(root),
                 workspace_factory=infra.rope_workspace,
             )
         for path, source in sources.items():

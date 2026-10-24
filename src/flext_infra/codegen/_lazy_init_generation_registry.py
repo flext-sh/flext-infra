@@ -143,16 +143,13 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin(
         """
         paths: list[Path] = []
         pending = [directory]
-        with self.source_project.source_selection():
-            while pending:
-                parent = pending.pop()
-                for child in self.source_project.source_children(parent):
-                    if child.relative_to(directory).full_match(pattern):
-                        paths.append(child)
-                    if len(parts) > 1 and self.source_project.source_query(
-                        child, "isdir"
-                    ):
-                        pending.append(child)
+        while pending:
+            parent = pending.pop()
+            for child in self.source_project.source_children(parent):
+                if child.relative_to(directory).full_match(pattern):
+                    paths.append(child)
+                if len(parts) > 1 and self.source_project.source_query(child, "isdir"):
+                    pending.append(child)
         return paths
 
     def _cleanup_generated_support_file_states(

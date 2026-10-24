@@ -32,11 +32,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         self,
         *exceptions: BaseException | None,
         issues: t.SequenceOf[m.Infra.Issue] = (),
-        failed_targets: t.SequenceOf[t.Pair[Path, m.Infra.CodegenPhaseAnalysis]] = (),
     ) -> None:
         """Collect issues and keep the first cause the invocation re-raises."""
         self.state.planning_issues.extend(issues)
-        self.state.planning_failed_targets.extend(failed_targets)
         if self.state.planning_exception is None:
             self.state.planning_exception = next(
                 (exception for exception in exceptions if exception is not None),

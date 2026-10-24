@@ -94,14 +94,15 @@ class TestsFlextInfraCodegenMakeAuthentication:
     ) -> None:
         """GITHUB_TOKEN wins and replaces every inherited alias."""
         selected = "fixture-github-token"
+        stale = "stale-alias"
         TestsFlextInfraCodegenMakeAuthentication._probe_credential(
             tmp_path,
             selected,
             {
                 "GITHUB_TOKEN": selected,
-                "GH_TOKEN": "stale-alias",
-                "MISE_GITHUB_TOKEN": "stale-alias",
-                "GITHUB_API_TOKEN": "stale-alias",
+                "GH_TOKEN": stale,
+                "MISE_GITHUB_TOKEN": stale,
+                "GITHUB_API_TOKEN": stale,
             },
         )
 

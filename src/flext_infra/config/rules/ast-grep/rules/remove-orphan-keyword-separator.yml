@@ -1,0 +1,25 @@
+id: remove-orphan-keyword-separator
+language: Python
+severity: error
+rule:
+  # A bare `*` separator must be followed by at least one keyword-only
+  # parameter; once its last one is removed the separator itself goes.
+  kind: keyword_separator
+  inside:
+    kind: parameters
+  not:
+    precedes:
+      stopBy: end
+      any:
+        - kind: identifier
+        - kind: typed_parameter
+        - kind: default_parameter
+        - kind: typed_default_parameter
+        - kind: dictionary_splat_pattern
+fix:
+  template: ""
+  expandEnd:
+    regex: ^,$
+message: >-
+  A bare keyword-only separator with no keyword-only parameter after it is
+  invalid; remove the separator with its last keyword-only parameter.

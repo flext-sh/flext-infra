@@ -1552,12 +1552,12 @@ The operation receipt separately records its requested surface, elected reposito
 roots, and the actual completed transaction batches, including unchanged outputs.
 The internal initialization adapter qualifies its elected surface: an existing
 project's Makefile bootstrap or an admitted new tree's complete generation. Its
-read-only verification requires that same recorded coverage. Complete generation qualifies its
-managed and documentation batches after each has settled. A complete `all` scope
-can verify the `self` subset only when that repository root is in its recorded
-coverage. Checks authenticate source, generator, output and physical identities
-without planning, rendering, repairing or replacing the receipt. Missing coverage
-and changed identities remain failures.
+read-only verification requires that same recorded coverage. Complete generation
+qualifies its managed and documentation batches after each has settled. A
+complete `all` scope can verify the `self` subset only when that repository
+root is in its recorded coverage. Checks authenticate source, generator, output
+and physical identities without planning, rendering, repairing or replacing the
+receipt. Missing coverage and changed identities remain failures.
 
 Workspace Make bootstrap composes the root and eligible members' actual receipts
 after each has published once. A member failure prevents completed aggregate
@@ -2154,10 +2154,11 @@ CI retains its own project contract. The CI token does not replace native source
 declarations or select a synthetic resolver. Only explicit upgrade resolves or
 writes locks; setup preserves the first install error without another lock mode.
 
-After installation, setup validates Mise declarations and consumes published environment
-files through two in-process batch calls. Environment sync compares the physical bytes
-and mode with the declared projection; it neither creates missing files nor requires
-a Git commit or a clean worktree. Local workspaces select `all`; attached
+After installation, local setup authorizes the published `.envrc` with native
+`direnv allow`; CI skips that authorization. Setup never renders, compares or
+repairs environment files: `make check` verifies environment provenance and
+projection drift, and `make gen` owns regeneration. Repository batch operations
+such as `codegen mise-artifacts` select `all` in local workspaces; attached
 members, standalone repositories and CI select `self`. Git declarations own discovery
 order, and each operation runs serially through its original validator or consumer.
 Missing required roots remain failed inventory entries. Explicit Git management,

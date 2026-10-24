@@ -6,16 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import FlextInfraGitLanes, m, s, u
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraGitService(s[m.Infra.GitStatusReport]):
@@ -99,47 +96,6 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
 
         """
         return u.Infra.git_lane_ownership(request)
-
-    @staticmethod
-    def prepare_publication(
-        request: m.Infra.GitLaneRequest,
-    ) -> p.Result[m.Infra.GitPublicationState]:
-        """Admit a private owned ref while preserving the actual caller checkout.
-
-        Returns:
-            The original native admission or its first proof failure.
-
-        """
-        return u.Infra.git_prepare_publication(request)
-
-    @staticmethod
-    @contextmanager
-    def publication_scope(state: m.Infra.GitPublicationState) -> Generator[None]:
-        """Keep the selected producer's native index effects in its private view.
-
-        Yields:
-            Control under the original admitted request scope.
-
-        """
-        with u.Infra.git_publication_scope(state):
-            yield
-
-    @staticmethod
-    def commit_publications(
-        state: m.Infra.GitPublicationState,
-        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        *,
-        publication_verifier: p.Infra.GitPublicationVerifier,
-    ) -> p.Result[m.Infra.GitOidReport]:
-        """Consume original native outputs through the scoped alternate-index owner.
-
-        Returns:
-            The owned commit without staging unrelated caller state.
-
-        """
-        return u.Infra.git_commit_publications(
-            state, publications, publication_verifier=publication_verifier
-        )
 
 
 __all__: list[str] = ["FlextInfraGitService"]

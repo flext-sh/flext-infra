@@ -49,7 +49,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         paths makes the artifact untrackable, so conform re-reports it as a new
         file on every run and the whole transaction never converges.
         """
-        committed = config.Infra.codegen.managed_files
+        committed = config.Infra.codegen.managed_file_specs
         rendered = (
             "\n".join(u.Tests.ignore_patterns_for(self._repository_root())) + "\n"
         )

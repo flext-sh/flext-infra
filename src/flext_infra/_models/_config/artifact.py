@@ -16,7 +16,7 @@ from flext_cli import m
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -255,12 +255,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
             m.Field(description="Declared vscode settings spec when present"),
         ] = None
-        source_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True, description="Exact inputs of the injected declaration"
-            ),
-        ] = ()
 
     class CodegenLocCapSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Per-module logical-LOC ceiling policy (scc code lines)."""
@@ -1131,25 +1125,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 raise ValueError(msg)
             return self
 
-    class CodegenArtifactComposition(FlextInfraConfigModelsContract.ConfigContract):
-        """Rendered artifact plus the exact source states used to compose it."""
-
-        validation_context: (
-            FlextInfraConfigModelsTemplates.ArtifactResourceValidationContext | None
-        ) = m.Field(
-            default=None,
-            exclude=True,
-            description="Explicit original resource source role",
-        )
-        rendered: Annotated[
-            str,
-            m.Field(description="Fully composed managed-file content"),
-        ]
-        source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(description="Ordered immutable sources consumed by composition"),
-        ] = ()
-
     class CodegenRenderInputs(m.StrictModel):
         """One repository planner's managed state over frozen policy references."""
 
@@ -1206,73 +1181,10 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         )
 
-    class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
-        """Exact before state and desired state for one managed file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-        )
-
-        validation_context: (
-            FlextInfraConfigModelsTemplates.ArtifactResourceValidationContext | None
-        ) = m.Field(
-            default=None,
-            exclude=True,
-            description="Explicit original resource source role",
-        )
-        prepared_sources: p.Infra.StageSourceReceipt | None = m.Field(
-            default=None,
-            exclude=True,
-            description="Closed source evidence returned by candidate preparation",
-        )
-        dependency_group: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Invocation-local dependent publication group"),
-        ] = None
+    class CodegenFilePlan(m.Cli.FileChange):
+        """One managed file change plus its governed ownership metadata."""
 
         project: Annotated[Path, m.Field(description="Physical owning project root")]
-        path: Annotated[Path, m.Field(description="Absolute managed file path")]
-        before: Annotated[
-            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
-            m.Field(
-                description=(
-                    "Descriptor-authenticated file state, or the exact absent "
-                    "parent chain captured by read-only planning"
-                ),
-            ),
-        ]
-        desired_content: Annotated[
-            bytes | None,
-            m.Field(
-                strict=True,
-                description="Exact desired bytes, or None for an absent destination",
-            ),
-        ]
-        desired_mode: Annotated[
-            int | None,
-            m.Field(
-                ge=0,
-                le=0o7777,
-                strict=True,
-                description="Exact desired mode, or None for an absent destination",
-            ),
-        ]
-        source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(
-                exclude=True,
-                description="Exact source states that produced rendered content",
-            ),
-        ] = ()
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
-            default=(), description="Native directory queries consumed by this target"
-        )
-        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
-            m.Field(
-                default=(),
-                description="Physical ancestry of queried source directories",
-            )
-        )
         owner: Annotated[
             str,
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
@@ -1299,48 +1211,21 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         ] = ()
 
         @m.model_validator(mode="after")
-        def validate_resource_projection(self) -> Self:
-            """Bind resource bytes to their original captured source role.
-
-            Returns:
-                The plan retaining exact original resource bytes and evidence.
-
-            Raises:
-                ValueError: If resource bytes or the captured witness differ.
-
-            """
-            if self.validation_context is not None:
-                source = self.validation_context.source
-                if (
-                    source.content is None
-                    or source not in self.source_states
-                    or any(
-                        state not in self.source_states
-                        for state in self.validation_context.source_states
-                    )
-                    or self.desired_content != source.content
-                ):
-                    msg = "resource projection must retain its exact original source"
-                    raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
         def validate_publication_identity(self) -> Self:
-            """Bind one desired state during validation and publication re-admission.
+            """Keep every plan inside its project and its retirement consistent.
 
             Returns:
-                The resulting ``Self``.
+                The validated plan.
 
             Raises:
-                ValueError: If codegen project and path must be absolute; or if codegen
-                    desired bytes and mode must be present or absent together; or if
-                    codegen before state belongs to another path; or if codegen absent
-                    parent plan is inconsistent with its destination; or if codegen path
-                    escapes owning project or publishes a first-party stub.
+                ValueError: If the plan escapes its project, publishes a
+                    first-party stub, or declares an inconsistent retirement.
 
             """
-            if not self.project.is_absolute() or not self.path.is_absolute():
-                msg = "codegen project and path must be absolute"
+            if not self.project.is_absolute() or not self.path.is_relative_to(
+                self.project
+            ):
+                msg = f"codegen path escapes owning project: {self.path}"
                 raise ValueError(msg)
             if self.path.suffix == ".pyi" and self.desired_content is not None:
                 msg = f"first-party .pyi publication is forbidden: {self.path}"
@@ -1357,30 +1242,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for path in self.tracking_dependencies
             ):
                 msg = "tracking declaration escapes the owning project"
-                raise ValueError(msg)
-            if isinstance(self.before, m.Cli.AtomicFileState):
-                if self.before.path != self.path:
-                    msg = "codegen before state belongs to another path"
-                    raise ValueError(msg)
-            elif (
-                self.before.target != self.path.parent
-                or not self.before.directories
-                or self.desired_content is None
-            ):
-                msg = "codegen absent parent plan is inconsistent with its destination"
-                raise ValueError(msg)
-            try:
-                self.path.relative_to(self.project)
-            except ValueError as exc:
-                msg = f"codegen path escapes owning project: {self.path}"
-                raise ValueError(msg) from exc
-            desired = (self.desired_content, self.desired_mode)
-            if any(value is None for value in desired) != all(
-                value is None for value in desired
-            ):
-                msg = (
-                    "codegen desired bytes and mode must be present or absent together"
-                )
                 raise ValueError(msg)
             return self
 

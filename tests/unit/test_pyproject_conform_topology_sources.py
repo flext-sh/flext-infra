@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from packaging.requirements import Requirement
 
-from flext_infra import FlextInfraConfig, config
+from flext_infra import FlextInfraConfig
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 from tests.unit.pyproject_conform_topology_support import (
@@ -196,110 +196,6 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tm.ok(loaded.failure)
         tm.that(loaded.error or "", has="must be unique")
 
-    def test_member_request_preserves_explicit_source_over_receiver_line(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Compose captured member extras without adding a conflicting root ref."""
-        member = self._member_ref(config.Infra.name, "member")
-        workspace = self._workspace(member)
-        source_line = u.Tests.provider_branch()
-        integration = m.Infra.WorkspaceIntegrationSpec(
-            provider=workspace.repository.provider,
-            branch=f"{source_line}-receiver",
-        )
-        workspace = workspace.model_copy(update={"integration": integration})
-        member_root = tmp_path / member.path
-        member_root.mkdir()
-        declaration = member_root / c.PYPROJECT_FILENAME
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                declaration,
-                "[project]\n"
-                f'name = "{member.distribution}"\n'
-                'version = "1.0"\n'
-                "dependencies = []\n"
-                "[project.optional-dependencies]\n"
-                f'"{member.distribution}-feature" = []\n'
-                "[dependency-groups]\ndev = []\n",
-            ),
-        )
-        captured = tm.ok(
-            u.Cli.atomic_read_binary_file_state(declaration, required=True),
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                declaration,
-                "captured declarations are the parser input, not the live path",
-            ),
-        )
-        marker = 'implementation_name == "cpython"'
-        request = f"{member.distribution} @ git+{member.url}@{source_line} ; {marker}"
-        source = (
-            "[project]\n"
-            f'name = "{workspace.repository.distribution}"\n'
-            'version = "1.0"\n'
-            f"dependencies = [{tm.ok(u.Cli.json_dumps(request))}]\n"
-        )
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._toolchain_resolution(),
-                options=u.Infra.PyprojectConformOptions(
-                    repository_root=tmp_path,
-                    member_declarations=(captured,),
-                ),
-            ),
-        )
-        document = u.Cli.toml_parse_text(rendered)
-        tm.ok(document is not None)
-        if document is None:
-            pytest.fail("composition did not produce valid TOML")
-        lines = tm.ok(u.Infra.document_requirement_lines(document))
-        selected = tuple(
-            line
-            for line in lines
-            if u.Infra.dep_name(line) == u.Infra.dep_name(member.distribution)
-        )
-        tm.ok(bool(selected))
-        for line in selected:
-            tm.that(
-                tm.ok(u.Infra.declared_git_source(line)),
-                eq=(member.url, source_line),
-            )
-            tm.that(line, has=marker)
-        tm.that(
-            any(f"[{member.distribution}-feature]" in line for line in selected),
-            eq=True,
-        )
-
-    def test_member_provisioning_requires_captured_declarations(
-        self, tmp_path: Path
-    ) -> None:
-        """A pure metadata renderer never elects an installed producer itself."""
-        member = self._member_ref(config.Infra.name, "member")
-        workspace = self._workspace(member)
-        source = (
-            "[project]\n"
-            f'name = "{workspace.repository.distribution}"\n'
-            'version = "1.0"\n'
-            "dependencies = []\n"
-        )
-        rendered = u.Infra.pyproject_conform(
-            source,
-            workspace=workspace,
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(repository_root=tmp_path),
-        )
-        tm.ok(rendered.failure)
-        tm.that(
-            rendered.error,
-            has="member provisioning requires captured authenticated declarations",
-        )
-
     @pytest.mark.parametrize("package", [False, True])
     def test_packaged_root_renders_workspace_source_without_self_override(
         self, *, package: bool
@@ -381,7 +277,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             f'"{infra_requirement}"]\n'
             '\n[dependency-groups]\nworkspace = ["flext-core"]\n'
         )
-        options = self._conform_options(tmp_path, workspace)
+        options = self._conform_options(workspace)
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 source,
@@ -453,7 +349,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             'dependencies = ["httpx>=0.27"]\n'
             '[dependency-groups]\ncodegen = ["build>=1"]\n'
         )
-        options = self._conform_options(tmp_path, workspace)
+        options = self._conform_options(workspace)
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
@@ -498,21 +394,6 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
             eq=first,
         )
-
-    def test_root_missing_member_metadata_fails_loud(self, tmp_path: Path) -> None:
-        """A declared package without metadata is not silently omitted."""
-        member = self._member_ref("acme-engine", "libraries/engine")
-        result = u.Infra.pyproject_conform(
-            '[project]\nname = "workspace"\nversion = "1.0.0"\n',
-            workspace=self._workspace(member),
-            required_dev_dependencies=(),
-            uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(
-                repository_root=tmp_path,
-                flext_line=u.Tests.integration(),
-            ),
-        )
-        tm.ok(result.failure)
 
     def test_candidate_commit_is_project_specific_and_reaches_fixed_point(self) -> None:
         """An explicit candidate changes only its declared distribution."""

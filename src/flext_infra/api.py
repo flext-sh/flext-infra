@@ -24,8 +24,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenFixer,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
 from flext_infra.release import FlextInfraReleaseOrchestrator
@@ -35,11 +33,7 @@ from flext_infra.services import (
     FlextInfraModHandlers,
 )
 from flext_infra.validate import FlextInfraNamespaceValidator
-from flext_infra.workspace import (
-    FlextInfraRopeWorkspace,
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentMixin,
-)
+from flext_infra.workspace import FlextInfraRopeWorkspace, FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -57,30 +51,6 @@ class FlextInfra(
     """Thin public FLEXT facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
-
-    @staticmethod
-    def sync_environment_files(
-        request: m.Infra.WorkspaceEnvironmentSyncRequest,
-        *,
-        runner: p.Cli.CommandRunner | None = None,
-    ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
-        """Bind the canonical read-only planner and native environment consumer.
-
-        Returns:
-            The consumed projection and authorization status, or the original
-            declaration, projection or runtime failure.
-
-        """
-        return FlextInfraWorkspaceEnvironmentMixin.sync_environment_files(
-            request,
-            planner=FlextInfraCodegenConformExecute(
-                repository_root=request.repository_root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=request.repository_root,
-                ),
-            ),
-            runner=u.Cli if runner is None else runner,
-        )
 
     @staticmethod
     def bootstrap_candidate(
@@ -112,10 +82,7 @@ class FlextInfra(
                 repository_root=source_root,
                 state=m.Infra.CodegenConformState(repository_root=source_root),
             ),
-            transaction=FlextInfraCodegenTransaction(
-                FlextInfraCodegenMiseArtifacts(repository_root=source_root),
-            ),
-        ).execute(source_root, workspace.value, request, inputs.value.sources)
+        ).execute(source_root, workspace.value, request)
 
     def rope_workspace(
         self,

@@ -409,11 +409,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
             if variant == "origin"
             else [generated, authored, {"include-group": "base"}]
         )
-        tm.that(
-            u.Tests.toml_list(groups[dev]),
-            len=len(expected),
-            items=[{"eq": entry} for entry in expected],
-        )
+        tm.that(list(u.Tests.toml_list(groups[dev])), eq=expected)
         observed_requirements = tuple(
             Requirement(entry)
             for entry in u.Tests.toml_list(groups[dev])

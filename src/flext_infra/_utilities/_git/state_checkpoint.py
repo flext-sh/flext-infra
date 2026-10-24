@@ -14,8 +14,8 @@ from flext_cli import u
 from git import GitCommandError
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScopeMixin,
     FlextInfraUtilitiesGitStateTreesMixin,
     FlextInfraUtilitiesGitWorktreeIO,
 )
@@ -27,20 +27,13 @@ class FlextInfraUtilitiesGitStateCheckpointMixin(FlextInfraUtilitiesGitStateTree
     @classmethod
     @contextmanager
     def _state_leases(cls, roots: t.SequenceOf[Path]) -> Generator[None]:
-        journals = {
-            Path(cls._repo(root).git_dir) / c.Infra.JOURNAL_NAME for root in roots
+        locks = {
+            FlextInfraUtilitiesGitMutationScopeMixin.mutation_lock_path(root).unwrap()
+            for root in roots
         }
         with ExitStack() as stack:
-            for journal in sorted(journals):
-                u.Cli.atomic_read_binary_file_state(
-                    journal.with_name(f"{journal.name}.lock"),
-                    required=False,
-                ).unwrap()
-                stack.enter_context(
-                    FlextInfraUtilitiesCodegenFilePlan.codegen_transaction_lease(
-                        journal,
-                    ),
-                )
+            for lock in sorted(locks):
+                stack.enter_context(u.Cli.file_changes_lock(lock))
             yield
 
     @classmethod

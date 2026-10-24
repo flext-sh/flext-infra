@@ -1,0 +1,11 @@
+id: retire-publication-stack-receipt-attribute
+valid:
+  - |
+    class Planner:
+        _cache: MutableMapping[str, frozenset[str]]
+invalid:
+  - |
+    class Planner:
+        if TYPE_CHECKING:
+            _cache: MutableMapping[str, frozenset[str]]
+            _query_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]

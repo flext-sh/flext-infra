@@ -121,15 +121,6 @@ class FlextInfraCodegenRoutes:
                 handler=execute_codegen_conform,
                 success_message="project conformance complete",
             ),
-            m.Cli.ResultCommandRoute(
-                name="footprint",
-                help_text=(
-                    "Inspect recorded generation effects "
-                    "without planning or publication"
-                ),
-                model_cls=m.Infra.CodegenFootprintRequest,
-                handler=flext_infra.infra.codegen_footprint,
-            ),
             *(
                 m.Cli.ResultCommandRoute(
                     name=route_name,
@@ -207,13 +198,6 @@ class FlextInfraCodegenRoutes:
                         codegen.FlextInfraCodegenLayout,
                         codegen.FlextInfraCodegenLayout.execute,
                         "layout conformance complete",
-                    ),
-                    (
-                        "mise-artifacts",
-                        "Validate the generated Mise bundle read-only",
-                        codegen.FlextInfraCodegenMiseArtifacts,
-                        codegen.FlextInfraCodegenMiseArtifacts.execute,
-                        "Mise artifact validation complete",
                     ),
                     (
                         "mise-proof",

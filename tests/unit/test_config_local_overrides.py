@@ -8,48 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig
 from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
     """Prove repository and local layers merge over packaged defaults."""
-
-    @staticmethod
-    def test_make_election_preserves_selection_contract() -> None:
-        """Election follows capabilities, not spelling, without changing errors."""
-        make = FlextInfraConfig.fetch_global().Infra.codegen.make
-        profiles = tuple(c.Infra.MakeProfile)
-        operation = next(verb for verb in make.verbs if not verb.arguments)
-        operation = operation.model_copy(
-            update={"name": f"{operation.name}-renamed", "profiles": profiles[::-1]},
-        )
-        for update in (
-            {"arguments": ("INPUT",)},
-            {"profiles": profiles[:1]},
-        ):
-            rejected = operation.model_copy(update=update)
-            eligible = u.Infra.selector_free_make_verb(
-                rejected.arguments,
-                rejected.profiles,
-                profiles,
-            )
-            tm.fail(eligible)
-            payload = make.model_dump(round_trip=True)
-            payload.update(
-                verbs=(rejected,), violations_sweep_repair_verbs=(rejected.name,)
-            )
-            with pytest.raises(ValueError, match="declared selector-free verbs"):
-                type(make).model_validate(payload)
-        eligible = u.Infra.selector_free_make_verb(
-            operation.arguments,
-            operation.profiles,
-            profiles,
-        )
-        tm.ok(eligible)
-        tm.fail("selector_free_verbs" in make.model_dump())
 
     @staticmethod
     def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:

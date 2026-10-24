@@ -1,0 +1,54 @@
+id: retire-publication-stack-receipt-keyword
+language: Python
+severity: error
+# In flext_infra these names denote only the retired source-receipt evidence
+# (verified fleet-wide 2026-10-24); outside it they may be other concepts.
+files:
+  - "**/flext_infra/**/*.py"
+utils:
+  receipt-name:
+    regex: ^(source_states|source_directories|source_query_topology|prepared_sources|publication_receipts)$
+  plan-only-name:
+    regex: ^(dependency_group|validation_context)$
+rule:
+  any:
+    # A call still passing retired source-receipt evidence.
+    - all:
+        - kind: keyword_argument
+        - inside:
+            kind: argument_list
+        - has:
+            field: name
+            matches: receipt-name
+    # A signature still declaring it.
+    - all:
+        - any:
+            - kind: default_parameter
+            - kind: typed_default_parameter
+            - kind: typed_parameter
+        - inside:
+            kind: parameters
+        - has:
+            kind: identifier
+            matches: receipt-name
+    # Retired plan fields: only as arguments of the plan constructor itself;
+    # the same names elsewhere (PEP 735 dependency groups) are real concepts.
+    - all:
+        - kind: keyword_argument
+        - has:
+            field: name
+            matches: plan-only-name
+        - inside:
+            kind: argument_list
+            inside:
+              kind: call
+              has:
+                field: function
+                regex: (^|\.)CodegenFilePlan$
+fix:
+  template: ""
+  expandEnd:
+    regex: ^,$
+message: >-
+  Source-receipt evidence is retired: plans carry only their destination
+  state and desired bytes, and the shared publisher verifies destinations.

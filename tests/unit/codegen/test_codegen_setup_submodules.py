@@ -370,7 +370,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         generated_project_template: Path,
         member_branch: str,
     ) -> None:
-        """Any named lane containing the recorded gitlink is accepted."""
+        """An initialized checkout on any named lane is left untouched."""
         project = self._branch_scenario(
             tmp_path,
             generated_project_template,
@@ -386,34 +386,6 @@ class TestsFlextInfraCodegenSetupSubmodules:
             self._git(project / "vendor/source", "branch", "--show-current"),
             eq=member_branch,
         )
-
-    def test_branch_without_recorded_gitlink_fails_before_environment(
-        self,
-        tmp_path: Path,
-        generated_project_template: Path,
-    ) -> None:
-        """Commit ancestry, rather than a branch-name allowlist, is the boundary."""
-        project = self._branch_scenario(
-            tmp_path,
-            generated_project_template,
-            superproject_branch="feature/lane",
-            member_branch="declared-dev",
-        )
-        checkout = project / "vendor/source"
-        self._git(checkout, "switch", "-q", "--orphan", "divergent")
-        (checkout / "marker.txt").write_text("divergent", encoding="utf-8")
-        self._git(checkout, "add", "marker.txt")
-        self._git(checkout, "commit", "-q", "-m", "divergent")
-
-        result = self._setup(project)
-
-        tm.that(result.outcome.raw_return_code, eq=2)
-        tm.that(result.stderr, has="does not contain recorded gitlink")
-        tm.that(
-            self._git(project / "vendor/source", "branch", "--show-current"),
-            eq="divergent",
-        )
-        tm.fail((project / ".venv").exists())
 
     def test_lane_branch_keeps_head_and_dirty_work(
         self,
@@ -439,38 +411,6 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
         tm.that(dirty.read_text(encoding="utf-8"), eq="lane wip")
-
-    def test_lane_branch_without_recorded_gitlink_fails(
-        self,
-        tmp_path: Path,
-        generated_project_template: Path,
-    ) -> None:
-        """The gitlink ancestry guarantee survives the lane branch acceptance."""
-        source = tmp_path / "source"
-        self._commit_repository(source, "declared-dev", "source")
-        project = tmp_path / "project"
-        self._generated_project(project, generated_project_template)
-        self._add_submodule(project, source, "vendor/source", "declared-dev")
-        checkout = project / "vendor/source"
-        pinned_parent = self._git(checkout, "rev-parse", "HEAD")
-        (checkout / "advanced.txt").write_text("pinned", encoding="utf-8")
-        self._git(checkout, "add", "advanced.txt")
-        self._git(checkout, "commit", "-q", "-m", "Advance the pin")
-        self._git(project, "add", "-f", "vendor/source")
-        self._git(project, "commit", "-q", "-m", "Pin the advanced commit")
-        self._git(project, "switch", "-q", "-c", "feature/lane")
-        self._git(checkout, "switch", "-q", "-c", "feature/lane", pinned_parent)
-        result = self._setup(project)
-
-        tm.that(result.outcome.raw_return_code, eq=2)
-        # The lane branch name is not a safety boundary (submodule_setup_recipe.j2
-        # header): exact gitlink containment is. Since 3492c8f1c the guard names
-        # the branch it actually checked, so the failure points at the lane.
-        tm.that(result.stderr, has="checked-out branch feature/lane at")
-        tm.that(result.stderr, has="does not contain recorded gitlink")
-        tm.that(result.stderr, lacks="fetch origin")
-        tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
-        tm.fail((project / ".venv").exists())
 
     def test_local_changes_are_preserved_on_declared_branch(
         self,

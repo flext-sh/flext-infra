@@ -1,0 +1,15 @@
+id: retire-publication-stack-source-consumer
+language: Python
+severity: error
+files:
+  - "**/flext_infra/**/*.py"
+rule:
+  pattern: |
+    with $OWNER._semantic_source_project($PROJECT) as $SOURCE:
+        $$$BODY
+fix: |
+  $SOURCE = $PROJECT
+  $$$BODY
+message: >-
+  Source consumers are retired: the Rope overlay project is the source
+  project; bind it directly instead of borrowing a consumption scope.

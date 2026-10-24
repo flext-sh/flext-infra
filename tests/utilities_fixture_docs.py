@@ -204,7 +204,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     def prepare_docs_bundle(
         generator: FlextInfraDocGenerator,
     ) -> m.Infra.DocsGenerationBundle:
-        """Freeze one docs bundle and create every parent directory it requires.
+        """Freeze one docs bundle.
 
         Returns:
             The resulting ``m.Infra.DocsGenerationBundle``.
@@ -212,17 +212,13 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         """
         prepared = generator.prepare_bundle()
         tm.ok(prepared)
-        required = generator.required_directories(prepared.value)
-        tm.ok(required)
-        for directory in required.value:
-            directory.mkdir(parents=True, exist_ok=True)
         return prepared.value
 
     @staticmethod
     def plan_docs_bundle(
         generator: FlextInfraDocGenerator,
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
-        """Prepare one docs bundle, create its required parents, and plan files.
+        """Prepare one docs bundle and plan its files.
 
         Returns:
             The resulting ``t.VariadicTuple[m.Infra.CodegenFilePlan]``.

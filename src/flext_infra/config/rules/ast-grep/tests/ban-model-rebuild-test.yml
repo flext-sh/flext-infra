@@ -1,0 +1,13 @@
+id: ban-model-rebuild
+# `valid` MUST NOT match: detectors naming the API, strings and comments.
+valid:
+  - |
+    def _reject_model_rebuild(tree):
+        return tree
+  - rebuild = "class Model:\n    pass\n\nModel.model_rebuild()\n"
+  - "# model_rebuild() is prohibited"
+# `invalid` MUST match: every rebuild call form.
+invalid:
+  - Model.model_rebuild()
+  - FlextModels.Order.model_rebuild(_types_namespace=globals())
+  - cls.model_rebuild(force=True)

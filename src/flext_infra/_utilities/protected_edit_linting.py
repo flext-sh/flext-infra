@@ -14,7 +14,6 @@ import sys
 import traceback
 from collections import Counter
 from collections.abc import Iterable, MutableMapping
-from functools import partial
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -25,6 +24,10 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_infra import c, codegen, config, gates, m, r, t
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScopeMixin,
+    FlextInfraUtilitiesGitSemanticPathsMixin,
+)
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
@@ -51,81 +54,164 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Normalized source, or the original configured repair failure.
 
         """
+        del repository_root
         if before_source is not None:
             source = cls.remove_orphaned_text_imports(before_source, source)
-        prepared = cls.normalize_sources(repository_root, {path: source})
-        if prepared.failure:
-            return r[str].from_failure(prepared)
-        content = prepared.value.updates[path.resolve()]
-        if content is None:
-            return r[str].fail(f"prepared source was retired: {path}")
-        return r[str].ok(content)
+        return cls.normalize_python_text(path, source)
+
+    @classmethod
+    def normalized_codegen_changes(
+        cls,
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]:
+        """Normalize Python destinations once; pass every other plan through.
+
+        Check and publication share this view, so they never disagree.
+
+        Returns:
+            The file changes with normalized Python bytes, or the first failure.
+
+        """
+        result_type = r[tuple[m.Cli.FileChange, ...]]
+        changes: list[m.Cli.FileChange] = []
+        for plan in plans:
+            if (
+                plan.path.suffix != c.Infra.EXT_PYTHON
+                or plan.desired_content is None
+                or plan.desired_mode is None
+            ):
+                changes.append(plan)
+                continue
+            normalized = cls.normalize_python_text(
+                plan.path, plan.desired_content.decode(c.DEFAULT_ENCODING)
+            )
+            if normalized.failure:
+                return result_type.from_failure(normalized)
+            changes.append(
+                m.Cli.FileChange(
+                    path=plan.path,
+                    before=plan.before,
+                    desired_content=normalized.value.encode(c.DEFAULT_ENCODING),
+                    desired_mode=plan.desired_mode,
+                )
+            )
+        return result_type.ok(tuple(changes))
+
+    @classmethod
+    def publish_codegen_plans(
+        cls,
+        root: Path,
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish generated plans through the shared file-change publisher.
+
+        Python is normalized first; runtime-local index entries are retired and
+        the cached project document is invalidated after its file changes.
+
+        Returns:
+            The written or deleted paths, or the first failure.
+
+        """
+        result_type = r[tuple[Path, ...]]
+        lock = FlextInfraUtilitiesGitMutationScopeMixin.mutation_lock_path(root)
+        if lock.failure:
+            return result_type.from_failure(lock)
+        changes = cls.normalized_codegen_changes(plans)
+        if changes.failure:
+            return result_type.from_failure(changes)
+        published = u.Cli.publish_file_changes(
+            changes.value,
+            lock_path=lock.value,
+            directory_mode=config.Infra.codegen.modes.directory_generated,
+        )
+        if published.failure:
+            return published
+        for plan in plans:
+            if plan.index_before is None:
+                continue
+            retired = FlextInfraUtilitiesGitSemanticPathsMixin.git_retire_index_file(
+                m.Infra.GitIndexRetirementRequest(
+                    repo_root=plan.project, entry=plan.index_before
+                ),
+            )
+            if retired.failure:
+                return result_type.from_failure(retired)
+        if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
+            u.read_project_document_cached.cache_clear()
+        return published
+
+    @classmethod
+    def normalize_python_text(cls, path: Path, source: str) -> p.Result[str]:
+        """Repair then format one Python candidate through Ruff on stdin.
+
+        ``path`` is the destination; it selects the owning project's Ruff
+        configuration. The flags are the declared ``make.ruff`` repair and
+        format surfaces; remaining findings never break repair (``make check``
+        enforces them), only a Ruff error does.
+
+        Returns:
+            The repaired and formatted source, or Ruff's native failure.
+
+        """
+        command_cwd = cls._command_cwd(path, path.parent)
+        environment = dict(cls._command_env())
+        environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
+            FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+        )
+        declared = config.Infra.codegen.make.ruff
+        for arguments in (
+            ("check", *declared.lint_fix),
+            ("format", *declared.format_apply),
+        ):
+            executed = u.Cli.run_raw(
+                (
+                    *cls._workspace_tool_command(c.Infra.RUFF),
+                    *arguments,
+                    "--stdin-filename",
+                    str(path),
+                    "-",
+                ),
+                cwd=command_cwd,
+                options=m.Cli.ProcessOptions(
+                    env=environment,
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                    input_data=source,
+                ),
+                timeout=cls._gate_deadline(c.Infra.RUFF),
+            )
+            if executed.failure:
+                return r[str].from_failure(executed)
+            output = executed.value
+            outcome = FlextInfraUtilitiesProcess.tool_outcome(
+                output.outcome,
+                findings=int(bool(output.stderr.strip())),
+                findings_exit_codes=config.Infra.tooling.tools.ruff.findings_exit_codes,
+            )
+            if outcome is c.Infra.ToolOutcome.ERROR:
+                return r[str].fail(
+                    f"ruff {arguments[0]} failed for {path}: "
+                    f"{(output.stderr or output.stdout).strip()}"
+                )
+            source = output.stdout
+        return r[str].ok(source)
 
     @classmethod
     def normalize_sources(
         cls,
         repository_root: Path,
         updates: t.MappingKV[Path, str | None],
-        *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        workspaces: t.VariadicTuple[Path] = (),
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
-    ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Prepare composed sources before sealing their publication identity.
+    ) -> p.Result[t.MappingKV[Path, str | None]]:
+        """Prepare composed sources through the destination's native repair gates.
 
         Returns:
-            Prepared updates retaining the exact original context they consumed.
+            Prepared updates keyed by live destination, or the first failure.
 
         """
-        planned = codegen.FlextInfraStagedPackage.plan_sources(
-            repository_root,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                inputs=inputs,
-                workspaces=workspaces,
-                declared_files=declared_files,
-                source_directories=tuple(
-                    item for file in declared_files for item in file.source_directories
-                ),
-                source_query_topology=tuple(
-                    item
-                    for file in declared_files
-                    for item in file.source_query_topology
-                ),
-            ),
-        )
-        if planned.failure:
-            return r[m.Infra.StageSourcePlan].from_failure(planned)
-        return cls.normalize_source_plan(planned.value)
-
-    @classmethod
-    def normalize_source_plan(
-        cls,
-        plan: m.Infra.StageSourcePlan,
-    ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Normalize an authenticated proposal without reopening its source election.
-
-        Returns:
-            Sealed repaired bytes retaining the original physical evidence.
-
-        """
-        return codegen.FlextInfraStagedPackage.prepare_sources(
-            plan,
-            partial(
-                cls._repair_staged_sources,
-                resource_sources=tuple(
-                    {
-                        source.path: source
-                        for file in plan.declared_files
-                        if (context := file.validation_context) is not None
-                        and file.path.suffix in {".py", ".pyi"}
-                        for source in context.source_states
-                    }.values()
-                ),
-            ),
+        return codegen.FlextInfraStagedPackage.plan_sources(
+            repository_root, updates
         ).flat_map(
-            lambda prepared: codegen.FlextInfraStagedPackage.seal_sources(
-                plan, prepared
+            lambda plan: codegen.FlextInfraStagedPackage.prepare_sources(
+                plan, cls._repair_staged_sources
             )
         )
 
@@ -134,8 +220,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         root: Path,
         candidates: t.MappingKV[Path, Path],
-        *,
-        resource_sources: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[bool]:
         """Delegate every repair phase to the native gates, never copy recipes.
 
@@ -143,26 +227,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Acceptance only when lint and format both confirm the prepared bytes.
 
         """
-        for source in resource_sources:
-            if source.content is None:
-                return r[bool].fail(f"resource source has no bytes: {source.path}")
-            compile(source.content, str(source.path), "exec", dont_inherit=True)
-            project = cls._command_cwd(source.path, source.path.parent)
-            context = m.Infra.GateContext(
-                repository_root=project,
-                reports_dir=root,
-                selected_files=(source.path,),
-            )
-            for gate in (
-                gates.FlextInfraRuffLintGate(project),
-                gates.FlextInfraRuffFormatGate(project),
-            ):
-                checked = gate.check_files((source.path,), project, context)
-                if not checked.result.passed:
-                    return r[bool].fail(
-                        checked.raw_output
-                        or f"resource original source quality failed: {source.path}",
-                    )
         grouped: MutableMapping[Path, list[Path]] = {}
         for path in candidates.values():
             project = cls._command_cwd(path, root)
@@ -266,11 +330,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             for state in states
             if state.content is not None
         }
-        prepared = cls.normalize_sources(
-            repository_root, sources, inputs=states
-        ).unwrap()
-        originals = {state.path: state for state in prepared.inputs}
-        for path, content in prepared.updates.items():
+        prepared = cls.normalize_sources(repository_root, sources).unwrap()
+        originals = {state.path: state for state in states}
+        for path, content in prepared.items():
             if content is None:
                 msg = f"touched source preparation retired a file: {path}"
                 raise RuntimeError(msg)

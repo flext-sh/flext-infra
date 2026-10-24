@@ -107,23 +107,6 @@ class FlextInfraModelsCodegenLazyInitModels:
             default_factory=tuple,
             description="Direct child package imports merged at runtime.",
         )
-        source_states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
-            default=(),
-            strict=True,
-            description=(
-                "Original native source reads consumed by this package decision"
-            ),
-        )
-        source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
-            default=(),
-            strict=True,
-            description="Exact native queries consumed by this package decision",
-        )
-        source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
-            default=(),
-            strict=True,
-            description="Original ancestry witnesses consumed by this package decision",
-        )
 
     class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""

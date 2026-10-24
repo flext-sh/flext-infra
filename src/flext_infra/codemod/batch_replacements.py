@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -75,22 +75,14 @@ class FlextInfraModReplacements:
         report: m.Infra.ModOccurrenceReport[FindingT],
         *,
         exact_replacements: bool = False,
-        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
-        verification: t.Pair[
-            Callable[[], p.Result[bool]], Callable[[Path], p.Result[bool]]
-        ]
-        | None = None,
     ) -> p.Result[bool]:
-        """Validate byte coordinates and publish complete CAS-owned file plans.
+        """Validate byte coordinates and publish complete file plans.
 
         Args:
             root: Repository root the finding paths are relative to.
             report: The scanned findings whose actionable fixes publish.
             exact_replacements: Publish exact byte-span replacements instead
                 of recomposed CST output.
-            published_plans: Mutable sink receiving every published file
-                plan; publishing proceeds without capture when omitted.
-            verification: Original input proof and candidate/live acceptance callbacks.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -121,13 +113,7 @@ class FlextInfraModReplacements:
                 return r[bool].from_failure(plan)
             plans.append(plan.value)
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
-            plans,
-            repository_root=root,
-            published_files=published_plans,
-            options=m.Infra.SemanticPublicationOptions(
-                source_guard=verification[0] if verification is not None else None,
-                validator=verification[1] if verification is not None else None,
-            ),
+            plans, repository_root=root
         )
         if published.failure:
             return r[bool].from_failure(published)
@@ -211,7 +197,6 @@ class FlextInfraModReplacements:
                 desired_content=content,
                 desired_mode=before.mode,
                 changes=tuple(finding.rule_id for finding in findings),
-                source_states=tuple(bindings.values()),
             ),
         )
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import infra, main
+from flext_infra import main
 from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import c, m, tm, u
@@ -464,8 +464,8 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.ok(u.Cli.atomic_write_text_file(accepted, source))
         tm.ok(u.Cli.atomic_write_text_file(unrelated, newer))
 
-        with pytest.raises(RuntimeError, match="failed"):
-            FlextInfraCodemodSemanticApply.apply_transaction_paths(
+        tm.fail(
+            FlextInfraCodemodSemanticApply.publish_planned_edits(
                 mod_workspace,
                 (
                     m.Infra.SemanticMigrationEdit(
@@ -475,8 +475,8 @@ class TestsFlextInfraFailedInvocationProgress:
                         changes=("real formatter rejection",),
                     ),
                 ),
-                source_preview=infra.source_preview(mod_workspace),
             )
+        )
 
         tm.that(accepted.read_text(encoding="utf-8"), eq=source)
         tm.that(unrelated.read_text(encoding="utf-8"), eq=newer)
