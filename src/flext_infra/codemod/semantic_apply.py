@@ -17,7 +17,6 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_sources import FlextInfraRenameSources
@@ -571,7 +570,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             snapshots = tuple(
                 stack.enter_context(
                     closing(
-                        FlextInfraRopeProject.from_atomic_reads(
+                        u.Infra.planned_project(
                             project,
                             election=cls._planning_election(
                                 project,
@@ -719,7 +718,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
             )
             project = stack.enter_context(
                 closing(
-                    FlextInfraRopeProject.from_atomic_reads(
+                    u.Infra.planned_project(
                         live,
                         election=cls._planning_election(
                             live,
@@ -1253,9 +1252,7 @@ class FlextInfraCodemodSemanticApply(FlextInfraRenameSources):
                 authority, project_roots=u.Infra.import_project_roots(root)
             ) as live,
             closing(
-                FlextInfraRopeProject.from_atomic_reads(
-                    live, election=u.Infra.native_election(live)
-                )
+                u.Infra.planned_project(live, election=u.Infra.native_election(live))
             ) as source_project,
             FlextInfraRopeWorkspace.open_workspace(
                 root, rope_repository_root=authority, source_project=source_project

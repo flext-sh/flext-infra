@@ -13,7 +13,6 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -182,7 +181,7 @@ class FlextInfraApplyRenames:
                     root, project_roots=roots, consumer_root=consumer
                 ) as live,
                 closing(
-                    FlextInfraRopeProject.from_atomic_reads(
+                    u.Infra.planned_project(
                         live, election=u.Infra.native_election(live)
                     )
                 ) as project,

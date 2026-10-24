@@ -1042,6 +1042,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Execute refactoring pass."""
             ...
 
+    @runtime_checkable
     class CensusObjectRules(Protocol):
         """Object classification operations consumed by project reporting."""
 

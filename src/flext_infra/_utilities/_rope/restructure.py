@@ -108,7 +108,7 @@ class FlextInfraRopeRestructure(Restructure):
         self.admitted_count += len(selected)
 
         return u.type_adapter(
-            TypeForm(t.InstanceOf[t.Infra.RopeNativeChangeComputer])
+            TypeForm(t.Port[t.Infra.RopeNativeChangeComputer])
         ).validate_python(super()._compute_changes(selected, pymodule), strict=True)
 
     @override

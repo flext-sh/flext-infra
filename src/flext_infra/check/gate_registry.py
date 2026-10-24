@@ -35,10 +35,8 @@ from flext_infra.gates import (
     FlextInfraSmellsGate,
 )
 from flext_infra.gates.codemod import FlextInfraCodemodGate
-from flext_infra.gates.runtime_integrity import (
-    FlextInfraProjectModuleGate,
-    FlextInfraRuntimeIntegrityGate,
-)
+from flext_infra.gates.project_module import FlextInfraProjectModuleGate
+from flext_infra.gates.runtime_integrity import FlextInfraRuntimeIntegrityGate
 
 if TYPE_CHECKING:
     from flext_infra.gates import FlextInfraGate

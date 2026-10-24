@@ -10,7 +10,6 @@ from contextlib import closing
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 
 
@@ -205,7 +204,7 @@ class FlextInfraSemanticPublication:
         with (
             u.Infra.open_project(repository_root, project_roots=roots) as live,
             closing(
-                FlextInfraRopeProject.from_atomic_reads(
+                u.Infra.planned_project(
                     live,
                     election=u.Infra.native_election(live),
                     declared_files=tuple(plans),
