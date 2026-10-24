@@ -299,8 +299,38 @@ class FlextInfraPytestCollection:
         )
 
     @staticmethod
+    @pytest.hookimpl(tryfirst=True)
     def pytest_configure(config: pytest.Config) -> None:
-        """Record warnings once, on the controller or in serial execution."""
+        """Pin testmon outside the checkout; record warnings once.
+
+        pytest-testmon opens ``TESTMON_DATAFILE`` in its own configure hook
+        and otherwise creates ``.testmondata`` in the working directory. The
+        canonical test verbs export the external database, so an activation
+        without it (or pointing inside the rootdir) is refused before
+        testmon can write into the repository.
+
+        Raises:
+            pytest.UsageError: When testmon is active without an absolute
+                external datafile.
+
+        """
+        testmon_active = any(
+            config.getoption(dest, default=False)
+            for dest in c.Infra.PYTEST_TESTMON_ACTIVATION_DESTS
+        ) and not config.getoption(c.Infra.PYTEST_TESTMON_DISABLE_DEST, default=False)
+        if testmon_active:
+            datafile = u.Cli.process_env().get(c.Infra.PYTEST_ENV_TESTMON_DATAFILE, "")
+            database = Path(datafile.strip())
+            if not datafile.strip() or not database.is_absolute():
+                msg = (
+                    f"pytest-testmon requires an absolute external "
+                    f"{c.Infra.PYTEST_ENV_TESTMON_DATAFILE}; run the canonical "
+                    "make test verb"
+                )
+                raise pytest.UsageError(msg)
+            if database.resolve().is_relative_to(config.rootpath.resolve()):
+                msg = f"testmon database must be outside the checkout: {database}"
+                raise pytest.UsageError(msg)
         config.stash[FlextInfraPytestCollection._markdown] = (
             FlextInfraModelsCore.PytestMarkdownCollection()
         )

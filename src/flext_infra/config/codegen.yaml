@@ -838,6 +838,11 @@ Infra:
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    # pytest-testmon's default cwd datafile and its SQLite WAL/SHM siblings.
+    # The canonical test verbs pin the database outside the checkout
+    # (make.testmon_cache) and the pytest plugin refuses an in-tree one, so an
+    # in-tree copy is a stray raw run that must never become tracked.
+    - { name: ".testmondata*", is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .planning, vscode_exclude: false, watch_exclude: false }
     - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }
     - { name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
