@@ -63,7 +63,6 @@ class TestsFlextInfraGeneratedRuntime:
 
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
-    @pytest.mark.parametrize("relative", [False, True])
     @pytest.mark.parametrize(
         "segment", ["child", "descriptive_namespace_for_deep_native_owner_projection"]
     )
@@ -72,10 +71,14 @@ class TestsFlextInfraGeneratedRuntime:
         tmp_path: Path,
         depth: int,
         segment: str,
-        *,
-        relative: bool,
     ) -> None:
-        """Execute elected own imports alongside ancestor and external imports."""
+        """Execute elected own imports alongside ancestor and external imports.
+
+        Premise: the public renderer expresses same-root targets relative to the
+        rendered package and binds an own child whose import line cannot fit
+        through a module alias; a namespace whose own import cannot fit at all
+        is rejected before any initializer is written.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         children = (segment,) * depth
         child = package.joinpath(*children)
@@ -89,36 +92,45 @@ class TestsFlextInfraGeneratedRuntime:
         )
         provider = child / "provider.py"
         tm.ok(u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = object()\n"))
-        groups = {
-            (
-                f"{'.' * (depth + 1)}sibling" if relative else f"{package.name}.sibling"
-            ): (("sibling", ""),),
-            "pathlib": (("Path", "Path"),),
-            f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
-        }
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=child,
+                init_path=child / c.Infra.INIT_PY,
+                current_pkg=namespace,
+                surface=package.name,
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("LOCAL_SENTINEL", "Path", "sibling"),
+            lazy_map={
+                "sibling": (f"{package.name}.sibling", ""),
+                "Path": ("pathlib", "Path"),
+                "LOCAL_SENTINEL": (f"{namespace}.{provider.stem}", "LOCAL_SENTINEL"),
+            },
+            eager_dunders={},
+        )
         width = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
         )
-        if len(f"    from {namespace}.{provider.stem} import (") > width:
-            with pytest.raises(ValueError, match="Absolute import owner"):
-                codegen.FlextInfraCodegenGeneration.generate_type_checking(
-                    groups,
-                    include_flext_types=False,
-                    local_package_root=namespace,
-                )
-            tm.fail((child / c.Infra.INIT_PY).exists())
-            return
-        imports = codegen.FlextInfraCodegenGeneration.generate_type_checking(
-            groups,
-            include_flext_types=False,
-            local_package_root=namespace,
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                child / c.Infra.INIT_PY,
-                "TYPE_CHECKING = True\n\n" + "\n".join(imports) + "\n",
+        with u.Infra.facade_source_project(root, project_roots=(root,)) as binding:
+            project = binding[0]
+            model = u.Infra.lazy_init_run(
+                project,
+                u.Infra.index_rope_workspace(project, root),
+                root=root,
+                scoped=True,
+            ).model
+            if len(f"    from {namespace} import (") > width:
+                with pytest.raises(ValueError, match="exceeds Ruff line length"):
+                    u.Infra.lazy_init_render(
+                        plan, model=model, first_party=frozenset({package.name})
+                    )
+                tm.fail((child / c.Infra.INIT_PY).exists())
+                return
+            rendered = u.Infra.lazy_init_render(
+                plan, model=model, first_party=frozenset({package.name})
             )
-        )
+        tm.ok(u.Cli.atomic_write_text_file(child / c.Infra.INIT_PY, rendered))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "import pathlib\n"

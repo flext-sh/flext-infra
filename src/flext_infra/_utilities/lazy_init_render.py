@@ -33,7 +33,7 @@ class FlextInfraUtilitiesLazyInitRender:
     """Render planned initializers through the canonical template."""
 
     @staticmethod
-    def width() -> int:
+    def lazy_init_width() -> int:
         """Return the Ruff line length every generated line fits.
 
         Returns:
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesLazyInitRender:
         }
         children = frozenset(plan.child_packages_for_lazy)
         entries = {
-            name: (cls._compact_module(current, module), attr)
+            name: (cls._lazy_init_compact_module(current, module), attr)
             for name, (module, attr) in public.items()
             if attr or module not in children or name == module.rsplit(".", 1)[-1]
         }
@@ -99,12 +99,14 @@ class FlextInfraUtilitiesLazyInitRender:
             / c.Infra.TEMPLATE_ROOT_INIT,
             m.Infra.LazyInitRootRender(
                 autogen_header=c.Infra.AUTOGEN_HEADER,
-                docstring=cls._docstring(plan, project_root, model),
-                runtime_import_lines=cls._runtime_imports(plan, helpers, first_party),
-                type_checking_lines="\n".join(
-                    cls._type_checking(public, plan, first_party, model)
+                docstring=cls._lazy_init_docstring(plan, project_root, model),
+                runtime_import_lines=cls._lazy_init_runtime_imports(
+                    plan, helpers, first_party
                 ),
-                exports_tuple=cls._exports_tuple((
+                type_checking_lines="\n".join(
+                    cls._lazy_init_type_checking(public, plan, first_party, model)
+                ),
+                exports_tuple=cls._lazy_init_exports_tuple((
                     *(
                         name
                         for name in plan.exports
@@ -112,14 +114,14 @@ class FlextInfraUtilitiesLazyInitRender:
                     ),
                     *helpers,
                 )),
-                lazy_export_mapping=cls._mapping(entries),
+                lazy_export_mapping=cls._lazy_init_mapping(entries),
             ),
         ).unwrap()
         compile(rendered, str(plan.context.init_path), "exec")
         return rendered.rstrip() + "\n"
 
     @staticmethod
-    def _docstring(
+    def _lazy_init_docstring(
         plan: m.Infra.LazyInitPlan,
         project_root: Path,
         model: m.Infra.PythonModelRun,
@@ -154,7 +156,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return f'"""{summary}\n\n{notice}\n"""'
 
     @staticmethod
-    def export_key(name: str) -> t.Pair[int, str]:
+    def lazy_init_export_key(name: str) -> t.Pair[int, str]:
         """Order one public name like Ruff ``RUF022``.
 
         Returns:
@@ -164,7 +166,9 @@ class FlextInfraUtilitiesLazyInitRender:
         return (0 if name.isupper() else 1 if name[:1].isupper() else 2, name)
 
     @staticmethod
-    def _section(module: str, first_party: frozenset[str]) -> t.Pair[int, str]:
+    def _lazy_init_section(
+        module: str, first_party: frozenset[str]
+    ) -> t.Pair[int, str]:
         """Rank an import by Ruff isort section, then by module.
 
         Returns:
@@ -176,7 +180,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return (int(module.split(".", 1)[0] in first_party), module.lower())
 
     @staticmethod
-    def _item_key(item: t.StrPair) -> t.Pair[t.Pair[int, str], bool]:
+    def _lazy_init_item_key(item: t.StrPair) -> t.Pair[t.Pair[int, str], bool]:
         """Order an imported member like Ruff isort ``order-by-type``.
 
         Returns:
@@ -189,7 +193,9 @@ class FlextInfraUtilitiesLazyInitRender:
         ), export != imported
 
     @classmethod
-    def _import(cls, indent: str, module: str, parts: t.StrSequence) -> t.StrSequence:
+    def _lazy_init_import(
+        cls, indent: str, module: str, parts: t.StrSequence
+    ) -> t.StrSequence:
         """Emit one Ruff-canonical ``from`` import within the line length.
 
         Returns:
@@ -200,12 +206,12 @@ class FlextInfraUtilitiesLazyInitRender:
 
         """
         compact = f"{indent}from {module} import {', '.join(parts)}"
-        if len(compact) <= cls.width():
+        if len(compact) <= cls.lazy_init_width():
             return (compact,)
-        if len(f"{indent}from {module} import (") > cls.width():
+        if len(f"{indent}from {module} import (") > cls.lazy_init_width():
             msg = (
                 f"Absolute import owner {module!r} exceeds Ruff line length "
-                f"{cls.width()}; select its canonical public package export."
+                f"{cls.lazy_init_width()}; select its canonical public package export."
             )
             raise ValueError(msg)
         return (
@@ -215,7 +221,9 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _module_alias(cls, indent: str, module: str, name: str) -> t.StrSequence:
+    def _lazy_init_module_alias(
+        cls, indent: str, module: str, name: str
+    ) -> t.StrSequence:
         """Emit ``from parent import child as name`` for one module object.
 
         Returns:
@@ -226,7 +234,7 @@ class FlextInfraUtilitiesLazyInitRender:
             return (f"{indent}import {module} as {name}",)
         parent, _, child = module.rpartition(".")
         compact = f"{indent}from {parent} import {child} as {name}"
-        if len(compact) <= cls.width():
+        if len(compact) <= cls.lazy_init_width():
             return (compact,)
         return (
             f"{indent}from {parent} import (",
@@ -235,7 +243,7 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _runtime_imports(
+    def _lazy_init_runtime_imports(
         cls,
         plan: m.Infra.LazyInitPlan,
         helpers: t.StrSequence,
@@ -253,8 +261,8 @@ class FlextInfraUtilitiesLazyInitRender:
             groups[module].append((name, attr))
         statements = [
             (
-                cls._section(module, first_party),
-                cls._import(
+                cls._lazy_init_section(module, first_party),
+                cls._lazy_init_import(
                     "",
                     module,
                     tuple(
@@ -267,8 +275,8 @@ class FlextInfraUtilitiesLazyInitRender:
             for module, items in groups.items()
         ]
         statements.append((
-            cls._section(c.Infra.LAZY_BOOTSTRAP_MODULE, first_party),
-            cls._import(
+            cls._lazy_init_section(c.Infra.LAZY_BOOTSTRAP_MODULE, first_party),
+            cls._lazy_init_import(
                 "",
                 c.Infra.LAZY_BOOTSTRAP_MODULE,
                 helpers or ("install_lazy_exports",),
@@ -284,7 +292,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return "\n".join(lines)
 
     @staticmethod
-    def _import_groups(
+    def _lazy_init_import_groups(
         public: t.LazyAliasMap, children: t.StrSequence
     ) -> t.Pair[t.MappingKV[str, t.SequenceOf[t.StrPair]], frozenset[str]]:
         """Group public targets by the module their static import names.
@@ -323,7 +331,7 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _type_checking(
+    def _lazy_init_type_checking(
         cls,
         public: t.LazyAliasMap,
         plan: m.Infra.LazyInitPlan,
@@ -339,7 +347,7 @@ class FlextInfraUtilitiesLazyInitRender:
             The ``if TYPE_CHECKING:`` block lines, empty without exports.
 
         """
-        merged, module_objects = cls._import_groups(
+        merged, module_objects = cls._lazy_init_import_groups(
             public, plan.child_packages_for_lazy
         )
         if not merged:
@@ -348,28 +356,34 @@ class FlextInfraUtilitiesLazyInitRender:
         lines = ["if TYPE_CHECKING:"]
         aliases: list[str] = []
         previous: int | None = None
-        for module in sorted(merged, key=lambda name: cls._section(name, first_party)):
-            section = cls._section(module, first_party)[0]
+        for module in sorted(
+            merged, key=lambda name: cls._lazy_init_section(name, first_party)
+        ):
+            section = cls._lazy_init_section(module, first_party)[0]
             if previous is not None and section != previous:
                 lines.append("")
             previous = section
             items = merged[module]
             if (
-                len(f"    from {module} import (") > cls.width()
+                len(f"    from {module} import (") > cls.lazy_init_width()
                 and module.rpartition(".")[0] == plan.context.current_pkg
                 and all(attr for _, attr in items)
             ):
-                lines.extend(cls._owned_child(module, items, plan, occupied, model))
+                lines.extend(
+                    cls._lazy_init_owned_child(module, items, plan, occupied, model)
+                )
             else:
                 lines.extend(
-                    cls._module_lines(module, items, module_objects, model, aliases)
+                    cls._lazy_init_module_lines(
+                        module, items, module_objects, model, aliases
+                    )
                 )
         if aliases:
             lines.extend(("", *aliases))
         return lines if len(lines) > 1 else ()
 
     @classmethod
-    def _module_lines(
+    def _lazy_init_module_lines(
         cls,
         module: str,
         items: t.SequenceOf[t.StrPair],
@@ -388,12 +402,12 @@ class FlextInfraUtilitiesLazyInitRender:
         source = python.python_model_module(model, module)
         lines: list[str] = []
         parts: list[str] = []
-        for name, attr in sorted(items, key=cls._item_key):
+        for name, attr in sorted(items, key=cls._lazy_init_item_key):
             if not attr:
-                lines.extend(cls._module_alias("    ", module, name))
+                lines.extend(cls._lazy_init_module_alias("    ", module, name))
                 continue
             original = (
-                python.python_model_static_class_alias(model, source, attr)
+                python.python_model_static_class_alias(source, attr)
                 if source is not None
                 else ""
             )
@@ -406,11 +420,13 @@ class FlextInfraUtilitiesLazyInitRender:
             else:
                 parts.append(imported)
         if parts:
-            lines.extend(cls._import("    ", module, tuple(dict.fromkeys(parts))))
+            lines.extend(
+                cls._lazy_init_import("    ", module, tuple(dict.fromkeys(parts)))
+            )
         return lines
 
     @classmethod
-    def _owned_child(
+    def _lazy_init_owned_child(
         cls,
         module: str,
         items: t.SequenceOf[t.StrPair],
@@ -449,8 +465,8 @@ class FlextInfraUtilitiesLazyInitRender:
         alias = f"{prefix}{index}"
         occupied.add(alias)
         # Ruff separates the owner import from its bindings by one blank line.
-        lines = [*cls._module_alias("    ", module, alias), ""]
-        for name, attr in sorted(items, key=cls._item_key):
+        lines = [*cls._lazy_init_module_alias("    ", module, alias), ""]
+        for name, attr in sorted(items, key=cls._lazy_init_item_key):
             if source is None or not python.python_model_defines(source, attr):
                 msg = (
                     "Owned child static export is not declared by its module: "
@@ -460,40 +476,40 @@ class FlextInfraUtilitiesLazyInitRender:
             compact = f"    {name} = {alias}.{attr}"
             lines.extend(
                 (compact,)
-                if len(compact) <= cls.width()
+                if len(compact) <= cls.lazy_init_width()
                 else (f"    {name} = (", f"        {alias}.{attr}", "    )")
             )
-        if any(len(line) > cls.width() for line in lines):
+        if any(len(line) > cls.lazy_init_width() for line in lines):
             msg = f"Owned child static binding exceeds Ruff line length: {module}"
             raise ValueError(msg)
         return tuple(lines)
 
     @classmethod
-    def _exports_tuple(cls, names: t.StrSequence) -> str:
+    def _lazy_init_exports_tuple(cls, names: t.StrSequence) -> str:
         """Render ``__all__`` exactly as Ruff formats it.
 
         Returns:
             The tuple literal, compact when it fits the line length.
 
         """
-        ordered = sorted(dict.fromkeys(names), key=cls.export_key)
+        ordered = sorted(dict.fromkeys(names), key=cls.lazy_init_export_key)
         if not ordered:
             return "()"
         inner = ", ".join(f'"{name}"' for name in ordered)
         compact = f"({inner},)" if len(ordered) == 1 else f"({inner})"
-        if len("__all__: tuple[str, ...] = ") + len(compact) <= cls.width():
+        if len("__all__: tuple[str, ...] = ") + len(compact) <= cls.lazy_init_width():
             return compact
         return "(\n    " + ",\n    ".join(f'"{name}"' for name in ordered) + ",\n)"
 
     @classmethod
-    def _mapping(cls, entries: t.LazyAliasMap) -> str:
+    def _lazy_init_mapping(cls, entries: t.LazyAliasMap) -> str:
         """Render the installer's immutable export mapping as Ruff formats it.
 
         Returns:
             The ``MappingProxyType`` argument line(s).
 
         """
-        ordered = sorted(entries, key=cls.export_key)
+        ordered = sorted(entries, key=cls.lazy_init_export_key)
         inner = ", ".join(
             f'"{name}": "{module}"'
             if name == attr or not attr
@@ -502,7 +518,7 @@ class FlextInfraUtilitiesLazyInitRender:
             for module, attr in (entries[name],)
         )
         compact = f"    MappingProxyType({{{inner}}}),"
-        if len(compact) <= cls.width():
+        if len(compact) <= cls.lazy_init_width():
             return compact
         lines = ["    MappingProxyType({"]
         indent = "        "
@@ -512,7 +528,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 line = f'{indent}"{name}": "{module}",'
                 lines.extend(
                     (line,)
-                    if len(line) <= cls.width()
+                    if len(line) <= cls.lazy_init_width()
                     else (
                         f'{indent}"{name}": (',
                         f'{indent}    "{module}"',
@@ -523,7 +539,7 @@ class FlextInfraUtilitiesLazyInitRender:
             line = f'{indent}"{name}": ("{module}", "{attr}"),'
             lines.extend(
                 (line,)
-                if len(line) <= cls.width()
+                if len(line) <= cls.lazy_init_width()
                 else (
                     f'{indent}"{name}": (',
                     f'{indent}    "{module}",',
@@ -535,7 +551,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return "\n".join(lines)
 
     @staticmethod
-    def _compact_module(current: str, module: str) -> str:
+    def _lazy_init_compact_module(current: str, module: str) -> str:
         """Express a lazy target relative to ``current`` when they share a root.
 
         Returns:

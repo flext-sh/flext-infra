@@ -27,7 +27,7 @@ class FlextInfraCodegenLazyInit(
     """Plan every generated ``__init__.py`` of the selected repositories."""
 
     project_scope_roots: Annotated[
-        t.VariadicTuple[Path] | None,
+        t.SequenceOf[Path] | None,
         m.Field(
             description=(
                 "Repository roots selected by conformance; None plans every "

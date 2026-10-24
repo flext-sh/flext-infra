@@ -124,6 +124,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope import (
+        FlextInfraRopeNativeProject,
         FlextInfraRopeProject,
         FlextInfraRopeRestructure,
     )
@@ -161,6 +162,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover import (
         FlextInfraUtilitiesDeclarationPayload,
         FlextInfraUtilitiesSemanticConstantConsumers,
+        FlextInfraUtilitiesSemanticConstantSources,
         FlextInfraUtilitiesSemanticContracts,
         FlextInfraUtilitiesSemanticCutoverAliasCst,
         FlextInfraUtilitiesSemanticCutoverAliases,
@@ -185,6 +187,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesSemanticCutoverSelfFacade,
         FlextInfraUtilitiesSemanticDeclarationRelocation,
         FlextInfraUtilitiesSemanticDeclarationRetirement,
+        FlextInfraUtilitiesSemanticDelegations,
         FlextInfraUtilitiesSemanticFamilyFlatten,
         FlextInfraUtilitiesSemanticFamilyReferences,
         FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -232,6 +235,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
     from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
     from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
+    from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.gitignore import FlextInfraUtilitiesGitignore
     from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
@@ -376,6 +380,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraRopeNativeProject",
     "FlextInfraRopeProject",
     "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
@@ -421,6 +426,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
+    "FlextInfraUtilitiesFacadeMembers",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationEvidenceMixin",
     "FlextInfraUtilitiesGitAttestationMixin",
@@ -541,6 +547,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSemanticConstantConsumers",
+    "FlextInfraUtilitiesSemanticConstantSources",
     "FlextInfraUtilitiesSemanticContracts",
     "FlextInfraUtilitiesSemanticCutover",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
@@ -566,6 +573,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverSelfFacade",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
     "FlextInfraUtilitiesSemanticDeclarationRetirement",
+    "FlextInfraUtilitiesSemanticDelegations",
     "FlextInfraUtilitiesSemanticFamilyFlatten",
     "FlextInfraUtilitiesSemanticFamilyReferences",
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
@@ -592,6 +600,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraRopeNativeProject": "._rope.native_project",
         "FlextInfraRopeProject": "._rope.project",
         "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
@@ -645,6 +654,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsScopeSelectionMixin": "._docs_scope_selection",
         "FlextInfraUtilitiesDocsScopeStateMixin": "._docs_scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",
+        "FlextInfraUtilitiesFacadeMembers": ".facade_members",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesGitAttestationEvidenceMixin": "._git.attestation_evidence",
         "FlextInfraUtilitiesGitAttestationMixin": "._git.attestation",
@@ -773,6 +783,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticConstantConsumers": (
             "._semantic_cutover.constant_consumers"
         ),
+        "FlextInfraUtilitiesSemanticConstantSources": (
+            "._semantic_cutover.constant_sources"
+        ),
         "FlextInfraUtilitiesSemanticContracts": "._semantic_cutover.contracts",
         "FlextInfraUtilitiesSemanticCutover": ".semantic_cutover",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": "._semantic_cutover.alias_cst",
@@ -832,6 +845,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticDeclarationRetirement": (
             "._semantic_cutover.declaration_retirement"
         ),
+        "FlextInfraUtilitiesSemanticDelegations": "._semantic_cutover.delegations",
         "FlextInfraUtilitiesSemanticFamilyFlatten": "._semantic_cutover.family_flatten",
         "FlextInfraUtilitiesSemanticFamilyReferences": (
             "._semantic_cutover.family_references"

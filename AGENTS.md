@@ -37,8 +37,11 @@ src/flext_infra/
 | ------------------------------- | ----- | ------------------------------ | ---------------------------------------------------------- |
 | `FlextInfra`                    | class | `api.py`                       | Rope workspace / health facade                             |
 | `FlextInfraCli`                 | class | `cli.py`                       | CLI entry                                                  |
-| `FlextInfraCodegenLazyInit`     | class | `codegen/lazy_init.py`         | lazy-init planning of every generated `__init__.py`        |
-| `FlextInfraCodegenPythonModel`  | class | `codegen/python_model.py`      | parse-once Griffe static model shared by one run           |
+| `FlextInfraCodegenLazyInit`     | class | `codegen/lazy_init.py`         | lazy-init orchestrator over the `u.Infra.lazy_init_*` owners |
+| `FlextInfraUtilitiesLazyInitPlan` | class | `_utilities/lazy_init_plan.py` | `u.Infra` package planning, collision election, file plans |
+| `FlextInfraUtilitiesLazyInitLetters` | class | `_utilities/lazy_init_letters.py` | `u.Infra` facade-letter election (nearest declaring, then serving) |
+| `FlextInfraUtilitiesLazyInitRender` | class | `_utilities/lazy_init_render.py` | `u.Infra` Ruff fixed-point initializer rendering |
+| `FlextInfraUtilitiesPythonModel` | class | `_utilities/python_model.py`  | `u.Infra` sole Griffe owner: parse-once static model per run |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
 | `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
 | `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |

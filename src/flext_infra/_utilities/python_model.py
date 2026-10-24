@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import griffe
@@ -37,7 +36,6 @@ class FlextInfraUtilitiesPythonModel:
             source_project=source_project,
             module_files=module_files,
             modules={},
-            sources={},
             ancestors={},
         )
 
@@ -67,7 +65,6 @@ class FlextInfraUtilitiesPythonModel:
                 )
             module = griffe.visit(leaf, path, source, parent=parent)
             run.modules[path] = module
-            run.sources[module.path] = source
         return module
 
     @classmethod
@@ -263,12 +260,12 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_static_class_alias(
-        cls, run: m.Infra.PythonModelRun, module: t.Infra.PythonModule, name: str
+        cls, module: t.Infra.PythonModule, name: str
     ) -> str:
-        """Return the class a name statically re-binds, proven on the module tree.
+        """Return the class a name statically re-binds, read from the Griffe model.
 
-        The alias is one plain module-level ``name = Cls`` after the single
-        ``class Cls`` declaration, and neither name is stored anywhere else.
+        The alias is an unannotated module-level ``name = Cls`` bound after the
+        ``class Cls`` declaration it names.
 
         Returns:
             The class name, or ``""`` when the binding is not a static alias.
@@ -277,33 +274,13 @@ class FlextInfraUtilitiesPythonModel:
         original = cls.python_model_class_alias(module, name)
         if not original:
             return ""
-        tree = ast.parse(run.sources[module.path])
-        aliases = [
-            node
-            for node in tree.body
-            if isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == name
-            and isinstance(node.value, ast.Name)
-            and node.value.id == original
-        ]
-        stores = [
-            node.id
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
-        ]
-        declarations = [
-            node
-            for node in tree.body
-            if isinstance(node, ast.ClassDef) and node.name == original
-        ]
+        alias_line = module.attributes[name].lineno
+        declaration_line = module.classes[original].lineno
         proven = (
-            len(aliases) == 1
-            and stores.count(name) == 1
-            and original not in stores
-            and len(declarations) == 1
-            and declarations[0].lineno < aliases[0].lineno
+            module.attributes[name].annotation is None
+            and alias_line is not None
+            and declaration_line is not None
+            and declaration_line < alias_line
         )
         return original if proven else ""
 

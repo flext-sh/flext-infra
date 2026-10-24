@@ -35,10 +35,6 @@ class FlextInfraModelsCodegenLazyInitModels:
             t.Port[dict[Path, t.Infra.PythonModule]],
             m.Field(exclude=True, description="The one parse of each read source"),
         ]
-        sources: Annotated[
-            t.Port[dict[str, str]],
-            m.Field(exclude=True, description="Source text by dotted module name"),
-        ]
         ancestors: Annotated[
             t.Port[dict[str, frozenset[str]]],
             m.Field(exclude=True, description="Resolved class ancestry by path"),

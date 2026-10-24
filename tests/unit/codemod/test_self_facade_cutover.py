@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from flext_infra.codegen import FlextInfraCodegenGeneration
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
 
@@ -77,8 +76,15 @@ class TestsFlextInfraSelfFacadeCutover:
             project,
             _,
         ):
-            sources[context / c.Infra.INIT_PY] = (
-                FlextInfraCodegenGeneration.render_init(plan, source_project=project)
+            sources[context / c.Infra.INIT_PY] = u.Infra.lazy_init_render(
+                plan,
+                model=u.Infra.lazy_init_run(
+                    project,
+                    u.Infra.index_rope_workspace(project, root),
+                    root=root,
+                    scoped=True,
+                ).model,
+                first_party=frozenset({package.name, auxiliary}),
             )
         (context / c.Infra.INIT_PY).write_text(
             sources[context / c.Infra.INIT_PY], encoding=c.DEFAULT_ENCODING
