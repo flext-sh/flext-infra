@@ -1,0 +1,471 @@
+"""Behavior tests for fresh-import verification of published layouts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+from flext_infra.validate import FlextInfraValidateFreshImport
+from tests import c, m, t, tm, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def _probe_publication(
+    package: Path,
+    *,
+    init_path: Path,
+    current_pkg: str | None = None,
+    surface: str | None = None,
+    exports: t.StrSequence = (),
+) -> m.Infra.LazyInitPlan:
+    """Compose one generated-`__init__` publication probe.
+
+    Returns:
+        The resulting ``m.Infra.LazyInitPlan``.
+
+    """
+    return m.Infra.LazyInitPlan(
+        context=m.Infra.LazyInitPackageContext(
+            pkg_dir=package,
+            init_path=init_path,
+            current_pkg=current_pkg or package.name,
+            surface=surface or package.name,
+            importable=True,
+            generated_init=True,
+        ),
+        action=c.Infra.LazyInitAction.WRITE,
+        exports=tuple(exports),
+        lazy_map={},
+        eager_dunders={},
+    )
+
+
+def _probe_report(
+    tmp_path: Path,
+    *,
+    packages: t.StrSequence = (),
+    publications: t.SequenceOf[m.Infra.LazyInitPlan] = (),
+    repository_roots: t.SequenceOf[Path] = (),
+) -> m.Infra.ValidationReport:
+    """Build one fresh-import report over the probe checkout.
+
+    Returns:
+        The resulting validated ``m.Infra.ValidationReport``.
+
+    """
+    return tm.ok(
+        FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+            packages=packages,
+            publications=publications,
+            repository_roots=repository_roots,
+        ),
+    )
+
+
+class TestsFlextInfraFreshImportPublication:
+    """Prove fresh-import verification against the real publication contract."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("content", "missing_export"),
+        [
+            ("", False),
+            ("__all__ = ()\n", False),
+            ("__all__ = ('missing_export',)\n", True),
+        ],
+    )
+    def test_preserved_initializer_uses_real_publication_contract(
+        tmp_path: Path,
+        content: str,
+        *,
+        missing_export: bool,
+    ) -> None:
+        """A preserved package is imported and its live exports must resolve."""
+        repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
+        before = initializer.read_bytes()
+        analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
+        tm.that(
+            any(
+                file.path == initializer and u.Infra.codegen_file_requires_effect(file)
+                for file in analysis.files
+            ),
+            eq=False,
+        )
+
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
+                publications=analysis.publications,
+                repository_roots=(repository_root,),
+            ),
+        )
+
+        tm.that(report.passed, eq=not missing_export, msg=str(report.violations))
+        tm.that(initializer.read_bytes(), eq=before)
+        if missing_export:
+            tm.that(report.violations[0], has="missing_export")
+            tm.that(report.violations[0], has="Traceback")
+        else:
+            tm.that(report.violations, length=0)
+
+    @staticmethod
+    def test_removed_initializer_is_not_a_publication_contract(
+        tmp_path: Path,
+    ) -> None:
+        """A planned removal cannot certify the package's public exports."""
+        repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
+        publication = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        )
+        tm.that(publication.action, eq=c.Infra.LazyInitAction.REMOVE)
+
+        result = FlextInfraValidateFreshImport(
+            repository_root=repository_root,
+        ).build_report(
+            publications=analysis.publications,
+            repository_roots=(repository_root,),
+        )
+
+        tm.fail(result, has=f"missing public export contract for {package.name}")
+
+    @staticmethod
+    def test_layout_without_a_plan_verifies_its_on_disk_contract(
+        tmp_path: Path,
+    ) -> None:
+        """A layout no publication claims is verified from its live exports.
+
+        A workspace-root generation transaction indexes only its own packages,
+        so a declared member repository arrives with no lazy-init plan. The
+        verifier must import that checkout and resolve its declared ``__all__``
+        instead of rejecting it for the missing plan.
+        """
+        repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package / c.Infra.INIT_PY).write_text(
+            "value = 17\n__all__ = ('value',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
+                publications=(),
+                repository_roots=(repository_root,),
+            ),
+        )
+
+        tm.that(report.passed, eq=True, msg=str(report.violations))
+
+    @staticmethod
+    def test_layout_without_a_plan_still_fails_on_a_broken_disk_contract(
+        tmp_path: Path,
+    ) -> None:
+        """A live package whose declared export cannot resolve still fails."""
+        repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package / c.Infra.INIT_PY).write_text(
+            "__all__ = ('missing_export',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
+                publications=(),
+                repository_roots=(repository_root,),
+            ),
+        )
+
+        tm.fail(report.passed)
+        tm.that(report.violations[0], has="missing_export")
+        tm.that(report.violations[0], has="Traceback")
+
+    @staticmethod
+    @pytest.mark.parametrize("script_group", ["scripts", "gui-scripts"])
+    @pytest.mark.parametrize("target_exists", [False, True])
+    def test_declared_script_failure_blocks_publication(
+        tmp_path: Path,
+        script_group: str,
+        *,
+        target_exists: bool,
+    ) -> None:
+        """A missing declared module or callable fails with its original traceback."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
+        package.mkdir(parents=True)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
+        if target_exists:
+            (package / "cli.py").write_text(
+                "VALUE = 1\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
+            f'[project.{script_group}]\nprobe = "{package.name}.cli:main"\n',
+            encoding="utf-8",
+        )
+        publication = _probe_publication(package, init_path=initializer)
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
+        )
+        tm.fail(report.passed)
+        tm.that(report.violations, length=1)
+        tm.that(report.violations[0], has="scripts/probe=")
+        tm.that(report.violations[0], has="Traceback")
+        tm.that(
+            report.violations[0],
+            has="has no attribute 'main'" if target_exists else "ModuleNotFoundError",
+        )
+
+    @staticmethod
+    def test_declared_script_contract_violation_stays_blocking(
+        tmp_path: Path,
+    ) -> None:
+        """A missing export surfacing through a loadable script fails the report."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_probe_script"
+        package.mkdir(parents=True)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text("__all__ = ()\n", encoding=c.DEFAULT_ENCODING)
+        (package / "cli.py").write_text(
+            "from flext_probe_script import gone\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-probe-script"\nversion = "1.0"\n\n'
+            f'[project.scripts]\nprobe = "{package.name}.cli:main"\n',
+            encoding="utf-8",
+        )
+        publication = _probe_publication(package, init_path=initializer)
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
+        )
+        tm.fail(report.passed)
+        tm.that(report.violations[0], has="ImportError")
+
+    @staticmethod
+    def test_advertised_lazy_export_must_resolve(tmp_path: Path) -> None:
+        """Test advertised lazy export must resolve."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        (package / c.Infra.INIT_PY).write_text(
+            "__all__ = ('missing_export',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        report = _probe_report(tmp_path, packages=(package.name,))
+        tm.fail(report.passed)
+        tm.that(report.violations[0], has="missing_export")
+        tm.that(report.violations[0], has="Traceback")
+
+    @staticmethod
+    @pytest.mark.parametrize("dependency_present", [False, True])
+    def test_declared_consumer_catches_exports_omitted_from_plan(
+        tmp_path: Path,
+        *,
+        dependency_present: bool,
+    ) -> None:
+        """Test declared consumer catches exports omitted from plan."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            "__all__ = ()\n" + ("required = 17\n" if dependency_present else ""),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "consumer.py").write_text(
+            f"from {package.name} import required\n"
+            "def main():\n    raise RuntimeError('entrypoint must not execute')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n'
+            f'[project.scripts]\nprobe = "{package.name}.consumer:main"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publication = _probe_publication(package, init_path=initializer)
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
+        )
+        tm.that(report.passed, eq=dependency_present, msg=str(report.violations))
+        if not dependency_present:
+            tm.that(report.violations[0], has="required")
+            tm.that(report.violations[0], has="consumer.py")
+            tm.that(report.violations[0], has="Traceback")
+
+    @staticmethod
+    def test_probe_larger_than_one_process_argument_still_runs(
+        tmp_path: Path,
+    ) -> None:
+        """Test probe larger than one process argument still runs."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        exports = tuple(f"export_{index:05d}_published_name" for index in range(6000))
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            "".join(f"{name} = {index}\n" for index, name in enumerate(exports))
+            + f"__all__ = {exports!r}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publication = _probe_publication(
+            package,
+            init_path=initializer,
+            exports=exports,
+        )
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
+        )
+        tm.that(report.passed, eq=True, msg=str(report.violations))
+
+    @staticmethod
+    def test_rejects_owned_module_imported_from_another_directory(
+        tmp_path: Path,
+    ) -> None:
+        """Test rejects owned module imported from another directory."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        (foreign / "dependency.py").write_text(
+            "value = 17\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            f"__path__ = [{str(foreign)!r}]\n"
+            "from .dependency import value\n__all__ = ('value',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publication = _probe_publication(
+            package,
+            init_path=initializer,
+            exports=("value",),
+        )
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
+        )
+        tm.fail(report.passed)
+        tm.that(report.violations[0], has="ImportError")
+        tm.that(report.violations[0], has=f"{package.name}.dependency")
+        tm.that(report.violations[0], has=str(package))
+        tm.that(report.violations[0], has=str(foreign))
+
+    @staticmethod
+    def test_foreign_origin_is_reported_before_phantom_export(
+        tmp_path: Path,
+    ) -> None:
+        """A module loaded from outside this checkout names the origin first.
+
+        The origin gate runs between the import and the name resolution, so
+        stale-checkout contamination fails with the foreign path instead of a
+        phantom-attribute error raised while resolving an unserved name.
+        """
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        package.mkdir(parents=True)
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        (foreign / "dependency.py").write_text(
+            "value = 17\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            f"__path__ = [{str(foreign)!r}]\n"
+            "from .dependency import value\n"
+            "__all__ = ('value', 'phantom_export')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publication = _probe_publication(
+            package,
+            init_path=initializer,
+            exports=("value",),
+        )
+        report = tm.ok(
+            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+                packages=(package.name,),
+                publications=(publication,),
+                repository_roots=(tmp_path,),
+            ),
+        )
+        tm.fail(report.passed)
+        tm.that(report.violations[0], has="ImportError")
+        tm.that(report.violations[0], has=f"{package.name}.dependency")
+        tm.that(report.violations[0], has=str(package))
+        tm.that(report.violations[0], has=str(foreign))
+        tm.that(report.violations[0], lacks="has no attribute")
+
+    @staticmethod
+    def test_origin_gate_keeps_the_probed_module_for_export_resolution(
+        tmp_path: Path,
+    ) -> None:
+        """Exports resolve against the published package, not the last loaded module.
+
+        The subpackage plan runs first, so the root package is already cached
+        when its own plan imports it and ``sys.modules`` ends with the
+        subpackage. The origin gate walks every loaded module between import
+        and resolution; it must never rebind the probed package.
+        """
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
+        subpackage = package / "sub"
+        subpackage.mkdir(parents=True)
+        (package / c.Infra.INIT_PY).write_text(
+            "value = 17\n__all__ = ('value',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (subpackage / c.Infra.INIT_PY).write_text(
+            "leaf = 1\n__all__ = ('leaf',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        publications = tuple(
+            _probe_publication(
+                pkg_dir,
+                init_path=pkg_dir / c.Infra.INIT_PY,
+                current_pkg=current_pkg,
+                surface=package.name,
+                exports=exports,
+            )
+            for pkg_dir, current_pkg, exports in (
+                (subpackage, f"{package.name}.sub", ("leaf",)),
+                (package, package.name, ("value",)),
+            )
+        )
+        report = _probe_report(
+            tmp_path,
+            publications=publications,
+            repository_roots=(tmp_path,),
+        )
+        tm.that(report.passed, eq=True, msg=str(report.violations))

@@ -355,7 +355,12 @@ class FlextInfraPytestClock:
     @staticmethod
     @contextmanager
     def _staging(output: Path) -> Generator[tuple[IO[bytes], Path, os.stat_result]]:
-        """Own a native temporary descriptor and remove only its recorded inode."""
+        """Own a native temporary descriptor and remove only its recorded inode.
+
+        Yields:
+            The open binary stream, its staging path and its captured identity.
+
+        """
         with tempfile.NamedTemporaryFile(
             dir=output.parent, prefix=f".{output.name}.", suffix=".tmp", delete=False
         ) as resource:
@@ -380,7 +385,6 @@ class FlextInfraPytestClock:
         Raises:
             RuntimeError: If publication belongs to another thread or is already
                 active.
-            OSError: If staging, immutable linking or atomic publication fails.
 
         """
         if FlextInfraPytestClock._threads[profile] != get_ident():

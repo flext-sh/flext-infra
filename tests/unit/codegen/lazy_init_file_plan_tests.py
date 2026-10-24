@@ -13,7 +13,7 @@ from re import escape
 
 import pytest
 
-from flext_infra import config, infra
+from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenLazyInit,
@@ -23,6 +23,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsLazyInitScopedSourceElection:
@@ -562,6 +563,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
             eq=False,
         )
+        workspace = u.Tests.standalone_workspace(root, root.name)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -569,7 +571,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
 
-        tm.ok(infra.codegen_conform(request))
+        tm.ok(TestsFlextInfraConformSupport.conform_in_workspace(request, workspace))
 
         tm.that(initializer.read_bytes(), eq=before)
         consumer = tm.ok(
@@ -791,6 +793,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     ) -> None:
         """Publication and its public observation retain exact repository scope."""
         root, member, packages = seed_conform_scope_repositories
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = u.Tests.conform_request(
             root,
             scope=scope,
@@ -800,7 +803,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
             for package in packages
         }
-        published = tm.ok(infra.codegen_conform(request))
+        published = tm.ok(
+            TestsFlextInfraConformSupport.conform_in_workspace(request, workspace)
+        )
         expected = {
             (root / repository.path).resolve()
             for repository in tm.not_none(published.plan).repositories
@@ -822,8 +827,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 eq=repository.resolve() in expected,
             )
         tm.ok(
-            infra.codegen_conform(
+            TestsFlextInfraConformSupport.conform_in_workspace(
                 request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
+                workspace,
             )
         )
 

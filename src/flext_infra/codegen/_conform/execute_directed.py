@@ -12,6 +12,7 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraStagedPackage,
@@ -19,7 +20,6 @@ from flext_infra.codegen import (
 from flext_infra.codegen._conform.execute_scaffold import (
     FlextInfraCodegenConformExecuteScaffold,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.validate import FlextInfraValidateFreshImport
 
 

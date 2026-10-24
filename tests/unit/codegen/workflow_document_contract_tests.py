@@ -38,7 +38,7 @@ class TestsFlextInfraWorkflowDocumentContract:
         )
 
         surface = c.Infra.CodegenConformSurface.WORKFLOWS
-        contract = codegen.FlextInfraCodegenConform.surface_contract(
+        contract = codegen.FlextInfraCodegenConformExecute.surface_contract(
             surface,
             codegen=config.Infra.codegen,
         )

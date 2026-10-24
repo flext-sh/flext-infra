@@ -10,7 +10,7 @@ from functools import partial
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen._conform import FlextInfraCodegenConformBootstrap
+from flext_infra.codegen import FlextInfraCodegenConformBootstrap
 from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
 
 

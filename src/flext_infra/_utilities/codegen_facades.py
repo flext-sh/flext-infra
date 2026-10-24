@@ -177,7 +177,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                             live,
                             original_states,
                             election=election,
-                            sources={},
                             declared_files=declared_files,
                             additional_source_folders=(
                                 FlextInfraUtilitiesCodegenFacades._planned_folders(

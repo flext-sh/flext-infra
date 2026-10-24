@@ -12,10 +12,8 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra.codegen._lazy_init_planner_cache import (
+from flext_infra.codegen import (
     FlextInfraCodegenLazyInitPlannerCacheMixin,
-)
-from flext_infra.codegen._lazy_init_planner_collision import (
     FlextInfraCodegenLazyInitPlannerCollisionMixin,
 )
 

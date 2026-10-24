@@ -456,7 +456,7 @@ class FlextInfraPyprojectModernizerDocument(
             self._sync_document_values(doc, state.payload)
         else:
             canonical = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                u.Cli.json_sort_keys(state.payload),
+                u.Cli.json_sort_keys(dict(state.payload)),
             )
             preferred = {
                 key: canonical[key]

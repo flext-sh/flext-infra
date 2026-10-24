@@ -71,6 +71,7 @@ class TestsFlextInfraManagedConflictRecovery:
     @staticmethod
     @pytest.mark.parametrize("render_owned", [True, False])
     def test_overlay_preserves_inline_custom_and_replaces_entire_owned_subtree(
+        *,
         render_owned: bool,
     ) -> None:
         """Keep sibling data while replacing owned descendants and unknown keys."""

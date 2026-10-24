@@ -41,7 +41,7 @@ class TestsFlextInfraWorkflowOrphanGuard:
             destination = entry.destination
             if destination.startswith(self._WORKFLOW_PREFIX):
                 declared.add(destination.removeprefix(self._WORKFLOW_PREFIX))
-        for managed in config.Infra.codegen.managed_files:
+        for managed in config.Infra.codegen.managed_file_specs:
             destination = managed.path.as_posix()
             if destination.startswith(self._WORKFLOW_PREFIX):
                 declared.add(destination.removeprefix(self._WORKFLOW_PREFIX))

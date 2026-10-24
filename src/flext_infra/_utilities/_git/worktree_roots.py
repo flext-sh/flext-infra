@@ -10,6 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from tempfile import TemporaryFile
 
+from flext_cli import u
 from git import Git, GitCommandError
 
 from flext_infra import c, m, p, r, t
@@ -233,17 +234,21 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
 
         """
         if source_project is None:
-            return Git(repository_root).config(
-                "--file",
-                str(repository_root / c.Infra.GITMODULES),
-                *arguments,
+            return u.type_adapter(str).validate_python(
+                Git(repository_root).config(
+                    "--file",
+                    str(repository_root / c.Infra.GITMODULES),
+                    *arguments,
+                ),
+                strict=True,
             )
         content = source_project.source_text(repository_root / c.Infra.GITMODULES)
         with TemporaryFile() as source:
             source.write(content.encode(c.DEFAULT_ENCODING))
             source.seek(0)
-            return Git(repository_root).config(
-                "--file", "-", *arguments, istream=source
+            return u.type_adapter(str).validate_python(
+                Git(repository_root).config("--file", "-", *arguments, istream=source),
+                strict=True,
             )
 
     @classmethod

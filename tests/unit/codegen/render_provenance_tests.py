@@ -19,11 +19,11 @@ import pytest
 from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
+    FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsFiles,
 )
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, t, tm, u
 

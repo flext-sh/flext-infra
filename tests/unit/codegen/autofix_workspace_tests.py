@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen import FlextInfraCodegenFixer
 from tests import c, m, tm, u
 
 

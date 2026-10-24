@@ -17,8 +17,8 @@ from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenStaging,
     FlextInfraMisePublication,
+    FlextInfraStagedPackage,
 )
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from tests import c, m, p, r, t, tm, u
 

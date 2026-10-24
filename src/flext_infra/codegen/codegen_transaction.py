@@ -13,15 +13,15 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransactionGeneration,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
+    FlextInfraStagedPackage,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 if TYPE_CHECKING:
     from flext_infra import p

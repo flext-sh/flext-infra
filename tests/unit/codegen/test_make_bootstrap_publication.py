@@ -108,7 +108,6 @@ class TestsMakeBootstrapPublication:
             The completed CLI command outcome.
 
         """
-        policy = config.Infra.codegen.make.uv_resolution
         ci = config.Infra.codegen.make.ci
         outcome = tm.ok(
             u.Cli.run_raw(
@@ -124,7 +123,9 @@ class TestsMakeBootstrapPublication:
                 ),
                 cwd=root,
                 env={
-                    policy.hosted_variable: policy.hosted_value if hosted else "",
+                    c.Infra.ENV_VAR_GITHUB_ACTIONS: (
+                        c.ParserBooleanToken.TRUE.value if hosted else ""
+                    ),
                     **({} if hosted else {ci.variable: ci.value}),
                 },
                 remove_env_keys=(ci.variable,) if hosted else (),
@@ -337,6 +338,7 @@ class TestsMakeBootstrapPublication:
     def test_hosted_election_is_independent_of_the_gate_partition(
         self,
         tmp_path: Path,
+        *,
         hosted: bool,
     ) -> None:
         """Hosted init needs no member checkout, even when CI's gate token is absent."""

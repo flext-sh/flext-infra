@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConformExecute
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraConformSupport:
@@ -52,6 +52,28 @@ class TestsFlextInfraConformSupport:
         return u.Tests.standalone_workspace(root)
 
     @staticmethod
+    def conform_in_workspace(
+        request: m.Infra.CodegenConformRequest,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Execute one conform request against a pre-declared workspace topology.
+
+        Returns:
+            The conformance outcome of the bound executor.
+
+        """
+        return FlextInfraCodegenConformExecute(
+            state=m.Infra.CodegenConformState(
+                repository_root=request.root,
+                request=request,
+                initial_workspace=workspace,
+                ports=infra.codegen_conform_collaborators(),
+            ),
+            runtime_settings=infra.settings,
+            initial_context=infra.context,
+        ).execute()
+
+    @staticmethod
     def apply_conform_surface(
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
@@ -65,16 +87,7 @@ class TestsFlextInfraConformSupport:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(
-            FlextInfraCodegenConformExecute(
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    request=request,
-                    initial_workspace=workspace,
-                    ports=infra.codegen_conform_collaborators(),
-                ),
-                runtime_settings=infra.settings,
-                initial_context=infra.context,
-            ).execute(),
+            TestsFlextInfraConformSupport.conform_in_workspace(request, workspace),
         )
 
     @staticmethod

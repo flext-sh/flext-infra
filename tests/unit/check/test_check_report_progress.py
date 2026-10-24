@@ -59,45 +59,8 @@ class TestsFlextInfraCheckReportProgress:
             )
         reports = workspace / "reports"
         refusal = "The consumer audit policy refuses the second Bandit launch"
-        consumer = workspace / "check_report_consumer.py"
-        consumer.write_text(
-            "import sys\n"
-            "from pathlib import Path\n\n"
-            "from flext_infra import c, check, infra, m\n\n"
-            "class CheckAuditRefusal(RuntimeError):\n"
-            '    """The real consumer denies one native child launch."""\n\n'
-            "root = Path(sys.argv[1])\n"
-            "first = Path(sys.argv[2])\n"
-            "second = Path(sys.argv[3])\n"
-            "reports = Path(sys.argv[4])\n"
-            "refusal = sys.argv[5]\n"
-            f"typed_targets = {typed_targets!r}\n\n"
-            "def enforce_audit_policy(event, arguments):\n"
-            "    if event != 'subprocess.Popen':\n"
-            "        return\n"
-            "    _executable, command, cwd, _environment = arguments\n"
-            "    if (cwd is not None and Path(cwd).resolve() == second.resolve()\n"
-            "            and tuple(command[:3]) == "
-            "(sys.executable, '-m', c.Infra.BANDIT)):\n"
-            "        raise CheckAuditRefusal(refusal)\n\n"
-            "sys.addaudithook(enforce_audit_policy)\n"
-            "if typed_targets:\n"
-            "    check.FlextInfraWorkspaceChecker(repository_root=root)"
-            ".run_projects_report(\n"
-            "        projects=tuple(m.Infra.CheckProjectTarget("
-            "name=path.name, path=path) for path in (first, second)),\n"
-            "        gates=(c.Infra.SECURITY,),\n"
-            "        reports_dir=reports,\n"
-            "    ).unwrap()\n"
-            "else:\n"
-            "    infra.check_report(m.Infra.RunCommand(\n"
-            "        repository_root=root,\n"
-            "        projects=(first.relative_to(root).as_posix(),\n"
-            "                  second.relative_to(root).as_posix()),\n"
-            "        gates=(c.Infra.SECURITY,),\n"
-            "        reports_dir=str(reports),\n"
-            "    )).unwrap()\n",
-            encoding=c.DEFAULT_ENCODING,
+        consumer = TestsFlextInfraCheckReportProgress._consumer_script(
+            workspace, typed_targets=typed_targets
         )
 
         process = tm.ok(
@@ -153,6 +116,78 @@ class TestsFlextInfraCheckReportProgress:
             tm.that(summary.targets[0].applicable_gates, empty=True)
             tm.that(attempted.gates, empty=True)
             tm.fail(attempted.passed)
+        TestsFlextInfraCheckReportProgress._assert_markdown(
+            report_path, first, second, first_has_python=first_has_python
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.check_report_findings(
+                    workspace,
+                    reports_dir=report_path.parent,
+                ),
+            ),
+            empty=True,
+        )
+
+    @staticmethod
+    def _consumer_script(workspace: Path, *, typed_targets: bool) -> Path:
+        """Write the real consumer that denies the second native Bandit launch.
+
+        Returns:
+            The path of the executable consumer script.
+
+        """
+        consumer = workspace / "check_report_consumer.py"
+        consumer.write_text(
+            "import sys\n"
+            "from pathlib import Path\n\n"
+            "from flext_infra import c, check, infra, m\n\n"
+            "class CheckAuditRefusal(RuntimeError):\n"
+            '    """The real consumer denies one native child launch."""\n\n'
+            "root = Path(sys.argv[1])\n"
+            "first = Path(sys.argv[2])\n"
+            "second = Path(sys.argv[3])\n"
+            "reports = Path(sys.argv[4])\n"
+            "refusal = sys.argv[5]\n"
+            f"typed_targets = {typed_targets!r}\n\n"
+            "def enforce_audit_policy(event, arguments):\n"
+            "    if event != 'subprocess.Popen':\n"
+            "        return\n"
+            "    _executable, command, cwd, _environment = arguments\n"
+            "    if (cwd is not None and Path(cwd).resolve() == second.resolve()\n"
+            "            and tuple(command[:3]) == "
+            "(sys.executable, '-m', c.Infra.BANDIT)):\n"
+            "        raise CheckAuditRefusal(refusal)\n\n"
+            "sys.addaudithook(enforce_audit_policy)\n"
+            "if typed_targets:\n"
+            "    check.FlextInfraWorkspaceChecker(repository_root=root)"
+            ".run_projects_report(\n"
+            "        projects=tuple(m.Infra.CheckProjectTarget("
+            "name=path.name, path=path) for path in (first, second)),\n"
+            "        gates=(c.Infra.SECURITY,),\n"
+            "        reports_dir=reports,\n"
+            "    ).unwrap()\n"
+            "else:\n"
+            "    infra.check_report(m.Infra.RunCommand(\n"
+            "        repository_root=root,\n"
+            "        projects=(first.relative_to(root).as_posix(),\n"
+            "                  second.relative_to(root).as_posix()),\n"
+            "        gates=(c.Infra.SECURITY,),\n"
+            "        reports_dir=str(reports),\n"
+            "    )).unwrap()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        return consumer
+
+    @staticmethod
+    def _assert_markdown(
+        report_path: Path,
+        first: Path,
+        second: Path,
+        *,
+        first_has_python: bool,
+    ) -> None:
+        """Require each root and its completion state in the Markdown report."""
         markdown = (
             report_path.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         ).read_text(encoding=c.DEFAULT_ENCODING)
@@ -166,15 +201,6 @@ class TestsFlextInfraCheckReportProgress:
         tm.that(
             first_details,
             has=f"{c.Infra.SECURITY}: PASS" if first_has_python else "INCOMPLETE",
-        )
-        tm.that(
-            tm.ok(
-                u.Infra.check_report_findings(
-                    workspace,
-                    reports_dir=report_path.parent,
-                ),
-            ),
-            empty=True,
         )
 
     @staticmethod

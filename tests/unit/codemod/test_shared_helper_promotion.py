@@ -10,6 +10,7 @@ import ast
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -132,9 +133,10 @@ class TestsFlextInfraSharedHelperPromotion:
         while isinstance(primary, ast.Attribute):
             primary = primary.value
         tm.that(isinstance(primary, ast.Name), truth=True)
+        name = cast("ast.Name", primary)
         quoted.write_text(
             quoted.read_text(encoding="utf-8")
-            + f"\nclass Local:\n    {primary.id} = str\n    value: 'Shared'\n",
+            + f"\nclass Local:\n    {name.id} = str\n    value: 'Shared'\n",
             encoding="utf-8",
         )
 

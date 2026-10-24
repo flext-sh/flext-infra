@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra.__version__ import __version__
-from flext_infra.codegen._conform import FlextInfraCodegenConformFilePlans
+from flext_infra.codegen import FlextInfraCodegenConformFilePlans
 
 
 class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans):

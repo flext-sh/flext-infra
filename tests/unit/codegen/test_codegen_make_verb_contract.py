@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import config
 from tests import c, m, tm, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+from tests.unit.codegen import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenMakeVerbContract:

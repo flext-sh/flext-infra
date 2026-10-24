@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
@@ -70,7 +70,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         root.mkdir(parents=True, exist_ok=True)
         (root / c.PYPROJECT_FILENAME).write_text(first, encoding="utf-8")
         second = tm.ok(
-            FlextInfraCodegenConform.compose_project_artifact(
+            FlextInfraCodegenConformExecute.compose_project_artifact(
                 root,
                 c.PYPROJECT_FILENAME,
                 first,
@@ -120,15 +120,12 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(evidence.outcomes[0].candidate_dirty, eq=None)
         tm.fail((root / c.GIT_DIR_NAME).exists())
         if surface is c.Infra.CodegenConformSurface.PYPROJECT:
-            policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
             destinations = {
                 file.path.relative_to(root)
                 for file in plan.files
                 if file.desired_content is not None
             }
-            tm.ok(policy.local_directory / c.PYPROJECT_FILENAME in destinations)
-            tm.ok(policy.standalone_directory / c.PYPROJECT_FILENAME in destinations)
-            tm.fail(policy.editable_directory / c.PYPROJECT_FILENAME in destinations)
+            tm.that(destinations, has=Path(c.PYPROJECT_FILENAME))
 
     @staticmethod
     def test_scaffold_preserves_original_git_identity(tmp_path: Path) -> None:

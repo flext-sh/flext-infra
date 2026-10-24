@@ -87,11 +87,11 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         target = tm.ok(workspace.FlextInfraWorkspaceDetector.conform_target(root, spec))
         tm.that(target.publishes_release, eq=declared_release)
         catalog = config.Infra.codegen
-        managed = {item.path.as_posix() for item in catalog.managed_files}
+        managed = {item.path.as_posix() for item in catalog.managed_file_specs}
         workflows = tuple(
             entry
             for entry in catalog.templates.entries
-            if entry.delegate == "render"
+            if entry.source_kind == "template"
             and entry.destination in managed
             and Path(entry.destination).parts[:2] == (".github", "workflows")
         )
@@ -110,7 +110,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            codegen.FlextInfraCodegenConform(repository_root=root).plan(request),
+            codegen.FlextInfraCodegenConformExecute(repository_root=root).plan(request),
         )
 
         workflow_paths = {root / entry.destination for entry in workflows}
@@ -171,7 +171,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         releases = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
-            if entry.delegate == "render"
+            if entry.source_kind == "template"
             and Path(entry.destination).parts[:2] == (".github", "workflows")
         )
         for entry in releases:

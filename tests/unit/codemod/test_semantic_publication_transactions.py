@@ -109,7 +109,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             ))
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        producer = codegen.FlextInfraCodegenConform(
+        producer = codegen.FlextInfraCodegenConformExecute(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root, provider_plans=providers.files
@@ -136,7 +136,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 codegen.FlextInfraCodegenLazyInit(
                     repository_root=root,
                     project_scope_roots=(root,),
-                    target_module=f"{package.name}._typings",
                 ).plan_files(source_project=binding[0])
             )
         tm.that(

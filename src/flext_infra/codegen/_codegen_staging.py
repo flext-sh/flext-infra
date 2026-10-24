@@ -19,8 +19,8 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsProcess,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraStagedPackage,
 )
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 
 class FlextInfraCodegenStaging:

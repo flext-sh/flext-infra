@@ -16,14 +16,14 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsCandidates,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraMiseWorkspacePlanner,
 )
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from tests import c, m, p, r, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 

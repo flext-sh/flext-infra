@@ -160,14 +160,9 @@ class TestsFlextInfraDepsModernizerTooling:
         ]
         document = tool_config_document
         payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(document)
-        self_owned = {("mypy", "mypy_path"), ("pyright", "extraPaths")}
+        removed_options = {("mypy", "mypy_path"), ("pyright", "extraPaths")}
         derived: t.JsonDict = {
-            table: [
-                key
-                for key in keys
-                if (table, key)
-                not in {("mypy", "mypy_path"), ("pyright", "extraPaths")}
-            ]
+            table: [key for key in keys if (table, key) not in removed_options]
             for table, keys in document.derived_settings.items()
         }
         extra: Mapping[str, tuple[str, t.JsonValue]] = {

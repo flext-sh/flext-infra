@@ -69,13 +69,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         """Local checks cover every active gate; CI excludes its declared set."""
         make = config.Infra.codegen.make
         local = frozenset(make.ci.local_check_gates)
-        standalone = frozenset(make.standalone_check_gates.values())
-        tm.that(
-            make.check_gates_default,
-            eq=tuple(
-                gate for gate in make.check_gates_allowed if gate not in standalone
-            ),
-        )
+        tm.that(make.check_gates_default, eq=make.check_gates_allowed)
         tm.that(
             make.check_gates_ci,
             eq=tuple(gate for gate in make.check_gates_default if gate not in local),
@@ -117,14 +111,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
         active = m.Infra.MakeSpec.model_validate(payload)
 
-        tm.that(
-            active.check_gates_default,
-            eq=tuple(
-                gate
-                for gate in active.check_gates_allowed
-                if gate not in active.standalone_check_gates.values()
-            ),
-        )
+        tm.that(active.check_gates_default, eq=active.check_gates_allowed)
         tm.that(active.check_gates_default, has="fixture-project-gate")
         tm.that(active.check_gates_ci, has="fixture-project-gate")
         tm.that(active.check_gates_local, has="fixture-project-gate")

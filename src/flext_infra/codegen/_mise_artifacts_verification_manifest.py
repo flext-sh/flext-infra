@@ -6,15 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping, Set as AbstractSet
+from collections.abc import Callable, Iterable, MutableMapping, Set as AbstractSet
 from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_infra import m, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles
-from flext_infra.codegen._mise_artifacts_comparison import (
+from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
+    FlextInfraMiseArtifactsFiles,
 )
 
 if TYPE_CHECKING:
@@ -536,7 +536,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
             entry = remaining.get(path)
             if entry is None or path in expected:
                 continue
-            parents = chain(
+            parents: Iterable[m.Cli.AtomicPhysicalTreeEntry] = chain(
                 (root,),
                 expected.values(),
                 (

@@ -46,7 +46,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         *,
         execution_context: p.Infra.CodegenExecutionContext | None,
         repository_root: t.Infra.Path | None = None,
-    ) -> p.Result[Self]:
+    ) -> p.Result[FlextInfraCodegenConformExecute]:
         """Bind one validated request to the native projection executor.
 
         The request is retained by reference. The caller supplies runtime seeds
@@ -59,7 +59,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         root = request.root.expanduser().resolve()
         identity = u.Infra.exact_worktree_root(root)
         if identity.failure:
-            return r[Self].from_failure(identity)
+            return r[FlextInfraCodegenConformExecute].from_failure(identity)
         generation_root = (
             root if repository_root is None else repository_root.expanduser().resolve()
         )
@@ -78,14 +78,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         ):
             inputs = u.Infra.load_codegen_inputs(root)
             if inputs.failure:
-                return r[Self].from_failure(inputs)
+                return r[FlextInfraCodegenConformExecute].from_failure(inputs)
             observed = FlextInfraWorkspaceDetector.load_workspace_spec(
                 root, inputs=inputs.value
             )
             if observed.failure:
-                return r[Self].from_failure(observed)
+                return r[FlextInfraCodegenConformExecute].from_failure(observed)
             state.initial_workspace = observed.value
-        return r[Self].ok(
+        return r[FlextInfraCodegenConformExecute].ok(
             cls(
                 repository_root=generation_root,
                 state=state,
@@ -387,8 +387,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     return result_type.from_failure(inputs)
                 continue
             spec = inputs.value.spec
-            destinations = spec.templates.required_destinations(
-                self.surface_contract(surface, codegen=spec).destinations,
+            declared = self.surface_contract(surface, codegen=spec).destinations
+            destinations = (
+                spec.templates.required_destinations(declared)
+                if declared is not None
+                else frozenset[str]()
             )
             if not destinations:
                 return result_type.fail(
@@ -522,7 +525,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         planned: m.Infra.CodegenPlan,
         batches: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
         *,
-        published: p.Result[bool],
+        published: p.Result[t.VariadicTuple[Path]],
         written: t.VariadicTuple[Path],
     ) -> p.Result[bool]:
         """Publish documents unless a new scaffold failed before its metadata.

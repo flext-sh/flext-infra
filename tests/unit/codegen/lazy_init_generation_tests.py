@@ -14,7 +14,7 @@ import flext_core
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.codegen import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 from flext_infra.gates import FlextInfraRuffLintGate
 from tests import c, m, t, tm, u

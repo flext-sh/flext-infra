@@ -1535,8 +1535,9 @@ class FlextInfraUtilitiesCodemodProject(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
                     (),
-                    election=FlextInfraRopeProject.native_election(live),
-                    sources={},
+                    election=FlextInfraUtilitiesRopeRuntimeModules.native_election(
+                        live
+                    ),
                 )
             ) as layout_project,
             closing(
@@ -1616,8 +1617,9 @@ class FlextInfraUtilitiesCodemodProject(
                     FlextInfraRopeProject.from_atomic_reads(
                         live,
                         tuple(states.values()),
-                        election=FlextInfraRopeProject.native_election(live),
-                        sources={},
+                        election=FlextInfraUtilitiesRopeRuntimeModules.native_election(
+                            live
+                        ),
                     ),
                 ) as project,
                 project.frozen_layout(),

@@ -9,9 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t
-from flext_infra.codegen._codegen_transaction_phases import (
-    FlextInfraCodegenTransactionPhases,
-)
+from flext_infra.codegen import FlextInfraCodegenTransactionPhases
 
 if TYPE_CHECKING:
     from flext_infra import p

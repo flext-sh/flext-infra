@@ -11,8 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, config, m
-from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
+from flext_infra.codegen import FlextInfraCodegenLayout, FlextInfraCodegenMakeBootstrap
 from tests import c, t, tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,

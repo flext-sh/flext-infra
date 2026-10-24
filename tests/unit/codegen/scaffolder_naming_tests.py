@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra.codegen import FlextInfraCodegenScaffolder
 from tests import c, tm, u
 
 if TYPE_CHECKING:

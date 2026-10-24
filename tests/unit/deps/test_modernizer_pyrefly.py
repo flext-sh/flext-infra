@@ -278,7 +278,6 @@ class TestsFlextInfraModernizerPyrefly:
             "VALUE = 2\n",
             encoding="utf-8",
         )
-        scaffold_project = config.Infra.codegen.scaffold.project
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=tmp_path,
             skip_check=True,
@@ -295,7 +294,7 @@ class TestsFlextInfraModernizerPyrefly:
             project_name=project_dir.name,
             package_name=u.Tests.project_spec(project_dir.name).package_name,
             path=project_dir / c.PYPROJECT_FILENAME,
-            scaffold_project=scaffold_project,
+            scaffold_project=config.Infra.codegen.scaffold.project,
             runtime_dependency_overlay=(),
             declared_project_dependencies=(),
             topology=topology,

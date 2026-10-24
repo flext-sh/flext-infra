@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_infra import c, codegen, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenFileLeases,
+    FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
@@ -20,7 +21,6 @@ from flext_infra.codegen import (
     FlextInfraMiseRecovery,
     FlextInfraMiseWorkspacePlanner,
 )
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 
 class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):

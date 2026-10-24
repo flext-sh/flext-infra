@@ -17,8 +17,10 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, m, t, u
-from flext_infra.codegen.conform import FlextInfraCodegenConformExecute
-from flext_infra.codegen.mise_toolchain_proof import FlextInfraCodegenMiseToolchainProof
+from flext_infra.codegen import (
+    FlextInfraCodegenConformExecute,
+    FlextInfraCodegenMiseToolchainProof,
+)
 from tests import c, tm
 
 

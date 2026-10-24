@@ -11,7 +11,7 @@ from collections.abc import Mapping
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm
 
 

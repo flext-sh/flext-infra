@@ -22,7 +22,7 @@ from flext_infra.codegen import (
 )
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+from tests.unit.codegen import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
 
@@ -64,7 +64,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
         )
         tm.that(plan.issues, eq=())
         tm.that(plan.exception, eq=None)
@@ -408,13 +408,13 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 ),
             ).plan(request),
         )
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        for relative in policy.uv_resolution_pyprojects:
-            matches = tuple(
-                file for file in repeated.files if file.path == root / relative
-            )
-            tm.that(len(matches), eq=1)
-            tm.ok(matches[0].desired_content is not None)
+        matches = tuple(
+            file
+            for file in repeated.files
+            if file.path == root / c.Infra.MAKEFILE_FILENAME
+        )
+        tm.that(len(matches), eq=1)
+        tm.ok(matches[0].desired_content is not None)
         receipt_path = (
             tm.ok(u.Infra.refactor_report_evidence_root(root))
             / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
@@ -509,7 +509,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         destination = root / c.Infra.MISE_TOML_FILENAME
         desired_mode = next(
             item.mode
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path == Path(destination.name)
         )
         request = u.Tests.conform_request(
@@ -689,63 +689,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 config=config.Infra.codegen,
             ),
         )
-        TestsFlextInfraCodegenConformPublicSurface._verified_uv_resolution_views(
-            root, workspace, plan
-        )
-
-    @staticmethod
-    def _verified_uv_resolution_views(
-        root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        plan: m.Infra.CodegenPlan,
-    ) -> None:
-        """Verify both native resolution views' sources and member lines.
-
-        Args:
-            root: The governed workspace root.
-            workspace: The loaded workspace specification.
-            plan: The completed conform plan.
-
-        """
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
-        views = (
-            (policy.local_directory, (workspace.repository, *workspace.subprojects)),
-            (policy.standalone_directory, (workspace.repository,)),
-        )
-        for relative, repositories in views:
-            directory = (root / relative).resolve()
-            document = u.Tests.codegen_file_text(
-                next(
-                    file
-                    for file in plan.files
-                    if file.path == directory / c.PYPROJECT_FILENAME
-                ),
-            )
-            sources = u.Tests.toml_table_at(document, "tool", "uv", "sources")
-            for repository in repositories:
-                if repository.package:
-                    tm.that(
-                        sources[repository.distribution],
-                        eq={
-                            "path": (root / repository.path)
-                            .resolve()
-                            .relative_to(directory, walk_up=True)
-                            .as_posix(),
-                            "editable": repository.editable,
-                        },
-                    )
-            if workspace.repository.package:
-                parsed = tm.not_none(u.Cli.toml_parse_text(document))
-                project = tm.not_none(u.Cli.toml_table_child(parsed, "project"))
-                tm.that(
-                    tuple(
-                        u.Infra.dep_name(requirement)
-                        for requirement in u.Cli.toml_as_string_list(
-                            u.Cli.toml_value(project, "dependencies"),
-                        )
-                    ),
-                    has=workspace.repository.distribution,
-                )
 
     @staticmethod
     def test_docs_config_apply_materializes_an_absent_docs_parent(
@@ -790,9 +733,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         )
         route = next(
             route
-            for route in FlextInfraCodegenRoutes.codegen_routes[
-                c.Infra.CLI_GROUP_CODEGEN
-            ]
+            for route in FlextInfraCodegenRoutes.codegen_routes()
             if route.name == "conform"
         )
         request = u.Tests.conform_request(
@@ -882,11 +823,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             request,
         )
         tm.ok(planned)
-        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        expected = (
-            root / c.PYPROJECT_FILENAME,
-            *(root / relative for relative in policy.uv_resolution_pyprojects),
-        )
+        expected = (root / c.PYPROJECT_FILENAME,)
         tm.that(tuple(file.path for file in planned.value.files), eq=expected)
         tm.that(
             tuple(

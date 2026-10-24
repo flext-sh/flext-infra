@@ -14,10 +14,10 @@ from typing import Literal
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
+    FlextInfraCodegenConformScaffoldPlan,
     FlextInfraCodegenLazyInit,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 

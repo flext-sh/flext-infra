@@ -148,10 +148,8 @@ class TestsFlextInfraCodegenConfigLifecycle:
                         config.Infra.codegen.make.ci.variable: (
                             "" if verb == "upg" else config.Infra.codegen.make.ci.value
                         ),
-                        config.Infra.codegen.make.uv_resolution.hosted_variable: (
-                            ""
-                            if verb == "upg"
-                            else config.Infra.codegen.make.uv_resolution.hosted_value
+                        c.Infra.ENV_VAR_GITHUB_ACTIONS: (
+                            "" if verb == "upg" else c.ParserBooleanToken.TRUE.value
                         ),
                     },
                 ),
@@ -358,8 +356,8 @@ print(
                         config.Infra.codegen.make.ci.variable: (
                             config.Infra.codegen.make.ci.value if verb == "gen" else ""
                         ),
-                        config.Infra.codegen.make.uv_resolution.hosted_variable: (
-                            config.Infra.codegen.make.uv_resolution.hosted_value
+                        c.Infra.ENV_VAR_GITHUB_ACTIONS: (
+                            c.ParserBooleanToken.TRUE.value
                         ),
                     },
                 ),

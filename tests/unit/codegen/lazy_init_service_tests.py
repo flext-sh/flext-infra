@@ -15,7 +15,7 @@ from flext_infra import config
 from tests import c, tm, u
 
 if TYPE_CHECKING:
-    from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+    from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import p, t
 
 

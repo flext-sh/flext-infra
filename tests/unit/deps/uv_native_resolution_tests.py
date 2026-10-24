@@ -15,9 +15,6 @@ import pytest
 from packaging.requirements import Requirement
 
 from flext_infra import config
-from flext_infra.codegen._conform.pyproject_policy import (
-    FlextInfraCodegenConformPyprojectPolicy,
-)
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -27,139 +24,6 @@ from tests import c, m, t, tm, u
 
 class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
-
-    @staticmethod
-    @pytest.mark.parametrize("with_extra", [False, True])
-    def test_supplier_selection_resolves_transitive_runtime_closure(
-        tmp_path: Path, *, with_extra: bool
-    ) -> None:
-        """Select real supplier metadata transitively, excluding supplier dev groups."""
-        root = tmp_path / "consumer"
-        supplier_root = tmp_path / "suppliers"
-        repository = u.Tests.repository_ref("closure-consumer")
-        names = ("closure-a", "closure-b", "closure-c", "closure-dev")
-        beads = u.Tests.BeadsIdentity(
-            workspace="closure-suppliers",
-            database="closure_suppliers",
-            issue_prefix="closure",
-        )
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            supplier_root, "closure-suppliers", beads=beads
-        )
-        for name in names:
-            member = supplier_root / name
-            u.Tests.WorktreeFixture.initialize_governed_project(
-                member, name, beads=beads
-            )
-            u.Tests.WorktreeFixture.attach_submodule(
-                supplier_root, member, distribution=name, relative_path=name
-            )
-        extra = "[feature]" if with_extra else ""
-        transitive = (
-            f"closure-b{extra}>=1,<2 ; python_version >= c.ParserBooleanToken.ZERO"
-        )
-        u.Tests.write_native_resolution_project(
-            supplier_root / names[0],
-            names[0],
-            dependencies=(transitive,),
-            groups=(
-                "[project.optional-dependencies]\nunused = ['closure-dev']\n"
-                "[dependency-groups]\ndev = ['closure-dev']\n"
-            ),
-        )
-        u.Tests.write_native_resolution_project(
-            supplier_root / names[1],
-            names[1],
-            dependencies=(
-                "closure-a>=1 ; python_version >= c.ParserBooleanToken.ZERO",
-            ),
-            groups="[project.optional-dependencies]\nfeature = ['closure-c>=1']\n",
-        )
-        for name in names[2:]:
-            u.Tests.write_native_resolution_project(supplier_root / name, name)
-        u.Tests.write_native_resolution_project(
-            root, repository.distribution, dependencies=("closure-a>=1",)
-        )
-        u.Tests.initialize_git_repo(root, origin_url=repository.url)
-        originals = {
-            path: path.read_bytes()
-            for path in (
-                root / c.PYPROJECT_FILENAME,
-                *(supplier_root / name / c.PYPROJECT_FILENAME for name in names),
-            )
-        }
-        owner = m.Infra.UvResolutionProject(
-            repository=repository,
-            directory=root,
-            document=u.Tests.toml_doc(
-                originals[root / c.PYPROJECT_FILENAME].decode(c.DEFAULT_ENCODING)
-            ),
-        )
-        requirements = tm.ok(u.Infra.document_requirement_lines(owner.document))
-        sources: list[m.Cli.AtomicFileState] = []
-        selected = tm.ok(
-            FlextInfraCodegenConformPyprojectPolicy._collected_supplier_projects(
-                supplier_root, sources, requirements=requirements
-            )
-        )
-        expected = names[:3] if with_extra else names[:2]
-        tm.that(tuple(item.repository.distribution for item in selected), eq=expected)
-        captured = {item.path for item in sources}
-        for name in expected:
-            tm.that(captured, has=supplier_root / name / c.PYPROJECT_FILENAME)
-        tm.that(captured, lacks=supplier_root / names[3] / c.PYPROJECT_FILENAME)
-        policy = config.Infra.codegen.make.uv_resolution
-        workspace = u.Tests.workspace_spec(repository)
-        default = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=workspace,
-                members=(),
-                directory=root / policy.local_directory,
-                policy=policy,
-            )
-        )
-        default_text = u.Cli.toml_dumps(default)
-        directory = root / policy.editable_directory
-        editable = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=workspace,
-                members=selected,
-                directory=directory,
-                policy=policy,
-            )
-        )
-        uv = u.Tests.toml_table_at(u.Cli.toml_dumps(editable), "tool", "uv")
-        tm.that(
-            u.Tests.toml_strings(uv["constraint-dependencies"]),
-            has=u.Infra.dependency_constraint(transitive, replace_source=True),
-        )
-        tm.that(
-            u.Tests.toml_strings(uv["override-dependencies"]),
-            has=f"closure-b{extra}",
-        )
-        locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
-            directory, editable
-        )
-        for name in expected:
-            package = next(item for item in locked.package if item.name == name)
-            tm.that(
-                package.source.editable,
-                eq=(supplier_root / name)
-                .relative_to(directory, walk_up=True)
-                .as_posix(),
-            )
-        tm.that(tuple(item.name for item in locked.package), lacks=names[3])
-        if not with_extra:
-            tm.that(tuple(item.name for item in locked.package), lacks=names[2])
-        for path, content in originals.items():
-            tm.that(path.read_bytes(), eq=content)
-        tm.that(u.Cli.toml_dumps(default), eq=default_text)
-        tm.that(
-            (root / policy.local_directory / c.Infra.UV_LOCK_FILENAME).exists(),
-            eq=False,
-        )
 
     @staticmethod
     def test_override_layers_elect_local_source_without_losing_inherited_policy(
@@ -247,208 +111,6 @@ class TestsFlextInfraUvNativeResolution:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("consumer", ["root", "member", "supplier"])
-    @pytest.mark.parametrize("configured", [False, True])
-    def test_explicit_sdk_override_replaces_stale_transitive_git_source(
-        tmp_path: Path,
-        consumer: str,
-        *,
-        configured: bool,
-    ) -> None:
-        """Only explicit root policy replaces conflicting real Git SDK revisions."""
-        root = tmp_path / "consumer"
-        sdk = tmp_path / "sdk"
-        provider = tmp_path / "provider"
-        u.Tests.write_native_resolution_project(sdk, "source-election-sdk")
-        u.Tests.initialize_git_repo(sdk)
-        previous = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
-        ).strip()
-        tm.ok(u.Cli.atomic_write_text_file(sdk / "revision.txt", "repaired SDK\n"))
-        u.Tests.commit_git_changes(sdk, "Publish repaired SDK")
-        current = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
-        ).strip()
-        stale = f"source-election-sdk @ git+{sdk.as_uri()}@{previous}"
-        selected = f"source-election-sdk @ git+{sdk.as_uri()}@{current}"
-        u.Tests.write_native_resolution_project(
-            provider, "source-election-provider", dependencies=(stale,)
-        )
-        repository = u.Tests.repository_ref("source-election-root")
-        leaf = u.Tests.repository_ref("source-election-leaf")
-        requirements = (selected, f"source-election-provider @ {provider.as_uri()}")
-        u.Tests.write_native_resolution_project(
-            root,
-            repository.distribution,
-            dependencies=requirements if consumer == "root" else (leaf.distribution,),
-            uv=(
-                f"[tool.uv]\noverride-dependencies = {json.dumps([stale, selected])}\n"
-                if configured
-                else ""
-            ),
-        )
-        members: list[m.Infra.UvResolutionProject] = []
-        if consumer != "root":
-            u.Tests.write_native_resolution_project(
-                tmp_path / "leaf",
-                leaf.distribution,
-                dependencies=requirements,
-                uv=(
-                    f"[tool.uv]\noverride-dependencies = {json.dumps([stale])}\n"
-                    if consumer == "supplier" and configured
-                    else ""
-                ),
-            )
-            members.append(
-                m.Infra.UvResolutionProject(
-                    role="supplier" if consumer == "supplier" else "member",
-                    repository=leaf,
-                    directory=tmp_path / "leaf",
-                    document=u.Tests.toml_doc(
-                        (tmp_path / "leaf" / c.PYPROJECT_FILENAME).read_text(
-                            encoding="utf-8"
-                        )
-                    ),
-                )
-            )
-        owner = m.Infra.UvResolutionProject(
-            repository=repository,
-            directory=root,
-            document=u.Tests.toml_doc(
-                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-            ),
-        )
-        originals = [u.Cli.toml_dumps(item.document) for item in (owner, *members)]
-        directory = root / config.Infra.codegen.make.uv_resolution.local_directory
-        directory.mkdir(parents=True)
-        tm.ok(
-            u.Cli.toml_write_document(
-                directory / c.PYPROJECT_FILENAME,
-                tm.ok(
-                    u.Infra.pyproject_native_resolution_view(
-                        owner,
-                        workspace=u.Tests.workspace_spec(repository),
-                        members=members,
-                        directory=directory,
-                        policy=config.Infra.codegen.make.uv_resolution,
-                    )
-                ),
-            )
-        )
-        process = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=configured,
-            msg=process.stdout + process.stderr,
-        )
-        if configured:
-            tm.that(
-                TestsFlextInfraUvNativeResolution._provider_source_locator(
-                    directory, "source-election-sdk"
-                )["git"],
-                has=current,
-                lacks=previous,
-            )
-        else:
-            tm.that(
-                process.stdout + process.stderr,
-                has="Requirements contain conflicting URLs for package "
-                "`source-election-sdk`",
-            )
-        tm.that(
-            [u.Cli.toml_dumps(item.document) for item in (owner, *members)],
-            eq=originals,
-        )
-
-    @staticmethod
-    @pytest.mark.parametrize("invalid", ["supplier-in-config", "same-directory"])
-    def test_editable_resolution_policy_rejects_ambiguous_paths(invalid: str) -> None:
-        """Invalid opt-ins cannot silently select a default graph."""
-        policy = config.Infra.codegen.make.uv_resolution
-        payload = policy.model_dump()
-        if invalid == "supplier-in-config":
-            payload["editable_supplier_root"] = Path("relative")
-        else:
-            payload["editable_directory"] = policy.local_directory
-        with pytest.raises(ValueError, match=r"Extra inputs|distinct directories"):
-            m.Infra.MakeUvResolutionSpec.model_validate(payload)
-
-    @staticmethod
-    def test_external_editable_supplier_preserves_default_view_and_metadata(
-        tmp_path: Path,
-    ) -> None:
-        """Resolve a supplier only in its opt-in graph without rewriting metadata."""
-        root = tmp_path / "consumer"
-        supplier_root = tmp_path / "supplier"
-        repository = u.Tests.repository_ref("native-consumer")
-        supplier = u.Tests.repository_ref("native-supplier")
-        u.Tests.write_native_resolution_project(supplier_root, supplier.distribution)
-        u.Tests.write_native_resolution_project(
-            root,
-            repository.distribution,
-            dependencies=(f"{supplier.distribution}>=0",),
-        )
-        consumer_text = (root / c.PYPROJECT_FILENAME).read_text(
-            encoding=c.DEFAULT_ENCODING
-        )
-        supplier_text = (supplier_root / c.PYPROJECT_FILENAME).read_text(
-            encoding=c.DEFAULT_ENCODING
-        )
-        owner = m.Infra.UvResolutionProject(
-            repository=repository,
-            directory=root,
-            document=u.Tests.toml_doc(consumer_text),
-        )
-        supplied = m.Infra.UvResolutionProject(
-            role="supplier",
-            repository=supplier,
-            directory=supplier_root,
-            document=u.Tests.toml_doc(supplier_text),
-        )
-        policy = config.Infra.codegen.make.uv_resolution
-        workspace = u.Tests.workspace_spec(repository)
-        default = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=workspace,
-                members=(),
-                directory=root / policy.local_directory,
-                policy=policy,
-            )
-        )
-        default_text = u.Cli.toml_dumps(default)
-        directory = root / policy.editable_directory
-        editable = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=workspace,
-                members=(supplied,),
-                directory=directory,
-                policy=policy,
-            )
-        )
-        locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
-            directory, editable
-        )
-        tm.that(
-            next(
-                item for item in locked.package if item.name == supplier.distribution
-            ).source.editable,
-            eq=supplier_root.relative_to(directory, walk_up=True).as_posix(),
-        )
-        tm.that(u.Cli.toml_dumps(default), eq=default_text)
-        tm.that(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
-            eq=consumer_text,
-        )
-        tm.that(
-            (supplier_root / c.PYPROJECT_FILENAME).read_text(
-                encoding=c.DEFAULT_ENCODING
-            ),
-            eq=supplier_text,
-        )
-
-    @staticmethod
     def _conformed_alias_document(
         root: Path,
         repository: m.Infra.RepositoryRef,
@@ -512,10 +174,8 @@ class TestsFlextInfraUvNativeResolution:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("mode", ["local", "standalone"])
     def test_conformed_group_aliases_resolve_without_merging_dependency_tiers(
         tmp_path: Path,
-        mode: str,
     ) -> None:
         """Real UV consumes authored aliases and includes after public conformance.
 
@@ -558,23 +218,8 @@ class TestsFlextInfraUvNativeResolution:
         tm.ok(
             u.Cli.atomic_write_text_file(root / c.PYPROJECT_FILENAME, conformed),
         )
-        policy = config.Infra.codegen.make.uv_resolution
-        directory = root / (
-            policy.local_directory if mode == "local" else policy.standalone_directory
-        )
-        view = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                m.Infra.UvResolutionProject(
-                    repository=repository,
-                    directory=root,
-                    document=u.Tests.toml_doc(conformed),
-                ),
-                workspace=u.Tests.workspace_spec(repository),
-                members=(),
-                directory=directory,
-                policy=policy,
-            ),
-        )
+        directory = tmp_path / "resolution"
+        view = u.Tests.toml_doc(conformed)
         groups = u.Tests.toml_mapping(
             u.Tests.toml_doc_mapping(view)["dependency-groups"],
         )
@@ -701,7 +346,6 @@ class TestsFlextInfraUvNativeResolution:
                     lock_state=lock_state,
                 ),
             )
-            tm.ok(u.Infra.member_declaration_requirements(captured, name))
             source = tm.not_none(captured.content).decode(c.DEFAULT_ENCODING)
             path = root / name
             path.mkdir(parents=True)
@@ -871,7 +515,7 @@ class TestsFlextInfraUvNativeResolution:
         tmp_path: Path,
         root_name: str,
     ) -> None:
-        """Dev backedges remain groups through conform and both native views.
+        """Dev backedges remain groups through conform and native resolution.
 
         Full conformed metadata is retained independently. Native no-index
         resolution qualifies its first-party graph only; it does not prove
@@ -882,7 +526,7 @@ class TestsFlextInfraUvNativeResolution:
         original = {
             name: u.Cli.toml_dumps(document) for name, document in complete.items()
         }
-        inputs: dict[str, m.Infra.UvResolutionProject] = {}
+        limited_documents: dict[str, t.Cli.TomlDocument] = {}
         for name, document in complete.items():
             directory = packages[name]
             limited = self._internal_requirement_document(document, packages)
@@ -893,60 +537,36 @@ class TestsFlextInfraUvNativeResolution:
             (package / "__init__.py").write_text("", encoding="utf-8")
             u.Tests.initialize_git_repo(directory)
             u.Tests.checkout_integration(directory)
-            inputs[name] = m.Infra.UvResolutionProject(
-                repository=u.Tests.repository_ref(name),
-                directory=directory,
-                document=limited,
-            )
+            limited_documents[name] = limited
         order = u.Infra.workspace_dependency_order(
             tmp_path / "native",
             tuple(
-                project.repository.model_copy(update={"path": Path(name)})
-                for name, project in inputs.items()
+                u.Tests.repository_ref(name).model_copy(update={"path": Path(name)})
+                for name in limited_documents
             ),
         )
-        for name, project in inputs.items():
+        for name, document in limited_documents.items():
             runtime = u.Tests.toml_strings_at(
-                u.Cli.toml_dumps(project.document),
+                u.Cli.toml_dumps(document),
                 "project",
                 "dependencies",
             )
             for requirement in runtime:
                 provider = Requirement(requirement).name
                 tm.ok(order.index(provider) < order.index(name))
-        for mode in ("local", "standalone"):
-            directory = tmp_path / mode
-            directory.mkdir()
-            view = tm.ok(
-                u.Infra.pyproject_native_resolution_view(
-                    inputs[root_name],
-                    workspace=u.Tests.workspace_spec(inputs[root_name].repository),
-                    members=(
-                        tuple(
-                            project
-                            for name, project in inputs.items()
-                            if name != root_name
-                        )
-                        if mode == "local"
-                        else ()
-                    ),
-                    directory=directory,
-                    policy=config.Infra.codegen.make.uv_resolution,
-                ),
-            )
-            tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, view))
-            resolved = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
-            tm.that(
-                u.Cli.process_succeeded(resolved.outcome),
-                eq=True,
-                msg=resolved.stdout + resolved.stderr,
-            )
-            locked = u.Tests.toml_tables_at(
-                (directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
-                "package",
-            )
-            locked_names = tuple(package["name"] for package in locked)
-            tm.ok(all(name in locked_names for name in packages))
+        directory = packages[root_name]
+        resolved = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
+        tm.that(
+            u.Cli.process_succeeded(resolved.outcome),
+            eq=True,
+            msg=resolved.stdout + resolved.stderr,
+        )
+        locked = u.Tests.toml_tables_at(
+            (directory / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+            "package",
+        )
+        locked_names = tuple(package["name"] for package in locked)
+        tm.ok(all(name in locked_names for name in packages))
         tm.that(
             {name: u.Cli.toml_dumps(document) for name, document in complete.items()},
             eq=original,
@@ -977,18 +597,14 @@ class TestsFlextInfraUvNativeResolution:
         return u.Tests.toml_mapping(resolved["source"])
 
     @staticmethod
-    @pytest.mark.parametrize("consumer", ["root", "member"])
     @pytest.mark.parametrize("source_kind", ["path", "git"])
     def test_package_owned_runtime_source_is_resolved_natively(
         tmp_path: Path,
-        consumer: str,
         source_kind: str,
     ) -> None:
         """Observe dependency-local runtime sources through real package metadata."""
-        root = tmp_path / "workspace"
-        member = root / "member"
+        directory = tmp_path / "consumer"
         provider = tmp_path / "provider"
-        directory = root / "resolution"
         provider_name = "runtime-only-provider"
         u.Tests.write_native_resolution_project(provider, provider_name)
         revision = ""
@@ -1006,45 +622,13 @@ class TestsFlextInfraUvNativeResolution:
             )
         else:
             source = f"{{path = {json.dumps(str(provider))}, editable = false}}"
-        inputs: list[m.Infra.UvResolutionProject] = []
-        originals: list[str] = []
-        for label, path, name in (
-            ("root", root, "runtime-owned-root"),
-            ("member", member, "runtime-owned-member"),
-        ):
-            selected = label == consumer
-            u.Tests.write_native_resolution_project(
-                path,
-                name,
-                dependencies=(f"{provider_name}>=1.0.0",) if selected else (),
-                uv=(
-                    f"[tool.uv.sources]\n{provider_name} = {source}\n"
-                    if selected
-                    else ""
-                ),
-            )
-            document = u.Tests.toml_doc(
-                (path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-            )
-            inputs.append(
-                m.Infra.UvResolutionProject(
-                    repository=u.Tests.repository_ref(name),
-                    directory=path,
-                    document=document,
-                ),
-            )
-            originals.append(u.Cli.toml_dumps(document))
-        view = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                inputs[0],
-                workspace=u.Tests.workspace_spec(inputs[0].repository),
-                members=(inputs[1],) if consumer == "member" else (),
-                directory=directory,
-                policy=config.Infra.codegen.make.uv_resolution,
-            ),
+        u.Tests.write_native_resolution_project(
+            directory,
+            "runtime-owned-consumer",
+            dependencies=(f"{provider_name}>=1.0.0",),
+            uv=f"[tool.uv.sources]\n{provider_name} = {source}\n",
         )
-        directory.mkdir()
-        tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, view))
+        declared = (directory / c.PYPROJECT_FILENAME).read_bytes()
         process = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
         tm.that(
             u.Cli.process_succeeded(process.outcome),
@@ -1062,28 +646,23 @@ class TestsFlextInfraUvNativeResolution:
             tm.that(actual, is_=str)
             if isinstance(actual, str):
                 tm.that((directory / actual).resolve(), eq=provider)
-        tm.that(
-            [u.Cli.toml_dumps(project.document) for project in inputs],
-            eq=originals,
-        )
+        tm.that((directory / c.PYPROJECT_FILENAME).read_bytes(), eq=declared)
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("identity", "expected_error", "preserves_groups"),
+        ("identity", "expected_error"),
         [
             (
                 "source-only",
                 "Requirements contain conflicting URLs for package `identity-root`",
-                False,
             ),
-            ("global-self", None, False),
+            ("global-self", None),
             (
                 "scoped-self-unmapped",
                 (
                     "`identity-root` is included as a workspace member, "
                     "but is missing an entry in `tool.uv.sources`"
                 ),
-                False,
             ),
             (
                 "scoped-self",
@@ -1091,9 +670,7 @@ class TestsFlextInfraUvNativeResolution:
                     "Scoped override for `identity-provider` cannot use a URL "
                     "or path source for `identity-root`"
                 ),
-                False,
             ),
-            ("virtual-root", None, True),
         ],
     )
     def test_native_self_identity_preserves_group_graph(
@@ -1101,46 +678,20 @@ class TestsFlextInfraUvNativeResolution:
         identity: str,
         *,
         expected_error: str | None,
-        preserves_groups: bool,
     ) -> None:
         """Qualify source identity against native resolution and actual groups.
 
-        A successful resolution that loses development or example dependencies
-        is a broken candidate. The real Git backedge must not be removed from
-        the provider to make a local root resolve.
+        A successful self-identity override resolves without the development or
+        example dependencies, so it is not a candidate. The real Git backedge
+        must not be removed from the provider to make a local root resolve.
         """
         root, root_name, provider_name = (
             TestsFlextInfraUvNativeResolution._write_self_identity_graph(
                 tmp_path, identity
             )
         )
-        resolution_root = root
-        if identity == "virtual-root":
-            resolution_root = tmp_path / "resolution"
-            resolution_root.mkdir()
-            view = tm.ok(
-                u.Infra.pyproject_native_resolution_view(
-                    m.Infra.UvResolutionProject(
-                        repository=u.Tests.repository_ref(root_name),
-                        directory=root,
-                        document=u.Tests.toml_doc(
-                            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-                        ),
-                    ),
-                    workspace=u.Tests.workspace_spec(u.Tests.repository_ref(root_name)),
-                    members=(),
-                    directory=resolution_root,
-                    policy=config.Infra.codegen.make.uv_resolution,
-                ),
-            )
-            tm.ok(
-                u.Cli.toml_write_document(
-                    resolution_root / c.PYPROJECT_FILENAME,
-                    view,
-                ),
-            )
         declared = (root / c.PYPROJECT_FILENAME).read_bytes()
-        process = tm.ok(u.Tests.resolve_native_identity_fixture(resolution_root))
+        process = tm.ok(u.Tests.resolve_native_identity_fixture(root))
         tm.that(
             u.Cli.process_succeeded(process.outcome),
             eq=expected_error is None,
@@ -1155,7 +706,7 @@ class TestsFlextInfraUvNativeResolution:
             tm.fail((root / c.Infra.UV_LOCK_FILENAME).exists())
             return
         locked = u.Tests.toml_tables_at(
-            (resolution_root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+            (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
             "package",
         )
         packages = set(u.Tests.toml_strings([package["name"] for package in locked]))
@@ -1163,7 +714,7 @@ class TestsFlextInfraUvNativeResolution:
         tm.that(packages, has="identity-extra")
         tm.that(packages, lacks="identity-inactive")
         for dependency in (provider_name, "identity-dev", "identity-examples"):
-            tm.that(dependency in packages, eq=preserves_groups)
+            tm.that(dependency in packages, eq=False)
         tm.that(sum(package["name"] == root_name for package in locked), eq=1)
         candidate = next(package for package in locked if package["name"] == root_name)
         tm.that(u.Tests.toml_mapping(candidate["source"]), lacks="git")
@@ -1256,8 +807,6 @@ class TestsFlextInfraUvNativeResolution:
                 )
                 if identity == "scoped-self":
                     policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
-            case "virtual-root":
-                pass
             case _:
                 msg = f"Unknown native resolution fixture identity: {identity}"
                 raise ValueError(msg)

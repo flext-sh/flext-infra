@@ -13,10 +13,12 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, config, infra, m
-from flext_infra.codegen.conform import FlextInfraCodegenConformExecute
-from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
+from flext_infra.codegen import (
+    FlextInfraCodegenConformExecute,
+    FlextInfraCodegenMakeBootstrap,
+)
 from tests import c, tm, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+from tests.unit.codegen import TestsFlextInfraConformSupport
 
 pytestmark = pytest.mark.slow
 
@@ -100,7 +102,6 @@ class TestsFlextInfraCodegenCiMatrix:
                         mode=c.Infra.CodegenConformMode.APPLY,
                     ),
                     execution_context=infra,
-                    generation_only=True,
                 ),
             )
         return root
@@ -1063,11 +1064,11 @@ class TestsFlextInfraCodegenCiMatrixAnalysis:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConformExecute(repository_root=root).plan(request)
+            FlextInfraCodegenConformExecute(repository_root=root).plan(request),
         )
         managed_tests_files = [
             item.path.as_posix()
-            for item in config.Infra.codegen.managed_files
+            for item in config.Infra.codegen.managed_file_specs
             if item.path.parts[0] == c.Infra.DIR_TESTS
         ]
         tm.that(managed_tests_files, empty=False)

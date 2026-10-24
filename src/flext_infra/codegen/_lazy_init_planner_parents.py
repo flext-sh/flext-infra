@@ -9,9 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra.codegen._lazy_init_planner_cache import (
-    FlextInfraCodegenLazyInitPlannerCacheMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerCacheMixin
 
 if TYPE_CHECKING:
     from abc import abstractmethod

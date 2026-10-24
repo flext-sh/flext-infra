@@ -19,13 +19,13 @@ from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenConformExecute,
+    FlextInfraCodegenMakeBootstrap,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenMiseToolchainProof,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
     FlextInfraMiseWorkspacePlanner,
 )
-from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, r, t, tm, u
@@ -81,7 +81,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConformExecut
     @override
     def plan(
         self,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Exercise recovery from real journal, staging, and CAS state changes.
 

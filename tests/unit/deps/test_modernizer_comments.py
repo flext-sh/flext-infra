@@ -75,7 +75,7 @@ class TestsFlextInfraDepsModernizerComments:
         """Preserve development dependencies content."""
         rendered = "[project.optional-dependencies]\ndev = ['pytest']"
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.ok(("dev" in result) or (changes))
+        tm.that(("dev" in result) or bool(changes), eq=True)
 
     def test_inject_comments_preserves_existing_markers(self) -> None:
         """Restamp a managed section from the SSOT, not a frozen phrase."""
@@ -114,7 +114,10 @@ class TestsFlextInfraDepsModernizerComments:
             "optional-dependencies.dev = ['pytest', 'coverage']\n"
         )
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.ok(("optional-dependencies.dev" in result) or (changes))
+        tm.that(
+            ("optional-dependencies.dev" in result) or bool(changes),
+            eq=True,
+        )
 
     def test_inject_comments_phase_repositions_marker_before_section(self) -> None:
         """Position a managed marker immediately before its section."""

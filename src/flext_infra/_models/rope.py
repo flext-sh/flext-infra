@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -37,6 +37,28 @@ class FlextInfraModelsRope:
         )
         python_path_folders: t.StrTuple = m.Field(
             description="Ordered physical native import roots sharing the read owner",
+        )
+
+    class SourceObservation(FlextInfraModelsBase.FrozenArbitrary):
+        """One batch of exact physical observations a native source read produced."""
+
+        states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+            default=(), description="Original file states the read depended on"
+        )
+        directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
+            default=(), description="Original directory inventories that were read"
+        )
+        topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
+            default=(), description="Original physical ancestry of absent parents"
+        )
+        effects: tuple[Path, ...] = m.Field(
+            default=(), description="Declared candidate effects the read consumed"
+        )
+        queries: tuple[t.Pair[str, Literal["exists", "isfile", "isdir"]], ...] = (
+            m.Field(default=(), description="Native predicates asked of the witnesses")
+        )
+        membership_queries: tuple[t.StrTuple, ...] = m.Field(
+            default=(), description="Native directory membership predicates asked"
         )
 
     class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):

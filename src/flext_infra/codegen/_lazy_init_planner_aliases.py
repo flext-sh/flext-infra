@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, u
-from flext_infra.codegen._lazy_init_planner_parents import (
-    FlextInfraCodegenLazyInitPlannerParentsMixin,
-)
+from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerParentsMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t

@@ -9,74 +9,16 @@ from __future__ import annotations
 import re
 import shutil
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, settings
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra import config
 from tests import c, m, r, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
-
-    @staticmethod
-    @pytest.mark.parametrize("partial_runtime", [False, True])
-    def test_editable_cold_setup_never_creates_its_own_lock(
-        tmp_path: Path,
-        editable_supplier: Callable[[Path | None], None],
-        partial_runtime: bool,
-    ) -> None:
-        """First opt-in requires explicit lock preparation, even for a partial runtime."""
-        source = tm.ok(infra.project_context(Path.cwd()))
-        root, _ = u.Tests.render_make_environment(
-            tmp_path, c.Infra.MakeProfile.STANDALONE, bootstrap=True
-        )
-        supplier = tm.not_none(source.runtime).runtime_root
-        editable_supplier(supplier)
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.MAKEFILE_FILENAME,
-                u.Tests.conform_makefile_text(root, workspace),
-            )
-        )
-        policy = inputs.spec.make.uv_resolution
-        environment = root / c.Infra.ENVIRONMENT_DIRECTORY
-        resolution = root / policy.editable_directory
-        tm.fail(environment.exists())
-        tm.fail((resolution / c.PYPROJECT_FILENAME).exists())
-        if partial_runtime:
-            binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
-            created = tm.ok(
-                u.Cli.run_raw(
-                    [str(binary), "venv", str(environment), "--python", sys.executable],
-                    cwd=root,
-                )
-            )
-            tm.that(created.outcome.raw_return_code, eq=0, msg=created.stderr)
-        tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
-        locks = tuple(root.rglob("*.lock"))
-        before = {path: path.read_bytes() for path in locks}
-        process = tm.ok(
-            u.Tests.run_isolated_make(
-                ["setup"],
-                cwd=root,
-                env={type(settings.Infra).EDITABLE_SUPPLIER_ENVIRONMENT: str(supplier)},
-            )
-        )
-        tm.that(
-            process.outcome.raw_return_code,
-            ne=0,
-            msg=process.stdout + process.stderr,
-        )
-        tm.that(process.stderr, has="only `make upg` writes uv.lock")
-        tm.fail((resolution / c.Infra.UV_LOCK_FILENAME).exists())
-        tm.that({path: path.read_bytes() for path in locks}, eq=before)
-        tm.fail((root / policy.supplier_selection_file).exists())
 
     @staticmethod
     def test_help_parses_before_runtime_provisioning(
@@ -93,43 +35,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
             msg=output.stdout + output.stderr,
         )
         tm.fail(environment.exists())
-
-    @staticmethod
-    def test_bootstrap_seed_has_native_resolution_inputs_without_lock_writes(
-        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
-    ) -> None:
-        """A newly rendered candidate admits both views before any resolution."""
-        _profile, root = generated_make_template
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        views = tuple(
-            root / relative for relative in inputs.spec.uv_resolution_pyprojects
-        )
-        tool_lock = root / c.Infra.MISE_LOCK_FILENAME
-        previous_tool_lock = tool_lock.read_bytes()
-        for view in views:
-            tm.ok(view.is_file())
-            tm.fail((view.parent / c.Infra.UV_LOCK_FILENAME).exists())
-        help_output = tm.ok(u.Tests.run_isolated_make(["help"], cwd=root))
-        tm.that(
-            u.Cli.process_succeeded(help_output.outcome),
-            eq=True,
-            msg=help_output.stdout + help_output.stderr,
-        )
-        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
-        for view in views:
-            owner = tm.ok(
-                u.Cli.capture(
-                    [str(binary), "workspace", "dir", "--project", str(view.parent)],
-                    cwd=root,
-                    options=m.Cli.ProcessOptions(
-                        remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
-                    ),
-                ),
-            )
-            tm.that(Path(owner).resolve(), eq=view.parent.resolve())
-            tm.fail((view.parent / c.Infra.UV_LOCK_FILENAME).exists())
-        tm.that(tool_lock.read_bytes(), eq=previous_tool_lock)
-        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
 
     @staticmethod
     def test_setup_installs_dependencies_before_importing_infra(
@@ -479,30 +384,28 @@ class TestsFlextInfraCodegenMakeUpgrade:
         source: t.Triple[str, str, str],
     ) -> None:
         """Require the checkout's locks to match the resolved root exactly."""
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        for manifest in inputs.spec.uv_resolution_pyprojects:
-            lock = manifest.with_name(c.Infra.UV_LOCK_FILENAME)
-            tm.ok((root / lock).is_file())
-            tm.that((checkout / lock).read_bytes(), eq=(root / lock).read_bytes())
-            packages = tuple(
-                package
-                for package in u.Tests.toml_tables_at(
-                    (root / lock).read_text(encoding="utf-8"),
-                    "package",
-                )
-                if package.get("name")
-                == config.Infra.codegen.infra_repository.distribution
+        manifest = Path(c.PYPROJECT_FILENAME)
+        lock = manifest.with_name(c.Infra.UV_LOCK_FILENAME)
+        tm.ok((root / lock).is_file())
+        tm.that((checkout / lock).read_bytes(), eq=(root / lock).read_bytes())
+        packages = tuple(
+            package
+            for package in u.Tests.toml_tables_at(
+                (root / lock).read_text(encoding="utf-8"),
+                "package",
             )
-            tm.that(len(packages), eq=1)
-            locked_source = u.Tests.toml_mapping(packages[0].get("source"))
-            tm.that(
-                str(locked_source.get("git")).endswith(f"#{source[2]}"),
-                eq=True,
-            )
-            tm.that(
-                (checkout / manifest).read_bytes(),
-                eq=(root / manifest).read_bytes(),
-            )
+            if package.get("name") == config.Infra.codegen.infra_repository.distribution
+        )
+        tm.that(len(packages), eq=1)
+        locked_source = u.Tests.toml_mapping(packages[0].get("source"))
+        tm.that(
+            str(locked_source.get("git")).endswith(f"#{source[2]}"),
+            eq=True,
+        )
+        tm.that(
+            (checkout / manifest).read_bytes(),
+            eq=(root / manifest).read_bytes(),
+        )
 
     def test_generated_dependency_upgrade_projects_lock_floors(
         self,
@@ -721,22 +624,15 @@ class TestsFlextInfraCodegenMakeUpgrade:
             profile,
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        policy = inputs.spec.make.uv_resolution
-        view = root / policy.standalone_directory / c.PYPROJECT_FILENAME
+        view = root / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(view.read_text(encoding="utf-8"))
         groups = u.Cli.toml_ensure_table(document, "dependency-groups")
-        project = u.Tests.toml_table_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-            "project",
-        )
+        project = u.Tests.toml_table_at(view.read_text(encoding="utf-8"), "project")
         groups["fixture-native-lock-drift"] = [str(project["name"])]
         tm.ok(u.Cli.atomic_write_text_file(view, u.Cli.toml_dumps(document)))
         locks = (
             root / c.Infra.MISE_LOCK_FILENAME,
-            *(
-                root / path.with_name(c.Infra.UV_LOCK_FILENAME)
-                for path in inputs.spec.uv_resolution_pyprojects
-            ),
+            root / c.Infra.UV_LOCK_FILENAME,
         )
         before = {path: path.read_bytes() for path in locks}
         drifted_manifest = view.read_bytes()
@@ -746,7 +642,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
             **hermetic_git_environment,
             "UV_OFFLINE": c.ParserBooleanToken.ZERO,
             inputs.spec.make.ci.variable: inputs.spec.make.ci.value,
-            policy.hosted_variable: policy.hosted_value,
         }
         setup = tm.ok(
             u.Tests.run_isolated_make(["setup"], cwd=root, env=native_environment),

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, main
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services.cli_routes import FlextInfraCliRouteService
 from tests import c, m, tm, u
 

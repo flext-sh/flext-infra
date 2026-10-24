@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, settings
 from tests import c, m, t, tm, u
 
 pytestmark = pytest.mark.slow
@@ -184,98 +183,6 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             eq=str(u.Infra.runtime_environment_dir(project_root)),
         )
 
-    @staticmethod
-    @pytest.mark.parametrize("supplier", ["absent", "external", "self"])
-    @pytest.mark.parametrize("hosted", [False, True])
-    def test_direnv_elects_resolution_after_local_supplier_overrides(
-        tmp_path: Path, supplier: str, *, hosted: bool
-    ) -> None:
-        """Cold activation consumes local inputs once without losing VENV_DIR."""
-        project_root, _ = u.Tests.render_make_environment(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
-        resolution = config.Infra.codegen.make.uv_resolution
-        supplier_variable = settings.Infra.EDITABLE_SUPPLIER_ENVIRONMENT
-        runtime_environment = u.Infra.runtime_environment_dir(project_root)
-        runtime_environment.mkdir(exist_ok=True)
-        supplier_root = tmp_path / "supplier"
-        supplier_root.mkdir()
-        selected = project_root if supplier == "self" else supplier_root
-        (project_root / ".envrc.local").write_text(
-            'export OBSERVED_VENV_DIR="${VENV_DIR}"\n'
-            'printf "loaded\\n" >> overrides.log\n'
-            + (
-                f'export {supplier_variable}="{selected}"\n'
-                if supplier != "absent"
-                else f"unset {supplier_variable}\n"
-            ),
-            encoding="utf-8",
-        )
-        expected_directory = (
-            resolution.standalone_directory
-            if hosted
-            else resolution.editable_directory
-            if supplier == "external"
-            else resolution.local_directory
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                (c.Infra.CLI_DIRENV, "allow", str(project_root)), cwd=project_root
-            )
-        )
-        try:
-            for _ in range(2):
-                process = tm.ok(
-                    u.Cli.run_raw(
-                        (
-                            c.Infra.CLI_DIRENV,
-                            "exec",
-                            ".",
-                            "printenv",
-                            "UV_PROJECT",
-                            "UV_PROJECT_ENVIRONMENT",
-                            "OBSERVED_VENV_DIR",
-                        ),
-                        cwd=project_root,
-                        options=m.Cli.ProcessOptions(
-                            env={
-                                resolution.hosted_variable: (
-                                    resolution.hosted_value
-                                    if hosted
-                                    else c.ParserBooleanToken.FALSE
-                                )
-                            },
-                            remove_env_keys=(
-                                *c.Tests.MAKE_ISOLATION_ENV_KEYS,
-                                supplier_variable,
-                            ),
-                        ),
-                    )
-                )
-                tm.that(
-                    u.Cli.process_succeeded(process.outcome),
-                    eq=True,
-                    msg=process.stdout + process.stderr,
-                )
-                tm.that(
-                    process.stdout.splitlines(),
-                    eq=[
-                        str(project_root / expected_directory),
-                        str(runtime_environment),
-                        str(runtime_environment),
-                    ],
-                )
-        finally:
-            tm.ok(
-                u.Cli.run_checked(
-                    (c.Infra.CLI_DIRENV, "deny", str(project_root)), cwd=project_root
-                )
-            )
-        tm.that(
-            (project_root / "overrides.log").read_text(encoding="utf-8").splitlines(),
-            eq=["loaded", "loaded"],
-        )
-
     def test_submodule_member_resolves_the_workspace_runtime(
         self,
         tmp_path: Path,
@@ -295,7 +202,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             tm.that(values[name], eq=str(workspace))
         tm.that(
             values["UV_PROJECT"],
-            eq=str(workspace / config.Infra.codegen.make.uv_resolution.local_directory),
+            eq=str(workspace),
         )
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT"):
             tm.that(

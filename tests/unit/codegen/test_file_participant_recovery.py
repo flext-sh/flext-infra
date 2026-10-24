@@ -12,12 +12,12 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMisePublication,
 )
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, p, r, t, tm, u
 

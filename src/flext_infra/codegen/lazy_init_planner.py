@@ -12,24 +12,14 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
-from flext_infra.codegen._lazy_init_planner_aliases import (
+from flext_infra.codegen import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
-)
-from flext_infra.codegen._lazy_init_planner_cache import (
     FlextInfraCodegenLazyInitPlannerCacheMixin,
-)
-from flext_infra.codegen._lazy_init_planner_children import (
     FlextInfraCodegenLazyInitPlannerChildrenMixin,
-)
-from flext_infra.codegen._lazy_init_planner_collision import (
     FlextInfraCodegenLazyInitPlannerCollisionMixin,
-)
-from flext_infra.codegen._lazy_init_planner_exports import (
     FlextInfraCodegenLazyInitPlannerExportsMixin,
-)
-from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 
 

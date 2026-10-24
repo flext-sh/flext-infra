@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import infra, main
-from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
+from flext_infra.codegen import FlextInfraCodegenQualityGate
 from tests import tm, u
 
 if TYPE_CHECKING:

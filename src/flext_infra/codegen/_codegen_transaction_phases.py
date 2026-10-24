@@ -13,15 +13,13 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenStaging,
+    FlextInfraCodegenTransactionRecovery,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsProcess,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
-)
-from flext_infra.codegen._codegen_transaction_recovery import (
-    FlextInfraCodegenTransactionRecovery,
 )
 
 

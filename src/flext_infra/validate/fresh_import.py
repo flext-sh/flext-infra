@@ -22,10 +22,10 @@ from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
 )
-from flext_infra.codegen._mise_artifacts_state import FlextInfraMiseArtifactsState
 from flext_infra.validate.native_bootstrap import FlextInfraValidateNativeBootstrap
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,

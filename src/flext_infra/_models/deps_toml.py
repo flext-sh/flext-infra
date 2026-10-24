@@ -54,9 +54,9 @@ class FlextInfraModelsDepsToml:
             """Set or merge one TOML string list."""
 
             kind: Annotated[
-                Literal[c.Action.LIST],
+                Literal["list"],
                 m.Field(description="Operation kind", validate_default=True),
-            ] = c.Action.LIST
+            ] = "list"
             key: str = m.Field(description="TOML key name")
             values: t.StrSequence = m.Field(description="Expected values")
             strategy: Annotated[

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
+from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
     FlextInfraImportNormalizationPhase,

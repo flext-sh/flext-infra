@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.codegen.layout import FlextInfraCodegenLayout
+from flext_infra.codegen import FlextInfraCodegenLayout
 from tests import c, u
 
 

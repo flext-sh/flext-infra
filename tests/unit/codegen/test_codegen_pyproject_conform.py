@@ -12,173 +12,12 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, p, t, tm, u
 
 
-class TestsFlextInfraCodegenPyprojectConform:
-    """Tests for ``FlextInfraCodegenPyprojectConform``."""
-
-    def test_workspace_provisions_member_toml_arrays(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Member extras and included groups reach the root provisioning contract."""
-        member = self._repository(
-            "fixture-member",
-            role=c.Infra.MakeProfile.STANDALONE,
-            path="fixture-member",
-        )
-        workspace = u.Tests.workspace_spec(
-            self._repository(
-                "workspace",
-                role=c.Infra.MakeProfile.WORKSPACE,
-                path=".",
-            ),
-            subprojects=(member,),
-        )
-        path = tmp_path / member.path / c.PYPROJECT_FILENAME
-        path.parent.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                path,
-                '[project]\nname = "fixture-member"\n'
-                'dependencies = ["fixture-runtime>=1"]\n'
-                "[project.optional-dependencies]\n"
-                'feature = ["fixture-extra>=2"]\n'
-                "[dependency-groups]\n"
-                'base = ["fixture-tool>=3"]\n'
-                'dev = [{include-group = "base"}, "fixture-checker>=4"]\n',
-            ),
-        )
-        captured = tm.ok(
-            u.Cli.atomic_read_binary_file_state(path, required=True),
-        )
-        options = u.Infra.PyprojectConformOptions(
-            repository_root=tmp_path,
-            member_declarations=(captured,),
-        )
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                '[project]\nname = "workspace"\ndependencies = []\n',
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
-                options=options,
-            ),
-        )
-        dev = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
-        tm.that(dev, has=["fixture-tool>=3", "fixture-checker>=4"])
-        tm.that(workspace.integration, none=False)
-        tm.that(
-            dev,
-            has=(
-                f"{member.distribution}[feature] @ "
-                f"git+{member.url}@{workspace.integration.branch}"
-            ),
-        )
-        repeated = tm.ok(
-            u.Infra.pyproject_conform(
-                rendered,
-                workspace=workspace,
-                required_dev_dependencies=(),
-                uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
-                options=options,
-            ),
-        )
-        tm.that(repeated, eq=rendered)
-
-    def test_artifact_composition_preserves_pyright_first_match_resolution(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Public composition preserves narrow-first roots and ordered local paths."""
-        workspace = self._workspace()
-        privacy = config.Infra.tooling.tools.pyright.path_rules
-        environments = (
-            m.Infra.PyrightConfig.ExecutionEnvironment(
-                root="fixture-member/z_checked/inner",
-                extra_paths=(
-                    "fixture-member/z_checked/support",
-                    "fixture-member/src",
-                ),
-                report_private_usage=privacy.test_like_report_private_usage,
-            ),
-            m.Infra.PyrightConfig.ExecutionEnvironment(
-                root="fixture-member/a_checked",
-                extra_paths=(
-                    "fixture-member/src",
-                    "fixture-member/a_checked/support",
-                ),
-                report_private_usage=privacy.test_like_report_private_usage,
-            ),
-            m.Infra.PyrightConfig.ExecutionEnvironment(
-                root="fixture-member",
-                extra_paths=("fixture-member", "fixture-member/src"),
-                report_private_usage=privacy.other_report_private_usage,
-            ),
-        )
-        expected = [
-            environment.model_dump(mode="json", by_alias=True)
-            for environment in environments
-        ]
-        payload: t.JsonMapping = {
-            "project": {
-                "name": workspace.repository.distribution,
-                "version": "0.1.0",
-                "dependencies": [],
-            },
-            "dependency-groups": {"codegen": [u.Tests.flext_source(config.Infra.name)]},
-            "tool": {"pyright": {"executionEnvironments": expected}},
-        }
-        source = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload))
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(
-            source, encoding=c.DEFAULT_ENCODING
-        )
-        u.Tests.initialize_git_repo(tmp_path)
-        u.Tests.copy_tracked_mise_seeds(tmp_path)
-        target = m.Infra.RepositoryConformTarget(
-            repository=workspace.repository,
-            root=tmp_path,
-            toolchain_root=tmp_path,
-            make_profile=workspace.repository.role,
-            canonical_project_name=workspace.repository.distribution,
-            ci_enabled=False,
-            gascity_enabled=False,
-        )
-        inputs = FlextInfraCodegenConform.resolve_render_inputs(
-            target=target,
-            workspace=workspace,
-            codegen=config.Infra.codegen,
-            tooling_runtime=None,
-            managed_artifacts=tm.ok(
-                u.Infra.snapshot_project_managed_artifacts(tmp_path)
-            ),
-        )
-        first = tm.ok(
-            FlextInfraCodegenConform.compose_project_artifact(
-                tmp_path,
-                c.PYPROJECT_FILENAME,
-                source,
-                render_inputs=inputs,
-            )
-        ).rendered
-        first_tools = u.Tests.toml_mapping(u.Tests.toml_payload(first)["tool"])
-        first_pyright = u.Tests.toml_mapping(first_tools["pyright"])
-        tm.that(first_pyright["executionEnvironments"], eq=expected)
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(first, encoding=c.DEFAULT_ENCODING)
-        second = tm.ok(
-            FlextInfraCodegenConform.compose_project_artifact(
-                tmp_path,
-                c.PYPROJECT_FILENAME,
-                first,
-                render_inputs=inputs,
-            )
-        ).rendered
-        second_tools = u.Tests.toml_mapping(u.Tests.toml_payload(second)["tool"])
-        second_pyright = u.Tests.toml_mapping(second_tools["pyright"])
-        tm.that(second_pyright["executionEnvironments"], eq=expected)
-        tm.that(second, eq=first)
+class TestsFlextInfraPyprojectConformSupport:
+    """Typed fixtures shared by the pyproject conformance contracts."""
 
     @staticmethod
     def _repository(
@@ -263,6 +102,102 @@ class TestsFlextInfraCodegenPyprojectConform:
             )
             for floor in config.Infra.codegen.scaffold.project.dev
         )
+
+
+class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupport):
+    """Pyproject conformance: topology, metadata overlay and dev floors."""
+
+    def test_artifact_composition_preserves_pyright_first_match_resolution(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Public composition preserves narrow-first roots and ordered local paths."""
+        workspace = self._workspace()
+        privacy = config.Infra.tooling.tools.pyright.path_rules
+        environments = (
+            m.Infra.PyrightConfig.ExecutionEnvironment(
+                root="fixture-member/z_checked/inner",
+                extra_paths=(
+                    "fixture-member/z_checked/support",
+                    "fixture-member/src",
+                ),
+                report_private_usage=privacy.test_like_report_private_usage,
+            ),
+            m.Infra.PyrightConfig.ExecutionEnvironment(
+                root="fixture-member/a_checked",
+                extra_paths=(
+                    "fixture-member/src",
+                    "fixture-member/a_checked/support",
+                ),
+                report_private_usage=privacy.test_like_report_private_usage,
+            ),
+            m.Infra.PyrightConfig.ExecutionEnvironment(
+                root="fixture-member",
+                extra_paths=("fixture-member", "fixture-member/src"),
+                report_private_usage=privacy.other_report_private_usage,
+            ),
+        )
+        expected: list[t.JsonValue] = [
+            environment.model_dump(mode="json", by_alias=True)
+            for environment in environments
+        ]
+        payload: t.JsonMapping = {
+            "project": {
+                "name": workspace.repository.distribution,
+                "version": "0.1.0",
+                "dependencies": [],
+            },
+            "dependency-groups": {"codegen": [u.Tests.flext_source(config.Infra.name)]},
+            "tool": {"pyright": {"executionEnvironments": expected}},
+        }
+        source = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload))
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            source, encoding=c.DEFAULT_ENCODING
+        )
+        u.Tests.initialize_git_repo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        target = m.Infra.RepositoryConformTarget(
+            repository=workspace.repository,
+            root=tmp_path,
+            toolchain_root=tmp_path,
+            make_profile=workspace.repository.role,
+            canonical_project_name=workspace.repository.distribution,
+            ci_enabled=False,
+            gascity_enabled=False,
+        )
+        inputs = FlextInfraCodegenConformExecute.resolve_render_inputs(
+            target=target,
+            workspace=workspace,
+            codegen=config.Infra.codegen,
+            tooling_runtime=None,
+            managed_artifacts=tm.ok(
+                u.Infra.snapshot_project_managed_artifacts(tmp_path)
+            ),
+        )
+        first = tm.ok(
+            FlextInfraCodegenConformExecute.compose_project_artifact(
+                tmp_path,
+                c.PYPROJECT_FILENAME,
+                source,
+                render_inputs=inputs,
+            )
+        ).rendered
+        first_tools = u.Tests.toml_mapping(u.Tests.toml_payload(first)["tool"])
+        first_pyright = u.Tests.toml_mapping(first_tools["pyright"])
+        tm.that(first_pyright["executionEnvironments"], eq=expected)
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(first, encoding=c.DEFAULT_ENCODING)
+        second = tm.ok(
+            FlextInfraCodegenConformExecute.compose_project_artifact(
+                tmp_path,
+                c.PYPROJECT_FILENAME,
+                first,
+                render_inputs=inputs,
+            )
+        ).rendered
+        second_tools = u.Tests.toml_mapping(u.Tests.toml_payload(second)["tool"])
+        second_pyright = u.Tests.toml_mapping(second_tools["pyright"])
+        tm.that(second_pyright["executionEnvironments"], eq=expected)
+        tm.that(second, eq=first)
 
     def test_leaf_conformance_preserves_parent_workspace_execution(
         self,
@@ -568,6 +503,7 @@ class TestsFlextInfraCodegenPyprojectConform:
     @pytest.mark.parametrize("declare_optional", [False, True])
     def test_deptry_dev_groups_follow_declared_optional_groups(
         self,
+        *,
         declare_optional: bool,
     ) -> None:
         """PEP 735 groups never create references to absent PEP 621 extras."""
@@ -718,10 +654,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 workspace=workspace,
                 required_dev_dependencies=floors,
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
-                options=u.Infra.PyprojectConformOptions(
-                    flext_line=dependency_source,
-                    repository_root=tmp_path,
-                ),
+                options=u.Infra.PyprojectConformOptions(flext_line=dependency_source),
             ),
         )
         dev = u.Tests.toml_strings_at(first, "dependency-groups", "dev")
@@ -752,10 +685,7 @@ class TestsFlextInfraCodegenPyprojectConform:
                 workspace=workspace,
                 required_dev_dependencies=floors,
                 uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
-                options=u.Infra.PyprojectConformOptions(
-                    flext_line=dependency_source,
-                    repository_root=tmp_path,
-                ),
+                options=u.Infra.PyprojectConformOptions(flext_line=dependency_source),
             ),
         )
         tm.that(second, eq=first)
@@ -819,6 +749,12 @@ class TestsFlextInfraCodegenPyprojectConform:
             u.Tests.toml_strings_at(rendered, "dependency-groups", "dev"),
             eq=(declared,),
         )
+
+
+class TestsFlextInfraCodegenPyprojectConformScaffold(
+    TestsFlextInfraPyprojectConformSupport
+):
+    """Pyproject conformance: provenance, idempotence and scaffold policy."""
 
     def test_standalone_requires_declared_git_source(self) -> None:
         """A source-less internal dependency outside the workspace overlay fails.

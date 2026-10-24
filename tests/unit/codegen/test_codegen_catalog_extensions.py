@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
@@ -61,14 +61,21 @@ class TestsFlextInfraCodegenCatalogExtensions:
                 ),
             },
         )
-        result = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
         )
+        result = FlextInfraCodegenConformExecute(
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                request=request,
+                initial_workspace=workspace,
+                ports=infra.codegen_conform_collaborators(),
+            ),
+            runtime_settings=infra.settings,
+            initial_context=infra.context,
+        ).execute()
         tm.ok(result.failure)
         tm.that(
             result.error,
@@ -369,6 +376,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
     @pytest.mark.parametrize("infra_first", [False, True])
     def test_infra_authority_preserves_distinct_distribution_refs(
         tmp_path: Path,
+        *,
         infra_first: bool,
     ) -> None:
         """Exact Infra provenance is independent of another distribution's order/ref."""
@@ -645,7 +653,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         # The composer reads the committed catalog: the overlay must be in HEAD.
         u.Tests.initialize_git_repo(tmp_path)
 
-        result = FlextInfraCodegenConform.compose_project_artifact(
+        result = FlextInfraCodegenConformExecute.compose_project_artifact(
             tmp_path,
             c.Infra.MISE_TOML_FILENAME,
             '[tools]\npython = "3.13"\n',
@@ -720,16 +728,20 @@ class TestsFlextInfraCodegenCatalogExtensions:
         declared_gitmodules = gitmodules.read_bytes()
         # Topology rendering must not require the fixture member to be installed
         # for the unrelated Pyproject provenance surface selected by ALL.
-        result = FlextInfraCodegenConform(
-            state=m.Infra.CodegenConformState(initial_workspace=workspace),
-        ).plan(
-            u.Tests.conform_request(
-                repository_root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            ),
+        request = u.Tests.conform_request(
+            repository_root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.CHECK,
         )
+        result = FlextInfraCodegenConformExecute(
+            repository_root=repository_root,
+            state=m.Infra.CodegenConformState(
+                repository_root=repository_root,
+                request=request,
+                initial_workspace=workspace,
+            ),
+        ).plan(request)
 
         plan = tm.ok(result)
         tm.that(plan.issues, eq=())

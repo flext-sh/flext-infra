@@ -257,8 +257,6 @@ class UtilityFacadePlanning(UtilityFacadePublication):
 
         """
         service = u.Tests.create_lazy_init_service(package.parent.parent)
-        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
-        service.target_module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
         cls._write(facade, rendered)

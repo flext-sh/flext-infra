@@ -818,6 +818,32 @@ class FlextInfraWorkspaceDetector(
             return result_type.from_failure(configured)
         return result_type.ok(configured.value[0])
 
+    @staticmethod
+    def _bootstrap_source(
+        resolved_root: Path,
+        declaration: m.Infra.RepositoryDeltaSpec,
+    ) -> p.Result[m.Infra.CodegenBootstrapSource | None]:
+        """Elect the declared dependency source of a repository without a manifest.
+
+        Returns:
+            The declared bootstrap source, or None when the manifest exists.
+
+        """
+        result_type = r[m.Infra.CodegenBootstrapSource | None]
+        if (resolved_root / c.PYPROJECT_FILENAME).exists():
+            return result_type.ok(None)
+        project = declaration.project
+        if project is None or project.flext_source is None:
+            return result_type.fail(
+                f"new project has no declared dependency source: {resolved_root}",
+            )
+        source = u.Infra.declared_git_source(project.flext_source)
+        if source.failure:
+            return result_type.from_failure(source)
+        return result_type.ok(
+            m.Infra.CodegenBootstrapSource(url=source.value[0], ref=source.value[1])
+        )
+
     @classmethod
     def load_workspace_spec(
         cls,
@@ -863,19 +889,10 @@ class FlextInfraWorkspaceDetector(
         if external_consumers.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
         (workspace_beads, resolved_refs, name) = workspace.value
-        bootstrap_source: m.Infra.CodegenBootstrapSource | None = None
-        if not (resolved_root / c.PYPROJECT_FILENAME).exists():
-            project = declaration.project
-            if project is None or project.flext_source is None:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    f"new project has no declared dependency source: {resolved_root}",
-                )
-            source = u.Infra.declared_git_source(project.flext_source)
-            if source.failure:
-                return r[m.Infra.WorkspaceSpec].from_failure(source)
-            bootstrap_source = m.Infra.CodegenBootstrapSource(
-                url=source.value[0], ref=source.value[1]
-            )
+        bootstrap = cls._bootstrap_source(resolved_root, declaration)
+        if bootstrap.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(bootstrap)
+        bootstrap_source = bootstrap.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=name,

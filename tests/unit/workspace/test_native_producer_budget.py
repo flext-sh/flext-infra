@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import tm
 

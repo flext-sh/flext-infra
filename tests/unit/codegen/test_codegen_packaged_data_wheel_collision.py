@@ -13,8 +13,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, infra, m, main
+from flext_infra import config, m, main
 from tests import c, t, tm, u
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -659,7 +660,8 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             if entry.destination.startswith(f"{c.CONFIG_DIR_NAME}/")
             and "{" not in entry.destination
             and c.Infra.MakeProfile.STANDALONE in entry.profiles
-            and entry.delegate == c.Infra.TemplateDelegate.RENDER
+            and entry.source is not None
+            and entry.source_kind == "template"
             and not entry.requires_beads
             and not entry.requires_release_protocol
         )
@@ -681,7 +683,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         self._prepare_runtime(root)
         tm.fail((root / c.PYPROJECT_FILENAME).exists())
         tm.fail((root / declared_file).exists())
-        tm.ok(infra.codegen_conform(request, workspace))
+        tm.ok(TestsFlextInfraConformSupport.conform_in_workspace(request, workspace))
         tm.ok((root / declared_file).is_file())
         tm.that(
             self._wheel_force_include(root).get(declared_file),

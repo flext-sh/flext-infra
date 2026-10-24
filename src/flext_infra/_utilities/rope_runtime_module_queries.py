@@ -44,6 +44,29 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             )
         )
 
+    @staticmethod
+    def native_election(project: p.Infra.RopeProject) -> p.Infra.RopeProjectElection:
+        """Capture the installed native resolver's elected source identities.
+
+        Returns:
+            The original source, extension and interpreter search election.
+
+        """
+        return m.Infra.RopeProjectElection(
+            source_folders=tuple(
+                folder.path for folder in project.get_source_folders()
+            ),
+            ignored_resources=tuple(sorted(config.Infra.codegen.source_scan_ignored)),
+            extension_modules=FlextInfraUtilitiesRopeRuntimeModuleQueries.extension_module_names(
+                project
+            ),
+            python_path_folders=tuple(
+                folder.real_path
+                for folder in project.get_python_path_folders()
+                if folder.is_folder()
+            ),
+        )
+
     @classmethod
     def from_import(
         cls,

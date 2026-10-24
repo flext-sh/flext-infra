@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.codegen import FlextInfraCodegenGeneration
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
 

@@ -198,12 +198,19 @@ class TestsFlextInfraAuditorLinks:
         """Audit and repair links through real native repository facts."""
 
         @staticmethod
-        def _owner(root: Path) -> m.Infra.DocsGithubRepoSpec:
+        @pytest.fixture
+        def github_owner(tmp_path: Path) -> m.Infra.DocsGithubRepoSpec:
+            """Publish the declared GitHub owner of the fixture repository.
+
+            Returns:
+                The repository identity resolved from native Git and configuration.
+
+            """
             u.Tests.initialize_git_repo(
-                root,
+                tmp_path,
                 origin_url="https://github.com/fixture-owner/fixture-docs.git",
             )
-            directory = root / "config"
+            directory = tmp_path / "config"
             directory.mkdir(exist_ok=True)
             (directory / "codegen.yaml").write_text(
                 "Infra:\n  codegen:\n    repository:\n      integration:\n"
@@ -214,19 +221,20 @@ class TestsFlextInfraAuditorLinks:
                 u.Infra.docs_github_repo_lookup(
                     "fixture-owner",
                     "fixture-docs",
-                    repository_root=root,
+                    repository_root=tmp_path,
                 )
             )
 
         @staticmethod
-        def test_github_stale_organization(tmp_path: Path) -> None:
+        def test_github_stale_organization(
+            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+        ) -> None:
             """Test github stale organization."""
-            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
             docs = tmp_path / "docs"
             docs.mkdir()
             (docs / "test.md").write_text(
-                f"[x](https://github.com/{placeholder}/{repo.repository}/blob/{repo.branch}/README.md)\n",
+                f"[x](https://github.com/{placeholder}/{github_owner.repository}/blob/{github_owner.branch}/README.md)\n",
                 encoding="utf-8",
             )
             scope = m.Infra.DocScope(
@@ -239,13 +247,14 @@ class TestsFlextInfraAuditorLinks:
             )
 
         @staticmethod
-        def test_github_wrong_branch(tmp_path: Path) -> None:
+        def test_github_wrong_branch(
+            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+        ) -> None:
             """Test github wrong branch."""
-            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             docs = tmp_path / "docs"
             docs.mkdir()
             (docs / "test.md").write_text(
-                f"[x](https://github.com/{repo.organization}/{repo.repository}/blob/foreign/ref/README.md)\n",
+                f"[x](https://github.com/{github_owner.organization}/{github_owner.repository}/blob/foreign/ref/README.md)\n",
                 encoding="utf-8",
             )
             scope = m.Infra.DocScope(
@@ -257,16 +266,17 @@ class TestsFlextInfraAuditorLinks:
             )
 
         @staticmethod
-        def test_github_rewrite_fix(tmp_path: Path) -> None:
+        def test_github_rewrite_fix(
+            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+        ) -> None:
             """Test github rewrite fix."""
-            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
             docs = tmp_path / "docs"
             docs.mkdir()
             target = docs / "test.md"
-            foreign = f"https://github.com/{placeholder}/{repo.repository}/blob/foreign/ref/README.md"
+            foreign = f"https://github.com/{placeholder}/{github_owner.repository}/blob/foreign/ref/README.md"
             target.write_text(
-                f"[x](https://github.com/{placeholder}/{repo.repository}/blob/{repo.branch}/README.md#L1)\n"
+                f"[x](https://github.com/{placeholder}/{github_owner.repository}/blob/{github_owner.branch}/README.md#L1)\n"
                 f"[y]({foreign})\n",
                 encoding="utf-8",
             )
@@ -274,6 +284,6 @@ class TestsFlextInfraAuditorLinks:
             tm.that(item.links, gte=1)
             tm.that(
                 target.read_text(),
-                has=f"https://github.com/{repo.organization}/{repo.repository}/blob/{repo.branch}/README.md#L1",
+                has=f"https://github.com/{github_owner.organization}/{github_owner.repository}/blob/{github_owner.branch}/README.md#L1",
             )
             tm.that(target.read_text(), has=foreign)

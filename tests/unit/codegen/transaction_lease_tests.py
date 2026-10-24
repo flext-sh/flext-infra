@@ -14,9 +14,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, m, p
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
+from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+    FlextInfraMiseWorkspacePlanner,
+)
 from tests import c, r, tm, u
 
 if TYPE_CHECKING:

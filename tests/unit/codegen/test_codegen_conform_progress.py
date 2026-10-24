@@ -12,6 +12,7 @@ import pytest
 
 from flext_infra import config, infra, m
 from tests import c, tm, u
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenConformProgress:
@@ -33,7 +34,7 @@ class TestsFlextInfraCodegenConformProgress:
             mode=c.Infra.CodegenConformMode.APPLY,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
-        tm.ok(infra.codegen_conform(request, workspace))
+        tm.ok(TestsFlextInfraConformSupport.conform_in_workspace(request, workspace))
         captured = capsys.readouterr().out
         tm.that("Codegen Conform" in captured, where=bool, msg=captured[-3000:])
         tm.that("stage=plan" in captured, where=bool, msg=captured[-3000:])

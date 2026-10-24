@@ -513,14 +513,14 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
         (route / "dolt.gate.lock").write_text("", encoding="utf-8")
 
-        state = codegen.FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
+        state = codegen.FlextInfraCodegenConform.beads_route_state(tmp_path)
 
         tm.fail(state.failure)
         tm.ok(state.value)
 
         (route / "stranger.txt").write_text("unexpected\n", encoding="utf-8")
 
-        broken = codegen.FlextInfraCodegenConformBeadsRoutes.beads_route_state(tmp_path)
+        broken = codegen.FlextInfraCodegenConform.beads_route_state(tmp_path)
 
         tm.ok(broken.failure)
         tm.ok(broken.error is not None and "stranger.txt" in broken.error)

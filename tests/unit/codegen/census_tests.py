@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen import FlextInfraCodegenCensus
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, m, r, tm, u
 

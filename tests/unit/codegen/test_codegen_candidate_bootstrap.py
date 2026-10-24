@@ -123,12 +123,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         return independent
 
     @staticmethod
-    def _break_repository(
-        failed: Path,
-        resolution_pyprojects: t.SequenceOf[Path],
-        foreign: Path,
-        failure: str,
-    ) -> None:
+    def _break_repository(failed: Path, failure: str) -> None:
         """Corrupt exactly the input one parametrized failure names."""
         if failure == "root-source":
             projection = failed / c.PYPROJECT_FILENAME
@@ -136,50 +131,28 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 projection.read_text(encoding=c.DEFAULT_ENCODING) + "\n[project]\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-        elif failure == "member-package":
+        else:
             package = failed / "src" / u.Infra.project_package_name(failed)
             (package / c.Infra.INIT_PY).unlink()
-        else:
-            view = failed / resolution_pyprojects[0]
-            foreign.mkdir()
-            view.parent.parent.mkdir(parents=True, exist_ok=True)
-            view.parent.symlink_to(foreign, target_is_directory=True)
 
     @staticmethod
-    def _unsupplied_views(root: Path) -> set[Path]:
-        """Return the resolution views a runtime without an editable supplier plans.
-
-        Returns:
-            Every managed resolution view except the editable supplier view.
-
-        """
-        spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        editable = spec.make.uv_resolution.editable_directory / c.PYPROJECT_FILENAME
-        return set(spec.uv_resolution_pyprojects) - {editable}
-
-    @staticmethod
-    def _assert_independent_views_planned(
+    def _assert_independent_pyproject_planned(
         independent: Path,
         plan: m.Infra.CodegenPlan,
         report: m.Infra.CodegenPlanningReport,
     ) -> None:
-        """Require every selected independent resolution view in plan and report."""
-        planned_paths = {file.path for file in plan.files}
-        reported_paths = {file.path for item in report.outcomes for file in item.files}
-        for relative in TestsFlextInfraCodegenCandidateBootstrap._unsupplied_views(
-            independent,
-        ):
-            tm.ok(independent / relative in planned_paths)
-            tm.ok(independent / relative in reported_paths)
+        """Require the independent member's pyproject in both plan and report."""
+        projection = independent / c.PYPROJECT_FILENAME
+        tm.ok(projection in {file.path for file in plan.files})
+        tm.ok(
+            projection
+            in {file.path for item in report.outcomes for file in item.files},
+        )
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.usefixtures("editable_supplier")
-    @pytest.mark.parametrize(
-        "failure",
-        ["root-source", "member-package", "root-view", "member-view"],
-    )
-    def test_repository_failure_preserves_independent_native_view_plans(
+    @pytest.mark.parametrize("failure", ["root-source", "member-package"])
+    def test_repository_failure_preserves_independent_plans(
         tmp_path: Path,
         failure: str,
     ) -> None:
@@ -221,13 +194,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             empty=True,
         )
         failed = root if failure.startswith("root-") else member
-        inputs = tm.ok(u.Infra.load_codegen_inputs(failed))
-        TestsFlextInfraCodegenCandidateBootstrap._break_repository(
-            failed,
-            inputs.spec.uv_resolution_pyprojects,
-            tmp_path / "foreign",
-            failure,
-        )
+        TestsFlextInfraCodegenCandidateBootstrap._break_repository(failed, failure)
         before = TestsFlextInfraConformSupport.project_tree(root)
 
         plan = tm.ok(
@@ -254,20 +221,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 tm.not_none(failed_outcome.error_type).rpartition(".")[2],
                 eq="TOMLDecodeError",
             )
-        elif failure == "root-view":
-            tm.that(
-                failed_outcome.error,
-                has="native resolution view escapes its repository",
-            )
         tm.that(failed_outcome.files, empty=True)
-        TestsFlextInfraCodegenCandidateBootstrap._assert_independent_views_planned(
+        TestsFlextInfraCodegenCandidateBootstrap._assert_independent_pyproject_planned(
             independent,
             plan,
             report,
         )
-        planned_paths = {file.path for file in plan.files}
-        for relative in inputs.spec.uv_resolution_pyprojects:
-            tm.fail(failed / relative in planned_paths)
         if failure == "member-package":
             tm.that(
                 next(item for item in report.outcomes if item.root == root).error,
@@ -281,7 +240,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.usefixtures("editable_supplier")
     def test_public_bootstrap_rewrites_own_pyproject_and_repeats(
         tmp_path: Path,
     ) -> None:
@@ -324,16 +282,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         tm.that(plan.issues, empty=True)
-        spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        views = tuple(
-            file
-            for file in plan.files
-            if file.path.relative_to(root) in spec.uv_resolution_pyprojects
-        )
-        tm.that(
-            {file.path.relative_to(root) for file in views},
-            eq=TestsFlextInfraCodegenCandidateBootstrap._unsupplied_views(root),
-        )
 
         tm.ok(infra.bootstrap_candidate(command))
         projected = tm.ok(
@@ -367,11 +315,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
             has="runtime-evaluated-base-classes",
         )
-        for view in views:
-            tm.that(view.path.read_bytes(), eq=view.desired_content)
         tm.ok(infra.bootstrap_candidate(command))
-        for view in views:
-            tm.that(view.path.read_bytes(), eq=view.desired_content)
 
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(declaration, required=True)),
@@ -457,109 +401,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             )
         else:
             tm.that(destination.read_bytes(), eq=state.content)
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_absent_resolution_parent_chains_publish_atomically_and_converge(
-        tmp_path: Path,
-    ) -> None:
-        """The existing publication journal owns new native-view parent chains."""
-        source, candidate = _declared_candidate_campaign(
-            tmp_path,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-        )
-        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        views = tuple(
-            candidate / relative for relative in inputs.spec.uv_resolution_pyprojects
-        )
-        tm.ok(bool(views))
-        for view in views:
-            tm.fail(view.parent.exists())
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(
-                candidate / c.PYPROJECT_FILENAME,
-                required=True,
-            ),
-        )
-        check = infra.bootstrap_candidate(
-            m.Infra.CandidateBootstrapCommand(
-                repository_root=source,
-                check_only=True,
-            ),
-        )
-        tm.ok(check.failure)
-        for view in views:
-            tm.fail(view.parent.exists())
-        tm.that(
-            tm.ok(
-                u.Cli.atomic_read_binary_file_state(
-                    candidate / c.PYPROJECT_FILENAME,
-                    required=True,
-                ),
-            ),
-            eq=before,
-        )
-        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
-        tm.ok(infra.bootstrap_candidate(command))
-        committed = tuple(
-            tm.ok(u.Cli.atomic_read_binary_file_state(view, required=True))
-            for view in views
-        )
-        for view, state in zip(views, committed, strict=True):
-            tm.ok(view.parent.is_dir())
-            tm.fail(view.parent.is_symlink())
-            tm.that(
-                u.Cli.toml_mapping_from_text((state.content or b"").decode("utf-8"))
-                is not None,
-                eq=True,
-            )
-        tm.ok(infra.bootstrap_candidate(command))
-        tm.that(
-            tuple(
-                tm.ok(u.Cli.atomic_read_binary_file_state(view, required=True))
-                for view in views
-            ),
-            eq=committed,
-        )
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_resolution_parent_symlink_refuses_foreign_publication(
-        tmp_path: Path,
-    ) -> None:
-        """Missing-parent support does not authorize a foreign symlink target."""
-        source, candidate = _declared_candidate_campaign(
-            tmp_path,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-        )
-        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        view = candidate / inputs.spec.uv_resolution_pyprojects[0]
-        foreign = tmp_path / "foreign"
-        foreign.mkdir()
-        sentinel = foreign / view.name
-        sentinel.write_text("foreign content\n", encoding="utf-8")
-        view.parent.parent.mkdir(parents=True, exist_ok=True)
-        view.parent.symlink_to(foreign, target_is_directory=True)
-        original = tm.ok(
-            u.Cli.atomic_read_binary_file_state(
-                candidate / c.PYPROJECT_FILENAME,
-                required=True,
-            ),
-        )
-        result = infra.bootstrap_candidate(
-            m.Infra.CandidateBootstrapCommand(repository_root=source),
-        )
-        tm.ok(result.failure)
-        tm.that(sentinel.read_text(encoding="utf-8"), eq="foreign content\n")
-        tm.that(
-            tm.ok(
-                u.Cli.atomic_read_binary_file_state(
-                    candidate / c.PYPROJECT_FILENAME,
-                    required=True,
-                ),
-            ),
-            eq=original,
-        )
 
     @staticmethod
     def _write_runtime_probe(candidate: Path) -> t.StrSequence:
@@ -686,6 +527,63 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         tm.that(result.error, has="duplicate worktrees")
         tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=before)
 
+    @staticmethod
+    def _seed_initializer_package(package: Path, exported: str) -> None:
+        """Seed a stale generated initializer beside authored and stable siblings."""
+        (package / "domain.py").write_text(
+            f"class {exported}:\n    pass\n__all__ = ['{exported}']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        foreign = package / "authored"
+        foreign.mkdir()
+        (foreign / c.Infra.INIT_PY).write_text(
+            "OWNED = True\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        stable = package / "stable"
+        stable.mkdir()
+        (stable / c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (stable / "domain.py").write_text(
+            "class StableCase: pass\n__all__ = ['StableCase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+    @staticmethod
+    def _imported_name(checkout: Path, package_name: str, exported: str) -> str:
+        """Import the package in a clean interpreter and name its exported symbol.
+
+        Returns:
+            The ``__name__`` of the symbol exported through the generated initializer.
+
+        """
+        observed = tm.ok(
+            u.Cli.capture(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import importlib, sys; "
+                        "print(getattr(importlib.import_module(sys.argv[1]), "
+                        "sys.argv[2]).__name__)"
+                    ),
+                    package_name,
+                    exported,
+                ],
+                cwd=checkout,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(checkout / "src")},
+                ),
+            ),
+        )
+        return observed.strip()
+
     @pytest.mark.slow
     def test_initializer_surface_recovers_without_touching_module_source(
         self,
@@ -693,38 +591,16 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     ) -> None:
         """Dynamic destinations retain source and unchanged native publications."""
         source, first, _ = self._campaign(tmp_path)
-        package_name = u.Infra.project_package_name(first)
-        tm.ok(bool(package_name))
-        package = first / "src" / package_name
+        package = first / "src" / u.Infra.project_package_name(first)
         tm.ok(package.is_dir())
-        module = package / "domain.py"
         exported = "BootstrapCase"
-        module.write_text(
-            f"class {exported}:\n    pass\n__all__ = ['{exported}']\n",
-            encoding="utf-8",
-        )
+        self._seed_initializer_package(package, exported)
+        module = package / "domain.py"
         initializer = package / c.Infra.INIT_PY
-        initializer.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
-            encoding="utf-8",
-        )
-        foreign = package / "authored"
-        foreign.mkdir()
-        authored = foreign / c.Infra.INIT_PY
-        authored.write_text("OWNED = True\n", encoding="utf-8")
+        authored = package / "authored" / c.Infra.INIT_PY
+        stable_initializer = package / "stable" / c.Infra.INIT_PY
         authored_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(authored, required=True),
-        )
-        stable = package / "stable"
-        stable.mkdir()
-        stable_initializer = stable / c.Infra.INIT_PY
-        stable_initializer.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        (stable / "domain.py").write_text(
-            "class StableCase: pass\n__all__ = ['StableCase']\n",
-            encoding=c.DEFAULT_ENCODING,
         )
         _write_candidate_targets(
             source,
@@ -742,19 +618,12 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         generated = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        tm.that(
-            generated.content,
-            ne=f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n".encode(
-                c.DEFAULT_ENCODING
-            ),
-        )
+        stale = f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n"
+        tm.that(generated.content, ne=stale.encode(c.DEFAULT_ENCODING))
         stable_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(stable_initializer, required=True),
         )
-        initializer.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n# Stale generated initializer\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
+        initializer.write_text(stale, encoding=c.DEFAULT_ENCODING)
         tm.ok(infra.bootstrap_candidate(command))
         tm.that(
             tm.ok(
@@ -765,26 +634,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         generated = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        observed = tm.ok(
-            u.Cli.capture(
-                [
-                    sys.executable,
-                    "-c",
-                    (
-                        "import importlib, sys; "
-                        "print(getattr(importlib.import_module(sys.argv[1]), "
-                        "sys.argv[2]).__name__)"
-                    ),
-                    package_name,
-                    exported,
-                ],
-                cwd=first,
-                options=m.Cli.ProcessOptions(
-                    env={"PYTHONPATH": str(first / "src")},
-                ),
-            ),
-        )
-        tm.that(observed.strip(), eq=exported)
+        tm.that(self._imported_name(first, package.name, exported), eq=exported)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(authored, required=True)),
             eq=authored_before,
@@ -1040,15 +890,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             eq=original_groups,
         )
         after = TestsFlextInfraConformSupport.project_tree(candidate)
-        for relative in inputs.spec.uv_resolution_pyprojects:
-            view = candidate / relative
-            tm.ok(view.is_file())
-            tm.that(dict(after), has=relative.as_posix())
-            tm.that(
-                u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
-                is not None,
-                eq=True,
-            )
         tm.that(
             tuple(item for item in after if item[0] not in destinations),
             eq=tuple(item for item in before if item[0] not in destinations),
@@ -1063,55 +904,4 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tm.ok(u.Cli.atomic_read_binary_file_state(projection, required=True)),
             eq=first,
         )
-        tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)
-
-    @staticmethod
-    @pytest.mark.slow
-    def test_dependencies_bootstrap_projects_resolution_inputs(
-        tmp_path: Path,
-    ) -> None:
-        """A candidate without resolution inputs regains them through dependencies.
-
-        A consumer crossing the generator generation has no resolution
-        pyprojects yet; ``make upg`` refuses to lock without them and
-        ``make setup`` refuses to run without their locks, so the provider's
-        dependencies surface is the only route that can project them.
-        """
-        source, candidate = _declared_candidate_campaign(
-            tmp_path,
-            c.Infra.CodegenConformSurface.DEPENDENCIES,
-        )
-        inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
-        resolution = tuple(inputs.spec.uv_resolution_pyprojects)
-        tm.that(resolution, empty=False)
-        for relative in resolution:
-            (candidate / relative).unlink(missing_ok=True)
-        before = TestsFlextInfraConformSupport.project_tree(candidate)
-        destinations = tm.not_none(
-            FlextInfraCodegenConformExecute.surface_contract(
-                c.Infra.CodegenConformSurface.DEPENDENCIES,
-                codegen=inputs.spec,
-            ).destinations,
-        )
-        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
-
-        tm.ok(infra.bootstrap_candidate(command))
-        after = TestsFlextInfraConformSupport.project_tree(candidate)
-        for relative in resolution:
-            view = candidate / relative
-            tm.ok(view.is_file())
-            tm.that(
-                u.Cli.toml_mapping_from_text(view.read_text(encoding="utf-8"))
-                is not None,
-                eq=True,
-            )
-        tm.that(
-            tuple(item for item in after if item[0] not in destinations),
-            eq=tuple(item for item in before if item[0] not in destinations),
-            msg=TestsFlextInfraConformSupport.project_tree_diff(
-                tuple(item for item in before if item[0] not in destinations),
-                tuple(item for item in after if item[0] not in destinations),
-            ),
-        )
-        tm.ok(infra.bootstrap_candidate(command))
         tm.that(TestsFlextInfraConformSupport.project_tree(candidate), eq=after)
