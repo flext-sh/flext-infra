@@ -1,4 +1,4 @@
-"""Real public semantic publication transactions, candidates and consumers.
+"""Real public semantic publication, candidates and consumers.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,270 +9,15 @@ from __future__ import annotations
 import sys
 import threading
 from pathlib import Path
-from types import FrameType
 
 import pytest
 
-from flext_infra import codegen, codemod, infra, refactor, transformers, workspace
+from flext_infra import codemod, infra, refactor, transformers, workspace
 from tests import c, m, p, r, t, tm, u
-
-
-@pytest.fixture
-def mod_workspace(mod_workspace: Path) -> Path:
-    """Initialize the selected publication runtime before recording source queries.
-
-    Returns:
-        The original native workspace with its canonical control planes ready.
-
-    """
-    tm.ok(
-        codegen.FlextInfraCodegenFileLeases.prepare_source_controlplanes((
-            mod_workspace,
-        ))
-    )
-    return mod_workspace
 
 
 class TestsFlextInfraSemanticPublicationTransactions:
     """Publish semantic candidates atomically and prove the real public consumers."""
-
-    @pytest.mark.parametrize(
-        "corruption",
-        [None, "inputs", "source_query_topology", "publications", "files", "exception"],
-    )
-    def test_native_facade_cohort_preserves_complete_analysis_before_effects(
-        self,
-        mod_workspace: Path,
-        corruption: str | None,
-    ) -> None:
-        """Admit complete native source/facade/init cohorts, never repaired metadata."""
-        u.Tests.run_native_callable(
-            self._scenario_native_facade_cohort,
-            mod_workspace,
-            corruption=corruption,
-        )
-
-    @staticmethod
-    def _native_type_candidate(
-        root: Path,
-    ) -> t.Triple[
-        m.Infra.SemanticFilePlan,
-        m.Infra.CodegenPhaseAnalysis,
-        m.Infra.CodegenPhaseAnalysis,
-    ]:
-        """Build a complete native type candidate over actual original descriptors.
-
-        Returns:
-            The authored owner and original native facade/initializer analyses.
-
-        """
-        u.Tests.standalone_workspace(root, name=root.name.replace("_", "-"))
-        package = root / "src" / root.name
-        owner = package / "_typings" / "domain.py"
-        owner.parent.mkdir()
-        (owner.parent / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
-        owner.write_text(
-            "from flext_cli import FlextCliTypes\n"
-            "type Payload = FlextCliTypes.JsonMapping\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        (package / "typings.py").write_text(
-            c.Infra.AUTOGEN_HEADERS[0]
-            + '\n"""Public native type facade."""\n'
-            + "from flext_cli import FlextCliTypes\n"
-            + f"from {package.name}._typings import domain\n"
-            + "class ModWorkspaceTypes(FlextCliTypes):\n"
-            + "    class Domain:\n"
-            + "        Payload = domain.Payload\n"
-            + "t = ModWorkspaceTypes\n"
-            + "__all__ = ['ModWorkspaceTypes', 't']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(owner, required=True))
-        authored = m.Infra.SemanticFilePlan(
-            project=root,
-            path=owner,
-            before=before,
-            desired_content=(
-                "from flext_cli import FlextCliTypes\n"
-                "class ModWorkspaceTypes(FlextCliTypes):\n"
-                "    class Domain:\n"
-                "        type Payload = FlextCliTypes.JsonMapping\n"
-                "t = ModWorkspaceTypes\n"
-                "__all__ = ['ModWorkspaceTypes', 't']\n"
-            ).encode(c.DEFAULT_ENCODING),
-            desired_mode=before.mode,
-        )
-        providers = tm.ok(
-            transformers.FlextInfraSemanticPublication.plan_semantic_file_plans((
-                authored,
-            ))
-        )
-        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
-        producer = codegen.FlextInfraCodegenConformExecute(
-            repository_root=root,
-            state=m.Infra.CodegenConformState(
-                repository_root=root, provider_plans=providers.files
-            ),
-        )
-        _, facade = tm.ok(
-            producer.plan_facade(
-                m.Infra.CodegenConformRequest(
-                    root=root,
-                    what=c.Infra.CodegenConformSurface.FACADES,
-                    module=f"{package.name}.typings",
-                    scope=c.Infra.CodegenConformScope.SELF,
-                ),
-                inputs,
-            )
-        )
-        with u.Infra.facade_source_project(
-            root,
-            source_options=m.Infra.StageSourceOptions(
-                inputs=inputs.sources, declared_files=providers.files
-            ),
-        ) as binding:
-            private = tm.ok(
-                codegen.FlextInfraCodegenLazyInit(
-                    repository_root=root,
-                    project_scope_roots=(root,),
-                ).plan_files(source_project=binding[0])
-            )
-        tm.that(
-            len(facade.inputs),
-            eq=len({state.path for state in facade.inputs}),
-            msg="The original native facade analysis must contain unique input paths",
-        )
-        tm.that(
-            len(private.inputs),
-            eq=len({state.path for state in private.inputs}),
-            msg=(
-                "The original native initializer analysis must contain "
-                "unique input paths"
-            ),
-        )
-        return authored, facade, private
-
-    @staticmethod
-    def _scenario_native_facade_cohort(root: Path, *, corruption: str | None) -> None:
-        """Exercise original native receipts, preview, and real cold public imports."""
-        authored, facade, private = (
-            TestsFlextInfraSemanticPublicationTransactions._native_type_candidate(root)
-        )
-        originals = tuple(
-            (file.path, file.path.read_bytes())
-            for phase in (facade, private)
-            for file in phase.files
-        )
-        first_error = ValueError("original native projection failure")
-        if corruption == "publications":
-            private = private.model_copy(update={corruption: ()})
-        elif corruption is not None:
-            facade = facade.model_copy(
-                update={
-                    corruption: first_error if corruption == "exception" else (),
-                }
-            )
-
-        def validate(candidate_root: Path) -> p.Result[bool]:
-            """Require the actual CLI alias value through the public facade.
-
-            Returns:
-                The cold native public consumer result.
-
-            """
-            consumer = u.Cli.run(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        "from flext_cli import FlextCliTypes\n"
-                        f"from {root.name}.typings import t\n"
-                        "assert issubclass(t, FlextCliTypes)\n"
-                        "assert t.Domain is t.__bases__[0].Domain\n"
-                        "assert t.Domain.Payload.__value__ is "
-                        "FlextCliTypes.JsonMapping\n"
-                    ),
-                ),
-                cwd=candidate_root,
-                options=m.Cli.ProcessOptions(
-                    env={
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(candidate_root / "src")
-                    }
-                ),
-            )
-            if consumer.failure:
-                return r[bool].from_failure(consumer)
-            return r[bool].ok(u.Cli.process_succeeded(consumer.value.outcome))
-
-        result = transformers.FlextInfraSemanticPublication.publish_semantic_analyses(
-            (facade, private),
-            source_plans=(authored,),
-            repository_root=root,
-            options=m.Infra.SemanticPublicationOptions(validator=validate),
-            publish=False,
-        )
-        tm.that(authored.path.read_bytes(), eq=authored.before.content)
-        for path, content in originals:
-            tm.that(path.read_bytes(), eq=content)
-        if corruption is not None:
-            tm.fail(result)
-            if corruption == "exception":
-                tm.that(result.exception, is_=ValueError)
-                tm.ok(result.exception is first_error)
-            else:
-                tm.that(
-                    result.error,
-                    has=(
-                        "original publication dependencies"
-                        if corruption == "publications"
-                        else "batch native source queries differ"
-                        if corruption in {"source_query_topology", "files"}
-                        else "batch inputs differ"
-                    ),
-                )
-            return
-        tm.ok(result, eq=())
-        tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_analyses(
-                (facade, private),
-                source_plans=(authored,),
-                repository_root=root,
-                options=m.Infra.SemanticPublicationOptions(validator=validate),
-            )
-        )
-        tm.ok(validate(root))
-
-    @staticmethod
-    def test_input_union_preserves_shared_identity_and_rejects_conflicts(
-        tmp_path: Path,
-    ) -> None:
-        """One source authority survives repeats; neither conflicting order wins."""
-        source = tmp_path / "source.py"
-        source.write_bytes(b"VALUE = 1\n")
-        first = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-        absent = tm.ok(u.Cli.atomic_read_binary_file_state(tmp_path / "optional"))
-        shared = m.Cli.AtomicFileState.model_validate_json(first.model_dump_json())
-        unique_states = u.Infra.unique_states
-        tm.that(
-            tm.ok(
-                unique_states((
-                    first,
-                    absent,
-                    shared,
-                    absent,
-                ))
-            ),
-            eq=(first, absent),
-        )
-        source.write_bytes(b"VALUE = 2\n")
-        changed = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-        for observations in ((first, changed), (changed, first)):
-            tm.fail(
-                unique_states(observations),
-                has=str(source),
-            )
-        tm.ok(u.Cli.atomic_verify_binary_file_states((changed, absent)))
 
     @staticmethod
     def test_cold_public_cli_composes_semantic_ports_without_an_import_cycle() -> None:
@@ -383,32 +128,19 @@ class TestsFlextInfraSemanticPublicationTransactions:
         )
         tm.ok(u.Cli.process_succeeded(output.outcome))
 
-    @pytest.mark.parametrize("foreign_parent", [False, True])
-    def test_artifact_publication_owns_declared_absent_parent_chain(
+    def test_artifact_publication_creates_absent_parent_directories(
         self,
         mod_workspace: Path,
-        *,
-        foreign_parent: bool,
     ) -> None:
-        """Artifact publication owns the declared chain of absent parent directories.
-
-        Missing parents are created through the journal; a foreign parent is
-        refused.
-
-        """
-        u.Tests.run_native_callable(
-            self._scenario_absent_parents,
-            mod_workspace,
-            foreign_parent=foreign_parent,
-        )
+        """Artifact publication creates the absent parents of a new destination."""
+        u.Tests.run_native_callable(self._scenario_absent_parents, mod_workspace)
 
     @staticmethod
-    def _scenario_absent_parents(mod_workspace: Path, *, foreign_parent: bool) -> None:
-        """Create missing parents through the journal or refuse a foreign owner."""
+    def _scenario_absent_parents(mod_workspace: Path) -> None:
+        """Publish a new nested module and import it through its real consumer."""
         publication = transformers.FlextInfraSemanticPublication
         package = mod_workspace / "src" / mod_workspace.name
         target = package / "relocated" / "nested" / "service.py"
-        chain = tm.ok(u.Cli.atomic_plan_directory_chain(target.parent))
         source = (
             "class DeclaredService:\n"
             "    @staticmethod\n"
@@ -419,81 +151,56 @@ class TestsFlextInfraSemanticPublicationTransactions:
         plan = m.Infra.CodegenFilePlan(
             project=mod_workspace,
             path=target,
-            before=chain,
+            before=tm.ok(u.Cli.atomic_read_binary_file_state(target)),
             desired_content=source.encode(c.DEFAULT_ENCODING),
             desired_mode=package.stat().st_mode & 0o666,
         )
-        foreign = target.parent / "foreign.txt"
-        if foreign_parent:
-            tm.ok(u.Cli.ensure_dir(target.parent))
-            foreign.write_text("foreign owner\n", encoding=c.DEFAULT_ENCODING)
-        result = publication.publish_semantic_artifact_plans(
-            (plan,),
-            repository_root=mod_workspace,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=(mod_workspace,),
-            ),
-        )
-        if foreign_parent:
-            tm.fail(result, has="parent chain changed")
-            tm.fail(target.exists())
-            tm.that(
-                foreign.read_text(encoding=c.DEFAULT_ENCODING), eq="foreign owner\n"
-            )
-        else:
-            tm.ok(result)
-            consumer = tm.ok(
-                u.Cli.run(
-                    (
-                        sys.executable,
-                        "-c",
-                        (
-                            f"from {mod_workspace.name}.relocated.nested import "
-                            "DeclaredService; "
-                            "assert DeclaredService.normalize(' live ') == 'LIVE'"
-                        ),
-                    ),
-                    cwd=mod_workspace,
-                    options=m.Cli.ProcessOptions(
-                        env={"PYTHONPATH": str(package.parent)},
-                    ),
+        tm.ok(
+            publication.publish_semantic_artifact_plans(
+                (plan,),
+                repository_root=mod_workspace,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,),
                 ),
             )
-            tm.ok(u.Cli.process_succeeded(consumer.outcome))
-            tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        )
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {mod_workspace.name}.relocated.nested import "
+                        "DeclaredService; "
+                        "assert DeclaredService.normalize(' live ') == 'LIVE'"
+                    ),
+                ),
+                cwd=mod_workspace,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(package.parent)},
+                ),
+            ),
+        )
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
+        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    @pytest.mark.parametrize("accepted", [False, True])
-    def test_artifact_candidate_retires_old_package_before_acceptance(
+    def test_artifact_publication_retires_old_package_with_its_move(
         self,
         mod_workspace: Path,
-        *,
-        accepted: bool,
     ) -> None:
-        """A package move retires the old package only on acceptance.
-
-        The preview exposes neither retired sources nor live effects.
-
-        """
-        u.Tests.run_native_callable(
-            self._scenario_retired_package,
-            mod_workspace,
-            accepted=accepted,
-        )
+        """A package move retires the old module and publishes the new one together."""
+        u.Tests.run_native_callable(self._scenario_retired_package, mod_workspace)
 
     @staticmethod
-    def _scenario_retired_package(mod_workspace: Path, *, accepted: bool) -> None:
-        """Preview a package move without exposing retired sources or live effects."""
-        publication = transformers.FlextInfraSemanticPublication
+    def _scenario_retired_package(mod_workspace: Path) -> None:
+        """The moved module imports through its real consumer; the old one is gone."""
         package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
         previous = package / "previous" / "service.py"
         current = package / "current" / previous.name
         previous.parent.mkdir()
         previous.write_text('VALUE = "previous"\n', encoding=c.DEFAULT_ENCODING)
         original = tm.ok(u.Cli.atomic_read_binary_file_state(previous, required=True))
-        absent = tm.ok(u.Cli.atomic_read_binary_file_state(current))
-        parents = tm.ok(u.Cli.atomic_plan_directory_chain(current.parent))
         desired = 'VALUE = "current"\n'
-        inputs = (original, absent)
         plans = (
             m.Infra.CodegenFilePlan(
                 project=mod_workspace,
@@ -505,60 +212,36 @@ class TestsFlextInfraSemanticPublicationTransactions:
             m.Infra.CodegenFilePlan(
                 project=mod_workspace,
                 path=current,
-                before=parents,
+                before=tm.ok(u.Cli.atomic_read_binary_file_state(current)),
                 desired_content=desired.encode(c.DEFAULT_ENCODING),
                 desired_mode=original.mode,
             ),
         )
-        previews: list[Path] = []
-
-        def validate(candidate_root: Path) -> p.Result[bool]:
-            candidate = candidate_root / current.relative_to(mod_workspace)
-            retired = candidate_root / previous.relative_to(mod_workspace)
-            tm.that(candidate.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
-            tm.fail(retired.exists())
-            if candidate_root != mod_workspace:
-                previews.append(candidate_root)
-                tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
-                tm.fail(current.parent.exists())
-            consumer = tm.ok(
-                u.Cli.run(
+        published = tm.ok(
+            transformers.FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+                plans, repository_root=mod_workspace
+            )
+        )
+        tm.that(set(published), eq={previous, current})
+        tm.fail(previous.exists())
+        tm.that(current.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
+        consumer = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
                     (
-                        sys.executable,
-                        "-c",
-                        (
-                            f"from {package.name}.{current.parent.name}.service "
-                            f"import VALUE; assert VALUE == {current.parent.name!r}"
-                        ),
-                    ),
-                    cwd=candidate_root,
-                    options=m.Cli.ProcessOptions(
-                        env={
-                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                                candidate_root
-                                / package.parent.relative_to(mod_workspace)
-                            ),
-                        },
+                        f"from {package.name}.{current.parent.name}.service "
+                        f"import VALUE; assert VALUE == {current.parent.name!r}"
                     ),
                 ),
-            )
-            tm.ok(u.Cli.process_succeeded(consumer.outcome))
-            return r[bool].ok(accepted)
-
-        published = publication.publish_semantic_artifact_plans(
-            plans,
-            repository_root=mod_workspace,
-            options=m.Infra.SemanticPublicationOptions(validator=validate),
+                cwd=mod_workspace,
+                options=m.Cli.ProcessOptions(
+                    env={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent)},
+                ),
+            ),
         )
-        tm.that(len(previews), eq=1)
-        if accepted:
-            tm.that(set(tm.ok(published)), eq={previous, current})
-            tm.fail(previous.exists())
-            tm.that(current.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
-        else:
-            tm.fail(published, has="candidate acceptance rejected")
-            tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
-            tm.fail(current.parent.exists())
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
     @pytest.mark.parametrize("unchanged", [False, True])
     def test_stub_retirement_and_consumer_annotations_publish_together(
@@ -609,8 +292,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
 
         def validate(candidate_root: Path) -> p.Result[bool]:
             tm.fail((candidate_root / stub.relative_to(mod_workspace)).exists())
-            if candidate_root != mod_workspace:
-                tm.ok(u.Cli.atomic_verify_binary_file_states(states))
             consumer = tm.ok(
                 u.Cli.run(
                     (
@@ -643,129 +324,6 @@ class TestsFlextInfraSemanticPublicationTransactions:
         )
         tm.fail(stub.exists())
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
-
-    @pytest.mark.parametrize("unchanged", [False, True])
-    def test_semantic_publication_retains_full_native_candidate_checker(
-        self,
-        tmp_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
-        *,
-        unchanged: bool,
-    ) -> None:
-        """Changed and unchanged semantic plans keep the full native checker."""
-        u.Tests.run_native_callable(
-            self._scenario_native_checker,
-            tmp_path,
-            session_runtime.directory,
-            unchanged=unchanged,
-        )
-
-    @staticmethod
-    def _scenario_native_checker(
-        tmp_path: Path,
-        runtime_directory: Path,
-        *,
-        unchanged: bool,
-    ) -> None:
-        """Changed and unchanged semantic plans keep the full default checker."""
-        publication = transformers.FlextInfraSemanticPublication
-        session_runtime = u.Tests.SessionRuntime(runtime_directory)
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        checkout = Path(__file__).resolve().parents[3]
-        tm.ok(
-            u.Tests.create_python_environment(
-                root,
-                dependency_projects=(
-                    checkout,
-                    *u.Tests.python_dependency_projects(checkout),
-                ),
-                session_runtime=session_runtime,
-            )
-        )
-        target = package / "consumer.py"
-        notice = u.Infra.copyright_notice(root)
-        header = (
-            f'"""Native semantic checker candidate.\n\n{notice}\n"""\n\n'
-            "from __future__ import annotations\n\n"
-        )
-        source = header + 'value: int = "invalid annotation value"\n'
-        target.write_text(
-            source if unchanged else header + "value: int = 1\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        calls: list[str] = []
-        commands: list[m.Infra.RunCommand] = []
-
-        def observe(frame: FrameType, event: str, _value: p.AttributeProbe) -> None:
-            if event != "call":
-                return
-            if frame.f_code.co_name in {
-                "normalize_source_plan",
-                "consume_source_runtime",
-                "_check_semantic_sources",
-                "execute_candidate",
-                "_execute_payload",
-                "run_projects",
-            }:
-                calls.append(frame.f_code.co_qualname)
-            if (
-                frame.f_code.co_qualname
-                == "FlextInfraWorkspaceChecker.execute_candidate"
-            ):
-                params = frame.f_locals.get("params")
-                if not isinstance(params, m.Infra.RunCommand):
-                    pytest.fail("Native semantic checker did not receive RunCommand")
-                commands.append(params)
-                tm.fail(params.repository_root == root)
-                tm.that(params.file, eq=None)
-                tm.that(params.gates, empty=True)
-                tm.that(params.projects, empty=True)
-                tm.fail(params.apply)
-                tm.ok(params.check_only)
-                tm.that(params.ruff_args, eq=None)
-                tm.that(params.pyright_args, eq=None)
-                candidate = params.repository_root / target.relative_to(root)
-                tm.that(candidate.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-                tm.that(target.read_bytes(), eq=before.content)
-
-        previous = sys.getprofile()
-        try:
-            sys.setprofile(observe)
-            rejected = publication.publish_semantic_file_plans(
-                (
-                    m.Infra.SemanticFilePlan(
-                        project=root,
-                        path=target,
-                        before=before,
-                        desired_content=source.encode(c.DEFAULT_ENCODING),
-                        desired_mode=before.mode,
-                    ),
-                ),
-                repository_root=root,
-            )
-        finally:
-            sys.setprofile(previous)
-        tm.fail(rejected, has="quality checks failed for")
-        tm.that(len(commands), eq=1)
-        for expected in (
-            "FlextInfraUtilitiesProtectedEditLinting.normalize_source_plan",
-            "FlextInfraCodegenTransaction.consume_source_runtime",
-            "FlextInfraSemanticPublication._check_semantic_sources",
-            "FlextInfraWorkspaceChecker.execute_candidate",
-            "FlextInfraWorkspaceChecker._execute_payload",
-            "FlextInfraWorkspaceChecker.run_projects",
-        ):
-            tm.ok(expected in calls)
-        tm.that(
-            calls.index("FlextInfraCodegenTransaction.consume_source_runtime")
-            < calls.index("FlextInfraWorkspaceChecker.execute_candidate"),
-            eq=True,
-        )
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
-            eq=before,
-        )
 
     @staticmethod
     def test_no_effect_publication_requires_true_acceptance(
@@ -1089,28 +647,20 @@ class TestsFlextInfraSemanticPublicationTransactions:
         )
         tm.that(initializer.read_bytes(), eq=published)
 
-    @pytest.mark.parametrize("accepted", [False, True])
-    def test_projection_only_candidate_validates_real_public_consumer(
+    def test_projection_only_publication_serves_real_public_consumer(
         self,
         mod_workspace: Path,
-        *,
-        accepted: bool,
     ) -> None:
-        """A projection-only candidate validates the real public consumer.
+        """A projection-only publication generates declared exports.
 
-        Declared exports are generated without changing authored work in progress.
+        Authored work in progress stays unchanged.
 
         """
-        u.Tests.run_native_callable(
-            self._scenario_projection_consumer,
-            mod_workspace,
-            accepted=accepted,
-        )
+        u.Tests.run_native_callable(self._scenario_projection_consumer, mod_workspace)
 
     @staticmethod
-    def _scenario_projection_consumer(mod_workspace: Path, *, accepted: bool) -> None:
-        """Generate declared exports before acceptance without changing authored WIP."""
-        publication = transformers.FlextInfraSemanticPublication
+    def _scenario_projection_consumer(mod_workspace: Path) -> None:
+        """Generate declared exports without changing authored WIP."""
         package = mod_workspace / "src" / mod_workspace.name
         declaration = package / "service.py"
         source = "class DeclaredService:\n    pass\n\n__all__ = ['DeclaredService']\n"
@@ -1118,55 +668,31 @@ class TestsFlextInfraSemanticPublicationTransactions:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
-        command = (
-            sys.executable,
-            "-c",
-            (
-                f"from {mod_workspace.name} import DeclaredService; "
-                "assert isinstance(DeclaredService(), DeclaredService)"
-            ),
-        )
-        options = m.Cli.ProcessOptions(
-            env={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent)},
-        )
-
-        def validate(candidate_root: Path) -> p.Result[bool]:
-            candidate_options = options.model_copy(
-                update={
-                    "env": {
-                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
-                            candidate_root / package.parent.relative_to(mod_workspace)
-                        ),
-                    },
-                },
+        tm.ok(
+            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (),
+                repository_root=mod_workspace,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,)
+                ),
             )
-            consumer = u.Cli.run(
-                command,
-                cwd=candidate_root,
-                options=candidate_options,
-            )
-            tm.ok(consumer)
-            tm.ok(u.Cli.process_succeeded(consumer.value.outcome))
-            return (
-                r[bool].ok(value=True)
-                if accepted
-                else r[bool].fail("consumer rejected")
-            )
-
-        published = publication.publish_semantic_file_plans(
-            (),
-            repository_root=mod_workspace,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=(mod_workspace,), validator=validate
-            ),
         )
-        if accepted:
-            tm.ok(published)
-        else:
-            tm.fail(published, has="consumer rejected")
-        tm.that(initializer.read_bytes() != original, eq=accepted)
+        tm.that(initializer.read_bytes() != original, eq=True)
         consumer = tm.ok(
-            u.Cli.run(command, cwd=mod_workspace, options=options),
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {mod_workspace.name} import DeclaredService; "
+                        "assert isinstance(DeclaredService(), DeclaredService)"
+                    ),
+                ),
+                cwd=mod_workspace,
+                options=m.Cli.ProcessOptions(
+                    env={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent)},
+                ),
+            ),
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=accepted)
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
         tm.that(declaration.read_text(encoding="utf-8"), eq=source)

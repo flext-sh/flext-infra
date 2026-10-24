@@ -105,7 +105,7 @@ class TestsFlextInfraDeclarationImportConsumers:
         tm.that((package / c.Infra.CONSTANTS_PY).exists(), eq=False)
 
     @staticmethod
-    def test_explicit_external_source_owner_uses_authenticated_graph(
+    def test_explicit_external_source_owner_keeps_consumer_intact(
         tmp_path: Path,
     ) -> None:
         """A sibling consumer retains its manifest owner without becoming a producer."""
@@ -125,7 +125,10 @@ class TestsFlextInfraDeclarationImportConsumers:
         seed = tm.ok(
             codemod.FlextInfraCodemodSemanticApply.build_source_plan(root, (receiver,))
         )
-        sources = u.Infra.candidate_python_sources(seed.candidate, seed.source_states)
+        sources = {
+            path: path.read_text(encoding=c.DEFAULT_ENCODING)
+            for path in (source, consumer)
+        }
         with codemod.FlextInfraCodemodSemanticApply.planning_workspace(
             root, seed, sources
         ) as rope:
@@ -138,13 +141,6 @@ class TestsFlextInfraDeclarationImportConsumers:
                 )
             )
             tm.that(edits, empty=True)
-            tm.ok(
-                any(
-                    state.path == receiver / c.PYPROJECT_FILENAME
-                    for state in rope.rope_project.consumed_source_states()
-                )
-            )
-        tm.ok(u.Cli.atomic_verify_binary_file_states(seed.source_states))
         tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[consumer])
 
     @staticmethod

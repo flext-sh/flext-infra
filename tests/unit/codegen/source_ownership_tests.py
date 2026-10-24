@@ -68,10 +68,9 @@ class TestsFlextInfraSourceOwnership:
                     source_project=project
                 )
             )
-            tm.that(analysis.issues, eq=())
             target = next(
                 file
-                for file in analysis.files
+                for file in analysis
                 if file.path == settings.parent / c.Infra.INIT_PY
             )
             text = tm.not_none(target.desired_content).decode(c.DEFAULT_ENCODING)

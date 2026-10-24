@@ -153,6 +153,7 @@ class FlextInfraUtilitiesRopeClassMove:
 
         Raises:
             ValueError: If the source inventory is incomplete.
+            FileNotFoundError: If the source has no observed mode.
             FileExistsError: If an intermediate module is occupied.
 
         """
@@ -176,7 +177,7 @@ class FlextInfraUtilitiesRopeClassMove:
         initializer = target.parent / c.Infra.INIT_PY
         if initializer not in candidate:
             virtual.append(cls._module_destination_plan(root, initializer, "", mode))
-        intermediate, virtual = cls._module_resource_relocation(
+        intermediate = cls._module_resource_relocation(
             project, paths, candidate, virtual, mode
         )
         changed = {
@@ -195,11 +196,11 @@ class FlextInfraUtilitiesRopeClassMove:
         candidate: t.MutableMappingKV[Path, str],
         virtual: list[m.Infra.CodegenFilePlan],
         mode: int,
-    ) -> t.Pair[Path, list[m.Infra.CodegenFilePlan]]:
+    ) -> Path:
         """Compose lookup-only native Rename followed by native Move.
 
         Returns:
-            The intermediate path and updated virtual declarations.
+            The intermediate path.
 
         Raises:
             FileExistsError: If the intermediate name is occupied.
@@ -239,18 +240,6 @@ class FlextInfraUtilitiesRopeClassMove:
                 )
             finally:
                 native.close()
-            virtual = [
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[intermediate].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                if plan.path == intermediate
-                else plan
-                for plan in virtual
-            ]
         if intermediate.parent != target.parent:
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                 project, candidate, declared_files=tuple(virtual)
@@ -275,7 +264,7 @@ class FlextInfraUtilitiesRopeClassMove:
                 )
             finally:
                 native.close()
-        return intermediate, virtual
+        return intermediate
 
     @classmethod
     def _module_quoted_sources(
@@ -310,23 +299,9 @@ class FlextInfraUtilitiesRopeClassMove:
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
 
-        def virtual_files() -> tuple[m.Infra.CodegenFilePlan, ...]:
-            return tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        ),
-                    }
-                )
-                if plan.path in candidate
-                else plan
-                for plan in declared_files
-            )
-
         checks: t.DictKV[Path, t.DictKV[tuple[int, str], int]] = {}
         composed = runtime.snapshot_project(
-            project, candidate, declared_files=virtual_files()
+            project, candidate, declared_files=declared_files
         )
         try:
             destination_module = (
@@ -352,7 +327,7 @@ class FlextInfraUtilitiesRopeClassMove:
         finally:
             composed.close()
         verified = runtime.snapshot_project(
-            project, candidate, declared_files=virtual_files()
+            project, candidate, declared_files=declared_files
         )
         try:
             relocated = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
@@ -993,16 +968,7 @@ class FlextInfraUtilitiesRopeClassMove:
         metadata_project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             candidate,
-            declared_files=tuple(
-                plan.model_copy(
-                    update={
-                        "desired_content": candidate[plan.path].encode(
-                            c.DEFAULT_ENCODING
-                        )
-                    }
-                )
-                for plan in virtual
-            ),
+            declared_files=virtual,
         )
         try:
             return FlextInfraUtilitiesRopeImports.remove_import_names(

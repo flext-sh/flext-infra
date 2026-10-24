@@ -48,19 +48,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
             return result_type.from_failure(planned)
         files = planned.value.files
         environment_file = next(file for file in files if file.path == envrc)
-        verified = FlextInfraWorkspaceEnvironmentMixin._verify_environment_consumption(
-            inputs.value,
-            files,
-            envrc=envrc,
-        )
-        if verified.failure:
-            return result_type.from_failure(verified)
         if request.allow_direnv:
             allowed = FlextInfraWorkspaceEnvironmentMixin._authorize_environment(
-                root,
-                inputs.value,
-                files,
-                runner,
+                root, runner
             )
             if allowed.failure:
                 return result_type.from_failure(allowed)
@@ -122,50 +112,14 @@ class FlextInfraWorkspaceEnvironmentMixin:
         return result_type.ok(plan)
 
     @staticmethod
-    def _verify_environment_consumption(
-        inputs: m.Infra.CodegenInputs,
-        files: t.SequenceOf[m.Infra.CodegenFilePlan],
-        *,
-        envrc: Path,
-    ) -> p.Result[bool]:
-        """Reverify every consumed file state and directory-query boundary.
-
-        Returns:
-            The native verification result, preserving the first failure.
-
-        """
-        before_states: list[m.Cli.AtomicFileState] = []
-        for file in files:
-            if not isinstance(file.before, m.Cli.AtomicFileState):
-                return r[bool].fail(f"environment dependency is not a file: {envrc}")
-            before_states.append(file.before)
-        states = (
-            *inputs.sources,
-            *(state for file in files for state in file.source_states),
-            *before_states,
-        )
-        inventories = tuple(
-            query for file in files for query in file.source_directories
-        )
-        topology = tuple(
-            query for file in files for query in file.source_query_topology
-        )
-        verified = u.Cli.atomic_verify_binary_file_states(states)
-        if verified.failure:
-            return r[bool].from_failure(verified)
-        return u.Cli.atomic_verify_directory_queries(inventories, topology)
-
-    @staticmethod
     def _authorize_environment(
         root: Path,
-        inputs: m.Infra.CodegenInputs,
-        files: t.SequenceOf[m.Infra.CodegenFilePlan],
         runner: p.Cli.CommandRunner,
     ) -> p.Result[bool]:
-        """Authorize the environment and reverify its original consumption proof.
+        """Authorize the consumed environment through direnv.
 
         Returns:
-            The post-authorization verification, or the first native failure.
+            Success, or the first native failure.
 
         """
         allowed = runner.run_raw(
@@ -181,11 +135,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
                 f"direnv allow failed for {root}: "
                 f"{output.stderr.strip() or output.stdout.strip()}",
             )
-        return FlextInfraWorkspaceEnvironmentMixin._verify_environment_consumption(
-            inputs,
-            files,
-            envrc=root / c.Infra.ENVRC_FILENAME,
-        )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def execute_request(

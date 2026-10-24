@@ -37,7 +37,7 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool])
         if entry is None:
             message = f"toolchain repair refuses undeclared tool: {requested}"
             raise ValueError(message)
-        lock =u.Cli.toml_read_json(root / c.Infra.MISE_LOCK_FILENAME).unwrap()
+        lock = u.Cli.toml_read_json(root / c.Infra.MISE_LOCK_FILENAME).unwrap()
         FlextInfraCodegenMiseToolchainProof.lock_identity(
             entry,
             lock,
@@ -86,7 +86,6 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool])
             )
             if installed.failure:
                 return r[bool].from_failure(installed)
-        u.Cli.atomic_verify_binary_file_states(plan.source_states).unwrap()
         return FlextInfraCodegenMiseToolchainProof(
             repository_root=plan.repository_root,
             uv_executable=plan.uv_executable,

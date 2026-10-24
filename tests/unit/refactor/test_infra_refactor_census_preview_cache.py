@@ -154,7 +154,7 @@ class TestsFlextInfraRefactorCensusPreview:
             "        return run()\n"
         )
         module_path.write_text(original_source, encoding="utf-8")
-        u.Tests.provision_source_preview(repository_root)
+        u.Tests.provision_checkout(repository_root)
         candidate = m.Infra.RemovalCandidate(
             project="flext-demo",
             file_path=str(module_path.resolve()),

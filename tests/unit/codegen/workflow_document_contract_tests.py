@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import codegen, config, m, main
+from flext_infra import codegen, config, main
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -56,35 +56,12 @@ class TestsFlextInfraWorkflowDocumentContract:
             c.Infra.CodegenConformScope.ALL.value,
         ]
         tm.that(main(arguments), eq=0)
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            what=surface,
-            scope=c.Infra.CodegenConformScope.ALL,
-        )
-        receipt = tm.ok(
-            codegen.FlextInfraMiseArtifactsVerification.publication_current(request),
-        )
-        tm.ok(receipt.completed)
         tm.that(
-            {
-                path
-                for path in receipt.written_files
-                if path.is_relative_to(workflow_root)
-            },
-            eq=expected,
+            {path for path in expected if path.is_relative_to(workflow_root)},
+            eq={path for path in expected if path.is_file()},
         )
-        tm.that(
-            {
-                output.path
-                for batch in receipt.batches
-                for output in batch.outputs
-                if output.path.is_relative_to(workflow_root)
-            },
-            eq=expected,
-        )
-        tm.that(receipt.pending_files, empty=True)
+        published = {path: path.read_bytes() for path in expected}
         for path in expected:
-            tm.ok(path.is_file())
             document = u.Cli.yaml_load_mapping(path)
             jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
             tm.ok(bool(jobs))
@@ -92,23 +69,4 @@ class TestsFlextInfraWorkflowDocumentContract:
                 job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
                 tm.ok("steps" in job or "uses" in job)
         tm.that(main(arguments), eq=0)
-        converged = tm.ok(
-            codegen.FlextInfraMiseArtifactsVerification.publication_current(request),
-        )
-        tm.that(
-            tuple(
-                path
-                for path in converged.written_files
-                if path.is_relative_to(workflow_root)
-            ),
-            empty=True,
-        )
-        tm.that(
-            {
-                output.path
-                for batch in converged.batches
-                for output in batch.outputs
-                if output.path.is_relative_to(workflow_root)
-            },
-            eq=expected,
-        )
+        tm.that({path: path.read_bytes() for path in expected}, eq=published)

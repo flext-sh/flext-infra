@@ -27,8 +27,6 @@ class FlextInfraCodegenLayoutGitignoreMixin:
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Ensure gitignore patterns via the canonical render or appending.
 
-        Derive content from the same captured state carried into publication.
-
         Returns:
             The resulting ``p.Result[t.Infra.LayoutStatus]``.
 
@@ -37,11 +35,6 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             project_dir,
         ).unwrap()
         inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
-        topology = u.Cli.atomic_read_binary_file_state(
-            project_dir / c.Infra.GITMODULES,
-            required=False,
-        ).unwrap()
-        source_states = (*inputs.sources, topology)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             project_dir,
             inputs=inputs,
@@ -77,9 +70,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             desired = rendered.value
         if desired == current and before.value.mode == inputs.spec.modes.file_default:
             noop_status: t.Infra.LayoutStatus = "noop"
-            return FlextInfraMiseArtifactsVerification.states_current(
-                (before.value, *source_states),
-            ).map(lambda _: noop_status)
+            return r[t.Infra.LayoutStatus].ok(noop_status)
         planned = m.Infra.CodegenFilePlan(
             project=project_dir,
             path=before.value.path,
@@ -89,9 +80,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             owner="codegen",
             policy="full" if managed.value is not None else "merge",
         )
-        written = u.Cli.publish_file_changes(
-            (planned,), lock_path=u.Infra.mutation_lock_path(planned.project).unwrap()
-        )
+        written = u.Infra.publish_codegen_plans(project_dir, (planned,))
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         applied_status: t.Infra.LayoutStatus = "applied"

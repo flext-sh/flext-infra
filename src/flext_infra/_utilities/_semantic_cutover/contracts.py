@@ -538,10 +538,6 @@ class FlextInfraUtilitiesSemanticContracts(
                 applied.setdefault(path, []).append(
                     "completed native ownership transfer"
                 )
-        (
-            *epoch.snapshot.states,
-            *(state for rule in rules for state in rule.source_states),
-        )
         return r[t.VariadicTuple[p.Infra.SemanticMigrationEdit]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(

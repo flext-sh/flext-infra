@@ -160,13 +160,13 @@ class TestsFlextInfraGeneratedRuntime:
         analysis = tm.ok(service.plan_files())
         with u.Infra.facade_source_project(
             root,
-            declared_files=analysis.files,
+            declared_files=analysis,
         ) as binding:
             project, sources = binding
             tm.fail(any(path.is_relative_to(generated) for path in sources))
             planned = {
                 file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
-                for file in analysis.files
+                for file in analysis
                 if file.path.suffix == c.Infra.EXT_PYTHON
                 and file.desired_content is not None
             }
@@ -382,7 +382,7 @@ class TestsFlextInfraGeneratedRuntime:
             tm.ok(u.Cli.atomic_write_text_file(path, content))
         tooling = root / c.CONFIG_DIR_NAME / "tooling.yaml"
         tm.ok(u.Cli.yaml_dump(tooling, {"Infra": {"tooling": {"settings": []}}}))
-        incoming = tm.ok(u.Tests.create_lazy_init_service(root).plan_files()).files
+        incoming = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
         tm.that(len(incoming), gt=0)
         tm.fail(facade in {file.path for file in incoming})
         originals = tuple(
@@ -515,7 +515,7 @@ class TestsFlextInfraGeneratedRuntime:
             file.path: file
             for file in tm.ok(
                 u.Tests.create_lazy_init_service(provider_root).plan_files()
-            ).files
+            )
         }
         with (
             tm.scope(python_paths=(str(provider.parent),)),
@@ -573,7 +573,7 @@ class TestsFlextInfraGeneratedRuntime:
                         u.Tests.create_lazy_init_service(root).plan_files(
                             source_project=binding[0]
                         )
-                    ).files
+                    )
                 )
             with u.Infra.facade_source_project(
                 root,
@@ -686,7 +686,7 @@ class TestsFlextInfraGeneratedRuntime:
             project, sources = stack.enter_context(
                 u.Infra.facade_source_project(
                     root,
-                    declared_files=provider_analysis.files,
+                    declared_files=provider_analysis,
                 )
             )
             roots = u.Infra.runtime_evaluated_base_classes(

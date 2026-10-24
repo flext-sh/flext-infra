@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 import flext_infra
 from flext_infra import codegen
 from tests import c, tm
@@ -17,29 +15,6 @@ from tests import c, tm
 
 class TestsFlextInfraPublicApi:
     """Exercise the root public package metadata against its pyproject."""
-
-    @staticmethod
-    def test_codegen_directory_disposition_uses_codegen_phase_vocabulary() -> None:
-        """Every public codegen phase validates its own directory lifecycle."""
-        for phase in flext_infra.c.Infra.CodegenStagedFilePhase:
-            temporary = phase is flext_infra.c.Infra.CodegenStagedFilePhase.TRANSACTION
-            directory = flext_infra.m.Infra.CodegenJournalDirectory(
-                phase=phase,
-                project=".",
-                path="generated/staging",
-                disposition="temporary" if temporary else "generated",
-            )
-            tm.that(directory.phase, eq=phase.value)
-            with pytest.raises(
-                ValueError,
-                match="transaction phase and temporary disposition must coincide",
-            ):
-                flext_infra.m.Infra.CodegenJournalDirectory(
-                    phase=phase,
-                    project=".",
-                    path="generated/staging",
-                    disposition="generated" if temporary else "temporary",
-                )
 
     @staticmethod
     def test_public_runtime_metadata_matches_public_constants() -> None:

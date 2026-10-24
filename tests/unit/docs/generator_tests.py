@@ -199,45 +199,6 @@ class TestsFlextInfraDocsGenerator:
         tm.ok(fixed_point)
         tm.ok(all(report.changed_files == 0 for report in fixed_point.value))
 
-        TestsFlextInfraDocsGenerator._assert_frozen_publication_guard(
-            generator, workspace
-        )
-
-    @staticmethod
-    def _assert_frozen_publication_guard(
-        generator: FlextInfraDocGenerator, workspace: Path
-    ) -> None:
-        """Retain the same receipts and reject publication after a source edit."""
-        bundle = u.Tests.prepare_docs_bundle(generator)
-        # Mutate an authenticated source selected by the bundle itself.
-        # Different project selections legitimately watch different sources.
-        watched = next(
-            state.path
-            for state in bundle.source_states
-            if workspace in state.path.parents
-        )
-        original_receipts = bundle.source_states
-        desired = tuple(
-            (plan.path, plan.desired_content)
-            for plan in tm.ok(generator.plan_files(bundle))
-        )
-        outputs = {
-            path: path.read_bytes() if path.exists() else None
-            for path, _content in desired
-        }
-        watched.write_text('"""Source changed after rendering."""\n', encoding="utf-8")
-        concurrent = watched.read_bytes()
-        frozen = tm.ok(generator.plan_files(bundle))
-        tm.that(tuple((plan.path, plan.desired_content) for plan in frozen), eq=desired)
-        tm.that(bundle.source_states, eq=original_receipts)
-        tm.fail(generator.publish_batch(bundle))
-        tm.that(watched.read_bytes(), eq=concurrent)
-        for path, content in outputs.items():
-            tm.that(
-                path.read_bytes() if path.exists() else None,
-                eq=concurrent if path == watched else content,
-            )
-
     @staticmethod
     def test_root_generated_catalog_survives_project_pass_and_required_indexes_validate(
         tmp_path: Path,

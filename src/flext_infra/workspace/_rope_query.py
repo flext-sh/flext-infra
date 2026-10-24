@@ -25,8 +25,6 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
         default_factory=lambda: None,
     )
     _owns_rope_project: bool = m.PrivateAttr(default=True)
-    _index_receipt: m.Infra.CodegenPhaseAnalysis | None = m.PrivateAttr(default=None)
-    _reused_index: bool = m.PrivateAttr(default=False)
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -74,15 +72,10 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
             u.Cli.info(
                 f"rope: indexing python workspace at {self._rope_repository_root}",
             )
-            with (
-                self.rope_project.source_consumption() as consumption,
-                self.rope_project.source_selection(),
-            ):
-                workspace_index = u.Infra.index_rope_workspace(
-                    self.rope_project,
-                    self.repository_root,
-                )
-            self._index_receipt = consumption.receipt()
+            workspace_index = u.Infra.index_rope_workspace(
+                self.rope_project,
+                self.repository_root,
+            )
             self._workspace_index = workspace_index
             u.Cli.info(
                 "rope: indexed "
@@ -90,23 +83,7 @@ class FlextInfraRopeQueryMixin(s[m.Infra.RopeWorkspaceSession]):
                 f"{len(workspace_index.modules_by_path)} modules in "
                 f"{perf_counter() - started_at:.2f}s",
             )
-        if self._reused_index:
-            self.rope_project.replay_source_consumption(self.source_index_receipt)
-            self._reused_index = False
         return workspace_index
-
-    @property
-    def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis:
-        """Require the original authenticated structural-selection receipt.
-
-        Raises:
-            ValueError: If the structural index has no original source evidence.
-
-        """
-        if self._index_receipt is None:
-            msg = "Rope structural index has no original source evidence"
-            raise ValueError(msg)
-        return self._index_receipt
 
     def resource(self, file_path: Path) -> t.Infra.RopeFile | None:
         """Resolve one cached live resource or bound planning resource.

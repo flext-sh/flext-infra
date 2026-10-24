@@ -223,9 +223,6 @@ class TestsFlextInfraPlanCollection:
 
         tm.that(len(bundle.revisions), eq=1)
         tm.that(bundle.revisions[0].attachments, eq=("research.md",))
-        captured = {state.path for state in bundle.source_states}
-        tm.ok(tmp_path / "input" / "design.md" in captured)
-        tm.ok(tmp_path / "input" / "design" / "research.md" in captured)
         tm.fail((tmp_path / config.canonical_dir).exists())
         repeated = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(repeated.revisions[0].digest, eq=bundle.revisions[0].digest)
@@ -336,7 +333,6 @@ class TestsFlextInfraPlanCollection:
         tm.that(bundle.coverage[0].status, eq="private-inventory")
         tm.that(bundle.coverage[0].private_paths, eq=(session,))
         tm.that(bundle.revisions, eq=())
-        tm.fail(any(state.path == session for state in bundle.source_states))
         for plan in bundle.files:
             tm.that(
                 private_session_text.encode() not in tm.not_none(plan.desired_content),
@@ -524,11 +520,11 @@ class TestsFlextInfraPlanCollection:
         with pytest.raises(ValueError, match="source changed"):
             u.Infra.verify_plan_collection_sources(tmp_path, config, pending)
 
-    def test_corpus_relocation_preserves_identity_and_exact_receipts(
+    def test_corpus_relocation_preserves_identity_and_exact_revisions(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test corpus relocation preserves identity and exact receipts."""
+        """Test corpus relocation preserves identity and exact revisions."""
         first_root, next_root = tmp_path / "first", tmp_path / "next"
         config = self._config()
         for root in (first_root, next_root):

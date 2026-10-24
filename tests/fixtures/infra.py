@@ -56,7 +56,7 @@ def native_cprofile(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
-    """Exercise public native authentication against real fixture source trees.
+    """Run native reference probes against real fixture source trees.
 
     Returns:
         The resulting ``p.Tests.NativeConsumer``.
@@ -71,17 +71,9 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "from flext_infra import m\n"
         "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
         "preconditions\n"
-        "from flext_infra.validate import FlextInfraValidateFreshImport\n"
         "from flext_infra.workspace.native_reference import "
         "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
-        "def authenticate(name, *, source_root=None):\n"
-        "    return FlextInfraValidateFreshImport.capture_producer_reference(\n"
-        "        Path.cwd() if source_root is None else source_root,\n"
-        "        runtime_root, (m.Infra.SourceClassReference(target=name),))\n"
-        "def source_preflight(name):\n"
-        "    return preconditions.capture_source_authority(runtime_root,\n"
-        "        nominated=(m.Infra.SourceClassReference(target=name),))\n"
     )
 
     def consume(code: str, *arguments: str, cwd: Path | None = None) -> None:
@@ -135,7 +127,6 @@ def source_preview_workspace(
             session_runtime=session_runtime,
         ),
     )
-    u.Tests.prepare_source_preview(root)
     return root, package
 
 
@@ -762,7 +753,7 @@ def _ensure_provisioned(
     *,
     git_environment: t.StrMapping | None = None,
 ) -> None:
-    """Provision only a consumed fixture under the canonical filesystem lease.
+    """Provision only a consumed fixture under the shared file lock.
 
     Testmon inventory and selection collect tests without network or writes.
     Provisioning belongs to the item that actually consumes the checkout, so
@@ -773,7 +764,7 @@ def _ensure_provisioned(
 
     """
     parent.mkdir(parents=True, exist_ok=True)
-    with u.Infra.codegen_transaction_lease(parent / receipt):
+    with u.Cli.file_changes_lock(parent / f"{receipt}.lock"):
         if (parent / receipt).is_file():
             return
         match key:
@@ -791,7 +782,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
     The mirrors are built once per locked-source set under the canonical
-    filesystem lease from objects this checkout already holds; the directory is
+    file lock from objects this checkout already holds; the directory is
     keyed by that set, so a relock never reuses mirrors of superseded commits.
     The returned environment routes the provider to them and makes any network
     transport fail.
@@ -811,7 +802,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
     parent.mkdir(parents=True, exist_ok=True)
     receipt = parent / _GIT_MIRRORS_RECEIPT
     mirrors = parent / "mirrors"
-    with u.Infra.codegen_transaction_lease(receipt):
+    with u.Cli.file_changes_lock(receipt.with_name(f"{receipt.name}.lock")):
         if not receipt.is_file():
             mirrored = u.Tests.build_git_mirrors(_PROJECT_ROOT, mirrors)
             tm.ok(u.Cli.atomic_write_text_file(receipt, "\n".join(mirrored) + "\n"))

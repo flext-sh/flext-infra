@@ -87,7 +87,6 @@ class TestsNativeReferenceEpoch:
             "elif defect == 'none':\n"
             "    observed = native.capture(selection)\n"
             "    native.compare(cold, observed.unwrap()).unwrap()\n"
-            "    authenticate('rope.base.prefs').unwrap()\n"
             "else:\n"
             "    observed = native.capture(selection)\n"
             "    if observed.success:\n"

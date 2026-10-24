@@ -433,7 +433,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(
             tuple(
                 plan
-                for plan in tm.ok(check_service.plan_files()).files
+                for plan in tm.ok(check_service.plan_files())
                 if u.Infra.codegen_file_requires_effect(plan)
             ),
             empty=True,
@@ -588,7 +588,7 @@ class TestsFlextInfraLazyInitHelpers:
         service = u.Tests.create_lazy_init_service(repository_root).model_copy(
             update={"target_module": "flext_child"},
         )
-        planned = tm.ok(service.plan_files()).files
+        planned = tm.ok(service.plan_files())
         generated = next(
             u.Tests.codegen_file_text(plan)
             for plan in planned
@@ -961,10 +961,8 @@ class TestsFlextInfraLazyInitHelpers:
 
             planned = u.Tests.plan_lazy_init(repository_root)
 
-            analysis = tm.ok(planned)
-            tm.that(analysis.files, eq=())
-            tm.that(analysis.issues[0].message, has="ambiguous")
-            tm.that(analysis.issues[0].message, has=f"{len(export_names)} collision(s)")
+            tm.fail(planned, has="ambiguous")
+            tm.that(str(planned.error), has=f"{len(export_names)} collision(s)")
             captured = capsys.readouterr()
             for name in export_names:
                 tm.that(
@@ -1008,9 +1006,7 @@ class TestsFlextInfraLazyInitHelpers:
 
             planned = u.Tests.plan_lazy_init(repository_root)
 
-            analysis = tm.ok(planned)
-            tm.that(analysis.files, eq=())
-            tm.that(analysis.issues[0].message, has="ambiguous")
+            tm.fail(planned, has="ambiguous")
             # The refusal is PRE-EFFECT: no facade gains either contested owner.
             after = TestsFlextInfraLazyInitHelpers._generated_init(package_root)
             tm.that(after, eq=before)
@@ -1035,10 +1031,7 @@ class TestsFlextInfraLazyInitHelpers:
                     encoding=c.DEFAULT_ENCODING,
                 )
 
-            analysis = tm.ok(u.Tests.plan_lazy_init(repository))
-
-            tm.that(analysis.files, eq=())
-            tm.that(analysis.issues[0].message, has="ambiguous")
+            tm.fail(u.Tests.plan_lazy_init(repository), has="ambiguous")
             tm.that(TestsFlextInfraLazyInitHelpers._generated_init(package), eq=before)
 
         @staticmethod

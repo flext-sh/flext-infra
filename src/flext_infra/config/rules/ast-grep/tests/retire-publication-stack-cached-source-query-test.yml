@@ -4,6 +4,12 @@ valid:
     if key in cache:
         return cache[key]
     cache[key] = build(key)
+  - |
+    def query(self, key):
+        with u.Infra.cached_source_query(project, cache, key, receipts, key) as cached:
+            if not cached:
+                cache[key] = build(key)
+        return cache[key]
 invalid:
   - |
     def names(self, key):
@@ -15,3 +21,12 @@ invalid:
             value = build(key)
             self._cache[key] = value
             return value
+  - |
+    def query(cls, key):
+        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
+            project, cache, key, receipts, key
+        ) as hit:
+            if hit:
+                return r[int].ok(cache[key])
+            loaded = load(key)
+        return loaded

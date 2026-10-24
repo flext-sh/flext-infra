@@ -12,9 +12,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig
-from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import FlextInfraCodegenConformExecute, FlextInfraStagedPackage
-from tests import c, m, p, t, tm, u
+from flext_infra.codegen import FlextInfraCodegenConformExecute
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraArtifactRenderEmptyGuard:
@@ -301,65 +300,3 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.fail(b"import os" in tm.not_none(first.desired_content))
         tm.ok(b"import os" in tm.not_none(second.desired_content))
         tm.fail(any(plan.path.exists() for plan in plans))
-        TestsFlextInfraArtifactRenderEmptyGuard._assert_project_layout_authority(
-            workspace, (first, second), plans[0].project, plans[1].project
-        )
-
-    @staticmethod
-    def _assert_project_layout_authority(
-        workspace: Path,
-        prepared: t.VariadicTuple[m.Cli.FileChange],
-        first: Path,
-        second: Path,
-    ) -> None:
-        updates = {
-            plan.path: tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
-            for plan in prepared
-        }
-        unselected = tm.ok(FlextInfraStagedPackage.plan_sources(workspace, updates))
-        rejected = FlextInfraStagedPackage.project_layouts(unselected, first)
-        tm.ok(rejected.failure)
-        tm.that(str(rejected.error), has="no original source authority")
-        joint = tm.ok(
-            FlextInfraStagedPackage.plan_sources(
-                workspace,
-                updates,
-                options=m.Infra.StageSourceOptions(
-                    workspaces=(first, second),
-                ),
-            )
-        )
-        elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first))
-        tm.ok(first in {layout.project_root for layout in elected})
-        tm.fail(second in {layout.project_root for layout in elected})
-
-    @staticmethod
-    def test_candidate_checker_requires_original_physical_environment(
-        tmp_path: Path,
-    ) -> None:
-        """A staged checkout cannot borrow the running checker's environment."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        destination = package / "consumer.py"
-        source_plan = tm.ok(
-            FlextInfraStagedPackage.plan_sources(root, {destination: "value = 1\n"})
-        )
-        candidate = tmp_path / "candidate"
-        candidate.mkdir()
-        rejected = FlextInfraWorkspaceChecker(
-            repository_root=candidate
-        ).execute_candidate(
-            m.Infra.RunCommand(
-                repository_root=candidate,
-                reports_dir=str(tmp_path / "reports"),
-                check_only=True,
-            ),
-            source_plan,
-            project_root=root,
-            runtime_report=m.Infra.ValidationReport(
-                passed=False,
-                summary="Original physical runtime is absent; admission has not run",
-            ),
-        )
-        tm.ok(rejected.failure)
-        tm.that(str(rejected.error), has=str(u.Infra.runtime_environment_dir(root)))
-        tm.fail(destination.exists())

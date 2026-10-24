@@ -196,7 +196,7 @@ class UtilityFacadePublication:
             + f"{family} = PublicFacade\n"
             + f"__all__ = ['PublicFacade', {family!r}]\n",
         )
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             rendered = (
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
@@ -228,7 +228,7 @@ class UtilityFacadePublication:
         self._write(facade, rendered)
         if publication[0] == "barrel":
             self._write(package / definition.directory / "__init__.py", "")
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             repeated = (
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
@@ -376,7 +376,7 @@ class UtilityFacadePublication:
             f"    {invalid}\n{family} = PublicFacade\n"
             f"__all__ = ['PublicFacade', '{family}']\n",
         )
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             if family == "t":
                 with pytest.raises(ValueError, match=r"[Aa]mbiguous|Non-class binding"):
                     u.Infra.render_type_facade(
@@ -414,7 +414,7 @@ class UtilityFacadePublication:
             "class PublicFacade(Owner):\n    pass\n"
             f"{family} = PublicFacade\n__all__ = ['PublicFacade', '{family}']\n",
         )
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             rendered = (
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
@@ -425,7 +425,7 @@ class UtilityFacadePublication:
                 )
             )
         self._write(facade, rendered)
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             repeated = (
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
@@ -802,9 +802,8 @@ class UtilityFacadePublication:
         for candidate in (stale, refreshed):
             with u.Infra.facade_source_project(
                 root,
-                source_options=m.Infra.StageSourceOptions(inputs=originals),
                 planned_sources={barrel: candidate},
-            ) as (project, _, contents):
+            ) as (project, contents):
                 rendered = tm.not_none(
                     u.Infra.render_utility_facade(
                         package, family=family, project=project, sources=contents
@@ -814,9 +813,8 @@ class UtilityFacadePublication:
             tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
             with u.Infra.facade_source_project(
                 root,
-                source_options=m.Infra.StageSourceOptions(inputs=originals),
                 planned_sources={barrel: candidate, facade: rendered},
-            ) as (project, _, contents):
+            ) as (project, contents):
                 tm.that(
                     u.Infra.render_utility_facade(
                         package, family=family, project=project, sources=contents

@@ -220,7 +220,7 @@ class TestsFlextInfraRopeSnapshot:
                 analysis = tm.ok(service.plan_files(source_project=project))
                 initializer = next(
                     plan
-                    for plan in analysis.files
+                    for plan in analysis
                     if plan.path == package / "__init__.py"
                 )
                 rendered = tm.not_none(initializer.desired_content).decode("utf-8")
@@ -259,7 +259,7 @@ with u.Infra.facade_source_project(
     for _ in range(2):
         analysis = tm.ok(service.plan_files(source_project=project))
         initializer = next(
-            plan for plan in analysis.files
+            plan for plan in analysis
             if plan.path == package / c.Infra.INIT_PY)
         tm.that(tm.not_none(initializer.desired_content).decode(
             c.DEFAULT_ENCODING), has=name)

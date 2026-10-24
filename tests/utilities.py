@@ -518,26 +518,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         def materialize_docs_bundle(
             bundle: m.Infra.DocsGenerationBundle,
         ) -> p.Result[bool]:
-            """Publish one immutable docs bundle through atomic file primitives.
+            """Publish one immutable docs bundle through the shared file-change owner.
 
             Returns:
                 The resulting ``p.Result[bool]``.
 
             """
-            required = u.Infra.docs_required_directories(bundle)
-            if required.failure:
-                return r[bool].from_failure(required)
-            for directory in required.value:
-                directory_plan = u.Cli.atomic_plan_directory_chain(directory)
-                if directory_plan.failure:
-                    return r[bool].from_failure(directory_plan)
-                if directory_plan.value.directories:
-                    created = u.Cli.atomic_create_directory_chain_guarded(
-                        directory_plan.value,
-                        permission_mode=0o755,
-                    )
-                    if created.failure:
-                        return r[bool].from_failure(created)
             return TestsFlextInfraUtilities.Tests.materialize_codegen_plans(
                 u.Infra.docs_file_plans(bundle),
             )

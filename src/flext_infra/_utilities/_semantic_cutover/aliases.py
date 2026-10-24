@@ -413,16 +413,8 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
         with cls._semantic_source_project(workspace.rope_project) as source_project:
             if service_aliases:
-                return cls._semantic_edits(
-                    cls._editable_sources(sources),
-                    rewrite,
-                    source_project=source_project,
-                )
-            return cls._semantic_checked_edits(
-                cls._editable_sources(sources),
-                rewrite,
-                source_project=source_project,
-            )
+                return cls._semantic_edits(cls._editable_sources(sources), rewrite)
+            return cls._semantic_checked_edits(cls._editable_sources(sources), rewrite)
 
     @classmethod
     def _compatibility_alias_plan(

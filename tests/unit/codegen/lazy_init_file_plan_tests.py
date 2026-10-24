@@ -63,10 +63,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
             eq=False,
         )
-        tm.fail(conftest in {file.path for file in analysis.files})
-        tm.ok(u.Infra.publish_codegen_plans(root, analysis.files))
+        tm.fail(conftest in {file.path for file in analysis})
+        tm.ok(u.Infra.publish_codegen_plans(root, analysis))
         production = next(
-            file for file in analysis.files if file.path == package / c.Infra.INIT_PY
+            file for file in analysis if file.path == package / c.Infra.INIT_PY
         )
         tm.that(
             production.path.read_bytes(),
@@ -86,10 +86,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         target = package / c.Infra.INIT_PY
         analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
-        tm.ok(any(file.path == target for file in analysis.files))
+        tm.ok(any(file.path == target for file in analysis))
         foreign = target.read_bytes() + b"\n# Concurrent edit\n"
         target.write_bytes(foreign)
-        tm.fail(u.Infra.publish_codegen_plans(root, analysis.files))
+        tm.fail(u.Infra.publish_codegen_plans(root, analysis))
         tm.that(target.read_bytes(), eq=foreign)
 
     @staticmethod
@@ -137,17 +137,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         before = initializer.read_bytes()
         service = u.Tests.create_lazy_init_service(root)
 
-        analysis = tm.ok(service.plan_files())
-        retained = next(
-            plan
-            for plan in analysis.publications
-            if plan.context.init_path == initializer
-        )
-        tm.that(retained.action, eq=c.Infra.LazyInitAction.RETAIN)
-        tm.that(retained.ownership, eq="authored")
-        tm.that(retained.disposition, eq="retained")
-        tm.that(set(retained.exports), eq={"Payload", "VALUE", "load"})
-        tm.fail(initializer in {file.path for file in analysis.files})
+        planned = tm.ok(service.plan_files())
+        tm.fail(initializer in {file.path for file in planned})
         tm.that(
             (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
             eq=False,
@@ -412,10 +403,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
 
     @staticmethod
-    def test_scope_outside_workspace_is_a_scoped_plan_issue(
+    def test_scope_outside_workspace_fails_planning(
         tmp_path: Path,
     ) -> None:
-        """An invalid target is attributed without widening publication authority."""
+        """An invalid scope fails loud without widening publication authority."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path / "workspace",
         )
@@ -434,13 +425,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             project_scope_roots=(foreign_root,),
         ).plan_files()
 
-        analysis = tm.ok(result)
-        tm.that(analysis.files, eq=())
-        tm.that(tuple(issue.file for issue in analysis.issues), eq=(str(foreign_root),))
-        tm.that(
-            analysis.issues[0].message,
-            contains="lazy-init repository scope is missing",
-        )
+        tm.fail(result, has="lazy-init repository scope is missing")
+        tm.that(str(result.error), has=str(foreign_root))
         tm.that(init_path.read_bytes(), eq=before)
 
     @staticmethod
@@ -476,12 +462,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     u.Infra.facade_source_project(tmp_path, project_roots=tuple(roots)),
                 )[0]
             analysis = tm.ok(service.plan_files(source_project=source))
-        tm.that(analysis.issues, eq=())
-        tm.that(analysis.exception, eq=None)
         for index, name in enumerate(("FirstPublished", "SecondPublished")):
             plan = next(
                 file
-                for file in analysis.files
+                for file in analysis
                 if file.path == packages[index] / c.Infra.INIT_PY
             )
             tm.that(plan.project, eq=roots[index])
@@ -490,20 +474,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             tm.that(u.Tests.codegen_file_text(plan), lacks=other)
         repeated = tm.ok(service.plan_files())
         tm.that(
-            tuple((file.path, file.desired_content) for file in analysis.files),
-            eq=tuple((file.path, file.desired_content) for file in repeated.files),
+            tuple((file.path, file.desired_content) for file in analysis),
+            eq=tuple((file.path, file.desired_content) for file in repeated),
         )
         service.module = "shared_package"
-        repeated = tm.ok(service.plan_files())
-        tm.that(repeated.files, eq=())
-        tm.that(repeated.publications, eq=())
-        tm.that(
-            all(
-                "target module is ambiguous" in issue.message
-                for issue in repeated.issues
-            ),
-            eq=True,
-        )
+        tm.fail(service.plan_files(), has="target module is ambiguous")
 
     @staticmethod
     @pytest.mark.parametrize("failed_first", [False, True])
@@ -528,83 +503,13 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     "class Shared: pass\n__all__ = ['Shared']\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-        analysis = tm.ok(
+        tm.fail(
             FlextInfraCodegenLazyInit(
                 repository_root=tmp_path,
                 project_scope_roots=tuple(reversed(roots)),
                 module="shared_package",
             ).plan_files(),
-        )
-        tm.that(analysis.files, eq=())
-        tm.that(analysis.publications, eq=())
-        tm.that(
-            {
-                issue.file
-                for issue in analysis.issues
-                if "target module is ambiguous" in issue.message
-            },
-            eq={str(root) for root in roots},
-        )
-        tm.that(
-            any("collision(s)" in issue.message for issue in analysis.issues),
-            eq=True,
-        )
-        tm.that({target for target, _ in analysis.failed_targets}, eq=set(roots))
-
-    @staticmethod
-    @pytest.mark.parametrize("invalid", ["missing", "outside", "ambiguous"])
-    def test_multi_root_issue_retains_independent_guarded_publication(
-        tmp_path: Path,
-        invalid: str,
-        session_runtime: p.Tests.SessionRuntime,
-    ) -> None:
-        """Keep healthy effects and aggregate evidence despite invalid targets."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path / "workspace")
-        u.Tests.initialize_git_repo(root.parent)
-        tm.ok(
-            u.Tests.create_python_environment(
-                root,
-                dependency_projects=u.Tests.python_dependency_projects(root),
-                session_runtime=session_runtime,
-            )
-        )
-        (package / "service.py").write_text(
-            "class Published: pass\n__all__ = ['Published']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        invalid_root = root.parent / invalid
-        if invalid == "outside":
-            invalid_root = tmp_path / invalid
-            invalid_root.mkdir()
-        elif invalid == "ambiguous":
-            invalid_root, invalid_package = u.Tests.create_lazy_init_workspace(
-                root.parent,
-                project_name=invalid,
-            )
-            for module in ("first", "second"):
-                (invalid_package / f"{module}.py").write_text(
-                    "class Shared: pass\n__all__ = ['Shared']\n",
-                    encoding=c.DEFAULT_ENCODING,
-                )
-        analysis = tm.ok(
-            FlextInfraCodegenLazyInit(
-                repository_root=root.parent,
-                project_scope_roots=(invalid_root, root),
-            ).plan_files()
-        )
-        tm.that(tuple(issue.file for issue in analysis.issues), eq=(str(invalid_root),))
-        tm.that({file.project for file in analysis.files}, eq={root})
-        tm.that(
-            (root.parent / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
-            eq=False,
-        )
-        tm.ok(u.Infra.publish_codegen_plans(root, analysis.files))
-        plan = next(
-            file for file in analysis.files if file.path == package / c.Infra.INIT_PY
-        )
-        tm.that(
-            plan.path.read_bytes(),
-            eq=tm.ok(u.Infra.normalized_codegen_changes((plan,)))[0].desired_content,
+            has="target module is ambiguous",
         )
 
     @staticmethod
@@ -632,9 +537,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         result = service.plan_files()
 
         tm.that(result.success, eq=True, msg=result.error)
-        analysis = result.value
-        tm.that(analysis.phase, eq="lazy-init")
-        plans = {plan.path: plan for plan in analysis.files}
+        plans = {plan.path: plan for plan in result.value}
         init_plan = plans[init_path.resolve()]
         tm.that(init_plan.project, eq=repository_root.resolve())
         tm.that(init_plan.before.content, eq=before[init_path])
@@ -694,7 +597,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(result.success, eq=True, msg=result.error)
         deletes = {
             plan.path
-            for plan in result.value.files
+            for plan in result.value
             if plan.desired_content is None
             and u.Infra.codegen_file_requires_effect(plan)
         }

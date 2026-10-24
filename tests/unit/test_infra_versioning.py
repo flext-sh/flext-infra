@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, p, t, tf, tm, u
+from tests import c, t, tf, tm, u
 
 
 class TestsFlextInfraInfraVersioning:
@@ -182,62 +182,17 @@ class TestsFlextInfraInfraVersioning:
         tm.fail(u.Infra.render_project_version("[project\n", "1.0.1"), has="invalid")
 
     @staticmethod
-    def test_version_publisher_returns_original_native_effects(
-        tmp_path: Path, native_consumer: p.Tests.NativeConsumer
+    def test_version_plan_publishes_through_shared_codegen_publisher(
+        tmp_path: Path,
     ) -> None:
-        """The version owner publishes its real plan and retains native authority."""
-        script = """
-import sys
-from pathlib import Path
-
-sys.path.insert(0, sys.argv[1])
-from flext_infra import codegen
-from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests import c, r
-from tests import c, m, p, r, tm, u
-
-root = u.Tests.git_repository(Path(sys.argv[2]) / "repo")
-pyproject = u.Tests.WorktreeFixture.write_python_project(root, root.name)
-current = tm.ok(u.Infra.current_workspace_version(root))
-version = tm.ok(u.Infra.bump_version(current, "patch"))
-original = pyproject.read_bytes()
-plan = tm.ok(u.Infra.project_version_plan(root, version))
-tm.that(plan.before.content, eq=original)
-tm.that(pyproject.read_bytes(), eq=original)
-producer = tm.ok(FlextInfraValidateFreshImport.capture_producer(
-    runtime_root, entrypoint=codegen.FlextInfraCodegenTransaction,
-))
-owner = codegen.FlextInfraCodegenTransaction(
-    codegen.FlextInfraCodegenMiseArtifacts(repository_root=root), producer=producer,
-)
-receipts: list[m.Infra.CodegenPhaseOutcome] = []
-roots = {"@version": root}
-
-def publish(file: m.Infra.CodegenFilePlan) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-    analysis = m.Infra.CodegenPhaseAnalysis(
-        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-        inputs=file.source_states, files=(file,),
-    )
-    result = owner.run_files_locked(
-        roots,
-        lambda scope_root: owner.publish_file_phase_locked(
-            scope_root, roots, analysis,
-            m.Infra.CodegenPhasePublicationPolicy(directories=()),
-            publication_receipts=receipts,
-        ),
-    )
-    if result.failure:
-        return r[m.Infra.CodegenPhaseOutcome].from_failure(result)
-    if len(receipts) != 1:
-        return r[m.Infra.CodegenPhaseOutcome].fail(
-            "one native version receipt required",
-        )
-    return r[m.Infra.CodegenPhaseOutcome].ok(receipts[0])
-
-receipt = tm.ok(publish(plan))
-tm.that(receipt is receipts[0], eq=True)
-tm.that(receipt.written_files, eq=(pyproject,))
-tm.ok(codegen.FlextInfraMiseArtifactsVerification.publication_birth_current(receipt))
-tm.ok(u.Infra.current_workspace_version(root), eq=version)
-"""
-        native_consumer(script, str(Path(__file__).resolve().parents[2]), str(tmp_path))
+        """The version plan is effect-free until the shared publisher writes it."""
+        root = u.Tests.git_repository(tmp_path)
+        pyproject = u.Tests.WorktreeFixture.write_python_project(root, root.name)
+        current = tm.ok(u.Infra.current_workspace_version(root))
+        version = tm.ok(u.Infra.bump_version(current, "patch"))
+        original = pyproject.read_bytes()
+        plan = tm.ok(u.Infra.project_version_plan(root, version))
+        tm.that(plan.before.content, eq=original)
+        tm.that(pyproject.read_bytes(), eq=original)
+        tm.ok(u.Infra.publish_codegen_plans(root, (plan,)), eq=(pyproject,))
+        tm.ok(u.Infra.current_workspace_version(root), eq=version)

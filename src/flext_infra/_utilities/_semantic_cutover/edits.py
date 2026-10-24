@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -69,8 +69,6 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
     def _semantic_edits(
         items: t.SequenceOf[t.Pair[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
-        *,
-        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan one edit per module, preserving the first original exception.
 
@@ -80,12 +78,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         """
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for path, source in items:
-            with (
-                source_project.source_consumption()
-                if source_project is not None
-                else nullcontext()
-            ):
-                updated, changes = rewrite(path, source)
+            updated, changes = rewrite(path, source)
             if updated != source:
                 edits.append(
                     m.Infra.SemanticMigrationEdit(
@@ -102,8 +95,6 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         cls,
         items: t.SequenceOf[t.Pair[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
-        *,
-        source_project: p.Infra.RopeProject,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Keep declarative validation failures on their typed result boundary.
 
@@ -112,7 +103,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
 
         """
         try:
-            return cls._semantic_edits(items, rewrite, source_project=source_project)
+            return cls._semantic_edits(items, rewrite)
         except ValueError as exc:
             return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].fail(
                 str(exc), exception=exc

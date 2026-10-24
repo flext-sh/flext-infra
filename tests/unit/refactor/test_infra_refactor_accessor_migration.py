@@ -73,7 +73,7 @@ def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
     _ = (foreign_pkg / "__init__.py").write_text("", encoding="utf-8")
     foreign_file = foreign_pkg / "legacy.py"
     _ = foreign_file.write_text(_legacy_module_source(), encoding="utf-8")
-    u.Tests.provision_source_preview(workspace)
+    u.Tests.provision_checkout(workspace)
     return workspace, origin_file, foreign_file
 
 
@@ -196,7 +196,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         )
         path = package / "consumer.py"
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        u.Tests.provision_source_preview(workspace)
+        u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             resolver = FlextInfraAccessorOriginResolver(rope.rope_project)
             module = resolver.module(path)
@@ -320,7 +320,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             f"    return {tuple(rule.source_name for rule in rules)!r}\n"
         )
         (package / "consumer.py").write_text(source, encoding="utf-8")
-        u.Tests.provision_source_preview(workspace)
+        u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraAccessorRenamePhase(
@@ -342,15 +342,10 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 preflight,
                 rope,
                 sources=sources,
-                receipt=m.Infra.CodegenPhaseAnalysis(
-                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                    inputs=states,
-                    files=(),
-                ),
             ).unwrap()
-            tm.that(planned.files, empty=False)
+            tm.that(planned, empty=False)
             tm.that(sources, eq=frozen)
-            for plan in planned.files:
+            for plan in planned:
                 tm.that(
                     plan.before,
                     eq=next(state for state in states if state.path == plan.path),
@@ -409,7 +404,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         consumer = package / "consumer.py"
         source = f"def unresolved(value):\n    return value.{rules[0].source_name}\n"
         consumer.write_text(source, encoding="utf-8")
-        u.Tests.provision_source_preview(workspace)
+        u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraAccessorRenamePhase(
@@ -449,7 +444,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 f"    return value.{rule.source_name}\n"
             )
             consumer.write_text(source, encoding="utf-8")
-            u.Tests.provision_source_preview(workspace)
+            u.Tests.provision_checkout(workspace)
             program = (
                 "import sys\n"
                 "sys.path.insert(0, sys.argv[1])\n"
@@ -624,7 +619,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             "        return super().get_source_folders()\n",
             encoding="utf-8",
         )
-        u.Tests.provision_source_preview(workspace)
+        u.Tests.provision_checkout(workspace)
         orchestrator = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
             repository_root=workspace,

@@ -110,7 +110,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             exposure = tm.ok(
                 FlextInfraCodegenLazyInit(repository_root=root).plan_files()
             )
-            plans.extend(item for item in exposure.files if item.path == blocked)
+            plans.extend(item for item in exposure if item.path == blocked)
         blocked_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(blocked, required=True)
         )

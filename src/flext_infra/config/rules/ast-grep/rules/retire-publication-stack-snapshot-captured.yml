@@ -1,0 +1,26 @@
+id: retire-publication-stack-snapshot-captured
+language: Python
+severity: error
+files:
+  - "**/flext_infra/**/*.py"
+rule:
+  # A snapshot still pinned to a captured source epoch.
+  all:
+    - kind: keyword_argument
+    - has:
+        field: name
+        regex: ^captured$
+    - inside:
+        kind: argument_list
+        inside:
+          kind: call
+          has:
+            field: function
+            regex: (^|\.)snapshot_project$
+fix:
+  template: ""
+  expandEnd:
+    regex: ^,$
+message: >-
+  Captured source epochs are retired: a Rope snapshot reads the live tree
+  overlaid with its planned sources.

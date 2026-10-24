@@ -17,7 +17,6 @@ from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenMakeBootstrap,
-    FlextInfraStagedPackage,
 )
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
@@ -30,11 +29,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
 
     @staticmethod
-    def test_complete_bootstrap_stages_planned_initializers_without_facades(
+    def test_complete_bootstrap_plans_initializers_without_removed_owners(
         infra_git_repo: Path,
-        tmp_path: Path,
     ) -> None:
-        """Admission sees new exports, not removed owners in an old projection."""
+        """The planned initializer exports new owners, never removed ones."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         package = root / c.Infra.DEFAULT_SRC_DIR / config.Infra.name.replace("-", "_")
@@ -68,50 +66,21 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(plan.issues, eq=())
         tm.that(plan.exception, eq=None)
         projected = next(file for file in plan.files if file.path == initializer)
-        metadata = next(
-            file for file in plan.files if file.path == root / c.PYPROJECT_FILENAME
-        )
-        group = tm.not_none(projected.dependency_group)
-        tm.that(metadata.dependency_group, eq=group)
         tm.that(projected.before, eq=before)
         tm.fail(b".removed" in tm.not_none(projected.desired_content))
-        cohort = tuple(file for file in plan.files if file.dependency_group == group)
-        candidate = tm.ok(
-            FlextInfraStagedPackage.plan_sources(
-                root,
-                {
-                    file.path: (
-                        None
-                        if file.desired_content is None
-                        else file.desired_content.decode(c.DEFAULT_ENCODING)
-                    )
-                    for file in cohort
-                },
-                options=m.Infra.StageSourceOptions(
-                    inputs=(before,),
-                    declared_files=cohort,
-                ),
-            )
-        )
-        view = tmp_path / "admission-view"
-        view.mkdir()
-        tm.ok(FlextInfraStagedPackage.materialize_sources(candidate, view))
         tm.that(
-            (view / initializer.relative_to(root)).read_bytes(),
-            eq=projected.desired_content,
+            tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True)),
+            eq=before,
         )
+        tm.ok(u.Infra.publish_codegen_plans(root, (projected,)))
         tm.that(
             u.Tests.run_lazy_init_probe(
                 f"from {package.name}.{auxiliary.name} import Replacement\n"
                 "print(Replacement.__name__)\n",
-                python_paths=(str(view / c.Infra.DEFAULT_SRC_DIR),),
-                cwd=view,
+                python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
+                cwd=root,
             ),
             eq=["Replacement"],
-        )
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True)),
-            eq=before,
         )
 
     @staticmethod

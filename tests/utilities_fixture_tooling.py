@@ -391,7 +391,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         fixture = TestsFlextInfraUtilitiesToolingFixtureMixin
         binary = fixture.managed_uv()
         wheels: list[Path] = []
-        with u.Infra.codegen_transaction_lease(directory / "dependency-wheels.lock"):
+        with u.Cli.file_changes_lock(directory / "dependency-wheels.lock"):
             for project in dependency_projects:
                 metadata = tm.ok(u.Infra.read_project_metadata_result(project))
                 destination = directory / "dependency-wheels" / metadata.project.name

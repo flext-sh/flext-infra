@@ -19,10 +19,7 @@ from flext_cli import u
 from flext_core import FlextStrictYamlConfigSource
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesNativeTooling,
-    FlextInfraUtilitiesRopeRuntimeBase,
-)
+from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
@@ -38,8 +35,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     ) -> p.Result[m.Infra.CodegenInputs]:
         """Load one root's full policy through the ordered strict YAML source.
 
-        An injected source authority owns the same file observations and race
-        receipts as its consumer, including read-only dependency projects.
+        An injected source project serves the same file observations to its
+        consumer, including read-only dependency projects.
 
         Returns:
             The effective codegen declaration and exact consulted file snapshots.
@@ -59,10 +56,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        if source_project is None:
-            verified = cls._verify_unchanged_snapshots(document.value.sources)
-            if verified.failure:
-                return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.CodegenInputs(
                 spec=loaded.value,
@@ -104,13 +97,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if admitted_paths.failure:
             return result_type.from_failure(admitted_paths)
-        verified = (
-            cls._verify_unchanged_snapshots(document.value.sources)
-            if source_project is None
-            else r[bool].ok(value=True)
-        )
-        if verified.failure:
-            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.ToolingInputs(
                 document=section.value,
@@ -138,16 +124,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         if source_project is None:
             return cls._repository_declaration_inputs(repository_root)
         cache = cls._DECLARATION_CACHE.setdefault(source_project, {})
-        receipts = cls._DECLARATION_RECEIPTS.setdefault(source_project, {})
         key = str(repository_root)
-        with FlextInfraUtilitiesRopeRuntimeBase.cached_source_query(
-            source_project, cache, key, receipts, key
-        ) as cached:
-            if cached:
-                return r[m.Infra.RepositoryDeclarationInputs].ok(cache[key])
-            loaded = cls._repository_declaration_inputs(
-                repository_root, source_project=source_project
-            )
+        if key in cache:
+            return r[m.Infra.RepositoryDeclarationInputs].ok(cache[key])
+        loaded = cls._repository_declaration_inputs(
+            repository_root, source_project=source_project
+        )
         if loaded.success:
             cache[key] = loaded.value
         return loaded
@@ -156,9 +138,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         WeakKeyDictionary[
             p.Infra.RopeProject, dict[str, m.Infra.RepositoryDeclarationInputs]
         ]
-    ] = WeakKeyDictionary()
-    _DECLARATION_RECEIPTS: ClassVar[
-        WeakKeyDictionary[p.Infra.RopeProject, dict[str, m.Infra.CodegenPhaseAnalysis]]
     ] = WeakKeyDictionary()
 
     @classmethod
@@ -194,13 +173,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = (
-            cls._verify_unchanged_snapshots(document.value.sources)
-            if source_project is None
-            else r[bool].ok(value=True)
-        )
-        if verified.failure:
-            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.RepositoryDeclarationInputs(
                 spec=loaded.value,
@@ -272,43 +244,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = (
-            cls._verify_unchanged_snapshots(snapshots)
-            if source_project is None
-            else r[bool].ok(value=True)
-        )
-        if verified.failure:
-            return result_type.from_failure(verified)
         return result_type.ok(
             m.Infra.ConfigDocumentInputs(
                 values=loaded.value,
                 sources=tuple(snapshots),
             ),
         )
-
-    @staticmethod
-    def _verify_unchanged_snapshots(
-        snapshots: t.SequenceOf[m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        """Fail when a consulted configuration file changed during loading.
-
-        Returns:
-            Success when every snapshot still matches its consulted bytes.
-
-        """
-        for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(
-                before.path,
-                required=before.content is not None,
-            )
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            if observed.value != before:
-                error = ValueError(
-                    f"codegen configuration changed during read: {before.path}"
-                )
-                return r[bool].fail(str(error), exception=error)
-        return r[bool].ok(value=True)
 
     @classmethod
     def load_refactor_csv_campaigns(
@@ -857,9 +798,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
         """Capture and parse the committed catalog without physical source states.
 
-        ``sources`` stays empty because Git objects are already immutable: they
-        must not enter the transaction's live-file source barrier, and their
-        object identity makes a physical re-read meaningless.
+        ``sources`` stays empty because Git objects are already immutable, so a
+        physical re-read is meaningless.
 
         Returns:
             The resulting ``p.Result[m.Infra.ProjectManagedArtifactsSnapshot]``.

@@ -63,7 +63,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
         key = hashlib.sha256(material.encode()).hexdigest()[:16]
         parent = Path(tempfile.gettempdir()) / "propagation-workspace" / key
         parent.mkdir(parents=True, exist_ok=True)
-        with u.Infra.codegen_transaction_lease(parent / self.RECEIPT):
+        with u.Cli.file_changes_lock(parent / f"{self.RECEIPT}.lock"):
             if not (parent / self.RECEIPT).is_file():
                 root = u.Tests.WorktreeFixture.governed_workspace(parent, "workspace")
                 for name in self.MEMBERS:

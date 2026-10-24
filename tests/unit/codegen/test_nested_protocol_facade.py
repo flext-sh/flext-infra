@@ -59,14 +59,14 @@ class TestsNestedProtocolFacade:
             + "        Payload: type[PayloadOwner.Payload] = PayloadOwner.Payload\n"
             "p = PublicProtocols\n__all__ = ['PublicProtocols', 'p']\n",
         )
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             rendered = tm.not_none(
                 u.Infra.render_utility_facade(
                     package, family="p", project=project, sources=sources
                 )
             )
         self._write(facade, rendered)
-        with u.Infra.facade_source_project(root) as (project, _, sources):
+        with u.Infra.facade_source_project(root) as (project, sources):
             tm.that(
                 u.Infra.render_utility_facade(
                     package, family="p", project=project, sources=sources
