@@ -365,7 +365,12 @@ class TestsFlextInfraSemanticPublicationPlans:
 
     @staticmethod
     def _creation(mod_workspace: Path) -> m.Infra.SemanticMigrationEdit:
-        """Declare one new module beside the fixture plans (absent before)."""
+        """Declare one new module beside the fixture plans (absent before).
+
+        Returns:
+            The creation edit whose original source is ``None``.
+
+        """
         first, _ = TestsFlextInfraSemanticPublicationPlans._plans(mod_workspace)
         return m.Infra.SemanticMigrationEdit(
             file_path=first.path.with_name("created_family.py"),
@@ -393,7 +398,7 @@ class TestsFlextInfraSemanticPublicationPlans:
     ) -> None:
         """A destination that already exists at publish fails and stays intact."""
         edit = self._creation(mod_workspace)
-        edit.file_path.write_text('value = "foreign"\n')
+        edit.file_path.write_text('value = "foreign"\n', encoding=c.DEFAULT_ENCODING)
         tm.fail(
             codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
                 mod_workspace, (edit,)
@@ -414,11 +419,17 @@ class TestsFlextInfraSemanticPublicationPlans:
                 (edit,),
                 validator=partial(self._concurrent_creator, edit.file_path),
             ),
+            has=edit.file_path.name,
         )
         tm.that(edit.file_path.read_text(), eq='value = "concurrent"\n')
 
     @staticmethod
     def _concurrent_creator(destination: Path, _candidate_root: Path) -> p.Result[bool]:
-        """Create the live destination while the candidate is being accepted."""
-        destination.write_text('value = "concurrent"\n')
+        """Create the live destination while the candidate is being accepted.
+
+        Returns:
+            Acceptance of the candidate, after the concurrent creation.
+
+        """
+        destination.write_text('value = "concurrent"\n', encoding=c.DEFAULT_ENCODING)
         return r[bool].ok(value=True)
