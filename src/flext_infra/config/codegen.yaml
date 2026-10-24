@@ -662,7 +662,10 @@ Infra:
       - { verb: fix, contexts: [ local ] }
       - { verb: fmt, contexts: [ local ] }
       - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }
-      - { verb: tests, contexts: [ local, ci, pre_push ] }
+      # Tests run only on a green check (operator law): the requirement is
+      # declared once here and consumed by the CI step condition and the
+      # runner's check-receipt preflight.
+      - { verb: tests, contexts: [ local, ci, pre_push ], requires: [ check ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, scope: root, contexts: [ local, ci ] }
@@ -2080,6 +2083,9 @@ Infra:
         pyproject.toml:
           source: base/pyproject.toml.j2
           profiles: [ workspace, standalone ]
+          # Its managed tool tables are the projection of the typed tooling
+          # policy: no ignore_errors, unapproved Ruff ignore or relaxed strictness.
+          enforce: [ ENFORCE-020 ]
           # CUSTOM vs MANAGED (humans read comments; this block is the owner):
           #   conflict_sections = MANAGED tables (template wins on make gen)
           #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)

@@ -95,3 +95,5 @@ rule:
             kind: identifier
             not: { pattern: $OUTER }
 fix: ""
+metadata:
+  enforce: [ENFORCE-048]

@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+from typing_extensions import TypeForm
+
 from flext_infra import c, config, m, r, t, u
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
@@ -313,10 +315,10 @@ class FlextInfraPytestRunnerExecution(
             u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
         )
         patterns = u.Infra.native_tool_setting(
-            tool_config, "pytest.ini_options", "python_files", t.TypeForm(t.StrSequence)
+            tool_config, "pytest.ini_options", "python_files", TypeForm(t.StrSequence)
         )
         roots = u.Infra.native_tool_setting(
-            tool_config, "pytest.ini_options", "testpaths", t.TypeForm(t.StrSequence)
+            tool_config, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
         )
         for root in roots:
             base = self.repository_root / root

@@ -29,6 +29,8 @@ message: >-
   Strict contract `$NAME` relaxes extra by hand: `make mod` rebases it on
   `m.ExternalContractModel`, the preset that owns strict validation with
   ignored foreign keys.
+metadata:
+  enforce: [ENFORCE-109]
 ---
 id: rewire-relaxed-frozen-contract-to-external-contract
 language: python
@@ -54,6 +56,8 @@ fix: |-
 message: >-
   Strict frozen contract `$NAME` relaxes extra by hand: `make mod` rebases it on
   `m.ExternalContractModel`, whose frozen strict config already covers it.
+metadata:
+  enforce: [ENFORCE-109]
 ---
 id: rewire-relaxed-configured-contract-to-external-contract
 language: python

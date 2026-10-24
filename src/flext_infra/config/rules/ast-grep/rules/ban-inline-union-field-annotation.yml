@@ -69,3 +69,5 @@ message: >-
   Inline union with more than two arms in a model field: declare it once as a
   named `t.*` alias in typings.py and annotate the field with that alias.
   Detection only: the alias name and its typings owner are a design decision.
+metadata:
+  enforce: [ENFORCE-104]

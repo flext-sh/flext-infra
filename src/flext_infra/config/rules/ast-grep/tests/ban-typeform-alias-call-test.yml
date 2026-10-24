@@ -1,0 +1,13 @@
+id: ban-typeform-alias-call
+valid:
+  - |
+    def read(target: t.TypeForm[TValue]) -> TValue: ...
+  - |
+    adapter = u.type_adapter(TypeForm(t.JsonDict))
+  - |
+    factory = u.empty(contract_factory=lambda: TypeForm(t.SequenceOf[Item]))
+invalid:
+  - |
+    adapter = u.type_adapter(t.TypeForm(t.JsonDict))
+  - |
+    factory = u.empty(contract_factory=lambda: t.TypeForm(t.SequenceOf[Item]))

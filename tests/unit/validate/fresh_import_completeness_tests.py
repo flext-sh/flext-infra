@@ -60,3 +60,40 @@ class TestsFlextInfraFreshImportCompleteness:
             ).build_report(packages=("flext_completeness_fixture",)),
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
+
+    @staticmethod
+    def test_field_needing_arbitrary_types_fails(
+        fixture_tree: Callable[[str], Path],
+        suite_runtime_root: Path,
+    ) -> None:
+        """A field type without a schema fails, naming the model and field."""
+        scenarios = fixture_tree("pydantic-arbitrary")
+        report = tm.ok(
+            FlextInfraValidateFreshImport(
+                repository_root=scenarios / "red",
+                runtime_root=suite_runtime_root,
+            ).build_report(packages=("flext_arbitrary_fixture",)),
+        )
+        tm.fail(report.passed)
+        violation = report.violations[0]
+        tm.that(violation, has="PydanticSchemaGenerationError")
+        tm.that(violation, has="threading.Thread")
+        tm.that(
+            violation,
+            has="flext_arbitrary_fixture.FixtureArbitrary.worker needs",
+        )
+
+    @staticmethod
+    def test_field_declared_through_port_passes(
+        fixture_tree: Callable[[str], Path],
+        suite_runtime_root: Path,
+    ) -> None:
+        """The same field declared through ``t.Port`` builds without the flag."""
+        scenarios = fixture_tree("pydantic-arbitrary")
+        report = tm.ok(
+            FlextInfraValidateFreshImport(
+                repository_root=scenarios / "green",
+                runtime_root=suite_runtime_root,
+            ).build_report(packages=("flext_arbitrary_fixture",)),
+        )
+        tm.that(report.passed, eq=True, msg=str(report.violations))

@@ -25,6 +25,51 @@ class FlextInfraModelsDepsToolConfig(
 ):
     """Models for tool configuration loaded from YAML."""
 
+    class ModStageConfig(m.ArbitraryTypesModel):
+        """One ordered stage of the native ``make mod`` cascade."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Stage identity")]
+        kind: Annotated[
+            c.Infra.ModStageKind,
+            m.Field(description="Native ast-grep apply or Ruff import repair"),
+        ]
+        shapes: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Generated rule shapes (id prefix before '--') a native "
+                    "stage owns; empty for the catalog stage, which owns "
+                    "every other native rule"
+                ),
+            ),
+        ] = ()
+        select: Annotated[
+            t.StrTuple,
+            m.Field(description="Ruff rule codes the ruff stage repairs"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_kind_fields(self) -> Self:
+            """Keep each stage's fields to its kind.
+
+            Returns:
+                The validated stage.
+
+            Raises:
+                ValueError: If a native stage selects Ruff codes, or a ruff
+                    stage claims shapes or selects nothing.
+
+            """
+            if self.kind is c.Infra.ModStageKind.NATIVE and self.select:
+                msg = f"native stage {self.name} cannot select Ruff codes"
+                raise ValueError(msg)
+            if self.kind is c.Infra.ModStageKind.RUFF and (
+                self.shapes or not self.select
+            ):
+                msg = f"ruff stage {self.name} requires select and no shapes"
+                raise ValueError(msg)
+            return self
+
     class ModPhasesConfig(m.ArbitraryTypesModel):
         """Component selection for ``make mod`` phases (toggles are data)."""
 
@@ -36,6 +81,63 @@ class FlextInfraModelsDepsToolConfig(
                 description=("Run the rope-native import-alignment phase of make mod."),
             ),
         ] = True
+        pass_cap: Annotated[
+            int,
+            m.Field(
+                alias="pass-cap",
+                gt=0,
+                description=(
+                    "Most passes of the native stage sequence before the "
+                    "cascade must reach its fixed point; reaching it fails."
+                ),
+            ),
+        ]
+        stages: Annotated[
+            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ModStageConfig],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Ordered native cascade stages of make mod: ast-grep "
+                    "stages apply natively, the ruff stage repairs imports."
+                ),
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_stages(self) -> Self:
+            """Require unique stage names, one catalog stage and one ruff stage.
+
+            Returns:
+                The validated phases.
+
+            Raises:
+                ValueError: If a stage name repeats, the catalog or ruff stage
+                    is not declared exactly once, or a shape is claimed twice.
+
+            """
+            names = [stage.name for stage in self.stages]
+            if len(set(names)) != len(names):
+                msg = "make mod stage names must be unique"
+                raise ValueError(msg)
+            native = [
+                stage
+                for stage in self.stages
+                if stage.kind is c.Infra.ModStageKind.NATIVE
+            ]
+            if sum(not stage.shapes for stage in native) != 1:
+                msg = "make mod requires exactly one native catalog stage"
+                raise ValueError(msg)
+            shapes = [shape for stage in native for shape in stage.shapes]
+            if len(set(shapes)) != len(shapes):
+                msg = "make mod stage shapes must be claimed once"
+                raise ValueError(msg)
+            if (
+                sum(stage.kind is c.Infra.ModStageKind.RUFF for stage in self.stages)
+                != 1
+            ):
+                msg = "make mod requires exactly one ruff import-fix stage"
+                raise ValueError(msg)
+            return self
 
     class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
@@ -685,6 +787,16 @@ class FlextInfraModelsDepsToolConfig(
                 description=(
                     "Repair text appended to each qlty finding, keyed by the "
                     "qlty check name (the SARIF ruleId suffix)."
+                ),
+            ),
+        ]
+        enforce: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.Infra.EnforcementIds],
+            m.Field(
+                description=(
+                    "qlty check name -> enforcement law ids the smells gate "
+                    "claims for that check; active only for a check with "
+                    "declared repair text."
                 ),
             ),
         ]

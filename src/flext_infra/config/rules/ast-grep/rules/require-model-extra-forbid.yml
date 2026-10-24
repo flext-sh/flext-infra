@@ -54,3 +54,5 @@ message: >-
   Model `$NAME` extends the raw pydantic base without an extra policy: inherit
   an `m.*` preset or declare `extra="forbid"`.
   Detection only: forbidding extra rejects payloads accepted today.
+metadata:
+  enforce: [ENFORCE-108]

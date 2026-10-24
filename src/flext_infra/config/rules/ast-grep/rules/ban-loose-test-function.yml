@@ -25,3 +25,5 @@ rule:
           kind: module
 message: >-
   Module-level test function: nest it inside the module's single test class.
+metadata:
+  enforce: [ENFORCE-098]

@@ -14,6 +14,8 @@ from functools import cache
 from pathlib import Path
 from textwrap import indent
 
+from typing_extensions import TypeForm
+
 from flext_infra import config, u, validate, workspace
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -287,7 +289,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             )
             options["plugins"] = [
                 *u.Infra.native_tool_setting(
-                    tooling, "mypy", "plugins", t.TypeForm(t.StrSequence)
+                    tooling, "mypy", "plugins", TypeForm(t.StrSequence)
                 ),
                 str(plugin),
             ]

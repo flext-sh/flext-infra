@@ -131,6 +131,15 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     ``make fix`` repair policy, and whether the checker accepts one
     declared file via the file-gate verbs.
     """
+    GATE_ENFORCES: ClassVar[t.MappingKV[str, t.StrTuple]] = MappingProxyType({
+        "markdown-code": ("ENFORCE-021",),
+        "pyrefly": ("ENFORCE-053",),
+    })
+    """Enforcement law ids a registered gate claims as a whole.
+
+    The enforcement catalog derives from these claims beside the other owners'
+    declarations; a claim by an unregistered gate is inactive.
+    """
     GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConstantsConfig.GateKind]] = (
         MappingProxyType({
             gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
@@ -251,23 +260,13 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
 
     @unique
     class EnforcementEngine(StrEnum):
-        """Owner engine named by a static enforcement catalog rule reference."""
+        """Owner engine whose declaration claims an enforcement law id."""
 
         AST_GREP = "ast-grep"
         RUFF = "ruff"
         GATE = "gate"
         CODEGEN = "codegen"
 
-    @unique
-    class EnforcementSeverity(StrEnum):
-        """Severity declared by a static enforcement catalog row."""
-
-        CRITICAL = "CRITICAL"
-        HIGH = "HIGH"
-        MEDIUM = "MEDIUM"
-        LOW = "LOW"
-
-    ENFORCEMENT_RULE_ID_PATTERN: ClassVar[str] = r"^ENFORCE-\d{3}$"
     ACCESSOR_PREFIX_UTIL_ID: ClassVar[str] = "accessor-forbidden-prefix"
     "Generated ast-grep util projecting tooling accessor-policy prefixes."
     RUFF_SELECT_ALL: ClassVar[str] = "ALL"

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import c, p, t
 from flext_infra._models import (
@@ -152,24 +153,28 @@ class FlextInfraModelsWorkspace:
             description="Physical source relocation pairs for this observation",
         )
         origins: t.MutableMappingKV[str, Path] = m.Field(
-            default_factory=u.empty(t.MutableMappingKV[str, Path]),
+            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, Path])),
             description="Native module source elections observed during this capture",
         )
         module_anchors: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
-            default_factory=u.empty(t.MutableMappingKV[str, t.Infra.NativeOperand]),
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+            ),
             description="Strong native identities of elected module anchors",
         )
         sources: t.Infra.MutableSetOf[t.Triple[str, str, str]] = m.Field(
-            default_factory=u.empty(t.Infra.MutableSetOf[t.Triple[str, str, str]]),
+            default_factory=u.empty(
+                TypeForm(t.Infra.MutableSetOf[t.Triple[str, str, str]])
+            ),
             description="Observed suppliers and physical declaration sources",
         )
         evidence: t.MutableSequenceOf[
             FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
             default_factory=u.empty(
-                contract_factory=lambda: t.MutableSequenceOf[
-                    FlextInfraModelsWorkspace.NativeBindingEvidence
-                ],
+                contract_factory=lambda: TypeForm(
+                    t.MutableSequenceOf[FlextInfraModelsWorkspace.NativeBindingEvidence]
+                ),
             ),
             validate_default=True,
             description="Ordered native binding and executable observations",
@@ -178,9 +183,11 @@ class FlextInfraModelsWorkspace:
             str, FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
             default_factory=u.empty(
-                contract_factory=lambda: t.MutableMappingKV[
-                    str, FlextInfraModelsWorkspace.NativeBindingEvidence
-                ]
+                contract_factory=lambda: TypeForm(
+                    t.MutableMappingKV[
+                        str, FlextInfraModelsWorkspace.NativeBindingEvidence
+                    ]
+                )
             ),
             description="Invocation-local references to the first binding evidence",
         )
@@ -188,13 +195,15 @@ class FlextInfraModelsWorkspace:
             int, t.Triple[str, str, t.Port[p.AttributeProbe] | None]
         ] = m.Field(
             default_factory=u.empty(
-                t.MutableMappingKV[int, t.Triple[str, str, p.AttributeProbe | None]]
+                TypeForm(
+                    t.MutableMappingKV[int, t.Triple[str, str, p.AttributeProbe | None]]
+                )
             ),
             description="Strongly retained generated function source receivers",
         )
         references: t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]]
+                TypeForm(t.MutableSequenceOf[t.Pair[str, t.Infra.NativeOperand]])
             ),
             description="Native operand registrations awaiting graph traversal",
         )
@@ -208,20 +217,22 @@ class FlextInfraModelsWorkspace:
             ]
         ] = m.Field(
             default_factory=u.empty(
-                t.MutableSequenceOf[
-                    t.Quint[
-                        str,
-                        t.Infra.NativeOperand,
-                        str,
-                        str,
-                        Literal["execution", "storage_type"],
+                TypeForm(
+                    t.MutableSequenceOf[
+                        t.Quint[
+                            str,
+                            t.Infra.NativeOperand,
+                            str,
+                            str,
+                            Literal["execution", "storage_type"],
+                        ]
                     ]
-                ]
+                )
             ),
             description="Ordered native graph work awaiting first-identity admission",
         )
         expanded_classes: t.Infra.MutableSetOf[int] = m.Field(
-            default_factory=u.empty(t.Infra.MutableSetOf[int]),
+            default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[int])),
             description="Strongly retained classes whose executable "
             "children were queued",
         )
@@ -232,7 +243,7 @@ class FlextInfraModelsWorkspace:
         )
         compiled: t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations] = m.Field(
             default_factory=u.empty(
-                t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations]
+                TypeForm(t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations])
             ),
             description="Immutable class compiler facts within this observation",
         )
@@ -262,16 +273,16 @@ class FlextInfraModelsWorkspace:
         )
         visited: t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]] = m.Field(
             default_factory=u.empty(
-                t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]]
+                TypeForm(t.MutableMappingKV[int, t.Pair[t.Infra.NativeOperand, str]])
             ),
             description="Strong exact identities in original first-visit order",
         )
         edges: t.MutableMappingKV[str, str] = m.Field(
-            default_factory=u.empty(t.MutableMappingKV[str, str]),
+            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, str])),
             description="Already observed edge-to-native-node identities",
         )
         absent_edges: t.Infra.MutableSetOf[str] = m.Field(
-            default_factory=u.empty(t.Infra.MutableSetOf[str]),
+            default_factory=u.empty(TypeForm(t.Infra.MutableSetOf[str])),
             description="Actual lexical bindings observed as absent",
         )
 
@@ -293,11 +304,15 @@ class FlextInfraModelsWorkspace:
             description="Actual generated binding and receiver identities",
         )
         nonlocals: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
-            default_factory=u.empty(t.MutableMappingKV[str, t.Infra.NativeOperand]),
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+            ),
             description="Actual closure cell values in native free-variable order",
         )
         global_bindings: t.MutableMappingKV[str, t.Infra.NativeOperand] = m.Field(
-            default_factory=u.empty(t.MutableMappingKV[str, t.Infra.NativeOperand]),
+            default_factory=u.empty(
+                TypeForm(t.MutableMappingKV[str, t.Infra.NativeOperand])
+            ),
             description="Actual globals selected by native LOAD_GLOBAL instructions",
         )
         operational_globals: frozenset[str] = m.Field(
@@ -801,10 +816,12 @@ class FlextInfraModelsWorkspace:
             ),
         ] = m.Field(
             default_factory=u.empty(
-                contract_factory=lambda: t.MappingKV[
-                    str,
-                    t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
-                ],
+                contract_factory=lambda: TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                    ]
+                ),
             ),
             validate_default=True,
         )
@@ -818,10 +835,12 @@ class FlextInfraModelsWorkspace:
             ),
         ] = m.Field(
             default_factory=u.empty(
-                contract_factory=lambda: t.MappingKV[
-                    str,
-                    t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
-                ],
+                contract_factory=lambda: TypeForm(
+                    t.MappingKV[
+                        str,
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                    ]
+                ),
             ),
             validate_default=True,
         )

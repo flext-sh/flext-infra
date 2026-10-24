@@ -24,6 +24,7 @@ ignores:
   - "**/__version__.py"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-005]
   relocation: protocol
   context:
     NAME:

@@ -53,3 +53,5 @@ message: >-
   Model field `$NAME` defaults to a shared mutable literal: use
   `m.Field(default_factory=...)` or an immutable default.
   Detection only: the default and its annotation change type together.
+metadata:
+  enforce: [ENFORCE-106]

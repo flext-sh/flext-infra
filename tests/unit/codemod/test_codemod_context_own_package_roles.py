@@ -556,7 +556,7 @@ class TestsFlextInfraCodemodContextOwnPackageRoles:
 
     @staticmethod
     def test_pytest_plugin_modules_are_layer_zero() -> None:
-        """Installed pytest11 plugins are layer zero; ordinary modules stay consumers."""
+        """Installed pytest11 plugins are root; ordinary modules stay consumers."""
         plugins = u.Infra.pytest_plugin_modules()
         tm.that(plugins, empty=False)
         for module in plugins:

@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
@@ -132,7 +133,7 @@ class TestsFlextInfraRuffProjectPolicy:
                 *owners,
                 *lint.ruling_disabled_rules,
                 *u.Infra.native_tool_setting(
-                    policy, "ruff.lint", "ignore", t.TypeForm(t.StrSequence)
+                    policy, "ruff.lint", "ignore", TypeForm(t.StrSequence)
                 ),
             }),
         )
@@ -140,7 +141,7 @@ class TestsFlextInfraRuffProjectPolicy:
             tm.that(
                 actual[key],
                 eq=u.Infra.native_tool_setting(
-                    policy, "ruff.lint", key, t.TypeForm(t.StrSequence)
+                    policy, "ruff.lint", key, TypeForm(t.StrSequence)
                 ),
             )
         tm.that(
@@ -185,14 +186,14 @@ class TestsFlextInfraRuffProjectPolicy:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    t.TypeForm(t.StrSequence),
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )
         tm.that(
             lint["select"],
             eq=u.Infra.native_tool_setting(
-                config.Infra.tooling, "ruff.lint", "select", t.TypeForm(t.StrSequence)
+                config.Infra.tooling, "ruff.lint", "select", TypeForm(t.StrSequence)
             ),
         )
         tm.that(

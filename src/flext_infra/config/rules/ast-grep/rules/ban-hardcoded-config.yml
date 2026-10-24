@@ -66,3 +66,5 @@ ignores:
   - "**/templates/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
+metadata:
+  enforce: [ENFORCE-097]

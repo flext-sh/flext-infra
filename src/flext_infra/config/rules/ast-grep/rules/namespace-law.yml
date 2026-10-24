@@ -220,6 +220,8 @@ message: >-
   live at module level in every Python file of the repository; the sole
   exceptions are a guarded executable `main()`, generator-emitted dunders and,
   in conftest.py and tests/fixtures/** only, pytest fixtures and hooks.
+metadata:
+  enforce: [ENFORCE-001]
 ---
 # ADR-028 p.6 tests-tier delta: tests follow the same FLEXT law as src, with
 # one extra freedom -- conftest.py and tests/fixtures/** may declare pytest
@@ -281,6 +283,7 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-002]
   relocation: package-root-import
   context:
     MODULE:
@@ -342,6 +345,7 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-003]
   relocation: own-package-import
   context:
     MODULE:
@@ -400,6 +404,7 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-080]
   relocation: own-package-import
   context:
     MODULE:
@@ -468,6 +473,7 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-015]
   context:
     MODULE:
       - not: own-package
@@ -547,6 +553,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-007]
   context:
     UNDECLARED:
       - is: runtime-alias
@@ -719,6 +726,7 @@ ignores:
   - "**/conftest.py"
   - "**/tests/**"
 metadata:
+  enforce: [ENFORCE-011, ENFORCE-022]
   relocation: facade-class
   context:
     FAMILY:

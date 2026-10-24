@@ -35,3 +35,5 @@ message: >-
   `except $ERROR` around an import turns a missing dependency into an
   alternate path: declare the dependency and let the import fail.
   Detection only: the alternate path's behaviour is removed by its owner.
+metadata:
+  enforce: [ENFORCE-015]

@@ -208,6 +208,15 @@ class FlextInfraConfigModelsMake(
                 description="Execution contexts consuming this single workflow row",
             ),
         ]
+        requires: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Earlier workflow verbs whose green result admits this step "
+                    "in every one of its contexts"
+                ),
+            ),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_contexts(self) -> Self:
@@ -994,6 +1003,31 @@ class FlextInfraConfigModelsMake(
             ):
                 msg = (
                     "CI requires setup followed by the check and complete tests owners"
+                )
+                raise ValueError(msg)
+            for index, step in enumerate(self.workflow):
+                earlier = {
+                    prior.verb: set(prior.contexts) for prior in self.workflow[:index]
+                }
+                for required in step.requires:
+                    if required not in earlier:
+                        msg = (
+                            f"make workflow step {step.verb} requires {required}, "
+                            "which must precede it"
+                        )
+                        raise ValueError(msg)
+                    if not set(step.contexts) <= earlier[required]:
+                        msg = (
+                            f"make workflow step {step.verb} requires {required} "
+                            "in every one of its contexts"
+                        )
+                        raise ValueError(msg)
+            tests = next(
+                step for step in self.workflow if step.verb == c.Infra.VERB_TEST
+            )
+            if c.Infra.VERB_CHECK not in tests.requires:
+                msg = (
+                    "tests run only on a green check: the tests step must require check"
                 )
                 raise ValueError(msg)
             hook = tuple(

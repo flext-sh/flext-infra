@@ -1010,6 +1010,9 @@ class FlextInfraUtilitiesCodemodRules(
             "consumers_of": declared_metadata.get(
                 c.Infra.CODEMOD_RULE_CONSUMERS_OF_KEY,
             ),
+            "enforce": declared_metadata.get(c.Infra.CODEMOD_RULE_ENFORCE_KEY, []),
+            "disabled": parsed_rule.get(c.Infra.CODEMOD_RULE_SEVERITY_KEY)
+            == c.Infra.CODEMOD_RULE_SEVERITY_OFF,
             "relocation": declared_metadata.get(
                 c.Infra.CODEMOD_RULE_RELOCATION_KEY,
             ),

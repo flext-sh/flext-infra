@@ -224,26 +224,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
         """
         del ctx
-        source_lines = (
-            line for line in result.stderr.splitlines() if "Found source:" in line
-        )
-        sources: list[Path] = []
-        for line in source_lines:
-            match = re.search(r"Found source:\s+BuildSource\(path=(.+?), module=", line)
-            if match is None:
-                msg = f"Malformed Mypy native source entry: {line}"
-                raise ValueError(msg)
-            raw_path = ast.literal_eval(match.group(1))
-            if not isinstance(raw_path, str):
-                msg = f"Mypy native source path is not a string: {line}"
-                raise TypeError(msg)
-            sources.append((project_dir / raw_path).resolve())
-        if not sources:
-            msg = "Mypy native build trace contains no selected sources"
-            raise ValueError(msg)
-        if not any("Build finished in " in line for line in result.stderr.splitlines()):
-            msg = "Mypy native build trace lacks completion evidence"
-            raise ValueError(msg)
+        sources = u.Infra.mypy_build_sources(result.stderr, project_dir)
         submitted = tuple((project_dir / target).resolve() for target in targets)
         for target in submitted:
             if not any(

@@ -22,6 +22,7 @@ id: ban-compat-alias
 language: Python
 severity: error
 metadata:
+  enforce: [ENFORCE-010, ENFORCE-066]
   context:
     OLD:
       not: module-export

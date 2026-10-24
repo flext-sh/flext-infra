@@ -28,3 +28,5 @@ message: >-
   Model field `$NAME` has no description: declare it through
   `m.Field(description="...")`.
   Detection only: the description is authored knowledge no rewrite can derive.
+metadata:
+  enforce: [ENFORCE-103]

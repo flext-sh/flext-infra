@@ -22,6 +22,8 @@ fix: ""
 message: >-
   `pragma: no cover` hides code from coverage: `make mod` deletes it; test the
   code through its public behaviour or delete it.
+metadata:
+  enforce: [ENFORCE-017]
 ---
 id: ban-pragma-no-cover-mixed-comment
 language: python
@@ -43,3 +45,5 @@ message: >-
   `pragma: no cover` hides code from coverage. Detection only: the comment also
   carries the author's own text, which no rewrite may delete; remove the pragma
   and test the code or delete it.
+metadata:
+  enforce: [ENFORCE-017]

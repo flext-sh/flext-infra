@@ -30,3 +30,5 @@ message: >-
   A value object switches `frozen` off: value objects are immutable; inherit a
   mutable preset if the model is not a value object.
   Detection only: consumers that mutate the instance break when it freezes.
+metadata:
+  enforce: [ENFORCE-110]

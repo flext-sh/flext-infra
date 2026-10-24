@@ -321,6 +321,52 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
+    def test_tests_workflow_step_must_require_check() -> None:
+        """Tests run only on a green check: the requirement cannot be dropped."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["workflow"] = [
+            {**row, "requires": ()} if row["verb"] == c.Infra.VERB_TEST else row
+            for row in payload["workflow"]
+        ]
+        with pytest.raises(
+            e.PydanticValidationError, match="tests run only on a green check"
+        ):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_ci_step_runs_only_after_its_required_steps(
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Each CI approval step is admitted only by its required steps' success."""
+        make = config.Infra.codegen.make
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="workflow-consumer",
+            make_profile=profile,
+            repository_branch="integration/workflow-consumer",
+            ci_trigger_branches=(),
+        ).model_copy(update={"make": make})
+        steps = {
+            str(step.get("id", "")): str(step.get("if", ""))
+            for step in u.CodegenTestSupport.Ci.ci_job_steps(
+                tm.ok(
+                    u.Cli.template_render(
+                        TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
+                        spec,
+                    )
+                )
+            )
+        }
+        required = [row for row in make.workflow if "ci" in row.contexts]
+        tm.that([row for row in required if row.requires], empty=False)
+        for row in required:
+            for prerequisite in row.requires:
+                tm.that(
+                    steps[f"approval-{row.verb}"],
+                    has=f"steps.approval-{prerequisite}.outcome == 'success'",
+                )
+
+    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("context", ["ci", "local", "all"])
     def test_make_check_keeps_a_missing_runtime_fatal(

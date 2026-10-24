@@ -41,3 +41,5 @@ message: >-
   A read-only model field defaults through raw `$KIND`: use
   `m.Field(default_factory=u.empty(TypeForm(<field annotation>)))`.
   Detection only: the empty value is typed by the field annotation and needs the u and TypeForm bindings.
+metadata:
+  enforce: [ENFORCE-114]

@@ -93,3 +93,5 @@ message: >-
   constructors and monkeypatch attribute/item replacement hide the real owner.
   Delete the test and re-cover the behaviour through the public facade with
   real typed fixtures.
+metadata:
+  enforce: [ENFORCE-019]

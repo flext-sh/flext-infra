@@ -51,6 +51,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The constants producer tree never binds its own package's c letter from
@@ -99,6 +100,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The typings producer tree never binds its own package's t letter from the
@@ -147,6 +149,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The models producer tree never binds its own package's m letter from the
@@ -195,6 +198,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The protocols producer tree never binds its own package's p letter from
@@ -243,6 +247,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-051]
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
     The utilities producer tree never binds its own package's u letter from

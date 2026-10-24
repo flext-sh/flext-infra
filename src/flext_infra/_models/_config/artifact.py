@@ -406,12 +406,10 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             ),
         ] = m.Field(
             default_factory=flext_core.u.empty(
-                t.TypeForm(
-                    Mapping[
-                        t.NonEmptyStr,
-                        Mapping[Literal["config", "settings"], t.NonEmptyStr],
-                    ]
-                )
+                Mapping[
+                    t.NonEmptyStr,
+                    Mapping[Literal["config", "settings"], t.NonEmptyStr],
+                ]
             ),
             validate_default=True,
         )

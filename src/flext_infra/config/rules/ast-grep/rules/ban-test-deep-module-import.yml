@@ -21,3 +21,5 @@ message: |
   `from tests import ...`, `from flext_tests import ...`, and the sanctioned
   lazy bootstrap module `flext_core.lazy`.
   See: flext.canonical_type_ownership, flext.test_import_law
+metadata:
+  enforce: [ENFORCE-055]

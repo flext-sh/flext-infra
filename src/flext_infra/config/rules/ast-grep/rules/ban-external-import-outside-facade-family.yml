@@ -17,6 +17,7 @@ severity: error
 files:
   - "**/*.py"
 metadata:
+  enforce: [ENFORCE-070]
   context:
     MODULE:
       - not: stdlib-module

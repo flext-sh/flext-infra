@@ -33,3 +33,5 @@ message: >-
   Model field `$NAME` is `str | None` with an empty-string default: annotate
   `str` with `""`, or default to `None`.
   Detection only: explicit None callers and None checks change meaning.
+metadata:
+  enforce: [ENFORCE-107]

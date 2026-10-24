@@ -859,7 +859,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tm.that(
                 makefile,
                 has=(
-                    '$(PROJECT_FLEXT_INFRA) check run --repository-root '
+                    "$(PROJECT_FLEXT_INFRA) check run --repository-root "
                     f'"$(PROJECT_ROOT)" --gate-set {gate_set.value} --apply'
                 ),
             )

@@ -49,3 +49,5 @@ message: >-
   Accessor method `$NAME`: rename it to a domain verb or expose a field or
   computed field.
   Detection only: a new name is a domain decision; proven renames run through the make mod accessor phase from config/rules/rope/accessor-migrations.yaml.
+metadata:
+  enforce: [ENFORCE-113]

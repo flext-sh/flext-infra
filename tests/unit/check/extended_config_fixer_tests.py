@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from typing_extensions import TypeForm
+
 from flext_infra import config
 from flext_infra.deps import FlextInfraConfigFixer, FlextInfraExtraPathsManager
 from tests import c, t, tm, u
@@ -233,7 +235,7 @@ class TestsFlextInfraExtendedConfigFixer:
                             config.Infra.tooling,
                             c.Infra.PYREFLY,
                             c.Infra.PROJECT_EXCLUDES,
-                            t.TypeForm(t.StrSequence),
+                            TypeForm(t.StrSequence),
                         ),
                     )
                 ),

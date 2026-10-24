@@ -58,6 +58,8 @@ fix: |-
 message: >-
   Protocol is not runtime-checkable: `make mod` decorates it with
   `@runtime_checkable`.
+metadata:
+  enforce: [ENFORCE-111]
 ---
 id: require-runtime-checkable-protocol-missing-import
 language: python
@@ -112,3 +114,5 @@ message: >-
   Protocol `$NAME` is not runtime-checkable. Detection only: the module does
   not import `runtime_checkable` from typing, so the decorator would name an
   undefined symbol; import it and `make mod` adds the decorator.
+metadata:
+  enforce: [ENFORCE-111]

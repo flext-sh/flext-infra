@@ -84,6 +84,14 @@ class FlextInfraConstantsSharedInfra:
         r'([A-Za-z0-9][A-Za-z0-9_.-]*)["`]?',
         re.IGNORECASE,
     )
+    MYPY_BUILD_SOURCE_MARKER: ClassVar[str] = "Found source:"
+    "Mypy verbose trace marker of one selected build source."
+    MYPY_BUILD_SOURCE_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"Found source:\s+BuildSource\(path=(.+?), module=",
+    )
+    "Mypy verbose build source entry, capturing the path's Python literal."
+    MYPY_BUILD_FINISHED_MARKER: ClassVar[str] = "Build finished in "
+    "Mypy verbose trace marker proving the build completed."
     INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---

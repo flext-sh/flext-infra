@@ -49,3 +49,5 @@ rule:
 message: >-
   Constant `$NAME` is not UPPER_SNAKE_CASE: rename it to its upper-case form.
   Detection only: the rename rewires every consumer through a Rope rename.
+metadata:
+  enforce: [ENFORCE-100]

@@ -251,6 +251,18 @@ class FlextInfraTypesBase:
     projection. Rule ownership never permits a blanket mask.
     """
 
+    type EnforcementId = Annotated[
+        str,
+        t.StringConstraints(pattern=r"^ENFORCE-\d{3}$"),
+    ]
+    "Stable identity of one enforcement law (ENFORCE-NNN)."
+    type EnforcementIds = t.SequenceOf[EnforcementId]
+    """Law ids one owner declaration claims, in declared order.
+
+    Order and repetition are kept so the derived catalog can reject a claim
+    an owner repeats.
+    """
+
     type LifecycleContext = Literal["local", "ci"]
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]

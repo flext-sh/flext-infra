@@ -41,3 +41,5 @@ message: >-
   Constant `$NAME` binds a mutable value: use a tuple, a frozenset or a
   MappingProxyType.
   Detection only: the annotation and every mutating consumer change with the value type.
+metadata:
+  enforce: [ENFORCE-101]

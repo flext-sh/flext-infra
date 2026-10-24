@@ -24,3 +24,5 @@ message: >-
   Private-attribute probe: getattr/hasattr/setattr on a single-underscore
   name bypasses the owner facade; declare the surface publicly or go through
   the owning module (ENFORCE-044).
+metadata:
+  enforce: [ENFORCE-044]

@@ -182,6 +182,15 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ] = ()
+        enforce: Annotated[
+            t.MappingKV[t.Infra.RuffRule, t.Infra.EnforcementIds],
+            m.Field(
+                description=(
+                    "Ruff rule name -> enforcement law ids the rule claims; a "
+                    "claim is active only while the lint selection enables it."
+                ),
+            ),
+        ]
         fix_recipes: Annotated[
             t.MappingKV[t.Infra.RuffRule, c.Infra.LintFixRecipe],
             m.Field(

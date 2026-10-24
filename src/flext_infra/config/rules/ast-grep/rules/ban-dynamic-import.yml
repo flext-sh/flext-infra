@@ -44,3 +44,5 @@ rule:
 message: >-
   Dynamic import: declare the dependency as a module-level import so the
   import law and the module graph can see it.
+metadata:
+  enforce: [ENFORCE-015]

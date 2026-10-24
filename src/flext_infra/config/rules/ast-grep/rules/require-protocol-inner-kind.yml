@@ -44,3 +44,5 @@ message: >-
   `$NAME` nests concrete data in a protocol tree: keep only Protocols,
   namespaces and ABCs here and move the declaration to its owning family.
   Detection only: the move rewires every consumer to another family.
+metadata:
+  enforce: [ENFORCE-112]

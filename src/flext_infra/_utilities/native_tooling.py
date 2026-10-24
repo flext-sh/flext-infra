@@ -13,6 +13,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from flext_cli import u
+from typing_extensions import TypeForm
 
 from flext_infra import m, p, r, t
 
@@ -172,7 +173,7 @@ class FlextInfraUtilitiesNativeTooling:
 
         """
         return FlextInfraUtilitiesNativeTooling.native_tool_setting(
-            document, table, key, t.TypeForm(t.StrSequence)
+            document, table, key, TypeForm(t.StrSequence)
         )
 
     @staticmethod

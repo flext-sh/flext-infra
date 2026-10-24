@@ -71,6 +71,7 @@ constraints:
   NAME:
     regex: "^[A-Za-z][A-Za-z0-9_]*$"
 metadata:
+  enforce: [ENFORCE-022, ENFORCE-079]
   context:
     NAME:
       is: foreign-facade-member

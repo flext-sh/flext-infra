@@ -34,6 +34,10 @@ class FlextInfraConstantsRefactor:
         / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
+    MOD_NATIVE_STAGE_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codemod" / "native"
+    )
+    "Per-stage staged sgconfig roots a native ``ast-grep scan -c`` reproduces."
     MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 4
     "Exact structured mod evidence schema version."
     MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
@@ -128,6 +132,15 @@ class FlextInfraConstantsRefactor:
 
         SCAN = "scan"
         APPLY = "apply"
+
+    @unique
+    class ModStageKind(StrEnum):
+        """Executor of one ordered stage of the native make mod cascade."""
+
+        NATIVE = "native"
+        "ast-grep applies the stage's rules with its own --update-all."
+        RUFF = "ruff"
+        "Ruff repairs the selected import codes on the changed sources."
 
     @unique
     class ModScanFindingClass(StrEnum):
@@ -472,7 +485,6 @@ class FlextInfraConstantsRefactor:
         CODEMOD_ROPE_RULES_RELPATH / "accessor-migrations.yaml"
     )
     # Static enforcement catalog: one row per enforcement law and its owners.
-    ENFORCEMENT_CATALOG_RELPATH: ClassVar[Path] = CODEMOD_RULES_RELPATH / "catalog.yaml"
     # Rope restructure argument that binds a capture to one qualified identity.
     ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     # Rope restructure argument that types a capture by one builtin class:
@@ -518,6 +530,12 @@ class FlextInfraConstantsRefactor:
     # under `metadata.consumers_of`; a plan whose runtime closure lacks that
     # distribution (the owner itself and its own dependencies) drops it.
     CODEMOD_RULE_CONSUMERS_OF_KEY: ClassVar[str] = "consumers_of"
+    # A rule that enforces a catalog law names its stable law ids under
+    # `metadata.enforce`; the enforcement catalog is derived from these claims.
+    CODEMOD_RULE_ENFORCE_KEY: ClassVar[str] = "enforce"
+    # ast-grep's own severity that switches a rule off; its claims are inactive.
+    CODEMOD_RULE_SEVERITY_KEY: ClassVar[str] = "severity"
+    CODEMOD_RULE_SEVERITY_OFF: ClassVar[str] = "off"
     # A detection-only rule names the rope relocation that repairs it under
     # `metadata.relocation` and captures the relocated symbol as `$NAME`.
     CODEMOD_RULE_RELOCATION_KEY: ClassVar[str] = "relocation"

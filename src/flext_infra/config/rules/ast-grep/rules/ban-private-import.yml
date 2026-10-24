@@ -17,6 +17,7 @@ id: ban-private-import
 language: Python
 severity: error
 metadata:
+  enforce: [ENFORCE-004]
   context:
     MOD:
       not: own-package

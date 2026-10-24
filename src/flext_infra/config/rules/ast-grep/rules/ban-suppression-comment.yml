@@ -11,6 +11,8 @@ rule:
   regex: "#\\s*type:\\s*ignore"
 message: >-
   `# type: ignore` hides a typing defect: fix the contract it suppresses.
+metadata:
+  enforce: [ENFORCE-016]
 ---
 id: ban-noqa-comment
 language: python
@@ -22,3 +24,5 @@ rule:
   regex: "#\\s*noqa\\b"
 message: >-
   `# noqa` hides a lint defect: fix the code it suppresses.
+metadata:
+  enforce: [ENFORCE-017]

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import check, codegen, config, u
 from tests import TestsFlextInfraUtilitiesTomlMixin, c, m, t
 
@@ -61,7 +63,7 @@ class TestsFlextInfraUtilitiesConform:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    t.TypeForm(t.StrSequence),
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )

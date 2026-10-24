@@ -206,6 +206,19 @@ class FlextInfraModelsRefactorGrep:
                 ),
             ),
         ] = None
+        enforce: Annotated[
+            t.Infra.EnforcementIds,
+            m.Field(
+                description=(
+                    "Enforcement law ids the rule claims under its metadata; "
+                    "empty when the rule enforces no catalog law"
+                ),
+            ),
+        ] = ()
+        disabled: Annotated[
+            bool,
+            m.Field(description="Whether ast-grep's own severity switches it off"),
+        ] = False
         relocation: Annotated[
             c.Infra.CodemodRelocation | None,
             m.Field(

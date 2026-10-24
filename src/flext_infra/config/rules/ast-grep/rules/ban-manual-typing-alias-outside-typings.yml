@@ -19,6 +19,7 @@ ignores:
   - "**/typings/**"
   - "**/_typings/**"
 metadata:
+  enforce: [ENFORCE-009]
   relocation: typing-alias
 # A module-private declaration stays where it is: the relocation owner
 # (namespace_moves) never promotes underscore-prefixed aliases to the shared

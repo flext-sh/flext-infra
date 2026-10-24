@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
@@ -75,7 +76,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 config.Infra.tooling,
                 "ruff.lint",
                 "unfixable",
-                t.TypeForm(t.StrSequence),
+                TypeForm(t.StrSequence),
             ),
         )
         tm.that(
@@ -92,7 +93,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 config.Infra.tooling,
                 "ruff.lint",
                 "extend-safe-fixes",
-                t.TypeForm(t.StrSequence),
+                TypeForm(t.StrSequence),
             ),
         )
         tm.that(
@@ -104,7 +105,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    t.TypeForm(t.StrSequence),
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )
@@ -123,7 +124,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
                 config.Infra.tooling,
                 "ruff.lint.pylint",
                 "allow-dunder-method-names",
-                t.TypeForm(t.StrSequence),
+                TypeForm(t.StrSequence),
             ),
         )
 

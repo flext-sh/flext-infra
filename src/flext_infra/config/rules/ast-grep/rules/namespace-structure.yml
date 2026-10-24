@@ -19,6 +19,7 @@ severity: error
 files:
   - "**/*.py"
 metadata:
+  enforce: [ENFORCE-006]
   context:
     MODULE:
       is: import-cycle
@@ -60,6 +61,7 @@ severity: error
 files:
   - "**/*.py"
 metadata:
+  enforce: [ENFORCE-012]
   context:
     NAME:
       - is: facade-module
@@ -88,6 +90,7 @@ severity: error
 files:
   - "src/*/__init__.py"
 metadata:
+  enforce: [ENFORCE-014]
   context:
     NAME:
       - is: package-root-init
@@ -180,6 +183,7 @@ files:
 ignores:
   - "**/__init__.py"
 metadata:
+  enforce: [ENFORCE-015, ENFORCE-018, ENFORCE-052]
   context:
     MODULE:
       is: facade-package
@@ -476,6 +480,8 @@ rule:
               regex: "^__all__$"
 message: >-
   Module declares no class: nest its code in the module's facade class.
+metadata:
+  enforce: [ENFORCE-067]
 ---
 # A facade class extends the owner it specializes.
 id: require-facade-base
@@ -620,3 +626,5 @@ rule:
 message: >-
   Broad annotation: type through the `t` aliases and `p` protocols (no Any,
   Optional, object or dict).
+metadata:
+  enforce: [ENFORCE-016, ENFORCE-105]

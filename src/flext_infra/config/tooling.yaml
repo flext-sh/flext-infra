@@ -363,6 +363,18 @@ Infra:
           # check/repair contract. Projection verifies that owner's election.
           rule-owners:
             missing-trailing-comma: format
+          # Enforcement law ids each Ruff rule claims; the enforcement catalog
+          # is derived from these claims and the other owners' declarations.
+          enforce:
+            import-outside-top-level: [ENFORCE-015]
+            empty-type-checking-block: [ENFORCE-015]
+            any-type: [ENFORCE-016]
+            non-pep585-annotation: [ENFORCE-016]
+            non-pep604-annotation-union: [ENFORCE-016]
+            deprecated-import: [ENFORCE-016]
+            non-pep695-type-alias: [ENFORCE-016]
+            print: [ENFORCE-027]
+            magic-value-comparison: [ENFORCE-097]
           # Operator law (2026-10-05 flext-p7bxt, reiterated 2026-10-18):
           # TC001-TC004 break Pydantic model resolution — the lazy facade
           # architecture requires the runtime imports these rules would move
@@ -701,8 +713,9 @@ Infra:
       type-constructor-modules:
       - pydantic.types
     # qlty owns smell detection and its thresholds (its own defaults); this
-    # block owns only the repair text the smells gate appends to a finding,
-    # keyed by the qlty check name (the SARIF ruleId suffix).
+    # block owns the repair text the smells gate appends to a finding and the
+    # law ids it enforces, keyed by the qlty check name (the SARIF ruleId
+    # suffix).
     smells:
       fix-text:
         function-parameters: >-
@@ -720,6 +733,16 @@ Infra:
         identical-code: Extract a shared helper or canonical constant.
         similar-code: >-
           Refactor to a shared abstraction or delegate to a common helper.
+      # Enforcement law ids the smells gate claims, keyed by qlty check name.
+      enforce:
+        function-parameters: [ENFORCE-071]
+        return-statements: [ENFORCE-072]
+        nested-control-flow: [ENFORCE-073]
+        boolean-logic: [ENFORCE-074]
+        function-complexity: [ENFORCE-075]
+        file-complexity: [ENFORCE-076]
+        identical-code: [ENFORCE-077]
+        similar-code: [ENFORCE-078]
     # A public method whose name starts with one of these prefixes declares an
     # accessor; the accessor migration reports it with the replacement guidance.
     # The proven renames live in config/rules/rope/accessor-migrations.yaml.
@@ -732,3 +755,21 @@ Infra:
       phases:
         # Component toggles for make mod (rule: toggles are data, not flags).
         import-alignment: true
+        # Native cascade: every fixable rule without metadata.context applies
+        # through ast-grep's own `scan --update-all` over the project's staged
+        # sgconfig (.reports/codemod/native/<stage>/sgconfig.yml), stage by
+        # stage in this order; the sequence repeats in one staged preview
+        # until no byte changes, at most pass-cap times, then publishes once.
+        pass-cap: 8
+        stages:
+        # Generated canonical import headers settle before any catalog rule.
+        - name: header
+          kind: native
+          shapes: [import-header]
+        # Every other native rule of the elected catalog.
+        - name: catalog
+          kind: native
+        # Last: prune the imports the rewrites left unused and order them.
+        - name: import-fix
+          kind: ruff
+          select: [F401, I001]

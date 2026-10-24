@@ -35,7 +35,7 @@ class FlextInfraConfigModelsTemplates:
             Mapping[str, t.JsonMapping],
             m.Field(description="VS Code objects union-merged over project settings"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(t.TypeForm(Mapping[str, t.JsonMapping])),
+            default_factory=flext_core.u.empty(Mapping[str, t.JsonMapping]),
             validate_default=True,
         )
 
@@ -54,9 +54,7 @@ class FlextInfraConfigModelsTemplates:
             Mapping[str, t.VariadicTuple[str]],
             m.Field(description="Retired keys inside language-specific setting maps"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(
-                t.TypeForm(Mapping[str, t.VariadicTuple[str]])
-            ),
+            default_factory=flext_core.u.empty(Mapping[str, t.VariadicTuple[str]]),
             validate_default=True,
         )
 
@@ -236,6 +234,14 @@ class FlextInfraConfigModelsTemplates:
         source_closure: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Complete package-relative resource source closure"),
+        ] = ()
+        enforce: Annotated[
+            t.Infra.EnforcementIds,
+            m.Field(
+                description=(
+                    "Enforcement law ids the generated projection itself enforces"
+                ),
+            ),
         ] = ()
         requires_artifacts: Annotated[
             t.VariadicTuple[t.NonEmptyStr],

@@ -18,6 +18,7 @@ ignores:
   - "**/legacy/**"
   - "**/node_modules/**"
 metadata:
+  enforce: [ENFORCE-042]
   owner: flext-core
 rule:
   kind: class_definition

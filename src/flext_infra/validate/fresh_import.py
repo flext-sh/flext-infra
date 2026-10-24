@@ -377,8 +377,7 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         if owned:
             causes = FlextInfraValidateFreshImport._incomplete_causes
             findings = "; ".join(
-                f"{klass.__module__}.{klass.__qualname__} "
-                f"[{causes(klass, incomplete)}]"
+                f"{klass.__module__}.{klass.__qualname__} [{causes(klass, incomplete)}]"
                 for klass in owned
             )
             msg = (
@@ -386,6 +385,46 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
                 f"after import: {findings}"
             )
             raise TypeError(msg)
+        FlextInfraValidateFreshImport._require_schema_fields(package, seen)
+
+    @staticmethod
+    def _require_schema_fields(package: str, classes: t.Iterable[type]) -> None:
+        """Fail on the first field that only builds by ``arbitrary_types_allowed``.
+
+        Every model of the probed package that sets or inherits the flag has
+        each field type built without it, through the canonical type adapter.
+        A field type without a schema raises pydantic's own schema-generation
+        error, which escapes unchanged with a note naming the model and field;
+        its owner type (a ``t.Port`` or a validated ``t`` alias) is the fix.
+
+        Raises:
+            c.PydanticSchemaGenerationError: For the first such field.
+
+        """
+        models = sorted(
+            (
+                klass
+                for klass in classes
+                if klass.__module__.partition(".")[0] == package
+                and "__pydantic_fields__" in vars(klass)
+                and getattr(klass, "model_config", {}).get("arbitrary_types_allowed")
+            ),
+            key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
+        )
+        for klass in models:
+            fields: t.MappingKV[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
+            for name, info in fields.items():
+                if info.annotation is None:
+                    continue
+                try:
+                    u.type_adapter(info.annotation)
+                except c.PydanticSchemaGenerationError as exc:
+                    exc.add_note(
+                        f"{klass.__module__}.{klass.__qualname__}.{name} needs "
+                        "arbitrary_types_allowed: declare its type through t.Port "
+                        "or a validated t alias"
+                    )
+                    raise
 
     @staticmethod
     def _incomplete_causes(

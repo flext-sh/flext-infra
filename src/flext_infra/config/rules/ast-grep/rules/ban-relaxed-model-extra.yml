@@ -51,3 +51,5 @@ message: >-
   Relaxed model extra `$EXTRA` admits unvalidated keys: inherit a forbidding
   `m.*` preset, or a dynamic-payload preset when relaxed extra is the contract.
   Detection only: forbidding extra rejects payloads accepted today.
+metadata:
+  enforce: [ENFORCE-109]

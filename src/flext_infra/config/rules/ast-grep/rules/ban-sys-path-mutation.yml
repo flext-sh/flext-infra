@@ -30,3 +30,5 @@ message: >-
   Runtime `sys.path` mutation: declare the dependency in the project manifest
   and import it from the installed environment.
   Detection only: the dependency is declared in the project manifest by its owner.
+metadata:
+  enforce: [ENFORCE-015]

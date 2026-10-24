@@ -14,8 +14,8 @@ import pytest
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConformExecute
 from tests import c, tm, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 @pytest.mark.slow
