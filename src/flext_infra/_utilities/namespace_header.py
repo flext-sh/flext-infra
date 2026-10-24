@@ -21,7 +21,7 @@ from pathlib import Path
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, config, t
+from flext_infra import c, config, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodNativeUtilities,
@@ -89,6 +89,10 @@ class FlextInfraUtilitiesNamespaceHeader:
         Returns:
             Namespace object name to the import package providing it.
 
+        Raises:
+            ValueError: When two required libraries export the same namespace
+                object name, which the header cannot import unambiguously.
+
         """
         requirements = FlextInfraUtilitiesCodemodRules.codemod_project_requirements(
             project
@@ -100,7 +104,8 @@ class FlextInfraUtilitiesNamespaceHeader:
             for requirement in parsed
             if requirement.marker is None or requirement.marker.evaluate({"extra": ""})
         }
-        providers = FlextInfraUtilitiesCodemodNativeUtilities.codemod_installed_import_packages()
+        installed = FlextInfraUtilitiesCodemodNativeUtilities
+        providers = installed.codemod_installed_import_packages()
         letters = tuple(FlextInfraUtilitiesCodegenNamespace.facade_families())
         objects: dict[str, str] = {}
         for module, distributions in sorted(providers.items()):
