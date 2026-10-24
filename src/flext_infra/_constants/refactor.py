@@ -233,10 +233,14 @@ class FlextInfraConstantsRefactor:
           of the family the finding's module belongs to: the letters its own
           ``__all__`` declares and those its private family package's facade
           module declares;
-        - ``family-peer``: the captured class name ends with the class suffix
-          of a facade family the finding's module belongs to (``file-family``
-          letters, suffixes from the facade-family declarations): a Pattern-B
-          peer of the same family, never an arbitrary concrete class;
+        - ``family-peer``: the captured class is of the finding's own facade
+          family: its final CamelCase word equals that of a class the module
+          exports (``FlextCliModels`` for a module exporting
+          ``FlextInfraModels``; ``FlextCliConfig`` for ``FlextInfraConfig``),
+          the Pattern-B peer, or it is exported by the module's private family
+          package (``<pkg>/_<facade>`` beside a facade module, or the
+          ``_family`` package holding the module), the family's own component;
+          never an arbitrary concrete class;
         - ``facade-module``: the finding's module declares a facade letter in
           its ``__all__`` (the captured value is not read);
         - ``later-layer``: the captured import (a module of the own package or

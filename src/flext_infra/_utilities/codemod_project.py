@@ -2262,11 +2262,29 @@ class FlextInfraUtilitiesCodemodProject(
             case c.Infra.CodemodContextPredicate.FILE_FAMILY:
                 return value in cls._file_families(file_path)
             case c.Infra.CodemodContextPredicate.FAMILY_PEER:
-                families = FlextInfraUtilitiesCodegenNamespace.facade_families()
-                return any(
-                    value.endswith(families[letter].suffix)
-                    for letter in cls._file_families(file_path)
-                    if letter in families
+                shared = cls._closed_walk_cache.get()
+                facade_words = frozenset(
+                    cls._class_family_word(name)
+                    for name in cls._module_exports(file_path)
+                    if name[:1].isupper()
+                )
+                package_inits = (
+                    file_path.parent / f"_{file_path.stem}" / "__init__.py",
+                    *(
+                        directory / "__init__.py"
+                        for directory in file_path.parents
+                        if directory.name.startswith("_")
+                        and not directory.name.startswith("__")
+                    ),
+                )
+                return cls._class_family_word(value) in facade_words or any(
+                    value in cls._module_exports(init)
+                    for init in package_inits
+                    if (
+                        init.is_file()
+                        if shared is None
+                        else shared[0].source_query(init, "isfile")
+                    )
                 )
             case c.Infra.CodemodContextPredicate.PACKAGE_EXPORT:
                 if of is None:
@@ -2444,6 +2462,19 @@ class FlextInfraUtilitiesCodemodProject(
         facade = ".".join((*parts[:private], parts[private].removeprefix("_")))
         module = located[1]
         return module in {family, facade} or module.startswith(f"{family}.")
+
+    @staticmethod
+    def _class_family_word(name: str) -> str:
+        """Final CamelCase word of a class name (``FlextCliModels`` -> ``Models``).
+
+        Returns:
+            The suffix from the last uppercase letter, or the whole name.
+
+        """
+        start = max(
+            (index for index, char in enumerate(name) if char.isupper()), default=0
+        )
+        return name[start:]
 
     @classmethod
     def _module_exports(cls, file_path: Path) -> frozenset[str]:
