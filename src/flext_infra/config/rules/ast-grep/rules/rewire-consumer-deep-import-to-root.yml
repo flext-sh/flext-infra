@@ -18,6 +18,7 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
 metadata:
+  enforce: [ENFORCE-015, ENFORCE-099]
   context:
     MODULE:
       - not: own-package

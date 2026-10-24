@@ -366,7 +366,7 @@ Infra:
           # Enforcement law ids each Ruff rule claims; the enforcement catalog
           # is derived from these claims and the other owners' declarations.
           enforce:
-            import-outside-top-level: [ENFORCE-015]
+            import-outside-top-level: [ENFORCE-015, ENFORCE-081]
             empty-type-checking-block: [ENFORCE-015]
             any-type: [ENFORCE-016]
             non-pep585-annotation: [ENFORCE-016]

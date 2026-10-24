@@ -72,7 +72,7 @@ message: >-
   contextlib.suppress(...) silences exceptions without propagation; handle
   the exact failure or let it escape.
 metadata:
-  enforce: [ENFORCE-017]
+  enforce: [ENFORCE-017, ENFORCE-082]
 ---
 id: ban-silent-except-swallow
 language: python
@@ -85,7 +85,7 @@ message: >-
   An except handler whose body only passes or continues swallows the
   exception; propagate it, or return an explicit typed failure.
 metadata:
-  enforce: [ENFORCE-017]
+  enforce: [ENFORCE-017, ENFORCE-082]
 ---
 id: ban-silent-failure-sentinel
 language: python
@@ -236,7 +236,7 @@ message: >-
   guard branch that returns None, a boolean or an empty collection. Return
   the typed failure or let the exception escape.
 metadata:
-  enforce: [ENFORCE-017]
+  enforce: [ENFORCE-017, ENFORCE-082]
 ---
 # Deterministic repair: inside a function that returns r[T], an except branch
 # that binds its exception and returns a sentinel returns the failure instead.

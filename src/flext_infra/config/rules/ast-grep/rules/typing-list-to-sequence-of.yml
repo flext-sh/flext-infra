@@ -18,7 +18,7 @@ message: >-
   binding is not established. Resolve the facade binding before rewriting;
   SequenceOf and MutableSequenceOf are not concrete list replacements.
 metadata:
-  enforce: [ENFORCE-016]
+  enforce: [ENFORCE-016, ENFORCE-091, ENFORCE-092]
 ---
 id: typing-list-to-sequence-of
 language: python
@@ -44,4 +44,4 @@ message: >-
   Replace typing.List with t.ListOf[T], preserving the exact concrete list API,
   mutations and Pydantic field contract rather than a sequence abstraction.
 metadata:
-  enforce: [ENFORCE-016]
+  enforce: [ENFORCE-016, ENFORCE-091, ENFORCE-092]

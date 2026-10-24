@@ -36,4 +36,4 @@ message: >-
   A bare `except:` also swallows KeyboardInterrupt and SystemExit. Catch
   Exception explicitly.
 metadata:
-  enforce: [ENFORCE-017]
+  enforce: [ENFORCE-017, ENFORCE-026]

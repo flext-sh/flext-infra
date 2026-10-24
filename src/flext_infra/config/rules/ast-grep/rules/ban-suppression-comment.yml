@@ -12,7 +12,7 @@ rule:
 message: >-
   `# type: ignore` hides a typing defect: fix the contract it suppresses.
 metadata:
-  enforce: [ENFORCE-016]
+  enforce: [ENFORCE-016, ENFORCE-083]
 ---
 id: ban-noqa-comment
 language: python
@@ -25,4 +25,4 @@ rule:
 message: >-
   `# noqa` hides a lint defect: fix the code it suppresses.
 metadata:
-  enforce: [ENFORCE-017]
+  enforce: [ENFORCE-017, ENFORCE-084]
